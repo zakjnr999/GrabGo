@@ -1,16 +1,51 @@
-# grub_go_rider
+# GrabGo Rider App
 
-A new Flutter project.
+Delivery driver mobile application for Android and iOS that enables riders to accept orders, navigate to restaurants and customers, and track earnings.
 
-## Getting Started
+## Features
 
-This project is a starting point for a Flutter application.
+- 🔐 **Authentication**
+  - Rider login and registration
+  - Profile management
 
-A few resources to get you started if this is your first Flutter project:
+- 📦 **Order Management**
+  - View available delivery orders
+  - Accept/reject orders
+  - Track order status
+  - Navigation to pickup and delivery locations
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- 📍 **Location & Navigation**
+  - Real-time location tracking
+  - Route optimization
+  - Delivery tracking
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- 💰 **Earnings**
+  - Track daily/weekly/monthly earnings
+  - Payment history
+
+## Project Structure
+
+```
+lib/
+├── core/              # Core utilities and configurations
+├── features/          # Feature modules
+└── shared/           # Shared widgets and utilities
+```
+
+## Running the App
+
+```bash
+# From root directory
+melos run run:rider
+
+# Or directly
+cd packages/grab_go_rider
+flutter run
+```
+
+## Dependencies
+
+- **grab_go_shared** - Shared components, assets, and utilities
+- **provider** - State management
+- **geolocator** - Location services
+- **firebase_auth** - Authentication

@@ -1,16 +1,76 @@
-# grab_go_admin
+# GrabGo Admin Dashboard
 
-A new Flutter project.
+Web-based admin dashboard for platform management, enabling administrators to manage restaurants, oversee orders, handle payments, and view platform analytics.
 
-## Getting Started
+## Features
 
-This project is a starting point for a Flutter application.
+- 📊 **Dashboard**
+  - Platform overview with key metrics
+  - Revenue and order statistics
+  - Real-time updates
+  - Summary cards and charts
 
-A few resources to get you started if this is your first Flutter project:
+- 🏪 **Restaurant Management**
+  - View all registered restaurants
+  - Approve/reject restaurant applications
+  - Suspend/activate restaurants
+  - Restaurant details and analytics
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- 📦 **Order Oversight**
+  - View all platform orders
+  - Monitor order status
+  - Order analytics and trends
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- 💳 **Payment Management**
+  - Track payments across the platform
+  - Payment analytics
+  - Transaction history
+
+- 📈 **Analytics & Reports**
+  - Platform-wide analytics
+  - Revenue reports
+  - Order trends
+  - Restaurant performance metrics
+
+- ⚙️ **Settings**
+  - System configuration
+  - Admin preferences
+  - Platform settings
+
+## Project Structure
+
+```
+lib/
+├── features/          # Feature modules
+│   ├── dashboard/    # Main admin dashboard
+│   ├── restaurants/  # Restaurant management
+│   ├── orders/       # Order oversight
+│   ├── payments/     # Payment management
+│   ├── analytics/    # Analytics and reports
+│   ├── settings/     # System settings
+│   └── auth/         # Admin authentication
+└── shared/           # Shared widgets, models, and utilities
+```
+
+## Running the App
+
+```bash
+# From root directory
+melos run run:admin
+
+# Or directly
+cd packages/grab_go_admin
+flutter run -d chrome
+```
+
+## Dependencies
+
+- **grab_go_shared** - Shared components, assets, and utilities
+- **provider** - State management
+- **google_fonts** - Custom fonts
+- **flutter_svg** - SVG icon support
+- **fl_chart** - Charts and graphs
+
+## Platform
+
+This app runs on **web** (Chrome, Firefox, Safari, Edge).
