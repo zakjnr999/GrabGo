@@ -52,15 +52,15 @@ class _OrderListState extends State<OrderList> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isMobile = Responsive.isMobile(context);
     final isTablet = Responsive.isTablet(context);
-    
+
     return Container(
       padding: EdgeInsets.all(isMobile ? 16 : 20),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -94,19 +94,17 @@ class _OrderListState extends State<OrderList> {
                         margin: const EdgeInsets.only(left: 8),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: selectedTimeframe == timeframe 
-                              ? AppColors.accentOrange 
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(6),
+                          color: selectedTimeframe == timeframe ? AppColors.accentOrange : Colors.transparent,
+                          borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           timeframe,
                           style: GoogleFonts.lato(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            color: selectedTimeframe == timeframe 
-                                ? AppColors.white 
-                                : (isDark ? AppColors.white.withOpacity(0.7) : AppColors.grey),
+                            color: selectedTimeframe == timeframe
+                                ? AppColors.white
+                                : (isDark ? AppColors.white.withValues(alpha: 0.7) : AppColors.grey),
                           ),
                         ),
                       ),
@@ -131,14 +129,12 @@ class _OrderListState extends State<OrderList> {
                       margin: const EdgeInsets.symmetric(horizontal: 4),
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       decoration: BoxDecoration(
-                        color: selectedTimeframe == timeframe 
-                            ? AppColors.accentOrange 
-                            : Colors.transparent,
+                        color: selectedTimeframe == timeframe ? AppColors.accentOrange : Colors.transparent,
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(
-                          color: selectedTimeframe == timeframe 
-                              ? AppColors.accentOrange 
-                              : (isDark ? AppColors.white.withOpacity(0.1) : AppColors.lightSurface),
+                          color: selectedTimeframe == timeframe
+                              ? AppColors.accentOrange
+                              : (isDark ? AppColors.white.withValues(alpha: 0.1) : AppColors.lightSurface),
                         ),
                       ),
                       child: Text(
@@ -147,9 +143,9 @@ class _OrderListState extends State<OrderList> {
                         style: GoogleFonts.lato(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
-                          color: selectedTimeframe == timeframe 
-                              ? AppColors.white 
-                              : (isDark ? AppColors.white.withOpacity(0.7) : AppColors.grey),
+                          color: selectedTimeframe == timeframe
+                              ? AppColors.white
+                              : (isDark ? AppColors.white.withValues(alpha: 0.7) : AppColors.grey),
                         ),
                       ),
                     ),
@@ -200,17 +196,14 @@ class _OrderListState extends State<OrderList> {
 
   Widget _buildMobileOrderCard(Order order, bool isDark) {
     final statusColor = _getStatusColor(order.statusColor);
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.mutedBrown.withOpacity(0.3) : AppColors.lightSurface,
+        color: isDark ? AppColors.mutedBrown.withValues(alpha: 0.3) : AppColors.lightSurface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isDark ? AppColors.white.withOpacity(0.1) : AppColors.lightSurface,
-          width: 1,
-        ),
+        border: Border.all(color: isDark ? AppColors.white.withValues(alpha: 0.1) : AppColors.lightSurface, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,29 +222,19 @@ class _OrderListState extends State<OrderList> {
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                decoration: BoxDecoration(color: statusColor, borderRadius: BorderRadius.circular(12)),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       width: 6,
                       height: 6,
-                      decoration: const BoxDecoration(
-                        color: AppColors.white,
-                        shape: BoxShape.circle,
-                      ),
+                      decoration: const BoxDecoration(color: AppColors.white, shape: BoxShape.circle),
                     ),
                     const SizedBox(width: 6),
                     Text(
                       order.status,
-                      style: GoogleFonts.lato(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.white,
-                      ),
+                      style: GoogleFonts.lato(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.white),
                     ),
                   ],
                 ),
@@ -272,19 +255,11 @@ class _OrderListState extends State<OrderList> {
             children: [
               Text(
                 order.amount,
-                style: GoogleFonts.lato(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.accentOrange,
-                ),
+                style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.accentOrange),
               ),
               IconButton(
                 onPressed: () {},
-                icon: Icon(
-                  Icons.more_vert,
-                  color: isDark ? AppColors.white : AppColors.primary,
-                  size: 20,
-                ),
+                icon: Icon(Icons.more_vert, color: isDark ? AppColors.white : AppColors.primary, size: 20),
               ),
             ],
           ),
@@ -304,7 +279,7 @@ class _OrderListState extends State<OrderList> {
             style: GoogleFonts.lato(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: isDark ? AppColors.white.withOpacity(0.7) : AppColors.grey,
+              color: isDark ? AppColors.white.withValues(alpha: 0.7) : AppColors.grey,
             ),
           ),
         ),
@@ -337,94 +312,82 @@ class _OrderListState extends State<OrderList> {
 
   Widget _buildTableRow(Order order, bool isDark, bool isTablet) {
     final statusColor = _getStatusColor(order.statusColor);
-    
+
     return Container(
-      padding: EdgeInsets.symmetric(
-        vertical: isTablet ? 12 : 16, 
-        horizontal: isTablet ? 12 : 16
-      ),
+      padding: EdgeInsets.symmetric(vertical: isTablet ? 12 : 16, horizontal: isTablet ? 12 : 16),
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(
-            color: isDark ? AppColors.white.withOpacity(0.1) : AppColors.lightSurface, 
-            width: 1
-          ),
+          bottom: BorderSide(color: isDark ? AppColors.white.withValues(alpha: 0.1) : AppColors.lightSurface, width: 1),
         ),
       ),
       child: Row(
         children: [
           Expanded(
-            flex: 1, 
+            flex: 1,
             child: Text(
-              order.number, 
+              order.number,
               style: _tableTextStyle(isTablet, isDark),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-            )
+            ),
           ),
           Expanded(
-            flex: 2, 
+            flex: 2,
             child: Text(
-              order.id, 
+              order.id,
               style: _tableTextStyle(isTablet, isDark),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-            )
+            ),
           ),
           Expanded(
-            flex: 2, 
+            flex: 2,
             child: Text(
-              order.date, 
+              order.date,
               style: _tableTextStyle(isTablet, isDark),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-            )
+            ),
           ),
           Expanded(
-            flex: 3, 
+            flex: 3,
             child: Text(
-              order.customerName, 
+              order.customerName,
               style: _tableTextStyle(isTablet, isDark),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-            )
+            ),
           ),
           Expanded(
-            flex: 3, 
+            flex: 3,
             child: Text(
-              order.location, 
+              order.location,
               style: _tableTextStyle(isTablet, isDark),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-            )
+            ),
           ),
           Expanded(
-            flex: 2, 
+            flex: 2,
             child: Text(
-              order.amount, 
+              order.amount,
               style: _tableTextStyle(isTablet, isDark),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-            )
+            ),
           ),
           Expanded(
             flex: 2,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: statusColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
+              decoration: BoxDecoration(color: statusColor, borderRadius: BorderRadius.circular(12)),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
                     width: 6,
                     height: 6,
-                    decoration: const BoxDecoration(
-                      color: AppColors.white,
-                      shape: BoxShape.circle,
-                    ),
+                    decoration: const BoxDecoration(color: AppColors.white, shape: BoxShape.circle),
                   ),
                   const SizedBox(width: 6),
                   Flexible(
@@ -447,7 +410,7 @@ class _OrderListState extends State<OrderList> {
             flex: 1,
             child: Icon(
               Icons.more_vert,
-              color: isDark ? AppColors.white.withOpacity(0.7) : AppColors.grey,
+              color: isDark ? AppColors.white.withValues(alpha: 0.7) : AppColors.grey,
               size: isTablet ? 18 : 20,
             ),
           ),
@@ -457,10 +420,7 @@ class _OrderListState extends State<OrderList> {
   }
 
   TextStyle _tableTextStyle(bool isTablet, bool isDark) {
-    return GoogleFonts.lato(
-      fontSize: isTablet ? 11 : 12,
-      color: isDark ? AppColors.white : AppColors.primary,
-    );
+    return GoogleFonts.lato(fontSize: isTablet ? 11 : 12, color: isDark ? AppColors.white : AppColors.primary);
   }
 
   Color _getStatusColor(String colorName) {

@@ -21,18 +21,20 @@ class _OrdersChartState extends State<OrdersChart> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isMobile = Responsive.isMobile(context);
     final isTablet = Responsive.isTablet(context);
-    
+
     return Container(
-      padding: EdgeInsets.all(isMobile ? 16 : isTablet ? 18 : 20),
+      padding: EdgeInsets.all(
+        isMobile
+            ? 16
+            : isTablet
+            ? 18
+            : 20,
+      ),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
+          BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.05), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -61,19 +63,15 @@ class _OrdersChartState extends State<OrdersChart> {
                       margin: const EdgeInsets.only(left: 8),
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: selectedTimeframe == timeframe 
-                            ? AppColors.accentOrange 
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(6),
+                        color: selectedTimeframe == timeframe ? AppColors.accentOrange : Colors.transparent,
+                        borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         timeframe,
                         style: GoogleFonts.lato(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
-                          color: selectedTimeframe == timeframe 
-                              ? AppColors.white 
-                              : AppColors.grey,
+                          color: selectedTimeframe == timeframe ? AppColors.white : AppColors.grey,
                         ),
                       ),
                     ),
@@ -98,10 +96,7 @@ class _OrdersChartState extends State<OrdersChart> {
                       getTitlesWidget: (value, meta) {
                         return Text(
                           '${(value / 1000).toInt()}k',
-                          style: GoogleFonts.lato(
-                            fontSize: 10,
-                            color: AppColors.grey,
-                          ),
+                          style: GoogleFonts.lato(fontSize: 10, color: AppColors.grey),
                         );
                       },
                     ),
@@ -111,13 +106,7 @@ class _OrdersChartState extends State<OrdersChart> {
                       showTitles: true,
                       getTitlesWidget: (value, meta) {
                         const days = ['Jun 24', 'Jun 25', 'Jun 26', 'Jun 27'];
-                        return Text(
-                          days[value.toInt()],
-                          style: GoogleFonts.lato(
-                            fontSize: 10,
-                            color: AppColors.grey,
-                          ),
-                        );
+                        return Text(days[value.toInt()], style: GoogleFonts.lato(fontSize: 10, color: AppColors.grey));
                       },
                     ),
                   ),

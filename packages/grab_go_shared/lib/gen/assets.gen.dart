@@ -75,6 +75,9 @@ class $LibAssetsIconsGen {
   AssetGenImage get backgroundIconMain =>
       const AssetGenImage('lib/assets/icons/background_icon_main.png');
 
+  /// File path: lib/assets/icons/ban.svg
+  String get ban => 'lib/assets/icons/ban.svg';
+
   /// File path: lib/assets/icons/bbq.svg
   String get bbq => 'lib/assets/icons/bbq.svg';
 
@@ -155,6 +158,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/eye.svg
   String get eye => 'lib/assets/icons/eye.svg';
 
+  /// File path: lib/assets/icons/facebook-tag.svg
+  String get facebookTag => 'lib/assets/icons/facebook-tag.svg';
+
   /// File path: lib/assets/icons/facebook.png
   AssetGenImage get facebook =>
       const AssetGenImage('lib/assets/icons/facebook.png');
@@ -177,6 +183,9 @@ class $LibAssetsIconsGen {
   AssetGenImage get google =>
       const AssetGenImage('lib/assets/icons/google.png');
 
+  /// File path: lib/assets/icons/group.svg
+  String get group => 'lib/assets/icons/group.svg';
+
   /// File path: lib/assets/icons/half-moon.svg
   String get halfMoon => 'lib/assets/icons/half-moon.svg';
 
@@ -197,6 +206,9 @@ class $LibAssetsIconsGen {
 
   /// File path: lib/assets/icons/info-circle.svg
   String get infoCircle => 'lib/assets/icons/info-circle.svg';
+
+  /// File path: lib/assets/icons/instagram.svg
+  String get instagram => 'lib/assets/icons/instagram.svg';
 
   /// File path: lib/assets/icons/lock.svg
   String get lock => 'lib/assets/icons/lock.svg';
@@ -265,6 +277,12 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/phone.svg
   String get phone => 'lib/assets/icons/phone.svg';
 
+  /// File path: lib/assets/icons/plus.svg
+  String get plus => 'lib/assets/icons/plus.svg';
+
+  /// File path: lib/assets/icons/refresh.svg
+  String get refresh => 'lib/assets/icons/refresh.svg';
+
   /// File path: lib/assets/icons/scale.svg
   String get scale => 'lib/assets/icons/scale.svg';
 
@@ -304,6 +322,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/sun-moon.svg
   String get sunMoon => 'lib/assets/icons/sun-moon.svg';
 
+  /// File path: lib/assets/icons/tiktok.svg
+  String get tiktok => 'lib/assets/icons/tiktok.svg';
+
   /// File path: lib/assets/icons/timer.svg
   String get timer => 'lib/assets/icons/timer.svg';
 
@@ -323,6 +344,12 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/weight.svg
   String get weight => 'lib/assets/icons/weight.svg';
 
+  /// File path: lib/assets/icons/x.svg
+  String get x => 'lib/assets/icons/x.svg';
+
+  /// File path: lib/assets/icons/xmark.svg
+  String get xmark => 'lib/assets/icons/xmark.svg';
+
   /// List of all assets
   List<dynamic> get values => [
     alarm,
@@ -331,6 +358,7 @@ class $LibAssetsIconsGen {
     appIconMainMonochrome,
     arrowUpAZ,
     backgroundIconMain,
+    ban,
     bbq,
     bell,
     binMinusIn,
@@ -357,12 +385,14 @@ class $LibAssetsIconsGen {
     emoji,
     eyeClosed,
     eye,
+    facebookTag,
     facebook,
     fastDelivery,
     flame,
     foregroundIconMain,
     gift,
     google,
+    group,
     halfMoon,
     headsetHelp,
     heartSolid,
@@ -370,6 +400,7 @@ class $LibAssetsIconsGen {
     home,
     idCard,
     infoCircle,
+    instagram,
     lock,
     logIn,
     logOut,
@@ -391,6 +422,8 @@ class $LibAssetsIconsGen {
     packageDelivered,
     phoneSolid,
     phone,
+    plus,
+    refresh,
     scale,
     scanQrCode,
     search,
@@ -404,12 +437,15 @@ class $LibAssetsIconsGen {
     starHeavy,
     sunLight,
     sunMoon,
+    tiktok,
     timer,
     user,
     utensilsCrossed,
     vodafoneCash,
     warningCircle,
     weight,
+    x,
+    xmark,
   ];
 }
 
@@ -487,7 +523,7 @@ class $LibAssetsImagesGen {
 }
 
 class Assets {
-  Assets._();
+  const Assets._();
 
   static const $LibGen lib = $LibGen();
 

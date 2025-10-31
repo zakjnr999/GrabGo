@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:grab_go_shared/shared/utils/constants.dart';
 import '../app_colors.dart';
 import '../models/summary_card.dart';
 import '../utils/responsive.dart';
@@ -116,7 +117,7 @@ class SummaryCards extends StatelessWidget {
       padding: EdgeInsets.all(padding),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
@@ -145,7 +146,7 @@ class SummaryCards extends StatelessWidget {
               Container(
                 width: iconSize,
                 height: iconSize,
-                decoration: BoxDecoration(color: iconColor, borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(color: iconColor, borderRadius: BorderRadius.circular(4)),
                 child: Padding(
                   padding: EdgeInsets.all(iconPadding),
                   child: SvgIcon(svgImage: card.icon, color: AppColors.white),
@@ -171,6 +172,7 @@ class SummaryCards extends StatelessWidget {
                   backgroundColor: isDark ? AppColors.mutedBrown : AppColors.lightSurface,
                   valueColor: AlwaysStoppedAnimation<Color>(iconColor),
                   minHeight: isMobile ? 4 : 6,
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
               SizedBox(width: isMobile ? 6 : 8),

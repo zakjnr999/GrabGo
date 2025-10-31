@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:grab_go_shared/shared/widgets/app_dialog_panels.dart';
 import '../../../shared/app_colors.dart';
 import '../../../shared/utils/responsive.dart';
 import '../../../shared/widgets/text_input.dart';
@@ -151,7 +152,6 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Section
           Row(
             children: [
               Expanded(
@@ -173,28 +173,24 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
                 AppButton(
                   buttonText: 'Refresh',
                   onPressed: () {
-                    // Refresh restaurants list
-                    setState(() {
-                      // Trigger a refresh of the restaurants list
-                    });
+                    setState(() {});
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Restaurants list refreshed'), backgroundColor: AppColors.successGreen),
                     );
                   },
+                  borderRadius: 4,
                   backgroundColor: AppColors.accentOrange,
                   textColor: AppColors.white,
                   padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  icon: SvgIcon(svgImage: Assets.icons.alarm, width: 18, height: 18, color: AppColors.white),
+                  icon: SvgIcon(svgImage: Assets.icons.refresh, width: 18, height: 18, color: AppColors.white),
                 ),
             ],
           ),
           SizedBox(height: isMobile ? 20 : 24),
 
-          // Search and Filters Section
           _buildSearchAndFilters(isDark, isMobile, isTablet),
           SizedBox(height: isMobile ? 16 : 20),
 
-          // Restaurants List
           _buildRestaurantsList(isDark, isMobile, isTablet),
         ],
       ),
@@ -206,7 +202,7 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
       padding: EdgeInsets.all(isMobile ? 16 : 20),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
@@ -217,7 +213,6 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
       ),
       child: Column(
         children: [
-          // Search Bar
           TextInput(
             controller: _searchController,
             label: 'Search Restaurants',
@@ -239,7 +234,6 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
           ),
           SizedBox(height: isMobile ? 16 : 20),
 
-          // Filters Row
           if (isMobile)
             Column(
               children: [
@@ -362,7 +356,7 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
         padding: EdgeInsets.all(isMobile ? 40 : 60),
         decoration: BoxDecoration(
           color: isDark ? AppColors.darkSurface : AppColors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(8),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
@@ -396,7 +390,7 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
     return Container(
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
@@ -407,13 +401,12 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
       ),
       child: Column(
         children: [
-          // Table Header (only for desktop)
           if (!isMobile)
             Container(
               padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: isDark ? AppColors.darkBackground : AppColors.secondaryBackground,
-                borderRadius: BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(8), topRight: Radius.circular(8)),
               ),
               child: Row(
                 children: [
@@ -426,7 +419,6 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
                 ],
               ),
             ),
-          // Table Rows
           ...restaurants.asMap().entries.map((entry) {
             final index = entry.key;
             final restaurant = entry.value;
@@ -661,7 +653,7 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
                     ),
                     IconButton(
                       onPressed: () => _suspendRestaurant(restaurant),
-                      icon: SvgIcon(svgImage: Assets.icons.alarm, width: 18, height: 18, color: AppColors.errorRed),
+                      icon: SvgIcon(svgImage: Assets.icons.ban, width: 18, height: 18, color: AppColors.errorRed),
                     ),
                   ] else
                     IconButton(
@@ -762,7 +754,7 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
   SvgIcon _getActionIcon(String status) {
     switch (status) {
       case 'Active':
-        return SvgIcon(svgImage: Assets.icons.alarm, width: 18, height: 18, color: AppColors.errorRed);
+        return SvgIcon(svgImage: Assets.icons.ban, width: 18, height: 18, color: AppColors.errorRed);
       case 'Pending':
         return SvgIcon(svgImage: Assets.icons.check, width: 18, height: 18, color: AppColors.successGreen);
       case 'Suspended':
@@ -780,26 +772,16 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
     String action = _getActionText(restaurant['status']);
     String message = 'Are you sure you want to $action "${restaurant['name']}"?';
 
-    showDialog(
+    AppDialogPanels.show(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        title: Text('Confirm Action'),
-        content: Text(message),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              // Handle the action here
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text('$action action completed for ${restaurant['name']}')));
-            },
-            child: Text(action),
-          ),
-        ],
-      ),
+      title: 'Confirm Action',
+      message: message,
+      type: AppDialogType.question,
+      primaryButtonText: 'Confirm',
+      secondaryButtonText: 'Cancel',
+      primaryButtonColor: AppColors.accentOrange,
+      onPrimaryPressed: () => _handleRestaurantAction(restaurant),
+      onSecondaryPressed: () => Navigator.of(context).pop(),
     );
   }
 
@@ -870,48 +852,16 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
   }
 
   void _approveRestaurant(Map<String, dynamic> restaurant) {
-    showDialog(
+    AppDialogPanels.show(
       context: context,
-      builder: (BuildContext context) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          backgroundColor: isDark ? AppColors.darkSurface : AppColors.white,
-          title: Text(
-            'Approve Restaurant',
-            style: GoogleFonts.lato(color: isDark ? AppColors.white : AppColors.primary, fontWeight: FontWeight.bold),
-          ),
-          content: Text(
-            'Are you sure you want to approve "${restaurant['name']}"?',
-            style: GoogleFonts.lato(color: isDark ? AppColors.white : AppColors.primary),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancel', style: GoogleFonts.lato(color: AppColors.grey)),
-            ),
-            TextButton(
-              onPressed: () {
-                // Update restaurant status to Active
-                setState(() {
-                  restaurant['status'] = 'Active';
-                });
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('${restaurant['name']} has been approved successfully!'),
-                    backgroundColor: AppColors.successGreen,
-                  ),
-                );
-              },
-              child: Text(
-                'Approve',
-                style: GoogleFonts.lato(color: AppColors.successGreen, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        );
-      },
+      title: 'Approve Restaurant',
+      message: 'Are you sure you want to approve "${restaurant['name']}"?',
+      type: AppDialogType.question,
+      primaryButtonText: 'Approve',
+      secondaryButtonText: 'Cancel',
+      primaryButtonColor: AppColors.successGreen,
+      onPrimaryPressed: () => _approveRestaurant(restaurant),
+      onSecondaryPressed: () => Navigator.of(context).pop(),
     );
   }
 
@@ -922,45 +872,16 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
         ? 'Are you sure you want to reject the application for "${restaurant['name']}"?'
         : 'Are you sure you want to suspend "${restaurant['name']}"?';
 
-    showDialog(
+    AppDialogPanels.show(
       context: context,
-      builder: (BuildContext context) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          backgroundColor: isDark ? AppColors.darkSurface : AppColors.white,
-          title: Text(
-            title,
-            style: GoogleFonts.lato(color: isDark ? AppColors.white : AppColors.primary, fontWeight: FontWeight.bold),
-          ),
-          content: Text(content, style: GoogleFonts.lato(color: isDark ? AppColors.white : AppColors.primary)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancel', style: GoogleFonts.lato(color: AppColors.grey)),
-            ),
-            TextButton(
-              onPressed: () {
-                // Update restaurant status based on current status
-                setState(() {
-                  restaurant['status'] = isPending ? 'Rejected' : 'Suspended';
-                });
-                Navigator.of(context).pop();
-                final message = isPending
-                    ? '${restaurant['name']} application has been rejected.'
-                    : '${restaurant['name']} has been suspended.';
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text(message), backgroundColor: AppColors.errorRed));
-              },
-              child: Text(
-                isPending ? 'Reject' : 'Suspend',
-                style: GoogleFonts.lato(color: AppColors.errorRed, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        );
-      },
+      title: title,
+      message: content,
+      type: AppDialogType.question,
+      primaryButtonText: 'Confirm',
+      secondaryButtonText: 'Cancel',
+      primaryButtonColor: isPending ? AppColors.errorRed : AppColors.accentOrange,
+      onPrimaryPressed: () => _suspendRestaurant(restaurant),
+      onSecondaryPressed: () => Navigator.of(context).pop(),
     );
   }
 }
