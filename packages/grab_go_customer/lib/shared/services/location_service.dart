@@ -1,0 +1,73 @@
+import 'package:flutter/foundation.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+
+class LocationService {
+  static Position? _cachedPosition;
+  static String? _cachedAddress;
+
+  static Future<Position?> getCurrentPosition() async {
+    if (_cachedPosition != null) return _cachedPosition;
+
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return null;
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return null;
+    }
+
+    if (permission == LocationPermission.deniedForever) return null;
+
+    _cachedPosition = await Geolocator.getCurrentPosition(
+      locationSettings: AndroidSettings(accuracy: LocationAccuracy.high),
+      // desiredAccuracy: LocationAccuracy.high,
+    );
+    return _cachedPosition;
+  }
+
+  static Future<String> getCurrentAddress() async {
+    if (_cachedAddress != null) return _cachedAddress!;
+
+    try {
+      Position? position = await getCurrentPosition();
+      if (position == null) return "Location not available";
+
+      List<Placemark> placeMarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placeMarks.isNotEmpty) {
+        Placemark place = placeMarks[0];
+        _cachedAddress = _formatAddress(place);
+        return _cachedAddress!;
+      } else {
+        return "Address not found";
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Location error: $e');
+      }
+      return "Unable to get location";
+    }
+  }
+
+  static String _formatAddress(Placemark place) {
+    final parts = <String>[];
+
+    if (place.locality?.isNotEmpty == true) parts.add(place.locality!);
+    if (place.administrativeArea?.isNotEmpty == true) {
+      parts.add(place.administrativeArea!);
+    }
+    return parts.isNotEmpty ? parts.join(', ') : "Address not available";
+  }
+
+  static void clearCache() {
+    _cachedPosition = null;
+    _cachedAddress = null;
+  }
+}
+
+

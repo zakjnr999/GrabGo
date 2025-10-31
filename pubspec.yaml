@@ -1,0 +1,93 @@
+name: GrabGo
+environment:
+  sdk: ">=3.9.2 <4.0.0"
+dev_dependencies:
+  melos: ^7.3.0
+
+workspace:
+  - packages/grab_go_customer
+  - packages/grab_go_rider
+  - packages/grab_go_shared
+  - packages/grab_go_restaurant
+  - packages/grab_go_admin
+
+melos:
+  scripts:
+    analyze:
+      run: melos exec -- flutter analyze
+      description: Run `flutter analyze` in all packages
+
+    test:
+      run: melos exec -- flutter test
+      description: Run `flutter test` in all packages
+
+    clean:
+      run: melos exec -- flutter clean
+      description: Run `flutter clean` in all packages
+
+    get:
+      run: melos exec -- flutter pub get
+      description: Run `flutter pub get` in all packages
+
+    build:android:
+      run: melos exec -- flutter build apk
+      description: Build Android APK for all packages
+
+    build:ios:
+      run: melos exec -- flutter build ios
+      description: Build iOS app for all packages
+
+    format:
+      run: melos exec -- dart format .
+      description: Format code in all packages
+
+    lint:
+      run: melos exec -- dart analyze
+      description: Run linting in all packages
+
+    run:customer:
+      run: |
+        cd packages/grab_go_customer
+        flutter run
+      description: Run the customer app (grab_go_customer) on connected device/emulator
+
+    run:rider:
+      run: |
+        cd packages/grab_go_rider
+        flutter run
+      description: Run the rider app (grab_go_rider) on connected device/emulator
+
+    run:restaurant:
+      run: |
+        cd packages/grab_go_restaurant
+        flutter run
+      description: Run the restaurant app (grab_go_restaurant) on connected device/emulator
+
+    run:customer:debug:
+      run: |
+        cd packages/grab_go_customer
+        flutter run --debug
+      description: Run the customer app in debug mode
+
+    run:customer:release:
+      run: |
+        cd packages/grab_go_customer
+        flutter run --release
+      description: Run the customer app in release mode
+
+    rebuild:customer:
+      run: |
+        cd packages/grab_go_customer
+        flutter clean
+        flutter pub get
+        flutter run
+      description: Clean, rebuild and run customer app
+
+    devices:
+      run: flutter devices
+      description: List all connected devices and emulators
+
+    emulators:
+      run: flutter emulators
+      description: List available emulators
+

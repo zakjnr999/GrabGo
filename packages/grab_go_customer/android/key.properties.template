@@ -1,0 +1,15 @@
+# Android Keystore Configuration Template
+# Copy this file to key.properties and fill in your actual values
+# NEVER commit key.properties to git!
+
+storePassword=zakari2003
+keyPassword=zakari2003
+keyAlias=upload
+storeFile=C:/Users/user/upload-keystore.jks
+
+# Instructions:
+# 1. Create a keystore using the command in GOOGLE_SIGNIN_SETUP.md
+# 2. Copy this file to key.properties (in the same directory)
+# 3. Replace the placeholder values with your actual credentials
+# 4. Make sure key.properties is in .gitignore
+

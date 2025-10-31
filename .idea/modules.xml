@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+<module fileurl="file://$PROJECT_DIR$/packages/grab_go_admin/melos_grab_go_admin.iml" filepath="$PROJECT_DIR$/packages/grab_go_admin/melos_grab_go_admin.iml"/>
+<module fileurl="file://$PROJECT_DIR$/packages/grab_go_customer/melos_grab_go_customer.iml" filepath="$PROJECT_DIR$/packages/grab_go_customer/melos_grab_go_customer.iml"/>
+<module fileurl="file://$PROJECT_DIR$/packages/grab_go_restaurant/melos_grab_go_restaurant.iml" filepath="$PROJECT_DIR$/packages/grab_go_restaurant/melos_grab_go_restaurant.iml"/>
+<module fileurl="file://$PROJECT_DIR$/packages/grab_go_rider/melos_grab_go_rider.iml" filepath="$PROJECT_DIR$/packages/grab_go_rider/melos_grab_go_rider.iml"/>
+<module fileurl="file://$PROJECT_DIR$/packages/grab_go_shared/melos_grab_go_shared.iml" filepath="$PROJECT_DIR$/packages/grab_go_shared/melos_grab_go_shared.iml"/>
+<module fileurl="file://$PROJECT_DIR$/melos_grabgo.iml" filepath="$PROJECT_DIR$/melos_grabgo.iml"/>
+<module fileurl="file://$PROJECT_DIR$/packages/grub_go_shared/melos_grub_go_shared.iml" filepath="$PROJECT_DIR$/packages/grub_go_shared/melos_grub_go_shared.iml"/>
+<module fileurl="file://$PROJECT_DIR$/packages/grub_go/melos_grub_go.iml" filepath="$PROJECT_DIR$/packages/grub_go/melos_grub_go.iml"/>
+<module fileurl="file://$PROJECT_DIR$/packages/grub_go_rider/melos_grub_go_rider.iml" filepath="$PROJECT_DIR$/packages/grub_go_rider/melos_grub_go_rider.iml"/>
+    </modules>
+  </component>
+</project>

@@ -1,0 +1,188 @@
+name: grabgo_monorepo
+
+packages:
+  - packages/grab_go_customer
+  - packages/grab_go_rider
+  - packages/grab_go_shared
+  - packages/grab_go_restaurant
+  - packages/grab_go_admin
+
+scripts:
+  analyze:
+    run: melos exec -- flutter analyze
+    description: Run `flutter analyze` in all packages
+
+  test:
+    run: melos exec -- flutter test
+    description: Run `flutter test` in all packages
+
+  clean:
+    run: melos exec -- flutter clean
+    description: Run `flutter clean` in all packages
+
+  get:
+    run: melos exec -- flutter pub get
+    description: Run `flutter pub get` in all packages
+
+  build:android:
+    run: melos exec -- flutter build apk
+    description: Build Android APK for all packages
+
+  build:ios:
+    run: melos exec -- flutter build ios
+    description: Build iOS app for all packages
+
+  format:
+    run: melos exec -- dart format .
+    description: Format code in all packages
+
+  lint:
+    run: melos exec -- dart analyze
+    description: Run linting in all packages
+
+  # Development scripts for easier emulator running
+  run:customer:
+    run: |
+      cd packages/grab_go_customer
+      flutter run -d android
+    description: Run the customer app (grab_go_customer) on connected device/emulator
+
+  run:rider:
+    run: |
+      cd packages/grab_go_rider
+      flutter run -d android
+    description: Run the rider app (grab_go_rider) on connected device/emulator
+
+  run:restaurant:
+    run: |
+      cd packages/grab_go_restaurant
+      flutter run -d chrome
+    description: Run the restaurant app (grab_go_restaurant) on web browser
+
+  run:customer:debug:
+    run: |
+      cd packages/grab_go_customer
+      flutter run --debug
+    description: Run the customer app in debug mode
+
+  run:rider:debug:
+    run: |
+      cd packages/grab_go_rider
+      flutter run --debug -d android
+    description: Run the rider app in debug mode
+
+  run:restaurant:debug:
+    run: |
+      cd packages/grab_go_restaurant
+      flutter run --debug -d chrome
+    description: Run the restaurant app in debug mode on web
+
+  run:customer:release:
+    run: |
+      cd packages/grab_go_customer
+      flutter run --release
+    description: Run the customer app in release mode
+
+  run:rider:release:
+    run: |
+      cd packages/grab_go_rider
+      flutter run --release -d android
+    description: Run the rider app in release mode
+
+  run:restaurant:release:
+    run: |
+      cd packages/grab_go_restaurant
+      flutter run --release -d chrome
+    description: Run the restaurant app in release mode on web
+
+  run:admin:
+    run: |
+      cd packages/grab_go_admin
+      flutter run -d chrome
+    description: Run the admin app (grab_go_admin) on web browser
+
+  run:admin:debug:
+    run: |
+      cd packages/grab_go_admin
+      flutter run --debug -d chrome
+    description: Run the admin app in debug mode on web
+
+  run:admin:release:
+    run: |
+      cd packages/grab_go_admin
+      flutter run --release -d chrome
+    description: Run the admin app in release mode on web
+
+  # Device management scripts
+  devices:
+    run: flutter devices
+    description: List all connected devices and emulators
+
+  emulators:
+    run: flutter emulators
+    description: List available emulators
+
+  # Hot reload and restart scripts
+  hot:customer:
+    run: |
+      cd packages/grab_go_customer
+      flutter run --hot
+    description: Run customer app with hot reload enabled
+
+  hot:rider:
+    run: |
+      cd packages/grab_go_rider
+      flutter run --hot
+    description: Run rider app with hot reload enabled
+
+  hot:restaurant:
+    run: |
+      cd packages/grab_go_restaurant
+      flutter run --hot -d chrome
+    description: Run restaurant app with hot reload enabled on web
+
+  hot:admin:
+    run: |
+      cd packages/grab_go_admin
+      flutter run --hot -d chrome
+    description: Run admin app with hot reload enabled on web
+
+  # Clean and rebuild scripts
+  clean:all:
+    run: |
+      melos exec -- flutter clean
+      melos exec -- flutter pub get
+    description: Clean all packages and reinstall dependencies
+
+  rebuild:customer:
+    run: |
+      cd packages/grab_go_customer
+      flutter clean
+      flutter pub get
+      flutter run
+    description: Clean, rebuild and run customer app
+
+  rebuild:rider:
+    run: |
+      cd packages/grab_go_rider
+      flutter clean
+      flutter pub get
+      flutter run -d android
+    description: Clean, rebuild and run rider app
+
+  rebuild:restaurant:
+    run: |
+      cd packages/grab_go_restaurant
+      flutter clean
+      flutter pub get
+      flutter run -d chrome
+    description: Clean, rebuild and run restaurant app on web
+
+  rebuild:admin:
+    run: |
+      cd packages/grab_go_admin
+      flutter clean
+      flutter pub get
+      flutter run -d chrome
+    description: Clean, rebuild and run admin app on web
+

@@ -1,0 +1,368 @@
+// ignore_for_file: deprecated_member_use
+
+import 'package:dotted_line/dotted_line.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/svg.dart';
+import 'package:flutter_swipe_action_cell/core/cell.dart';
+import 'package:go_router/go_router.dart';
+import 'package:grab_go_shared/gen/assets.gen.dart';
+import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
+
+class CartItem extends StatefulWidget {
+  const CartItem({super.key});
+
+  @override
+  State<CartItem> createState() => _CartItemState();
+}
+
+class _CartItemState extends State<CartItem> {
+  final ScrollController _scrollController = ScrollController();
+  bool _hasScrolledOnLoad = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _hasScrolledOnLoad = false;
+  }
+
+  void _scrollToFirstItem() {
+    if (!_scrollController.hasClients || !mounted) return;
+
+    try {
+      final position = _scrollController.position;
+      _scrollController.jumpTo(position.maxScrollExtent);
+      _hasScrolledOnLoad = true;
+    } catch (e) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted && _scrollController.hasClients && !_hasScrolledOnLoad) {
+          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+          _hasScrolledOnLoad = true;
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Consumer<CartProvider>(
+      builder: (context, provider, child) {
+        if (provider.cartItems.isEmpty) {
+          _hasScrolledOnLoad = false;
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(30.r),
+                  decoration: BoxDecoration(color: colors.accentOrange.withOpacity(0.1), shape: BoxShape.circle),
+                  child: SvgPicture.asset(
+                    Assets.icons.cart,
+                    package: 'grab_go_shared',
+                    height: 80.h,
+                    width: 80.w,
+                    colorFilter: ColorFilter.mode(colors.accentOrange.withOpacity(0.5), BlendMode.srcIn),
+                  ),
+                ),
+                SizedBox(height: 24.h),
+                Text(
+                  AppStrings.cartEmpty,
+                  style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                ),
+                SizedBox(height: 8.h),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 40.w),
+                  child: Text(
+                    AppStrings.cartEmptyMessage,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final cartEntries = provider.cartItems.entries.toList();
+
+        if (!_hasScrolledOnLoad && cartEntries.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Future.delayed(const Duration(milliseconds: 50), () {
+              _scrollToFirstItem();
+            });
+          });
+        }
+
+        return ListView.separated(
+          physics: const BouncingScrollPhysics(),
+          shrinkWrap: true,
+          reverse: true,
+          controller: _scrollController,
+          itemCount: cartEntries.length,
+          itemBuilder: (context, index) {
+            final foodItem = cartEntries[index].key;
+            final quantity = cartEntries[index].value;
+
+            return GestureDetector(
+              onTap: () {
+                context.push("/foodDetails", extra: foodItem);
+              },
+              child: SwipeActionCell(
+                key: ObjectKey(foodItem),
+                trailingActions: [
+                  SwipeAction(
+                    color: Colors.transparent,
+                    content: Container(
+                      height: 118.h + 12.h,
+                      width: 80.w,
+                      margin: EdgeInsets.only(right: 10.w, top: 6.h, bottom: 6.h),
+                      decoration: BoxDecoration(
+                        color: colors.error,
+                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(10.r),
+                            decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+                            child: SvgPicture.asset(
+                              Assets.icons.binMinusIn,
+                              package: 'grab_go_shared',
+                              height: 24.h,
+                              width: 24.w,
+                              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                            ),
+                          ),
+                          SizedBox(height: 6.h),
+                          Text(
+                            AppStrings.cartDelete,
+                            style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                    ),
+                    onTap: (handler) {
+                      provider.removeItemCompletely(foodItem);
+                      AppToastMessage.show(
+                        context: context,
+                        icon: Icons.check,
+                        message: AppStrings.cartRemoveItem,
+                        backgroundColor: colors.error,
+                      );
+                    },
+                  ),
+                ],
+                child: Container(
+                  margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
+                  decoration: BoxDecoration(
+                    color: colors.backgroundPrimary,
+                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                    border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
+                        spreadRadius: 0,
+                        blurRadius: 12,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(KBorderSize.borderRadius15),
+                          bottomLeft: Radius.circular(KBorderSize.borderRadius15),
+                        ),
+                        child: SizedBox(
+                          height: 118.h,
+                          width: 118.w,
+                          child: CachedImageWidget(
+                            imageUrl: foodItem.image,
+                            width: 118.w,
+                            height: 118.h,
+                            fit: BoxFit.cover,
+                            placeholder: Container(
+                              color: colors.inputBorder,
+                              child: Center(
+                                child: SvgPicture.asset(
+                                  Assets.icons.utensilsCrossed,
+                                  package: 'grab_go_shared',
+                                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                  width: 30.w,
+                                  height: 30.h,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.all(12.r),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    foodItem.name,
+                                    style: TextStyle(
+                                      fontSize: 15.sp,
+                                      fontWeight: FontWeight.w700,
+                                      color: colors.textPrimary,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  SizedBox(height: 6.h),
+                                  Row(
+                                    children: [
+                                      SvgPicture.asset(
+                                        Assets.icons.starSolid,
+                                        package: 'grab_go_shared',
+                                        height: 13.h,
+                                        width: 13.w,
+                                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                      ),
+                                      SizedBox(width: 4.w),
+                                      Text(
+                                        foodItem.rating.toStringAsFixed(1),
+                                        style: TextStyle(
+                                          fontSize: 12.sp,
+                                          color: colors.textPrimary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      SizedBox(width: 8.w),
+                                      Container(
+                                        width: 3.w,
+                                        height: 3.h,
+                                        decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
+                                      ),
+                                      SizedBox(width: 8.w),
+                                      Text(
+                                        "Qty: $quantity",
+                                        style: TextStyle(
+                                          fontSize: 11.sp,
+                                          fontWeight: FontWeight.w600,
+                                          color: colors.accentViolet,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 10.h),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                                    decoration: BoxDecoration(
+                                      color: colors.accentOrange.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(8.r),
+                                    ),
+                                    child: Text(
+                                      "GHS ${foodItem.price.toStringAsFixed(2)}",
+                                      style: TextStyle(
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.w800,
+                                        color: colors.accentOrange,
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
+                                    decoration: BoxDecoration(
+                                      color: colors.backgroundSecondary,
+                                      border: Border.all(color: colors.inputBorder.withOpacity(0.5), width: 1),
+                                      borderRadius: BorderRadius.circular(10.r),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        GestureDetector(
+                                          onTap: () {
+                                            provider.removeFromCart(foodItem);
+                                          },
+                                          child: Container(
+                                            padding: EdgeInsets.all(4.r),
+                                            decoration: const BoxDecoration(
+                                              color: Colors.transparent,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(Icons.remove, color: colors.textSecondary, size: 18),
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: EdgeInsets.symmetric(horizontal: 12.w),
+                                          child: Text(
+                                            quantity.toString(),
+                                            style: TextStyle(
+                                              fontSize: 14.sp,
+                                              fontWeight: FontWeight.w700,
+                                              color: colors.textPrimary,
+                                            ),
+                                          ),
+                                        ),
+                                        GestureDetector(
+                                          onTap: () {
+                                            provider.addToCart(foodItem);
+                                          },
+                                          child: Container(
+                                            padding: EdgeInsets.all(4.r),
+                                            decoration: BoxDecoration(
+                                              color: colors.accentOrange,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(Icons.add, color: Colors.white, size: 18),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+          separatorBuilder: (context, index) {
+            return Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 5.h),
+              child: DottedLine(
+                dashLength: 6,
+                dashGapLength: 4,
+                lineThickness: 1,
+                dashColor: colors.textSecondary.withAlpha(50),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}

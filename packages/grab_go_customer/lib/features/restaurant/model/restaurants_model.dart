@@ -1,0 +1,127 @@
+// ignore_for_file: public_member_api_docs, sort_constructors_first
+
+class RestaurantModel {
+  final int id;
+  final String name;
+  final String city;
+  final String foodType;
+  final String imageUrl;
+  final List<String> bannerImages;
+  final double distance;
+  final double rating;
+  final int totalReviews;
+  final String averageDeliveryTime;
+  final double deliveryFee;
+  final double minOrder;
+  final String description;
+  final String phone;
+  final String email;
+  final String address;
+  final double latitude;
+  final double longitude;
+  final String openingHours;
+  final bool isOpen;
+  final List<String> paymentMethods;
+  final Socials socials;
+  final List<Food> foods;
+
+  RestaurantModel({
+    required this.id,
+    required this.name,
+    required this.city,
+    required this.foodType,
+    required this.imageUrl,
+    required this.bannerImages,
+    required this.distance,
+    required this.rating,
+    required this.totalReviews,
+    required this.averageDeliveryTime,
+    required this.deliveryFee,
+    required this.minOrder,
+    required this.description,
+    required this.phone,
+    required this.email,
+    required this.address,
+    required this.latitude,
+    required this.longitude,
+    required this.openingHours,
+    required this.isOpen,
+    required this.paymentMethods,
+    required this.socials,
+    required this.foods,
+  });
+
+  factory RestaurantModel.fromJson(Map<String, dynamic> json) {
+    return RestaurantModel(
+      id: int.tryParse(json['_id']?.toString().substring(json['_id'].toString().length - 6) ?? '0') ?? 0,
+      name: json['name'] ?? '',
+      city: json['city'] ?? '',
+      foodType: json['food_type'] ?? '',
+      imageUrl: json['image_url'] ?? '',
+      bannerImages: List<String>.from(json['banner_images'] ?? []),
+      distance: (json['distance'] ?? 0.0).toDouble(),
+      rating: (json['rating'] ?? 0.0).toDouble(),
+      totalReviews: json['total_reviews'] ?? 0,
+      averageDeliveryTime: json['average_delivery_time'] ?? '',
+      deliveryFee: (json['delivery_fee'] ?? 0.0).toDouble(),
+      minOrder: (json['min_order'] ?? 0.0).toDouble(),
+      description: json['description'] ?? '',
+      phone: json['phone'] ?? '',
+      email: json['email'] ?? '',
+      address: json['address'] ?? '',
+      latitude: (json['latitude'] ?? 0.0).toDouble(),
+      longitude: (json['longitude'] ?? 0.0).toDouble(),
+      openingHours: json['opening_hours'] ?? '',
+      isOpen: json['is_open'] ?? true,
+      paymentMethods: List<String>.from(json['payment_methods'] ?? []),
+      socials: Socials.fromJson(json['socials'] ?? {}),
+      foods: (json['foods'] as List<dynamic>?)?.map((foodJson) => Food.fromJson(foodJson)).toList() ?? [],
+    );
+  }
+}
+
+class Socials {
+  final String instagram;
+  final String facebook;
+
+  Socials({required this.instagram, required this.facebook});
+
+  factory Socials.fromJson(Map<String, dynamic> json) {
+    return Socials(instagram: json['instagram'] ?? '', facebook: json['facebook'] ?? '');
+  }
+}
+
+class Food {
+  final int id;
+  final String name;
+  final double price;
+  final String imageUrl;
+  final String category;
+  final String description;
+  final int sellerId;
+  final String sellerName;
+
+  Food({
+    required this.id,
+    required this.name,
+    required this.price,
+    required this.imageUrl,
+    required this.category,
+    required this.description,
+    required this.sellerId,
+    required this.sellerName,
+  });
+
+  factory Food.fromJson(Map<String, dynamic> json) {
+    return Food(
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      price: (json['price'] ?? 0.0).toDouble(),
+      imageUrl: json['imageUrl'] ?? '',
+      category: json['category'] ?? '',
+      description: json['description'] ?? '',
+      sellerId: json['sellerId'] ?? 0,
+      sellerName: json['sellerName'] ?? '',
+    );
+  }
+}

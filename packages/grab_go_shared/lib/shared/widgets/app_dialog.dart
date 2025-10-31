@@ -1,0 +1,286 @@
+// ignore_for_file: deprecated_member_use
+
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/svg.dart';
+import 'package:grab_go_shared/gen/assets.gen.dart';
+import 'package:grab_go_shared/grub_go_shared.dart';
+import '../utils/constants.dart';
+import '../utils/app_colors_extension.dart';
+
+enum AppDialogType { info, warning, error, success, question, logout }
+
+class AppDialog extends StatelessWidget {
+  final String title;
+  final String message;
+  final AppDialogType type;
+  final String? icon;
+  final String? primaryButtonText;
+  final String? secondaryButtonText;
+  final VoidCallback? onPrimaryPressed;
+  final VoidCallback? onSecondaryPressed;
+  final Color? primaryButtonColor;
+  final Color? secondaryButtonColor;
+  final bool barrierDismissible;
+
+  const AppDialog({
+    super.key,
+    required this.title,
+    required this.message,
+    this.type = AppDialogType.info,
+    this.icon,
+    this.primaryButtonText,
+    this.secondaryButtonText,
+    this.onPrimaryPressed,
+    this.onSecondaryPressed,
+    this.primaryButtonColor,
+    this.secondaryButtonColor,
+    this.barrierDismissible = true,
+  });
+
+  static Future<bool?> show({
+    required BuildContext context,
+    required String title,
+    required String message,
+    AppDialogType type = AppDialogType.info,
+    String? icon,
+    String? primaryButtonText,
+    String? secondaryButtonText,
+    VoidCallback? onPrimaryPressed,
+    VoidCallback? onSecondaryPressed,
+    Color? primaryButtonColor,
+    Color? secondaryButtonColor,
+    bool barrierDismissible = true,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: barrierDismissible,
+      builder: (context) => AppDialog(
+        title: title,
+        message: message,
+        type: type,
+        icon: icon,
+        primaryButtonText: primaryButtonText,
+        secondaryButtonText: secondaryButtonText,
+        onPrimaryPressed: onPrimaryPressed,
+        onSecondaryPressed: onSecondaryPressed,
+        primaryButtonColor: primaryButtonColor,
+        secondaryButtonColor: secondaryButtonColor,
+        barrierDismissible: barrierDismissible,
+      ),
+    );
+  }
+
+  Color _getTypeColor(BuildContext context) {
+    final colors = context.appColors;
+
+    if (primaryButtonColor != null) {
+      return primaryButtonColor!;
+    }
+
+    switch (type) {
+      case AppDialogType.info:
+        return colors.accentViolet;
+      case AppDialogType.warning:
+        return colors.accentOrange;
+      case AppDialogType.error:
+        return Colors.red;
+      case AppDialogType.success:
+        return colors.accentGreen;
+      case AppDialogType.question:
+        return colors.accentViolet;
+      case AppDialogType.logout:
+        return Colors.red;
+    }
+  }
+
+  SvgPicture _getTypeIcon() {
+    switch (type) {
+      case AppDialogType.info:
+        return SvgPicture.asset(Assets.icons.infoCircle, package: 'grab_go_shared', height: 35.h, width: 35.h);
+      case AppDialogType.warning:
+        return SvgPicture.asset(
+          Assets.icons.warningCircle,
+          package: 'grab_go_shared',
+          height: 35.h,
+          width: 35.h,
+          colorFilter: ColorFilter.mode(AppColors.errorRed, BlendMode.srcIn),
+        );
+      case AppDialogType.error:
+        return SvgPicture.asset(Assets.icons.infoCircle, package: 'grab_go_shared', height: 35.h, width: 35.h);
+      case AppDialogType.success:
+        return SvgPicture.asset(Assets.icons.check, package: 'grab_go_shared', height: 35.h, width: 35.h);
+      case AppDialogType.question:
+        return SvgPicture.asset(Assets.icons.infoCircle, package: 'grab_go_shared', height: 35.h, width: 35.h);
+      case AppDialogType.logout:
+        return SvgPicture.asset(
+          Assets.icons.logOut,
+          package: 'grab_go_shared',
+          height: 35.h,
+          width: 35.h,
+          colorFilter: ColorFilter.mode(AppColors.errorRed, BlendMode.srcIn),
+        );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    final typeColor = _getTypeColor(context);
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: Container(
+        decoration: BoxDecoration(
+          color: colors.backgroundPrimary,
+          borderRadius: BorderRadius.circular(KBorderSize.borderRadius20),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 10))],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Icon Section
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(KSpacing.lg25.r),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [typeColor.withOpacity(0.15), typeColor.withOpacity(0.05)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(KBorderSize.borderRadius20),
+                  topRight: Radius.circular(KBorderSize.borderRadius20),
+                ),
+              ),
+              child: Center(
+                child: Container(
+                  height: 70.h,
+                  width: 70.h,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(colors: [typeColor.withOpacity(0.2), typeColor.withOpacity(0.1)]),
+                  ),
+                  child: Center(
+                    child: icon != null
+                        ? SvgPicture.asset(
+                            icon!,
+                            height: 35.h,
+                            width: 35.h,
+                            colorFilter: ColorFilter.mode(typeColor, BlendMode.srcIn),
+                          )
+                        : _getTypeIcon(),
+                  ),
+                ),
+              ),
+            ),
+
+            Padding(
+              padding: EdgeInsets.all(KSpacing.lg25.r),
+              child: Column(
+                children: [
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 20.sp,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary,
+                      height: 1.3,
+                    ),
+                  ),
+                  SizedBox(height: KSpacing.md.h),
+
+                  Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w400,
+                      color: colors.textSecondary,
+                      height: 1.5,
+                    ),
+                  ),
+                  SizedBox(height: KSpacing.lg25.h),
+
+                  Row(
+                    children: [
+                      if (secondaryButtonText != null)
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              if (onSecondaryPressed != null) {
+                                onSecondaryPressed!();
+                              } else {
+                                Navigator.of(context).pop(false);
+                              }
+                            },
+                            child: Container(
+                              height: 50.h,
+                              decoration: BoxDecoration(
+                                color: secondaryButtonColor?.withOpacity(0.1) ?? colors.backgroundSecondary,
+                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                                border: Border.all(color: secondaryButtonColor ?? colors.inputBorder, width: 1.5),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  secondaryButtonText!,
+                                  style: TextStyle(
+                                    fontSize: 15.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: secondaryButtonColor ?? colors.textPrimary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      if (secondaryButtonText != null && primaryButtonText != null) SizedBox(width: KSpacing.md.w),
+
+                      // Primary Button (if provided)
+                      if (primaryButtonText != null)
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              if (onPrimaryPressed != null) {
+                                onPrimaryPressed!();
+                              } else {
+                                Navigator.of(context).pop(true);
+                              }
+                            },
+                            child: Container(
+                              height: 50.h,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(colors: [typeColor, typeColor.withOpacity(0.8)]),
+                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: typeColor.withOpacity(0.3),
+                                    blurRadius: 15,
+                                    offset: const Offset(0, 5),
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Text(
+                                  primaryButtonText!,
+                                  style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: Colors.white),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

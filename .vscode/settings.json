@@ -1,0 +1,100 @@
+{
+  // Spell checker custom words
+  "cSpell.words": [
+    "Adenta",
+    "googlegmail",
+    "Kasoa",
+    "Lato",
+    "Madina",
+    "MOMO",
+    "prefs",
+    "Takoradi",
+    "Tema",
+    "viewmodel",
+    "viewmodels"
+  ],
+
+  // Flutter settings
+  "dart.flutterSdkPath": null,
+  "dart.flutterAdditionalArgs": [],
+  "dart.lineLength": 120,
+  // Prevent automatic pub get - this is a workspace/monorepo, dependencies are managed at root
+  "dart.runPubGetOnPubspecChanges": "never",
+  // Prevent pub get from running on nested projects/workspace packages
+  "dart.runPubGetOnNestedProjects": "none",
+  "dart.enableSdkFormatter": true,
+  // Disable automatic dependency fetching when opening workspace
+  "dart.analysisExcludedFolders": [
+    "**/build",
+    "**/.dart_tool"
+  ],
+  // Exclude root workspace folder from analysis - dependencies managed at package level
+  "files.watcherExclude": {
+    "**/.dart_tool/**": true,
+    "**/build/**": true
+  },
+  // For workspace projects, don't automatically run pub get on workspace folders
+  "dart.onlyAnalyzeProjectsWithOpenFiles": false,
+
+  // File associations
+  "files.associations": {
+    "*.dart": "dart",
+    "*.yaml": "yaml"
+  },
+
+  // Editor settings for Dart
+  "[dart]": {
+    "editor.defaultFormatter": "Dart-Code.dart-code",
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true,
+    "editor.rulers": [120],
+    "editor.selectionHighlight": false,
+    "editor.suggest.snippetsPreventQuickSuggestions": false,
+    "editor.suggestSelection": "first",
+    "editor.tabCompletion": "onlySnippets",
+    "editor.wordBasedSuggestions": "off"
+  },
+
+  // Exclude patterns from file explorer
+  "files.exclude": {
+    "**/.dart_tool": true,
+    "**/.flutter-plugins": true,
+    "**/.flutter-plugins-dependencies": true,
+    "**/.packages": true,
+    "**/build": true,
+    "**/ios/Pods": true,
+    "**/ios/.symlinks": true,
+    "**/ios/Flutter/Flutter.framework": true,
+    "**/ios/Flutter/Flutter.podspec": true,
+    "**/.ios/Flutter/Generated.xcconfig": true,
+    "**/.ios/Flutter/App.framework": true,
+    "**/.ios/Flutter/flutter_export_environment.sh": true,
+    "**/android/.gradle": true,
+    "**/android/captures": true,
+    "**/android/gradlew": true,
+    "**/android/gradlew.bat": true,
+    "**/android/local.properties": true,
+    "**/.idea": true,
+    "**/*.iml": true
+  },
+
+  // Search exclude patterns
+  "search.exclude": {
+    "**/.dart_tool": true,
+    "**/build": true,
+    "**/ios/Pods": true,
+    "**/.gradle": true,
+    "**/.idea": true,
+    "**/*.iml": true,
+    "**/packages/**/build": true
+  },
+
+  // Terminal settings for running Flutter commands
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.profiles.windows": {
+    "PowerShell": {
+      "source": "PowerShell",
+      "icon": "terminal-powershell"
+    }
+  }
+}

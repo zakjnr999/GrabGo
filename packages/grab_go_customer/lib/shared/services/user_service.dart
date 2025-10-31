@@ -1,0 +1,243 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'package:grab_go_customer/features/auth/model/user_model.dart';
+import 'package:grab_go_customer/features/auth/service/firebase_phone_auth_service.dart';
+import 'package:grab_go_customer/core/api/api_client.dart';
+import 'cache_service.dart';
+
+class UserService {
+  static final UserService _instance = UserService._internal();
+  factory UserService() => _instance;
+  UserService._internal();
+
+  User? _currentUser;
+  bool _isLoading = false;
+
+  User? get currentUser => _currentUser;
+  bool get isLoading => _isLoading;
+  bool get isLoggedIn => _currentUser != null;
+
+  Future<void> initialize() async {
+    try {
+      debugPrint('🔄 3️⃣ Auto-login: Checking stored user data...');
+
+      await _loadCachedUserData();
+
+      if (_currentUser != null) {
+        debugPrint('✅ 3️⃣ Auto-login successful!');
+        debugPrint('   Current user: ${_currentUser?.username}');
+        debugPrint('   Email: ${_currentUser?.email}');
+        debugPrint('   Role: ${_currentUser?.role}');
+        debugPrint('   Ready for 4️⃣ Display user info');
+      } else {
+        debugPrint('ℹ️ 3️⃣ No stored user data found, showing login screen');
+      }
+    } catch (e) {
+      debugPrint('❌ Error during auto-login: $e');
+    }
+  }
+
+  Future<void> _loadCachedUserData() async {
+    try {
+      debugPrint('🔄 Loading cached user data from CacheService...');
+      final userData = CacheService.getUserData();
+
+      debugPrint('🔍 Cached data check: ${userData != null}');
+
+      if (userData != null) {
+        debugPrint('📝 Found cached data: ${userData.toString().substring(0, 100)}...');
+        _currentUser = User.fromJson(userData);
+        debugPrint('📱 Loaded cached user data: ${_currentUser?.username}');
+      } else {
+        debugPrint('ℹ️ No cached user data found');
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading cached user data: $e');
+    }
+  }
+
+  Future<void> _saveUserDataToCache(User user) async {
+    try {
+      debugPrint('🔄 Saving user data to CacheService...');
+      final userData = user.toJson();
+
+      debugPrint('📝 User data: ${userData.toString().substring(0, 100)}...');
+
+      await CacheService.saveUserData(userData);
+
+      debugPrint('💾 Saved user data to cache');
+    } catch (e) {
+      debugPrint('❌ Error saving user data to cache: $e');
+    }
+  }
+
+  Future<void> _clearCachedUserData() async {
+    try {
+      await CacheService.clearUserData();
+      debugPrint('🗑️ Cleared cached user data');
+    } catch (e) {
+      debugPrint('❌ Error clearing cached user data: $e');
+    }
+  }
+
+  Future<User?> getUserById(String userId) async {
+    try {
+      _isLoading = true;
+
+      debugPrint('🔄 Fetching user data for ID: $userId');
+      debugPrint('   API URL: https://grabgo.onrender.com/api/users/$userId');
+
+      final response = await authService
+          .getUser(userId)
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw TimeoutException('Server is taking too long to respond.');
+            },
+          );
+
+      debugPrint('📡 User Data Response:');
+      debugPrint('   Status Code: ${response.statusCode}');
+      debugPrint('   Is Successful: ${response.isSuccessful}');
+      debugPrint('   Response Body: ${response.body}');
+      debugPrint('   Response Error: ${response.error}');
+
+      if (response.isSuccessful && response.body != null) {
+        final user = response.body!.userData ?? response.body!.user ?? response.body!.data;
+        debugPrint('✅ User data fetched successfully!');
+        debugPrint('   Username: ${user?.username}');
+        debugPrint('   Email: ${user?.email}');
+        debugPrint('   Profile Picture: ${user?.profilePicture != null ? "Available" : "Not set"}');
+        return user;
+      } else {
+        debugPrint('❌ Failed to fetch user data: ${response.error}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching user data: $e');
+      return null;
+    } finally {
+      _isLoading = false;
+    }
+  }
+
+  Future<User?> getCurrentUser({bool forceRefresh = false}) async {
+    try {
+      if (_currentUser != null && !forceRefresh) {
+        return _currentUser;
+      }
+
+      final userId = FirebasePhoneAuthService().userId;
+      if (userId == null) {
+        debugPrint('❌ User ID not found in Firebase service');
+        return null;
+      }
+
+      final user = await getUserById(userId);
+      if (user != null) {
+        _currentUser = user;
+        await _saveUserDataToCache(user);
+      }
+
+      return _currentUser;
+    } catch (e) {
+      debugPrint('❌ Error getting current user: $e');
+      return null;
+    }
+  }
+
+  Future<void> setCurrentUser(User user) async {
+    try {
+      debugPrint('🔄 2️⃣ Saving user data to local storage...');
+      debugPrint('   Username: ${user.username}');
+      debugPrint('   Email: ${user.email}');
+      debugPrint('   User ID: ${user.id}');
+      debugPrint('   Role: ${user.role}');
+
+      _currentUser = user;
+      await _saveUserDataToCache(user);
+
+      if (user.id != null) {
+        FirebasePhoneAuthService().setUserId(user.id!);
+      }
+
+      debugPrint('✅ 2️⃣ User data saved successfully!');
+      debugPrint('   Ready for 3️⃣ Auto-login on next app launch');
+    } catch (e) {
+      debugPrint('❌ Error saving user data: $e');
+    }
+  }
+
+  Future<User?> updateCurrentUser(User updatedUser) async {
+    try {
+      _currentUser = updatedUser;
+      await _saveUserDataToCache(updatedUser);
+      debugPrint('✅ Current user updated: ${updatedUser.username}');
+      return _currentUser;
+    } catch (e) {
+      debugPrint('❌ Error updating current user: $e');
+      return null;
+    }
+  }
+
+  Future<void> logout() async {
+    try {
+      debugPrint('🔄 5️⃣ Logout: Clearing stored user data...');
+
+      _currentUser = null;
+      await _clearCachedUserData();
+
+      FirebasePhoneAuthService().setUserId('');
+
+      debugPrint('✅ 5️⃣ Logout successful!');
+      debugPrint('   User will be asked to log in again next time');
+    } catch (e) {
+      debugPrint('❌ Error during logout: $e');
+    }
+  }
+
+  String? getUserId() {
+    return _currentUser?.id ?? FirebasePhoneAuthService().userId;
+  }
+
+  bool hasPermission(String permission) {
+    if (_currentUser?.permissions == null) return false;
+
+    switch (permission) {
+      case 'canManageUsers':
+        return _currentUser!.permissions!.canManageUsers ?? false;
+      case 'canManageProducts':
+        return _currentUser!.permissions!.canManageProducts ?? false;
+      case 'canManageOrders':
+        return _currentUser!.permissions!.canManageOrders ?? false;
+      case 'canManageContent':
+        return _currentUser!.permissions!.canManageContent ?? false;
+      default:
+        return false;
+    }
+  }
+
+  String getFullName() {
+    return _currentUser?.username ?? 'Unknown User';
+  }
+
+  String getEmail() {
+    return _currentUser?.email ?? '';
+  }
+
+  String? getProfilePicture() {
+    return _currentUser?.profilePicture;
+  }
+
+  bool hasProfilePicture() {
+    return _currentUser?.profilePicture != null && _currentUser!.profilePicture!.isNotEmpty;
+  }
+
+  bool isPhoneVerified() {
+    return _currentUser?.isPhoneVerified ?? false;
+  }
+
+  Future<User?> refreshUserData() async {
+    return await getCurrentUser(forceRefresh: true);
+  }
+}

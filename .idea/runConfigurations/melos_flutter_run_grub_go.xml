@@ -1,0 +1,6 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Flutter Run -&gt; 'grub_go'" type="FlutterRunConfigurationType" factoryName="Flutter">
+    <option name="filePath" value="$PROJECT_DIR$/packages//grub_go/lib/main.dart" />
+    <method v="2" />
+  </configuration>
+</component>
