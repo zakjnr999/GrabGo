@@ -1,39 +1,108 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# GrabGo Shared Package
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
+Shared package containing common components, utilities, assets, and services used across all GrabGo applications.
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
+## Contents
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+### Assets
+- **Images** - App images, icons, and graphics
+- **Icons** - SVG icons for UI elements
+- **Fonts** - Custom fonts (Lato, Lobster)
 
-## Features
+All assets are type-safe and auto-generated using `flutter_gen`.
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+### Widgets
+Reusable UI components including:
+- AppButton
+- AppDialog
+- AppDrawer
+- AppPopupMenu
+- AppTextInput
+- And more...
 
-## Getting started
+### Utilities
+- **Theme** - AppColors, AppColorsExtension for theme-aware colors
+- **Responsive** - Responsive design helpers
+- **Constants** - App-wide constants
+- **Config** - App configuration (API keys, base URLs)
+- **Helpers** - Utility functions
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+### Services
+Shared business logic services and providers.
+
+### Models
+Common data models used across applications.
 
 ## Usage
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
+### Adding as Dependency
 
-```dart
-const like = 'sample';
+Add to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  grab_go_shared:
+    path: ../grab_go_shared
 ```
 
-## Additional information
+### Accessing Assets
 
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+```dart
+import 'package:grab_go_shared/gen/assets.gen.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
+// SVG Icons
+SvgPicture.asset(
+  Assets.icons.home,
+  package: 'grab_go_shared',
+)
+
+// Images
+Assets.images.splashImage.image(
+  package: 'grab_go_shared',
+)
+```
+
+### Using Shared Widgets
+
+```dart
+import 'package:grab_go_shared/shared/widgets/app_button.dart';
+
+AppButton(
+  buttonText: 'Click me',
+  onPressed: () {},
+)
+```
+
+### Using Utilities
+
+```dart
+import 'package:grab_go_shared/shared/utils/colors.dart';
+import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
+
+// Access colors
+AppColors.primary
+
+// Theme-aware colors
+final colors = context.appColors;
+colors.textPrimary
+```
+
+## Generating Assets
+
+After adding new assets, regenerate the asset files:
+
+```bash
+cd packages/grab_go_shared
+dart run build_runner build
+```
+
+## Project Structure
+
+```
+lib/
+├── assets/            # Image, icon, and font files
+├── gen/               # Generated asset files
+├── shared/            # Shared utilities and widgets
+└── grub_go_shared.dart # Main export file
+```
