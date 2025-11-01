@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:grab_go_shared/shared/widgets/app_dialog_panels.dart';
 import '../../../shared/app_colors.dart';
 import '../../../shared/models/navigation_page.dart';
 import '../../../shared/utils/responsive.dart';
@@ -47,11 +47,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
           onClose: () {
             Navigator.of(context).pop();
           },
-          onLogout: () => _logout(context),
+          onLogout: () => _logout(),
         ),
         body: Column(
           children: [
-            // Header
             Header(
               isSidebarExpanded: isSidebarExpanded,
               onToggleSidebar: () {
@@ -60,7 +59,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
               currentPage: currentPage,
               isMobile: true,
             ),
-            // Main Content Area
             Expanded(child: _buildCurrentPage()),
           ],
         ),
@@ -76,7 +74,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget _buildDesktopLayout() {
     return Row(
       children: [
-        // Sidebar
         Sidebar(
           isExpanded: isSidebarExpanded,
           onToggle: () {
@@ -90,13 +87,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
               currentPage = page;
             });
           },
-          onLogout: () => _logout(context),
+          onLogout: () => _logout(),
         ),
-        // Main Content
         Expanded(
           child: Column(
             children: [
-              // Header
               Header(
                 isSidebarExpanded: isSidebarExpanded,
                 onToggleSidebar: () {
@@ -107,7 +102,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 currentPage: currentPage,
                 isMobile: false,
               ),
-              // Main Content Area
               Expanded(child: _buildCurrentPage()),
             ],
           ),
@@ -125,13 +119,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Summary Cards
               const SummaryCards(),
               SizedBox(height: Responsive.getCardSpacing(context)),
-              // Charts Section
               _buildChartsSection(),
               SizedBox(height: Responsive.getCardSpacing(context)),
-              // Order List
               const OrderList(),
             ],
           ),
@@ -152,7 +143,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final isTablet = Responsive.isTablet(context);
 
     if (isMobile || isTablet) {
-      // Vertical list for mobile and tablet
       return Column(
         children: [
           const RevenueChart(),
@@ -161,52 +151,31 @@ class _AdminDashboardState extends State<AdminDashboard> {
         ],
       );
     } else {
-      // Grid layout for desktop and large desktop
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Revenue Chart
           const Expanded(child: RevenueChart()),
-          SizedBox(width: Responsive.getCardSpacing(context)),
-          // Orders Summary Chart
+          SizedBox(width: 16),
           const Expanded(child: OrdersChart()),
         ],
       );
     }
   }
 
-  void _logout(BuildContext context) {
-    showDialog(
+  Future<void> _logout() async {
+    final logout = await AppDialogPanels.show(
       context: context,
-      builder: (BuildContext context) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          backgroundColor: isDark ? AppColors.darkSurface : AppColors.white,
-          title: Text(
-            'Logout',
-            style: GoogleFonts.lato(color: isDark ? AppColors.white : AppColors.primary, fontWeight: FontWeight.w600),
-          ),
-          content: Text('Are you sure you want to logout?', style: GoogleFonts.lato(color: AppColors.grey)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancel', style: GoogleFonts.lato(color: AppColors.grey)),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).pushReplacementNamed('/');
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accentOrange,
-                foregroundColor: AppColors.white,
-              ),
-              child: Text('Logout', style: GoogleFonts.lato(fontWeight: FontWeight.w600)),
-            ),
-          ],
-        );
-      },
+      title: 'Logout',
+      message: 'Are you sure you want to logout?',
+      type: AppDialogType.logout,
+      primaryButtonText: 'Logout',
+      secondaryButtonText: 'Cancel',
+      primaryButtonColor: AppColors.accentOrange,
+      onPrimaryPressed: () => Navigator.of(context).pop(true),
+      onSecondaryPressed: () => Navigator.of(context).pop(false),
     );
+    if (logout == true && mounted) {
+      Navigator.of(context).pushReplacementNamed('/');
+    }
   }
 }

@@ -66,7 +66,6 @@ class _HeaderState extends State<Header> with SingleTickerProviderStateMixin {
       ),
       child: Row(
         children: [
-          // Hamburger Menu - always show on mobile, show on desktop when sidebar is collapsed
           if (widget.isMobile || !widget.isSidebarExpanded)
             IconButton(
               onPressed: widget.onToggleSidebar,
@@ -90,11 +89,9 @@ class _HeaderState extends State<Header> with SingleTickerProviderStateMixin {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          // Right side icons and profile
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Theme Toggle
               Consumer<ThemeProvider>(
                 builder: (context, themeProvider, child) {
                   return IconButton(
@@ -108,7 +105,7 @@ class _HeaderState extends State<Header> with SingleTickerProviderStateMixin {
                       animation: _rotationAnimation,
                       builder: (context, child) {
                         return Transform.rotate(
-                          angle: _rotationAnimation.value * 2 * 3.14159, // Full rotation
+                          angle: _rotationAnimation.value * 2 * 3.14159,
                           child: AnimatedSwitcher(
                             duration: const Duration(milliseconds: 300),
                             transitionBuilder: (child, animation) {
@@ -129,7 +126,6 @@ class _HeaderState extends State<Header> with SingleTickerProviderStateMixin {
                 },
               ),
               VerticalDivider(color: isDark ? AppColors.darkBorder : AppColors.lightSurface, indent: 20, endIndent: 20),
-              // Notifications
               Badge(
                 backgroundColor: AppColors.blueAccent,
                 label: Text(
@@ -146,14 +142,12 @@ class _HeaderState extends State<Header> with SingleTickerProviderStateMixin {
                   ),
                 ),
               ),
-              // Logout
               if (widget.onLogout != null)
                 IconButton(
                   onPressed: widget.onLogout,
                   icon: Icon(Icons.logout, size: iconSize, color: isDark ? AppColors.white : AppColors.primary),
                 ),
               SizedBox(width: widget.isMobile ? 8 : 16),
-              // Profile Section
               if (!widget.isMobile) ...[
                 Text(
                   'GrabGo Admin',
@@ -174,8 +168,8 @@ class _HeaderState extends State<Header> with SingleTickerProviderStateMixin {
                 ),
                 child: Padding(
                   padding: EdgeInsets.all(widget.isMobile ? 3 : 4),
-                  child: Image.asset(
-                    Assets.icons.appIcon.path,
+                  child: Assets.icons.appIcon.image(
+                    package: 'grab_go_shared',
                     width: widget.isMobile ? 16 : 20,
                     height: widget.isMobile ? 16 : 20,
                     color: AppColors.white,
@@ -205,7 +199,7 @@ class _HeaderState extends State<Header> with SingleTickerProviderStateMixin {
       case ThemeMode.dark:
         return Assets.icons.halfMoon;
       case ThemeMode.system:
-        return Assets.icons.sunLight; // Fallback, should not occur
+        return Assets.icons.sunLight;
     }
   }
 }

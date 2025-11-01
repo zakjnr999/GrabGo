@@ -30,7 +30,6 @@ class Sidebar extends StatelessWidget {
     final isMobile = Responsive.isMobile(context);
     final sidebarWidth = Responsive.getSidebarWidth(context);
 
-    // Hide sidebar on mobile
     if (isMobile) {
       return const SizedBox.shrink();
     }
@@ -43,11 +42,10 @@ class Sidebar extends StatelessWidget {
         child: Column(
           children: [
             SizedBox(height: Responsive.isTablet(context) ? 16 : 20),
-            // Logo
             Container(
               width: Responsive.isTablet(context) ? 32 : 40,
               height: Responsive.isTablet(context) ? 32 : 40,
-              decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(8)),
+              decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(4)),
               child: Center(
                 child: Text(
                   'G',
@@ -60,22 +58,18 @@ class Sidebar extends StatelessWidget {
               ),
             ),
             SizedBox(height: Responsive.isTablet(context) ? 32 : 40),
-            // Navigation Icons
             _buildNavItem(context, NavigationPage.dashboard, Assets.icons.home),
             _buildNavItem(context, NavigationPage.restaurants, Assets.icons.chefHat),
             _buildNavItem(context, NavigationPage.payments, Assets.icons.creditCard),
             _buildNavItem(context, NavigationPage.orders, Assets.icons.cart),
             _buildNavItem(context, NavigationPage.settings, Assets.icons.slidersHorizontal),
-            // Spacer to push logout to bottom
             const Spacer(),
-            // Divider
             if (onLogout != null) ...[
               Container(
                 height: 1,
                 margin: EdgeInsets.symmetric(horizontal: Responsive.isTablet(context) ? 12 : 16, vertical: 8),
                 color: isDark ? AppColors.white.withOpacity(0.1) : AppColors.white.withOpacity(0.2),
               ),
-              // Logout Button
               _buildLogoutButton(context),
               SizedBox(height: Responsive.isTablet(context) ? 16 : 20),
             ],
@@ -107,7 +101,7 @@ class Sidebar extends StatelessWidget {
             padding: EdgeInsets.all(padding),
             decoration: BoxDecoration(
               color: isSelected ? AppColors.accentOrange : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(4),
               boxShadow: isSelected
                   ? [
                       BoxShadow(
