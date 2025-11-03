@@ -1,10 +1,8 @@
 import 'package:chopper/chopper.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:http/http.dart' as http;
-import 'food_service.dart';
-import 'auth_service.dart';
-import 'restaurant_service.dart';
-import 'json_serializable_converter.dart' as local;
+import 'package:grab_go_customer/core/api/json_serializable_converter.dart' as local;
+import 'package:grab_go_customer/core/api/restaurant_service.dart';
 
 final chopperClient = ChopperClient(
   baseUrl: Uri.parse(AppConfig.apiBaseUrl),

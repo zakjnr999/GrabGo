@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:grab_go_customer/features/auth/service/google_sign_in_service.dart';
+import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/features/order/viewmodel/order_provider.dart';
@@ -14,7 +14,6 @@ import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/location_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/theme_provider.dart';
-import 'package:grab_go_shared/shared/utils/theme.dart';
 import 'package:provider/provider.dart';
 
 void main() async {

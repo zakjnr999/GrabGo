@@ -8,11 +8,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
-import 'package:grab_go_customer/features/auth/model/user_model.dart';
+import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/auth/service/firebase_phone_auth_service.dart';
-import 'package:grab_go_customer/features/auth/service/google_sign_in_service.dart';
-import 'package:grab_go_shared/grub_go_shared.dart';
 
 class Register extends StatefulWidget {
   const Register({super.key});

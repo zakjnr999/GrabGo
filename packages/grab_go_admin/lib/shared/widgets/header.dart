@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../app_colors.dart';
@@ -168,11 +169,12 @@ class _HeaderState extends State<Header> with SingleTickerProviderStateMixin {
                 ),
                 child: Padding(
                   padding: EdgeInsets.all(widget.isMobile ? 3 : 4),
-                  child: Assets.icons.appIcon.image(
+                  child: SvgPicture.asset(
+                    Assets.icons.user,
                     package: 'grab_go_shared',
                     width: widget.isMobile ? 16 : 20,
                     height: widget.isMobile ? 16 : 20,
-                    color: AppColors.white,
+                    colorFilter: ColorFilter.mode(AppColors.white, BlendMode.srcIn),
                   ),
                 ),
               ),

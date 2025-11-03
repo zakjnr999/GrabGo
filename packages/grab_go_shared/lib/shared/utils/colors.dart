@@ -30,6 +30,6 @@ class AppColors {
   static const Color grey = Color(0xff9e9e9e);
 
   static const Color secondaryBackground = Color(0xffF5F5F5);
-  
+
   static const Color errorRed = Color(0xFFE53935);
 }

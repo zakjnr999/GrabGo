@@ -1,13 +1,13 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
-import 'package:grab_go_shared/shared/utils/colors.dart';
+import 'package:grab_go_restaurant/shared/app_colors_extension.dart';
+import 'package:grab_go_restaurant/shared/app_colors.dart';
+import 'package:grab_go_shared/shared/utils/constants.dart';
+import 'package:grab_go_shared/shared/widgets/app_text_input_panels.dart';
 import 'package:grab_go_shared/shared/widgets/responsive.dart';
 import '../../../shared/widgets/image_upload.dart';
 import '../../../shared/models/restaurant_setup.dart';
-import '../../../shared/widgets/text_input.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/svg_icon.dart';
 import '../../../shared/widgets/food_type_selection.dart';
@@ -30,7 +30,6 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
   int _currentPage = 0;
   final int _totalPages = 3;
 
-  // Controllers
   final _descriptionController = TextEditingController();
   final _latitudeController = TextEditingController();
   final _longitudeController = TextEditingController();
@@ -41,7 +40,6 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
   final _facebookController = TextEditingController();
   final _twitterController = TextEditingController();
   final _tiktokController = TextEditingController();
-  // Form data
   final Map<String, String> _openingHours = {};
   final Map<String, bool> _closedDays = {};
   final List<String> _selectedPaymentMethods = [];
@@ -53,7 +51,6 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
     'Bank Transfer',
   ];
 
-  // Error states
   String? _foodTypeError;
   String? _descriptionError;
   String? _deliveryTimeError;
@@ -63,11 +60,9 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
   String? _bannerOneError;
   String? _bannerTwoError;
 
-  //Banner Images
   File? _selectedBannerImageOne;
   File? _selectedBannerImageTwo;
 
-  // Food type selection
   final List<String> _selectedFoodTypes = [];
   final List<String> _foodTypes = ['Quick Bites', 'Protein', 'Main Meals', 'Breakfast', 'Drinks', 'Healthy'];
 
@@ -121,11 +116,11 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: isMobile ? double.infinity : (isTablet ? 600 : 500)),
             child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
+              physics: const ClampingScrollPhysics(),
               child: Container(
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.darkSurface : AppColors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
                   boxShadow: [
                     BoxShadow(
                       color: isDark
@@ -147,7 +142,6 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header
                       _buildHeader(isDark, isMobile),
                       SizedBox(height: isMobile ? 28 : 36),
 
@@ -174,7 +168,6 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
 
                       SizedBox(height: isMobile ? 28 : 36),
 
-                      // Navigation Buttons
                       _buildNavigationButtons(isDark, isMobile, isLastPage),
                     ],
                   ),
@@ -197,7 +190,7 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
               padding: EdgeInsets.all(isMobile ? 12 : 16),
               decoration: BoxDecoration(
                 color: AppColors.accentOrange.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(KBorderSize.borderRadius12),
               ),
               child: SvgIcon(
                 svgImage: Assets.icons.chefHat,
@@ -265,7 +258,7 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
         ),
         SizedBox(height: isMobile ? 8 : 12),
         LinearProgressIndicator(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(KBorderSize.borderRadius8),
           value: progressValue,
           backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightSurface,
           valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accentOrange),
@@ -284,16 +277,15 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
           style: GoogleFonts.lato(
             fontSize: Responsive.getFontSize(context, isMobile ? 20 : 24),
             fontWeight: FontWeight.bold,
-            color: colors.textPrimary,
+            color: colors.text,
           ),
         ),
         Text(
           'Tell us about your restaurant and what you serve',
           style: GoogleFonts.lato(fontSize: Responsive.getFontSize(context, isMobile ? 10 : 12), color: AppColors.grey),
         ),
-        SizedBox(height: isMobile ? 24 : 32),
+        SizedBox(height: Responsive.getCardSpacing(context)),
 
-        // Food Type Selection
         FoodTypeSelection(
           selectedFoodTypes: _selectedFoodTypes,
           foodTypes: _foodTypes,
@@ -304,23 +296,22 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
             } else {
               _selectedFoodTypes.add(foodType);
             }
-            _foodTypeError = null; // Clear error when selection is made
+            _foodTypeError = null;
             setState(() {});
           },
         ),
         SizedBox(height: isMobile ? 16 : 20),
 
-        // Description
-        TextInput(
+        AppTextInputPanels(
           controller: _descriptionController,
           label: 'Restaurant Description *',
           hintText: 'Describe your restaurant, specialties, and what makes you unique',
           borderColor: colors.border.withValues(alpha: 1),
-          fillColor: isDark ? AppColors.darkBackground : AppColors.white,
-          borderRadius: 12,
+          fillColor: isDark ? AppColors.darkBackground : AppColors.secondaryBackground,
+          borderRadius: KBorderSize.borderRadius12,
           contentPadding: EdgeInsets.all(isMobile ? 12 : 16),
-          maxLines: 4,
           errorText: _descriptionError,
+          maxLines: 4,
           prefixIcon: Padding(
             padding: EdgeInsets.all(isMobile ? 12 : 16),
             child: SvgIcon(svgImage: Assets.icons.infoCircle, width: 20, height: 20, color: colors.textSecondary),
@@ -328,13 +319,12 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
         ),
         SizedBox(height: isMobile ? 16 : 20),
 
-        // Location (Optional)
         Text(
           'Location (Optional)',
           style: GoogleFonts.lato(
             fontSize: Responsive.getFontSize(context, isMobile ? 14 : 16),
             fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
+            color: colors.text,
           ),
         ),
         Text(
@@ -345,13 +335,13 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
         Row(
           children: [
             Expanded(
-              child: TextInput(
+              child: AppTextInputPanels(
                 controller: _latitudeController,
                 label: 'Latitude',
                 hintText: 'e.g., 40.7128',
                 borderColor: colors.border.withValues(alpha: 1),
-                fillColor: isDark ? AppColors.darkBackground : AppColors.white,
-                borderRadius: 12,
+                fillColor: isDark ? AppColors.darkBackground : AppColors.secondaryBackground,
+                borderRadius: KBorderSize.borderRadius15,
                 contentPadding: EdgeInsets.all(isMobile ? 12 : 16),
                 keyboardType: TextInputType.numberWithOptions(decimal: true),
                 prefixIcon: Padding(
@@ -362,13 +352,13 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
             ),
             SizedBox(width: isMobile ? 12 : 16),
             Expanded(
-              child: TextInput(
+              child: AppTextInputPanels(
                 controller: _longitudeController,
                 label: 'Longitude',
                 hintText: 'e.g., -74.0060',
                 borderColor: colors.border.withValues(alpha: 1),
-                fillColor: isDark ? AppColors.darkBackground : AppColors.white,
-                borderRadius: 12,
+                fillColor: isDark ? AppColors.darkBackground : AppColors.secondaryBackground,
+                borderRadius: KBorderSize.borderRadius15,
                 contentPadding: EdgeInsets.all(isMobile ? 12 : 16),
                 keyboardType: TextInputType.numberWithOptions(decimal: true),
                 prefixIcon: Padding(
@@ -392,23 +382,22 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
           style: GoogleFonts.lato(
             fontSize: Responsive.getFontSize(context, isMobile ? 20 : 24),
             fontWeight: FontWeight.bold,
-            color: colors.textPrimary,
+            color: colors.text,
           ),
         ),
         Text(
           'Set up your delivery and business parameters',
           style: GoogleFonts.lato(fontSize: Responsive.getFontSize(context, isMobile ? 10 : 12), color: AppColors.grey),
         ),
-        SizedBox(height: isMobile ? 24 : 32),
+        SizedBox(height: Responsive.getCardSpacing(context)),
 
-        // Delivery Time
-        TextInput(
+        AppTextInputPanels(
           controller: _deliveryTimeController,
           label: 'Average Delivery Time Per KM(minutes) *',
           hintText: 'e.g., 30',
           borderColor: colors.border.withValues(alpha: 1),
-          fillColor: isDark ? AppColors.darkBackground : AppColors.white,
-          borderRadius: 12,
+          fillColor: isDark ? AppColors.darkBackground : AppColors.secondaryBackground,
+          borderRadius: KBorderSize.borderRadius15,
           contentPadding: EdgeInsets.all(isMobile ? 12 : 16),
           keyboardType: TextInputType.number,
           errorText: _deliveryTimeError,
@@ -419,14 +408,13 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
         ),
         SizedBox(height: isMobile ? 16 : 20),
 
-        // Delivery Fee
-        TextInput(
+        AppTextInputPanels(
           controller: _deliveryFeeController,
           label: 'Delivery Fee Per KM *',
           hintText: 'e.g., 2.50',
           borderColor: colors.border.withValues(alpha: 1),
-          fillColor: isDark ? AppColors.darkBackground : AppColors.white,
-          borderRadius: 12,
+          fillColor: isDark ? AppColors.darkBackground : AppColors.secondaryBackground,
+          borderRadius: KBorderSize.borderRadius15,
           contentPadding: EdgeInsets.all(isMobile ? 12 : 16),
           keyboardType: TextInputType.numberWithOptions(decimal: true),
           errorText: _deliveryFeeError,
@@ -437,14 +425,13 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
         ),
         SizedBox(height: isMobile ? 16 : 20),
 
-        // Minimum Order
-        TextInput(
+        AppTextInputPanels(
           controller: _minOrderController,
           label: 'Minimum Order Amount *',
           hintText: 'e.g., 15.00',
           borderColor: colors.border.withValues(alpha: 1),
-          fillColor: isDark ? AppColors.darkBackground : AppColors.white,
-          borderRadius: 12,
+          fillColor: isDark ? AppColors.darkBackground : AppColors.secondaryBackground,
+          borderRadius: KBorderSize.borderRadius15,
           contentPadding: EdgeInsets.all(isMobile ? 12 : 16),
           keyboardType: TextInputType.numberWithOptions(decimal: true),
           errorText: _minOrderError,
@@ -453,9 +440,8 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
             child: SvgIcon(svgImage: Assets.icons.cart, width: 20, height: 20, color: colors.textSecondary),
           ),
         ),
-        SizedBox(height: isMobile ? 24 : 32),
+        SizedBox(height: Responsive.getCardSpacing(context)),
 
-        // Payment Methods
         PaymentMethodsSelection(
           selectedPaymentMethods: _selectedPaymentMethods,
           availablePaymentMethods: _availablePaymentMethods,
@@ -476,7 +462,7 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
           style: GoogleFonts.lato(
             fontSize: Responsive.getFontSize(context, isMobile ? 14 : 16),
             fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
+            color: colors.text,
           ),
         ),
 
@@ -484,13 +470,12 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
 
         ImageUploadWidget(
           label: "First Banner Image",
-          hintText: null, // Let the widget handle platform-specific hint text
+          hintText: null,
           height: 120,
           initialImage: _selectedBannerImageOne,
           onImageSelected: (File? image) {
             setState(() {
               _selectedBannerImageOne = image;
-              // Clear error when image is selected
               if (image != null) {
                 _bannerOneError = null;
               }
@@ -515,7 +500,6 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
           onImageSelected: (File? image) {
             setState(() {
               _selectedBannerImageTwo = image;
-              // Clear error when image is selected
               if (image != null) {
                 _bannerTwoError = null;
               }
@@ -543,87 +527,85 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
           style: GoogleFonts.lato(
             fontSize: Responsive.getFontSize(context, isMobile ? 20 : 24),
             fontWeight: FontWeight.bold,
-            color: colors.textPrimary,
+            color: colors.text,
           ),
         ),
         Text(
           'Connect your social media and set your operating hours',
           style: GoogleFonts.lato(fontSize: Responsive.getFontSize(context, isMobile ? 10 : 12), color: AppColors.grey),
         ),
-        SizedBox(height: isMobile ? 24 : 32),
+        SizedBox(height: Responsive.getCardSpacing(context)),
 
-        // Social Media
         Text(
           'Social Media (Optional)',
           style: GoogleFonts.lato(
             fontSize: Responsive.getFontSize(context, isMobile ? 14 : 16),
             fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
+            color: colors.text,
           ),
         ),
         SizedBox(height: isMobile ? 12 : 16),
 
-        TextInput(
+        AppTextInputPanels(
           controller: _instagramController,
           label: 'Instagram',
           hintText: '@instagramhandle',
           borderColor: colors.border,
-          fillColor: isDark ? AppColors.darkBackground : AppColors.white,
-          borderRadius: 12,
+          fillColor: isDark ? AppColors.darkBackground : AppColors.secondaryBackground,
+          borderRadius: KBorderSize.borderRadius15,
           contentPadding: EdgeInsets.all(isMobile ? 12 : 16),
           prefixIcon: Padding(
             padding: EdgeInsets.all(isMobile ? 12 : 16),
-            child: SvgIcon(svgImage: Assets.icons.idCard, width: 20, height: 20, color: colors.textSecondary),
+            child: SvgIcon(svgImage: Assets.icons.instagram, width: 20, height: 20, color: colors.textSecondary),
           ),
         ),
         SizedBox(height: isMobile ? 16 : 20),
 
-        TextInput(
+        AppTextInputPanels(
           controller: _facebookController,
           label: 'Facebook',
           hintText: '@facebookhandle',
           borderColor: colors.border,
-          fillColor: isDark ? AppColors.darkBackground : AppColors.white,
-          borderRadius: 12,
+          fillColor: isDark ? AppColors.darkBackground : AppColors.secondaryBackground,
+          borderRadius: KBorderSize.borderRadius15,
           contentPadding: EdgeInsets.all(isMobile ? 12 : 16),
           prefixIcon: Padding(
             padding: EdgeInsets.all(isMobile ? 12 : 16),
-            child: Icon(Icons.facebook, size: 20, color: colors.textSecondary),
+            child: SvgIcon(svgImage: Assets.icons.facebookTag, width: 20, height: 20, color: colors.textSecondary),
           ),
         ),
         SizedBox(height: isMobile ? 16 : 20),
 
-        TextInput(
+        AppTextInputPanels(
           controller: _twitterController,
           label: 'Twitter',
           hintText: '@twitterhandle',
           borderColor: colors.border,
-          fillColor: isDark ? AppColors.darkBackground : AppColors.white,
-          borderRadius: 12,
+          fillColor: isDark ? AppColors.darkBackground : AppColors.secondaryBackground,
+          borderRadius: KBorderSize.borderRadius15,
           contentPadding: EdgeInsets.all(isMobile ? 12 : 16),
           prefixIcon: Padding(
             padding: EdgeInsets.all(isMobile ? 12 : 16),
-            child: Icon(Icons.close, size: 20, color: colors.textSecondary),
+            child: SvgIcon(svgImage: Assets.icons.x, width: 20, height: 20, color: colors.textSecondary),
           ),
         ),
         SizedBox(height: isMobile ? 16 : 20),
 
-        TextInput(
+        AppTextInputPanels(
           controller: _tiktokController,
           label: 'TikTok ',
           hintText: '@tiktokhandle',
           borderColor: colors.border,
-          fillColor: isDark ? AppColors.darkBackground : AppColors.white,
-          borderRadius: 12,
+          fillColor: isDark ? AppColors.darkBackground : AppColors.secondaryBackground,
+          borderRadius: KBorderSize.borderRadius15,
           contentPadding: EdgeInsets.all(isMobile ? 12 : 16),
           prefixIcon: Padding(
             padding: EdgeInsets.all(isMobile ? 12 : 16),
-            child: Icon(Icons.video_library, size: 20, color: colors.textSecondary),
+            child: SvgIcon(svgImage: Assets.icons.tiktok, width: 20, height: 20, color: colors.textSecondary),
           ),
         ),
-        SizedBox(height: isMobile ? 24 : 32),
+        SizedBox(height: Responsive.getCardSpacing(context)),
 
-        // Opening Hours
         OpeningHoursSelection(
           openingHours: _openingHours,
           days: _days,
@@ -647,7 +629,7 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
               },
               backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightSurface,
               textColor: isDark ? AppColors.white : AppColors.primary,
-              borderRadius: 50,
+              borderRadius: KBorderSize.borderRadius15,
               padding: EdgeInsets.symmetric(vertical: isMobile ? 16 : 18),
             ),
           ),
@@ -657,7 +639,7 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
           child: AppButton(
             buttonText: isLastPage ? 'COMPLETE SETUP' : 'NEXT',
             onPressed: isLastPage ? _completeSetup : _nextPage,
-            borderRadius: 50,
+            borderRadius: KBorderSize.borderRadius15,
             padding: EdgeInsets.symmetric(vertical: isMobile ? 16 : 18),
           ),
         ),
@@ -672,7 +654,6 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
   }
 
   bool _validateCurrentPage() {
-    // Clear all errors first
     _foodTypeError = null;
     _descriptionError = null;
     _deliveryTimeError = null;
@@ -779,11 +760,9 @@ class _RestaurantSetupScreenState extends State<RestaurantSetupScreen> {
   void _toggleClosedDay(String day, bool isClosed) {
     setState(() {
       _closedDays[day] = isClosed;
-      // If closing the day, clear the hours
       if (isClosed) {
         _openingHours[day] = '';
       } else {
-        // If opening the day, set default hours
         _openingHours[day] = '09:00 - 22:00';
       }
     });

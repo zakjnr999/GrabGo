@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
+import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurants_model.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurant_response.dart' as response;
-import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_customer/shared/services/cache_service.dart';
 
 class RestaurantProvider extends ChangeNotifier {

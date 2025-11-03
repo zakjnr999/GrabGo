@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:grab_go_shared/shared/widgets/animated_tab_bar.dart';
+import 'package:grab_go_restaurant/shared/widgets/app_button.dart';
+import 'package:grab_go_restaurant/shared/app_colors.dart';
+import '../../../shared/widgets/animated_tab_bar.dart';
 import 'package:grab_go_shared/shared/widgets/responsive.dart';
-import 'package:grab_go_shared/shared/utils/colors.dart';
-import 'package:grab_go_restaurant/shared/widgets/restaurant_order_list.dart';
+import '../../../shared/widgets/restaurant_order_list.dart';
 import '../../../shared/widgets/svg_icon.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 
@@ -28,10 +29,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Refresh Button and Tab Bar Row
           Row(
             children: [
-              // Animated Status Tab Bar
               Expanded(
                 child: AnimatedTabBar(
                   tabs: statuses,
@@ -46,25 +45,23 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 ),
               ),
               SizedBox(width: isMobile ? 12 : 16),
-              // Refresh Button
-              ElevatedButton.icon(
+              AppButton(
+                buttonText: 'Refresh',
                 onPressed: () {
-                  // Refresh orders
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Refreshing orders...'), backgroundColor: AppColors.accentGreen),
+                  );
                 },
-                icon: SvgIcon(svgImage: Assets.icons.alarm, width: 20, height: 20, color: AppColors.white),
-                label: Text('Refresh', style: GoogleFonts.lato(fontWeight: FontWeight.w600)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accentOrange,
-                  foregroundColor: AppColors.white,
-                  padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 20, vertical: isMobile ? 12 : 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
+                borderRadius: 4,
+                backgroundColor: AppColors.accentOrange,
+                textColor: AppColors.white,
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                icon: (SvgIcon(svgImage: Assets.icons.refresh, width: 18, height: 18, color: AppColors.white)),
               ),
             ],
           ),
-          SizedBox(height: isMobile ? 20 : 24),
+          SizedBox(height: Responsive.getCardSpacing(context)),
 
-          // Order List
           const RestaurantOrderList(),
         ],
       ),

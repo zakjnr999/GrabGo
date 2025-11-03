@@ -174,3 +174,4 @@ class _BottomNavigatorState extends State<BottomNavigator> {
     );
   }
 }
+

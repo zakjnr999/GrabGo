@@ -588,7 +588,16 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
                                   color: colors.backgroundPrimary,
                                   borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                                 ),
-                                child: const Center(child: Text("No categories found...")),
+                                child: Center(
+                                  child: Text(
+                                    "No categories found...",
+                                    style: TextStyle(
+                                      color: colors.textSecondary,
+                                      fontSize: 16.sp,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
                               ),
 
                         SizedBox(height: 20.h),
@@ -636,9 +645,9 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
                                     Text(
                                       "No items found",
                                       style: TextStyle(
-                                        fontSize: 18.sp,
-                                        fontWeight: FontWeight.w700,
-                                        color: colors.textPrimary,
+                                        color: colors.textSecondary,
+                                        fontSize: 16.sp,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
                                     SizedBox(height: 8.h),
@@ -695,7 +704,16 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
                                   color: colors.backgroundPrimary,
                                   borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                                 ),
-                                child: const Center(child: Text("No items found...")),
+                                child: Center(
+                                  child: Text(
+                                    "No items found...",
+                                    style: TextStyle(
+                                      color: colors.textSecondary,
+                                      fontSize: 16.sp,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
                               );
                             }
 

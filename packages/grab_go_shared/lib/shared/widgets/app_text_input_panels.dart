@@ -26,7 +26,7 @@ class AppTextInputPanels extends StatelessWidget {
   final bool readOnly;
   final VoidCallback? onTap;
   final String? errorText;
-
+  final int? maxLines;
   const AppTextInputPanels({
     super.key,
     this.controller,
@@ -47,6 +47,7 @@ class AppTextInputPanels extends StatelessWidget {
     this.readOnly = false,
     this.onTap,
     this.errorText,
+    this.maxLines,
   });
 
   Future<void> _handleTap(BuildContext context) async {
@@ -165,8 +166,16 @@ class AppTextInputPanels extends StatelessWidget {
           readOnly: readOnly,
           cursorColor: colors.accentOrange,
           onTap: () => _handleTap(context),
+          maxLines: obscureText ? 1 : maxLines,
           style:
-              textStyle ?? TextStyle(fontSize: KTextSize.small, color: colors.textPrimary, fontWeight: FontWeight.w500),
+              textStyle ??
+              TextStyle(
+                fontFamily: "Lato",
+                package: 'grab_go_shared',
+                fontSize: KTextSize.small,
+                color: colors.textPrimary,
+                fontWeight: FontWeight.w500,
+              ),
           decoration: InputDecoration(
             filled: true,
             fillColor: fillColor ?? colors.inputBorder,

@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:grab_go_customer/core/config/google_signin_config.dart';
+import 'package:grab_go_shared/grub_go_shared.dart';
 
 class GoogleSignInService {
   static final GoogleSignInService _instance = GoogleSignInService._internal();

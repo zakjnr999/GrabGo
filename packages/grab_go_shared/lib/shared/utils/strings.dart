@@ -50,6 +50,8 @@ class AppStrings {
   static const String registerPasswordLabel = "Set Password";
   static const String registerConfirmPasswordHint = "Enter Password Again";
   static const String registerConfirmPasswordLabel = "Confirm Password";
+  static const String registerReferralCodeLabel = "Referral Code (optional)";
+  static const String registerReferralCodeHint = "Enter Your Referral Code";
   static const String cartEmpty = "Your cart is empty";
   static const String cartEmptyMessage = "Looks like you haven't added anything to your cart yet";
   static const String cartRemoveItem = "Removed from cart";

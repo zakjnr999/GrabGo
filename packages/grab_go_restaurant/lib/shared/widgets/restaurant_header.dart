@@ -1,10 +1,11 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:grab_go_shared/shared/widgets/responsive.dart';
 import 'package:provider/provider.dart';
-import 'package:grab_go_shared/shared/utils/colors.dart';
+import 'package:grab_go_restaurant/shared/app_colors.dart';
 import '../providers/theme_provider.dart';
 import '../models/restaurant_navigation_page.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -59,7 +60,7 @@ class _RestaurantHeaderState extends State<RestaurantHeader> with SingleTickerPr
 
     return Container(
       height: headerHeight,
-      padding: EdgeInsets.symmetric(horizontal: screenPadding.horizontal / 2),
+      padding: EdgeInsets.symmetric(horizontal: screenPadding.horizontal / 4),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.white,
         border: Border(
@@ -68,7 +69,6 @@ class _RestaurantHeaderState extends State<RestaurantHeader> with SingleTickerPr
       ),
       child: Row(
         children: [
-          // Hamburger Menu - always show on mobile, show on desktop when sidebar is collapsed
           if (widget.isMobile || !widget.isSidebarExpanded)
             IconButton(
               onPressed: widget.onToggleSidebar,
@@ -80,7 +80,6 @@ class _RestaurantHeaderState extends State<RestaurantHeader> with SingleTickerPr
               ),
             ),
           SizedBox(width: widget.isMobile ? 8 : 16),
-          // Page Title
           Expanded(
             child: Text(
               widget.currentPage.title,
@@ -92,11 +91,9 @@ class _RestaurantHeaderState extends State<RestaurantHeader> with SingleTickerPr
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          // Right side icons and profile
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Theme Toggle
               Consumer<ThemeProvider>(
                 builder: (context, themeProvider, child) {
                   return IconButton(
@@ -110,7 +107,7 @@ class _RestaurantHeaderState extends State<RestaurantHeader> with SingleTickerPr
                       animation: _rotationAnimation,
                       builder: (context, child) {
                         return Transform.rotate(
-                          angle: _rotationAnimation.value * 2 * 3.14159, // Full rotation
+                          angle: _rotationAnimation.value * 2 * 3.14159,
                           child: AnimatedSwitcher(
                             duration: const Duration(milliseconds: 300),
                             transitionBuilder: (child, animation) {
@@ -130,7 +127,6 @@ class _RestaurantHeaderState extends State<RestaurantHeader> with SingleTickerPr
                   );
                 },
               ),
-              // Notifications
               Badge(
                 backgroundColor: AppColors.blueAccent,
                 label: Text(
@@ -148,10 +144,9 @@ class _RestaurantHeaderState extends State<RestaurantHeader> with SingleTickerPr
                 ),
               ),
               SizedBox(width: widget.isMobile ? 8 : 16),
-              // Profile Section
               if (!widget.isMobile) ...[
                 Text(
-                  'GrabGo Restaurant',
+                  'Golden Spoon Restaurant',
                   style: GoogleFonts.lato(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
@@ -169,11 +164,12 @@ class _RestaurantHeaderState extends State<RestaurantHeader> with SingleTickerPr
                 ),
                 child: Padding(
                   padding: EdgeInsets.all(widget.isMobile ? 3 : 4),
-                  child: Image.asset(
-                    Assets.icons.appIcon.path,
-                    width: widget.isMobile ? 16 : 20,
+                  child: SvgPicture.asset(
+                    Assets.icons.chefHat,
+                    package: 'grab_go_shared',
                     height: widget.isMobile ? 16 : 20,
-                    color: AppColors.white,
+                    width: widget.isMobile ? 16 : 20,
+                    colorFilter: ColorFilter.mode(AppColors.white, BlendMode.srcIn),
                   ),
                 ),
               ),
@@ -191,7 +187,7 @@ class _RestaurantHeaderState extends State<RestaurantHeader> with SingleTickerPr
       case ThemeMode.dark:
         return Assets.icons.halfMoon;
       case ThemeMode.system:
-        return Assets.icons.sunLight; // Fallback, should not occur
+        return Assets.icons.sunLight;
     }
   }
 }

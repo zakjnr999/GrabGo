@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
-import 'package:grab_go_shared/shared/utils/colors.dart';
+import 'package:grab_go_restaurant/shared/app_colors_extension.dart';
+import 'package:grab_go_restaurant/shared/app_colors.dart';
 import 'package:grab_go_shared/shared/widgets/responsive.dart';
 
 class FoodTypeSelection extends StatelessWidget {
@@ -31,7 +31,7 @@ class FoodTypeSelection extends StatelessWidget {
           style: GoogleFonts.lato(
             fontSize: Responsive.getFontSize(context, isMobile ? 14 : 16),
             fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
+            color: colors.text,
           ),
         ),
         Text(
@@ -64,7 +64,7 @@ class FoodTypeSelection extends StatelessWidget {
                   style: GoogleFonts.lato(
                     fontSize: Responsive.getFontSize(context, isMobile ? 10 : 12),
                     fontWeight: FontWeight.w400,
-                    color: isSelected ? AppColors.white : colors.textPrimary,
+                    color: isSelected ? AppColors.white : colors.text,
                   ),
                 ),
               ),

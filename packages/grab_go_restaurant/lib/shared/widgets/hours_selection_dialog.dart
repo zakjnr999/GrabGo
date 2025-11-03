@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:grab_go_shared/shared/utils/colors.dart';
+import 'package:grab_go_restaurant/shared/utils/constants.dart';
+import 'package:grab_go_restaurant/shared/app_colors.dart';
 import '../widgets/text_input.dart';
 
 class HoursSelectionDialog extends StatefulWidget {
@@ -34,6 +35,7 @@ class _HoursSelectionDialogState extends State<HoursSelectionDialog> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.borderRadius12)),
       backgroundColor: isDark ? AppColors.darkSurface : AppColors.white,
       title: Text(
         'Set Hours for ${widget.day}',

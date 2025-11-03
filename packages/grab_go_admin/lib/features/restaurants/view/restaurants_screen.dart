@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'package:grab_go_shared/shared/widgets/app_dialog_panels.dart';
 import '../../../shared/app_colors.dart';
 import '../../../shared/utils/responsive.dart';
@@ -7,6 +9,10 @@ import '../../../shared/widgets/text_input.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/svg_icon.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
+import '../viewmodel/restaurant_provider.dart';
+import '../model/restaurant_response.dart';
+import 'package:intl/intl.dart';
+import '../../../shared/providers/theme_provider.dart';
 
 class RestaurantsScreen extends StatefulWidget {
   const RestaurantsScreen({super.key});
@@ -23,85 +29,59 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
   final List<String> statusOptions = ['All', 'Active', 'Pending', 'Suspended'];
   final List<String> sortOptions = ['Name', 'Registration Date', 'Total Sales', 'Rating'];
 
-  final List<Map<String, dynamic>> restaurants = [
-    {
-      'id': 'R001',
-      'name': 'Golden Spoon Restaurant',
-      'owner': 'John Doe',
-      'email': 'john@goldenspoon.com',
-      'phone': '+233 24 123 4567',
-      'address': '123 Oxford Street, Accra',
-      'status': 'Active',
-      'registrationDate': '2024-01-15',
-      'totalSales': 'GHC 45,230',
-      'rating': 4.8,
-      'deliveryFee': 'GHC 5.00',
-      'minOrder': 'GHC 25.00',
-      'orders': 1247,
-    },
-    {
-      'id': 'R002',
-      'name': 'Spice Garden',
-      'owner': 'Sarah Wilson',
-      'email': 'sarah@spicegarden.com',
-      'phone': '+233 24 234 5678',
-      'address': '456 Ring Road, Kumasi',
-      'status': 'Pending',
-      'registrationDate': '2024-02-20',
-      'totalSales': 'GHC 0',
-      'rating': 0.0,
-      'deliveryFee': 'GHC 8.00',
-      'minOrder': 'GHC 30.00',
-      'orders': 0,
-    },
-    {
-      'id': 'R003',
-      'name': 'Coastal Bites',
-      'owner': 'Michael Brown',
-      'email': 'michael@coastalbites.com',
-      'phone': '+233 24 345 6789',
-      'address': '789 Beach Road, Takoradi',
-      'status': 'Active',
-      'registrationDate': '2024-01-08',
-      'totalSales': 'GHC 32,150',
-      'rating': 4.6,
-      'deliveryFee': 'GHC 6.00',
-      'minOrder': 'GHC 20.00',
-      'orders': 856,
-    },
-    {
-      'id': 'R004',
-      'name': 'Mountain View Cafe',
-      'owner': 'Emily Davis',
-      'email': 'emily@mountainview.com',
-      'phone': '+233 24 456 7890',
-      'address': '321 Hill Street, Tamale',
-      'status': 'Suspended',
-      'registrationDate': '2024-01-25',
-      'totalSales': 'GHC 12,890',
-      'rating': 3.2,
-      'deliveryFee': 'GHC 10.00',
-      'minOrder': 'GHC 35.00',
-      'orders': 234,
-    },
-    {
-      'id': 'R005',
-      'name': 'Urban Kitchen',
-      'owner': 'David Johnson',
-      'email': 'david@urbankitchen.com',
-      'phone': '+233 24 567 8901',
-      'address': '654 City Center, Accra',
-      'status': 'Active',
-      'registrationDate': '2024-02-10',
-      'totalSales': 'GHC 28,750',
-      'rating': 4.7,
-      'deliveryFee': 'GHC 4.00',
-      'minOrder': 'GHC 15.00',
-      'orders': 692,
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<RestaurantProvider>().fetchRestaurants();
+    });
+  }
 
-  List<Map<String, dynamic>> get filteredRestaurants {
+  List<Map<String, dynamic>> _convertRestaurantsToMaps(List<RestaurantData> restaurants) {
+    return restaurants.map((restaurant) {
+      final dateFormat = DateFormat('yyyy-MM-dd');
+      final registrationDate = dateFormat.format(restaurant.createdAt);
+
+      final deliveryFee = restaurant.deliveryFee != null ? 'GHC ${restaurant.deliveryFee!.toStringAsFixed(2)}' : 'N/A';
+      final minOrder = restaurant.minOrder != null ? 'GHC ${restaurant.minOrder!.toStringAsFixed(2)}' : 'N/A';
+
+      final totalSales = 'N/A';
+
+      return {
+        'id': restaurant.id,
+        'name': restaurant.restaurantName,
+        'owner': restaurant.ownerFullName,
+        'ownerContact': restaurant.ownerContactNumber,
+        'email': restaurant.email,
+        'phone': restaurant.phone,
+        'address': restaurant.address,
+        'city': restaurant.city,
+        'businessIdNumber': restaurant.businessIdNumber,
+        'status': restaurant.status,
+        'registrationDate': registrationDate,
+        'totalSales': totalSales,
+        'rating': restaurant.rating,
+        'deliveryFee': deliveryFee,
+        'minOrder': minOrder,
+        'orders': restaurant.totalReviews,
+        'foodType': restaurant.foodType,
+        'description': restaurant.description,
+        'openingHours': restaurant.openingHours,
+        'averageDeliveryTime': restaurant.averageDeliveryTime,
+        'paymentMethods': restaurant.paymentMethods,
+        'bannerImages': restaurant.bannerImages,
+        'logo': restaurant.logo,
+        'isOpen': restaurant.isOpen,
+        'latitude': restaurant.latitude,
+        'longitude': restaurant.longitude,
+        'socials': restaurant.socials,
+      };
+    }).toList();
+  }
+
+  List<Map<String, dynamic>> _getFilteredRestaurants(List<RestaurantData> restaurantDataList) {
+    final restaurants = _convertRestaurantsToMaps(restaurantDataList);
+
     var filtered = restaurants.where((restaurant) {
       final matchesSearch =
           restaurant['name'].toLowerCase().contains(searchQuery.toLowerCase()) ||
@@ -113,7 +93,6 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
       return matchesSearch && matchesStatus;
     }).toList();
 
-    // Sort the results
     filtered.sort((a, b) {
       switch (selectedSortBy) {
         case 'Name':
@@ -170,19 +149,34 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
                 ),
               ),
               if (!isMobile)
-                AppButton(
-                  buttonText: 'Refresh',
-                  onPressed: () {
-                    setState(() {});
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Restaurants list refreshed'), backgroundColor: AppColors.successGreen),
+                Consumer<RestaurantProvider>(
+                  builder: (context, provider, child) {
+                    return AppButton(
+                      buttonText: 'Refresh',
+                      onPressed: provider.isLoading
+                          ? () {}
+                          : () {
+                              provider.refreshRestaurants();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Refreshing restaurants...'),
+                                  backgroundColor: AppColors.successGreen,
+                                ),
+                              );
+                            },
+                      borderRadius: 4,
+                      backgroundColor: AppColors.accentOrange,
+                      textColor: AppColors.white,
+                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      icon: provider.isLoading
+                          ? SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.white),
+                            )
+                          : SvgIcon(svgImage: Assets.icons.refresh, width: 18, height: 18, color: AppColors.white),
                     );
                   },
-                  borderRadius: 4,
-                  backgroundColor: AppColors.accentOrange,
-                  textColor: AppColors.white,
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  icon: SvgIcon(svgImage: Assets.icons.refresh, width: 18, height: 18, color: AppColors.white),
                 ),
             ],
           ),
@@ -348,84 +342,162 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
   }
 
   Widget _buildRestaurantsList(bool isDark, bool isMobile, bool isTablet) {
-    final restaurants = filteredRestaurants;
-
-    if (restaurants.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: EdgeInsets.all(isMobile ? 40 : 60),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkSurface : AppColors.white,
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+    return Consumer<RestaurantProvider>(
+      builder: (context, provider, child) {
+        if (provider.isLoading && provider.restaurants.isEmpty) {
+          return Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(isMobile ? 40 : 60),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkSurface : AppColors.white,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Column(
-          children: [
-            SvgIcon(svgImage: Assets.icons.search, width: 48, height: 48, color: AppColors.grey),
-            SizedBox(height: 16),
-            Text(
-              'No restaurants found',
-              style: GoogleFonts.lato(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: isDark ? AppColors.white : AppColors.primary,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Try adjusting your search or filter criteria',
-              style: GoogleFonts.lato(fontSize: 14, color: AppColors.grey),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : AppColors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          if (!isMobile)
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.darkBackground : AppColors.secondaryBackground,
-                borderRadius: BorderRadius.only(topLeft: Radius.circular(8), topRight: Radius.circular(8)),
-              ),
-              child: Row(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Expanded(flex: 2, child: _buildTableHeader('Restaurant', isDark)),
-                  Expanded(flex: 2, child: _buildTableHeader('Owner', isDark)),
-                  Expanded(flex: 1, child: _buildTableHeader('Status', isDark)),
-                  Expanded(flex: 1, child: _buildTableHeader('Sales', isDark)),
-                  Expanded(flex: 1, child: _buildTableHeader('Rating', isDark)),
-                  Expanded(flex: 1, child: _buildTableHeader('Actions', isDark)),
+                  CircularProgressIndicator(color: AppColors.accentOrange),
+                  SizedBox(height: 16),
+                  Text('Loading restaurants...', style: GoogleFonts.lato(fontSize: 14, color: AppColors.grey)),
                 ],
               ),
             ),
-          ...restaurants.asMap().entries.map((entry) {
-            final index = entry.key;
-            final restaurant = entry.value;
-            return _buildRestaurantRow(restaurant, isDark, isMobile, isTablet, index == restaurants.length - 1);
-          }),
-        ],
-      ),
+          );
+        }
+
+        if (provider.error != null && provider.restaurants.isEmpty) {
+          return Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(isMobile ? 40 : 60),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkSurface : AppColors.white,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SvgIcon(svgImage: Assets.icons.warningCircle, width: 48, height: 48, color: AppColors.errorRed),
+                SizedBox(height: 16),
+                Text(
+                  'Error loading restaurants',
+                  style: GoogleFonts.lato(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.white : AppColors.primary,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  provider.error!,
+                  style: GoogleFonts.lato(fontSize: 14, color: AppColors.grey),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 16),
+                AppButton(
+                  buttonText: 'Retry',
+                  onPressed: () => provider.fetchRestaurants(),
+                  backgroundColor: AppColors.accentOrange,
+                  textColor: AppColors.white,
+                ),
+              ],
+            ),
+          );
+        }
+
+        final restaurants = _getFilteredRestaurants(provider.restaurants);
+
+        if (restaurants.isEmpty) {
+          return Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(isMobile ? 40 : 60),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkSurface : AppColors.white,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                SvgIcon(svgImage: Assets.icons.search, width: 48, height: 48, color: AppColors.grey),
+                SizedBox(height: 16),
+                Text(
+                  'No restaurants found',
+                  style: GoogleFonts.lato(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.white : AppColors.primary,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Try adjusting your search or filter criteria',
+                  style: GoogleFonts.lato(fontSize: 14, color: AppColors.grey),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkSurface : AppColors.white,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              if (!isMobile)
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkBackground : AppColors.secondaryBackground,
+                    borderRadius: BorderRadius.only(topLeft: Radius.circular(8), topRight: Radius.circular(8)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(flex: 2, child: _buildTableHeader('Restaurant', isDark)),
+                      Expanded(flex: 2, child: _buildTableHeader('Owner', isDark)),
+                      Expanded(flex: 1, child: _buildTableHeader('Status', isDark)),
+                      Expanded(flex: 1, child: _buildTableHeader('Sales', isDark)),
+                      Expanded(flex: 1, child: _buildTableHeader('Rating', isDark)),
+                      Expanded(flex: 1, child: _buildTableHeader('Actions', isDark)),
+                    ],
+                  ),
+                ),
+              ...restaurants.asMap().entries.map((entry) {
+                final index = entry.key;
+                final restaurant = entry.value;
+                return _buildRestaurantRow(restaurant, isDark, isMobile, isTablet, index == restaurants.length - 1);
+              }),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -491,7 +563,7 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
               ],
             ),
             SizedBox(height: 12),
-            if (restaurant['status'] == 'Pending')
+            if (restaurant['status'] == 'pending')
               Column(
                 children: [
                   Row(
@@ -502,7 +574,6 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
                           onPressed: () => _approveRestaurant(restaurant),
                           backgroundColor: AppColors.successGreen,
                           textColor: AppColors.white,
-                          padding: EdgeInsets.symmetric(vertical: 8),
                         ),
                       ),
                       SizedBox(width: 8),
@@ -512,7 +583,6 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
                           onPressed: () => _suspendRestaurant(restaurant),
                           backgroundColor: AppColors.errorRed,
                           textColor: AppColors.white,
-                          padding: EdgeInsets.symmetric(vertical: 8),
                         ),
                       ),
                     ],
@@ -524,7 +594,6 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
                     backgroundColor: Colors.transparent,
                     textColor: AppColors.accentOrange,
                     borderColor: AppColors.accentOrange,
-                    padding: EdgeInsets.symmetric(vertical: 8),
                   ),
                 ],
               )
@@ -538,7 +607,6 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
                       backgroundColor: Colors.transparent,
                       textColor: AppColors.accentOrange,
                       borderColor: AppColors.accentOrange,
-                      padding: EdgeInsets.symmetric(vertical: 8),
                     ),
                   ),
                   SizedBox(width: 8),
@@ -548,7 +616,6 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
                       onPressed: () => _handleRestaurantAction(restaurant),
                       backgroundColor: _getActionColor(restaurant['status']),
                       textColor: AppColors.white,
-                      padding: EdgeInsets.symmetric(vertical: 8),
                     ),
                   ),
                 ],
@@ -646,7 +713,7 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
                     onPressed: () => _viewRestaurantDetails(restaurant),
                     icon: SvgIcon(svgImage: Assets.icons.eye, width: 18, height: 18, color: AppColors.accentOrange),
                   ),
-                  if (restaurant['status'] == 'Pending') ...[
+                  if (restaurant['status'] == 'pending') ...[
                     IconButton(
                       onPressed: () => _approveRestaurant(restaurant),
                       icon: SvgIcon(svgImage: Assets.icons.check, width: 18, height: 18, color: AppColors.successGreen),
@@ -694,15 +761,15 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
     Color textColor;
 
     switch (status) {
-      case 'Active':
+      case 'active':
         backgroundColor = AppColors.successGreen.withValues(alpha: 0.1);
         textColor = AppColors.successGreen;
         break;
-      case 'Pending':
+      case 'pending':
         backgroundColor = AppColors.warningOrange.withValues(alpha: 0.1);
         textColor = AppColors.warningOrange;
         break;
-      case 'Suspended':
+      case 'suspended':
         backgroundColor = AppColors.errorRed.withValues(alpha: 0.1);
         textColor = AppColors.errorRed;
         break;
@@ -727,11 +794,11 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
 
   String _getActionText(String status) {
     switch (status) {
-      case 'Active':
+      case 'active':
         return 'Suspend';
-      case 'Pending':
+      case 'pending':
         return 'Approve';
-      case 'Suspended':
+      case 'suspended':
         return 'Activate';
       default:
         return 'Action';
@@ -740,11 +807,11 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
 
   Color _getActionColor(String status) {
     switch (status) {
-      case 'Active':
+      case 'active':
         return AppColors.errorRed;
-      case 'Pending':
+      case 'pending':
         return AppColors.successGreen;
-      case 'Suspended':
+      case 'suspended':
         return AppColors.successGreen;
       default:
         return AppColors.accentOrange;
@@ -753,11 +820,11 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
 
   SvgIcon _getActionIcon(String status) {
     switch (status) {
-      case 'Active':
+      case 'active':
         return SvgIcon(svgImage: Assets.icons.ban, width: 18, height: 18, color: AppColors.errorRed);
-      case 'Pending':
+      case 'pending':
         return SvgIcon(svgImage: Assets.icons.check, width: 18, height: 18, color: AppColors.successGreen);
-      case 'Suspended':
+      case 'suspended':
         return SvgIcon(svgImage: Assets.icons.check, width: 18, height: 18, color: AppColors.successGreen);
       default:
         return SvgIcon(svgImage: Assets.icons.moreVert, width: 18, height: 18, color: AppColors.accentOrange);
@@ -771,6 +838,7 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
   void _handleRestaurantAction(Map<String, dynamic> restaurant) {
     String action = _getActionText(restaurant['status']);
     String message = 'Are you sure you want to $action "${restaurant['name']}"?';
+    String status = restaurant['status'] == 'active' ? 'suspended' : 'active';
 
     AppDialogPanels.show(
       context: context,
@@ -780,71 +848,384 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
       primaryButtonText: 'Confirm',
       secondaryButtonText: 'Cancel',
       primaryButtonColor: AppColors.accentOrange,
-      onPrimaryPressed: () => _handleRestaurantAction(restaurant),
+      onPrimaryPressed: () async {
+        Navigator.of(context).pop();
+        final provider = context.read<RestaurantProvider>();
+        final success = await provider.updateRestaurantStatus(restaurant['id'], status);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                success
+                    ? 'Restaurant status updated successfully'
+                    : provider.error ?? 'Failed to update restaurant status',
+              ),
+              backgroundColor: success ? AppColors.successGreen : AppColors.errorRed,
+              duration: Duration(seconds: success ? 2 : 4),
+            ),
+          );
+        }
+      },
       onSecondaryPressed: () => Navigator.of(context).pop(),
     );
   }
 
   Widget _buildRestaurantDetailsDialog(Map<String, dynamic> restaurant) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isMobile = Responsive.isMobile(context);
+    final screenHeight = MediaQuery.of(context).size.height;
 
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      backgroundColor: isDark ? AppColors.darkSurface : AppColors.white,
-      title: Text(
-        restaurant['name'],
-        style: GoogleFonts.lato(color: isDark ? AppColors.white : AppColors.primary, fontWeight: FontWeight.w600),
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildDetailRow('Owner', restaurant['owner'], isDark),
-            _buildDetailRow('Email', restaurant['email'], isDark),
-            _buildDetailRow('Phone', restaurant['phone'], isDark),
-            _buildDetailRow('Address', restaurant['address'], isDark),
-            _buildDetailRow('Status', restaurant['status'], isDark),
-            _buildDetailRow('Registration Date', restaurant['registrationDate'], isDark),
-            _buildDetailRow('Total Sales', restaurant['totalSales'], isDark),
-            _buildDetailRow('Total Orders', restaurant['orders'].toString(), isDark),
-            _buildDetailRow('Rating', restaurant['rating'] == 0.0 ? 'N/A' : '${restaurant['rating']}', isDark),
-            _buildDetailRow('Delivery Fee', restaurant['deliveryFee'], isDark),
-            _buildDetailRow('Minimum Order', restaurant['minOrder'], isDark),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text('Close')),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-            // Navigate to edit restaurant screen
-          },
-          child: Text('Edit Details'),
-        ),
-      ],
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.all(isMobile ? 16 : 40),
+          child: Container(
+            width: double.infinity,
+            constraints: BoxConstraints(maxHeight: screenHeight * 0.9),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkSurface : AppColors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10)),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(isMobile ? 20 : 24),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkBackground : AppColors.secondaryBackground,
+                    borderRadius: BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Restaurant Details',
+                          style: GoogleFonts.lato(
+                            fontSize: isMobile ? 20 : 24,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.white : AppColors.primary,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: Icon(Icons.close, color: isDark ? AppColors.white : AppColors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.all(isMobile ? 20 : 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Restaurant Logo',
+                          style: GoogleFonts.lato(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.white : AppColors.primary,
+                          ),
+                        ),
+                        SizedBox(height: 12),
+                        Container(
+                          width: 200,
+                          height: 120,
+                          margin: EdgeInsets.only(right: 12),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightSurface),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              restaurant['logo'],
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                color: AppColors.grey.withValues(alpha: 0.1),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(45),
+                                  child: SvgPicture.asset(
+                                    Assets.icons.mediaImage,
+                                    package: 'grab_go_shared',
+                                    width: 24,
+                                    height: 24,
+                                    colorFilter: ColorFilter.mode(AppColors.grey, BlendMode.srcIn),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 24),
+                        _buildSectionTitle('Basic Information', isDark),
+                        SizedBox(height: 12),
+                        _buildDetailRow('Restaurant Name', restaurant['name'], isDark),
+                        _buildDetailRow('Status', restaurant['status'] ?? 'N/A', isDark, showStatusChip: true),
+                        _buildDetailRow('Business ID', restaurant['businessIdNumber'] ?? 'N/A', isDark),
+                        if (restaurant['foodType'] != null)
+                          _buildDetailRow('Food Type', restaurant['foodType'], isDark),
+                        if (restaurant['description'] != null)
+                          _buildDetailRow('Description', restaurant['description'], isDark, isMultiline: true),
+                        SizedBox(height: 24),
+                        _buildSectionTitle('Owner Information', isDark),
+                        SizedBox(height: 12),
+                        _buildDetailRow('Owner Name', restaurant['owner'] ?? 'N/A', isDark),
+                        _buildDetailRow('Owner Contact', restaurant['ownerContact'] ?? 'N/A', isDark),
+                        _buildDetailRow('Email', restaurant['email'] ?? 'N/A', isDark),
+                        _buildDetailRow('Phone', restaurant['phone'] ?? 'N/A', isDark),
+                        SizedBox(height: 24),
+                        _buildSectionTitle('Location', isDark),
+                        SizedBox(height: 12),
+                        _buildDetailRow('Address', restaurant['address'] ?? 'N/A', isDark),
+                        _buildDetailRow('City', restaurant['city'] ?? 'N/A', isDark),
+                        if (restaurant['latitude'] != null && restaurant['longitude'] != null)
+                          _buildDetailRow(
+                            'Coordinates',
+                            '${restaurant['latitude']}, ${restaurant['longitude']}',
+                            isDark,
+                          ),
+                        SizedBox(height: 24),
+                        _buildSectionTitle('Business Details', isDark),
+                        SizedBox(height: 12),
+                        _buildDetailRow('Registration Date', restaurant['registrationDate'] ?? 'N/A', isDark),
+                        _buildDetailRow('Opening Hours', restaurant['openingHours'] ?? 'N/A', isDark),
+                        _buildDetailRow('Average Delivery Time', restaurant['averageDeliveryTime'] ?? 'N/A', isDark),
+                        _buildDetailRow('Is Open', restaurant['isOpen'] == true ? 'Yes' : 'No', isDark),
+                        SizedBox(height: 24),
+                        _buildSectionTitle('Pricing & Orders', isDark),
+                        SizedBox(height: 12),
+                        _buildDetailRow('Delivery Fee', restaurant['deliveryFee'] ?? 'N/A', isDark),
+                        _buildDetailRow('Minimum Order', restaurant['minOrder'] ?? 'N/A', isDark),
+                        _buildDetailRow('Total Orders', restaurant['orders']?.toString() ?? '0', isDark),
+                        _buildDetailRow('Total Sales', restaurant['totalSales'] ?? 'N/A', isDark),
+                        _buildDetailRow(
+                          'Rating',
+                          restaurant['rating'] == 0.0 ? 'N/A' : '${restaurant['rating']}',
+                          isDark,
+                        ),
+                        if (restaurant['paymentMethods'] != null &&
+                            (restaurant['paymentMethods'] as List).isNotEmpty) ...[
+                          SizedBox(height: 24),
+                          _buildSectionTitle('Payment Methods', isDark),
+                          SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: (restaurant['paymentMethods'] as List)
+                                .map((method) => _buildChip(method.toString(), isDark))
+                                .toList(),
+                          ),
+                        ],
+                        if (restaurant['socials'] != null) ...[
+                          Builder(
+                            builder: (context) {
+                              final socials = restaurant['socials'];
+                              final hasFacebook =
+                                  (socials is Map && socials['facebook'] != null) ||
+                                  (socials is Socials && socials.facebook != null);
+                              final hasInstagram =
+                                  (socials is Map && socials['instagram'] != null) ||
+                                  (socials is Socials && socials.instagram != null);
+
+                              if (!hasFacebook && !hasInstagram) {
+                                return SizedBox.shrink();
+                              }
+
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SizedBox(height: 24),
+                                  _buildSectionTitle('Social Media', isDark),
+                                  SizedBox(height: 12),
+                                  if (hasFacebook)
+                                    _buildDetailRow(
+                                      'Facebook',
+                                      socials is Map ? socials['facebook'] : (socials as Socials).facebook!,
+                                      isDark,
+                                      isLink: true,
+                                    ),
+                                  if (hasInstagram)
+                                    _buildDetailRow(
+                                      'Instagram',
+                                      socials is Map ? socials['instagram'] : (socials as Socials).instagram!,
+                                      isDark,
+                                      isLink: true,
+                                    ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
+                        if (restaurant['bannerImages'] != null && (restaurant['bannerImages'] as List).isNotEmpty) ...[
+                          SizedBox(height: 24),
+                          _buildSectionTitle('Banner Images', isDark),
+                          SizedBox(height: 12),
+                          SizedBox(
+                            height: 120,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: (restaurant['bannerImages'] as List).length,
+                              itemBuilder: (context, index) {
+                                return Container(
+                                  width: 200,
+                                  margin: EdgeInsets.only(right: 12),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightSurface),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.network(
+                                      restaurant['bannerImages'][index],
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) => Container(
+                                        color: AppColors.grey.withValues(alpha: 0.1),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(45),
+                                          child: SvgPicture.asset(
+                                            Assets.icons.mediaImage,
+                                            package: 'grab_go_shared',
+                                            width: 24,
+                                            height: 24,
+                                            colorFilter: ColorFilter.mode(AppColors.grey, BlendMode.srcIn),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                        SizedBox(height: 24),
+                      ],
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.all(isMobile ? 16 : 20),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkBackground : AppColors.secondaryBackground,
+                    borderRadius: BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.of(context).pop();
+                        },
+                        child: Container(
+                          height: 50.0,
+                          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [AppColors.successGreen, AppColors.successGreen.withValues(alpha: 0.8)],
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.successGreen.withValues(alpha: 0.3),
+                                blurRadius: 15,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Approve Restaurant',
+                              style: GoogleFonts.lato(
+                                fontSize: Responsive.getFontSize(context, 15),
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildDetailRow(String label, String value, bool isDark) {
+  Widget _buildSectionTitle(String title, bool isDark) {
+    return Text(
+      title,
+      style: GoogleFonts.lato(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: isDark ? AppColors.white : AppColors.primary,
+      ),
+    );
+  }
+
+  Widget _buildChip(String label, bool isDark) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkBackground : AppColors.secondaryBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightSurface),
+      ),
+      child: Text(label, style: GoogleFonts.lato(fontSize: 12, color: isDark ? AppColors.white : AppColors.primary)),
+    );
+  }
+
+  Widget _buildDetailRow(
+    String label,
+    String value,
+    bool isDark, {
+    bool isMultiline = false,
+    bool isLink = false,
+    bool showStatusChip = false,
+  }) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 120,
+            width: 160,
             child: Text(
               label,
-              style: GoogleFonts.lato(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.grey),
+              style: GoogleFonts.lato(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.grey),
             ),
           ),
           Expanded(
-            child: Text(
-              value,
-              style: GoogleFonts.lato(fontSize: 14, color: isDark ? AppColors.white : AppColors.primary),
-            ),
+            child: isLink
+                ? GestureDetector(
+                    onTap: () {},
+                    child: Text(
+                      value,
+                      style: GoogleFonts.lato(
+                        fontSize: 14,
+                        color: AppColors.accentOrange,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  )
+                : showStatusChip
+                ? _buildStatusChip(value)
+                : Text(
+                    value,
+                    style: GoogleFonts.lato(fontSize: 14, color: isDark ? AppColors.white : AppColors.primary),
+                    maxLines: isMultiline ? null : 2,
+                    overflow: isMultiline ? null : TextOverflow.ellipsis,
+                  ),
           ),
         ],
       ),
@@ -860,17 +1241,33 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
       primaryButtonText: 'Approve',
       secondaryButtonText: 'Cancel',
       primaryButtonColor: AppColors.successGreen,
-      onPrimaryPressed: () => _approveRestaurant(restaurant),
+      onPrimaryPressed: () async {
+        Navigator.of(context).pop();
+        final provider = context.read<RestaurantProvider>();
+        final success = await provider.approveRestaurant(restaurant['id']);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                success ? 'Restaurant approved successfully' : provider.error ?? 'Failed to approve restaurant',
+              ),
+              backgroundColor: success ? AppColors.successGreen : AppColors.errorRed,
+              duration: Duration(seconds: success ? 2 : 4),
+            ),
+          );
+        }
+      },
       onSecondaryPressed: () => Navigator.of(context).pop(),
     );
   }
 
   void _suspendRestaurant(Map<String, dynamic> restaurant) {
-    final isPending = restaurant['status'] == 'Pending';
+    final isPending = restaurant['status'] == 'pending';
     final title = isPending ? 'Reject Restaurant Application' : 'Suspend Restaurant';
     final content = isPending
         ? 'Are you sure you want to reject the application for "${restaurant['name']}"?'
         : 'Are you sure you want to suspend "${restaurant['name']}"?';
+    final status = isPending ? 'suspended' : 'suspended';
 
     AppDialogPanels.show(
       context: context,
@@ -880,7 +1277,24 @@ class _RestaurantsScreenState extends State<RestaurantsScreen> {
       primaryButtonText: 'Confirm',
       secondaryButtonText: 'Cancel',
       primaryButtonColor: isPending ? AppColors.errorRed : AppColors.accentOrange,
-      onPrimaryPressed: () => _suspendRestaurant(restaurant),
+      onPrimaryPressed: () async {
+        Navigator.of(context).pop();
+        final provider = context.read<RestaurantProvider>();
+        final success = await provider.updateRestaurantStatus(restaurant['id'], status);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                success
+                    ? 'Restaurant status updated successfully'
+                    : provider.error ?? 'Failed to update restaurant status',
+              ),
+              backgroundColor: success ? AppColors.successGreen : AppColors.errorRed,
+              duration: Duration(seconds: success ? 2 : 4),
+            ),
+          );
+        }
+      },
       onSecondaryPressed: () => Navigator.of(context).pop(),
     );
   }

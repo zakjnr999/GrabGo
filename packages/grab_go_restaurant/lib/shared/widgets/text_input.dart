@@ -1,8 +1,8 @@
 // ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
-import 'package:grab_go_shared/shared/utils/colors.dart';
+import 'package:grab_go_restaurant/shared/app_colors_extension.dart';
+import 'package:grab_go_restaurant/shared/app_colors.dart';
 import 'package:grab_go_shared/shared/widgets/responsive.dart';
 
 class TextInput extends StatelessWidget {
@@ -81,7 +81,7 @@ class TextInput extends StatelessWidget {
                 GoogleFonts.lato(
                   fontSize: Responsive.getFontSize(context, isMobile ? 10 : 12),
                   fontWeight: FontWeight.w600,
-                  color: colors.textPrimary,
+                  color: colors.text,
                 ),
           ),
           SizedBox(height: isMobile ? 6 : 8),
@@ -100,7 +100,7 @@ class TextInput extends StatelessWidget {
               textStyle ??
               GoogleFonts.lato(
                 fontSize: Responsive.getFontSize(context, isMobile ? 10 : 12),
-                color: colors.textPrimary,
+                color: colors.text,
                 fontWeight: FontWeight.w500,
               ),
           decoration: InputDecoration(

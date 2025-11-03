@@ -107,7 +107,6 @@ class _RestaurantRegistrationState extends State<RestaurantRegistration> with Si
   }
 
   void _setupTextControllers() {
-    // Add listeners to all text controllers to detect when user starts filling the form
     void checkIfFormStarted() {
       final hasAnyText =
           restaurantNameController.text.isNotEmpty ||
@@ -355,9 +354,6 @@ class _RestaurantRegistrationState extends State<RestaurantRegistration> with Si
                   }
                 } else {
                   context.pop();
-                  if (mounted) {
-                    context.pop();
-                  }
                 }
               },
               customBorder: const CircleBorder(),

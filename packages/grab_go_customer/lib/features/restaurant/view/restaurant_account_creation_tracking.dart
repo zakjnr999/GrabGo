@@ -18,7 +18,7 @@ class RestaurantAccountCreationTracking extends StatefulWidget {
 }
 
 class _RestaurantAccountCreationTrackingState extends State<RestaurantAccountCreationTracking> {
-  int currentStep = 1; // "Under Review" is the current step (0-3)
+  int currentStep = 1;
 
   @override
   void initState() {
@@ -189,7 +189,6 @@ class _RestaurantAccountCreationTrackingState extends State<RestaurantAccountCre
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Step Icon
                 Container(
                   width: 40.w,
                   height: 40.h,
@@ -204,6 +203,7 @@ class _RestaurantAccountCreationTrackingState extends State<RestaurantAccountCre
                   child: Center(
                     child: SvgPicture.asset(
                       step['icon'] as String,
+                      package: "grab_go_shared",
                       width: 20.w,
                       height: 20.h,
                       colorFilter: ColorFilter.mode(
@@ -214,7 +214,6 @@ class _RestaurantAccountCreationTrackingState extends State<RestaurantAccountCre
                   ),
                 ),
                 SizedBox(width: KSpacing.md.w),
-                // Step Content
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -233,7 +232,6 @@ class _RestaurantAccountCreationTrackingState extends State<RestaurantAccountCre
                 ),
               ],
             ),
-            // Connector Line
             if (!isLast) ...[
               SizedBox(height: KSpacing.lg.h),
               Container(
@@ -256,7 +254,6 @@ class _RestaurantAccountCreationTrackingState extends State<RestaurantAccountCre
     );
   }
 
-  // Get current step information
   Map<String, dynamic> getCurrentStepInfo() {
     final steps = [
       {
@@ -288,11 +285,9 @@ class _RestaurantAccountCreationTrackingState extends State<RestaurantAccountCre
     return steps[currentStep];
   }
 
-  // Load current step from storage (set by admin via API)
   Future<void> loadCurrentStepFromStorage() async {
     final status = await StorageService.getRestaurantApplicationStatus();
     if (status != null) {
-      // Map status string to step index
       final stepMap = {'Submitted': 0, 'Under Review': 1, 'Approved': 2, 'Account Active': 3};
 
       final stepIndex = stepMap[status] ?? 1;
@@ -305,32 +300,43 @@ class _RestaurantAccountCreationTrackingState extends State<RestaurantAccountCre
     }
   }
 
-  // Build action button based on current step
   Widget _buildStepActionButton(dynamic colors) {
     final stepInfo = getCurrentStepInfo();
 
-    return AppButton(
-      width: double.infinity,
-      onPressed: () => _handleStepAction(stepInfo['buttonAction']),
-      backgroundColor: colors.accentOrange,
-      borderRadius: KBorderSize.borderRadius50,
-      buttonText: stepInfo['buttonText'],
+    return GestureDetector(
+      onTap: () => _handleStepAction(stepInfo['buttonAction']),
+      child: Container(
+        height: 56.h,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+          boxShadow: [
+            BoxShadow(color: colors.accentOrange.withValues(alpha: 0.4), blurRadius: 20, offset: const Offset(0, 8)),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            stepInfo['buttonText'],
+            style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+          ),
+        ),
+      ),
     );
   }
 
-  // Handle button actions based on current step
   void _handleStepAction(String action) async {
     switch (action) {
       case 'view_details':
-        // Contact support via Gmail
         await _launchGmailSupport('Application Details Inquiry');
         break;
       case 'check_status':
-        // Contact support via Gmail
         await _launchGmailSupport('Review Status Inquiry');
         break;
       case 'complete_setup':
-        // Complete account setup
         AppToastMessage.show(
           context: context,
           icon: Icons.check_circle_outline,
@@ -339,7 +345,6 @@ class _RestaurantAccountCreationTrackingState extends State<RestaurantAccountCre
         );
         break;
       case 'go_dashboard':
-        // Navigate to dashboard
         context.push('/homepage');
         break;
       default:
@@ -347,10 +352,8 @@ class _RestaurantAccountCreationTrackingState extends State<RestaurantAccountCre
     }
   }
 
-  // Launch Gmail with pre-filled support email
   Future<void> _launchGmailSupport(String subject) async {
     try {
-      // Try Gmail app first with compose intent
       final String gmailComposeUrl =
           'googlegmail://co?to=zakjnr165@gmail.com&subject=${Uri.encodeComponent('GrabGo Restaurant Registration - $subject')}&body=${Uri.encodeComponent('Hello GrabGo Support Team,\n\nI need assistance with my restaurant registration application.\n\nSubject: $subject\n\nPlease provide me with the necessary information.\n\nThank you.')}';
 
@@ -359,7 +362,6 @@ class _RestaurantAccountCreationTrackingState extends State<RestaurantAccountCre
         return;
       }
 
-      // Try Gmail app basic
       const String gmailAppUrl = 'googlegmail://';
 
       if (await canLaunchUrl(Uri.parse(gmailAppUrl))) {
@@ -367,7 +369,6 @@ class _RestaurantAccountCreationTrackingState extends State<RestaurantAccountCre
         return;
       }
 
-      // Fallback to Gmail web version
       const String gmailWebUrl = 'https://mail.google.com/';
 
       if (await canLaunchUrl(Uri.parse(gmailWebUrl))) {
@@ -375,7 +376,6 @@ class _RestaurantAccountCreationTrackingState extends State<RestaurantAccountCre
         return;
       }
 
-      // Show manual contact info since no email client is available
       if (mounted) {
         AppToastMessage.show(
           context: context,
