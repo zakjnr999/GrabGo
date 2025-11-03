@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:grab_go_customer/features/auth/model/user_model.dart';
+import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:photo_view/photo_view.dart';
 
 class ViewProfile extends StatelessWidget {

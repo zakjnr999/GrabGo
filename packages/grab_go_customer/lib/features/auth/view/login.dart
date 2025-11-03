@@ -9,12 +9,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
-import 'package:grab_go_customer/features/auth/model/user_model.dart';
-import 'package:grab_go_customer/features/auth/service/google_sign_in_service.dart';
+import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/shared/services/storage_service.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
-import 'package:grab_go_shared/grub_go_shared.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -676,7 +674,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                       ),
                       const Spacer(),
                       GestureDetector(
-                        onTap: () => context.push("/homepage"),
+                        onTap: () => context.push("/forgotPassword"),
                         child: Text(
                           AppStrings.loginForgotPassword,
                           style: TextStyle(

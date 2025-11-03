@@ -9,7 +9,6 @@ import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_customer/shared/viewmodels/theme_provider.dart';
 import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
-import 'package:grab_go_customer/features/auth/model/user_model.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -457,7 +456,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                           context.push("/restaurantRegistration");
                         }),
                         itemTile("Notifications", Assets.icons.bell, context, () {
-                          //Do nothing for now
+                          context.push("/notification");
                         }),
                         itemTile("Help & Support", Assets.icons.headsetHelp, context, () {
                           //Do nothing for now

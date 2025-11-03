@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:grab_go_shared/shared/widgets/responsive.dart';
-import 'package:grab_go_shared/shared/utils/colors.dart';
+import 'package:grab_go_restaurant/shared/app_colors.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'svg_icon.dart';
 
@@ -154,7 +154,7 @@ class RestaurantSummaryCards extends StatelessWidget {
               isMobile: isMobile,
             ),
           ),
-          SizedBox(width: Responsive.getCardSpacing(context)),
+          const SizedBox(width: 16),
           Expanded(
             child: _buildSummaryCard(
               context: context,
@@ -168,7 +168,7 @@ class RestaurantSummaryCards extends StatelessWidget {
               isMobile: isMobile,
             ),
           ),
-          SizedBox(width: Responsive.getCardSpacing(context)),
+          const SizedBox(width: 16),
           Expanded(
             child: _buildSummaryCard(
               context: context,
@@ -182,7 +182,7 @@ class RestaurantSummaryCards extends StatelessWidget {
               isMobile: isMobile,
             ),
           ),
-          SizedBox(width: Responsive.getCardSpacing(context)),
+          const SizedBox(width: 16),
           Expanded(
             child: _buildSummaryCard(
               context: context,
@@ -216,7 +216,7 @@ class RestaurantSummaryCards extends StatelessWidget {
       padding: EdgeInsets.all(isMobile ? 16 : 20),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
@@ -232,13 +232,12 @@ class RestaurantSummaryCards extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: EdgeInsets.all(isMobile ? 8 : 10),
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                child: SvgIcon(
-                  svgImage: icon,
-                  width: Responsive.getIconSize(context),
-                  height: Responsive.getIconSize(context),
-                  color: color,
+                width: isMobile ? 28 : 32,
+                height: isMobile ? 28 : 32,
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+                child: Padding(
+                  padding: EdgeInsets.all(isMobile ? 5 : 7),
+                  child: SvgIcon(svgImage: icon, color: color),
                 ),
               ),
               Container(
@@ -247,7 +246,7 @@ class RestaurantSummaryCards extends StatelessWidget {
                   color: isPositive
                       ? AppColors.accentGreen.withValues(alpha: 0.1)
                       : AppColors.errorRed.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   change,
@@ -269,7 +268,7 @@ class RestaurantSummaryCards extends StatelessWidget {
               color: isDark ? AppColors.white : AppColors.primary,
             ),
           ),
-          SizedBox(height: 4),
+          SizedBox(height: isMobile ? 12 : 16),
           Text(
             title,
             style: GoogleFonts.lato(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.grey),

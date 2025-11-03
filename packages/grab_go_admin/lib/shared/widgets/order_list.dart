@@ -19,9 +19,9 @@ class _OrderListState extends State<OrderList> {
       id: '#12345',
       number: '1',
       date: 'Jan 24th, 2020',
-      customerName: 'Roberto Carlo',
-      location: 'Corner Street 5th Londo',
-      amount: '\$34.20',
+      customerName: 'Abban Justice',
+      location: 'Kasoa Mellinnium City, Sector 4',
+      amount: 'GHC 34.20',
       status: 'New Order',
       statusColor: 'primary',
     ),
@@ -29,9 +29,9 @@ class _OrderListState extends State<OrderList> {
       id: '#12366',
       number: '2',
       date: 'Jan 22th, 2020',
-      customerName: 'Rohmad Khoir',
-      location: 'Lando Street 5th Yogos',
-      amount: '\$44.25',
+      customerName: 'Maame Ama',
+      location: 'Tema Community 10',
+      amount: 'GHC 44.25',
       status: 'On Delivery',
       statusColor: 'blueAccent',
     ),
@@ -39,9 +39,9 @@ class _OrderListState extends State<OrderList> {
       id: '#12378',
       number: '3',
       date: 'Jan 20th, 2020',
-      customerName: 'Sarah Wilson',
+      customerName: 'Kwame Adu',
       location: 'Main Street 3rd Accra',
-      amount: '\$28.50',
+      amount: 'GHC 28.50',
       status: 'Refund',
       statusColor: 'errorRed',
     ),
@@ -69,7 +69,6 @@ class _OrderListState extends State<OrderList> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -114,7 +113,6 @@ class _OrderListState extends State<OrderList> {
             ],
           ),
           if (isMobile) ...[
-            // Mobile timeframe selector
             const SizedBox(height: 12),
             Row(
               children: ['Monthly', 'Weekly', 'Today'].map((timeframe) {
@@ -155,7 +153,6 @@ class _OrderListState extends State<OrderList> {
             ),
           ],
           SizedBox(height: isMobile ? 16 : 20),
-          // Content based on screen size
           if (isMobile)
             ...orders.map((order) => _buildMobileOrderCard(order, isDark)).toList()
           else
@@ -168,7 +165,6 @@ class _OrderListState extends State<OrderList> {
   Widget _buildTableLayout(bool isDark, bool isTablet) {
     return Column(
       children: [
-        // Table Header
         Container(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
           decoration: BoxDecoration(
@@ -188,8 +184,7 @@ class _OrderListState extends State<OrderList> {
             ],
           ),
         ),
-        // Table Rows
-        ...orders.map((order) => _buildTableRow(order, isDark, isTablet)).toList(),
+        ...orders.map((order) => _buildTableRow(order, isDark, isTablet)),
       ],
     );
   }
@@ -208,7 +203,6 @@ class _OrderListState extends State<OrderList> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header row with ID and Status
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -242,14 +236,12 @@ class _OrderListState extends State<OrderList> {
             ],
           ),
           const SizedBox(height: 12),
-          // Customer info
           _buildMobileInfoRow('Customer', order.customerName, isDark),
           const SizedBox(height: 8),
           _buildMobileInfoRow('Location', order.location, isDark),
           const SizedBox(height: 8),
           _buildMobileInfoRow('Date', order.date, isDark),
           const SizedBox(height: 12),
-          // Amount and action row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

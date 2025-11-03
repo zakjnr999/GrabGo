@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
-import 'package:grab_go_shared/shared/utils/colors.dart';
+import 'package:grab_go_restaurant/shared/app_colors_extension.dart';
+import 'package:grab_go_restaurant/shared/app_colors.dart';
+import 'package:grab_go_shared/shared/utils/constants.dart';
+import 'package:grab_go_shared/shared/widgets/app_text_input_panels.dart';
 import 'package:grab_go_shared/shared/widgets/responsive.dart';
-import '../widgets/text_input.dart';
 import '../widgets/svg_icon.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 
@@ -27,7 +28,7 @@ class OpeningHoursSelection extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isMobile = Responsive.isMobile(context);
-
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -36,7 +37,7 @@ class OpeningHoursSelection extends StatelessWidget {
           style: GoogleFonts.lato(
             fontSize: Responsive.getFontSize(context, isMobile ? 14 : 16),
             fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
+            color: colors.text,
           ),
         ),
         SizedBox(height: isMobile ? 12 : 16),
@@ -53,12 +54,11 @@ class OpeningHoursSelection extends StatelessWidget {
                     style: GoogleFonts.lato(
                       fontSize: Responsive.getFontSize(context, isMobile ? 12 : 14),
                       fontWeight: FontWeight.w500,
-                      color: colors.textPrimary,
+                      color: colors.text,
                     ),
                   ),
                 ),
                 SizedBox(width: isMobile ? 12 : 16),
-                // Closed toggle
                 GestureDetector(
                   onTap: () => onClosedToggled(day, !isClosed),
                   child: Container(
@@ -73,13 +73,13 @@ class OpeningHoursSelection extends StatelessWidget {
                             : AppColors.accentOrange.withValues(alpha: 1),
                         width: 1,
                       ),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius12),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         SvgIcon(
-                          svgImage: isClosed ? Assets.icons.boxIso : Assets.icons.check,
+                          svgImage: isClosed ? Assets.icons.xmark : Assets.icons.check,
                           width: 16,
                           height: 16,
                           color: isClosed ? AppColors.errorRed : AppColors.accentOrange,
@@ -98,18 +98,15 @@ class OpeningHoursSelection extends StatelessWidget {
                   ),
                 ),
                 SizedBox(width: isMobile ? 12 : 16),
-                // Hours input (only show if not closed)
                 if (!isClosed) ...[
                   Expanded(
-                    child: TextInput(
+                    child: AppTextInputPanels(
                       controller: TextEditingController(text: openingHours[day] ?? '09:00 - 22:00'),
                       label: null,
                       hintText: '09:00 - 22:00',
                       borderColor: colors.border,
-                      fillColor: Theme.of(context).brightness == Brightness.dark
-                          ? AppColors.darkBackground
-                          : AppColors.white,
-                      borderRadius: 8,
+                      fillColor: isDark ? AppColors.darkBackground : AppColors.secondaryBackground,
+                      borderRadius: KBorderSize.borderRadius12,
                       contentPadding: EdgeInsets.all(isMobile ? 10 : 12),
                       onTap: () => onHoursSelected(day),
                       readOnly: true,
@@ -129,11 +126,9 @@ class OpeningHoursSelection extends StatelessWidget {
                     child: Container(
                       padding: EdgeInsets.all(isMobile ? 10 : 12),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? AppColors.darkBackground
-                            : AppColors.white,
+                        color: isDark ? AppColors.darkBackground : AppColors.secondaryBackground,
                         border: Border.all(color: colors.border, width: 1),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius12),
                       ),
                       child: Text(
                         'Restaurant Closed',

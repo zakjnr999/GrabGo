@@ -1,16 +1,15 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:grab_go_restaurant/features/dashboard/view/restaurant_dashboard.dart';
 import 'package:grab_go_restaurant/features/setup/view/restaurant_setup_screen.dart';
-import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
-import 'package:grab_go_shared/shared/utils/colors.dart';
+import 'package:grab_go_restaurant/shared/widgets/app_button.dart';
+import 'package:grab_go_restaurant/shared/app_colors.dart';
+import 'package:grab_go_shared/shared/utils/constants.dart';
+import 'package:grab_go_shared/shared/utils/responsive.dart';
+import 'package:grab_go_shared/shared/utils/strings.dart';
+import 'package:grab_go_shared/shared/widgets/app_text_input_panels.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
-import 'package:grab_go_shared/shared/widgets/responsive.dart';
-import '../../../shared/widgets/svg_icon.dart';
-import '../../../shared/widgets/app_button.dart';
-import '../../../shared/widgets/text_input.dart';
+import 'package:grab_go_restaurant/shared/app_colors_extension.dart';
 
 class LandingScreen extends StatefulWidget {
   const LandingScreen({super.key});
@@ -44,7 +43,7 @@ class _LandingScreenState extends State<LandingScreen> {
             child: Container(
               decoration: BoxDecoration(
                 color: isDark ? AppColors.darkSurface : AppColors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
                 boxShadow: [
                   BoxShadow(
                     color: isDark ? Colors.black.withValues(alpha: 0.3) : AppColors.accentOrange.withValues(alpha: 0.1),
@@ -62,13 +61,13 @@ class _LandingScreenState extends State<LandingScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo and Title
                   Center(
-                    child: Image.asset(
-                      Assets.icons.appIcon.path,
+                    child: SvgPicture.asset(
+                      Assets.icons.chefHat,
+                      package: 'grab_go_shared',
                       width: isMobile ? 60 : (isTablet ? 70 : 80),
                       height: isMobile ? 60 : (isTablet ? 70 : 80),
-                      color: AppColors.accentOrange,
+                      colorFilter: ColorFilter.mode(AppColors.accentOrange, BlendMode.srcIn),
                     ),
                   ),
                   SizedBox(height: isMobile ? 20 : 28),
@@ -91,129 +90,74 @@ class _LandingScreenState extends State<LandingScreen> {
                       color: AppColors.grey,
                     ),
                   ),
-                  SizedBox(height: isMobile ? 24 : 32),
+                  SizedBox(height: Responsive.getCardSpacing(context)),
 
-                  TextInput(
+                  AppTextInputPanels(
                     controller: emailController,
-                    label: 'Your Email Address',
-                    hintText: 'example@email.com',
+                    label: AppStrings.loginEmailLabel,
+                    hintText: AppStrings.loginEmailHint,
                     borderColor: colors.border,
-                    fillColor: isDark ? AppColors.darkBackground : AppColors.white,
-                    borderRadius: isMobile ? 40.0 : 50.0,
-                    contentPadding: EdgeInsets.all(isMobile ? 12 : 15),
+                    fillColor: isDark ? AppColors.darkBackground : AppColors.secondaryBackground,
+                    borderRadius: KBorderSize.borderRadius15,
+                    contentPadding: EdgeInsets.all(KSpacing.md15),
                     keyboardType: TextInputType.emailAddress,
                     errorText: emailError,
                     prefixIcon: Padding(
-                      padding: EdgeInsets.all(isMobile ? 10 : 12),
-                      child: SvgIcon(
-                        svgImage: Assets.icons.mail,
-                        width: Responsive.getIconSize(context),
-                        height: Responsive.getIconSize(context),
-                        color: colors.textSecondary,
+                      padding: EdgeInsets.all(KSpacing.md12),
+                      child: SvgPicture.asset(
+                        Assets.icons.mail,
+                        package: 'grab_go_shared',
+                        width: KIconSize.md,
+                        height: KIconSize.md,
+                        colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                       ),
                     ),
                   ),
                   SizedBox(height: isMobile ? 16 : 20),
-                  // Password Field - Custom TextField
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Your Password',
-                        style: GoogleFonts.lato(
-                          fontSize: Responsive.getFontSize(context, isMobile ? 10 : 12),
-                          fontWeight: FontWeight.w600,
-                          color: colors.textPrimary,
+                  AppTextInputPanels(
+                    controller: passwordController,
+                    label: AppStrings.loginPasswordLabel,
+                    hintText: AppStrings.loginPasswordHint,
+                    borderColor: colors.border,
+                    fillColor: isDark ? AppColors.darkBackground : AppColors.secondaryBackground,
+                    borderRadius: KBorderSize.borderRadius15,
+                    contentPadding: EdgeInsets.all(KSpacing.md15),
+                    keyboardType: TextInputType.text,
+                    obscureText: isPasswordVisible,
+                    errorText: passwordError,
+                    prefixIcon: Padding(
+                      padding: EdgeInsets.all(KSpacing.md12),
+                      child: SvgPicture.asset(
+                        Assets.icons.lock,
+                        package: 'grab_go_shared',
+                        width: KIconSize.md,
+                        height: KIconSize.md,
+                        colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                      ),
+                    ),
+                    suffixIcon: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          isPasswordVisible = !isPasswordVisible;
+                        });
+                      },
+                      child: Padding(
+                        padding: EdgeInsets.all(KSpacing.md12),
+                        child: SvgPicture.asset(
+                          isPasswordVisible ? Assets.icons.eyeClosed : Assets.icons.eye,
+                          package: 'grab_go_shared',
                         ),
                       ),
-                      SizedBox(height: isMobile ? 6 : 8),
-                      TextField(
-                        controller: passwordController,
-                        keyboardType: TextInputType.visiblePassword,
-                        obscureText: isPasswordVisible,
-                        cursorColor: AppColors.accentOrange,
-                        style: GoogleFonts.lato(
-                          fontSize: Responsive.getFontSize(context, isMobile ? 13 : 14),
-                          color: colors.textPrimary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: isDark ? AppColors.darkBackground : AppColors.white,
-                          hintText: 'Minimum 8 characters',
-                          hintStyle: GoogleFonts.lato(
-                            fontSize: Responsive.getFontSize(context, isMobile ? 12 : 13),
-                            color: colors.textSecondary.withValues(alpha: 0.7),
-                          ),
-                          errorText: passwordError,
-                          errorStyle: GoogleFonts.lato(
-                            fontSize: Responsive.getFontSize(context, 10),
-                            color: colors.error,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          errorMaxLines: 2,
-                          contentPadding: EdgeInsets.all(isMobile ? 12 : 15),
-                          prefixIcon: Padding(
-                            padding: EdgeInsets.all(isMobile ? 10 : 12),
-                            child: SvgIcon(
-                              svgImage: Assets.icons.lock,
-                              width: Responsive.getIconSize(context),
-                              height: Responsive.getIconSize(context),
-                              color: colors.textSecondary,
-                            ),
-                          ),
-                          suffixIcon: GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                isPasswordVisible = !isPasswordVisible;
-                              });
-                            },
-                            child: Padding(
-                              padding: EdgeInsets.all(isMobile ? 10 : 12),
-                              child: SvgIcon(
-                                svgImage: isPasswordVisible ? Assets.icons.eyeClosed : Assets.icons.eye,
-                                width: Responsive.getIconSize(context),
-                                height: Responsive.getIconSize(context),
-                                color: colors.textSecondary,
-                              ),
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(isMobile ? 40.0 : 50.0),
-                            borderSide: BorderSide(
-                              color: passwordError != null ? colors.error : colors.border,
-                              width: 1,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(isMobile ? 40.0 : 50.0),
-                            borderSide: BorderSide(
-                              color: passwordError != null ? colors.error : AppColors.accentOrange,
-                              width: 1,
-                            ),
-                          ),
-                          errorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(isMobile ? 40.0 : 50.0),
-                            borderSide: BorderSide(color: colors.error, width: 1),
-                          ),
-                          focusedErrorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(isMobile ? 40.0 : 50.0),
-                            borderSide: BorderSide(color: colors.error, width: 1),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                   SizedBox(height: isMobile ? 28 : 36),
-                  // Login Button
                   AppButton(
                     buttonText: 'LOGIN',
                     onPressed: () {
-                      // Handle login logic here
                       _handleLogin();
                     },
                     width: double.infinity,
-                    borderRadius: isMobile ? 40.0 : 50.0,
+                    borderRadius: KBorderSize.borderRadius15,
                     padding: EdgeInsets.symmetric(vertical: isMobile ? 18 : 20),
                   ),
                 ],
@@ -226,7 +170,6 @@ class _LandingScreenState extends State<LandingScreen> {
   }
 
   void _handleLogin() {
-    // Basic validation
     setState(() {
       emailError = null;
       passwordError = null;
@@ -260,12 +203,6 @@ class _LandingScreenState extends State<LandingScreen> {
 
     if (hasErrors) {
       return;
-    }
-
-    bool isSetupComplete = _checkRestaurantSetupStatus(emailController.text);
-
-    if (isSetupComplete) {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const RestaurantDashboard()));
     } else {
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const RestaurantSetupScreen()));
     }
@@ -273,9 +210,5 @@ class _LandingScreenState extends State<LandingScreen> {
 
   bool _isValidEmail(String email) {
     return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
-  }
-
-  bool _checkRestaurantSetupStatus(String email) {
-    return false;
   }
 }

@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:grab_go_shared/shared/utils/colors.dart';
+import 'package:grab_go_restaurant/shared/app_colors.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import '../models/restaurant_navigation_page.dart';
 import 'svg_icon.dart';

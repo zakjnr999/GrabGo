@@ -36,7 +36,7 @@ class SummaryCards extends StatelessWidget {
         value: '240',
         percentage: '80%',
         progress: 0.80,
-        icon: Assets.icons.alarm,
+        icon: Assets.icons.user,
         color: 'grey',
       ),
       SummaryCard(

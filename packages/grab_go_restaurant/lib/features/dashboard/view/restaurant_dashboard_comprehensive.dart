@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:grab_go_restaurant/shared/widgets/orders_chart.dart';
 import 'package:grab_go_restaurant/shared/widgets/revenue_chart.dart';
-import 'package:grab_go_shared/shared/utils/colors.dart';
+import 'package:grab_go_restaurant/shared/app_colors.dart';
+import 'package:grab_go_shared/shared/widgets/app_dialog_panels.dart';
 import '../../../shared/models/restaurant_navigation_page.dart';
 import 'package:grab_go_shared/shared/widgets/responsive.dart';
 import '../../../shared/widgets/restaurant_sidebar.dart';
@@ -39,9 +39,7 @@ class _RestaurantDashboardComprehensiveState extends State<RestaurantDashboardCo
         drawer: _buildMobileDrawer(),
         body: Column(
           children: [
-            // Header
             _buildHeader(true),
-            // Main Content Area
             Expanded(child: _buildCurrentPage()),
           ],
         ),
@@ -57,15 +55,11 @@ class _RestaurantDashboardComprehensiveState extends State<RestaurantDashboardCo
   Widget _buildDesktopLayout() {
     return Row(
       children: [
-        // Sidebar
         _buildSidebar(),
-        // Main Content
         Expanded(
           child: Column(
             children: [
-              // Header
               _buildHeader(false),
-              // Main Content Area
               Expanded(child: _buildCurrentPage()),
             ],
           ),
@@ -88,7 +82,7 @@ class _RestaurantDashboardComprehensiveState extends State<RestaurantDashboardCo
           currentPage = page;
         });
       },
-      onLogout: () => _logout(context),
+      onLogout: () => _logout(),
     );
   }
 
@@ -106,7 +100,7 @@ class _RestaurantDashboardComprehensiveState extends State<RestaurantDashboardCo
       },
       currentPage: currentPage,
       isMobile: isMobile,
-      onLogout: () => _logout(context),
+      onLogout: () => _logout(),
     );
   }
 
@@ -122,7 +116,7 @@ class _RestaurantDashboardComprehensiveState extends State<RestaurantDashboardCo
       onClose: () {
         Navigator.of(context).pop();
       },
-      onLogout: () => _logout(context),
+      onLogout: () => _logout(),
     );
   }
 
@@ -135,13 +129,10 @@ class _RestaurantDashboardComprehensiveState extends State<RestaurantDashboardCo
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Summary Cards
               const RestaurantSummaryCards(),
               SizedBox(height: Responsive.getCardSpacing(context)),
-              // Charts Section
               _buildChartsSection(),
               SizedBox(height: Responsive.getCardSpacing(context)),
-              // Order List
               const RestaurantOrderList(),
             ],
           ),
@@ -162,7 +153,6 @@ class _RestaurantDashboardComprehensiveState extends State<RestaurantDashboardCo
     final isTablet = Responsive.isTablet(context);
 
     if (isMobile || isTablet) {
-      // Vertical list for mobile and tablet
       return Column(
         children: [
           const RevenueChart(),
@@ -171,51 +161,31 @@ class _RestaurantDashboardComprehensiveState extends State<RestaurantDashboardCo
         ],
       );
     } else {
-      // Grid layout for desktop and large desktop
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Revenue Chart
           const Expanded(child: RevenueChart()),
-          SizedBox(width: Responsive.getCardSpacing(context)),
-          // Orders Summary Chart
+          SizedBox(width: 16),
           const Expanded(child: OrdersChart()),
         ],
       );
     }
   }
 
-  void _logout(BuildContext context) {
-    showDialog(
+  Future<void> _logout() async {
+    final logout = await AppDialogPanels.show(
       context: context,
-      builder: (BuildContext context) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        return AlertDialog(
-          backgroundColor: isDark ? AppColors.darkSurface : AppColors.white,
-          title: Text(
-            'Logout',
-            style: GoogleFonts.lato(color: isDark ? AppColors.white : AppColors.primary, fontWeight: FontWeight.w600),
-          ),
-          content: Text('Are you sure you want to logout?', style: GoogleFonts.lato(color: AppColors.grey)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancel', style: GoogleFonts.lato(color: AppColors.grey)),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).pushReplacementNamed('/');
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accentOrange,
-                foregroundColor: AppColors.white,
-              ),
-              child: Text('Logout', style: GoogleFonts.lato(fontWeight: FontWeight.w600)),
-            ),
-          ],
-        );
-      },
+      title: 'Logout',
+      message: 'Are you sure you want to logout?',
+      type: AppDialogType.logout,
+      primaryButtonText: 'Logout',
+      secondaryButtonText: 'Cancel',
+      primaryButtonColor: AppColors.accentOrange,
+      onPrimaryPressed: () => Navigator.of(context).pop(true),
+      onSecondaryPressed: () => Navigator.of(context).pop(false),
     );
+    if (logout == true && mounted) {
+      Navigator.of(context).pushReplacementNamed('/');
+    }
   }
 }

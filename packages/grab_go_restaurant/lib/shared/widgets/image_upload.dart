@@ -5,8 +5,8 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
-import 'package:grab_go_shared/shared/utils/colors.dart';
+import 'package:grab_go_restaurant/shared/app_colors_extension.dart';
+import 'package:grab_go_restaurant/shared/app_colors.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'svg_icon.dart';
 import 'package:image_picker/image_picker.dart';
@@ -168,7 +168,7 @@ class _ImageUploadWidgetState extends State<ImageUploadWidget> {
         children: [
           Text(
             widget.label,
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colors.textPrimary),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colors.text),
           ),
           SizedBox(height: 8),
           GestureDetector(
@@ -249,7 +249,7 @@ class _ImageUploadWidgetState extends State<ImageUploadWidget> {
                         SizedBox(height: 8),
                         Text(
                           "Upload ${widget.label}",
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colors.text),
                         ),
                         SizedBox(height: 4),
                         Text(

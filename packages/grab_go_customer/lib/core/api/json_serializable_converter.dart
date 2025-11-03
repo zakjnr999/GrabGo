@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:chopper/chopper.dart';
 import 'package:flutter/foundation.dart';
-import 'package:grab_go_customer/features/auth/model/user_model.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurant_response.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 

@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../app_colors.dart';
@@ -48,7 +46,7 @@ class Sidebar extends StatelessWidget {
               decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(4)),
               child: Center(
                 child: Text(
-                  'G',
+                  'Z',
                   style: GoogleFonts.lato(
                     color: AppColors.primary,
                     fontSize: Responsive.isTablet(context) ? 16 : 20,
@@ -68,7 +66,7 @@ class Sidebar extends StatelessWidget {
               Container(
                 height: 1,
                 margin: EdgeInsets.symmetric(horizontal: Responsive.isTablet(context) ? 12 : 16, vertical: 8),
-                color: isDark ? AppColors.white.withOpacity(0.1) : AppColors.white.withOpacity(0.2),
+                color: isDark ? AppColors.white.withValues(alpha: 0.1) : AppColors.white.withValues(alpha: 0.2),
               ),
               _buildLogoutButton(context),
               SizedBox(height: Responsive.isTablet(context) ? 16 : 20),
@@ -105,7 +103,7 @@ class Sidebar extends StatelessWidget {
               boxShadow: isSelected
                   ? [
                       BoxShadow(
-                        color: AppColors.accentOrange.withOpacity(0.3),
+                        color: AppColors.accentOrange.withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),

@@ -4,15 +4,16 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
+import '../../../shared/app_colors_extension.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/image_upload.dart';
 import '../../../shared/widgets/svg_icon.dart';
 import '../../../shared/widgets/text_input.dart';
-import 'package:grab_go_shared/shared/utils/colors.dart';
+import 'package:grab_go_restaurant/shared/app_colors.dart';
 import 'package:grab_go_shared/shared/widgets/responsive.dart';
+import 'package:grab_go_shared/shared/widgets/app_dialog_panels.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
-import 'package:grab_go_shared/shared/widgets/animated_tab_bar.dart';
+import '../../../shared/widgets/animated_tab_bar.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -220,7 +221,6 @@ class _MenuScreenState extends State<MenuScreen> {
             _selectedImage = image;
             if (image != null) {
               _imageError = null;
-              // For web images, set dummy bytes
               if (image.path.startsWith('web_image_')) {
                 _selectedImageBytes = Uint8List.fromList([1]);
               }
@@ -233,100 +233,41 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  void _showDeleteConfirmation(Map<String, dynamic> item) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isMobile = Responsive.isMobile(context);
+  Future<void> _showDeleteConfirmation(Map<String, dynamic> item) async {
     final colors = context.appColors;
 
-    showDialog(
+    await AppDialogPanels.show(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        backgroundColor: isDark ? AppColors.darkSurface : AppColors.white,
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: colors.error.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: SvgIcon(svgImage: Assets.icons.binMinusIn, width: 20, height: 20, color: colors.error),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Delete Menu Item',
-                style: GoogleFonts.lato(
-                  fontSize: Responsive.getFontSize(context, isMobile ? 16 : 18),
-                  fontWeight: FontWeight.bold,
-                  color: colors.textPrimary,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Are you sure you want to delete "${item['name']}"?',
-              style: GoogleFonts.lato(
-                fontSize: Responsive.getFontSize(context, isMobile ? 14 : 16),
-                color: colors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'This action cannot be undone.',
-              style: GoogleFonts.lato(
-                fontSize: Responsive.getFontSize(context, isMobile ? 12 : 14),
-                color: colors.textPrimary,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          AppButton(
-            buttonText: 'Cancel',
-            onPressed: () => Navigator.pop(context),
-            backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightSurface,
-            textColor: isDark ? AppColors.white : AppColors.primary,
-            borderRadius: 8,
-            padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 14, horizontal: 20),
-          ),
-          AppButton(
-            buttonText: 'Delete',
-            onPressed: () {
-              setState(() {
-                menuItems.removeWhere((menuItem) => menuItem['id'] == item['id']);
-              });
-              Navigator.pop(context);
+      title: 'Delete Menu Item',
+      message: 'Are you sure you want to delete "${item['name']}"? This action cannot be undone.',
+      type: AppDialogType.warning,
+      icon: Assets.icons.binMinusIn,
+      primaryButtonText: 'Delete',
+      secondaryButtonText: 'Cancel',
+      primaryButtonColor: colors.error,
+      onPrimaryPressed: () {
+        setState(() {
+          menuItems.removeWhere((menuItem) => menuItem['id'] == item['id']);
+        });
+        Navigator.of(context).pop(true);
 
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Menu item "${item['name']}" deleted successfully'),
-                  backgroundColor: colors.error,
-                  action: SnackBarAction(
-                    label: 'Undo',
-                    textColor: AppColors.white,
-                    onPressed: () {
-                      setState(() {
-                        menuItems.add(item);
-                      });
-                    },
-                  ),
-                ),
-              );
-            },
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Menu item "${item['name']}" deleted successfully'),
             backgroundColor: colors.error,
-            textColor: AppColors.white,
-            borderRadius: 8,
-            padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 14, horizontal: 20),
+            action: SnackBarAction(
+              label: 'Undo',
+              textColor: AppColors.white,
+              onPressed: () {
+                setState(() {
+                  menuItems.add(item);
+                });
+              },
+            ),
           ),
-        ],
-      ),
+        );
+      },
+      onSecondaryPressed: () => Navigator.of(context).pop(false),
     );
   }
 
@@ -357,7 +298,6 @@ class _MenuScreenState extends State<MenuScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Header
             Container(
               padding: EdgeInsets.fromLTRB(
                 isMobile ? 16 : 24,
@@ -371,18 +311,17 @@ class _MenuScreenState extends State<MenuScreen> {
                   'Manage your restaurant\'s menu items',
                   style: GoogleFonts.lato(
                     fontSize: Responsive.getFontSize(context, isMobile ? 12 : 14),
-                    color: isDark ? AppColors.grey : AppColors.grey,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.white : AppColors.primary,
                   ),
                 ),
               ),
             ),
 
-            // Content
             Padding(
               padding: EdgeInsets.all(isMobile ? 16 : 24),
               child: Column(
                 children: [
-                  // Add Item Button and Tab Bar Row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [
@@ -401,21 +340,17 @@ class _MenuScreenState extends State<MenuScreen> {
                       AppButton(
                         buttonText: 'Add Item',
                         onPressed: () => _showAddDishDialog(),
-                        borderRadius: 8,
-                        padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 14, horizontal: isMobile ? 16 : 20),
-                        icon: SvgIcon(
-                          svgImage: Assets.icons.packageDelivered.path,
-                          width: 20,
-                          height: 20,
-                          color: AppColors.white,
-                        ),
+                        borderRadius: 4,
+                        backgroundColor: AppColors.accentOrange,
+                        textColor: AppColors.white,
+                        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        icon: (SvgIcon(svgImage: Assets.icons.plus, width: 18, height: 18, color: AppColors.white)),
                       ),
                     ],
                   ),
 
-                  SizedBox(height: isMobile ? 24 : 32),
+                  SizedBox(height: Responsive.getCardSpacing(context)),
 
-                  // Menu Items Grid
                   _buildMenuItemsGrid(isDark, isMobile, isTablet),
                 ],
               ),
@@ -476,11 +411,13 @@ class _MenuScreenState extends State<MenuScreen> {
               width: double.infinity,
               decoration: BoxDecoration(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                image: DecorationImage(image: AssetImage(item['image']), fit: BoxFit.cover),
+                image: DecorationImage(
+                  image: AssetImage(item['image'], package: 'grab_go_shared'),
+                  fit: BoxFit.cover,
+                ),
               ),
               child: Stack(
                 children: [
-                  // Availability overlay
                   if (!item['isAvailable'])
                     Container(
                       decoration: BoxDecoration(
@@ -495,7 +432,6 @@ class _MenuScreenState extends State<MenuScreen> {
                       ),
                     ),
 
-                  // Rating badge
                   Positioned(
                     top: 8,
                     right: 8,
@@ -531,13 +467,12 @@ class _MenuScreenState extends State<MenuScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Name
                   Text(
                     item['name'],
                     style: GoogleFonts.lato(
                       fontSize: isMobile ? 14 : 16,
                       fontWeight: FontWeight.bold,
-                      color: colors.textPrimary,
+                      color: colors.text,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -545,7 +480,6 @@ class _MenuScreenState extends State<MenuScreen> {
 
                   const SizedBox(height: 4),
 
-                  // Description
                   Text(
                     item['description'],
                     style: GoogleFonts.lato(fontSize: isMobile ? 10 : 12, color: colors.textSecondary),
@@ -555,7 +489,6 @@ class _MenuScreenState extends State<MenuScreen> {
 
                   const Spacer(),
 
-                  // Price and Actions
                   Row(
                     children: [
                       Text(
@@ -569,7 +502,6 @@ class _MenuScreenState extends State<MenuScreen> {
                       const Spacer(),
                       Row(
                         children: [
-                          // Availability toggle
                           GestureDetector(
                             onTap: () => _toggleItemAvailability(item['id']),
                             child: Container(
@@ -578,7 +510,7 @@ class _MenuScreenState extends State<MenuScreen> {
                                 color: item['isAvailable']
                                     ? colors.error.withValues(alpha: 0.1)
                                     : colors.success.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(6),
+                                borderRadius: BorderRadius.circular(4),
                               ),
                               child: SvgIcon(
                                 svgImage: item['isAvailable'] ? Assets.icons.eyeClosed : Assets.icons.eye,
@@ -591,14 +523,12 @@ class _MenuScreenState extends State<MenuScreen> {
                           const SizedBox(width: 4),
                           // Edit button
                           GestureDetector(
-                            onTap: () {
-                              // Edit functionality
-                            },
+                            onTap: () {},
                             child: Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
                                 color: AppColors.accentOrange.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(6),
+                                borderRadius: BorderRadius.circular(4),
                               ),
                               child: SvgIcon(
                                 svgImage: Assets.icons.editPencil,
@@ -609,14 +539,13 @@ class _MenuScreenState extends State<MenuScreen> {
                             ),
                           ),
                           const SizedBox(width: 4),
-                          // Delete button
                           GestureDetector(
                             onTap: () => _showDeleteConfirmation(item),
                             child: Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
                                 color: colors.error.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(6),
+                                borderRadius: BorderRadius.circular(4),
                               ),
                               child: SvgIcon(
                                 svgImage: Assets.icons.binMinusIn,
@@ -667,11 +596,7 @@ class _MenuScreenState extends State<MenuScreen> {
             SizedBox(height: isMobile ? 16 : 20),
             Text(
               'No dishes found',
-              style: GoogleFonts.lato(
-                fontSize: isMobile ? 18 : 20,
-                fontWeight: FontWeight.bold,
-                color: colors.textPrimary,
-              ),
+              style: GoogleFonts.lato(fontSize: isMobile ? 18 : 20, fontWeight: FontWeight.bold, color: colors.text),
             ),
             SizedBox(height: isMobile ? 8 : 12),
             Text(
@@ -729,124 +654,210 @@ class _AddDishDialogState extends State<_AddDishDialog> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isMobile = Responsive.isMobile(context);
     final colors = context.appColors;
+    final screenHeight = MediaQuery.of(context).size.height;
 
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      backgroundColor: isDark ? AppColors.darkSurface : AppColors.white,
-      contentPadding: EdgeInsets.all(24),
-      content: SizedBox(
-        width: isMobile ? 320 : 400,
-        child: SingleChildScrollView(
-          physics: const ClampingScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Add New Dish',
-                style: GoogleFonts.lato(
-                  fontSize: Responsive.getFontSize(context, isMobile ? 18 : 20),
-                  fontWeight: FontWeight.bold,
-                  color: colors.textPrimary,
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: EdgeInsets.all(isMobile ? 16 : 40),
+      child: Container(
+        width: isMobile ? double.infinity : 600,
+        constraints: BoxConstraints(maxHeight: screenHeight * 0.9),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.darkSurface : AppColors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10)),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: EdgeInsets.all(isMobile ? 20 : 24),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkBackground : AppColors.secondaryBackground,
+                borderRadius: const BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Add New Dish',
+                      style: GoogleFonts.lato(
+                        fontSize: isMobile ? 20 : 24,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? AppColors.white : AppColors.primary,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: Icon(Icons.close, color: isDark ? AppColors.white : AppColors.grey),
+                  ),
+                ],
+              ),
+            ),
+            Flexible(
+              child: SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                padding: EdgeInsets.all(isMobile ? 20 : 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Enter the dish details below to add it to your restaurant\'s menu.',
+                      style: GoogleFonts.lato(
+                        fontSize: Responsive.getFontSize(context, isMobile ? 10 : 12),
+                        color: AppColors.grey,
+                      ),
+                    ),
+                    SizedBox(height: Responsive.getCardSpacing(context)),
+
+                    // Name field
+                    TextInput(
+                      controller: widget.nameController,
+                      label: 'Name *',
+                      hintText: 'e.g., Grilled Chicken',
+                      borderColor: colors.border.withValues(alpha: 1),
+                      fillColor: isDark ? AppColors.darkBackground : AppColors.white,
+                      borderRadius: 12,
+                      contentPadding: EdgeInsets.all(isMobile ? 12 : 16),
+                      keyboardType: TextInputType.text,
+                      errorText: widget.nameError,
+                      onChanged: (value) {
+                        if (widget.nameError != null && value.trim().isNotEmpty) {
+                          widget.onClearErrors();
+                        }
+                      },
+                    ),
+                    SizedBox(height: isMobile ? 16 : 20),
+
+                    // Price field
+                    TextInput(
+                      controller: widget.priceController,
+                      label: 'Price *',
+                      hintText: 'e.g., 18.99',
+                      borderColor: colors.border.withValues(alpha: 1),
+                      fillColor: isDark ? AppColors.darkBackground : AppColors.white,
+                      borderRadius: 12,
+                      contentPadding: EdgeInsets.all(isMobile ? 12 : 16),
+                      keyboardType: TextInputType.number,
+                      errorText: widget.priceError,
+                      onChanged: (value) {
+                        if (widget.priceError != null && value.trim().isNotEmpty) {
+                          widget.onClearErrors();
+                        }
+                      },
+                    ),
+                    SizedBox(height: isMobile ? 16 : 20),
+
+                    // Description field
+                    TextInput(
+                      controller: widget.descriptionController,
+                      label: 'Description',
+                      hintText: 'e.g., Tender grilled chicken breast with herbs',
+                      borderColor: colors.border.withValues(alpha: 1),
+                      fillColor: isDark ? AppColors.darkBackground : AppColors.white,
+                      borderRadius: 12,
+                      maxLines: 4,
+                      contentPadding: EdgeInsets.all(isMobile ? 12 : 16),
+                      keyboardType: TextInputType.text,
+                    ),
+                    SizedBox(height: Responsive.getCardSpacing(context)),
+
+                    // Image upload
+                    ImageUploadWidget(
+                      label: "Dish Image *",
+                      hintText: "Upload an image of the dish",
+                      height: 180,
+                      initialImage: widget.selectedImage,
+                      onImageSelected: widget.onImageSelected,
+                      successMessage: "Image uploaded successfully",
+                    ),
+                    if (widget.imageError != null) ...[
+                      SizedBox(height: 4),
+                      Text(
+                        widget.imageError!,
+                        style: TextStyle(fontSize: 10, color: colors.error, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                    SizedBox(height: Responsive.getCardSpacing(context)),
+                  ],
                 ),
               ),
-              Text(
-                'Enter the dish details below to add it to your restaurant\'s menu.',
-                style: GoogleFonts.lato(
-                  fontSize: Responsive.getFontSize(context, isMobile ? 10 : 12),
-                  color: AppColors.grey,
+            ),
+            Container(
+              padding: EdgeInsets.all(isMobile ? 16 : 20),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkBackground : AppColors.secondaryBackground,
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(12),
+                  bottomRight: Radius.circular(12),
                 ),
               ),
-              SizedBox(height: isMobile ? 24 : 32),
-
-              // Name field
-              TextInput(
-                controller: widget.nameController,
-                label: 'Name *',
-                hintText: 'e.g., Grilled Chicken',
-                borderColor: colors.border.withValues(alpha: 1),
-                fillColor: isDark ? AppColors.darkBackground : AppColors.white,
-                borderRadius: 12,
-                contentPadding: EdgeInsets.all(isMobile ? 12 : 16),
-                keyboardType: TextInputType.text,
-                errorText: widget.nameError,
-                onChanged: (value) {
-                  if (widget.nameError != null && value.trim().isNotEmpty) {
-                    widget.onClearErrors();
-                  }
-                },
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      height: 50.0,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.darkBackground : AppColors.lightSurface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: colors.border, width: 1.5),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Cancel',
+                          style: GoogleFonts.lato(
+                            fontSize: Responsive.getFontSize(context, 15),
+                            fontWeight: FontWeight.w600,
+                            color: colors.text,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  GestureDetector(
+                    onTap: widget.onAddDish,
+                    child: Container(
+                      height: 50.0,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [AppColors.accentOrange, AppColors.accentOrange.withValues(alpha: 0.8)],
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.accentOrange.withValues(alpha: 0.3),
+                            blurRadius: 15,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Add Dish',
+                          style: GoogleFonts.lato(
+                            fontSize: Responsive.getFontSize(context, 15),
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(height: isMobile ? 16 : 20),
-
-              // Price field
-              TextInput(
-                controller: widget.priceController,
-                label: 'Price *',
-                hintText: 'e.g., 18.99',
-                borderColor: colors.border.withValues(alpha: 1),
-                fillColor: isDark ? AppColors.darkBackground : AppColors.white,
-                borderRadius: 12,
-                contentPadding: EdgeInsets.all(isMobile ? 12 : 16),
-                keyboardType: TextInputType.number,
-                errorText: widget.priceError,
-                onChanged: (value) {
-                  if (widget.priceError != null && value.trim().isNotEmpty) {
-                    widget.onClearErrors();
-                  }
-                },
-              ),
-              SizedBox(height: isMobile ? 16 : 20),
-
-              // Description field
-              TextInput(
-                controller: widget.descriptionController,
-                label: 'Description',
-                hintText: 'e.g., Tender grilled chicken breast with herbs',
-                borderColor: colors.border.withValues(alpha: 1),
-                fillColor: isDark ? AppColors.darkBackground : AppColors.white,
-                borderRadius: 12,
-                maxLines: 4,
-                contentPadding: EdgeInsets.all(isMobile ? 12 : 16),
-                keyboardType: TextInputType.text,
-              ),
-              SizedBox(height: isMobile ? 24 : 32),
-
-              // Image upload
-              ImageUploadWidget(
-                label: "Dish Image *",
-                hintText: "Upload an image of the dish",
-                height: 180,
-                initialImage: widget.selectedImage,
-                onImageSelected: widget.onImageSelected,
-                successMessage: "Image uploaded successfully",
-              ),
-              if (widget.imageError != null) ...[
-                SizedBox(height: 4),
-                Text(
-                  widget.imageError!,
-                  style: TextStyle(fontSize: 10, color: colors.error, fontWeight: FontWeight.w500),
-                ),
-              ],
-            ],
-          ),
+            ),
+          ],
         ),
       ),
-      actions: [
-        AppButton(
-          buttonText: 'Cancel',
-          onPressed: () => Navigator.pop(context),
-          backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightSurface,
-          textColor: isDark ? AppColors.white : AppColors.primary,
-          borderRadius: 8,
-          padding: EdgeInsets.symmetric(vertical: isMobile ? 16 : 18, horizontal: 25),
-        ),
-        AppButton(
-          buttonText: "Add",
-          onPressed: widget.onAddDish,
-          borderRadius: 8,
-          padding: EdgeInsets.symmetric(vertical: isMobile ? 16 : 18, horizontal: 25),
-        ),
-      ],
     );
   }
 }

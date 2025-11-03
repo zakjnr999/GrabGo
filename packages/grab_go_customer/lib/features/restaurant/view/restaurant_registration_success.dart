@@ -12,12 +12,10 @@ class RestaurantRegistrationSuccess extends StatefulWidget {
   const RestaurantRegistrationSuccess({super.key});
 
   @override
-  State<RestaurantRegistrationSuccess> createState() =>
-      _RestaurantRegistrationSuccessState();
+  State<RestaurantRegistrationSuccess> createState() => _RestaurantRegistrationSuccessState();
 }
 
-class _RestaurantRegistrationSuccessState
-    extends State<RestaurantRegistrationSuccess>
+class _RestaurantRegistrationSuccessState extends State<RestaurantRegistrationSuccess>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
@@ -28,10 +26,7 @@ class _RestaurantRegistrationSuccessState
   void initState() {
     super.initState();
 
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    );
+    _animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500));
 
     _scaleAnimation = CurvedAnimation(
       parent: _animationController,
@@ -45,13 +40,12 @@ class _RestaurantRegistrationSuccessState
       ),
     );
 
-    _slideAnimation =
-        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
-          CurvedAnimation(
-            parent: _animationController,
-            curve: const Interval(0.4, 1.0, curve: Curves.easeOutCubic),
-          ),
-        );
+    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.4, 1.0, curve: Curves.easeOutCubic),
+      ),
+    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _animationController.forward();
@@ -83,22 +77,16 @@ class _RestaurantRegistrationSuccessState
           statusBarColor: Colors.transparent,
           statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
           systemNavigationBarColor: colors.backgroundPrimary,
-          systemNavigationBarIconBrightness: isDark
-              ? Brightness.light
-              : Brightness.dark,
+          systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         ),
         child: SafeArea(
           child: Center(
             child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: KSpacing.lg.w,
-                vertical: KSpacing.xl40.h,
-              ),
+              padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w, vertical: KSpacing.xl40.h),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   SizedBox(height: 180.h),
-                  // Animated Title
                   FadeTransition(
                     opacity: _fadeAnimation,
                     child: SlideTransition(
@@ -123,9 +111,7 @@ class _RestaurantRegistrationSuccessState
                     child: SlideTransition(
                       position: _slideAnimation,
                       child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: KSpacing.lg25.w,
-                        ),
+                        padding: EdgeInsets.symmetric(horizontal: KSpacing.lg25.w),
                         child: Text(
                           "Thank you for joining GrubGo! We've received your restaurant registration. Our team will review your application and get back to you within 24-48 hours.",
                           textAlign: TextAlign.center,
@@ -146,9 +132,7 @@ class _RestaurantRegistrationSuccessState
                     child: SlideTransition(
                       position: _slideAnimation,
                       child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: KSpacing.lg.w,
-                        ),
+                        padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w),
                         child: GestureDetector(
                           onTap: () {
                             context.go("/restaurantAccountCreationTracking");
@@ -157,16 +141,11 @@ class _RestaurantRegistrationSuccessState
                             height: 56.h,
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [
-                                  colors.accentOrange,
-                                  colors.accentOrange.withOpacity(0.8),
-                                ],
+                                colors: [colors.accentOrange, colors.accentOrange.withOpacity(0.8)],
                                 begin: Alignment.centerLeft,
                                 end: Alignment.centerRight,
                               ),
-                              borderRadius: BorderRadius.circular(
-                                KBorderSize.borderRadius15,
-                              ),
+                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
                               boxShadow: [
                                 BoxShadow(
                                   color: colors.accentOrange.withOpacity(0.4),
@@ -209,20 +188,11 @@ class _RestaurantRegistrationSuccessState
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
-                colors: [
-                  colors.accentOrange.withOpacity(0.2),
-                  colors.accentOrange.withOpacity(0.1),
-                ],
+                colors: [colors.accentOrange.withOpacity(0.2), colors.accentOrange.withOpacity(0.1)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: colors.accentOrange.withOpacity(0.3),
-                  blurRadius: 40,
-                  spreadRadius: 10,
-                ),
-              ],
+              boxShadow: [BoxShadow(color: colors.accentOrange.withOpacity(0.3), blurRadius: 40, spreadRadius: 10)],
             ),
             child: Center(
               child: Container(
@@ -230,32 +200,22 @@ class _RestaurantRegistrationSuccessState
                 width: 120.h,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [
-                      colors.accentOrange,
-                      colors.accentOrange.withOpacity(0.8),
-                    ],
+                    colors: [colors.accentOrange, colors.accentOrange.withOpacity(0.8)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   shape: BoxShape.circle,
                   boxShadow: [
-                    BoxShadow(
-                      color: colors.accentOrange.withOpacity(0.5),
-                      blurRadius: 30,
-                      offset: const Offset(0, 10),
-                    ),
+                    BoxShadow(color: colors.accentOrange.withOpacity(0.5), blurRadius: 30, offset: const Offset(0, 10)),
                   ],
                 ),
                 child: Center(
                   child: SvgPicture.asset(
                     Assets.icons.checkBig,
-                            package: 'grab_go_shared',
+                    package: 'grab_go_shared',
                     height: 60.h,
                     width: 60.h,
-                    colorFilter: const ColorFilter.mode(
-                      Colors.white,
-                      BlendMode.srcIn,
-                    ),
+                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                   ),
                 ),
               ),

@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:grab_go_shared/shared/widgets/responsive.dart';
-import 'package:grab_go_shared/shared/utils/colors.dart';
+import 'package:grab_go_restaurant/shared/app_colors.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import '../models/restaurant_navigation_page.dart';
 import 'svg_icon.dart';
@@ -30,7 +30,6 @@ class RestaurantSidebar extends StatelessWidget {
     final isMobile = Responsive.isMobile(context);
     final sidebarWidth = Responsive.getSidebarWidth(context);
 
-    // Hide sidebar on mobile
     if (isMobile) {
       return const SizedBox.shrink();
     }
@@ -47,7 +46,7 @@ class RestaurantSidebar extends StatelessWidget {
             Container(
               width: Responsive.isTablet(context) ? 32 : 40,
               height: Responsive.isTablet(context) ? 32 : 40,
-              decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(8)),
+              decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(4)),
               child: Center(
                 child: Text(
                   'G',
@@ -107,7 +106,7 @@ class RestaurantSidebar extends StatelessWidget {
             padding: EdgeInsets.all(padding),
             decoration: BoxDecoration(
               color: isSelected ? AppColors.accentOrange : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(4),
               boxShadow: isSelected
                   ? [
                       BoxShadow(

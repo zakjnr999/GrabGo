@@ -3,15 +3,12 @@ import 'package:flutter_svg/svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:grab_go_shared/shared/utils/constants.dart';
 import 'package:grab_go_shared/shared/utils/strings.dart';
-import 'package:grab_go_shared/shared/widgets/app_text_input.dart';
 import 'package:grab_go_shared/shared/widgets/app_text_input_panels.dart';
 import '../../dashboard/view/admin_dashboard.dart';
 import '../../../shared/app_colors.dart';
 import '../../../shared/app_colors_extension.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
-import '../../../shared/widgets/svg_icon.dart';
 import '../../../shared/widgets/app_button.dart';
-import '../../../shared/widgets/text_input.dart';
 import '../../../shared/utils/responsive.dart';
 
 class LandingScreen extends StatefulWidget {
@@ -64,18 +61,17 @@ class _LandingScreenState extends State<LandingScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo and Title
                   GestureDetector(
                     onTap: () {
                       Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminDashboard()));
                     },
                     child: Center(
-                      child: Image.asset(
-                        Assets.icons.appIcon.path,
+                      child: SvgPicture.asset(
+                        Assets.icons.user,
                         package: 'grab_go_shared',
                         width: isMobile ? 60 : (isTablet ? 70 : 80),
                         height: isMobile ? 60 : (isTablet ? 70 : 80),
-                        color: AppColors.accentOrange,
+                        colorFilter: ColorFilter.mode(AppColors.accentOrange, BlendMode.srcIn),
                         fit: BoxFit.cover,
                       ),
                     ),

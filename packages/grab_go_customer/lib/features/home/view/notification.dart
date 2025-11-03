@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -170,7 +168,7 @@ class _NotificationState extends State<Notification> {
       case NotificationType.order:
         return Container(
           padding: EdgeInsets.all(8.r),
-          decoration: BoxDecoration(color: colors.accentOrange.withOpacity(0.15), shape: BoxShape.circle),
+          decoration: BoxDecoration(color: colors.accentOrange.withValues(alpha: 0.15), shape: BoxShape.circle),
           child: SvgPicture.asset(
             Assets.icons.cart,
             package: 'grab_go_shared',
@@ -182,7 +180,7 @@ class _NotificationState extends State<Notification> {
       case NotificationType.promo:
         return Container(
           padding: EdgeInsets.all(8.r),
-          decoration: BoxDecoration(color: colors.accentViolet.withOpacity(0.15), shape: BoxShape.circle),
+          decoration: BoxDecoration(color: colors.accentViolet.withValues(alpha: 0.15), shape: BoxShape.circle),
           child: Assets.icons.discount.image(
             height: 20.h,
             width: 20.w,
@@ -193,7 +191,7 @@ class _NotificationState extends State<Notification> {
       case NotificationType.update:
         return Container(
           padding: EdgeInsets.all(8.r),
-          decoration: BoxDecoration(color: colors.accentBlue.withOpacity(0.15), shape: BoxShape.circle),
+          decoration: BoxDecoration(color: colors.accentBlue.withValues(alpha: 0.15), shape: BoxShape.circle),
           child: SvgPicture.asset(
             Assets.icons.bell,
             package: 'grab_go_shared',
@@ -205,7 +203,7 @@ class _NotificationState extends State<Notification> {
       case NotificationType.system:
         return Container(
           padding: EdgeInsets.all(8.r),
-          decoration: BoxDecoration(color: colors.accentGreen.withOpacity(0.15), shape: BoxShape.circle),
+          decoration: BoxDecoration(color: colors.accentGreen.withValues(alpha: 0.15), shape: BoxShape.circle),
           child: SvgPicture.asset(
             Assets.icons.infoCircle,
             package: 'grab_go_shared',
@@ -243,7 +241,7 @@ class _NotificationState extends State<Notification> {
                   decoration: BoxDecoration(
                     color: colors.backgroundPrimary,
                     shape: BoxShape.circle,
-                    border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
+                    border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
                     boxShadow: [
                       BoxShadow(
                         color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
@@ -275,7 +273,7 @@ class _NotificationState extends State<Notification> {
                   decoration: BoxDecoration(
                     color: colors.backgroundPrimary,
                     borderRadius: BorderRadius.circular(20.r),
-                    border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
+                    border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
                     boxShadow: [
                       BoxShadow(
                         color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
@@ -290,7 +288,10 @@ class _NotificationState extends State<Notification> {
                     children: [
                       Container(
                         padding: EdgeInsets.all(6.r),
-                        decoration: BoxDecoration(color: colors.accentViolet.withOpacity(0.1), shape: BoxShape.circle),
+                        decoration: BoxDecoration(
+                          color: colors.accentViolet.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
                         child: SvgPicture.asset(
                           Assets.icons.bell,
                           package: 'grab_go_shared',
@@ -302,7 +303,13 @@ class _NotificationState extends State<Notification> {
                       SizedBox(width: 8.w),
                       Text(
                         AppStrings.notificationsTitle,
-                        style: TextStyle(color: colors.textPrimary, fontSize: 17.sp, fontWeight: FontWeight.w800),
+                        style: TextStyle(
+                          fontFamily: "Lato",
+                          package: 'grab_go_shared',
+                          color: colors.textPrimary,
+                          fontSize: 17.sp,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ],
                   ),
@@ -316,7 +323,7 @@ class _NotificationState extends State<Notification> {
                       decoration: BoxDecoration(
                         color: colors.backgroundPrimary,
                         shape: BoxShape.circle,
-                        border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
+                        border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
                         boxShadow: [
                           BoxShadow(
                             color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
@@ -400,13 +407,13 @@ class _NotificationState extends State<Notification> {
         children: [
           Container(
             padding: EdgeInsets.all(30.r),
-            decoration: BoxDecoration(color: colors.accentViolet.withOpacity(0.1), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: colors.accentViolet.withValues(alpha: 0.1), shape: BoxShape.circle),
             child: SvgPicture.asset(
               Assets.icons.bell,
               package: 'grab_go_shared',
               height: 80.h,
               width: 80.w,
-              colorFilter: ColorFilter.mode(colors.accentViolet.withOpacity(0.5), BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(colors.accentViolet.withValues(alpha: 0.5), BlendMode.srcIn),
             ),
           ),
           SizedBox(height: 24.h),
@@ -434,10 +441,12 @@ class _NotificationState extends State<Notification> {
       child: Container(
         padding: EdgeInsets.all(16.r),
         decoration: BoxDecoration(
-          color: notification.isRead ? colors.backgroundPrimary : colors.accentViolet.withOpacity(0.05),
+          color: notification.isRead ? colors.backgroundPrimary : colors.accentViolet.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
           border: Border.all(
-            color: notification.isRead ? colors.inputBorder.withOpacity(0.3) : colors.accentViolet.withOpacity(0.2),
+            color: notification.isRead
+                ? colors.inputBorder.withValues(alpha: 0.3)
+                : colors.accentViolet.withValues(alpha: 0.2),
             width: 0.5,
           ),
           boxShadow: [
@@ -492,7 +501,7 @@ class _NotificationState extends State<Notification> {
                     style: TextStyle(
                       fontSize: 11.sp,
                       fontWeight: FontWeight.w500,
-                      color: colors.textSecondary.withOpacity(0.7),
+                      color: colors.textSecondary.withValues(alpha: 0.7),
                     ),
                   ),
                 ],

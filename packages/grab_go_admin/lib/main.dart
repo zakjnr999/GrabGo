@@ -3,6 +3,7 @@ import 'package:grab_go_admin/shared/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'features/auth/view/login_screen.dart';
 import 'features/dashboard/view/admin_dashboard.dart';
+import 'features/restaurants/viewmodel/restaurant_provider.dart';
 import 'shared/utils/app_theme.dart';
 
 void main() {
@@ -14,8 +15,11 @@ class GrabGoAdmin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => ThemeProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => ThemeProvider()),
+        ChangeNotifierProvider(create: (context) => RestaurantProvider()),
+      ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
           return MaterialApp(

@@ -8,46 +8,46 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
   final Color textPrimary;
   final Color textSecondary;
   final Color textTertiary;
-  
+
   // Background colors
   final Color backgroundPrimary;
   final Color backgroundSecondary;
   final Color backgroundTertiary;
-  
+
   // Surface colors
   final Color surfacePrimary;
   final Color surfaceSecondary;
-  
+
   // Accent colors (these typically stay the same in both themes)
   final Color accentOrange;
   final Color accentOrangeLight;
   final Color accentBlue;
   final Color accentViolet;
   final Color accentGreen;
-  
+
   // Semantic colors
   final Color error;
   final Color success;
   final Color warning;
   final Color info;
-  
+
   // Border and divider colors
   final Color border;
   final Color divider;
-  
+
   // Icon colors
   final Color iconPrimary;
   final Color iconSecondary;
-  
+
   // Card and container colors
   final Color cardBackground;
   final Color containerBackground;
-  
+
   // Input field colors
   final Color inputBackground;
   final Color inputBorder;
   final Color inputFocusedBorder;
-  
+
   // Overlay colors
   final Color overlay;
   final Color shadow;
@@ -211,12 +211,9 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
   }
 
   @override
-  ThemeExtension<AppColorsExtension> lerp(
-    covariant ThemeExtension<AppColorsExtension>? other,
-    double t,
-  ) {
+  ThemeExtension<AppColorsExtension> lerp(covariant ThemeExtension<AppColorsExtension>? other, double t) {
     if (other is! AppColorsExtension) return this;
-    
+
     return AppColorsExtension(
       textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
       textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
@@ -256,5 +253,3 @@ extension AppColorsContext on BuildContext {
     return Theme.of(this).extension<AppColorsExtension>() ?? AppColorsExtension.light;
   }
 }
-
-

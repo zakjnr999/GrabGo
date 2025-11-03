@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:grab_go_restaurant/shared/widgets/orders_chart.dart';
 import 'package:grab_go_restaurant/shared/widgets/revenue_chart.dart';
-import 'package:grab_go_shared/shared/widgets/animated_tab_bar.dart';
+import '../../../shared/widgets/animated_tab_bar.dart';
 import 'package:grab_go_shared/shared/widgets/responsive.dart';
-import 'package:grab_go_shared/shared/utils/colors.dart';
+import 'package:grab_go_restaurant/shared/app_colors.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -14,7 +14,7 @@ class AnalyticsScreen extends StatefulWidget {
 }
 
 class _AnalyticsScreenState extends State<AnalyticsScreen> {
-  int selectedPeriodIndex = 1; // Default to 'This Week'
+  int selectedPeriodIndex = 1;
   final List<String> periods = ['Today', 'This Week', 'This Month', 'This Year'];
 
   @override
@@ -29,19 +29,15 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Period Selector
           Row(mainAxisAlignment: MainAxisAlignment.start, children: [_buildPeriodSelector(isDark, isMobile)]),
           SizedBox(height: isMobile ? 20 : 24),
 
-          // Key Metrics Cards
           _buildKeyMetrics(isDark, isMobile, isTablet),
           SizedBox(height: Responsive.getCardSpacing(context)),
 
-          // Charts Section
           _buildChartsSection(isDark, isMobile, isTablet),
           SizedBox(height: Responsive.getCardSpacing(context)),
 
-          // Popular Items
           _buildPopularItems(isDark, isMobile),
         ],
       ),
@@ -126,7 +122,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         children: metrics.map((metric) {
           return Expanded(
             child: Padding(
-              padding: EdgeInsets.only(right: metric == metrics.last ? 0 : Responsive.getCardSpacing(context)),
+              padding: EdgeInsets.only(right: metric == metrics.last ? 0 : 16),
               child: _buildMetricCard(metric, isDark, isMobile),
             ),
           );
@@ -156,18 +152,22 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: EdgeInsets.all(isMobile ? 8 : 10),
+                width: isMobile ? 28 : 32,
+                height: isMobile ? 28 : 32,
                 decoration: BoxDecoration(
                   color: (metric['color'] as Color).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(4),
                 ),
-                child: Icon(Icons.trending_up, color: metric['color'], size: isMobile ? 20 : 24),
+                child: Padding(
+                  padding: EdgeInsets.all(isMobile ? 5 : 7),
+                  child: Icon(Icons.trending_up, color: metric['color'], size: isMobile ? 20 : 24),
+                ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: metric['isPositive'] ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   metric['change'],
@@ -213,7 +213,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Expanded(child: RevenueChart()),
-          SizedBox(width: Responsive.getCardSpacing(context)),
+          const SizedBox(width: 16),
           const Expanded(child: OrdersChart()),
         ],
       );

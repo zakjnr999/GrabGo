@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -78,7 +76,7 @@ class _HomePageState extends State<HomePage> {
                           decoration: BoxDecoration(
                             color: colors.backgroundPrimary,
                             borderRadius: BorderRadius.circular(12.r),
-                            border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
+                            border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
                             boxShadow: [
                               BoxShadow(
                                 color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
@@ -93,7 +91,7 @@ class _HomePageState extends State<HomePage> {
                               Container(
                                 padding: EdgeInsets.all(6.r),
                                 decoration: BoxDecoration(
-                                  color: colors.accentOrange.withOpacity(0.1),
+                                  color: colors.accentOrange.withValues(alpha: 0.1),
                                   shape: BoxShape.circle,
                                 ),
                                 child: SvgPicture.asset(
@@ -155,7 +153,7 @@ class _HomePageState extends State<HomePage> {
                       decoration: BoxDecoration(
                         color: colors.backgroundPrimary,
                         borderRadius: BorderRadius.circular(12.r),
-                        border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
+                        border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
                         boxShadow: [
                           BoxShadow(
                             color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
@@ -277,7 +275,12 @@ class _HomePageState extends State<HomePage> {
                           color: colors.backgroundPrimary,
                           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                         ),
-                        child: const Center(child: Text("No categories available")),
+                        child: Center(
+                          child: Text(
+                            "No categories found...",
+                            style: TextStyle(color: colors.textSecondary, fontSize: 16.sp, fontWeight: FontWeight.w500),
+                          ),
+                        ),
                       );
                     }
 
@@ -306,7 +309,7 @@ class _HomePageState extends State<HomePage> {
                         Container(
                           padding: EdgeInsets.all(8.r),
                           decoration: BoxDecoration(
-                            color: colors.accentViolet.withOpacity(0.1),
+                            color: colors.accentViolet.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(KBorderSize.border),
                           ),
                           child: SvgPicture.asset(
@@ -320,14 +323,14 @@ class _HomePageState extends State<HomePage> {
                         SizedBox(width: 10.w),
                         Text(
                           "Recommended For You",
-                          style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                          style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                         ),
                       ],
                     ),
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                       decoration: BoxDecoration(
-                        color: colors.accentOrange.withOpacity(0.1),
+                        color: colors.accentOrange.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20.r),
                       ),
                       child: Material(
@@ -366,20 +369,18 @@ class _HomePageState extends State<HomePage> {
               SizedBox(height: KSpacing.lg.h),
 
               if (_selectedCategory == null)
-                Shimmer.fromColors(
-                  baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-                  highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
-                  child: Column(
-                    children: List.generate(3, (index) {
-                      return Container(
-                        height: size.height * 0.15,
-                        margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-                          borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                        ),
-                      );
-                    }),
+                Container(
+                  height: size.height * 0.15,
+                  margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
+                  decoration: BoxDecoration(
+                    color: colors.backgroundPrimary,
+                    borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                  ),
+                  child: Center(
+                    child: Text(
+                      "No items available",
+                      style: TextStyle(color: colors.textSecondary, fontSize: 16.sp, fontWeight: FontWeight.w500),
+                    ),
                   ),
                 )
               else
@@ -397,7 +398,7 @@ class _HomePageState extends State<HomePage> {
                         decoration: BoxDecoration(
                           color: colors.backgroundPrimary,
                           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                          border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
+                          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
                           boxShadow: [
                             BoxShadow(
                               color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
@@ -514,7 +515,7 @@ class _HomePageState extends State<HomePage> {
                                         Container(
                                           padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                                           decoration: BoxDecoration(
-                                            color: colors.accentOrange.withOpacity(0.15),
+                                            color: colors.accentOrange.withValues(alpha: 0.15),
                                             borderRadius: BorderRadius.circular(8.r),
                                           ),
                                           child: Text(

@@ -1,8 +1,5 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:async';
 import 'dart:io';
-
 import 'package:chopper/chopper.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -10,12 +7,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
-import 'package:grab_go_customer/features/auth/model/user_model.dart';
+import 'package:grab_go_shared/gen/assets.gen.dart';
+import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/features/auth/service/firebase_phone_auth_service.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:grab_go_shared/grub_go_shared.dart';
 
 class ProfileUpload extends StatefulWidget {
   const ProfileUpload({super.key});
@@ -289,7 +285,10 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
                               width: 48.h,
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
-                                  colors: [colors.accentOrange.withOpacity(0.2), colors.accentOrange.withOpacity(0.1)],
+                                  colors: [
+                                    colors.accentOrange.withValues(alpha: 0.2),
+                                    colors.accentOrange.withValues(alpha: 0.1),
+                                  ],
                                 ),
                                 borderRadius: BorderRadius.circular(KBorderSize.borderRadius12),
                               ),
@@ -355,7 +354,10 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
                               width: 48.h,
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
-                                  colors: [colors.accentViolet.withOpacity(0.2), colors.accentViolet.withOpacity(0.1)],
+                                  colors: [
+                                    colors.accentViolet.withValues(alpha: 0.2),
+                                    colors.accentViolet.withValues(alpha: 0.1),
+                                  ],
                                 ),
                                 borderRadius: BorderRadius.circular(KBorderSize.borderRadius12),
                               ),
@@ -511,12 +513,19 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             gradient: LinearGradient(
-                              colors: [colors.accentOrange.withOpacity(0.2), colors.accentViolet.withOpacity(0.2)],
+                              colors: [
+                                colors.accentOrange.withValues(alpha: 0.2),
+                                colors.accentViolet.withValues(alpha: 0.2),
+                              ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
                             boxShadow: [
-                              BoxShadow(color: colors.accentOrange.withOpacity(0.2), blurRadius: 30, spreadRadius: 5),
+                              BoxShadow(
+                                color: colors.accentOrange.withValues(alpha: 0.2),
+                                blurRadius: 30,
+                                spreadRadius: 5,
+                              ),
                             ],
                           ),
                           child: Center(
@@ -547,11 +556,11 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 gradient: LinearGradient(
-                                  colors: [colors.accentOrange, colors.accentOrange.withOpacity(0.8)],
+                                  colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: colors.accentOrange.withOpacity(0.4),
+                                    color: colors.accentOrange.withValues(alpha: 0.4),
                                     blurRadius: 15,
                                     offset: const Offset(0, 5),
                                   ),
@@ -583,7 +592,7 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
                               gradient: _isUploading
                                   ? null
                                   : LinearGradient(
-                                      colors: [colors.accentOrange, colors.accentOrange.withOpacity(0.8)],
+                                      colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
                                       begin: Alignment.centerLeft,
                                       end: Alignment.centerRight,
                                     ),
@@ -592,7 +601,7 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
                               boxShadow: !_isUploading
                                   ? [
                                       BoxShadow(
-                                        color: colors.accentOrange.withOpacity(0.4),
+                                        color: colors.accentOrange.withValues(alpha: 0.4),
                                         blurRadius: 20,
                                         offset: const Offset(0, 8),
                                       ),

@@ -168,9 +168,11 @@
         "get_it",
         "go_router",
         "google_fonts",
+        "google_sign_in",
         "http",
         "image_picker",
         "intl",
+        "json_annotation",
         "path_provider",
         "provider",
         "shared_preferences",
@@ -178,9 +180,11 @@
       ],
       "devDependencies": [
         "build_runner",
+        "chopper_generator",
         "flutter_gen_runner",
         "flutter_lints",
-        "flutter_test"
+        "flutter_test",
+        "json_serializable"
       ]
     },
     {
@@ -209,19 +213,25 @@
       "name": "grab_go_admin",
       "version": "1.0.0+1",
       "dependencies": [
+        "chopper",
         "cupertino_icons",
         "fl_chart",
         "flutter",
         "flutter_svg",
         "google_fonts",
         "grab_go_shared",
+        "http",
+        "intl",
+        "json_annotation",
         "provider"
       ],
       "devDependencies": [
         "build_runner",
+        "chopper_generator",
         "flutter_gen_runner",
         "flutter_lints",
-        "flutter_test"
+        "flutter_test",
+        "json_serializable"
       ]
     },
     {
@@ -252,6 +262,39 @@
         "xml",
         "yaml",
         "yaml_edit"
+      ]
+    },
+    {
+      "name": "json_serializable",
+      "version": "6.11.1",
+      "dependencies": [
+        "analyzer",
+        "async",
+        "build",
+        "build_config",
+        "dart_style",
+        "json_annotation",
+        "meta",
+        "path",
+        "pub_semver",
+        "pubspec_parse",
+        "source_gen",
+        "source_helper"
+      ]
+    },
+    {
+      "name": "chopper_generator",
+      "version": "8.4.0",
+      "dependencies": [
+        "analyzer",
+        "build",
+        "built_collection",
+        "chopper",
+        "code_builder",
+        "collection",
+        "logging",
+        "meta",
+        "source_gen"
       ]
     },
     {
@@ -327,6 +370,43 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "intl",
+      "version": "0.19.0",
+      "dependencies": [
+        "clock",
+        "meta",
+        "path"
+      ]
+    },
+    {
+      "name": "json_annotation",
+      "version": "4.9.0",
+      "dependencies": [
+        "meta"
+      ]
+    },
+    {
+      "name": "http",
+      "version": "1.5.0",
+      "dependencies": [
+        "async",
+        "http_parser",
+        "meta",
+        "web"
+      ]
+    },
+    {
+      "name": "chopper",
+      "version": "8.4.0",
+      "dependencies": [
+        "equatable",
+        "http",
+        "logging",
+        "meta",
+        "qs_dart"
       ]
     },
     {
@@ -425,6 +505,17 @@
       ]
     },
     {
+      "name": "google_sign_in",
+      "version": "7.2.0",
+      "dependencies": [
+        "flutter",
+        "google_sign_in_android",
+        "google_sign_in_ios",
+        "google_sign_in_platform_interface",
+        "google_sign_in_web"
+      ]
+    },
+    {
       "name": "flutter_image_slideshow",
       "version": "0.1.6",
       "dependencies": [
@@ -437,27 +528,6 @@
       "dependencies": [
         "flutter",
         "flutter_web_plugins",
-        "web"
-      ]
-    },
-    {
-      "name": "chopper",
-      "version": "8.4.0",
-      "dependencies": [
-        "equatable",
-        "http",
-        "logging",
-        "meta",
-        "qs_dart"
-      ]
-    },
-    {
-      "name": "http",
-      "version": "1.5.0",
-      "dependencies": [
-        "async",
-        "http_parser",
-        "meta",
         "web"
       ]
     },
@@ -540,15 +610,6 @@
         "args",
         "flutter_gen_core",
         "logging"
-      ]
-    },
-    {
-      "name": "intl",
-      "version": "0.19.0",
-      "dependencies": [
-        "clock",
-        "meta",
-        "path"
       ]
     },
     {
@@ -648,39 +709,6 @@
       ]
     },
     {
-      "name": "json_serializable",
-      "version": "6.11.1",
-      "dependencies": [
-        "analyzer",
-        "async",
-        "build",
-        "build_config",
-        "dart_style",
-        "json_annotation",
-        "meta",
-        "path",
-        "pub_semver",
-        "pubspec_parse",
-        "source_gen",
-        "source_helper"
-      ]
-    },
-    {
-      "name": "chopper_generator",
-      "version": "8.4.0",
-      "dependencies": [
-        "analyzer",
-        "build",
-        "built_collection",
-        "chopper",
-        "code_builder",
-        "collection",
-        "logging",
-        "meta",
-        "source_gen"
-      ]
-    },
-    {
       "name": "change_app_package_name",
       "version": "1.5.0",
       "dependencies": []
@@ -733,13 +761,6 @@
       "version": "1.1.2",
       "dependencies": [
         "flutter"
-      ]
-    },
-    {
-      "name": "json_annotation",
-      "version": "4.9.0",
-      "dependencies": [
-        "meta"
       ]
     },
     {
@@ -815,17 +836,6 @@
         "flutter",
         "flutter_web_plugins",
         "plugin_platform_interface"
-      ]
-    },
-    {
-      "name": "google_sign_in",
-      "version": "7.2.0",
-      "dependencies": [
-        "flutter",
-        "google_sign_in_android",
-        "google_sign_in_ios",
-        "google_sign_in_platform_interface",
-        "google_sign_in_web"
       ]
     },
     {
@@ -1026,6 +1036,104 @@
       "dependencies": []
     },
     {
+      "name": "source_helper",
+      "version": "1.3.8",
+      "dependencies": [
+        "analyzer",
+        "source_gen"
+      ]
+    },
+    {
+      "name": "source_gen",
+      "version": "4.0.2",
+      "dependencies": [
+        "analyzer",
+        "async",
+        "build",
+        "dart_style",
+        "glob",
+        "path",
+        "pub_semver",
+        "source_span",
+        "yaml"
+      ]
+    },
+    {
+      "name": "dart_style",
+      "version": "3.1.2",
+      "dependencies": [
+        "analyzer",
+        "args",
+        "collection",
+        "package_config",
+        "path",
+        "pub_semver",
+        "source_span",
+        "yaml"
+      ]
+    },
+    {
+      "name": "build_config",
+      "version": "1.2.0",
+      "dependencies": [
+        "checked_yaml",
+        "json_annotation",
+        "path",
+        "pubspec_parse"
+      ]
+    },
+    {
+      "name": "build",
+      "version": "4.0.2",
+      "dependencies": [
+        "analyzer",
+        "crypto",
+        "glob",
+        "logging",
+        "package_config",
+        "path"
+      ]
+    },
+    {
+      "name": "analyzer",
+      "version": "8.4.1",
+      "dependencies": [
+        "_fe_analyzer_shared",
+        "collection",
+        "convert",
+        "crypto",
+        "glob",
+        "meta",
+        "package_config",
+        "path",
+        "pub_semver",
+        "source_span",
+        "watcher",
+        "yaml"
+      ]
+    },
+    {
+      "name": "logging",
+      "version": "1.3.0",
+      "dependencies": []
+    },
+    {
+      "name": "code_builder",
+      "version": "4.11.0",
+      "dependencies": [
+        "built_collection",
+        "built_value",
+        "collection",
+        "matcher",
+        "meta"
+      ]
+    },
+    {
+      "name": "built_collection",
+      "version": "5.1.1",
+      "dependencies": []
+    },
+    {
       "name": "web_socket_channel",
       "version": "3.0.3",
       "dependencies": [
@@ -1083,11 +1191,6 @@
       "dependencies": []
     },
     {
-      "name": "logging",
-      "version": "1.3.0",
-      "dependencies": []
-    },
-    {
       "name": "io",
       "version": "1.0.5",
       "dependencies": [
@@ -1104,35 +1207,10 @@
       ]
     },
     {
-      "name": "dart_style",
-      "version": "3.1.2",
-      "dependencies": [
-        "analyzer",
-        "args",
-        "collection",
-        "package_config",
-        "path",
-        "pub_semver",
-        "source_span",
-        "yaml"
-      ]
-    },
-    {
       "name": "convert",
       "version": "3.1.2",
       "dependencies": [
         "typed_data"
-      ]
-    },
-    {
-      "name": "code_builder",
-      "version": "4.11.0",
-      "dependencies": [
-        "built_collection",
-        "built_value",
-        "collection",
-        "matcher",
-        "meta"
       ]
     },
     {
@@ -1144,11 +1222,6 @@
         "fixnum",
         "meta"
       ]
-    },
-    {
-      "name": "built_collection",
-      "version": "5.1.1",
-      "dependencies": []
     },
     {
       "name": "build_daemon",
@@ -1166,46 +1239,6 @@
         "stream_transform",
         "watcher",
         "web_socket_channel"
-      ]
-    },
-    {
-      "name": "build_config",
-      "version": "1.2.0",
-      "dependencies": [
-        "checked_yaml",
-        "json_annotation",
-        "path",
-        "pubspec_parse"
-      ]
-    },
-    {
-      "name": "build",
-      "version": "4.0.2",
-      "dependencies": [
-        "analyzer",
-        "crypto",
-        "glob",
-        "logging",
-        "package_config",
-        "path"
-      ]
-    },
-    {
-      "name": "analyzer",
-      "version": "8.4.1",
-      "dependencies": [
-        "_fe_analyzer_shared",
-        "collection",
-        "convert",
-        "crypto",
-        "glob",
-        "meta",
-        "package_config",
-        "path",
-        "pub_semver",
-        "source_span",
-        "watcher",
-        "yaml"
       ]
     },
     {
@@ -1307,6 +1340,31 @@
       ]
     },
     {
+      "name": "web",
+      "version": "1.1.1",
+      "dependencies": []
+    },
+    {
+      "name": "http_parser",
+      "version": "4.1.2",
+      "dependencies": [
+        "collection",
+        "source_span",
+        "string_scanner",
+        "typed_data"
+      ]
+    },
+    {
+      "name": "qs_dart",
+      "version": "1.5.6",
+      "dependencies": [
+        "collection",
+        "equatable",
+        "meta",
+        "weak_map"
+      ]
+    },
+    {
       "name": "equatable",
       "version": "2.0.7",
       "dependencies": [
@@ -1362,11 +1420,6 @@
     {
       "name": "characters",
       "version": "1.4.0",
-      "dependencies": []
-    },
-    {
-      "name": "web",
-      "version": "1.1.1",
       "dependencies": []
     },
     {
@@ -1468,23 +1521,39 @@
       ]
     },
     {
-      "name": "qs_dart",
-      "version": "1.5.6",
+      "name": "google_sign_in_web",
+      "version": "1.1.0",
       "dependencies": [
-        "collection",
-        "equatable",
-        "meta",
-        "weak_map"
+        "flutter",
+        "flutter_web_plugins",
+        "google_identity_services_web",
+        "google_sign_in_platform_interface",
+        "http",
+        "web"
       ]
     },
     {
-      "name": "http_parser",
-      "version": "4.1.2",
+      "name": "google_sign_in_platform_interface",
+      "version": "3.1.0",
       "dependencies": [
-        "collection",
-        "source_span",
-        "string_scanner",
-        "typed_data"
+        "flutter",
+        "plugin_platform_interface"
+      ]
+    },
+    {
+      "name": "google_sign_in_ios",
+      "version": "6.2.2",
+      "dependencies": [
+        "flutter",
+        "google_sign_in_platform_interface"
+      ]
+    },
+    {
+      "name": "google_sign_in_android",
+      "version": "7.2.2",
+      "dependencies": [
+        "flutter",
+        "google_sign_in_platform_interface"
       ]
     },
     {
@@ -1805,29 +1874,6 @@
       ]
     },
     {
-      "name": "source_helper",
-      "version": "1.3.8",
-      "dependencies": [
-        "analyzer",
-        "source_gen"
-      ]
-    },
-    {
-      "name": "source_gen",
-      "version": "4.0.2",
-      "dependencies": [
-        "analyzer",
-        "async",
-        "build",
-        "dart_style",
-        "glob",
-        "path",
-        "pub_semver",
-        "source_span",
-        "yaml"
-      ]
-    },
-    {
       "name": "image",
       "version": "4.5.4",
       "dependencies": [
@@ -1968,42 +2014,6 @@
       ]
     },
     {
-      "name": "google_sign_in_web",
-      "version": "1.1.0",
-      "dependencies": [
-        "flutter",
-        "flutter_web_plugins",
-        "google_identity_services_web",
-        "google_sign_in_platform_interface",
-        "http",
-        "web"
-      ]
-    },
-    {
-      "name": "google_sign_in_platform_interface",
-      "version": "3.1.0",
-      "dependencies": [
-        "flutter",
-        "plugin_platform_interface"
-      ]
-    },
-    {
-      "name": "google_sign_in_ios",
-      "version": "6.2.2",
-      "dependencies": [
-        "flutter",
-        "google_sign_in_platform_interface"
-      ]
-    },
-    {
-      "name": "google_sign_in_android",
-      "version": "7.2.2",
-      "dependencies": [
-        "flutter",
-        "google_sign_in_platform_interface"
-      ]
-    },
-    {
       "name": "source_span",
       "version": "1.10.1",
       "dependencies": [
@@ -2035,17 +2045,17 @@
       "dependencies": []
     },
     {
-      "name": "web_socket",
-      "version": "1.0.1",
-      "dependencies": [
-        "web"
-      ]
-    },
-    {
       "name": "_fe_analyzer_shared",
       "version": "91.0.0",
       "dependencies": [
         "meta"
+      ]
+    },
+    {
+      "name": "web_socket",
+      "version": "1.0.1",
+      "dependencies": [
+        "web"
       ]
     },
     {
@@ -2117,6 +2127,11 @@
       ]
     },
     {
+      "name": "weak_map",
+      "version": "4.0.1",
+      "dependencies": []
+    },
+    {
       "name": "path_parsing",
       "version": "1.1.0",
       "dependencies": [
@@ -2162,9 +2177,12 @@
       ]
     },
     {
-      "name": "weak_map",
-      "version": "4.0.1",
-      "dependencies": []
+      "name": "google_identity_services_web",
+      "version": "0.3.3+1",
+      "dependencies": [
+        "meta",
+        "web"
+      ]
     },
     {
       "name": "_flutterfire_internals",
@@ -2258,14 +2276,6 @@
         "path",
         "plugin_platform_interface",
         "vector_math",
-        "web"
-      ]
-    },
-    {
-      "name": "google_identity_services_web",
-      "version": "0.3.3+1",
-      "dependencies": [
-        "meta",
         "web"
       ]
     },

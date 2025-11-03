@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:grab_go_shared/shared/widgets/responsive.dart';
-import 'package:grab_go_shared/shared/utils/colors.dart';
+import 'package:grab_go_restaurant/shared/app_colors.dart';
 import '../models/order.dart';
 
 class RestaurantOrderList extends StatefulWidget {
@@ -69,7 +69,7 @@ class _RestaurantOrderListState extends State<RestaurantOrderList> {
       padding: EdgeInsets.all(isMobile ? 16 : 20),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : AppColors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(color: Colors.black.withOpacity(isDark ? 0.3 : 0.05), blurRadius: 10, offset: const Offset(0, 4)),
         ],
@@ -103,7 +103,7 @@ class _RestaurantOrderListState extends State<RestaurantOrderList> {
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color: selectedTimeframe == timeframe ? AppColors.accentOrange : Colors.transparent,
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           timeframe,
@@ -138,7 +138,7 @@ class _RestaurantOrderListState extends State<RestaurantOrderList> {
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       decoration: BoxDecoration(
                         color: selectedTimeframe == timeframe ? AppColors.accentOrange : Colors.transparent,
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(4),
                         border: Border.all(
                           color: selectedTimeframe == timeframe
                               ? AppColors.accentOrange
@@ -388,7 +388,7 @@ class _RestaurantOrderListState extends State<RestaurantOrderList> {
             flex: 2,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(color: statusColor, borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(color: statusColor, borderRadius: BorderRadius.circular(8)),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [

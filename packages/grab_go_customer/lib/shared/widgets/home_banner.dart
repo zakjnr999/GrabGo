@@ -65,9 +65,7 @@ class _HomeBannerState extends State<HomeBanner> {
       );
     }
 
-    final allFoods = itemsProvider.categories
-        .expand((cat) => cat.items)
-        .toList();
+    final allFoods = itemsProvider.categories.expand((cat) => cat.items).toList();
 
     if (allFoods.isEmpty) {
       return Container(
@@ -78,14 +76,18 @@ class _HomeBannerState extends State<HomeBanner> {
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
         ),
-        child: const Center(child: Text("Banner is empty...")),
+        child: Center(
+          child: Text(
+            "Banner is empty...",
+            style: TextStyle(color: colors.textSecondary, fontSize: 16.sp, fontWeight: FontWeight.w500),
+          ),
+        ),
       );
     }
 
     final random = Random();
     final Set<int> selectedIndexes = {};
-    while (selectedIndexes.length < 3 &&
-        selectedIndexes.length < allFoods.length) {
+    while (selectedIndexes.length < 3 && selectedIndexes.length < allFoods.length) {
       selectedIndexes.add(random.nextInt(allFoods.length));
     }
     final bannerFoods = selectedIndexes.map((i) => allFoods[i]).toList();
@@ -96,18 +98,8 @@ class _HomeBannerState extends State<HomeBanner> {
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(10),
-            spreadRadius: 1,
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: Colors.black.withAlpha(5),
-            spreadRadius: -1,
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
+          BoxShadow(color: Colors.black.withAlpha(10), spreadRadius: 1, blurRadius: 12, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withAlpha(5), spreadRadius: -1, blurRadius: 6, offset: const Offset(0, 2)),
         ],
       ),
       child: ClipRRect(
@@ -157,9 +149,7 @@ class _HomeBannerState extends State<HomeBanner> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(
-                          KBorderSize.borderMedium,
-                        ),
+                        borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                         child: BackdropFilter(
                           filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
                           child: Container(
@@ -169,11 +159,7 @@ class _HomeBannerState extends State<HomeBanner> {
                               child: Text(
                                 bannerFoods[currentIndex].name.toString(),
                                 textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 14.sp,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
+                                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.white),
                               ),
                             ),
                           ),
@@ -181,25 +167,17 @@ class _HomeBannerState extends State<HomeBanner> {
                       ),
                       Consumer<FavoritesProvider>(
                         builder: (context, favoriteProvider, child) {
-                          final bool isFavorite = favoriteProvider.isFavorite(
-                            bannerFoods[currentIndex],
-                          );
+                          final bool isFavorite = favoriteProvider.isFavorite(bannerFoods[currentIndex]);
                           return GestureDetector(
                             onTap: () {
                               if (isFavorite) {
-                                favoriteProvider.removeFromFavorites(
-                                  bannerFoods[currentIndex],
-                                );
+                                favoriteProvider.removeFromFavorites(bannerFoods[currentIndex]);
                               } else {
-                                favoriteProvider.addToFavorites(
-                                  bannerFoods[currentIndex],
-                                );
+                                favoriteProvider.addToFavorites(bannerFoods[currentIndex]);
                               }
                             },
                             child: ClipRRect(
-                              borderRadius: BorderRadius.circular(
-                                KBorderSize.borderMedium,
-                              ),
+                              borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                               child: BackdropFilter(
                                 filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
                                 child: Container(
@@ -207,9 +185,7 @@ class _HomeBannerState extends State<HomeBanner> {
                                   child: Padding(
                                     padding: const EdgeInsets.all(8.0),
                                     child: SvgPicture.asset(
-                                      isFavorite
-                                          ? Assets.icons.heartSolid
-                                          : Assets.icons.heart,
+                                      isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
                                       height: 22.h,
                                       width: 22.w,
                                       colorFilter: ColorFilter.mode(
@@ -230,9 +206,7 @@ class _HomeBannerState extends State<HomeBanner> {
                   SizedBox(
                     width: double.infinity,
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(
-                        KBorderSize.borderMedium,
-                      ),
+                      borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                       child: BackdropFilter(
                         filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
                         child: Container(
@@ -243,26 +217,19 @@ class _HomeBannerState extends State<HomeBanner> {
                               children: [
                                 Container(
                                   padding: EdgeInsets.all(10.r),
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.black,
-                                  ),
+                                  decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.black),
                                   child: SvgPicture.asset(
                                     Assets.icons.cart,
-                            package: 'grab_go_shared',
+                                    package: 'grab_go_shared',
                                     height: 18.h,
                                     width: 18.w,
-                                    colorFilter: const ColorFilter.mode(
-                                      Colors.white,
-                                      BlendMode.srcIn,
-                                    ),
+                                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                                   ),
                                 ),
                                 SizedBox(width: 10.w),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         "GHC ${bannerFoods[currentIndex].price.toStringAsFixed(2)}",
@@ -276,13 +243,10 @@ class _HomeBannerState extends State<HomeBanner> {
                                         children: [
                                           SvgPicture.asset(
                                             Assets.icons.starSolid,
-                            package: 'grab_go_shared',
+                                            package: 'grab_go_shared',
                                             height: 14.h,
                                             width: 14.w,
-                                            colorFilter: ColorFilter.mode(
-                                              colors.accentOrange,
-                                              BlendMode.srcIn,
-                                            ),
+                                            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                                           ),
                                           SizedBox(width: 4.w),
                                           Text(
@@ -300,32 +264,20 @@ class _HomeBannerState extends State<HomeBanner> {
                                 ),
                                 Consumer<CartProvider>(
                                   builder: (context, cartProvider, child) {
-                                    final bool isInCart = cartProvider.cartItems
-                                        .containsKey(bannerFoods[currentIndex]);
+                                    final bool isInCart = cartProvider.cartItems.containsKey(bannerFoods[currentIndex]);
                                     return AppButton(
                                       height: 38.h,
                                       onPressed: () {
                                         if (isInCart) {
-                                          cartProvider.removeFromCart(
-                                            bannerFoods[currentIndex],
-                                          );
+                                          cartProvider.removeFromCart(bannerFoods[currentIndex]);
                                         } else {
-                                          cartProvider.addToCart(
-                                            bannerFoods[currentIndex],
-                                          );
+                                          cartProvider.addToCart(bannerFoods[currentIndex]);
                                         }
                                       },
-                                      textColor: isDark
-                                          ? Colors.black
-                                          : Colors.white,
-                                      buttonText: isInCart
-                                          ? "Remove from Cart"
-                                          : "Add to Cart",
+                                      textColor: isDark ? Colors.black : Colors.white,
+                                      buttonText: isInCart ? "Remove from Cart" : "Add to Cart",
                                       borderRadius: KBorderSize.borderMedium,
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 12.w,
-                                        vertical: 6.h,
-                                      ),
+                                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                                     );
                                   },
                                 ),
@@ -345,5 +297,3 @@ class _HomeBannerState extends State<HomeBanner> {
     );
   }
 }
-
-
