@@ -1,6 +1,6 @@
 import 'package:animations/animations.dart';
 import 'package:go_router/go_router.dart';
-import 'package:grab_go_customer/core/navigation/bottom_navigator.dart';
+import 'package:grab_go_customer/features/home/navigation/bottom_navigator.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/features/auth/view/email_verification.dart';
 import 'package:grab_go_customer/features/auth/view/login.dart';

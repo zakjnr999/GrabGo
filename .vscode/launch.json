@@ -1,32 +1,29 @@
 {
   "version": "0.2.0",
   "configurations": [
-    // ==========================================
-    // CUSTOMER APP - Grab Go Customer
-    // ==========================================
     {
-      "name": "🏠 Customer App (Debug)",
+      "name": "Customer App (Debug)",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_customer",
       "flutterMode": "debug"
     },
     {
-      "name": "🏠 Customer App (Profile)",
+      "name": "Customer App (Profile)",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_customer",
       "flutterMode": "profile"
     },
     {
-      "name": "🏠 Customer App (Release)",
+      "name": "Customer App (Release)",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_customer",
       "flutterMode": "release"
     },
     {
-      "name": "🏠 Customer App - Windows",
+      "name": "Customer App - Windows",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_customer",
@@ -34,7 +31,7 @@
       "args": ["-d", "windows"]
     },
     {
-      "name": "🏠 Customer App - Android",
+      "name": "Customer App - Android",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_customer",
@@ -42,40 +39,36 @@
       "args": ["-d", "android"]
     },
     {
-      "name": "🏠 Customer App - iOS",
+      "name": "Customer App - iOS",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_customer",
       "flutterMode": "debug",
       "args": ["-d", "ios"]
     },
-
-    // ==========================================
-    // RESTAURANT APP - Grab Go Restaurant
-    // ==========================================
     {
-      "name": "🍽️ Restaurant App (Debug)",
+      "name": "Restaurant App (Debug)",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_restaurant",
       "flutterMode": "debug"
     },
     {
-      "name": "🍽️ Restaurant App (Profile)",
+      "name": "Restaurant App (Profile)",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_restaurant",
       "flutterMode": "profile"
     },
     {
-      "name": "🍽️ Restaurant App (Release)",
+      "name": "Restaurant App (Release)",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_restaurant",
       "flutterMode": "release"
     },
     {
-      "name": "🍽️ Restaurant App - Windows",
+      "name": "Restaurant App - Windows",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_restaurant",
@@ -83,7 +76,7 @@
       "args": ["-d", "windows"]
     },
     {
-      "name": "🍽️ Restaurant App - Android",
+      "name": "Restaurant App - Android",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_restaurant",
@@ -91,7 +84,7 @@
       "args": ["-d", "android"]
     },
     {
-      "name": "🍽️ Restaurant App - iOS",
+      "name": "Restaurant App - iOS",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_restaurant",
@@ -99,32 +92,29 @@
       "args": ["-d", "ios"]
     },
 
-    // ==========================================
-    // RIDER APP - Grab Go Rider
-    // ==========================================
     {
-      "name": "🏍️ Rider App (Debug)",
+      "name": "Rider App (Debug)",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_rider",
       "flutterMode": "debug"
     },
     {
-      "name": "🏍️ Rider App (Profile)",
+      "name": "Rider App (Profile)",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_rider",
       "flutterMode": "profile"
     },
     {
-      "name": "🏍️ Rider App (Release)",
+      "name": "Rider App (Release)",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_rider",
       "flutterMode": "release"
     },
     {
-      "name": "🏍️ Rider App - Android",
+      "name": "Rider App - Android",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_rider",
@@ -132,19 +122,15 @@
       "args": ["-d", "android"]
     },
     {
-      "name": "🏍️ Rider App - iOS",
+      "name": "Rider App - iOS",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_rider",
       "flutterMode": "debug",
       "args": ["-d", "ios"]
     },
-
-    // ==========================================
-    // ADMIN APP - Grab Go Admin
-    // ==========================================
     {
-      "name": "🔧 Admin App (Debug)",
+      "name": "Admin App (Debug)",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_admin",
@@ -152,7 +138,7 @@
       "args": ["-d", "chrome"]
     },
     {
-      "name": "🔧 Admin App (Profile)",
+      "name": "Admin App (Profile)",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_admin",
@@ -160,7 +146,7 @@
       "args": ["-d", "chrome"]
     },
     {
-      "name": "🔧 Admin App (Release)",
+      "name": "Admin App (Release)",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_admin",
@@ -168,7 +154,7 @@
       "args": ["-d", "chrome"]
     },
     {
-      "name": "🔧 Admin App - Chrome",
+      "name": "Admin App - Chrome",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_admin",
@@ -176,24 +162,20 @@
       "args": ["-d", "chrome"]
     },
     {
-      "name": "🔧 Admin App - Edge",
+      "name": "Admin App - Edge",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_admin",
       "flutterMode": "debug",
       "args": ["-d", "edge"]
     },
-
-    // ==========================================
-    // UTILITY CONFIGURATIONS
-    // ==========================================
     {
-      "name": "🐞 Flutter Attach",
+      "name": "Flutter Attach",
       "type": "dart",
       "request": "attach"
     },
     {
-      "name": "🧪 Customer App - Hot Reload Preset",
+      "name": "Customer App - Hot Reload Preset",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_customer",
@@ -201,4 +183,4 @@
       "args": ["--hot"]
     }
   ]
-}  
+}

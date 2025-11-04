@@ -136,6 +136,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/delivery-truck.svg
   String get deliveryTruck => 'lib/assets/icons/delivery-truck.svg';
 
+  /// File path: lib/assets/icons/delivery_guy_icon.svg
+  String get deliveryGuyIcon => 'lib/assets/icons/delivery_guy_icon.svg';
+
   /// File path: lib/assets/icons/discount.png
   AssetGenImage get discount =>
       const AssetGenImage('lib/assets/icons/discount.png');
@@ -283,6 +286,18 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/refresh.svg
   String get refresh => 'lib/assets/icons/refresh.svg';
 
+  /// File path: lib/assets/icons/rider_onboarding_one.png
+  AssetGenImage get riderOnboardingOne =>
+      const AssetGenImage('lib/assets/icons/rider_onboarding_one.png');
+
+  /// File path: lib/assets/icons/rider_onboarding_three.png
+  AssetGenImage get riderOnboardingThree =>
+      const AssetGenImage('lib/assets/icons/rider_onboarding_three.png');
+
+  /// File path: lib/assets/icons/rider_onboarding_two.png
+  AssetGenImage get riderOnboardingTwo =>
+      const AssetGenImage('lib/assets/icons/rider_onboarding_two.png');
+
   /// File path: lib/assets/icons/scale.svg
   String get scale => 'lib/assets/icons/scale.svg';
 
@@ -378,6 +393,7 @@ class $LibAssetsIconsGen {
     cooking,
     creditCard,
     deliveryTruck,
+    deliveryGuyIcon,
     discount,
     dollar,
     editPencil,
@@ -424,6 +440,9 @@ class $LibAssetsIconsGen {
     phone,
     plus,
     refresh,
+    riderOnboardingOne,
+    riderOnboardingThree,
+    riderOnboardingTwo,
     scale,
     scanQrCode,
     search,
@@ -451,6 +470,14 @@ class $LibAssetsIconsGen {
 
 class $LibAssetsImagesGen {
   const $LibAssetsImagesGen();
+
+  /// File path: lib/assets/images/delivery_guy.png
+  AssetGenImage get deliveryGuy =>
+      const AssetGenImage('lib/assets/images/delivery_guy.png');
+
+  /// File path: lib/assets/images/delivery_package.png
+  AssetGenImage get deliveryPackage =>
+      const AssetGenImage('lib/assets/images/delivery_package.png');
 
   /// File path: lib/assets/images/dish_one.jpg
   AssetGenImage get dishOne =>
@@ -506,6 +533,8 @@ class $LibAssetsImagesGen {
 
   /// List of all assets
   List<AssetGenImage> get values => [
+    deliveryGuy,
+    deliveryPackage,
     dishOne,
     dishThree,
     dishTwo,
@@ -527,9 +556,11 @@ class Assets {
 
   static const $LibGen lib = $LibGen();
 
-  // Convenience getters for backward compatibility
-  static $LibAssetsIconsGen get icons => const $LibAssetsIconsGen();
-  static $LibAssetsImagesGen get images => const $LibAssetsImagesGen();
+  /// Convenience getter for icons
+  static $LibAssetsIconsGen get icons => lib.assets.icons;
+
+  /// Convenience getter for images
+  static $LibAssetsImagesGen get images => lib.assets.images;
 }
 
 class AssetGenImage {

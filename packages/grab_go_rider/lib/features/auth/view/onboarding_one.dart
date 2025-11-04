@@ -11,29 +11,54 @@ class OnboardingOne extends StatefulWidget {
   State<OnboardingOne> createState() => _OnboardingOneState();
 }
 
-class _OnboardingOneState extends State<OnboardingOne> with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
+class _OnboardingOneState extends State<OnboardingOne> with TickerProviderStateMixin {
+  late AnimationController _textAnimationController;
+  late AnimationController _imageAnimationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  late Animation<double> _imageFadeAnimation;
+  late Animation<double> _imageScaleAnimation;
+  late Animation<Offset> _imageSlideAnimation;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
 
-    _fadeAnimation = CurvedAnimation(parent: _animationController, curve: Curves.easeIn);
-
+    _textAnimationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
+    _fadeAnimation = CurvedAnimation(parent: _textAnimationController, curve: Curves.easeIn);
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic));
+    ).animate(CurvedAnimation(parent: _textAnimationController, curve: Curves.easeOutCubic));
 
-    _animationController.forward();
+    _imageAnimationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000));
+    _imageFadeAnimation = CurvedAnimation(
+      parent: _imageAnimationController,
+      curve: const Interval(0.0, 0.8, curve: Curves.easeIn),
+    );
+    _imageScaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _imageAnimationController,
+        curve: const Interval(0.0, 1.0, curve: Curves.easeOutCubic),
+      ),
+    );
+    _imageSlideAnimation = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero).animate(
+      CurvedAnimation(
+        parent: _imageAnimationController,
+        curve: const Interval(0.0, 1.0, curve: Curves.easeOutCubic),
+      ),
+    );
+
+    _imageAnimationController.forward();
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted) _textAnimationController.forward();
+    });
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _textAnimationController.dispose();
+    _imageAnimationController.dispose();
     super.dispose();
   }
 
@@ -49,12 +74,30 @@ class _OnboardingOneState extends State<OnboardingOne> with SingleTickerProvider
           colors: [colors.accentViolet, colors.accentViolet.withValues(alpha: 0.85)],
         ),
       ),
-      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 28.h),
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          SizedBox(height: 8.h),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+              child: FadeTransition(
+                opacity: _imageFadeAnimation,
+                child: SlideTransition(
+                  position: _imageSlideAnimation,
+                  child: ScaleTransition(
+                    scale: _imageScaleAnimation,
+                    child: Assets.icons.riderOnboardingOne.image(
+                      package: "grab_go_shared",
+                      fit: BoxFit.contain,
+                      width: double.infinity,
+                      height: double.infinity,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
           FadeTransition(
             opacity: _fadeAnimation,
             child: SlideTransition(

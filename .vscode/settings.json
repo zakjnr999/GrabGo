@@ -1,5 +1,4 @@
 {
-  // Spell checker custom words
   "cSpell.words": [
     "Adenta",
     "googlegmail",
@@ -14,35 +13,24 @@
     "viewmodels"
   ],
 
-  // Flutter settings
   "dart.flutterSdkPath": null,
   "dart.flutterAdditionalArgs": [],
   "dart.lineLength": 120,
-  // Prevent automatic pub get - this is a workspace/monorepo, dependencies are managed at root
   "dart.runPubGetOnPubspecChanges": "never",
-  // Prevent pub get from running on nested projects/workspace packages
   "dart.runPubGetOnNestedProjects": "none",
   "dart.enableSdkFormatter": true,
-  // Disable automatic dependency fetching when opening workspace
-  "dart.analysisExcludedFolders": [
-    "**/build",
-    "**/.dart_tool"
-  ],
-  // Exclude root workspace folder from analysis - dependencies managed at package level
+  "dart.analysisExcludedFolders": ["**/build", "**/.dart_tool"],
   "files.watcherExclude": {
     "**/.dart_tool/**": true,
     "**/build/**": true
   },
-  // For workspace projects, don't automatically run pub get on workspace folders
   "dart.onlyAnalyzeProjectsWithOpenFiles": false,
 
-  // File associations
   "files.associations": {
     "*.dart": "dart",
     "*.yaml": "yaml"
   },
 
-  // Editor settings for Dart
   "[dart]": {
     "editor.defaultFormatter": "Dart-Code.dart-code",
     "editor.formatOnSave": true,
@@ -55,7 +43,6 @@
     "editor.wordBasedSuggestions": "off"
   },
 
-  // Exclude patterns from file explorer
   "files.exclude": {
     "**/.dart_tool": true,
     "**/.flutter-plugins": true,
@@ -78,7 +65,6 @@
     "**/*.iml": true
   },
 
-  // Search exclude patterns
   "search.exclude": {
     "**/.dart_tool": true,
     "**/build": true,
@@ -89,7 +75,6 @@
     "**/packages/**/build": true
   },
 
-  // Terminal settings for running Flutter commands
   "terminal.integrated.defaultProfile.windows": "PowerShell",
   "terminal.integrated.profiles.windows": {
     "PowerShell": {

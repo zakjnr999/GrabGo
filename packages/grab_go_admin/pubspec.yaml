@@ -17,11 +17,11 @@ dependencies:
   google_fonts: ^6.2.1
   provider: ^6.1.1
   flutter_svg: ^2.0.10+1
-  fl_chart: ^0.68.0
+  fl_chart: ^1.1.1
   chopper: ^8.4.0
   http: ^1.1.2
   json_annotation: ^4.9.0
-  intl: ^0.19.0
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:

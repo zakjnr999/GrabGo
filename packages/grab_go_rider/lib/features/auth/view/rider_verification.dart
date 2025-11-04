@@ -417,7 +417,7 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                   padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                   decoration: BoxDecoration(
                     color: colors.accentOrange.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8.r),
+                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                     border: Border.all(color: colors.accentOrange.withOpacity(0.3), width: 1),
                   ),
                   child: Row(
