@@ -445,11 +445,12 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                             ],
                           ),
                           child: Center(
-                            child: Assets.icons.appIcon.image(
-                              height: 48.h,
-                              width: 48.h,
-                              color: colors.accentOrange,
-                              package: 'grab_go_shared',
+                            child: SvgPicture.asset(
+                              Assets.icons.deliveryGuyIcon,
+                              package: "grab_go_shared",
+                              height: 50.h,
+                              width: 50.w,
+                              colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                             ),
                           ),
                         ),

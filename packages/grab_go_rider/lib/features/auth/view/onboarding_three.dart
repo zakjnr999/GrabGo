@@ -11,29 +11,54 @@ class OnboardingThree extends StatefulWidget {
   State<OnboardingThree> createState() => _OnboardingThreeState();
 }
 
-class _OnboardingThreeState extends State<OnboardingThree> with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
+class _OnboardingThreeState extends State<OnboardingThree> with TickerProviderStateMixin {
+  late AnimationController _textAnimationController;
+  late AnimationController _imageAnimationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  late Animation<double> _imageFadeAnimation;
+  late Animation<double> _imageScaleAnimation;
+  late Animation<Offset> _imageSlideAnimation;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
 
-    _fadeAnimation = CurvedAnimation(parent: _animationController, curve: Curves.easeIn);
-
+    _textAnimationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
+    _fadeAnimation = CurvedAnimation(parent: _textAnimationController, curve: Curves.easeIn);
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic));
+    ).animate(CurvedAnimation(parent: _textAnimationController, curve: Curves.easeOutCubic));
 
-    _animationController.forward();
+    _imageAnimationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000));
+    _imageFadeAnimation = CurvedAnimation(
+      parent: _imageAnimationController,
+      curve: const Interval(0.0, 0.8, curve: Curves.easeIn),
+    );
+    _imageScaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _imageAnimationController,
+        curve: const Interval(0.0, 1.0, curve: Curves.easeOutCubic),
+      ),
+    );
+    _imageSlideAnimation = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero).animate(
+      CurvedAnimation(
+        parent: _imageAnimationController,
+        curve: const Interval(0.0, 1.0, curve: Curves.easeOutCubic),
+      ),
+    );
+
+    _imageAnimationController.forward();
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted) _textAnimationController.forward();
+    });
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _textAnimationController.dispose();
+    _imageAnimationController.dispose();
     super.dispose();
   }
 
@@ -50,12 +75,34 @@ class _OnboardingThreeState extends State<OnboardingThree> with SingleTickerProv
           colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.85)],
         ),
       ),
-      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 28.h),
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           SizedBox(height: 8.h),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w),
+              child: Center(
+                child: FadeTransition(
+                  opacity: _imageFadeAnimation,
+                  child: SlideTransition(
+                    position: _imageSlideAnimation,
+                    child: ScaleTransition(
+                      scale: _imageScaleAnimation,
+                      child: Assets.icons.riderOnboardingThree.image(
+                        package: "grab_go_shared",
+                        fit: BoxFit.contain,
+                        width: double.infinity,
+                        height: double.infinity,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
           FadeTransition(
             opacity: _fadeAnimation,
             child: SlideTransition(
@@ -71,7 +118,7 @@ class _OnboardingThreeState extends State<OnboardingThree> with SingleTickerProv
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     SvgPicture.asset(
-                      Assets.icons.check,
+                      Assets.icons.deliveryGuyIcon,
                       package: "grab_go_shared",
                       width: 16.w,
                       height: 16.h,
@@ -98,6 +145,7 @@ class _OnboardingThreeState extends State<OnboardingThree> with SingleTickerProv
             child: SlideTransition(
               position: _slideAnimation,
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     AppStrings.riderOnboardingThreeMain,

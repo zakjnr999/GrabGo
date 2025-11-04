@@ -30,7 +30,7 @@ class OnboardingMainState extends State<OnboardingMain> with SingleTickerProvide
     super.dispose();
   }
 
-  void skip() => context.go('/login');
+  void skip() => controller.jumpToPage(2);
 
   void next() {
     if (_index < 2) {
@@ -63,7 +63,9 @@ class OnboardingMainState extends State<OnboardingMain> with SingleTickerProvide
               children: [
                 PageView(
                   controller: controller,
-                  onPageChanged: (i) => setState(() => _index = i),
+                  onPageChanged: (i) {
+                    setState(() => _index = i);
+                  },
                   children: const [OnboardingOne(), OnboardingTwo(), OnboardingThree()],
                 ),
 
@@ -74,7 +76,7 @@ class OnboardingMainState extends State<OnboardingMain> with SingleTickerProvide
                   child: StoryStepper(
                     count: 3,
                     index: _index,
-                    activeColor: colors.textPrimary,
+                    activeColor: Colors.white,
                     inactiveColor: colors.inputBorder.withValues(alpha: 0.35),
                   ),
                 ),
@@ -86,18 +88,21 @@ class OnboardingMainState extends State<OnboardingMain> with SingleTickerProvide
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
-                        flex: 1,
-                        child: AppButton(
-                          buttonText: AppStrings.skip,
-                          onPressed: skip,
-                          backgroundColor: Colors.transparent,
-                          borderColor: Colors.white.withValues(alpha: 0.3),
-                          borderRadius: KBorderSize.borderRadius4,
-                          textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.white),
-                        ),
-                      ),
-                      SizedBox(width: 10.w),
+                      if (_index < 2)
+                        Expanded(
+                          flex: 1,
+                          child: AppButton(
+                            buttonText: AppStrings.skip,
+                            onPressed: skip,
+                            backgroundColor: Colors.transparent,
+                            borderColor: Colors.white.withValues(alpha: 0.3),
+                            borderRadius: KBorderSize.borderRadius4,
+                            textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.white),
+                          ),
+                        )
+                      else
+                        SizedBox(width: 0),
+                      if (_index < 2) SizedBox(width: 10.w),
                       Expanded(
                         flex: 2,
                         child: AppButton(

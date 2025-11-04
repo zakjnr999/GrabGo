@@ -25,4 +25,3 @@ final class _$FoodService extends FoodService {
     return client.send<dynamic, dynamic>($request);
   }
 }
-
