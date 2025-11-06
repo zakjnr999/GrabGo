@@ -1,12 +1,8 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import '../utils/constants.dart';
-import '../utils/app_colors_extension.dart';
 
 enum AppDialogType { info, warning, error, success, question, logout }
 
@@ -103,7 +99,6 @@ class AppDialog extends StatelessWidget {
   }
 
   SvgPicture _getTypeIcon(BuildContext context) {
-    final colors = context.appColors;
     switch (type) {
       case AppDialogType.info:
         return SvgPicture.asset(Assets.icons.infoCircle, package: 'grab_go_shared', height: 35.h, width: 35.h);
@@ -169,7 +164,6 @@ class AppDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Icon Section
             Container(
               width: double.infinity,
               padding: EdgeInsets.all(KSpacing.lg25.r),
@@ -269,7 +263,6 @@ class AppDialog extends StatelessWidget {
 
                       if (secondaryButtonText != null && primaryButtonText != null) SizedBox(width: KSpacing.md.w),
 
-                      // Primary Button (if provided)
                       if (primaryButtonText != null)
                         Expanded(
                           child: GestureDetector(
