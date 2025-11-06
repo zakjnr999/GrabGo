@@ -42,7 +42,6 @@ class OnboardingMainState extends State<OnboardingMain> with SingleTickerProvide
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.appColors;
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -77,7 +76,7 @@ class OnboardingMainState extends State<OnboardingMain> with SingleTickerProvide
                     count: 3,
                     index: _index,
                     activeColor: Colors.white,
-                    inactiveColor: colors.inputBorder.withValues(alpha: 0.35),
+                    inactiveColor: Colors.white.withValues(alpha: 0.35),
                   ),
                 ),
 

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:go_router/go_router.dart';
+import 'package:grab_go_rider/features/chat/view/chat_detail_page.dart';
 import 'package:grab_go_rider/shared/widgets/profile_sliver_appbar.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -69,25 +71,42 @@ class ProfilePage extends StatelessWidget {
                     padding: EdgeInsets.symmetric(horizontal: 20.w),
                     child: Column(
                       children: [
-                        _buildMenuItem("Personal Information", Assets.icons.user, colors.textPrimary, colors, () {}),
+                        _buildMenuItem("Personal Information", Assets.icons.user, colors.textPrimary, colors, () {
+                          context.push("/personal-information");
+                        }),
                         SizedBox(height: 12.h),
-                        _buildMenuItem(
-                          "Vehicle Details",
-                          Assets.icons.deliveryTruck,
-                          colors.textPrimary,
-                          colors,
-                          () {},
-                        ),
+                        _buildMenuItem("Vehicle Details", Assets.icons.deliveryTruck, colors.textPrimary, colors, () {
+                          context.push("/vehicle-details");
+                        }),
                         SizedBox(height: 12.h),
-                        _buildMenuItem("Bank Account", Assets.icons.creditCard, colors.textPrimary, colors, () {}),
+                        _buildMenuItem("Bank Account", Assets.icons.creditCard, colors.textPrimary, colors, () {
+                          context.push("/bank-account");
+                        }),
                         SizedBox(height: 12.h),
-                        _buildMenuItem("Documents", Assets.icons.idCard, colors.textPrimary, colors, () {}),
+                        _buildMenuItem("Documents", Assets.icons.idCard, colors.textPrimary, colors, () {
+                          context.push("/documents");
+                        }),
                         SizedBox(height: 12.h),
-                        _buildMenuItem("Notifications", Assets.icons.bell, colors.textPrimary, colors, () {}),
+                        _buildMenuItem("Notifications", Assets.icons.bell, colors.textPrimary, colors, () {
+                          context.push("/notifications");
+                        }),
                         SizedBox(height: 12.h),
-                        _buildMenuItem("Help & Support", Assets.icons.headsetHelp, colors.textPrimary, colors, () {}),
+                        _buildMenuItem("Help & Support", Assets.icons.headsetHelp, colors.textPrimary, colors, () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ChatDetailPage(
+                                chatId: "support",
+                                senderName: "GrabGo Support",
+                                isSupport: true,
+                              ),
+                            ),
+                          );
+                        }),
                         SizedBox(height: 12.h),
-                        _buildMenuItem("Settings", Assets.icons.slidersHorizontal, colors.textPrimary, colors, () {}),
+                        _buildMenuItem("Settings", Assets.icons.slidersHorizontal, colors.textPrimary, colors, () {
+                          context.push("/settings");
+                        }),
                         SizedBox(height: 12.h),
                         _buildMenuItem("About", Assets.icons.infoCircle, colors.textPrimary, colors, () {}),
                       ],
@@ -254,38 +273,19 @@ class ProfilePage extends StatelessWidget {
   }
 
   void _showLogoutDialog(BuildContext context, AppColorsExtension colors) {
-    showDialog(
+    AppDialog.show(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.borderRadius12)),
-        backgroundColor: colors.backgroundPrimary,
-        title: Text(
-          "Logout",
-          style: TextStyle(color: colors.textPrimary, fontSize: 20.sp, fontWeight: FontWeight.w700),
-        ),
-        content: Text(
-          "Are you sure you want to logout?",
-          style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              "Cancel",
-              style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w600),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: Text(
-              "Logout",
-              style: TextStyle(color: colors.error, fontSize: 14.sp, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
+      title: "Logout",
+      message: "Are you sure you want to logout?",
+      type: AppDialogType.logout,
+      primaryButtonText: "Logout",
+      secondaryButtonText: "Cancel",
+      borderRadius: KBorderSize.borderRadius4,
+      buttonBorderRadius: KBorderSize.borderRadius4,
+      onPrimaryPressed: () {
+        Navigator.pop(context);
+      },
+      onSecondaryPressed: () => Navigator.pop(context),
     );
   }
 }

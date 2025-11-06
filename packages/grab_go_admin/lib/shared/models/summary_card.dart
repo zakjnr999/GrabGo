@@ -1,5 +1,3 @@
-import 'package:grab_go_shared/gen/assets.gen.dart';
-
 class SummaryCard {
   final String title;
   final String value;

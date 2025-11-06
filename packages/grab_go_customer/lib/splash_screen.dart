@@ -250,7 +250,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                                 ],
                               ),
                               child: Image(
-                                image: Assets.icons.appIcon.provider(package: 'grab_go_shared'),
+                                image: Assets.icons.appIconCustomer.provider(package: 'grab_go_shared'),
                                 height: 100.h,
                                 width: 100.w,
                                 color: Colors.white,

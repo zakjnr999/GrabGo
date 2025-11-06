@@ -31,7 +31,6 @@ class _EarningsHistoryPageState extends State<EarningsHistoryPage> {
   void _loadEarnings() {
     final now = DateTime.now();
     _allEarnings = [
-      // Today
       TransactionModel(
         id: '1',
         amount: 25.50,
@@ -56,7 +55,6 @@ class _EarningsHistoryPageState extends State<EarningsHistoryPage> {
         dateTime: now.subtract(const Duration(hours: 5)),
         status: TransactionStatus.completed,
       ),
-      // This Week
       TransactionModel(
         id: '4',
         amount: 42.00,
@@ -89,7 +87,6 @@ class _EarningsHistoryPageState extends State<EarningsHistoryPage> {
         dateTime: now.subtract(const Duration(days: 5)),
         status: TransactionStatus.completed,
       ),
-      // This Month
       TransactionModel(
         id: '8',
         amount: 35.00,
@@ -161,7 +158,6 @@ class _EarningsHistoryPageState extends State<EarningsHistoryPage> {
           _filteredEarnings = _allEarnings;
           break;
       }
-      // Sort by date (newest first)
       _filteredEarnings.sort((a, b) => b.dateTime.compareTo(a.dateTime));
     });
   }
@@ -234,28 +230,15 @@ class _EarningsHistoryPageState extends State<EarningsHistoryPage> {
           backgroundColor: colors.backgroundPrimary,
           elevation: 0,
           scrolledUnderElevation: 0,
-          leading: Container(
-            margin: EdgeInsets.all(8.w),
-            decoration: BoxDecoration(
-              color: colors.backgroundSecondary,
-              shape: BoxShape.circle,
-              border: Border.all(color: colors.border.withValues(alpha: 0.3), width: 1),
+          leading: IconButton(
+            icon: SvgPicture.asset(
+              Assets.icons.navArrowLeft,
+              package: 'grab_go_shared',
+              width: 24.w,
+              height: 24.w,
+              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
             ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => context.pop(),
-                customBorder: const CircleBorder(),
-                child: Padding(
-                  padding: EdgeInsets.all(10.r),
-                  child: SvgPicture.asset(
-                    Assets.icons.navArrowLeft,
-                    package: 'grab_go_shared',
-                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                  ),
-                ),
-              ),
-            ),
+            onPressed: () => context.pop(),
           ),
           title: Text(
             "Earnings History",
@@ -276,8 +259,6 @@ class _EarningsHistoryPageState extends State<EarningsHistoryPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(height: 20.h),
-
-              // Total Earnings Card
               Container(
                 padding: EdgeInsets.all(24.w),
                 decoration: BoxDecoration(
@@ -350,7 +331,6 @@ class _EarningsHistoryPageState extends State<EarningsHistoryPage> {
 
               SizedBox(height: 24.h),
 
-              // Period Filter
               Row(
                 children: [
                   Expanded(child: _buildPeriodFilter("Today", EarningsPeriod.today, colors)),
@@ -365,7 +345,6 @@ class _EarningsHistoryPageState extends State<EarningsHistoryPage> {
 
               SizedBox(height: 24.h),
 
-              // Earnings List
               if (_filteredEarnings.isEmpty)
                 _buildEmptyState(colors)
               else

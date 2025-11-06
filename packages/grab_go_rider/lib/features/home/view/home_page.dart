@@ -125,6 +125,62 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Widget _buildStatCard({
+    required AppColorsExtension colors,
+    required String icon,
+    required Color iconColor,
+    required String title,
+    required String value,
+    required String subtitle,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: colors.backgroundPrimary,
+        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+        border: Border.all(color: colors.border, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: EdgeInsets.all(8.w),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                ),
+                child: SvgPicture.asset(
+                  icon,
+                  package: 'grab_go_shared',
+                  width: 20.w,
+                  height: 20.w,
+                  colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+                ),
+              ),
+              Text(
+                title,
+                style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+          SizedBox(height: 12.h),
+          Text(
+            value,
+            style: TextStyle(color: colors.textPrimary, fontSize: 20.sp, fontWeight: FontWeight.w700),
+          ),
+          SizedBox(height: 2.h),
+          Text(
+            subtitle,
+            style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w400),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
@@ -147,103 +203,180 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 children: [
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20.w),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Status: Online",
-                              style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w600),
+                    padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                    child: Container(
+                      padding: EdgeInsets.all(16.w),
+                      decoration: BoxDecoration(
+                        color: colors.backgroundPrimary,
+                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                        border: Border.all(color: colors.border, width: 1),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 48.w,
+                            height: 48.w,
+                            decoration: BoxDecoration(
+                              color: colors.accentGreen.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
                             ),
-                            Text(
-                              "Open to any delivery",
-                              style: TextStyle(
-                                color: colors.textSecondary,
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w400,
+                            child: Center(
+                              child: Container(
+                                width: 12.w,
+                                height: 12.w,
+                                decoration: BoxDecoration(color: colors.accentGreen, shape: BoxShape.circle),
                               ),
                             ),
-                          ],
-                        ),
-
-                        Switch.adaptive(
-                          value: true,
-                          onChanged: (value) {},
-                          activeThumbColor: AppColors.white,
-                          activeTrackColor: colors.accentGreen,
-                        ),
-                      ],
+                          ),
+                          SizedBox(width: 16.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "You're Online",
+                                  style: TextStyle(
+                                    color: colors.textPrimary,
+                                    fontSize: 16.sp,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                SizedBox(height: 4.h),
+                                Text(
+                                  "Ready to accept deliveries",
+                                  style: TextStyle(
+                                    color: colors.textSecondary,
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch.adaptive(
+                            value: true,
+                            onChanged: (value) {},
+                            activeThumbColor: AppColors.white,
+                            activeTrackColor: colors.accentGreen,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
 
-                  Divider(color: colors.backgroundTertiary, thickness: 20.r, height: 60.h),
-
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 10.w),
+                    padding: EdgeInsets.symmetric(horizontal: 20.w),
                     child: Row(
                       children: [
-                        Assets.images.deliveryPackage.image(package: "grab_go_shared", height: 100.h),
-                        SizedBox(width: KSpacing.lg),
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-                                decoration: BoxDecoration(
-                                  color: colors.error.withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(KBorderSize.border),
-                                ),
-                                child: Text(
-                                  "Rush hour, be careful.",
-                                  style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w600, color: colors.error),
-                                ),
-                              ),
-                              SizedBox(height: KSpacing.xs),
-                              Text(
-                                "4 delivery orders found!",
-                                style: TextStyle(
-                                  color: colors.textPrimary,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 18.sp,
-                                ),
-                              ),
-
-                              GestureDetector(
-                                onTap: () {
-                                  context.push("/orders");
-                                },
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      "View details",
-                                      style: TextStyle(
-                                        color: colors.accentGreen,
-                                        fontSize: 12.sp,
-                                        fontWeight: FontWeight.w400,
-                                      ),
-                                    ),
-                                    SvgPicture.asset(
-                                      Assets.icons.navArrowRight,
-                                      package: "grab_go_shared",
-                                      height: 16.h,
-                                      colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                          child: _buildStatCard(
+                            colors: colors,
+                            icon: Assets.icons.deliveryTruck,
+                            iconColor: colors.accentGreen,
+                            title: "Today",
+                            value: "12",
+                            subtitle: "Deliveries",
+                          ),
+                        ),
+                        SizedBox(width: 12.w),
+                        Expanded(
+                          child: _buildStatCard(
+                            colors: colors,
+                            icon: Assets.icons.creditCard,
+                            iconColor: colors.accentOrange,
+                            title: "Earnings",
+                            value: "GHC 285",
+                            subtitle: "This week",
                           ),
                         ),
                       ],
                     ),
                   ),
 
-                  Divider(color: colors.backgroundTertiary, thickness: 20.r, height: 60.h),
+                  SizedBox(height: 20.h),
+
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20.w),
+                    child: GestureDetector(
+                      onTap: () {
+                        context.push("/orders");
+                      },
+                      child: Container(
+                        padding: EdgeInsets.all(20.w),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              colors.accentGreen.withValues(alpha: 0.15),
+                              colors.accentGreen.withValues(alpha: 0.05),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                          border: Border.all(color: colors.accentGreen.withValues(alpha: 0.3), width: 1),
+                        ),
+                        child: Row(
+                          children: [
+                            Assets.images.deliveryPackage.image(height: 100.h, width: 100.w, package: 'grab_go_shared'),
+                            SizedBox(width: 10.w),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                                        decoration: BoxDecoration(
+                                          color: colors.accentOrange.withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                                        ),
+                                        child: Text(
+                                          "Rush Hour",
+                                          style: TextStyle(
+                                            fontSize: 10.sp,
+                                            fontWeight: FontWeight.w600,
+                                            color: colors.accentOrange,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 8.h),
+                                  Text(
+                                    "4 orders available",
+                                    style: TextStyle(
+                                      color: colors.textPrimary,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 18.sp,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4.h),
+                                  Text(
+                                    "Tap to view and accept",
+                                    style: TextStyle(
+                                      color: colors.textSecondary,
+                                      fontSize: 12.sp,
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SvgPicture.asset(
+                              Assets.icons.navArrowRight,
+                              package: "grab_go_shared",
+                              width: 24.w,
+                              height: 24.w,
+                              colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 24.h),
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 20.w),
                     child: Column(
@@ -390,7 +523,7 @@ class _HomePageState extends State<HomePage> {
                             );
                           },
                         ),
-                        SizedBox(height: 20.h),
+                        SizedBox(height: 32.h),
                       ],
                     ),
                   ),
