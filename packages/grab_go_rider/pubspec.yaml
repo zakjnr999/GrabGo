@@ -69,5 +69,13 @@ dev_dependencies:
   chopper_generator: ^8.4.0
   json_serializable: ^6.9.0
 
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "../grab_go_shared/lib/assets/icons/app_icon_rider_main.png"
+  adaptive_icon_foreground: "../grab_go_shared/lib/assets/icons/foreground_icon_rider.png"
+  adaptive_icon_background: "../grab_go_shared/lib/assets/icons/background_icon_rider.png"
+  adaptive_icon_monochrome: "../grab_go_shared/lib/assets/icons/app_icon_rider_monochrome.png"
+
 flutter:
   uses-material-design: true

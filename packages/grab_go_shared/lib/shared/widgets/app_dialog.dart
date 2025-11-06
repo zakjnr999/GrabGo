@@ -22,6 +22,8 @@ class AppDialog extends StatelessWidget {
   final Color? primaryButtonColor;
   final Color? secondaryButtonColor;
   final bool barrierDismissible;
+  final double? borderRadius;
+  final double? buttonBorderRadius;
 
   const AppDialog({
     super.key,
@@ -36,6 +38,8 @@ class AppDialog extends StatelessWidget {
     this.primaryButtonColor,
     this.secondaryButtonColor,
     this.barrierDismissible = true,
+    this.borderRadius,
+    this.buttonBorderRadius,
   });
 
   static Future<bool?> show({
@@ -51,6 +55,8 @@ class AppDialog extends StatelessWidget {
     Color? primaryButtonColor,
     Color? secondaryButtonColor,
     bool barrierDismissible = true,
+    double? borderRadius,
+    double? buttonBorderRadius,
   }) {
     return showDialog<bool>(
       context: context,
@@ -67,6 +73,8 @@ class AppDialog extends StatelessWidget {
         primaryButtonColor: primaryButtonColor,
         secondaryButtonColor: secondaryButtonColor,
         barrierDismissible: barrierDismissible,
+        borderRadius: borderRadius,
+        buttonBorderRadius: buttonBorderRadius,
       ),
     );
   }
@@ -94,7 +102,8 @@ class AppDialog extends StatelessWidget {
     }
   }
 
-  SvgPicture _getTypeIcon() {
+  SvgPicture _getTypeIcon(BuildContext context) {
+    final colors = context.appColors;
     switch (type) {
       case AppDialogType.info:
         return SvgPicture.asset(Assets.icons.infoCircle, package: 'grab_go_shared', height: 35.h, width: 35.h);
@@ -107,11 +116,29 @@ class AppDialog extends StatelessWidget {
           colorFilter: ColorFilter.mode(AppColors.errorRed, BlendMode.srcIn),
         );
       case AppDialogType.error:
-        return SvgPicture.asset(Assets.icons.infoCircle, package: 'grab_go_shared', height: 35.h, width: 35.h);
+        return SvgPicture.asset(
+          Assets.icons.infoCircle,
+          package: 'grab_go_shared',
+          height: 35.h,
+          width: 35.h,
+          colorFilter: ColorFilter.mode(AppColors.errorRed, BlendMode.srcIn),
+        );
       case AppDialogType.success:
-        return SvgPicture.asset(Assets.icons.check, package: 'grab_go_shared', height: 35.h, width: 35.h);
+        return SvgPicture.asset(
+          Assets.icons.check,
+          package: 'grab_go_shared',
+          height: 35.h,
+          width: 35.h,
+          colorFilter: ColorFilter.mode(AppColors.accentGreen, BlendMode.srcIn),
+        );
       case AppDialogType.question:
-        return SvgPicture.asset(Assets.icons.infoCircle, package: 'grab_go_shared', height: 35.h, width: 35.h);
+        return SvgPicture.asset(
+          Assets.icons.infoCircle,
+          package: 'grab_go_shared',
+          height: 35.h,
+          width: 35.h,
+          colorFilter: ColorFilter.mode(AppColors.accentGreen, BlendMode.srcIn),
+        );
       case AppDialogType.logout:
         return SvgPicture.asset(
           Assets.icons.logOut,
@@ -127,6 +154,8 @@ class AppDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final typeColor = _getTypeColor(context);
+    final dialogBorderRadius = borderRadius ?? KBorderSize.borderRadius20;
+    final btnBorderRadius = buttonBorderRadius ?? KBorderSize.borderRadius15;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -134,7 +163,7 @@ class AppDialog extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
-          borderRadius: BorderRadius.circular(KBorderSize.borderRadius20),
+          borderRadius: BorderRadius.circular(dialogBorderRadius),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 10))],
         ),
         child: Column(
@@ -150,9 +179,9 @@ class AppDialog extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(KBorderSize.borderRadius20),
-                  topRight: Radius.circular(KBorderSize.borderRadius20),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(dialogBorderRadius),
+                  topRight: Radius.circular(dialogBorderRadius),
                 ),
               ),
               child: Center(
@@ -171,7 +200,7 @@ class AppDialog extends StatelessWidget {
                             width: 35.h,
                             colorFilter: ColorFilter.mode(typeColor, BlendMode.srcIn),
                           )
-                        : _getTypeIcon(),
+                        : _getTypeIcon(context),
                   ),
                 ),
               ),
@@ -221,7 +250,7 @@ class AppDialog extends StatelessWidget {
                               height: 50.h,
                               decoration: BoxDecoration(
                                 color: secondaryButtonColor?.withOpacity(0.1) ?? colors.backgroundSecondary,
-                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                                borderRadius: BorderRadius.circular(btnBorderRadius),
                                 border: Border.all(color: secondaryButtonColor ?? colors.inputBorder, width: 1.5),
                               ),
                               child: Center(
@@ -255,7 +284,7 @@ class AppDialog extends StatelessWidget {
                               height: 50.h,
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(colors: [typeColor, typeColor.withOpacity(0.8)]),
-                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                                borderRadius: BorderRadius.circular(btnBorderRadius),
                                 boxShadow: [
                                   BoxShadow(
                                     color: typeColor.withOpacity(0.3),

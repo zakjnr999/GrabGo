@@ -524,7 +524,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                           ],
                         ),
                         child: Center(
-                          child: Assets.icons.appIcon.image(
+                          child: Assets.icons.appIconCustomer.image(
                             height: 60.h,
                             width: 60.h,
                             color: colors.accentOrange,

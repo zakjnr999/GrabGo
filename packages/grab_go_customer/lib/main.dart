@@ -35,7 +35,7 @@ void main() async {
         ChangeNotifierProvider(create: (context) => NavigationProvider()),
         ChangeNotifierProvider(create: (context) => FavoritesProvider()),
       ],
-      child: const MyApp(),
+      child: const GrabGoCustomerApp(),
     ),
   );
 
@@ -51,14 +51,14 @@ void _initializeBackgroundServices() async {
   }
 }
 
-class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+class GrabGoCustomerApp extends StatefulWidget {
+  const GrabGoCustomerApp({super.key});
 
   @override
-  State<MyApp> createState() => _MyAppState();
+  State<GrabGoCustomerApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<GrabGoCustomerApp> {
   @override
   Widget build(BuildContext context) {
     return Consumer<ThemeProvider>(

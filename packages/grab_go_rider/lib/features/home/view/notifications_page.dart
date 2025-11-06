@@ -224,28 +224,15 @@ class _NotificationsPageState extends State<NotificationsPage> {
           backgroundColor: colors.backgroundPrimary,
           elevation: 0,
           scrolledUnderElevation: 0,
-          leading: Container(
-            margin: EdgeInsets.all(8.w),
-            decoration: BoxDecoration(
-              color: colors.backgroundSecondary,
-              shape: BoxShape.circle,
-              border: Border.all(color: colors.border.withValues(alpha: 0.3), width: 1),
+          leading: IconButton(
+            icon: SvgPicture.asset(
+              Assets.icons.navArrowLeft,
+              package: 'grab_go_shared',
+              width: 24.w,
+              height: 24.w,
+              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
             ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => context.pop(),
-                customBorder: const CircleBorder(),
-                child: Padding(
-                  padding: EdgeInsets.all(10.r),
-                  child: SvgPicture.asset(
-                    Assets.icons.navArrowLeft,
-                    package: 'grab_go_shared',
-                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                  ),
-                ),
-              ),
-            ),
+            onPressed: () => context.pop(),
           ),
           title: Text(
             "Notifications",
@@ -261,11 +248,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
           actions: [
             if (_notifications.isNotEmpty)
               PopupMenuButton<String>(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.borderRadius4)),
+                popUpAnimationStyle: AnimationStyle(curve: Curves.easeIn),
                 icon: Container(
-                  margin: EdgeInsets.all(8.w),
                   padding: EdgeInsets.all(8.r),
                   decoration: BoxDecoration(
-                    color: colors.backgroundSecondary,
+                    color: Colors.transparent,
                     shape: BoxShape.circle,
                     border: Border.all(color: colors.border.withValues(alpha: 0.3), width: 1),
                   ),
@@ -296,11 +284,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     value: 'clear_all',
                     child: Row(
                       children: [
-                        Icon(Icons.delete_outline, size: 18, color: colors.error),
+                        SvgPicture.asset(Assets.icons.binMinusIn, package: "grab_go_shared", height: 22.h, width: 22.w),
                         SizedBox(width: 8.w),
                         Text(
                           "Clear all",
-                          style: TextStyle(fontSize: 14.sp, color: colors.error),
+                          style: TextStyle(fontSize: 14.sp, color: colors.textPrimary),
                         ),
                       ],
                     ),

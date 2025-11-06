@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:go_router/go_router.dart';
 import 'package:grab_go_rider/features/home/models/transaction_model.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -173,33 +172,6 @@ class _WalletPageState extends State<WalletPage> {
           ),
           centerTitle: true,
           actionsPadding: EdgeInsets.only(right: 10.w),
-          actions: [
-            Stack(
-              children: [
-                IconButton(
-                  icon: SvgPicture.asset(
-                    Assets.icons.bell,
-                    package: 'grab_go_shared',
-                    width: 24.w,
-                    height: 24.w,
-                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                  ),
-                  onPressed: () {
-                    context.push("/notifications");
-                  },
-                ),
-                Positioned(
-                  top: 8.w,
-                  right: 10.w,
-                  child: Container(
-                    width: 10.w,
-                    height: 10.w,
-                    decoration: BoxDecoration(color: colors.accentViolet, shape: BoxShape.circle),
-                  ),
-                ),
-              ],
-            ),
-          ],
         ),
         body: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),

@@ -21,7 +21,7 @@ class Bonus {
   final String requirement;
   final int progress;
   final int target;
-  final String type; // 'weekly', 'monthly', 'milestone', 'special'
+  final String type;
 
   Bonus({
     required this.id,
@@ -69,7 +69,6 @@ class _BonusesPageState extends State<BonusesPage> with SingleTickerProviderStat
   void _loadBonuses() {
     final now = DateTime.now();
 
-    // Active bonuses
     _activeBonuses = [
       Bonus(
         id: '1',
@@ -112,7 +111,6 @@ class _BonusesPageState extends State<BonusesPage> with SingleTickerProviderStat
       ),
     ];
 
-    // Completed bonuses
     _completedBonuses = [
       Bonus(
         id: '4',
@@ -224,28 +222,15 @@ class _BonusesPageState extends State<BonusesPage> with SingleTickerProviderStat
           backgroundColor: colors.backgroundPrimary,
           elevation: 0,
           scrolledUnderElevation: 0,
-          leading: Container(
-            margin: EdgeInsets.all(8.w),
-            decoration: BoxDecoration(
-              color: colors.backgroundSecondary,
-              shape: BoxShape.circle,
-              border: Border.all(color: colors.border.withValues(alpha: 0.3), width: 1),
+          leading: IconButton(
+            icon: SvgPicture.asset(
+              Assets.icons.navArrowLeft,
+              package: 'grab_go_shared',
+              width: 24.w,
+              height: 24.w,
+              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
             ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => context.pop(),
-                customBorder: const CircleBorder(),
-                child: Padding(
-                  padding: EdgeInsets.all(10.r),
-                  child: SvgPicture.asset(
-                    Assets.icons.navArrowLeft,
-                    package: 'grab_go_shared',
-                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                  ),
-                ),
-              ),
-            ),
+            onPressed: () => context.pop(),
           ),
           title: Text(
             "Bonuses",
@@ -260,6 +245,7 @@ class _BonusesPageState extends State<BonusesPage> with SingleTickerProviderStat
           centerTitle: true,
           bottom: TabBar(
             controller: _tabController,
+            dividerColor: Colors.transparent,
             indicatorColor: colors.accentOrange,
             labelColor: colors.accentOrange,
             unselectedLabelColor: colors.textSecondary,
@@ -273,7 +259,6 @@ class _BonusesPageState extends State<BonusesPage> with SingleTickerProviderStat
         ),
         body: Column(
           children: [
-            // Total Bonuses Card
             Container(
               margin: EdgeInsets.all(20.w),
               padding: EdgeInsets.all(24.w),
@@ -353,12 +338,10 @@ class _BonusesPageState extends State<BonusesPage> with SingleTickerProviderStat
               ),
             ),
 
-            // Tab Content
             Expanded(
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  // Active Bonuses
                   _activeBonuses.isEmpty
                       ? _buildEmptyState("No active bonuses", "Check back later for new bonus opportunities!", colors)
                       : ListView.separated(
@@ -371,7 +354,6 @@ class _BonusesPageState extends State<BonusesPage> with SingleTickerProviderStat
                           },
                         ),
 
-                  // Completed Bonuses
                   _completedBonuses.isEmpty
                       ? _buildEmptyState("No bonus history", "Complete bonuses to see your earnings here!", colors)
                       : ListView.separated(
@@ -447,7 +429,7 @@ class _BonusesPageState extends State<BonusesPage> with SingleTickerProviderStat
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                 decoration: BoxDecoration(
                   color: typeColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20.r),
+                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                 ),
                 child: Text(
                   "GHC ${bonus.amount.toStringAsFixed(2)}",
@@ -477,7 +459,7 @@ class _BonusesPageState extends State<BonusesPage> with SingleTickerProviderStat
               child: LinearProgressIndicator(
                 value: progressPercentage / 100,
                 minHeight: 8.h,
-                backgroundColor: colors.border.withValues(alpha: 0.3),
+                backgroundColor: colors.divider.withValues(alpha: 0.3),
                 valueColor: AlwaysStoppedAnimation<Color>(typeColor),
               ),
             ),
@@ -518,7 +500,13 @@ class _BonusesPageState extends State<BonusesPage> with SingleTickerProviderStat
             SizedBox(height: 12.h),
             Row(
               children: [
-                Icon(Icons.calendar_today, size: 14.w, color: colors.textSecondary),
+                SvgPicture.asset(
+                  Assets.icons.calendar,
+                  package: "grab_go_shared",
+                  height: 14.h,
+                  width: 12.w,
+                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                ),
                 SizedBox(width: 4.w),
                 Text(
                   bonus.earnedDate != null

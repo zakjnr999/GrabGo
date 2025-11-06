@@ -535,21 +535,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                           width: 80.h,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                            gradient: LinearGradient(
-                              colors: [
-                                colors.accentGreen.withValues(alpha: 0.15),
-                                colors.accentOrange.withValues(alpha: 0.15),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: colors.accentGreen.withValues(alpha: 0.15),
-                                blurRadius: 4,
-                                spreadRadius: 5,
-                              ),
-                            ],
+                            color: colors.accentGreen.withValues(alpha: 0.15),
                           ),
                           child: Center(
                             child: SvgPicture.asset(

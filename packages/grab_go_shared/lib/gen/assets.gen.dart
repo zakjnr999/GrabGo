@@ -56,17 +56,29 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/alarm.svg
   String get alarm => 'lib/assets/icons/alarm.svg';
 
-  /// File path: lib/assets/icons/app_icon.png
-  AssetGenImage get appIcon =>
-      const AssetGenImage('lib/assets/icons/app_icon.png');
+  /// File path: lib/assets/icons/app_icon_customer.png
+  AssetGenImage get appIconCustomer =>
+      const AssetGenImage('lib/assets/icons/app_icon_customer.png');
 
-  /// File path: lib/assets/icons/app_icon_main.png
-  AssetGenImage get appIconMain =>
-      const AssetGenImage('lib/assets/icons/app_icon_main.png');
+  /// File path: lib/assets/icons/app_icon_customer_main.png
+  AssetGenImage get appIconCustomerMain =>
+      const AssetGenImage('lib/assets/icons/app_icon_customer_main.png');
 
-  /// File path: lib/assets/icons/app_icon_main_monochrome.png
-  AssetGenImage get appIconMainMonochrome =>
-      const AssetGenImage('lib/assets/icons/app_icon_main_monochrome.png');
+  /// File path: lib/assets/icons/app_icon_customer_monochrome.png
+  AssetGenImage get appIconCustomerMonochrome =>
+      const AssetGenImage('lib/assets/icons/app_icon_customer_monochrome.png');
+
+  /// File path: lib/assets/icons/app_icon_rider.png
+  AssetGenImage get appIconRider =>
+      const AssetGenImage('lib/assets/icons/app_icon_rider.png');
+
+  /// File path: lib/assets/icons/app_icon_rider_main.png
+  AssetGenImage get appIconRiderMain =>
+      const AssetGenImage('lib/assets/icons/app_icon_rider_main.png');
+
+  /// File path: lib/assets/icons/app_icon_rider_monochrome.png
+  AssetGenImage get appIconRiderMonochrome =>
+      const AssetGenImage('lib/assets/icons/app_icon_rider_monochrome.png');
 
   /// File path: lib/assets/icons/arrow-up-a-z.svg
   String get arrowUpAZ => 'lib/assets/icons/arrow-up-a-z.svg';
@@ -74,6 +86,10 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/background_icon_main.png
   AssetGenImage get backgroundIconMain =>
       const AssetGenImage('lib/assets/icons/background_icon_main.png');
+
+  /// File path: lib/assets/icons/background_icon_rider.png
+  AssetGenImage get backgroundIconRider =>
+      const AssetGenImage('lib/assets/icons/background_icon_rider.png');
 
   /// File path: lib/assets/icons/ban.svg
   String get ban => 'lib/assets/icons/ban.svg';
@@ -175,9 +191,13 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/flame.svg
   String get flame => 'lib/assets/icons/flame.svg';
 
-  /// File path: lib/assets/icons/foreground_icon_main.png
-  AssetGenImage get foregroundIconMain =>
-      const AssetGenImage('lib/assets/icons/foreground_icon_main.png');
+  /// File path: lib/assets/icons/foreground_icon_customer.png
+  AssetGenImage get foregroundIconCustomer =>
+      const AssetGenImage('lib/assets/icons/foreground_icon_customer.png');
+
+  /// File path: lib/assets/icons/foreground_icon_rider.png
+  AssetGenImage get foregroundIconRider =>
+      const AssetGenImage('lib/assets/icons/foreground_icon_rider.png');
 
   /// File path: lib/assets/icons/gift.svg
   String get gift => 'lib/assets/icons/gift.svg';
@@ -368,11 +388,15 @@ class $LibAssetsIconsGen {
   /// List of all assets
   List<dynamic> get values => [
     alarm,
-    appIcon,
-    appIconMain,
-    appIconMainMonochrome,
+    appIconCustomer,
+    appIconCustomerMain,
+    appIconCustomerMonochrome,
+    appIconRider,
+    appIconRiderMain,
+    appIconRiderMonochrome,
     arrowUpAZ,
     backgroundIconMain,
+    backgroundIconRider,
     ban,
     bbq,
     bell,
@@ -405,7 +429,8 @@ class $LibAssetsIconsGen {
     facebook,
     fastDelivery,
     flame,
-    foregroundIconMain,
+    foregroundIconCustomer,
+    foregroundIconRider,
     gift,
     google,
     group,
@@ -556,11 +581,10 @@ class Assets {
 
   static const $LibGen lib = $LibGen();
 
-  /// Convenience getter for icons
+  // Convenience getters for backward compatibility
   static $LibAssetsIconsGen get icons => lib.assets.icons;
-
-  /// Convenience getter for images
   static $LibAssetsImagesGen get images => lib.assets.images;
+  static $LibAssetsFontsGen get fonts => lib.assets.fonts;
 }
 
 class AssetGenImage {

@@ -187,19 +187,8 @@ class _AccountCreatedState extends State<AccountCreated> with SingleTickerProvid
                               height: 56.h,
                               decoration: BoxDecoration(
                                 border: BoxBorder.all(color: colors.inputBorder, width: 1),
-                                gradient: LinearGradient(
-                                  colors: [colors.backgroundSecondary, colors.backgroundSecondary.withOpacity(0.8)],
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                ),
                                 borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: colors.backgroundSecondary.withOpacity(0.4),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
+                                color: colors.backgroundSecondary.withValues(alpha: 0.8),
                               ),
                               child: Center(
                                 child: Text(
@@ -235,12 +224,7 @@ class _AccountCreatedState extends State<AccountCreated> with SingleTickerProvid
             width: 120.h,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-              gradient: LinearGradient(
-                colors: [colors.accentOrange.withOpacity(0.2), colors.accentOrange.withOpacity(0.1)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              boxShadow: [BoxShadow(color: colors.accentOrange.withOpacity(0.3), blurRadius: 40, spreadRadius: 10)],
+              color: colors.accentOrange.withValues(alpha: 0.15),
             ),
             child: Center(
               child: Container(

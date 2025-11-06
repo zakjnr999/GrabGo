@@ -175,8 +175,8 @@ class ProfileSliverAppbar extends StatelessWidget {
           decoration: BoxDecoration(
             color: colors.backgroundSecondary,
             borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(KBorderSize.borderRadius12),
-              topRight: Radius.circular(KBorderSize.borderRadius12),
+              topLeft: Radius.circular(KBorderSize.borderRadius20),
+              topRight: Radius.circular(KBorderSize.borderRadius20),
             ),
             boxShadow: [
               BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, -2)),

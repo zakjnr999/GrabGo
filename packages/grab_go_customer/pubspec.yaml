@@ -76,15 +76,14 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "packages/grab_go_shared/lib/assets/icons/app_icon_main.png"
-  adaptive_icon_foreground: "packages/grab_go_shared/lib/assets/icons/foreground_icon_main.png"
-  adaptive_icon_background: "packages/grab_go_shared/lib/assets/icons/background_icon_main.png"
-  adaptive_icon_monochrome: "packages/grab_go_shared/lib/assets/icons/app_icon_main_monochrome.png"
+  image_path: "../grab_go_shared/lib/assets/icons/app_icon_customer_main.png"
+  adaptive_icon_foreground: "../grab_go_shared/lib/assets/icons/foreground_icon_customer.png"
+  adaptive_icon_background: "../grab_go_shared/lib/assets/icons/background_icon_main.png"
+  adaptive_icon_monochrome: "../grab_go_shared/lib/assets/icons/app_icon_customer_monochrome.png"
 
 flutter:
   uses-material-design: true
   
-  # Custom fonts from grab_go_shared package (must declare here for bundling)
   fonts:
     - family: Lato
       fonts:

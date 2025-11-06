@@ -38,6 +38,7 @@ class _BottomNavigatorState extends State<BottomNavigator> {
     final navigationProvider = Provider.of<NavigationProvider>(context);
     final selectedIndex = navigationProvider.selectedIndex;
     Size size = MediaQuery.sizeOf(context);
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: AnnotatedRegion<SystemUiOverlayStyle>(

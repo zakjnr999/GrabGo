@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:grab_go_rider/shared/viewmodel/bottom_nav_provider.dart';
 import 'package:grab_go_rider/shared/viewmodel/theme_provider.dart';
 import 'package:grab_go_rider/shared/service/cache_service.dart';
 import 'package:grab_go_rider/shared/utils/routes.dart';
@@ -12,7 +13,10 @@ void main() async {
   await CacheService.initialize();
   runApp(
     MultiProvider(
-      providers: [ChangeNotifierProvider(create: (context) => ThemeProvider())],
+      providers: [
+        ChangeNotifierProvider(create: (context) => ThemeProvider()),
+        ChangeNotifierProvider(create: (context) => BottomNavProvider()),
+      ],
       child: GrabGoRiderApp(),
     ),
   );

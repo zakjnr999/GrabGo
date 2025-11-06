@@ -117,14 +117,7 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                       width: 80.h,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                        gradient: LinearGradient(
-                          colors: [colors.accentOrange.withOpacity(0.2), colors.accentViolet.withOpacity(0.2)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        boxShadow: [
-                          BoxShadow(color: colors.accentOrange.withOpacity(0.2), blurRadius: 4, spreadRadius: 5),
-                        ],
+                        color: colors.accentOrange.withValues(alpha: 0.15),
                       ),
                       child: Center(
                         child: SvgPicture.asset(
@@ -643,6 +636,8 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                     ),
                   ),
                 ),
+
+                SizedBox(height: KSpacing.lg.h),
               ],
             ),
           ),

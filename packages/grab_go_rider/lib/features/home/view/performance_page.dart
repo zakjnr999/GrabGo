@@ -33,11 +33,10 @@ class PerformancePage extends StatefulWidget {
 }
 
 class _PerformancePageState extends State<PerformancePage> {
-  // Performance metrics
   double _overallRating = 4.8;
   int _totalDeliveries = 1247;
   double _successRate = 98.5;
-  double _averageDeliveryTime = 25.0; // minutes
+  double _averageDeliveryTime = 25.0;
   int _onTimeDeliveries = 1228;
   int _totalRatings = 892;
 
@@ -114,28 +113,15 @@ class _PerformancePageState extends State<PerformancePage> {
           backgroundColor: colors.backgroundPrimary,
           elevation: 0,
           scrolledUnderElevation: 0,
-          leading: Container(
-            margin: EdgeInsets.all(8.w),
-            decoration: BoxDecoration(
-              color: colors.backgroundSecondary,
-              shape: BoxShape.circle,
-              border: Border.all(color: colors.border.withValues(alpha: 0.3), width: 1),
+          leading: IconButton(
+            icon: SvgPicture.asset(
+              Assets.icons.navArrowLeft,
+              package: 'grab_go_shared',
+              width: 24.w,
+              height: 24.w,
+              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
             ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => context.pop(),
-                customBorder: const CircleBorder(),
-                child: Padding(
-                  padding: EdgeInsets.all(10.r),
-                  child: SvgPicture.asset(
-                    Assets.icons.navArrowLeft,
-                    package: 'grab_go_shared',
-                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                  ),
-                ),
-              ),
-            ),
+            onPressed: () => context.pop(),
           ),
           title: Text(
             "Performance",
@@ -157,7 +143,6 @@ class _PerformancePageState extends State<PerformancePage> {
             children: [
               SizedBox(height: 20.h),
 
-              // Overall Rating Card
               Container(
                 padding: EdgeInsets.all(24.w),
                 decoration: BoxDecoration(
@@ -207,13 +192,15 @@ class _PerformancePageState extends State<PerformancePage> {
                             SizedBox(height: 4.h),
                             Row(
                               children: List.generate(5, (index) {
-                                return Icon(
+                                return SvgPicture.asset(
                                   index < _overallRating.floor() ||
                                           (index == _overallRating.floor() && _overallRating % 1 >= 0.5)
-                                      ? Icons.star
-                                      : Icons.star_border,
-                                  color: Colors.white,
-                                  size: 18.w,
+                                      ? Assets.icons.starSolid
+                                      : Assets.icons.star,
+                                  package: "grab_go_shared",
+                                  colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                  height: 18.h,
+                                  width: 18.w,
                                 );
                               }),
                             ),
@@ -245,7 +232,6 @@ class _PerformancePageState extends State<PerformancePage> {
 
               SizedBox(height: 24.h),
 
-              // Performance Stats Grid
               Row(
                 children: [
                   Expanded(
@@ -262,7 +248,7 @@ class _PerformancePageState extends State<PerformancePage> {
                     child: _buildStatCard(
                       'Success Rate',
                       '${_successRate.toStringAsFixed(1)}%',
-                      Assets.icons.shieldCheck,
+                      Assets.icons.check,
                       colors.accentOrange,
                       colors,
                     ),
@@ -298,7 +284,6 @@ class _PerformancePageState extends State<PerformancePage> {
 
               SizedBox(height: 24.h),
 
-              // Performance Breakdown
               Container(
                 padding: EdgeInsets.all(20.w),
                 decoration: BoxDecoration(
@@ -342,7 +327,6 @@ class _PerformancePageState extends State<PerformancePage> {
 
               SizedBox(height: 24.h),
 
-              // Recent Ratings Section
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -362,7 +346,6 @@ class _PerformancePageState extends State<PerformancePage> {
 
               SizedBox(height: 16.h),
 
-              // Recent Ratings List
               ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -446,7 +429,7 @@ class _PerformancePageState extends State<PerformancePage> {
           child: LinearProgressIndicator(
             value: percentage / 100,
             minHeight: 8.h,
-            backgroundColor: colors.border.withValues(alpha: 0.3),
+            backgroundColor: colors.divider.withValues(alpha: 0.3),
             valueColor: AlwaysStoppedAnimation<Color>(color),
           ),
         ),
@@ -492,13 +475,15 @@ class _PerformancePageState extends State<PerformancePage> {
                     Row(
                       children: [
                         ...List.generate(5, (index) {
-                          return Icon(
+                          return SvgPicture.asset(
                             index < rating.rating.floor() ||
                                     (index == rating.rating.floor() && rating.rating % 1 >= 0.5)
-                                ? Icons.star
-                                : Icons.star_border,
-                            color: colors.accentOrange,
-                            size: 14.w,
+                                ? Assets.icons.starSolid
+                                : Assets.icons.star,
+                            package: "grab_go_shared",
+                            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                            height: 14.h,
+                            width: 14.w,
                           );
                         }),
                         SizedBox(width: 6.w),

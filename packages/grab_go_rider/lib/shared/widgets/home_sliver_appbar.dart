@@ -140,13 +140,13 @@ class HomeSliverAppbar extends StatelessWidget {
                                       ),
                                     ),
                                     Text(
-                                      "Rider Zak!",
+                                      "Rider John!",
                                       style: TextStyle(
                                         color: Colors.white,
-                                        fontWeight: FontWeight.w800,
+                                        fontWeight: FontWeight.w900,
                                         fontSize: 28.sp * expandRatio + 18.sp * reverseRatio,
                                         height: 1.2,
-                                        letterSpacing: -0.5,
+                                        letterSpacing: -0.1,
                                       ),
                                     ),
                                   ],
@@ -261,8 +261,8 @@ class HomeSliverAppbar extends StatelessWidget {
           decoration: BoxDecoration(
             color: colors.backgroundSecondary,
             borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(KBorderSize.borderRadius12),
-              topRight: Radius.circular(KBorderSize.borderRadius12),
+              topLeft: Radius.circular(KBorderSize.borderRadius20),
+              topRight: Radius.circular(KBorderSize.borderRadius20),
             ),
             boxShadow: [
               BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, -2)),

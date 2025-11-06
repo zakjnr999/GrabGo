@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:grab_go_restaurant/shared/widgets/app_button.dart';
 import 'package:grab_go_restaurant/shared/app_colors.dart';
 import '../../../shared/widgets/animated_tab_bar.dart';

@@ -11,14 +11,23 @@ import 'package:grab_go_rider/features/auth/view/rider_verification.dart';
 import 'package:grab_go_rider/features/auth/view/vehicle_details.dart';
 import 'package:grab_go_rider/features/auth/view/verify_email.dart';
 import 'package:grab_go_rider/features/auth/view/verify_phone.dart';
-import 'package:grab_go_rider/features/home/navigation/bottom_navigation.dart';
 import 'package:grab_go_rider/features/home/view/bonuses_page.dart';
 import 'package:grab_go_rider/features/home/view/earnings_history_page.dart';
 import 'package:grab_go_rider/features/home/view/notifications_page.dart';
-import 'package:grab_go_rider/features/home/view/orders_page.dart';
 import 'package:grab_go_rider/features/home/view/performance_page.dart';
-import 'package:grab_go_rider/features/home/view/settings_page.dart';
-import 'package:grab_go_rider/splash_screen.dart';
+import 'package:grab_go_rider/features/orders/view/delivery_tracking_page.dart';
+import 'package:grab_go_rider/features/orders/view/order_confirmation_page.dart';
+import 'package:grab_go_rider/features/orders/view/orders_page.dart';
+import 'package:grab_go_rider/features/settings/view/bank_account_page.dart';
+import 'package:grab_go_rider/features/settings/view/documents_page.dart';
+import 'package:grab_go_rider/features/settings/view/personal_information_page.dart';
+import 'package:grab_go_rider/features/settings/view/safety_guidelines_page.dart';
+import 'package:grab_go_rider/features/settings/view/settings_page.dart';
+import 'package:grab_go_rider/features/home/view/faq_page.dart';
+import 'package:grab_go_rider/features/settings/view/support_page.dart';
+import 'package:grab_go_rider/features/settings/view/vehicle_details_page.dart';
+import 'package:grab_go_rider/shared/widgets/bottom_navigation.dart';
+import 'package:grab_go_rider/core/view/splash_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: "/",
@@ -336,6 +345,196 @@ final GoRouter appRouter = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: const SettingsPage(),
+          transitionDuration: const Duration(milliseconds: 800),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.scaled,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/support",
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const SupportPage(),
+          transitionDuration: const Duration(milliseconds: 800),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.scaled,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/faq",
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const FAQPage(),
+          transitionDuration: const Duration(milliseconds: 800),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.scaled,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/safety-guidelines",
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const SafetyGuidelinesPage(),
+          transitionDuration: const Duration(milliseconds: 800),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.scaled,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/vehicle-details",
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const VehicleDetailsPage(),
+          transitionDuration: const Duration(milliseconds: 800),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.scaled,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/personal-information",
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const PersonalInformationPage(),
+          transitionDuration: const Duration(milliseconds: 800),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.scaled,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/bank-account",
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const BankAccountPage(),
+          transitionDuration: const Duration(milliseconds: 800),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.scaled,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/documents",
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const DocumentsPage(),
+          transitionDuration: const Duration(milliseconds: 800),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.scaled,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/order-confirmation",
+      pageBuilder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: OrderConfirmationPage(
+            orderId: extra?['orderId'] ?? "ORD-12345",
+            customerName: extra?['customerName'] ?? "John Doe",
+            customerAddress: extra?['customerAddress'] ?? "123 Main Street, Accra, Ghana",
+            customerPhone: extra?['customerPhone'] ?? "+233 123 456 789",
+            restaurantName: extra?['restaurantName'] ?? "Pizza Palace",
+            restaurantAddress: extra?['restaurantAddress'] ?? "456 Food Street, Accra, Ghana",
+            orderTotal: extra?['orderTotal'] ?? "GHS 45.00",
+            orderItems: extra?['orderItems'] != null
+                ? List<String>.from(extra!['orderItems'])
+                : const ["Pizza Margherita x1", "Coca Cola x2"],
+            specialInstructions: extra?['specialInstructions'],
+          ),
+          transitionDuration: const Duration(milliseconds: 800),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.scaled,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/delivery-tracking",
+      pageBuilder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: DeliveryTrackingPage(
+            orderId: extra?['orderId'] ?? "ORD-12345",
+            customerName: extra?['customerName'] ?? "John Doe",
+            customerAddress: extra?['customerAddress'] ?? "123 Main Street, Accra, Ghana",
+            customerPhone: extra?['customerPhone'] ?? "+233 123 456 789",
+            restaurantName: extra?['restaurantName'] ?? "Pizza Palace",
+            restaurantAddress: extra?['restaurantAddress'] ?? "456 Food Street, Accra, Ghana",
+            orderTotal: extra?['orderTotal'] ?? "GHS 45.00",
+            orderItems: extra?['orderItems'] != null
+                ? List<String>.from(extra!['orderItems'])
+                : const ["Pizza Margherita x1", "Coca Cola x2"],
+            specialInstructions: extra?['specialInstructions'],
+            phase: extra?['phase'],
+            hasPickedUp: extra?['hasPickedUp'],
+          ),
           transitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(

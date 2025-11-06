@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:grab_go_shared/shared/utils/constants.dart';
 import '../app_colors.dart';
 import '../models/summary_card.dart';
 import '../utils/responsive.dart';
