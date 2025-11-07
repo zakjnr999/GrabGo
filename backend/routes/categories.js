@@ -2,7 +2,6 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const Category = require('../models/Category');
 const { protect, admin } = require('../middleware/auth');
-const { uploadSingle, getFileUrl } = require('../middleware/upload');
 
 const router = express.Router();
 
@@ -33,8 +32,9 @@ router.get('/', async (req, res) => {
 // @desc    Create a new category
 // @access  Private/Admin
 router.post('/', protect, admin, [
-  body('name').notEmpty().withMessage('Category name is required')
-], uploadSingle('image'), async (req, res) => {
+  body('name').notEmpty().withMessage('Category name is required'),
+  body('emoji').notEmpty().withMessage('Category emoji is required')
+], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -45,13 +45,12 @@ router.post('/', protect, admin, [
       });
     }
 
-    const { name, description } = req.body;
-    const image = req.file ? getFileUrl(req.file.filename) : null;
+    const { name, description, emoji } = req.body;
 
     const category = await Category.create({
       name,
       description,
-      image
+      emoji
     });
 
     res.status(201).json({

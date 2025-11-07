@@ -11,7 +11,7 @@ const categorySchema = new mongoose.Schema({
     type: String,
     default: null
   },
-  image: {
+  emoji: {
     type: String,
     default: null
   },

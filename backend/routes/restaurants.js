@@ -7,11 +7,31 @@ const { uploadFields, getFileUrl, uploadMultipleToCloudinary } = require('../mid
 const router = express.Router();
 
 // @route   GET /api/restaurants
-// @desc    Get all restaurants
-// @access  Public
-router.get('/', async (req, res) => {
+// @desc    Get all restaurants (approved only for public, all for admin)
+// @access  Public (or Admin if authenticated)
+router.get('/', async (req, res, next) => {
   try {
-    const restaurants = await Restaurant.find({ status: 'approved' })
+    // Try to get user from token (optional - won't fail if no token)
+    let isAdmin = false;
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const User = require('../models/User');
+        const token = req.headers.authorization.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id).select('-password');
+        if (user && user.isAdmin) {
+          isAdmin = true;
+        }
+      } catch (err) {
+        // Token invalid or no user - continue as public user
+      }
+    }
+    
+    // If admin, return all restaurants; otherwise only approved
+    const query = isAdmin ? {} : { status: 'approved' };
+    
+    const restaurants = await Restaurant.find(query)
       .select('-password')
       .sort({ createdAt: -1 });
 

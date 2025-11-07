@@ -58,12 +58,12 @@ const initDatabase = async () => {
 
     // Create default categories
     const defaultCategories = [
-      { name: 'Fast Food', description: 'Quick and delicious fast food options' },
-      { name: 'Pizza', description: 'Freshly baked pizzas' },
-      { name: 'Asian', description: 'Asian cuisine' },
-      { name: 'Desserts', description: 'Sweet treats and desserts' },
-      { name: 'Beverages', description: 'Drinks and beverages' },
-      { name: 'Healthy', description: 'Healthy food options' }
+      { name: 'Fast Food', description: 'Quick and delicious fast food options', emoji: '🍔' },
+      { name: 'Pizza', description: 'Freshly baked pizzas', emoji: '🍕' },
+      { name: 'Quick Bite', description: 'Quick bite options', emoji: '🥪' },
+      { name: 'Desserts', description: 'Sweet treats and desserts', emoji: '🍰' },
+      { name: 'Beverages', description: 'Drinks and beverages', emoji: '🥤' },
+      { name: 'Healthy', description: 'Healthy food options', emoji: '🥗' }
     ];
 
     for (const category of defaultCategories) {
