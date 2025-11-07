@@ -1,0 +1,102 @@
+const express = require('express');
+const { body, validationResult } = require('express-validator');
+const Category = require('../models/Category');
+const { protect, admin } = require('../middleware/auth');
+const { uploadSingle, getFileUrl } = require('../middleware/upload');
+
+const router = express.Router();
+
+// @route   GET /api/categories
+// @desc    Get all categories
+// @access  Public
+router.get('/', async (req, res) => {
+  try {
+    const categories = await Category.find({ isActive: true })
+      .sort({ name: 1 });
+
+    res.json({
+      success: true,
+      message: 'Categories retrieved successfully',
+      data: categories
+    });
+  } catch (error) {
+    console.error('Get categories error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// @route   POST /api/categories
+// @desc    Create a new category
+// @access  Private/Admin
+router.post('/', protect, admin, [
+  body('name').notEmpty().withMessage('Category name is required')
+], uploadSingle('image'), async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const { name, description } = req.body;
+    const image = req.file ? getFileUrl(req.file.filename) : null;
+
+    const category = await Category.create({
+      name,
+      description,
+      image
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Category created successfully',
+      data: category
+    });
+  } catch (error) {
+    console.error('Create category error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// @route   GET /api/categories/:categoryId
+// @desc    Get category by ID
+// @access  Public
+router.get('/:categoryId', async (req, res) => {
+  try {
+    const category = await Category.findById(req.params.categoryId);
+
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: 'Category not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Category retrieved successfully',
+      data: category
+    });
+  } catch (error) {
+    console.error('Get category error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+module.exports = router;
+

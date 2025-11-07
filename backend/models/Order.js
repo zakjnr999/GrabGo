@@ -1,0 +1,150 @@
+const mongoose = require('mongoose');
+
+const orderItemSchema = new mongoose.Schema({
+  food: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Food',
+    required: true
+  },
+  name: {
+    type: String,
+    required: true
+  },
+  quantity: {
+    type: Number,
+    required: true,
+    min: 1
+  },
+  price: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  image: {
+    type: String,
+    default: null
+  }
+}, { _id: false });
+
+const addressSchema = new mongoose.Schema({
+  street: { type: String, required: true },
+  city: { type: String, required: true },
+  state: { type: String, default: null },
+  zipCode: { type: String, default: null },
+  latitude: { type: Number, default: null },
+  longitude: { type: Number, default: null }
+}, { _id: false });
+
+const orderSchema = new mongoose.Schema({
+  orderNumber: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  customer: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  restaurant: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Restaurant',
+    required: true
+  },
+  rider: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  items: [orderItemSchema],
+  subtotal: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  deliveryFee: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  tax: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  totalAmount: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  deliveryAddress: {
+    type: addressSchema,
+    required: true
+  },
+  paymentMethod: {
+    type: String,
+    enum: ['cash', 'card', 'mobile_money', 'online'],
+    required: true
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'paid', 'failed', 'refunded'],
+    default: 'pending'
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'confirmed', 'preparing', 'ready', 'picked_up', 'on_the_way', 'delivered', 'cancelled'],
+    default: 'pending'
+  },
+  orderDate: {
+    type: Date,
+    default: Date.now
+  },
+  expectedDelivery: {
+    type: Date,
+    default: null
+  },
+  deliveredDate: {
+    type: Date,
+    default: null
+  },
+  cancelledDate: {
+    type: Date,
+    default: null
+  },
+  cancellationReason: {
+    type: String,
+    default: null
+  },
+  notes: {
+    type: String,
+    default: null
+  }
+}, {
+  timestamps: true
+});
+
+// Generate order number before saving
+orderSchema.pre('save', async function(next) {
+  if (!this.orderNumber) {
+    // Use timestamp + random number for better uniqueness
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 10000);
+    this.orderNumber = `ORD-${timestamp}-${random}`;
+    
+    // Ensure uniqueness by checking if order number exists
+    const Order = mongoose.model('Order');
+    let exists = await Order.findOne({ orderNumber: this.orderNumber });
+    let attempts = 0;
+    while (exists && attempts < 5) {
+      const newRandom = Math.floor(Math.random() * 10000);
+      this.orderNumber = `ORD-${timestamp}-${newRandom}`;
+      exists = await Order.findOne({ orderNumber: this.orderNumber });
+      attempts++;
+    }
+  }
+  next();
+});
+
+module.exports = mongoose.model('Order', orderSchema);
+
