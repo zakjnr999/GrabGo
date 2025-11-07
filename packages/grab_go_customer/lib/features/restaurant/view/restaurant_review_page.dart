@@ -168,7 +168,7 @@ class _ReviewPageState extends State<ReviewPage> with SingleTickerProviderStateM
 
       _debugLogResponse(response);
 
-      if (response.isSuccessful) {
+      if (response.isSuccessful && response.body != null) {
         if (mounted) {
           LoadingDialog.instance().hide();
 
@@ -216,10 +216,16 @@ class _ReviewPageState extends State<ReviewPage> with SingleTickerProviderStateM
 
       if (mounted) {
         LoadingDialog.instance().hide();
+
+        String errorMessage = AppStrings.restaurantRegistrationFailed;
+        if (e.toString().contains('type') && e.toString().contains('subtype')) {
+          errorMessage = "Registration successful but response parsing failed. Please check your application status.";
+        }
+
         AppToastMessage.show(
           context: context,
           icon: Icons.error,
-          message: AppStrings.restaurantRegistrationFailed,
+          message: errorMessage,
           backgroundColor: context.appColors.error,
         );
       }

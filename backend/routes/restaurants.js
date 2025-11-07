@@ -115,18 +115,41 @@ router.post('/register',
       status: 'pending'
     });
 
-    // Remove password from response and format for client
-    const restaurantData = restaurant.toObject();
-    delete restaurantData.password;
-    
     // Format response data - ensure all required fields are present
+    const restaurantData = restaurant.toObject();
+    
+    // Format response data - ensure all required fields are present and non-null
     const formattedData = {
-      ...restaurantData,
+      _id: restaurantData._id.toString(),
+      restaurant_name: restaurantData.restaurant_name || '',
+      email: restaurantData.email || '',
+      phone: restaurantData.phone || '',
+      address: restaurantData.address || '',
+      city: restaurantData.city || '',
+      owner_full_name: restaurantData.owner_full_name || '',
+      owner_contact_number: restaurantData.owner_contact_number || '',
+      business_id_number: restaurantData.business_id_number || '',
+      password: '', // Empty string instead of null for required field
+      logo: restaurantData.logo || null,
+      business_id_photo: restaurantData.business_id_photo || null,
+      owner_photo: restaurantData.owner_photo || null,
+      food_type: restaurantData.food_type || null,
+      description: restaurantData.description || null,
+      latitude: restaurantData.latitude || null,
+      longitude: restaurantData.longitude || null,
+      average_delivery_time: restaurantData.average_delivery_time || null,
+      delivery_fee: restaurantData.delivery_fee || 0,
+      min_order: restaurantData.min_order || 0,
+      opening_hours: restaurantData.opening_hours || null,
+      payment_methods: restaurantData.payment_methods || null,
+      banner_images: restaurantData.banner_images || null,
+      status: restaurantData.status || 'pending',
       rating: restaurantData.rating || 0,
       is_open: restaurantData.is_open || false,
       total_reviews: restaurantData.total_reviews || 0,
       created_at: restaurantData.createdAt ? restaurantData.createdAt.toISOString() : new Date().toISOString(),
-      version: restaurantData.__v || 0
+      __v: restaurantData.__v || 0,
+      socials: restaurantData.socials || null
     };
 
     res.status(201).json({
