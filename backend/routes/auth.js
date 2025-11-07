@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
-const { uploadSingle, getFileUrl } = require('../middleware/upload');
+const { uploadSingle, getFileUrl, uploadToCloudinary } = require('../middleware/upload');
 
 const router = express.Router();
 
@@ -274,9 +274,17 @@ router.post('/login', async (req, res) => {
 // @route   PUT /api/users/:userId
 // @desc    Update user (verify phone, upload profile, etc.)
 // @access  Private
-router.put('/:userId', protect, async (req, res) => {
+// This route handles both JSON updates and multipart file uploads
+router.put('/:userId', protect, uploadSingle('profilePicture'), uploadToCloudinary, async (req, res) => {
   try {
     const { userId } = req.params;
+    
+    console.log('📤 User update request:', {
+      userId,
+      hasFile: !!req.file,
+      contentType: req.headers['content-type'],
+      bodyKeys: Object.keys(req.body || {})
+    });
     
     // Check if user is updating their own profile or is admin
     if (req.user._id.toString() !== userId && !req.user.isAdmin) {
@@ -294,29 +302,50 @@ router.put('/:userId', protect, async (req, res) => {
       });
     }
 
-    // Update fields
-    const { phoneNumber, isPhoneVerified, profilePicture, image } = req.body;
-    
-    // Handle phone verification
-    if (phoneNumber !== undefined) {
-      user.phone = phoneNumber;
-    }
-    if (isPhoneVerified !== undefined) {
-      user.isPhoneVerified = isPhoneVerified;
-    }
-    
-    // Handle profile picture (supports base64 or URL)
-    const pictureToUse = profilePicture || image;
-    if (pictureToUse !== undefined) {
-      // If it's a base64 string, save it as is (client will handle conversion)
-      // If it's a URL, use it directly
-      user.profilePicture = pictureToUse;
+    // Handle file upload (multipart request)
+    if (req.file && req.file.cloudinaryUrl) {
+      console.log('📸 Processing profile picture upload via multipart');
+      
+      // Delete old image from Cloudinary if it exists
+      if (user.profilePicture && user.profilePicture.includes('cloudinary.com')) {
+        try {
+          const { deleteFromCloudinary } = require('../config/cloudinary');
+          const oldPublicId = user.profilePicture.split('/').pop().split('.')[0];
+          await deleteFromCloudinary(`grabgo/profiles/${oldPublicId}`);
+        } catch (error) {
+          console.error('Error deleting old profile picture:', error);
+          // Continue even if deletion fails
+        }
+      }
+      
+      user.profilePicture = req.file.cloudinaryUrl;
+      console.log('✅ Profile picture updated:', req.file.cloudinaryUrl);
+    } else {
+      // Handle JSON body updates (phone verification, etc.)
+      const { phoneNumber, isPhoneVerified, profilePicture, image } = req.body;
+      
+      // Handle phone verification
+      if (phoneNumber !== undefined) {
+        user.phone = phoneNumber;
+      }
+      if (isPhoneVerified !== undefined) {
+        user.isPhoneVerified = isPhoneVerified;
+      }
+      
+      // Handle profile picture (supports base64 or URL from JSON)
+      const pictureToUse = profilePicture || image;
+      if (pictureToUse !== undefined && !req.file) {
+        // If it's a base64 string, save it as is (client will handle conversion)
+        // If it's a URL, use it directly
+        user.profilePicture = pictureToUse;
+      }
     }
 
     await user.save();
 
     res.json({
-      message: 'User updated successfully',
+      success: true,
+      message: req.file ? 'Profile picture uploaded successfully' : 'User updated successfully',
       user: {
         _id: user._id,
         username: user.username,
@@ -346,9 +375,17 @@ router.put('/:userId', protect, async (req, res) => {
 // @route   PUT /api/users/:userId (Upload profile picture)
 // @desc    Upload profile picture
 // @access  Private
-router.put('/:userId/upload', protect, uploadSingle('profilePicture'), async (req, res) => {
+router.put('/:userId/upload', protect, uploadSingle('profilePicture'), uploadToCloudinary, async (req, res) => {
   try {
     const { userId } = req.params;
+    
+    console.log('📤 Profile upload request:', {
+      userId,
+      hasFile: !!req.file,
+      fileFieldname: req.file?.fieldname,
+      cloudinaryUrl: req.file?.cloudinaryUrl,
+      fileSize: req.file?.size
+    });
     
     if (req.user._id.toString() !== userId && !req.user.isAdmin) {
       return res.status(403).json({
@@ -365,12 +402,53 @@ router.put('/:userId/upload', protect, uploadSingle('profilePicture'), async (re
       });
     }
 
-    if (req.file) {
-      user.profilePicture = getFileUrl(req.file.filename);
-      await user.save();
+    // Check if file was uploaded
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded. Please select an image.'
+      });
     }
 
+    // Check if Cloudinary upload was successful
+    if (!req.file.cloudinaryUrl) {
+      console.error('Cloudinary upload failed - file object:', {
+        fieldname: req.file.fieldname,
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size
+      });
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to upload image to Cloudinary. Please check server logs.',
+        error: 'Cloudinary URL not found in request'
+      });
+    }
+
+    // Delete old image from Cloudinary if it exists
+    if (user.profilePicture && user.profilePicture.includes('cloudinary.com')) {
+      try {
+        const { deleteFromCloudinary } = require('../config/cloudinary');
+        const oldPublicId = user.profilePicture.split('/').pop().split('.')[0];
+        await deleteFromCloudinary(`grabgo/profiles/${oldPublicId}`);
+      } catch (error) {
+        console.error('Error deleting old profile picture:', error);
+        // Continue even if deletion fails
+      }
+    }
+    
+    // Save new profile picture URL
+    user.profilePicture = req.file.cloudinaryUrl;
+    await user.save();
+
+    console.log('✅ Profile picture uploaded successfully:', {
+      userId: user._id,
+      cloudinaryUrl: req.file.cloudinaryUrl,
+      publicId: req.file.cloudinaryPublicId
+    });
+
     res.json({
+      success: true,
       message: 'Profile picture uploaded successfully',
       user: {
         _id: user._id,

@@ -2,7 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const Restaurant = require('../models/Restaurant');
 const { protect, verifyApiKey, admin } = require('../middleware/auth');
-const { uploadFields, getFileUrl } = require('../middleware/upload');
+const { uploadFields, getFileUrl, uploadMultipleToCloudinary } = require('../middleware/upload');
 
 const router = express.Router();
 
@@ -47,7 +47,7 @@ router.post('/register', [
   { name: 'logo', maxCount: 1 },
   { name: 'business_id_photo', maxCount: 1 },
   { name: 'owner_photo', maxCount: 1 }
-]), async (req, res) => {
+]), uploadMultipleToCloudinary, async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -82,14 +82,17 @@ router.post('/register', [
       });
     }
 
-    // Handle file uploads
-    const logo = req.files?.logo?.[0] ? getFileUrl(req.files.logo[0].filename) : null;
-    const businessIdPhoto = req.files?.['business_id_photo']?.[0] 
-      ? getFileUrl(req.files['business_id_photo'][0].filename) 
-      : null;
-    const ownerPhoto = req.files?.['owner_photo']?.[0] 
-      ? getFileUrl(req.files['owner_photo'][0].filename) 
-      : null;
+    // Handle file uploads (use Cloudinary URLs if available)
+    const logo = req.files?.logo?.[0]?.cloudinaryUrl || 
+                 (req.files?.logo?.[0] ? getFileUrl(req.files.logo[0].filename) : null);
+    const businessIdPhoto = req.files?.['business_id_photo']?.[0]?.cloudinaryUrl ||
+                           (req.files?.['business_id_photo']?.[0] 
+                             ? getFileUrl(req.files['business_id_photo'][0].filename) 
+                             : null);
+    const ownerPhoto = req.files?.['owner_photo']?.[0]?.cloudinaryUrl ||
+                      (req.files?.['owner_photo']?.[0] 
+                        ? getFileUrl(req.files['owner_photo'][0].filename) 
+                        : null);
 
     // Create restaurant
     const restaurant = await Restaurant.create({

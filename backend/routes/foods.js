@@ -4,7 +4,7 @@ const Food = require('../models/Food');
 const Category = require('../models/Category');
 const Restaurant = require('../models/Restaurant');
 const { protect } = require('../middleware/auth');
-const { uploadSingle, getFileUrl } = require('../middleware/upload');
+const { uploadSingle, getFileUrl, uploadToCloudinary } = require('../middleware/upload');
 
 const router = express.Router();
 
@@ -54,7 +54,7 @@ router.post('/', protect, [
   body('price').isFloat({ min: 0 }).withMessage('Price must be a positive number'),
   body('category').notEmpty().withMessage('Category is required'),
   body('restaurant').notEmpty().withMessage('Restaurant is required')
-], uploadSingle('image'), async (req, res) => {
+], uploadSingle('image'), uploadToCloudinary, async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -85,7 +85,7 @@ router.post('/', protect, [
       });
     }
 
-    const image = req.file ? getFileUrl(req.file.filename) : null;
+    const image = req.file?.cloudinaryUrl || (req.file ? getFileUrl(req.file.filename) : null);
 
     const food = await Food.create({
       name,
@@ -151,7 +151,7 @@ router.get('/:foodId', async (req, res) => {
 // @route   PUT /api/foods/:foodId
 // @desc    Update food item
 // @access  Private
-router.put('/:foodId', protect, uploadSingle('image'), async (req, res) => {
+router.put('/:foodId', protect, uploadSingle('image'), uploadToCloudinary, async (req, res) => {
   try {
     const food = await Food.findById(req.params.foodId);
     if (!food) {
@@ -171,7 +171,20 @@ router.put('/:foodId', protect, uploadSingle('image'), async (req, res) => {
     if (preparationTime) food.preparationTime = parseInt(preparationTime);
     if (ingredients) food.ingredients = Array.isArray(ingredients) ? ingredients : [ingredients];
     if (allergens) food.allergens = Array.isArray(allergens) ? allergens : [allergens];
-    if (req.file) food.image = getFileUrl(req.file.filename);
+    if (req.file) {
+      // Delete old image from Cloudinary if it exists
+      if (food.image && food.image.includes('cloudinary.com')) {
+        try {
+          const { deleteFromCloudinary } = require('../config/cloudinary');
+          const oldPublicId = food.image.split('/').pop().split('.')[0];
+          await deleteFromCloudinary(`grabgo/foods/${oldPublicId}`);
+        } catch (error) {
+          console.error('Error deleting old food image:', error);
+          // Continue even if deletion fails
+        }
+      }
+      food.image = req.file.cloudinaryUrl || getFileUrl(req.file.filename);
+    }
 
     await food.save();
     await food.populate('category', 'name');

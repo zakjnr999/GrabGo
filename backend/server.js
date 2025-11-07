@@ -51,10 +51,7 @@ app.use((err, req, res, next) => {
 });
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/grabgo', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/grabgo')
 .then(() => {
   console.log('✅ Connected to MongoDB');
   const PORT = process.env.PORT || 5000;
