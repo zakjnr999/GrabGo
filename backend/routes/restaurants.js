@@ -33,7 +33,15 @@ router.get('/', async (req, res) => {
 // @route   POST /api/restaurants/register
 // @desc    Register a new restaurant
 // @access  Public
-router.post('/register', [
+// IMPORTANT: Multer must run BEFORE validation to parse multipart/form-data
+router.post('/register', 
+  uploadFields([
+    { name: 'logo', maxCount: 1 },
+    { name: 'business_id_photo', maxCount: 1 },
+    { name: 'owner_photo', maxCount: 1 }
+  ]), 
+  uploadMultipleToCloudinary,
+  // Validation runs AFTER multer has parsed the multipart data
   body('name').notEmpty().withMessage('Restaurant name is required'),
   body('email').isEmail().withMessage('Please provide a valid email'),
   body('phone').notEmpty().withMessage('Phone number is required'),
@@ -42,21 +50,17 @@ router.post('/register', [
   body('owner_full_name').notEmpty().withMessage('Owner full name is required'),
   body('owner_contact_number').notEmpty().withMessage('Owner contact number is required'),
   body('business_id_number').notEmpty().withMessage('Business ID number is required'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
-], uploadFields([
-  { name: 'logo', maxCount: 1 },
-  { name: 'business_id_photo', maxCount: 1 },
-  { name: 'owner_photo', maxCount: 1 }
-]), uploadMultipleToCloudinary, async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: errors.array()
-      });
-    }
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
 
     const {
       name,
@@ -111,14 +115,24 @@ router.post('/register', [
       status: 'pending'
     });
 
-    // Remove password from response
+    // Remove password from response and format for client
     const restaurantData = restaurant.toObject();
     delete restaurantData.password;
+    
+    // Format response data - ensure all required fields are present
+    const formattedData = {
+      ...restaurantData,
+      rating: restaurantData.rating || 0,
+      is_open: restaurantData.is_open || false,
+      total_reviews: restaurantData.total_reviews || 0,
+      created_at: restaurantData.createdAt ? restaurantData.createdAt.toISOString() : new Date().toISOString(),
+      version: restaurantData.__v || 0
+    };
 
     res.status(201).json({
       success: true,
       message: 'Restaurant registered successfully. Waiting for approval.',
-      data: restaurantData
+      data: [formattedData] // Wrap in array to match RestaurantResponse model
     });
   } catch (error) {
     console.error('Register restaurant error:', error);

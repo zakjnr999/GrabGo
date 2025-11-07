@@ -144,10 +144,6 @@ class _ReviewPageState extends State<ReviewPage> with SingleTickerProviderStateM
         throw Exception('City is required');
       }
 
-      debugPrint('📤 SENDING VALUES:');
-      debugPrint('├─ name: "$trimmedName" (length: ${trimmedName.length})');
-      debugPrint('├─ city: "$trimmedCity" (length: ${trimmedCity.length})');
-
       final response = await restaurantService
           .registerRestaurant(
             restaurantName: trimmedName,
