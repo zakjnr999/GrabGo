@@ -15,7 +15,7 @@ const foodSchema = new mongoose.Schema({
     required: [true, 'Please provide price'],
     min: 0
   },
-  image: {
+  food_image: {
     type: String,
     default: null
   },
@@ -33,14 +33,7 @@ const foodSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
-  preparationTime: {
-    type: Number, // in minutes
-    default: null
-  },
   ingredients: [{
-    type: String
-  }],
-  allergens: [{
     type: String
   }],
   rating: {

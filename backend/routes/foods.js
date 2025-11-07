@@ -54,7 +54,7 @@ router.post('/', protect, [
   body('price').isFloat({ min: 0 }).withMessage('Price must be a positive number'),
   body('category').notEmpty().withMessage('Category is required'),
   body('restaurant').notEmpty().withMessage('Restaurant is required')
-], uploadSingle('image'), uploadToCloudinary, async (req, res) => {
+], uploadSingle('food_image'), uploadToCloudinary, async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -65,7 +65,7 @@ router.post('/', protect, [
       });
     }
 
-    const { name, description, price, category, restaurant, preparationTime, ingredients, allergens } = req.body;
+    const { name, description, price, category, restaurant, rating, totalReviews, isAvailable, ingredients } = req.body;
 
     // Verify category exists
     const categoryDoc = await Category.findById(category);
@@ -85,7 +85,7 @@ router.post('/', protect, [
       });
     }
 
-    const image = req.file?.cloudinaryUrl || (req.file ? getFileUrl(req.file.filename) : null);
+    const food_image = req.file?.cloudinaryUrl || (req.file ? getFileUrl(req.file.filename) : null);
 
     const food = await Food.create({
       name,
@@ -93,10 +93,11 @@ router.post('/', protect, [
       price: parseFloat(price),
       category,
       restaurant,
-      image,
-      preparationTime: preparationTime ? parseInt(preparationTime) : null,
+      food_image,
+      isAvailable: isAvailable !== undefined ? (isAvailable === 'true' || isAvailable === true) : true,
       ingredients: ingredients ? (Array.isArray(ingredients) ? ingredients : [ingredients]) : [],
-      allergens: allergens ? (Array.isArray(allergens) ? allergens : [allergens]) : []
+      rating: rating ? parseFloat(rating) : 0,
+      totalReviews: totalReviews ? parseInt(totalReviews) : 0
     });
 
     await food.populate('category', 'name');
@@ -151,7 +152,7 @@ router.get('/:foodId', async (req, res) => {
 // @route   PUT /api/foods/:foodId
 // @desc    Update food item
 // @access  Private
-router.put('/:foodId', protect, uploadSingle('image'), uploadToCloudinary, async (req, res) => {
+router.put('/:foodId', protect, uploadSingle('food_image'), uploadToCloudinary, async (req, res) => {
   try {
     const food = await Food.findById(req.params.foodId);
     if (!food) {
@@ -161,29 +162,29 @@ router.put('/:foodId', protect, uploadSingle('image'), uploadToCloudinary, async
       });
     }
 
-    const { name, description, price, category, isAvailable, preparationTime, ingredients, allergens } = req.body;
+    const { name, description, price, category, isAvailable, rating, totalReviews, ingredients } = req.body;
 
     if (name) food.name = name;
     if (description !== undefined) food.description = description;
     if (price) food.price = parseFloat(price);
     if (category) food.category = category;
     if (isAvailable !== undefined) food.isAvailable = isAvailable === 'true' || isAvailable === true;
-    if (preparationTime) food.preparationTime = parseInt(preparationTime);
-    if (ingredients) food.ingredients = Array.isArray(ingredients) ? ingredients : [ingredients];
-    if (allergens) food.allergens = Array.isArray(allergens) ? allergens : [allergens];
+    if (ingredients !== undefined) food.ingredients = Array.isArray(ingredients) ? ingredients : [ingredients];
+    if (rating !== undefined) food.rating = parseFloat(rating);
+    if (totalReviews !== undefined) food.totalReviews = parseInt(totalReviews);
     if (req.file) {
       // Delete old image from Cloudinary if it exists
-      if (food.image && food.image.includes('cloudinary.com')) {
+      if (food.food_image && food.food_image.includes('cloudinary.com')) {
         try {
           const { deleteFromCloudinary } = require('../config/cloudinary');
-          const oldPublicId = food.image.split('/').pop().split('.')[0];
+          const oldPublicId = food.food_image.split('/').pop().split('.')[0];
           await deleteFromCloudinary(`grabgo/foods/${oldPublicId}`);
         } catch (error) {
           console.error('Error deleting old food image:', error);
           // Continue even if deletion fails
         }
       }
-      food.image = req.file.cloudinaryUrl || getFileUrl(req.file.filename);
+      food.food_image = req.file.cloudinaryUrl || getFileUrl(req.file.filename);
     }
 
     await food.save();

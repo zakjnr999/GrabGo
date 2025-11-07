@@ -50,30 +50,55 @@ class RestaurantModel {
   });
 
   factory RestaurantModel.fromJson(Map<String, dynamic> json) {
+    // Safely extract ID
+    final idStr = json['_id']?.toString() ?? '';
+    int restaurantId = 0;
+    if (idStr.isNotEmpty) {
+      try {
+        restaurantId = int.tryParse(idStr.length > 6 ? idStr.substring(idStr.length - 6) : idStr) ?? 0;
+      } catch (e) {
+        restaurantId = idStr.hashCode % 1000000;
+      }
+    }
+
     return RestaurantModel(
-      id: int.tryParse(json['_id']?.toString().substring(json['_id'].toString().length - 6) ?? '0') ?? 0,
-      name: json['name'] ?? '',
-      city: json['city'] ?? '',
-      foodType: json['food_type'] ?? '',
-      imageUrl: json['image_url'] ?? '',
-      bannerImages: List<String>.from(json['banner_images'] ?? []),
-      distance: (json['distance'] ?? 0.0).toDouble(),
-      rating: (json['rating'] ?? 0.0).toDouble(),
-      totalReviews: json['total_reviews'] ?? 0,
-      averageDeliveryTime: json['average_delivery_time'] ?? '',
-      deliveryFee: (json['delivery_fee'] ?? 0.0).toDouble(),
-      minOrder: (json['min_order'] ?? 0.0).toDouble(),
-      description: json['description'] ?? '',
-      phone: json['phone'] ?? '',
-      email: json['email'] ?? '',
-      address: json['address'] ?? '',
-      latitude: (json['latitude'] ?? 0.0).toDouble(),
-      longitude: (json['longitude'] ?? 0.0).toDouble(),
-      openingHours: json['opening_hours'] ?? '',
-      isOpen: json['is_open'] ?? true,
-      paymentMethods: List<String>.from(json['payment_methods'] ?? []),
-      socials: Socials.fromJson(json['socials'] ?? {}),
-      foods: (json['foods'] as List<dynamic>?)?.map((foodJson) => Food.fromJson(foodJson)).toList() ?? [],
+      id: restaurantId,
+      name: json['restaurant_name']?.toString() ?? json['name']?.toString() ?? '',
+      city: json['city']?.toString() ?? '',
+      foodType: json['food_type']?.toString() ?? '',
+      imageUrl: json['logo']?.toString() ?? json['image_url']?.toString() ?? '',
+      bannerImages:
+          (json['banner_images'] as List<dynamic>?)
+              ?.map((e) => e?.toString() ?? '')
+              .where((e) => e.isNotEmpty)
+              .toList() ??
+          [],
+      distance: (json['distance'] as num?)?.toDouble() ?? 0.0,
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
+      totalReviews: (json['total_reviews'] as num?)?.toInt() ?? 0,
+      averageDeliveryTime: json['average_delivery_time']?.toString() ?? '',
+      deliveryFee: (json['delivery_fee'] as num?)?.toDouble() ?? 0.0,
+      minOrder: (json['min_order'] as num?)?.toDouble() ?? 0.0,
+      description: json['description']?.toString() ?? '',
+      phone: json['phone']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      address: json['address']?.toString() ?? '',
+      latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
+      longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
+      openingHours: json['opening_hours']?.toString() ?? '',
+      isOpen: json['is_open'] is bool ? json['is_open'] as bool : (json['is_open']?.toString().toLowerCase() == 'true'),
+      paymentMethods:
+          (json['payment_methods'] as List<dynamic>?)
+              ?.map((e) => e?.toString() ?? '')
+              .where((e) => e.isNotEmpty)
+              .toList() ??
+          [],
+      socials: Socials.fromJson(json['socials'] is Map ? (json['socials'] as Map<String, dynamic>) : {}),
+      foods:
+          (json['foods'] as List<dynamic>?)
+              ?.map((foodJson) => Food.fromJson(foodJson as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
 }

@@ -74,16 +74,16 @@ class RestaurantData {
   final double rating;
 
   @JsonKey(name: 'is_open')
-  final bool isOpen;
+  final bool? isOpen;
 
   @JsonKey(name: 'total_reviews')
-  final int totalReviews;
+  final int? totalReviews;
 
-  @JsonKey(name: 'created_at')
-  final DateTime createdAt;
+  @JsonKey(name: 'createdAt')
+  final DateTime? createdAt;
 
   @JsonKey(name: '__v')
-  final int version;
+  final int? version;
 
   final Socials? socials;
 
@@ -113,10 +113,10 @@ class RestaurantData {
     this.bannerImages,
     required this.status,
     required this.rating,
-    required this.isOpen,
-    required this.totalReviews,
-    required this.createdAt,
-    required this.version,
+    this.isOpen,
+    this.totalReviews,
+    this.createdAt,
+    this.version,
     this.socials,
   });
 

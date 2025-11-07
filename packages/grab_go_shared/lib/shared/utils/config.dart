@@ -14,7 +14,7 @@ class AppConfig {
     defaultValue: 'https://grabgo-backend.onrender.com/api',
   );
 
-  static const String apiKey = String.fromEnvironment('API_KEY', defaultValue: 'GrabGo-API-Key-2024-Secure-Key-12345');
+  static const String apiKey = String.fromEnvironment('API_KEY', defaultValue: 'pAuLInepisT_les');
 
   static const String appName = String.fromEnvironment('NAME', defaultValue: 'gRAb_gO');
   static const String currency = 'GHS';

@@ -24,4 +24,26 @@ final class _$FoodService extends FoodService {
     final Request $request = Request('GET', $url, client.baseUrl);
     return client.send<dynamic, dynamic>($request);
   }
+
+  @override
+  Future<Response<dynamic>> getFoods({
+    String? restaurant,
+    String? category,
+    String? isAvailable,
+  }) {
+    final Uri $url = Uri.parse('/foods');
+    final Map<String, dynamic> $params = <String, dynamic>{};
+    if (restaurant != null) {
+      $params['restaurant'] = restaurant;
+    }
+    if (category != null) {
+      $params['category'] = category;
+    }
+    if (isAvailable != null) {
+      $params['isAvailable'] = isAvailable;
+    }
+    final Uri $urlWithParams = $url.replace(queryParameters: $params);
+    final Request $request = Request('GET', $urlWithParams, client.baseUrl);
+    return client.send<dynamic, dynamic>($request);
+  }
 }

@@ -9,15 +9,10 @@ class RestaurantDetailsBanner extends StatefulWidget {
   final RestaurantModel restaurant;
   final bool isLoading;
 
-  const RestaurantDetailsBanner({
-    super.key,
-    required this.restaurant,
-    this.isLoading = false,
-  });
+  const RestaurantDetailsBanner({super.key, required this.restaurant, this.isLoading = false});
 
   @override
-  State<RestaurantDetailsBanner> createState() =>
-      _RestaurantDetailsBannerState();
+  State<RestaurantDetailsBanner> createState() => _RestaurantDetailsBannerState();
 }
 
 class _RestaurantDetailsBannerState extends State<RestaurantDetailsBanner> {
@@ -44,12 +39,8 @@ class _RestaurantDetailsBannerState extends State<RestaurantDetailsBanner> {
       );
     }
 
-    // Use restaurant banner images if available, otherwise use the main image
-    List<String> bannerImages = widget.restaurant.bannerImages.isNotEmpty
-        ? widget.restaurant.bannerImages
-        : [widget.restaurant.imageUrl];
+    List<String> bannerImages = widget.restaurant.bannerImages;
 
-    // Remove any empty or null images
     bannerImages = bannerImages.where((image) => image.isNotEmpty).toList();
 
     if (bannerImages.isEmpty) {
@@ -75,18 +66,8 @@ class _RestaurantDetailsBannerState extends State<RestaurantDetailsBanner> {
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(10),
-            spreadRadius: 1,
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: Colors.black.withAlpha(5),
-            spreadRadius: -1,
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
+          BoxShadow(color: Colors.black.withAlpha(10), spreadRadius: 1, blurRadius: 12, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withAlpha(5), spreadRadius: -1, blurRadius: 6, offset: const Offset(0, 2)),
         ],
       ),
       child: ClipRRect(
@@ -118,28 +99,18 @@ class _RestaurantDetailsBannerState extends State<RestaurantDetailsBanner> {
                           width: double.infinity,
                           height: size.height * 0.15,
                           color: colors.backgroundTertiary,
-                          child: Icon(
-                            Icons.restaurant,
-                            size: 48.sp,
-                            color: colors.textTertiary,
-                          ),
+                          child: Icon(Icons.restaurant, size: 48.sp, color: colors.textTertiary),
                         );
                       },
                       loadingBuilder: (context, child, loadingProgress) {
                         if (loadingProgress == null) return child;
                         return Shimmer.fromColors(
-                          baseColor: isDark
-                              ? Colors.grey.shade800
-                              : Colors.grey.shade300,
-                          highlightColor: isDark
-                              ? Colors.grey.shade700
-                              : Colors.grey.shade100,
+                          baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                          highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
                           child: Container(
                             width: double.infinity,
                             height: size.height * 0.15,
-                            color: isDark
-                                ? Colors.grey.shade800
-                                : Colors.grey.shade300,
+                            color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
                           ),
                         );
                       },
@@ -153,6 +124,3 @@ class _RestaurantDetailsBannerState extends State<RestaurantDetailsBanner> {
     );
   }
 }
-
-
-

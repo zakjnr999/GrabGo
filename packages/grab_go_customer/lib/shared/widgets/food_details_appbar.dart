@@ -1,7 +1,8 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -17,6 +18,7 @@ class FoodDetailsAppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     Size size = MediaQuery.sizeOf(context);
 
     return SliverAppBar(
@@ -33,73 +35,138 @@ class FoodDetailsAppBar extends StatelessWidget {
       stretch: true,
       automaticallyImplyLeading: false,
       flexibleSpace: FlexibleSpaceBar(
-        background: CachedImageWidget(
-          imageUrl: foodItem.image,
-          fit: BoxFit.cover,
-          placeholder: Container(
-            height: size.height * 0.40,
-            width: double.infinity,
-            color: colors.inputBorder,
-            padding: EdgeInsets.all(45.r),
-            child: SvgPicture.asset(
-              Assets.icons.utensilsCrossed,
-              package: 'grab_go_shared',
-              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+        background: Stack(
+          fit: StackFit.expand,
+          children: [
+            CachedImageWidget(
+              imageUrl: foodItem.image,
+              fit: BoxFit.cover,
+              placeholder: Container(
+                height: size.height * 0.40,
+                width: double.infinity,
+                color: colors.inputBorder,
+                padding: EdgeInsets.all(45.r),
+                child: SvgPicture.asset(
+                  Assets.icons.utensilsCrossed,
+                  package: 'grab_go_shared',
+                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                ),
+              ),
             ),
-          ),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.5),
+                    Colors.black.withValues(alpha: 0.2),
+                    Colors.transparent,
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.4),
+                  ],
+                  stops: const [0.0, 0.15, 0.4, 0.7, 1.0],
+                ),
+              ),
+            ),
+          ],
         ),
         stretchModes: const [StretchMode.blurBackground, StretchMode.zoomBackground],
       ),
-
       bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(0.0),
+        preferredSize: Size.fromHeight(24.h),
         child: Container(
-          height: 20.h,
+          height: 24.h,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: colors.backgroundSecondary,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(KBorderSize.border),
-              topRight: Radius.circular(KBorderSize.border),
-            ),
+            borderRadius: BorderRadius.only(topLeft: Radius.circular(20.r), topRight: Radius.circular(20.r)),
+            boxShadow: [
+              BoxShadow(
+                color: isDark ? Colors.black.withAlpha(50) : Colors.black.withAlpha(10),
+                blurRadius: 10,
+                spreadRadius: 0,
+                offset: const Offset(0, -2),
+              ),
+            ],
           ),
           child: Container(
-            width: 40.w,
+            margin: EdgeInsets.only(top: 8.h),
+            width: 50.w,
             height: 5.h,
             decoration: BoxDecoration(
-              color: colors.textSecondary.withAlpha(50),
-              borderRadius: BorderRadius.circular(KBorderSize.border),
+              color: colors.textSecondary.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(10.r),
             ),
           ),
         ),
       ),
-      actionsPadding: EdgeInsets.symmetric(horizontal: 20.h),
+      actionsPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       actions: [
-        BlurCircleButton(
+        _buildActionButton(
+          context: context,
           onTap: () => context.pop(),
           icon: SvgPicture.asset(
             Assets.icons.navArrowLeft,
             package: 'grab_go_shared',
+            height: 20.h,
+            width: 20.w,
             colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
           ),
         ),
         const Spacer(),
-
         Consumer<FavoritesProvider>(
           builder: (context, favoritesProvider, child) {
             final isFavorite = favoritesProvider.isFavorite(foodItem);
-            return BlurCircleButton(
+            return _buildActionButton(
+              context: context,
               onTap: () {
                 favoritesProvider.toggleFavorite(foodItem);
               },
               icon: SvgPicture.asset(
                 isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
+                package: 'grab_go_shared',
+                height: 20.h,
+                width: 20.w,
                 colorFilter: ColorFilter.mode(isFavorite ? Colors.red : Colors.white, BlendMode.srcIn),
               ),
+              isFavorite: isFavorite,
             );
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildActionButton({
+    required BuildContext context,
+    required VoidCallback onTap,
+    required Widget icon,
+    bool isFavorite = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44.w,
+        height: 44.h,
+        decoration: const BoxDecoration(shape: BoxShape.circle),
+        child: ClipOval(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isFavorite ? Colors.red.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.4),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isFavorite ? Colors.red.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.2),
+                  width: 1.5,
+                ),
+              ),
+              child: Center(child: icon),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

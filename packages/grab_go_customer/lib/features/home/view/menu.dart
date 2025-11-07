@@ -21,7 +21,6 @@ class Menu extends StatefulWidget {
 }
 
 class _MenuState extends State<Menu> with TickerProviderStateMixin {
-  List<FoodCategoryModel> _categories = [];
   FoodCategoryModel? _selectedCategory;
   String _searchQuery = '';
   int _selectedCategoryIndex = 0;
@@ -56,15 +55,26 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
       end: 1.0,
     ).animate(CurvedAnimation(parent: _filterAnimationController, curve: Curves.easeInOut));
 
-    Future.microtask(() async {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = Provider.of<FoodProvider>(context, listen: false);
-      await provider.fetchCategories();
-
-      if (provider.categories.isNotEmpty && _selectedCategory == null) {
-        setState(() {
-          _selectedCategory = provider.categories.first;
-          _selectedCategoryIndex = 0;
+      if (provider.categories.isEmpty) {
+        provider.fetchCategories().then((_) {
+          if (mounted && provider.categories.isNotEmpty) {
+            setState(() {
+              // Always use the category from the provider's list
+              _selectedCategory = provider.categories.first;
+              _selectedCategoryIndex = 0;
+            });
+          }
         });
+      } else if (provider.categories.isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            // Always use the category from the provider's list
+            _selectedCategory = provider.categories.first;
+            _selectedCategoryIndex = 0;
+          });
+        }
       }
       _animationController.forward();
     });
@@ -78,19 +88,52 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  void _onCategorySelected(int index) async {
-    if (index < _categories.length) {
+  void _onCategorySelected(int index, List<FoodCategoryModel> categories) {
+    if (index < categories.length) {
       setState(() {
         _selectedCategoryIndex = index;
-        _selectedCategory = _categories[index];
+        // Always use the category from the provider's list to avoid stale references
+        _selectedCategory = categories[index];
       });
+
+      // Fetch foods for the selected category if items are empty
+      if (_selectedCategory != null && _selectedCategory!.items.isEmpty) {
+        final provider = Provider.of<FoodProvider>(context, listen: false);
+        provider.fetchFoodsForCategory(_selectedCategory!.id).then((_) {
+          // Update selected category after foods are fetched
+          if (mounted) {
+            final updatedCategories = provider.categories;
+            if (index < updatedCategories.length && updatedCategories[index].id == _selectedCategory!.id) {
+              setState(() {
+                _selectedCategory = updatedCategories[index];
+              });
+            }
+          }
+        });
+      }
     }
   }
 
   List<FoodItem> _getFilteredItems() {
     if (_selectedCategory == null) return [];
 
-    List<FoodItem> items = _selectedCategory!.items;
+    // Always get the current category from provider to avoid stale references
+    final provider = Provider.of<FoodProvider>(context, listen: false);
+    final currentCategory = provider.categories.firstWhere(
+      (cat) => cat.id == _selectedCategory!.id,
+      orElse: () => _selectedCategory!,
+    );
+
+    // Use a Set to remove duplicates based on item name and seller
+    final Set<String> seenItems = {};
+    List<FoodItem> items = currentCategory.items.where((item) {
+      final key = '${item.name}_${item.sellerId}';
+      if (seenItems.contains(key)) {
+        return false;
+      }
+      seenItems.add(key);
+      return true;
+    }).toList();
 
     if (_searchQuery.isNotEmpty) {
       items = items.where((item) {
@@ -111,7 +154,23 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
   List<FoodItem> _getPopularItems() {
     if (_selectedCategory == null) return [];
 
-    List<FoodItem> items = _selectedCategory!.items;
+    // Always get the current category from provider to avoid stale references
+    final provider = Provider.of<FoodProvider>(context, listen: false);
+    final currentCategory = provider.categories.firstWhere(
+      (cat) => cat.id == _selectedCategory!.id,
+      orElse: () => _selectedCategory!,
+    );
+
+    // Use a Set to remove duplicates based on item name and seller
+    final Set<String> seenItems = {};
+    List<FoodItem> items = currentCategory.items.where((item) {
+      final key = '${item.name}_${item.sellerId}';
+      if (seenItems.contains(key)) {
+        return false;
+      }
+      seenItems.add(key);
+      return true;
+    }).toList();
 
     items.sort((a, b) => b.rating.compareTo(a.rating));
     return items.take(3).toList();
@@ -121,10 +180,22 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
     final provider = Provider.of<FoodProvider>(context, listen: false);
     await provider.refreshCategories();
 
-    if (provider.categories.isNotEmpty && _selectedCategory == null) {
+    if (provider.categories.isNotEmpty) {
       setState(() {
-        _selectedCategory = provider.categories.first;
-        _selectedCategoryIndex = 0;
+        if (_selectedCategory == null) {
+          _selectedCategory = provider.categories.first;
+          _selectedCategoryIndex = 0;
+        } else {
+          // Always update to the category from provider's list to avoid stale references
+          final index = provider.categories.indexWhere((c) => c.id == _selectedCategory!.id);
+          if (index >= 0) {
+            _selectedCategoryIndex = index;
+            _selectedCategory = provider.categories[index]; // Use fresh reference
+          } else {
+            _selectedCategory = provider.categories.first;
+            _selectedCategoryIndex = 0;
+          }
+        }
       });
     }
   }
@@ -230,11 +301,18 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              item.name,
-                              style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
+                            Padding(
+                              padding: EdgeInsets.only(right: isPopular ? 70.w : 0),
+                              child: Text(
+                                item.name,
+                                style: TextStyle(
+                                  fontSize: 15.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: colors.textPrimary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                             SizedBox(height: 6.h),
                             Row(
@@ -322,6 +400,7 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
                                     ),
                                     child: SvgPicture.asset(
                                       isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
+                                      package: 'grab_go_shared',
                                       height: 16.h,
                                       width: 16.w,
                                       colorFilter: ColorFilter.mode(
@@ -555,11 +634,8 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
 
                 Consumer<FoodProvider>(
                   builder: (context, provider, _) {
-                    _categories = provider.categories;
-                    if (_selectedCategory == null && _categories.isNotEmpty) {
-                      _selectedCategory = _categories.first;
-                      _selectedCategoryIndex = 0;
-                    }
+                    // Don't call setState during build - just use the provider's categories directly
+                    // The selected category will be updated in initState or when user selects
 
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -573,11 +649,11 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
                         ),
                         SizedBox(height: 12.h),
 
-                        provider.isLoading && _categories.isNotEmpty
+                        provider.categories.isNotEmpty
                             ? AnimatedTabBar(
-                                tabs: _categories.map((category) => category.name).toList(),
+                                tabs: provider.categories.map((category) => category.name).toList(),
                                 selectedIndex: _selectedCategoryIndex,
-                                onTabChanged: _onCategorySelected,
+                                onTabChanged: (index) => _onCategorySelected(index, provider.categories),
                                 padding: EdgeInsets.symmetric(horizontal: 12.w),
                               )
                             : Container(

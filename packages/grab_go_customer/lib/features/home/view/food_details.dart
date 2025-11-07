@@ -232,12 +232,48 @@ class _FoodDetailsState extends State<FoodDetails> {
                           ),
                           child: Row(
                             children: [
-                              ClipOval(
-                                child: Assets.icons.noProfile.image(
-                                  fit: BoxFit.cover,
-                                  height: size.width * 0.14,
-                                  width: size.width * 0.14,
-                                  package: 'grab_go_shared',
+                              Container(
+                                width: size.width * 0.14,
+                                height: size.width * 0.14,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 2),
+                                ),
+                                child: ClipOval(
+                                  child: CachedImageWidget(
+                                    imageUrl: widget.foodItem.restaurantImage,
+                                    width: size.width * 0.14,
+                                    height: size.width * 0.14,
+                                    fit: BoxFit.cover,
+                                    placeholder: Container(
+                                      width: size.width * 0.14,
+                                      height: size.width * 0.14,
+                                      decoration: BoxDecoration(color: colors.inputBorder, shape: BoxShape.circle),
+                                      child: Center(
+                                        child: SvgPicture.asset(
+                                          Assets.icons.chefHat,
+                                          package: 'grab_go_shared',
+                                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                          width: size.width * 0.08,
+                                          height: size.width * 0.08,
+                                        ),
+                                      ),
+                                    ),
+                                    errorWidget: Container(
+                                      width: size.width * 0.14,
+                                      height: size.width * 0.14,
+                                      decoration: BoxDecoration(color: colors.inputBorder, shape: BoxShape.circle),
+                                      child: Center(
+                                        child: SvgPicture.asset(
+                                          Assets.icons.chefHat,
+                                          package: 'grab_go_shared',
+                                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                          width: size.width * 0.08,
+                                          height: size.width * 0.08,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
                               SizedBox(width: 14.w),
@@ -672,6 +708,7 @@ class _FoodDetailsState extends State<FoodDetails> {
         children: [
           SvgPicture.asset(
             icon,
+            package: 'grab_go_shared',
             height: 14.h,
             width: 14.w,
             colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
@@ -702,7 +739,11 @@ class _FoodDetailsState extends State<FoodDetails> {
           customBorder: const CircleBorder(),
           child: Padding(
             padding: EdgeInsets.all(10.r),
-            child: SvgPicture.asset(icon, colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn)),
+            child: SvgPicture.asset(
+              icon,
+              package: 'grab_go_shared',
+              colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+            ),
           ),
         ),
       ),

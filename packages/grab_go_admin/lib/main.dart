@@ -5,8 +5,12 @@ import 'features/auth/view/login_screen.dart';
 import 'features/dashboard/view/admin_dashboard.dart';
 import 'features/restaurants/viewmodel/restaurant_provider.dart';
 import 'shared/utils/app_theme.dart';
+import 'shared/services/token_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Initialize TokenService to cache token for synchronous access
+  await TokenService.initialize();
   runApp(const GrabGoAdmin());
 }
 

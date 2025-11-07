@@ -6,9 +6,10 @@
         </trust-anchors>
     </base-config>
     
-    <!-- Allow connections to grabgo.onrender.com -->
+    <!-- Allow connections to Render domains -->
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">grabgo.onrender.com</domain>
+        <domain includeSubdomains="true">grabgo-backend.onrender.com</domain>
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>

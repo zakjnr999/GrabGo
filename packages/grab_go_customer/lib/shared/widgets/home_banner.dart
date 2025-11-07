@@ -98,8 +98,18 @@ class _HomeBannerState extends State<HomeBanner> {
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
         boxShadow: [
-          BoxShadow(color: Colors.black.withAlpha(10), spreadRadius: 1, blurRadius: 12, offset: const Offset(0, 4)),
-          BoxShadow(color: Colors.black.withAlpha(5), spreadRadius: -1, blurRadius: 6, offset: const Offset(0, 2)),
+          BoxShadow(
+            color: isDark ? Colors.black.withAlpha(50) : Colors.black.withAlpha(10),
+            spreadRadius: 1,
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(5),
+            spreadRadius: -1,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: ClipRRect(
@@ -124,47 +134,90 @@ class _HomeBannerState extends State<HomeBanner> {
                   .map(
                     (food) => GestureDetector(
                       onTap: () => context.push("/foodDetails", extra: food),
-                      child: CachedImageWidget(
-                        imageUrl: food.image,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        placeholder: Container(
-                          width: double.infinity,
-                          height: widget.size.height * 0.26,
-                          color: colors.inputBorder,
-                        ),
+                      child: Stack(
+                        children: [
+                          CachedImageWidget(
+                            imageUrl: food.image,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            placeholder: Container(
+                              width: double.infinity,
+                              height: widget.size.height * 0.28,
+                              color: colors.backgroundPrimary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   )
                   .toList(),
             ),
 
+            Positioned(
+              top: 12.h,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  bannerFoods.length,
+                  (index) => Container(
+                    margin: EdgeInsets.symmetric(horizontal: 3.w),
+                    width: currentIndex == index ? 20.w : 6.w,
+                    height: 6.h,
+                    decoration: BoxDecoration(
+                      color: currentIndex == index ? Colors.white : Colors.white.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(3.r),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
             Container(
               height: widget.size.height * 0.28,
               width: widget.size.width,
-              padding: EdgeInsets.all(10.r),
+              padding: EdgeInsets.all(8.r),
               child: Column(
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                          child: Container(
-                            color: Colors.black.withOpacity(0.2),
-                            child: Padding(
-                              padding: EdgeInsets.all(6.r),
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12.r),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+                            child: Container(
+                              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(12.r),
+                                border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+                              ),
                               child: Text(
-                                bannerFoods[currentIndex].name.toString(),
-                                textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.white),
+                                bannerFoods[currentIndex].name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 15.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black.withOpacity(0.3),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
+                      SizedBox(width: 8.w),
                       Consumer<FavoritesProvider>(
                         builder: (context, favoriteProvider, child) {
                           final bool isFavorite = favoriteProvider.isFavorite(bannerFoods[currentIndex]);
@@ -177,21 +230,24 @@ class _HomeBannerState extends State<HomeBanner> {
                               }
                             },
                             child: ClipRRect(
-                              borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                              borderRadius: BorderRadius.circular(12.r),
                               child: BackdropFilter(
-                                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                                filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
                                 child: Container(
-                                  color: Colors.black.withOpacity(0.2),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: SvgPicture.asset(
-                                      isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
-                                      height: 22.h,
-                                      width: 22.w,
-                                      colorFilter: ColorFilter.mode(
-                                        isFavorite ? Colors.red : Colors.white,
-                                        BlendMode.srcIn,
-                                      ),
+                                  padding: EdgeInsets.all(10.r),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(12.r),
+                                    border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+                                  ),
+                                  child: SvgPicture.asset(
+                                    isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
+                                    package: 'grab_go_shared',
+                                    height: 20.h,
+                                    width: 20.w,
+                                    colorFilter: ColorFilter.mode(
+                                      isFavorite ? Colors.red : Colors.white,
+                                      BlendMode.srcIn,
                                     ),
                                   ),
                                 ),
@@ -203,87 +259,160 @@ class _HomeBannerState extends State<HomeBanner> {
                     ],
                   ),
                   const Spacer(),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                        child: Container(
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16.r),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+                      child: Container(
+                        padding: EdgeInsets.all(12.r),
+                        decoration: BoxDecoration(
                           color: Colors.black.withOpacity(0.2),
-                          child: Padding(
-                            padding: const EdgeInsets.all(6.0),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.all(10.r),
-                                  decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.black),
-                                  child: SvgPicture.asset(
-                                    Assets.icons.cart,
-                                    package: 'grab_go_shared',
-                                    height: 18.h,
-                                    width: 18.w,
-                                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                                  ),
-                                ),
-                                SizedBox(width: 10.w),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                          borderRadius: BorderRadius.circular(16.r),
+                          border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
                                     children: [
-                                      Text(
-                                        "GHC ${bannerFoods[currentIndex].price.toStringAsFixed(2)}",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 12.sp,
-                                          fontWeight: FontWeight.w600,
+                                      Container(
+                                        padding: EdgeInsets.all(8.r),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: colors.accentOrange.withOpacity(0.2),
+                                        ),
+                                        child: SvgPicture.asset(
+                                          Assets.icons.cart,
+                                          package: 'grab_go_shared',
+                                          height: 16.h,
+                                          width: 16.w,
+                                          colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                                         ),
                                       ),
-                                      Row(
-                                        children: [
-                                          SvgPicture.asset(
-                                            Assets.icons.starSolid,
-                                            package: 'grab_go_shared',
-                                            height: 14.h,
-                                            width: 14.w,
-                                            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                                          ),
-                                          SizedBox(width: 4.w),
-                                          Text(
-                                            "${bannerFoods[currentIndex].rating}(120+)",
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12.sp,
-                                              fontWeight: FontWeight.w500,
+                                      SizedBox(width: 10.w),
+                                      Text(
+                                        "GHS ${bannerFoods[currentIndex].price.toStringAsFixed(2)}",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16.sp,
+                                          fontWeight: FontWeight.w800,
+                                          shadows: [
+                                            Shadow(
+                                              color: Colors.black.withOpacity(0.3),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 2),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
                                     ],
                                   ),
-                                ),
-                                Consumer<CartProvider>(
-                                  builder: (context, cartProvider, child) {
-                                    final bool isInCart = cartProvider.cartItems.containsKey(bannerFoods[currentIndex]);
-                                    return AppButton(
-                                      height: 38.h,
-                                      onPressed: () {
+                                  SizedBox(height: 6.h),
+                                  Row(
+                                    children: [
+                                      SvgPicture.asset(
+                                        Assets.icons.starSolid,
+                                        package: 'grab_go_shared',
+                                        height: 14.h,
+                                        width: 14.w,
+                                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                      ),
+                                      SizedBox(width: 4.w),
+                                      Text(
+                                        bannerFoods[currentIndex].rating.toStringAsFixed(1),
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 13.sp,
+                                          fontWeight: FontWeight.w600,
+                                          shadows: [
+                                            Shadow(
+                                              color: Colors.black.withOpacity(0.3),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      // Show review count if available (optional enhancement)
+                                      SizedBox(width: 4.w),
+                                      Text(
+                                        "(120+)",
+                                        style: TextStyle(
+                                          color: Colors.white.withOpacity(0.8),
+                                          fontSize: 12.sp,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(width: 12.w),
+                            Consumer<CartProvider>(
+                              builder: (context, cartProvider, child) {
+                                final bool isInCart = cartProvider.cartItems.containsKey(bannerFoods[currentIndex]);
+                                return Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: isInCart
+                                          ? [Colors.red.shade400, Colors.red.shade600]
+                                          : [colors.accentOrange, colors.accentOrange.withOpacity(0.8)],
+                                    ),
+                                    borderRadius: BorderRadius.circular(12.r),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: (isInCart ? Colors.red : colors.accentOrange).withOpacity(0.4),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () {
                                         if (isInCart) {
                                           cartProvider.removeFromCart(bannerFoods[currentIndex]);
                                         } else {
                                           cartProvider.addToCart(bannerFoods[currentIndex]);
                                         }
                                       },
-                                      textColor: isDark ? Colors.black : Colors.white,
-                                      buttonText: isInCart ? "Remove from Cart" : "Add to Cart",
-                                      borderRadius: KBorderSize.borderMedium,
-                                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                                    );
-                                  },
-                                ),
-                              ],
+                                      borderRadius: BorderRadius.circular(12.r),
+                                      child: Padding(
+                                        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            SvgPicture.asset(
+                                              Assets.icons.cart,
+                                              package: 'grab_go_shared',
+                                              height: 16.h,
+                                              width: 16.w,
+                                              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                            ),
+                                            SizedBox(width: 6.w),
+                                            Text(
+                                              isInCart ? "Remove" : "Add",
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 13.sp,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
-                          ),
+                          ],
                         ),
                       ),
                     ),

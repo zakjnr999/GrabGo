@@ -30,29 +30,26 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
   late RestaurantModel selectedCategory;
   int selectedTabIndex = 0;
 
-  // Get filtered food items from categories endpoint based on restaurant name
   List<FoodItem> get filteredFoodItems {
     final foodProvider = Provider.of<FoodProvider>(context, listen: false);
-    final allFoodItems = foodProvider.categories
-        .expand((category) => category.items)
-        .where((item) => item.sellerName == widget.restaurant.name)
-        .toList();
+    final allFoodItems = foodProvider.categories.expand((category) => category.items).where((item) {
+      final itemSellerName = item.sellerName.trim().toLowerCase();
+      final restaurantName = widget.restaurant.name.trim().toLowerCase();
+      final matchesByName = itemSellerName == restaurantName;
+      final matchesById = item.sellerId == widget.restaurant.id;
+      return matchesByName || matchesById;
+    }).toList();
+
     return allFoodItems;
   }
 
-  // Get unique category names from filtered food items
   List<String> get foodCategories {
-    final categories = filteredFoodItems
-        .map((food) => _getCategoryNameForFood(food))
-        .toSet()
-        .toList();
+    final categories = filteredFoodItems.map((food) => _getCategoryNameForFood(food)).toSet().toList();
 
-    // Sort categories and add "All" at the beginning
     categories.sort();
     return ['All', ...categories];
   }
 
-  // Helper method to get category name for a food item
   String _getCategoryNameForFood(FoodItem foodItem) {
     final foodProvider = Provider.of<FoodProvider>(context, listen: false);
     for (final category in foodProvider.categories) {
@@ -60,13 +57,12 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
         return category.name;
       }
     }
-    return 'Other'; // Fallback if category not found
+    return 'Other';
   }
 
   @override
   void initState() {
     super.initState();
-    // Fetch food categories when the page loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<FoodProvider>(context, listen: false).fetchCategories();
     });
@@ -79,7 +75,7 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
-        systemNavigationBarColor: colors.accentOrange, // Accent orange color
+        systemNavigationBarColor: colors.accentOrange,
         systemNavigationBarIconBrightness: Brightness.light,
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.dark,
@@ -90,9 +86,7 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
         child: Scaffold(
           backgroundColor: colors.backgroundSecondary,
           body: CustomScrollView(
-            physics: const BouncingScrollPhysics(
-              parent: AlwaysScrollableScrollPhysics(),
-            ),
+            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
             slivers: <Widget>[
               RestaurantDetailsAppBar(restaurant: widget.restaurant),
               SliverToBoxAdapter(
@@ -100,10 +94,7 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 20.w,
-                        vertical: 10.h,
-                      ),
+                      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
                       child: Row(
                         children: [
                           Expanded(
@@ -121,8 +112,7 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                               size: size,
                               colors: colors,
                               widget: widget,
-                              text:
-                                  "GHC ${widget.restaurant.deliveryFee.toStringAsFixed(2)}",
+                              text: "GHC ${widget.restaurant.deliveryFee.toStringAsFixed(2)}",
                               subText: "Delivery fee",
                             ),
                           ),
@@ -132,8 +122,7 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                               size: size,
                               colors: colors,
                               widget: widget,
-                              text:
-                                  "GHC ${widget.restaurant.minOrder.toStringAsFixed(2)}",
+                              text: "GHC ${widget.restaurant.minOrder.toStringAsFixed(2)}",
                               subText: "Minimum order",
                             ),
                           ),
@@ -182,13 +171,10 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                             children: [
                               SvgPicture.asset(
                                 Assets.icons.mapPin,
-                            package: 'grab_go_shared',
+                                package: 'grab_go_shared',
                                 height: 16.h,
                                 width: 16.w,
-                                colorFilter: ColorFilter.mode(
-                                  colors.textSecondary,
-                                  BlendMode.srcIn,
-                                ),
+                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                               ),
                               SizedBox(width: 5.w),
                               Text(
@@ -206,13 +192,10 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                             children: [
                               SvgPicture.asset(
                                 Assets.icons.phone,
-                            package: 'grab_go_shared',
+                                package: 'grab_go_shared',
                                 height: 16.h,
                                 width: 16.w,
-                                colorFilter: ColorFilter.mode(
-                                  colors.textSecondary,
-                                  BlendMode.srcIn,
-                                ),
+                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                               ),
                               SizedBox(width: 5.w),
                               Text(
@@ -230,13 +213,10 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                             children: [
                               SvgPicture.asset(
                                 Assets.icons.mail,
-                            package: 'grab_go_shared',
+                                package: 'grab_go_shared',
                                 height: 16.h,
                                 width: 16.w,
-                                colorFilter: ColorFilter.mode(
-                                  colors.textSecondary,
-                                  BlendMode.srcIn,
-                                ),
+                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                               ),
                               SizedBox(width: 5.w),
                               Text(
@@ -268,16 +248,12 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
 
                     Consumer<RestaurantProvider>(
                       builder: (context, provider, _) {
-                        return RestaurantDetailsBanner(
-                          restaurant: widget.restaurant,
-                          isLoading: provider.isLoading,
-                        );
+                        return RestaurantDetailsBanner(restaurant: widget.restaurant, isLoading: provider.isLoading);
                       },
                     ),
 
                     SizedBox(height: KSpacing.lg.h),
 
-                    // Available Meals Header with Icon
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 20.w),
                       child: Row(
@@ -288,51 +264,36 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                               color: colors.accentOrange.withValues(alpha: 0.1),
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(
-                              Icons.restaurant_rounded,
-                              color: colors.accentOrange,
-                              size: 18.sp,
-                            ),
+                            child: Icon(Icons.restaurant_rounded, color: colors.accentOrange, size: 18.sp),
                           ),
                           SizedBox(width: 10.w),
                           Text(
                             "Available Meals",
-                            style: TextStyle(
-                              fontSize: 17.sp,
-                              fontWeight: FontWeight.w800,
-                              color: colors.textPrimary,
-                            ),
+                            style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
                           ),
                         ],
                       ),
                     ),
 
                     SizedBox(height: 16.h),
-                    // Animated Tab Bar
                     Consumer<RestaurantProvider>(
                       builder: (context, provider, _) {
                         if (provider.isLoading) {
                           return Shimmer.fromColors(
-                            baseColor:
-                                Theme.of(context).brightness == Brightness.dark
+                            baseColor: Theme.of(context).brightness == Brightness.dark
                                 ? Colors.grey.shade800
                                 : Colors.grey.shade300,
-                            highlightColor:
-                                Theme.of(context).brightness == Brightness.dark
+                            highlightColor: Theme.of(context).brightness == Brightness.dark
                                 ? Colors.grey.shade700
                                 : Colors.grey.shade100,
                             child: Container(
                               height: 50.h,
                               margin: EdgeInsets.symmetric(horizontal: 20.w),
                               decoration: BoxDecoration(
-                                color:
-                                    Theme.of(context).brightness ==
-                                        Brightness.dark
+                                color: Theme.of(context).brightness == Brightness.dark
                                     ? Colors.grey.shade800
                                     : Colors.grey.shade300,
-                                borderRadius: BorderRadius.circular(
-                                  KBorderSize.borderRadius8,
-                                ),
+                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius8),
                               ),
                             ),
                           );
@@ -349,36 +310,27 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                         );
                       },
                     ),
-                    // Food Items ListView
+                    SizedBox(height: KSpacing.lg.h),
                     Consumer<FoodProvider>(
                       builder: (context, foodProvider, _) {
                         if (foodProvider.isLoading) {
                           return Shimmer.fromColors(
-                            baseColor:
-                                Theme.of(context).brightness == Brightness.dark
+                            baseColor: Theme.of(context).brightness == Brightness.dark
                                 ? Colors.grey.shade800
                                 : Colors.grey.shade300,
-                            highlightColor:
-                                Theme.of(context).brightness == Brightness.dark
+                            highlightColor: Theme.of(context).brightness == Brightness.dark
                                 ? Colors.grey.shade700
                                 : Colors.grey.shade100,
                             child: Column(
                               children: List.generate(3, (index) {
                                 return Container(
                                   height: size.height * 0.15,
-                                  margin: EdgeInsets.symmetric(
-                                    horizontal: 16.w,
-                                    vertical: 6.h,
-                                  ),
+                                  margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
                                   decoration: BoxDecoration(
-                                    color:
-                                        Theme.of(context).brightness ==
-                                            Brightness.dark
+                                    color: Theme.of(context).brightness == Brightness.dark
                                         ? Colors.grey.shade800
                                         : Colors.grey.shade300,
-                                    borderRadius: BorderRadius.circular(
-                                      KBorderSize.borderMedium,
-                                    ),
+                                    borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                                   ),
                                 );
                               }),
@@ -396,18 +348,12 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                                 children: [
                                   Text(
                                     'Error loading food items',
-                                    style: TextStyle(
-                                      color: colors.textSecondary,
-                                      fontSize: 14.sp,
-                                    ),
+                                    style: TextStyle(color: colors.textSecondary, fontSize: 14.sp),
                                   ),
                                   SizedBox(height: KSpacing.sm.h),
                                   Text(
                                     foodProvider.error!,
-                                    style: TextStyle(
-                                      color: colors.textTertiary,
-                                      fontSize: 12.sp,
-                                    ),
+                                    style: TextStyle(color: colors.textTertiary, fontSize: 12.sp),
                                     textAlign: TextAlign.center,
                                   ),
                                 ],
@@ -416,15 +362,10 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                           );
                         }
 
-                        // Filter foods based on selected category
                         final filteredFoods = selectedTabIndex == 0
                             ? filteredFoodItems
                             : filteredFoodItems
-                                  .where(
-                                    (food) =>
-                                        _getCategoryNameForFood(food) ==
-                                        foodCategories[selectedTabIndex],
-                                  )
+                                  .where((food) => _getCategoryNameForFood(food) == foodCategories[selectedTabIndex])
                                   .toList();
 
                         if (filteredFoods.isEmpty) {
@@ -446,10 +387,7 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                                   SizedBox(height: KSpacing.sm.h),
                                   Text(
                                     'This restaurant has no items in the selected category',
-                                    style: TextStyle(
-                                      color: colors.textTertiary,
-                                      fontSize: 12.sp,
-                                    ),
+                                    style: TextStyle(color: colors.textTertiary, fontSize: 12.sp),
                                     textAlign: TextAlign.center,
                                   ),
                                 ],
@@ -475,18 +413,11 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                                 margin: EdgeInsets.symmetric(vertical: 6.h),
                                 decoration: BoxDecoration(
                                   color: colors.backgroundPrimary,
-                                  borderRadius: BorderRadius.circular(
-                                    KBorderSize.borderRadius15,
-                                  ),
-                                  border: Border.all(
-                                    color: colors.inputBorder.withValues(alpha: 0.3),
-                                    width: 0.5,
-                                  ),
+                                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                                  border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: isDark
-                                          ? Colors.black.withAlpha(30)
-                                          : Colors.black.withAlpha(8),
+                                      color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
                                       spreadRadius: 0,
                                       blurRadius: 12,
                                       offset: const Offset(0, 2),
@@ -495,23 +426,17 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                                 ),
                                 child: Row(
                                   children: [
-                                    // Food Image
                                     ClipRRect(
-                                      borderRadius: BorderRadius.only(
-                                        topLeft: Radius.circular(
-                                          KBorderSize.borderRadius15,
-                                        ),
-                                        bottomLeft: Radius.circular(
-                                          KBorderSize.borderRadius15,
-                                        ),
+                                      borderRadius: const BorderRadius.only(
+                                        topLeft: Radius.circular(KBorderSize.borderRadius15),
+                                        bottomLeft: Radius.circular(KBorderSize.borderRadius15),
                                       ),
                                       child: Image.network(
                                         food.image,
                                         height: 110.h,
                                         width: 110.w,
                                         fit: BoxFit.cover,
-                                        errorBuilder:
-                                            (context, error, stackTrace) {
+                                        errorBuilder: (context, error, stackTrace) {
                                           return Container(
                                             height: 110.h,
                                             width: 110.w,
@@ -519,11 +444,8 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                                             child: Center(
                                               child: SvgPicture.asset(
                                                 Assets.icons.utensilsCrossed,
-                            package: 'grab_go_shared',
-                                                colorFilter: ColorFilter.mode(
-                                                  colors.textSecondary,
-                                                  BlendMode.srcIn,
-                                                ),
+                                                package: 'grab_go_shared',
+                                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                                                 width: 30.w,
                                                 height: 30.h,
                                               ),
@@ -533,19 +455,15 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                                       ),
                                     ),
 
-                                    // Food Details
                                     Expanded(
                                       child: Padding(
                                         padding: EdgeInsets.all(12.r),
                                         child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                           children: [
                                             Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
+                                              crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
                                                 Text(
                                                   food.name,
@@ -562,7 +480,7 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                                                   children: [
                                                     SvgPicture.asset(
                                                       Assets.icons.starSolid,
-                            package: 'grab_go_shared',
+                                                      package: 'grab_go_shared',
                                                       height: 13.h,
                                                       width: 13.w,
                                                       colorFilter: ColorFilter.mode(
@@ -606,19 +524,13 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                                             ),
                                             SizedBox(height: 10.h),
                                             Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.spaceBetween,
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                               children: [
                                                 Container(
-                                                  padding: EdgeInsets.symmetric(
-                                                    horizontal: 10.w,
-                                                    vertical: 6.h,
-                                                  ),
+                                                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                                                   decoration: BoxDecoration(
-                                                    color: colors.accentOrange
-                                                        .withOpacity(0.15),
-                                                    borderRadius:
-                                                        BorderRadius.circular(8.r),
+                                                    color: colors.accentOrange.withValues(alpha: 0.15),
+                                                    borderRadius: BorderRadius.circular(8.r),
                                                   ),
                                                   child: Text(
                                                     "GHS ${food.price.toStringAsFixed(2)}",
@@ -630,69 +542,48 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                                                   ),
                                                 ),
                                                 Consumer<CartProvider>(
-                                                  builder:
-                                                      (context, cartProvider, _) {
-                                                    final bool isInCart =
-                                                        cartProvider.cartItems
-                                                            .containsKey(food);
+                                                  builder: (context, cartProvider, _) {
+                                                    final bool isInCart = cartProvider.cartItems.containsKey(food);
 
                                                     return GestureDetector(
                                                       onTap: () {
                                                         if (isInCart) {
-                                                          cartProvider
-                                                              .removeItemCompletely(
-                                                            food,
-                                                          );
+                                                          cartProvider.removeItemCompletely(food);
                                                           AppToastMessage.show(
                                                             context: context,
                                                             icon: Icons.close,
-                                                            message:
-                                                                AppStrings.cartRemoveItem,
-                                                            backgroundColor:
-                                                                colors.error,
+                                                            message: AppStrings.cartRemoveItem,
+                                                            backgroundColor: colors.error,
                                                           );
                                                         } else {
-                                                          cartProvider
-                                                              .addToCart(food);
+                                                          cartProvider.addToCart(food);
                                                           AppToastMessage.show(
                                                             context: context,
                                                             icon: Icons.check,
-                                                            message:
-                                                                AppStrings.cartAddItem,
-                                                            backgroundColor:
-                                                                colors.accentBlue,
+                                                            message: AppStrings.cartAddItem,
+                                                            backgroundColor: colors.accentBlue,
                                                           );
                                                         }
                                                       },
                                                       child: Container(
-                                                        padding:
-                                                            EdgeInsets.all(8.r),
+                                                        padding: EdgeInsets.all(8.r),
                                                         decoration: BoxDecoration(
                                                           shape: BoxShape.circle,
                                                           color: isInCart
                                                               ? colors.accentOrange
-                                                              : colors
-                                                                  .backgroundSecondary,
+                                                              : colors.backgroundSecondary,
                                                           border: Border.all(
-                                                            color: isInCart
-                                                                ? colors
-                                                                    .accentOrange
-                                                                : colors
-                                                                    .inputBorder,
+                                                            color: isInCart ? colors.accentOrange : colors.inputBorder,
                                                             width: 1,
                                                           ),
                                                         ),
                                                         child: SvgPicture.asset(
                                                           Assets.icons.cart,
-                            package: 'grab_go_shared',
+                                                          package: 'grab_go_shared',
                                                           height: 16.h,
                                                           width: 16.w,
-                                                          colorFilter:
-                                                              ColorFilter.mode(
-                                                            isInCart
-                                                                ? Colors.white
-                                                                : colors
-                                                                    .textPrimary,
+                                                          colorFilter: ColorFilter.mode(
+                                                            isInCart ? Colors.white : colors.textPrimary,
                                                             BlendMode.srcIn,
                                                           ),
                                                         ),
@@ -746,21 +637,15 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8.0,
-                          vertical: 4.0,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                         child: Row(
                           children: [
                             SvgPicture.asset(
                               Assets.icons.cart,
-                            package: 'grab_go_shared',
+                              package: 'grab_go_shared',
                               height: 20.h,
                               width: 20.w,
-                              colorFilter: const ColorFilter.mode(
-                                Colors.white,
-                                BlendMode.srcIn,
-                              ),
+                              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                             ),
                             SizedBox(width: 5.w),
                             Text(
@@ -769,22 +654,14 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                                   : provider.totalQuantity > 1
                                   ? "${provider.totalQuantity} items"
                                   : "${provider.totalQuantity} item",
-                              style: TextStyle(
-                                fontSize: 14.sp,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: TextStyle(fontSize: 14.sp, color: Colors.white, fontWeight: FontWeight.w600),
                             ),
                           ],
                         ),
                       ),
                       Text(
                         "GHC ${provider.totalPrice.toStringAsFixed(2)}",
-                        style: TextStyle(
-                          fontSize: 14.sp,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: TextStyle(fontSize: 14.sp, color: Colors.white, fontWeight: FontWeight.w600),
                       ),
 
                       Row(
@@ -795,17 +672,10 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                               onTap: () {
                                 context.push("/cart");
                               },
-                              borderRadius: BorderRadius.circular(
-                                KBorderSize.border,
-                              ),
-                              splashColor: colors.accentOrange.withValues(
-                                alpha: 0.05,
-                              ),
+                              borderRadius: BorderRadius.circular(KBorderSize.border),
+                              splashColor: colors.accentOrange.withValues(alpha: 0.05),
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8.0,
-                                  vertical: 4.0,
-                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                                 child: Row(
                                   children: [
                                     Text(
@@ -819,13 +689,10 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                                     SizedBox(width: 5.w),
                                     SvgPicture.asset(
                                       Assets.icons.navArrowRight,
-                            package: 'grab_go_shared',
+                                      package: 'grab_go_shared',
                                       height: 20.h,
                                       width: 20.w,
-                                      colorFilter: const ColorFilter.mode(
-                                        Colors.white,
-                                        BlendMode.srcIn,
-                                      ),
+                                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                                     ),
                                   ],
                                 ),
@@ -845,6 +712,3 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
     );
   }
 }
-
-
-

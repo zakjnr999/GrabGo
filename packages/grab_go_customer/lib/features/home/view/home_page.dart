@@ -24,7 +24,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  List<FoodCategoryModel> _categories = [];
   FoodCategoryModel? _selectedCategory;
 
   @override
@@ -36,7 +35,17 @@ class _HomePageState extends State<HomePage> {
   void _initializeData() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<LocationProvider>(context, listen: false).fetchAddress();
-      Provider.of<FoodProvider>(context, listen: false).fetchCategories();
+      final provider = Provider.of<FoodProvider>(context, listen: false);
+      if (provider.categories.isEmpty) {
+        provider.fetchCategories();
+      } else {
+        // If categories already loaded, select first one
+        if (provider.categories.isNotEmpty) {
+          setState(() {
+            _selectedCategory = provider.categories.first;
+          });
+        }
+      }
     });
   }
 
@@ -49,9 +58,15 @@ class _HomePageState extends State<HomePage> {
     final locationProvider = Provider.of<LocationProvider>(context);
     final itemsProvider = Provider.of<FoodProvider>(context);
 
-    if (itemsProvider.categories.isNotEmpty && _categories.isEmpty) {
-      _categories = itemsProvider.categories;
-      _selectedCategory ??= _categories.first;
+    // Update selected category when categories load
+    if (itemsProvider.categories.isNotEmpty && _selectedCategory == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _selectedCategory = itemsProvider.categories.first;
+          });
+        }
+      });
     }
 
     return Scaffold(
@@ -266,7 +281,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                       );
-                    } else if (_categories.isEmpty) {
+                    } else if (itemsProvider.categories.isEmpty) {
                       return Container(
                         height: 95.h,
                         width: double.infinity,
@@ -276,16 +291,32 @@ class _HomePageState extends State<HomePage> {
                           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                         ),
                         child: Center(
-                          child: Text(
-                            "No categories found...",
-                            style: TextStyle(color: colors.textSecondary, fontSize: 16.sp, fontWeight: FontWeight.w500),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (itemsProvider.error != null)
+                                Text(
+                                  itemsProvider.error!,
+                                  style: TextStyle(color: colors.error, fontSize: 12.sp),
+                                  textAlign: TextAlign.center,
+                                )
+                              else
+                                Text(
+                                  "No categories found...",
+                                  style: TextStyle(
+                                    color: colors.textSecondary,
+                                    fontSize: 16.sp,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                       );
                     }
 
                     return FoodCategoryList(
-                      categories: _categories,
+                      categories: itemsProvider.categories,
                       onCategorySelected: (FoodCategoryModel category) {
                         setState(() {
                           _selectedCategory = category;
@@ -368,213 +399,249 @@ class _HomePageState extends State<HomePage> {
 
               SizedBox(height: KSpacing.lg.h),
 
-              if (_selectedCategory == null)
-                Container(
-                  height: size.height * 0.15,
-                  margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
-                  decoration: BoxDecoration(
-                    color: colors.backgroundPrimary,
-                    borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                  ),
-                  child: Center(
-                    child: Text(
-                      "No items available",
-                      style: TextStyle(color: colors.textSecondary, fontSize: 16.sp, fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                )
-              else
-                ListView.builder(
-                  physics: const NeverScrollableScrollPhysics(),
-                  shrinkWrap: true,
-                  itemCount: _selectedCategory!.items.length,
-                  itemBuilder: (context, index) {
-                    final item = _selectedCategory!.items[index];
+              Builder(
+                builder: (context) {
+                  // Get items from selected category instead of random
+                  List<FoodItem> recommendedFoods = [];
 
-                    return GestureDetector(
-                      onTap: () => context.push("/foodDetails", extra: item),
-                      child: Container(
-                        margin: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 12.h),
-                        decoration: BoxDecoration(
-                          color: colors.backgroundPrimary,
-                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-                          boxShadow: [
-                            BoxShadow(
-                              color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
-                              spreadRadius: 0,
-                              blurRadius: 12,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                  // Always get fresh category from provider to avoid stale references
+                  FoodCategoryModel? currentCategory;
+                  if (_selectedCategory != null && itemsProvider.categories.isNotEmpty) {
+                    currentCategory = itemsProvider.categories.firstWhere(
+                      (cat) => cat.id == _selectedCategory!.id,
+                      orElse: () => _selectedCategory!,
+                    );
+                  } else if (itemsProvider.categories.isNotEmpty) {
+                    // Fallback to first category if no category selected
+                    currentCategory = itemsProvider.categories.first;
+                  }
+
+                  if (currentCategory != null && currentCategory.items.isNotEmpty) {
+                    // Remove duplicates and take up to 5 items
+                    final Set<String> seenItems = {};
+                    recommendedFoods = currentCategory.items
+                        .where((item) {
+                          final key = '${item.name}_${item.sellerId}';
+                          if (seenItems.contains(key)) {
+                            return false;
+                          }
+                          seenItems.add(key);
+                          return true;
+                        })
+                        .take(5)
+                        .toList();
+                  }
+
+                  if (recommendedFoods.isEmpty) {
+                    return Container(
+                      height: size.height * 0.15,
+                      margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
+                      decoration: BoxDecoration(
+                        color: colors.backgroundPrimary,
+                        borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                      ),
+                      child: Center(
+                        child: Text(
+                          "No items available",
+                          style: TextStyle(color: colors.textSecondary, fontSize: 16.sp, fontWeight: FontWeight.w500),
                         ),
-                        child: Row(
-                          children: [
-                            ClipRRect(
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(KBorderSize.borderRadius15),
-                                bottomLeft: Radius.circular(KBorderSize.borderRadius15),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    itemCount: recommendedFoods.length,
+                    itemBuilder: (context, index) {
+                      final item = recommendedFoods[index];
+
+                      return GestureDetector(
+                        onTap: () => context.push("/foodDetails", extra: item),
+                        child: Container(
+                          margin: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 12.h),
+                          decoration: BoxDecoration(
+                            color: colors.backgroundPrimary,
+                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                            border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                            boxShadow: [
+                              BoxShadow(
+                                color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
+                                spreadRadius: 0,
+                                blurRadius: 12,
+                                offset: const Offset(0, 2),
                               ),
-                              child: SizedBox(
-                                height: 118.h,
-                                width: 118.w,
-                                child: CachedImageWidget(
-                                  imageUrl: item.image,
-                                  width: 118.w,
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              ClipRRect(
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(KBorderSize.borderRadius15),
+                                  bottomLeft: Radius.circular(KBorderSize.borderRadius15),
+                                ),
+                                child: SizedBox(
                                   height: 118.h,
-                                  fit: BoxFit.cover,
-                                  placeholder: Container(
-                                    color: colors.inputBorder,
-                                    child: Center(
-                                      child: SvgPicture.asset(
-                                        Assets.icons.utensilsCrossed,
-                                        package: 'grab_go_shared',
-                                        colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                                        width: 30.w,
-                                        height: 30.h,
+                                  width: 118.w,
+                                  child: CachedImageWidget(
+                                    imageUrl: item.image,
+                                    width: 118.w,
+                                    height: 118.h,
+                                    fit: BoxFit.cover,
+                                    placeholder: Container(
+                                      color: colors.inputBorder,
+                                      child: Center(
+                                        child: SvgPicture.asset(
+                                          Assets.icons.utensilsCrossed,
+                                          package: 'grab_go_shared',
+                                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                          width: 30.w,
+                                          height: 30.h,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
 
-                            Expanded(
-                              child: Padding(
-                                padding: EdgeInsets.all(12.r),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          item.name,
-                                          style: TextStyle(
-                                            fontSize: 15.sp,
-                                            fontWeight: FontWeight.w700,
-                                            color: colors.textPrimary,
-                                          ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        SizedBox(height: 6.h),
-                                        Row(
-                                          children: [
-                                            SvgPicture.asset(
-                                              Assets.icons.starSolid,
-                                              package: 'grab_go_shared',
-                                              height: 13.h,
-                                              width: 13.w,
-                                              colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                                            ),
-                                            SizedBox(width: 4.w),
-                                            Text(
-                                              item.rating.toStringAsFixed(1),
-                                              style: TextStyle(
-                                                fontSize: 12.sp,
-                                                color: colors.textPrimary,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                            SizedBox(width: 8.w),
-                                            Container(
-                                              width: 3.w,
-                                              height: 3.h,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: colors.textSecondary,
-                                              ),
-                                            ),
-                                            SizedBox(width: 8.w),
-                                            SvgPicture.asset(
-                                              Assets.icons.timer,
-                                              package: 'grab_go_shared',
-                                              height: 12.h,
-                                              width: 12.w,
-                                              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                                            ),
-                                            SizedBox(width: 4.w),
-                                            Text(
-                                              "25-30 min",
-                                              style: TextStyle(
-                                                fontSize: 11.sp,
-                                                fontWeight: FontWeight.w500,
-                                                color: colors.textSecondary,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 10.h),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Container(
-                                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-                                          decoration: BoxDecoration(
-                                            color: colors.accentOrange.withValues(alpha: 0.15),
-                                            borderRadius: BorderRadius.circular(8.r),
-                                          ),
-                                          child: Text(
-                                            "GHS ${item.price.toStringAsFixed(2)}",
+                              Expanded(
+                                child: Padding(
+                                  padding: EdgeInsets.all(12.r),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            item.name,
                                             style: TextStyle(
-                                              fontSize: 13.sp,
-                                              fontWeight: FontWeight.w800,
-                                              color: colors.accentOrange,
+                                              fontSize: 15.sp,
+                                              fontWeight: FontWeight.w700,
+                                              color: colors.textPrimary,
                                             ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
-                                        ),
-                                        Consumer<CartProvider>(
-                                          builder: (context, provider, _) {
-                                            final bool isInCart = provider.cartItems.containsKey(item);
-
-                                            return GestureDetector(
-                                              onTap: () {
-                                                if (isInCart) {
-                                                  provider.removeItemCompletely(item);
-                                                } else {
-                                                  provider.addToCart(item);
-                                                }
-                                              },
-                                              child: Container(
-                                                padding: EdgeInsets.all(8.r),
+                                          SizedBox(height: 6.h),
+                                          Row(
+                                            children: [
+                                              SvgPicture.asset(
+                                                Assets.icons.starSolid,
+                                                package: 'grab_go_shared',
+                                                height: 13.h,
+                                                width: 13.w,
+                                                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                              ),
+                                              SizedBox(width: 4.w),
+                                              Text(
+                                                item.rating.toStringAsFixed(1),
+                                                style: TextStyle(
+                                                  fontSize: 12.sp,
+                                                  color: colors.textPrimary,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                              SizedBox(width: 8.w),
+                                              Container(
+                                                width: 3.w,
+                                                height: 3.h,
                                                 decoration: BoxDecoration(
                                                   shape: BoxShape.circle,
-                                                  color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
-                                                  border: Border.all(
-                                                    color: isInCart ? colors.accentOrange : colors.inputBorder,
-                                                    width: 1,
-                                                  ),
-                                                ),
-                                                child: SvgPicture.asset(
-                                                  Assets.icons.cart,
-                                                  package: 'grab_go_shared',
-                                                  height: 16.h,
-                                                  width: 16.w,
-                                                  colorFilter: ColorFilter.mode(
-                                                    isInCart ? Colors.white : colors.textPrimary,
-                                                    BlendMode.srcIn,
-                                                  ),
+                                                  color: colors.textSecondary,
                                                 ),
                                               ),
-                                            );
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                              SizedBox(width: 8.w),
+                                              SvgPicture.asset(
+                                                Assets.icons.timer,
+                                                package: 'grab_go_shared',
+                                                height: 12.h,
+                                                width: 12.w,
+                                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                              ),
+                                              SizedBox(width: 4.w),
+                                              Text(
+                                                "25-30 min",
+                                                style: TextStyle(
+                                                  fontSize: 11.sp,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: colors.textSecondary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: 10.h),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                                            decoration: BoxDecoration(
+                                              color: colors.accentOrange.withValues(alpha: 0.15),
+                                              borderRadius: BorderRadius.circular(8.r),
+                                            ),
+                                            child: Text(
+                                              "GHS ${item.price.toStringAsFixed(2)}",
+                                              style: TextStyle(
+                                                fontSize: 13.sp,
+                                                fontWeight: FontWeight.w800,
+                                                color: colors.accentOrange,
+                                              ),
+                                            ),
+                                          ),
+                                          Consumer<CartProvider>(
+                                            builder: (context, provider, _) {
+                                              final bool isInCart = provider.cartItems.containsKey(item);
+
+                                              return GestureDetector(
+                                                onTap: () {
+                                                  if (isInCart) {
+                                                    provider.removeItemCompletely(item);
+                                                  } else {
+                                                    provider.addToCart(item);
+                                                  }
+                                                },
+                                                child: Container(
+                                                  padding: EdgeInsets.all(8.r),
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
+                                                    border: Border.all(
+                                                      color: isInCart ? colors.accentOrange : colors.inputBorder,
+                                                      width: 1,
+                                                    ),
+                                                  ),
+                                                  child: SvgPicture.asset(
+                                                    Assets.icons.cart,
+                                                    package: 'grab_go_shared',
+                                                    height: 16.h,
+                                                    width: 16.w,
+                                                    colorFilter: ColorFilter.mode(
+                                                      isInCart ? Colors.white : colors.textPrimary,
+                                                      BlendMode.srcIn,
+                                                    ),
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
+                      );
+                    },
+                  );
+                },
+              ),
             ],
           ),
         ),

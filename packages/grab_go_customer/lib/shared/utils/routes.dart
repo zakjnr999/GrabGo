@@ -1,4 +1,5 @@
 import 'package:animations/animations.dart';
+import 'package:flutter/material.dart' hide Notification;
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/home/navigation/bottom_navigator.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -557,7 +558,24 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: "/foodDetails",
       pageBuilder: (context, state) {
-        final foodItem = state.extra as FoodItem;
+        final foodItem = state.extra as FoodItem?;
+        if (foodItem == null) {
+          // Navigate back if foodItem is null
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) {
+              context.pop();
+            }
+          });
+          // Return a placeholder page
+          return CustomTransitionPage(
+            key: state.pageKey,
+            child: const SizedBox.shrink(),
+            transitionDuration: const Duration(milliseconds: 400),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return child;
+            },
+          );
+        }
 
         return CustomTransitionPage(
           key: state.pageKey,

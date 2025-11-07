@@ -3,6 +3,7 @@ import 'package:chopper/chopper.dart';
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_admin/features/restaurants/model/restaurant_response.dart';
+import 'package:grab_go_admin/shared/services/token_service.dart';
 
 class JsonSerializableConverter extends JsonConverter {
   const JsonSerializableConverter();
@@ -78,10 +79,27 @@ class JsonSerializableConverter extends JsonConverter {
 
     final isLoginEndpoint = urlPath.endsWith('/users/login') && (method == 'POST');
     final isRestaurantUpdate = urlPath.contains('/restaurants/') && (method == 'PUT') && !urlPath.endsWith('/register');
+    final isRestaurantList = urlPath.endsWith('/restaurants') && (method == 'GET');
 
+    // Add API key for admin endpoints
+    // Backend accepts both 'api_key' and 'x-api-key' headers
     if (isLoginEndpoint || isRestaurantUpdate) {
-      headers['API_KEY'] = AppConfig.apiKey;
-      debugPrint('🔑 Added API_KEY header');
+      headers['api_key'] = AppConfig.apiKey;
+      headers['x-api-key'] = AppConfig.apiKey; // Also add x-api-key for compatibility
+      debugPrint('🔑 Added API_KEY header: ${AppConfig.apiKey.substring(0, 10)}...');
+    }
+
+    // Add Authorization token if available (for admin to see all restaurants)
+    // Use synchronous token getter
+    if (!isLoginEndpoint) {
+      // Don't add token for login endpoint
+      final token = TokenService.getTokenSync();
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+        debugPrint('🔑 Added Authorization token');
+      } else {
+        debugPrint('⚠️ No token available for request');
+      }
     }
 
     return req.copyWith(headers: headers, body: req.body);

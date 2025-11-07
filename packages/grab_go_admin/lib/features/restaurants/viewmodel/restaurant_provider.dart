@@ -41,7 +41,7 @@ class RestaurantProvider extends ChangeNotifier {
 
   Future<bool> approveRestaurant(String restaurantId) async {
     try {
-      final requestBody = {'status': 'Active'};
+      final requestBody = {'status': 'approved'};
       final response = await restaurantService.updateRestaurantStatus(restaurantId, requestBody);
 
       if (response.isSuccessful && response.body != null) {

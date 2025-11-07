@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:grab_go_shared/shared/utils/constants.dart';
@@ -10,6 +11,8 @@ import '../../../shared/app_colors_extension.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/utils/responsive.dart';
+import '../../../core/api/api_client.dart';
+import '../../../shared/services/token_service.dart';
 
 class LandingScreen extends StatefulWidget {
   const LandingScreen({super.key});
@@ -177,7 +180,7 @@ class _LandingScreenState extends State<LandingScreen> {
     );
   }
 
-  void _handleLogin() {
+  Future<void> _handleLogin() async {
     setState(() {
       emailError = null;
       passwordError = null;
@@ -202,18 +205,136 @@ class _LandingScreenState extends State<LandingScreen> {
         passwordError = 'Password is required';
       });
       hasErrors = true;
-    } else if (passwordController.text.length < 8) {
-      setState(() {
-        passwordError = 'Password must be at least 8 characters';
-      });
-      hasErrors = true;
     }
 
     if (hasErrors) {
       return;
     }
-    if (!hasErrors) {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AdminDashboard()));
+
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      if (kDebugMode) {
+        debugPrint('🔐 Attempting login for: ${emailController.text.trim()}');
+      }
+
+      // Use the same login endpoint as customer app: /api/users/login
+      final response = await authService.login(
+        credentials: {'email': emailController.text.trim(), 'password': passwordController.text},
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      if (kDebugMode) {
+        debugPrint('📥 Login Response Status: ${response.statusCode}');
+        debugPrint('📥 Login Response Body: ${response.body}');
+      }
+
+      if (response.isSuccessful && response.body != null) {
+        final responseData = response.body!;
+
+        final token = responseData['token'] as String?;
+        final user = responseData['user'] as Map<String, dynamic>?;
+        final message = responseData['message'] as String?;
+
+        if (kDebugMode) {
+          debugPrint('🔑 Token received: ${token != null ? 'Yes' : 'No'}');
+          debugPrint('👤 User data: ${user != null ? 'Yes' : 'No'}');
+          if (user != null) {
+            debugPrint('👤 isAdmin: ${user['isAdmin']}');
+            debugPrint('👤 role: ${user['role']}');
+          }
+        }
+
+        if (token != null && token.isNotEmpty) {
+          // Save token
+          await TokenService().saveToken(token);
+
+          // Check if user is admin - REQUIRED for admin panel access
+          // Uses same login route as customer app (/api/users/login), but validates admin privileges
+          final isAdmin = user?['isAdmin'] == true;
+
+          if (kDebugMode) {
+            debugPrint('🔒 Admin check - isAdmin: $isAdmin');
+          }
+
+          if (!isAdmin) {
+            if (!mounted) return;
+            if (kDebugMode) {
+              debugPrint('❌ Access denied - User is not admin');
+            }
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Access denied. This account does not have admin privileges.'),
+                backgroundColor: AppColors.errorRed,
+                duration: Duration(seconds: 4),
+              ),
+            );
+            // Clear token if not admin
+            await TokenService().clearToken();
+            return;
+          }
+
+          // Success - user is admin, navigate to dashboard
+          if (kDebugMode) {
+            debugPrint('✅ Admin login successful - Navigating to dashboard');
+          }
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(message ?? 'Login successful'),
+              backgroundColor: AppColors.successGreen,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AdminDashboard()));
+        } else {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(responseData['message'] ?? 'Login failed: No token received'),
+              backgroundColor: AppColors.errorRed,
+            ),
+          );
+        }
+      } else {
+        if (!mounted) return;
+        // Parse error message from response
+        String errorMsg = 'Login failed. Please check your credentials.';
+        if (response.body != null) {
+          if (response.body is Map<String, dynamic>) {
+            final errorBody = response.body as Map<String, dynamic>;
+            errorMsg = errorBody['message'] ?? errorBody['error'] ?? errorMsg;
+          } else {
+            errorMsg = response.body.toString();
+          }
+        } else if (response.error != null) {
+          errorMsg = response.error.toString();
+        }
+
+        if (kDebugMode) {
+          debugPrint('❌ Login failed: $errorMsg');
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMsg), backgroundColor: AppColors.errorRed, duration: const Duration(seconds: 4)),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+      if (kDebugMode) {
+        debugPrint('❌ Login exception: $e');
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: AppColors.errorRed));
     }
   }
 
