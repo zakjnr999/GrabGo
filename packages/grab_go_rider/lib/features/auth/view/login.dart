@@ -181,13 +181,22 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
       LoadingDialog.instance().hide();
 
       if (response.isSuccessful && response.body != null) {
+        final token = response.body!.token;
         User? user = response.body!.userData;
+
+        // Save token if provided
+        if (token != null && token.isNotEmpty) {
+          await CacheService.saveAuthToken(token);
+          debugPrint('✅ Auth token saved after Google sign-in');
+        }
 
         if (user != null) {
           await CacheService.saveUserData(user.toJson());
         }
 
-        if (mounted) {}
+        if (mounted) {
+          context.push("/home");
+        }
       } else {
         String errorMessage = "Google Sign-In failed. Please try again.";
 
@@ -307,7 +316,14 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
       LoadingDialog.instance().hide();
 
       if (response.isSuccessful && response.body != null) {
+        final token = response.body!.token;
         User? user = response.body!.userData;
+
+        // Save token if provided
+        if (token != null && token.isNotEmpty) {
+          await CacheService.saveAuthToken(token);
+          debugPrint('✅ Auth token saved after login');
+        }
 
         if (user != null) {
           await CacheService.saveUserData(user.toJson());

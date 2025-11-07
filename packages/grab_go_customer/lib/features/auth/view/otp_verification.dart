@@ -6,6 +6,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
+import 'package:grab_go_customer/shared/services/cache_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/features/auth/service/firebase_phone_auth_service.dart';
@@ -98,12 +99,9 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
       isLoading = true;
     });
 
-    debugPrint('🔐 Verifying OTP: $otp');
-
     final userCredential = await FirebasePhoneAuthService().verifyOTP(
       otpCode: otp,
       onError: (error) {
-        debugPrint('❌ Error verifying OTP: $error');
         if (mounted) {
           LoadingDialog.instance().hide();
           setState(() {
@@ -120,14 +118,11 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
     );
 
     if (userCredential != null && mounted) {
-      debugPrint('✅ Firebase verification successful, updating API...');
-
       LoadingDialog.instance().show(context: context, text: "Updating phone verification...");
 
       try {
         final userId = FirebasePhoneAuthService().userId;
         if (userId == null) {
-          debugPrint('❌ User ID not found. Cannot update phone verification.');
           if (mounted) {
             LoadingDialog.instance().hide();
             AppToastMessage.show(
@@ -140,17 +135,25 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
           return;
         }
 
+        // Check if auth token exists
+        final token = CacheService.getAuthToken();
+        if (token == null || token.isEmpty) {
+          if (mounted) {
+            LoadingDialog.instance().hide();
+            AppToastMessage.show(
+              context: context,
+              icon: Icons.error_outline,
+              message: "Authentication token missing. Please register or login again.",
+              backgroundColor: context.appColors.error,
+            );
+          }
+          return;
+        }
+
         final request = PhoneVerificationRequest(
           phoneNumber: FirebasePhoneAuthService().phoneNumber ?? '',
           isPhoneVerified: true,
         );
-
-        debugPrint('🚀 Sending phone verification update:');
-        debugPrint('   User ID: $userId');
-        debugPrint('   Phone: ${request.phoneNumber}');
-        debugPrint('   Is Phone Verified: ${request.isPhoneVerified}');
-        debugPrint('   Request JSON: ${request.toJson()}');
-        debugPrint('   API URL: https://grabgo.onrender.com/api/users/$userId');
 
         final response = await authService
             .verifyPhone(userId, request)
@@ -161,20 +164,9 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
               },
             );
 
-        debugPrint('📡 API Response:');
-        debugPrint('   Status Code: ${response.statusCode}');
-        debugPrint('   Is Successful: ${response.isSuccessful}');
-        debugPrint('   Response Body: ${response.body}');
-        debugPrint('   Response Error: ${response.error}');
-
         if (response.isSuccessful && response.body != null) {
           final message = response.body!.message;
           final user = response.body!.user;
-
-          debugPrint('✅ Phone verification updated successfully!');
-          debugPrint('Message: $message');
-          debugPrint('User: ${user?.username} (${user?.email})');
-          debugPrint('Phone Verified: ${user?.isPhoneVerified}');
 
           if (mounted) {
             LoadingDialog.instance().hide();
@@ -200,8 +192,6 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
             errorMessage = "Server error. Please try again later.";
           }
 
-          debugPrint('❌ API Error - Status: ${response.statusCode}, Error: ${response.error}');
-
           if (mounted) {
             LoadingDialog.instance().hide();
             AppToastMessage.show(
@@ -213,7 +203,6 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
           }
         }
       } catch (e) {
-        debugPrint('❌ Error updating phone verification: $e');
         if (mounted) {
           LoadingDialog.instance().hide();
           AppToastMessage.show(
@@ -254,7 +243,6 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
     await FirebasePhoneAuthService().resendOTP(
       phoneNumber: storedPhoneNumber,
       onCodeSent: (verificationId) {
-        debugPrint('✅ OTP resent successfully');
         if (mounted) {
           LoadingDialog.instance().hide();
           AppToastMessage.show(
@@ -267,7 +255,6 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
         }
       },
       onError: (error) {
-        debugPrint('❌ Error resending OTP: $error');
         if (mounted) {
           LoadingDialog.instance().hide();
           AppToastMessage.show(
@@ -455,7 +442,6 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
                           onTap: verificationCode != null && verificationCode!.length == 6 && !isLoading
                               ? () {
                                   _verifyOTP(verificationCode!);
-                                  debugPrint('Verification Code: $verificationCode');
                                 }
                               : null,
                           child: Container(

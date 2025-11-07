@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:go_router/go_router.dart';
 import 'package:grab_go_rider/features/home/models/transaction_model.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -255,14 +256,20 @@ class _WalletPageState extends State<WalletPage> {
               Row(
                 children: [
                   Expanded(
-                    child: _buildQuickAction("Withdraw", Assets.icons.creditCard, colors.accentGreen, colors, () {}),
+                    child: _buildQuickAction("Withdraw", Assets.icons.creditCard, colors.accentGreen, colors, () {
+                      context.push("/withdrawal-page");
+                    }),
                   ),
                   SizedBox(width: 12.w),
                   Expanded(
                     child: _buildQuickAction("Earnings", Assets.icons.dollar, colors.accentOrange, colors, () {}),
                   ),
                   SizedBox(width: 12.w),
-                  Expanded(child: _buildQuickAction("History", Assets.icons.clock, colors.accentViolet, colors, () {})),
+                  Expanded(
+                    child: _buildQuickAction("History", Assets.icons.clock, colors.accentViolet, colors, () {
+                      context.push("/transaction-history-page");
+                    }),
+                  ),
                 ],
               ),
 

@@ -6,6 +6,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_rider/core/api/api_client.dart';
+import 'package:grab_go_rider/shared/service/cache_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_rider/features/auth/service/firebase_phone_auth_service.dart';
@@ -139,6 +140,33 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
           return;
         }
 
+        // Check if auth token exists - CRITICAL: Token must be saved during registration
+        final token = CacheService.getAuthToken();
+        debugPrint('🔍 ========== TOKEN CHECK BEFORE PHONE VERIFICATION ==========');
+        debugPrint('   Token exists: ${token != null}');
+        debugPrint('   Token length: ${token?.length ?? 0}');
+        if (token != null) {
+          debugPrint('   Token preview: ${token.substring(0, token.length > 30 ? 30 : token.length)}...');
+        }
+        debugPrint('   User ID from Firebase: ${FirebasePhoneAuthService().userId}');
+        debugPrint('==============================================================');
+
+        if (token == null || token.isEmpty) {
+          debugPrint('❌ CRITICAL ERROR: No auth token found!');
+          debugPrint('   This means registration did not save the token.');
+          debugPrint('   Please register/login again to get a token.');
+          if (mounted) {
+            LoadingDialog.instance().hide();
+            AppToastMessage.show(
+              context: context,
+              icon: Icons.error_outline,
+              message: "Authentication token missing. Please register or login again.",
+              backgroundColor: context.appColors.error,
+            );
+          }
+          return;
+        }
+
         final request = PhoneVerificationRequest(
           phoneNumber: FirebasePhoneAuthService().phoneNumber ?? '',
           isPhoneVerified: true,
@@ -150,6 +178,18 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
         debugPrint('   Is Phone Verified: ${request.isPhoneVerified}');
         debugPrint('   Request JSON: ${request.toJson()}');
 
+        // Log token info for debugging
+        final tokenForLog = CacheService.getAuthToken();
+        if (tokenForLog != null) {
+          debugPrint(
+            '   Token preview: ${tokenForLog.substring(0, tokenForLog.length > 20 ? 20 : tokenForLog.length)}...',
+          );
+        } else {
+          debugPrint('   ⚠️ WARNING: No token found in cache!');
+        }
+
+        // Make the request - the converter should add the token, but if it doesn't work,
+        // we'll need to manually add it via an interceptor or modify the request
         final response = await authService
             .verifyPhone(userId, request)
             .timeout(

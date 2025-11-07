@@ -20,12 +20,14 @@ import 'package:grab_go_rider/features/settings/view/settings_page.dart';
 import 'package:grab_go_rider/features/settings/view/support_page.dart';
 import 'package:grab_go_rider/features/home/view/faq_page.dart';
 import 'package:grab_go_rider/features/settings/view/safety_guidelines_page.dart';
+import 'package:grab_go_rider/features/settings/view/transaction_history_page.dart';
 import 'package:grab_go_rider/features/settings/view/vehicle_details_page.dart';
 import 'package:grab_go_rider/features/settings/view/personal_information_page.dart';
 import 'package:grab_go_rider/features/settings/view/bank_account_page.dart';
 import 'package:grab_go_rider/features/settings/view/documents_page.dart';
 import 'package:grab_go_rider/features/orders/view/delivery_tracking_page.dart';
 import 'package:grab_go_rider/features/orders/view/order_confirmation_page.dart';
+import 'package:grab_go_rider/features/settings/view/withdrawal-page.dart';
 import 'package:grab_go_rider/shared/widgets/bottom_navigation.dart';
 import 'package:grab_go_rider/core/view/splash_screen.dart';
 
@@ -466,11 +468,47 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: "/withdrawal-page",
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const WithdrawalPage(),
+          transitionDuration: const Duration(milliseconds: 800),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.scaled,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
       path: "/documents",
       pageBuilder: (context, state) {
         return CustomTransitionPage(
           key: state.pageKey,
           child: const DocumentsPage(),
+          transitionDuration: const Duration(milliseconds: 800),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.scaled,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/transaction-history-page",
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const TransactionHistoryPage(),
           transitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(

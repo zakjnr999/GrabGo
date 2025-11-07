@@ -6,6 +6,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
+import 'package:grab_go_customer/features/auth/service/firebase_phone_auth_service.dart';
 import 'package:grab_go_customer/shared/viewmodels/theme_provider.dart';
 import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -40,11 +41,20 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
   Future<void> _loadUserData() async {
     try {
       await Future.delayed(const Duration(milliseconds: 100));
-      final user = await UserService().getCurrentUser();
-      debugPrint('[Account] Loaded user');
-      debugPrint('  username: ${user?.username}');
-      debugPrint('  email   : ${user?.email}');
-      debugPrint('  pic url : ${user?.profilePicture}');
+
+      // Try to get user from cache first
+      var user = await UserService().getCurrentUser();
+
+      // If no user found, try to fetch from API using stored user ID
+      if (user == null) {
+        final userId = FirebasePhoneAuthService().userId;
+        if (userId != null && userId.isNotEmpty) {
+          user = await UserService().getUserById(userId);
+          if (user != null) {
+            await UserService().setCurrentUser(user);
+          }
+        }
+      }
 
       if (mounted) {
         setState(() {

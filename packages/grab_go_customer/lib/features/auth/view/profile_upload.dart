@@ -8,6 +8,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
+import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/features/auth/service/firebase_phone_auth_service.dart';
@@ -142,6 +143,12 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
       }
 
       if (response.isSuccessful && response.body != null) {
+        // Update user data with new profile picture
+        final user = response.body!.userData ?? response.body!.user;
+        if (user != null) {
+          await UserService().setCurrentUser(user);
+        }
+
         if (mounted) {
           LoadingDialog.instance().hide();
           AppToastMessage.show(

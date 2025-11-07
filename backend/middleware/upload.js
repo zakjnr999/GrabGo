@@ -8,12 +8,6 @@ const storage = multer.memoryStorage();
 
 // File filter
 const fileFilter = (req, file, cb) => {
-  console.log('🔍 File filter check:', {
-    originalname: file.originalname,
-    mimetype: file.mimetype,
-    fieldname: file.fieldname
-  });
-
   const allowedTypes = /jpeg|jpg|png|gif|webp/;
   const allowedMimeTypes = /^image\/(jpeg|jpg|png|gif|webp)$/i;
   
@@ -28,15 +22,8 @@ const fileFilter = (req, file, cb) => {
                           (file.mimetype === 'application/octet-stream' && extname);
 
   if (isValidMimeType && extname) {
-    console.log('✅ File accepted:', file.originalname, `(MIME: ${file.mimetype})`);
     return cb(null, true);
   } else {
-    console.error('❌ File rejected:', {
-      originalname: file.originalname,
-      mimetype: file.mimetype,
-      extname: path.extname(file.originalname),
-      reason: !extname ? 'Invalid file extension' : 'Invalid MIME type'
-    });
     cb(new Error('Only image files are allowed!'));
   }
 };
@@ -111,18 +98,11 @@ exports.uploadToCloudinary = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error('❌ Cloudinary upload middleware error:', error);
-    console.error('   File details:', {
-      fieldname: req.file?.fieldname,
-      originalname: req.file?.originalname,
-      mimetype: req.file?.mimetype,
-      size: req.file?.size
-    });
+    console.error('Cloudinary upload middleware error:', error);
     return res.status(500).json({
       success: false,
       message: 'Failed to upload image to Cloudinary',
-      error: error.message,
-      details: 'Check server logs for more information. Verify Cloudinary credentials are set correctly.'
+      error: error.message
     });
   }
 };

@@ -8,6 +8,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_rider/core/api/api_client.dart';
+import 'package:grab_go_rider/shared/service/cache_service.dart';
+import 'package:grab_go_rider/features/auth/service/firebase_phone_auth_service.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 
@@ -223,6 +225,30 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
 
       if (response.isSuccessful && response.body != null) {
         final message = response.body!.message;
+        final token = response.body!.token;
+        final user = response.body!.userData;
+
+        // Save token if provided
+        if (token != null && token.isNotEmpty) {
+          final saved = await CacheService.saveAuthToken(token);
+          debugPrint('✅ Auth token saved after registration: $saved');
+          debugPrint('   Token length: ${token.length}');
+          debugPrint('   Token preview: ${token.substring(0, token.length > 20 ? 20 : token.length)}...');
+
+          // Verify token was saved
+          final verifyToken = CacheService.getAuthToken();
+          debugPrint('   Token verification: ${verifyToken != null ? "✅ Saved" : "❌ Not found"}');
+        } else {
+          debugPrint('⚠️ No token received in registration response!');
+        }
+
+        // Save user data if provided
+        if (user != null) {
+          await CacheService.saveUserData(user.toJson());
+          debugPrint('✅ User data saved after registration');
+          // Store user ID for phone verification
+          FirebasePhoneAuthService().setUserId(user.id ?? '');
+        }
 
         if (mounted) {
           AppToastMessage.show(
@@ -378,6 +404,21 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       if (!mounted) return;
       LoadingDialog.instance().hide();
       if (response.isSuccessful && response.body != null) {
+        final token = response.body!.token;
+        final user = response.body!.userData;
+
+        // Save token if provided
+        if (token != null && token.isNotEmpty) {
+          await CacheService.saveAuthToken(token);
+          debugPrint('✅ Auth token saved after Google sign-up');
+        }
+
+        // Save user data if provided
+        if (user != null) {
+          await CacheService.saveUserData(user.toJson());
+          debugPrint('✅ User data saved after Google sign-up');
+        }
+
         if (mounted) {
           // TODO: Navigate to home
         }

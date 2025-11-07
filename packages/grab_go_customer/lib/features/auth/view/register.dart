@@ -8,6 +8,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
+import 'package:grab_go_customer/shared/services/cache_service.dart';
+import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/auth/service/firebase_phone_auth_service.dart';
@@ -105,7 +107,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       client.close();
       return response.statusCode == 200 || response.statusCode == 404 || response.statusCode == 405;
     } catch (e) {
-      debugPrint('❌ Server connection failed: $e');
       return false;
     }
   }
@@ -222,9 +223,20 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
 
       if (response.isSuccessful && response.body != null) {
         final message = response.body!.message;
-        final user = response.body!.user;
-        if (user?.id != null) {
-          FirebasePhoneAuthService().setUserId(user!.id!);
+        final token = response.body!.token;
+        User? user = response.body!.userData ?? response.body!.user;
+
+        // Save token if provided
+        if (token != null && token.isNotEmpty) {
+          await CacheService.saveAuthToken(token);
+        }
+
+        // Save user data if provided
+        if (user != null) {
+          await UserService().setCurrentUser(user);
+          if (user.id != null) {
+            FirebasePhoneAuthService().setUserId(user.id!);
+          }
         }
 
         if (mounted) {
@@ -383,6 +395,20 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       if (!mounted) return;
       LoadingDialog.instance().hide();
       if (response.isSuccessful && response.body != null) {
+        final token = response.body!.token;
+        final user = response.body!.userData;
+
+        // Save token if provided
+        if (token != null && token.isNotEmpty) {
+          await CacheService.saveAuthToken(token);
+        }
+
+        // Save user data if provided
+        if (user != null) {
+          // Store user ID for phone verification
+          FirebasePhoneAuthService().setUserId(user.id ?? '');
+        }
+
         if (mounted) {
           context.go("/homepage");
         }
@@ -398,8 +424,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         } else if (response.statusCode == 500) {
           errorMessage = "Server error. Please try again later.";
         }
-
-        debugPrint("API Error - Status: ${response.statusCode}, Error: ${response.error}");
 
         if (mounted) {
           AppToastMessage.show(

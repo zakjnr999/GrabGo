@@ -310,13 +310,7 @@ class _DocumentsPageState extends State<DocumentsPage> {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         padding: EdgeInsets.all(20.w),
-        decoration: BoxDecoration(
-          color: colors.backgroundPrimary,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(KBorderSize.borderRadius20),
-            topRight: Radius.circular(KBorderSize.borderRadius20),
-          ),
-        ),
+        decoration: BoxDecoration(color: colors.backgroundPrimary),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -432,13 +426,7 @@ class _DocumentsPageState extends State<DocumentsPage> {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         padding: EdgeInsets.all(20.w),
-        decoration: BoxDecoration(
-          color: colors.backgroundPrimary,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(KBorderSize.borderRadius20),
-            topRight: Radius.circular(KBorderSize.borderRadius20),
-          ),
-        ),
+        decoration: BoxDecoration(color: colors.backgroundPrimary),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

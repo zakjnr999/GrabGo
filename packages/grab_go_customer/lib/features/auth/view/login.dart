@@ -10,6 +10,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_customer/shared/services/cache_service.dart';
 import 'package:grab_go_customer/shared/services/storage_service.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -197,6 +198,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
       LoadingDialog.instance().hide();
 
       if (response.isSuccessful && response.body != null) {
+        final token = response.body!.token;
         User? user = response.body!.userData;
 
         if (user == null) {
@@ -205,6 +207,11 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
           } else if (response.body!.data != null) {
             user = response.body!.data;
           }
+        }
+
+        // Save token if provided
+        if (token != null && token.isNotEmpty) {
+          await CacheService.saveAuthToken(token);
         }
 
         if (user != null) {
@@ -287,7 +294,6 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
       if (mounted) {
         LoadingDialog.instance().hide();
       }
-      debugPrint("Error: ${e.toString()}");
 
       if (mounted) {
         AppToastMessage.show(
@@ -349,6 +355,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
       LoadingDialog.instance().hide();
 
       if (response.isSuccessful && response.body != null) {
+        final token = response.body!.token;
         User? user = response.body!.userData;
 
         if (user == null) {
@@ -357,6 +364,11 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
           } else if (response.body!.data != null) {
             user = response.body!.data;
           }
+        }
+
+        // Save token if provided
+        if (token != null && token.isNotEmpty) {
+          await CacheService.saveAuthToken(token);
         }
 
         if (user != null) {

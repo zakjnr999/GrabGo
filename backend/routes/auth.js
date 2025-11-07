@@ -279,13 +279,6 @@ router.put('/:userId', protect, uploadSingle('profilePicture'), uploadToCloudina
   try {
     const { userId } = req.params;
     
-    console.log('📤 User update request:', {
-      userId,
-      hasFile: !!req.file,
-      contentType: req.headers['content-type'],
-      bodyKeys: Object.keys(req.body || {})
-    });
-    
     // Check if user is updating their own profile or is admin
     if (req.user._id.toString() !== userId && !req.user.isAdmin) {
       return res.status(403).json({
@@ -304,8 +297,6 @@ router.put('/:userId', protect, uploadSingle('profilePicture'), uploadToCloudina
 
     // Handle file upload (multipart request)
     if (req.file && req.file.cloudinaryUrl) {
-      console.log('📸 Processing profile picture upload via multipart');
-      
       // Delete old image from Cloudinary if it exists
       if (user.profilePicture && user.profilePicture.includes('cloudinary.com')) {
         try {
@@ -319,7 +310,6 @@ router.put('/:userId', protect, uploadSingle('profilePicture'), uploadToCloudina
       }
       
       user.profilePicture = req.file.cloudinaryUrl;
-      console.log('✅ Profile picture updated:', req.file.cloudinaryUrl);
     } else {
       // Handle JSON body updates (phone verification, etc.)
       const { phoneNumber, isPhoneVerified, profilePicture, image } = req.body;
@@ -379,14 +369,6 @@ router.put('/:userId/upload', protect, uploadSingle('profilePicture'), uploadToC
   try {
     const { userId } = req.params;
     
-    console.log('📤 Profile upload request:', {
-      userId,
-      hasFile: !!req.file,
-      fileFieldname: req.file?.fieldname,
-      cloudinaryUrl: req.file?.cloudinaryUrl,
-      fileSize: req.file?.size
-    });
-    
     if (req.user._id.toString() !== userId && !req.user.isAdmin) {
       return res.status(403).json({
         success: false,
@@ -412,15 +394,9 @@ router.put('/:userId/upload', protect, uploadSingle('profilePicture'), uploadToC
 
     // Check if Cloudinary upload was successful
     if (!req.file.cloudinaryUrl) {
-      console.error('Cloudinary upload failed - file object:', {
-        fieldname: req.file.fieldname,
-        originalname: req.file.originalname,
-        mimetype: req.file.mimetype,
-        size: req.file.size
-      });
       return res.status(500).json({
         success: false,
-        message: 'Failed to upload image to Cloudinary. Please check server logs.',
+        message: 'Failed to upload image to Cloudinary',
         error: 'Cloudinary URL not found in request'
       });
     }
@@ -440,12 +416,6 @@ router.put('/:userId/upload', protect, uploadSingle('profilePicture'), uploadToC
     // Save new profile picture URL
     user.profilePicture = req.file.cloudinaryUrl;
     await user.save();
-
-    console.log('✅ Profile picture uploaded successfully:', {
-      userId: user._id,
-      cloudinaryUrl: req.file.cloudinaryUrl,
-      publicId: req.file.cloudinaryPublicId
-    });
 
     res.json({
       success: true,
