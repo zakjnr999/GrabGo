@@ -18,17 +18,24 @@ const fileFilter = (req, file, cb) => {
   const allowedMimeTypes = /^image\/(jpeg|jpg|png|gif|webp)$/i;
   
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedMimeTypes.test(file.mimetype) || allowedTypes.test(file.mimetype);
+  
+  // Accept if:
+  // 1. Valid image MIME type (image/jpeg, image/png, etc.)
+  // 2. OR application/octet-stream with valid image extension (common on mobile)
+  // 3. AND valid file extension
+  const isValidMimeType = allowedMimeTypes.test(file.mimetype) || 
+                          allowedTypes.test(file.mimetype) ||
+                          (file.mimetype === 'application/octet-stream' && extname);
 
-  if (mimetype && extname) {
-    console.log('✅ File accepted:', file.originalname);
+  if (isValidMimeType && extname) {
+    console.log('✅ File accepted:', file.originalname, `(MIME: ${file.mimetype})`);
     return cb(null, true);
   } else {
     console.error('❌ File rejected:', {
       originalname: file.originalname,
       mimetype: file.mimetype,
       extname: path.extname(file.originalname),
-      reason: !mimetype ? 'Invalid MIME type' : 'Invalid file extension'
+      reason: !extname ? 'Invalid file extension' : 'Invalid MIME type'
     });
     cb(new Error('Only image files are allowed!'));
   }
