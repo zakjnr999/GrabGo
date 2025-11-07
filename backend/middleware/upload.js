@@ -8,13 +8,28 @@ const storage = multer.memoryStorage();
 
 // File filter
 const fileFilter = (req, file, cb) => {
+  console.log('🔍 File filter check:', {
+    originalname: file.originalname,
+    mimetype: file.mimetype,
+    fieldname: file.fieldname
+  });
+
   const allowedTypes = /jpeg|jpg|png|gif|webp/;
+  const allowedMimeTypes = /^image\/(jpeg|jpg|png|gif|webp)$/i;
+  
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
+  const mimetype = allowedMimeTypes.test(file.mimetype) || allowedTypes.test(file.mimetype);
 
   if (mimetype && extname) {
+    console.log('✅ File accepted:', file.originalname);
     return cb(null, true);
   } else {
+    console.error('❌ File rejected:', {
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      extname: path.extname(file.originalname),
+      reason: !mimetype ? 'Invalid MIME type' : 'Invalid file extension'
+    });
     cb(new Error('Only image files are allowed!'));
   }
 };
@@ -25,7 +40,9 @@ const upload = multer({
   limits: {
     fileSize: parseInt(process.env.MAX_FILE_SIZE) || 5242880 // 5MB default
   },
-  fileFilter: fileFilter
+  fileFilter: fileFilter,
+  // Accept common image MIME types
+  preservePath: false
 });
 
 // Helper function to handle single file upload
