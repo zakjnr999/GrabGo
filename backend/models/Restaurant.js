@@ -105,7 +105,7 @@ const restaurantSchema = new mongoose.Schema({
   },
   rating: {
     type: Number,
-    default: 0,
+    default: 1.0,
     validate: {
       validator: function(value) {
         // Allow 0 (no rating) or values between 1.0 and 5.0
