@@ -1,7 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-// Verify API Key
 exports.verifyApiKey = (req, res, next) => {
   const apiKey = req.headers['api_key'] || req.headers['x-api-key'];
   
@@ -22,7 +21,6 @@ exports.verifyApiKey = (req, res, next) => {
   next();
 };
 
-// Verify JWT Token
 exports.protect = async (req, res, next) => {
   let token;
 
@@ -48,7 +46,6 @@ exports.protect = async (req, res, next) => {
       });
     }
 
-    // Check if user is active
     if (!req.user.isActive) {
       return res.status(403).json({
         success: false,
@@ -65,7 +62,6 @@ exports.protect = async (req, res, next) => {
   }
 };
 
-// Check if user is admin
 exports.admin = (req, res, next) => {
   if (!req.user || !req.user.isAdmin) {
     return res.status(403).json({
@@ -76,7 +72,6 @@ exports.admin = (req, res, next) => {
   next();
 };
 
-// Check user role
 exports.authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {

@@ -7,9 +7,6 @@ const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
-// @route   GET /api/riders/available-orders
-// @desc    Get available orders for riders (not assigned)
-// @access  Private/Rider
 router.get('/available-orders', protect, authorize('rider', 'admin'), async (req, res) => {
   try {
     const availableOrders = await Order.find({
@@ -36,9 +33,6 @@ router.get('/available-orders', protect, authorize('rider', 'admin'), async (req
   }
 });
 
-// @route   POST /api/riders/accept-order/:orderId
-// @desc    Accept an order (assign rider to order)
-// @access  Private/Rider
 router.post('/accept-order/:orderId', protect, authorize('rider'), async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -90,9 +84,6 @@ router.post('/accept-order/:orderId', protect, authorize('rider'), async (req, r
   }
 });
 
-// @route   GET /api/riders/wallet
-// @desc    Get rider wallet information
-// @access  Private/Rider
 router.get('/wallet', protect, authorize('rider'), async (req, res) => {
   try {
     let wallet = await RiderWallet.findOne({ rider: req.user._id });
@@ -123,12 +114,9 @@ router.get('/wallet', protect, authorize('rider'), async (req, res) => {
   }
 });
 
-// @route   GET /api/riders/earnings
-// @desc    Get rider earnings (with period filter)
-// @access  Private/Rider
 router.get('/earnings', protect, authorize('rider'), async (req, res) => {
   try {
-    const { period = 'allTime' } = req.query; // today, thisWeek, thisMonth, allTime
+    const { period = 'allTime' } = req.query;
     
     let startDate = null;
     const now = new Date();
@@ -207,9 +195,6 @@ router.get('/earnings', protect, authorize('rider'), async (req, res) => {
   }
 });
 
-// @route   GET /api/riders/transactions
-// @desc    Get rider transaction history
-// @access  Private/Rider
 router.get('/transactions', protect, authorize('rider'), async (req, res) => {
   try {
     const { period = 'allTime', type, status } = req.query;
@@ -267,9 +252,6 @@ router.get('/transactions', protect, authorize('rider'), async (req, res) => {
   }
 });
 
-// @route   POST /api/riders/withdraw
-// @desc    Request withdrawal
-// @access  Private/Rider
 router.post('/withdraw', protect, authorize('rider'), [
   body('amount').isFloat({ min: 1 }).withMessage('Amount must be at least 1'),
   body('withdrawalMethod').isIn(['bank_account', 'mtn_mobile_money', 'vodafone_cash']).withMessage('Invalid withdrawal method'),
@@ -287,7 +269,6 @@ router.post('/withdraw', protect, authorize('rider'), [
 
     const { amount, withdrawalMethod, withdrawalAccount, description } = req.body;
 
-    // Get or create wallet
     let wallet = await RiderWallet.findOne({ rider: req.user._id });
     if (!wallet) {
       wallet = await RiderWallet.create({ rider: req.user._id });
@@ -296,7 +277,6 @@ router.post('/withdraw', protect, authorize('rider'), [
       await wallet.updateBalance();
     }
 
-    // Check if rider has sufficient balance
     if (wallet.balance < amount) {
       return res.status(400).json({
         success: false,
@@ -304,7 +284,6 @@ router.post('/withdraw', protect, authorize('rider'), [
       });
     }
 
-    // Create withdrawal transaction
     const transaction = await Transaction.create({
       rider: req.user._id,
       type: 'withdrawal',
@@ -315,7 +294,6 @@ router.post('/withdraw', protect, authorize('rider'), [
       status: 'pending'
     });
 
-    // Update wallet
     await wallet.updateBalance();
 
     res.status(201).json({
@@ -333,9 +311,6 @@ router.post('/withdraw', protect, authorize('rider'), [
   }
 });
 
-// @route   PUT /api/riders/transactions/:transactionId/status
-// @desc    Update transaction status (Admin only)
-// @access  Private/Admin
 router.put('/transactions/:transactionId/status', protect, authorize('admin'), [
   body('status').isIn(['pending', 'completed', 'failed']).withMessage('Invalid status')
 ], async (req, res) => {
@@ -366,7 +341,6 @@ router.put('/transactions/:transactionId/status', protect, authorize('admin'), [
     }
     await transaction.save();
 
-    // Update rider wallet
     const wallet = await RiderWallet.findOne({ rider: transaction.rider });
     if (wallet) {
       await wallet.updateBalance();

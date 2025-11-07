@@ -1,7 +1,6 @@
 const cloudinary = require('cloudinary').v2;
 require('dotenv').config();
 
-// Configure Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -9,7 +8,6 @@ cloudinary.config({
 });
 
 /**
- * Upload image to Cloudinary
  * @param {Buffer|String} file - File buffer or file path
  * @param {Object} options - Upload options
  * @returns {Promise<Object>} Cloudinary upload result
@@ -32,13 +30,11 @@ const uploadToCloudinary = async (file, options = {}) => {
 
     let uploadResult;
     if (Buffer.isBuffer(file)) {
-      // Upload from buffer
       uploadResult = await cloudinary.uploader.upload(
         `data:image/jpeg;base64,${file.toString('base64')}`,
         uploadOptions
       );
     } else if (typeof file === 'string') {
-      // Upload from file path or URL
       uploadResult = await cloudinary.uploader.upload(file, uploadOptions);
     } else {
       throw new Error('Invalid file type. Expected Buffer or String.');
@@ -67,7 +63,6 @@ const deleteFromCloudinary = async (publicId) => {
   try {
     if (!publicId) return null;
     
-    // Extract public_id from URL if full URL is provided
     const id = publicId.includes('/') 
       ? publicId.split('/').pop().split('.')[0]
       : publicId;
@@ -99,7 +94,6 @@ const uploadMulterFile = async (file, options = {}) => {
 
   const uploadFolder = subfolder ? `${folder}/${subfolder}` : folder;
 
-  // Convert buffer to data URI for Cloudinary
   const base64Data = file.buffer.toString('base64');
   const dataUri = `data:${file.mimetype};base64,${base64Data}`;
 

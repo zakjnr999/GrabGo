@@ -5,9 +5,6 @@ const { protect, admin } = require('../middleware/auth');
 
 const router = express.Router();
 
-// @route   GET /api/categories
-// @desc    Get all categories
-// @access  Public
 router.get('/', async (req, res) => {
   try {
     const categories = await Category.find({ isActive: true })
@@ -28,9 +25,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// @route   POST /api/categories
-// @desc    Create a new category
-// @access  Private/Admin
 router.post('/', protect, admin, [
   body('name').notEmpty().withMessage('Category name is required'),
   body('emoji').notEmpty().withMessage('Category emoji is required')
@@ -68,9 +62,6 @@ router.post('/', protect, admin, [
   }
 });
 
-// @route   GET /api/categories/:categoryId
-// @desc    Get category by ID
-// @access  Public
 router.get('/:categoryId', async (req, res) => {
   try {
     const category = await Category.findById(req.params.categoryId);

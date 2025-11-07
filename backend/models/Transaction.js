@@ -47,7 +47,6 @@ const transactionSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for efficient queries
 transactionSchema.index({ rider: 1, createdAt: -1 });
 transactionSchema.index({ order: 1 });
 

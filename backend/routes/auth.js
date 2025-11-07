@@ -1,25 +1,40 @@
-const express = require('express');
-const jwt = require('jsonwebtoken');
-const { body, validationResult } = require('express-validator');
-const User = require('../models/User');
-const { protect } = require('../middleware/auth');
-const { uploadSingle, getFileUrl, uploadToCloudinary } = require('../middleware/upload');
+const express = require("express");
+const jwt = require("jsonwebtoken");
+const { body, validationResult } = require("express-validator");
+const User = require("../models/User");
+const { protect } = require("../middleware/auth");
+const {
+  uploadSingle,
+  getFileUrl,
+  uploadToCloudinary,
+} = require("../middleware/upload");
 
 const router = express.Router();
 
 // Generate JWT Token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE || '7d'
+    expiresIn: process.env.JWT_EXPIRE || "7d",
   });
 };
 
 // @route   POST /api/users
 // @desc    Register a new user (regular or Google)
 // @access  Public
-router.post('/', async (req, res) => {
+router.post("/", async (req, res) => {
   try {
-    const { googleId, email, displayName, photoUrl, idToken, username, password, DateOfBirth, phone, profilePicture } = req.body;
+    const {
+      googleId,
+      email,
+      displayName,
+      photoUrl,
+      idToken,
+      username,
+      password,
+      DateOfBirth,
+      phone,
+      profilePicture,
+    } = req.body;
 
     // Check if it's a Google sign-up
     if (googleId) {
@@ -27,17 +42,17 @@ router.post('/', async (req, res) => {
       if (!email || !googleId || !displayName) {
         return res.status(400).json({
           success: false,
-          message: 'Google ID, email, and display name are required'
+          message: "Google ID, email, and display name are required",
         });
       }
 
       // Check if user exists
       let user = await User.findOne({ $or: [{ email }, { googleId }] });
-      
+
       if (user) {
         return res.status(400).json({
           success: false,
-          message: 'User already exists'
+          message: "User already exists",
         });
       }
 
@@ -47,13 +62,13 @@ router.post('/', async (req, res) => {
         email,
         googleId,
         profilePicture: photoUrl,
-        isEmailVerified: true
+        isEmailVerified: true,
       });
 
       const token = generateToken(user._id);
 
       return res.status(201).json({
-        message: 'User registered successfully',
+        message: "User registered successfully",
         user: {
           _id: user._id,
           username: user.username,
@@ -67,9 +82,9 @@ router.post('/', async (req, res) => {
           role: user.role,
           isActive: user.isActive,
           permissions: user.permissions,
-          createdAt: user.createdAt
+          createdAt: user.createdAt,
         },
-        token
+        token,
       });
     }
 
@@ -77,14 +92,14 @@ router.post('/', async (req, res) => {
     if (!username || !email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Username, email, and password are required'
+        message: "Username, email, and password are required",
       });
     }
 
     if (password.length < 6) {
       return res.status(400).json({
         success: false,
-        message: 'Password must be at least 6 characters'
+        message: "Password must be at least 6 characters",
       });
     }
 
@@ -93,7 +108,7 @@ router.post('/', async (req, res) => {
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: 'User already exists with this email or username'
+        message: "User already exists with this email or username",
       });
     }
 
@@ -104,13 +119,13 @@ router.post('/', async (req, res) => {
       password,
       DateOfBirth,
       phone,
-      profilePicture
+      profilePicture,
     });
 
     const token = generateToken(user._id);
 
     res.status(201).json({
-      message: 'User registered successfully',
+      message: "User registered successfully",
       user: {
         _id: user._id,
         username: user.username,
@@ -124,16 +139,16 @@ router.post('/', async (req, res) => {
         role: user.role,
         isActive: user.isActive,
         permissions: user.permissions,
-        createdAt: user.createdAt
+        createdAt: user.createdAt,
       },
-      token
+      token,
     });
   } catch (error) {
-    console.error('Register error:', error);
+    console.error("Register error:", error);
     res.status(500).json({
       success: false,
-      message: 'Server error during registration',
-      error: error.message
+      message: "Server error during registration",
+      error: error.message,
     });
   }
 });
@@ -141,7 +156,7 @@ router.post('/', async (req, res) => {
 // @route   POST /api/users/login
 // @desc    Login user (regular or Google)
 // @access  Public
-router.post('/login', async (req, res) => {
+router.post("/login", async (req, res) => {
   try {
     const { googleId, email, displayName, photoUrl, password } = req.body;
 
@@ -150,21 +165,21 @@ router.post('/login', async (req, res) => {
       if (!email || !googleId) {
         return res.status(400).json({
           success: false,
-          message: 'Google ID and email are required'
+          message: "Google ID and email are required",
         });
       }
 
       // Find or create user
       let user = await User.findOne({ $or: [{ email }, { googleId }] });
-      
+
       if (!user) {
         // Create new user if doesn't exist
         user = await User.create({
-          username: displayName || email.split('@')[0],
+          username: displayName || email.split("@")[0],
           email,
           googleId,
           profilePicture: photoUrl,
-          isEmailVerified: true
+          isEmailVerified: true,
         });
       } else {
         // Update Google ID if not set
@@ -178,14 +193,14 @@ router.post('/login', async (req, res) => {
       if (!user.isActive) {
         return res.status(403).json({
           success: false,
-          message: 'Account is deactivated'
+          message: "Account is deactivated",
         });
       }
 
       const token = generateToken(user._id);
 
       return res.json({
-        message: 'Login successful',
+        message: "Login successful",
         user: {
           _id: user._id,
           username: user.username,
@@ -199,9 +214,9 @@ router.post('/login', async (req, res) => {
           role: user.role,
           isActive: user.isActive,
           permissions: user.permissions,
-          createdAt: user.createdAt
+          createdAt: user.createdAt,
         },
-        token
+        token,
       });
     }
 
@@ -209,16 +224,16 @@ router.post('/login', async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Email and password are required'
+        message: "Email and password are required",
       });
     }
 
     // Check if user exists and get password
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email }).select("+password");
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials'
+        message: "Invalid credentials",
       });
     }
 
@@ -227,7 +242,7 @@ router.post('/login', async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials'
+        message: "Invalid credentials",
       });
     }
 
@@ -235,14 +250,14 @@ router.post('/login', async (req, res) => {
     if (!user.isActive) {
       return res.status(403).json({
         success: false,
-        message: 'Account is deactivated'
+        message: "Account is deactivated",
       });
     }
 
     const token = generateToken(user._id);
 
     res.json({
-      message: 'Login successful',
+      message: "Login successful",
       user: {
         _id: user._id,
         username: user.username,
@@ -256,212 +271,219 @@ router.post('/login', async (req, res) => {
         role: user.role,
         isActive: user.isActive,
         permissions: user.permissions,
-        createdAt: user.createdAt
+        createdAt: user.createdAt,
       },
-      token
+      token,
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error("Login error:", error);
     res.status(500).json({
       success: false,
-      message: 'Server error during login',
-      error: error.message
+      message: "Server error during login",
+      error: error.message,
     });
   }
 });
-
 
 // @route   PUT /api/users/:userId
 // @desc    Update user (verify phone, upload profile, etc.)
 // @access  Private
 // This route handles both JSON updates and multipart file uploads
-router.put('/:userId', protect, uploadSingle('profilePicture'), uploadToCloudinary, async (req, res) => {
-  try {
-    const { userId } = req.params;
-    
-    // Check if user is updating their own profile or is admin
-    if (req.user._id.toString() !== userId && !req.user.isAdmin) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to update this user'
-      });
-    }
+router.put(
+  "/:userId",
+  protect,
+  uploadSingle("profilePicture"),
+  uploadToCloudinary,
+  async (req, res) => {
+    try {
+      const { userId } = req.params;
 
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
+      if (req.user._id.toString() !== userId && !req.user.isAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: "Not authorized to update this user",
+        });
+      }
 
-    // Handle file upload (multipart request)
-    if (req.file && req.file.cloudinaryUrl) {
-      // Delete old image from Cloudinary if it exists
-      if (user.profilePicture && user.profilePicture.includes('cloudinary.com')) {
-        try {
-          const { deleteFromCloudinary } = require('../config/cloudinary');
-          const oldPublicId = user.profilePicture.split('/').pop().split('.')[0];
-          await deleteFromCloudinary(`grabgo/profiles/${oldPublicId}`);
-        } catch (error) {
-          console.error('Error deleting old profile picture:', error);
-          // Continue even if deletion fails
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      if (req.file && req.file.cloudinaryUrl) {
+        if (
+          user.profilePicture &&
+          user.profilePicture.includes("cloudinary.com")
+        ) {
+          try {
+            const { deleteFromCloudinary } = require("../config/cloudinary");
+            const oldPublicId = user.profilePicture
+              .split("/")
+              .pop()
+              .split(".")[0];
+            await deleteFromCloudinary(`grabgo/profiles/${oldPublicId}`);
+          } catch (error) {
+            console.error("Error deleting old profile picture:", error);
+            // Continue even if deletion fails
+          }
+        }
+
+        user.profilePicture = req.file.cloudinaryUrl;
+      } else {
+        const { phoneNumber, isPhoneVerified, profilePicture, image } =
+          req.body;
+
+        if (phoneNumber !== undefined) {
+          user.phone = phoneNumber;
+        }
+        if (isPhoneVerified !== undefined) {
+          user.isPhoneVerified = isPhoneVerified;
+        }
+
+        const pictureToUse = profilePicture || image;
+        if (pictureToUse !== undefined && !req.file) {
+          user.profilePicture = pictureToUse;
         }
       }
-      
+
+      await user.save();
+
+      res.json({
+        success: true,
+        message: req.file
+          ? "Profile picture uploaded successfully"
+          : "User updated successfully",
+        user: {
+          _id: user._id,
+          username: user.username,
+          email: user.email,
+          phone: user.phone,
+          isPhoneVerified: user.isPhoneVerified,
+          isEmailVerified: user.isEmailVerified,
+          DateOfBirth: user.DateOfBirth,
+          profilePicture: user.profilePicture,
+          isAdmin: user.isAdmin,
+          role: user.role,
+          isActive: user.isActive,
+          permissions: user.permissions,
+          createdAt: user.createdAt,
+        },
+      });
+    } catch (error) {
+      console.error("Update user error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message,
+      });
+    }
+  }
+);
+
+router.put(
+  "/:userId/upload",
+  protect,
+  uploadSingle("profilePicture"),
+  uploadToCloudinary,
+  async (req, res) => {
+    try {
+      const { userId } = req.params;
+
+      if (req.user._id.toString() !== userId && !req.user.isAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: "Not authorized",
+        });
+      }
+
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "No file uploaded. Please select an image.",
+        });
+      }
+
+      if (!req.file.cloudinaryUrl) {
+        return res.status(500).json({
+          success: false,
+          message: "Failed to upload image to Cloudinary",
+          error: "Cloudinary URL not found in request",
+        });
+      }
+
+      if (
+        user.profilePicture &&
+        user.profilePicture.includes("cloudinary.com")
+      ) {
+        try {
+          const { deleteFromCloudinary } = require("../config/cloudinary");
+          const oldPublicId = user.profilePicture
+            .split("/")
+            .pop()
+            .split(".")[0];
+          await deleteFromCloudinary(`grabgo/profiles/${oldPublicId}`);
+        } catch (error) {
+          console.error("Error deleting old profile picture:", error);
+        }
+      }
+
       user.profilePicture = req.file.cloudinaryUrl;
-    } else {
-      // Handle JSON body updates (phone verification, etc.)
-      const { phoneNumber, isPhoneVerified, profilePicture, image } = req.body;
-      
-      // Handle phone verification
-      if (phoneNumber !== undefined) {
-        user.phone = phoneNumber;
-      }
-      if (isPhoneVerified !== undefined) {
-        user.isPhoneVerified = isPhoneVerified;
-      }
-      
-      // Handle profile picture (supports base64 or URL from JSON)
-      const pictureToUse = profilePicture || image;
-      if (pictureToUse !== undefined && !req.file) {
-        // If it's a base64 string, save it as is (client will handle conversion)
-        // If it's a URL, use it directly
-        user.profilePicture = pictureToUse;
-      }
+      await user.save();
+
+      res.json({
+        success: true,
+        message: "Profile picture uploaded successfully",
+        user: {
+          _id: user._id,
+          username: user.username,
+          email: user.email,
+          phone: user.phone,
+          isPhoneVerified: user.isPhoneVerified,
+          isEmailVerified: user.isEmailVerified,
+          DateOfBirth: user.DateOfBirth,
+          profilePicture: user.profilePicture,
+          isAdmin: user.isAdmin,
+          role: user.role,
+          isActive: user.isActive,
+          permissions: user.permissions,
+          createdAt: user.createdAt,
+        },
+      });
+    } catch (error) {
+      console.error("Upload profile error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message,
+      });
     }
-
-    await user.save();
-
-    res.json({
-      success: true,
-      message: req.file ? 'Profile picture uploaded successfully' : 'User updated successfully',
-      user: {
-        _id: user._id,
-        username: user.username,
-        email: user.email,
-        phone: user.phone,
-        isPhoneVerified: user.isPhoneVerified,
-        isEmailVerified: user.isEmailVerified,
-        DateOfBirth: user.DateOfBirth,
-        profilePicture: user.profilePicture,
-        isAdmin: user.isAdmin,
-        role: user.role,
-        isActive: user.isActive,
-        permissions: user.permissions,
-        createdAt: user.createdAt
-      }
-    });
-  } catch (error) {
-    console.error('Update user error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error',
-      error: error.message
-    });
   }
-});
+);
 
-// @route   PUT /api/users/:userId (Upload profile picture)
-// @desc    Upload profile picture
-// @access  Private
-router.put('/:userId/upload', protect, uploadSingle('profilePicture'), uploadToCloudinary, async (req, res) => {
-  try {
-    const { userId } = req.params;
-    
-    if (req.user._id.toString() !== userId && !req.user.isAdmin) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized'
-      });
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
-    // Check if file was uploaded
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: 'No file uploaded. Please select an image.'
-      });
-    }
-
-    // Check if Cloudinary upload was successful
-    if (!req.file.cloudinaryUrl) {
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to upload image to Cloudinary',
-        error: 'Cloudinary URL not found in request'
-      });
-    }
-
-    // Delete old image from Cloudinary if it exists
-    if (user.profilePicture && user.profilePicture.includes('cloudinary.com')) {
-      try {
-        const { deleteFromCloudinary } = require('../config/cloudinary');
-        const oldPublicId = user.profilePicture.split('/').pop().split('.')[0];
-        await deleteFromCloudinary(`grabgo/profiles/${oldPublicId}`);
-      } catch (error) {
-        console.error('Error deleting old profile picture:', error);
-        // Continue even if deletion fails
-      }
-    }
-    
-    // Save new profile picture URL
-    user.profilePicture = req.file.cloudinaryUrl;
-    await user.save();
-
-    res.json({
-      success: true,
-      message: 'Profile picture uploaded successfully',
-      user: {
-        _id: user._id,
-        username: user.username,
-        email: user.email,
-        phone: user.phone,
-        isPhoneVerified: user.isPhoneVerified,
-        isEmailVerified: user.isEmailVerified,
-        DateOfBirth: user.DateOfBirth,
-        profilePicture: user.profilePicture,
-        isAdmin: user.isAdmin,
-        role: user.role,
-        isActive: user.isActive,
-        permissions: user.permissions,
-        createdAt: user.createdAt
-      }
-    });
-  } catch (error) {
-    console.error('Upload profile error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error',
-      error: error.message
-    });
-  }
-});
-
-// @route   GET /api/users/:userId
-// @desc    Get user by ID
-// @access  Private
-router.get('/:userId', protect, async (req, res) => {
+router.get("/:userId", protect, async (req, res) => {
   try {
     const user = await User.findById(req.params.userId);
-    
+
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: "User not found",
       });
     }
 
     res.json({
-      message: 'User retrieved successfully',
+      message: "User retrieved successfully",
       user: {
         _id: user._id,
         username: user.username,
@@ -475,18 +497,17 @@ router.get('/:userId', protect, async (req, res) => {
         role: user.role,
         isActive: user.isActive,
         permissions: user.permissions,
-        createdAt: user.createdAt
-      }
+        createdAt: user.createdAt,
+      },
     });
   } catch (error) {
-    console.error('Get user error:', error);
+    console.error("Get user error:", error);
     res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
 });
 
 module.exports = router;
-

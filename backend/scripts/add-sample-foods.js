@@ -1,8 +1,3 @@
-/**
- * Script to add sample food items for testing
- * Run: npm run add-foods
- */
-
 const mongoose = require('mongoose');
 require('dotenv').config();
 
@@ -27,32 +22,26 @@ const addSampleFoods = async () => {
   try {
     await connectDB();
 
-    // Get first restaurant (prefer approved, but use any for testing)
     let restaurant = await Restaurant.findOne({ status: 'approved' });
     if (!restaurant) {
       restaurant = await Restaurant.findOne();
       if (!restaurant) {
-        console.error('❌ No restaurant found. Please register at least one restaurant first.');
-        console.error('   You can register via: POST /api/restaurants/register');
         process.exit(1);
       }
-      console.log(`⚠️  No approved restaurant found. Using: ${restaurant.restaurant_name} (status: ${restaurant.status})`);
-      console.log(`   Note: Approve this restaurant for it to show in customer app.`);
+      console.log(`No approved restaurant found. Using: ${restaurant.restaurant_name} (status: ${restaurant.status})`);
+      console.log(`Note: Approve this restaurant for it to show in customer app.`);
     } else {
-      console.log(`✅ Using restaurant: ${restaurant.restaurant_name}`);
+      console.log(`Using restaurant: ${restaurant.restaurant_name}`);
     }
 
-    // Get all categories
     const categories = await Category.find({ isActive: true });
     if (categories.length === 0) {
-      console.error('❌ No categories found. Please run npm run init-db first.');
+      console.error('No categories found. Please run npm run init-db first.');
       process.exit(1);
     }
     console.log(`✅ Found ${categories.length} categories`);
 
-    // Sample food items
     const sampleFoods = [
-      // Fast Food
       {
         name: 'Classic Burger',
         description: 'Juicy beef patty with fresh lettuce, tomato, and special sauce',
@@ -89,7 +78,6 @@ const addSampleFoods = async () => {
         rating: 4.3,
         totalReviews: 200
       },
-      // Pizza
       {
         name: 'Margherita Pizza',
         description: 'Classic pizza with tomato sauce, mozzarella, and fresh basil',
@@ -114,7 +102,6 @@ const addSampleFoods = async () => {
         rating: 4.8,
         totalReviews: 180
       },
-      // Quick Bite
       {
         name: 'Club Sandwich',
         description: 'Triple-decker sandwich with chicken, bacon, lettuce, and mayo',
@@ -139,7 +126,6 @@ const addSampleFoods = async () => {
         rating: 4.5,
         totalReviews: 110
       },
-      // Desserts
       {
         name: 'Chocolate Cake',
         description: 'Rich and moist chocolate cake with chocolate frosting',
@@ -164,7 +150,6 @@ const addSampleFoods = async () => {
         rating: 4.7,
         totalReviews: 130
       },
-      // Beverages
       {
         name: 'Fresh Orange Juice',
         description: 'Freshly squeezed orange juice',
@@ -189,7 +174,6 @@ const addSampleFoods = async () => {
         rating: 4.5,
         totalReviews: 140
       },
-      // Healthy
       {
         name: 'Caesar Salad',
         description: 'Fresh romaine lettuce with Caesar dressing, croutons, and parmesan',
@@ -216,36 +200,34 @@ const addSampleFoods = async () => {
       }
     ];
 
-    // Add foods to database
     let added = 0;
     let skipped = 0;
 
     for (const food of sampleFoods) {
-      // Check if food already exists
       const existing = await Food.findOne({
         name: food.name,
         restaurant: food.restaurant
       });
 
       if (existing) {
-        console.log(`⏭️  Skipped: ${food.name} (already exists)`);
+        console.log(`⏭Skipped: ${food.name} (already exists)`);
         skipped++;
         continue;
       }
 
       await Food.create(food);
-      console.log(`✅ Added: ${food.name} - $${food.price}`);
+      console.log(`Added: ${food.name} - $${food.price}`);
       added++;
     }
 
-    console.log('\n✅ Sample foods added successfully!');
+    console.log('Sample foods added successfully!');
     console.log(`   Added: ${added} foods`);
     console.log(`   Skipped: ${skipped} foods (already exist)`);
     console.log(`   Restaurant: ${restaurant.restaurant_name}`);
     
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error adding sample foods:', error);
+    console.error('Error adding sample foods:', error);
     process.exit(1);
   }
 };

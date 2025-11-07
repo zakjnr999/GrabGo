@@ -3,20 +3,14 @@ const path = require('path');
 const fs = require('fs');
 const { uploadMulterFile } = require('../config/cloudinary');
 
-// Use memory storage for Cloudinary uploads (files are stored in memory temporarily)
 const storage = multer.memoryStorage();
 
-// File filter
 const fileFilter = (req, file, cb) => {
   const allowedTypes = /jpeg|jpg|png|gif|webp/;
   const allowedMimeTypes = /^image\/(jpeg|jpg|png|gif|webp)$/i;
   
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
   
-  // Accept if:
-  // 1. Valid image MIME type (image/jpeg, image/png, etc.)
-  // 2. OR application/octet-stream with valid image extension (common on mobile)
-  // 3. AND valid file extension
   const isValidMimeType = allowedMimeTypes.test(file.mimetype) || 
                           allowedTypes.test(file.mimetype) ||
                           (file.mimetype === 'application/octet-stream' && extname);
@@ -28,54 +22,43 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Configure multer
 const upload = multer({
   storage: storage,
   limits: {
     fileSize: parseInt(process.env.MAX_FILE_SIZE) || 5242880 // 5MB default
   },
   fileFilter: fileFilter,
-  // Accept common image MIME types
   preservePath: false
 });
 
-// Helper function to handle single file upload
 exports.uploadSingle = (fieldName) => {
   return upload.single(fieldName);
 };
 
-// Helper function to handle multiple file uploads
 exports.uploadMultiple = (fieldName, maxCount = 10) => {
   return upload.array(fieldName, maxCount);
 };
 
-// Helper function to handle multiple fields
 exports.uploadFields = (fields) => {
   return upload.fields(fields);
 };
 
-// Helper to get file URL (for backward compatibility)
 exports.getFileUrl = (filename) => {
   if (!filename) return null;
   if (filename.startsWith('http')) return filename;
-  // If it's already a Cloudinary URL, return as is
   if (filename.includes('cloudinary.com')) return filename;
-  // Fallback to local uploads (for backward compatibility)
   return `/uploads/${filename}`;
 };
 
-// Middleware to upload file to Cloudinary after multer processes it
 exports.uploadToCloudinary = async (req, res, next) => {
   try {
     if (!req.file) {
       return next();
     }
 
-    // Determine folder based on route or field name
     let folder = 'grabgo';
     let subfolder = 'general';
 
-    // Determine subfolder based on field name or route
     if (req.file.fieldname === 'profilePicture') {
       subfolder = 'profiles';
     } else if (req.file.fieldname === 'logo') {
@@ -86,13 +69,11 @@ exports.uploadToCloudinary = async (req, res, next) => {
       subfolder = 'documents';
     }
 
-    // Upload to Cloudinary
     const cloudinaryResult = await uploadMulterFile(req.file, {
       folder,
       subfolder,
     });
 
-    // Attach Cloudinary URL to req.file for use in routes
     req.file.cloudinaryUrl = cloudinaryResult.url;
     req.file.cloudinaryPublicId = cloudinaryResult.public_id;
 
@@ -107,19 +88,16 @@ exports.uploadToCloudinary = async (req, res, next) => {
   }
 };
 
-// Middleware to upload multiple files to Cloudinary
 exports.uploadMultipleToCloudinary = async (req, res, next) => {
   try {
     if (!req.files || Object.keys(req.files).length === 0) {
       return next();
     }
 
-    // Process each file field
     for (const fieldName in req.files) {
       const files = Array.isArray(req.files[fieldName]) ? req.files[fieldName] : [req.files[fieldName]];
       
       for (const file of files) {
-        // Determine subfolder based on field name
         let folder = 'grabgo';
         let subfolder = 'general';
 
@@ -133,13 +111,11 @@ exports.uploadMultipleToCloudinary = async (req, res, next) => {
           subfolder = 'documents';
         }
 
-        // Upload to Cloudinary
         const cloudinaryResult = await uploadMulterFile(file, {
           folder,
           subfolder,
         });
 
-        // Attach Cloudinary URL to file object
         file.cloudinaryUrl = cloudinaryResult.url;
         file.cloudinaryPublicId = cloudinaryResult.public_id;
       }

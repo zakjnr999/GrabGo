@@ -130,7 +130,6 @@ const restaurantSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Hash password before saving
 restaurantSchema.pre('save', async function(next) {
   if (!this.isModified('password')) {
     return next();
@@ -140,7 +139,6 @@ restaurantSchema.pre('save', async function(next) {
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-// Compare password method
 restaurantSchema.methods.matchPassword = async function(enteredPassword) {
   const bcrypt = require('bcryptjs');
   return await bcrypt.compare(enteredPassword, this.password);

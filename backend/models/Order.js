@@ -124,15 +124,12 @@ const orderSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Generate order number before saving
 orderSchema.pre('save', async function(next) {
   if (!this.orderNumber) {
-    // Use timestamp + random number for better uniqueness
     const timestamp = Date.now();
     const random = Math.floor(Math.random() * 10000);
     this.orderNumber = `ORD-${timestamp}-${random}`;
     
-    // Ensure uniqueness by checking if order number exists
     const Order = mongoose.model('Order');
     let exists = await Order.findOne({ orderNumber: this.orderNumber });
     let attempts = 0;
