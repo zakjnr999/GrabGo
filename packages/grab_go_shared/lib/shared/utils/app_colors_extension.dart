@@ -83,7 +83,6 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     required this.shadow,
   });
 
-  /// Light theme colors
   static const light = AppColorsExtension(
     textPrimary: Color(0xFF000000),
     textSecondary: Color(0xFF534C4B),
@@ -115,7 +114,6 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     shadow: Color(0x1A000000),
   );
 
-  /// Dark theme colors
   static const dark = AppColorsExtension(
     textPrimary: Color(0xFFFFFFFF),
     textSecondary: Color(0xFFB0B0B0),

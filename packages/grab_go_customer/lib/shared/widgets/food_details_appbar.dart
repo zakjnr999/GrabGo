@@ -9,6 +9,7 @@ import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
+import 'package:grab_go_customer/shared/services/food_share_link.dart';
 import 'package:provider/provider.dart';
 
 class FoodDetailsAppBar extends StatelessWidget {
@@ -23,7 +24,7 @@ class FoodDetailsAppBar extends StatelessWidget {
 
     return SliverAppBar(
       expandedHeight: size.height * 0.40,
-      backgroundColor: colors.backgroundPrimary,
+      backgroundColor: const Color(0xFF121212),
       surfaceTintColor: colors.backgroundPrimary,
       systemOverlayStyle: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -42,6 +43,17 @@ class FoodDetailsAppBar extends StatelessWidget {
               imageUrl: foodItem.image,
               fit: BoxFit.cover,
               placeholder: Container(
+                height: size.height * 0.40,
+                width: double.infinity,
+                color: colors.inputBorder,
+                padding: EdgeInsets.all(45.r),
+                child: SvgPicture.asset(
+                  Assets.icons.utensilsCrossed,
+                  package: 'grab_go_shared',
+                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                ),
+              ),
+              errorWidget: Container(
                 height: size.height * 0.40,
                 width: double.infinity,
                 color: colors.inputBorder,
@@ -101,11 +113,18 @@ class FoodDetailsAppBar extends StatelessWidget {
           ),
         ),
       ),
-      actionsPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+      actionsPadding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 2.h),
       actions: [
         _buildActionButton(
           context: context,
-          onTap: () => context.pop(),
+          onTap: () {
+            final router = GoRouter.of(context);
+            if (router.canPop()) {
+              router.pop();
+            } else {
+              context.go("/homepage");
+            }
+          },
           icon: SvgPicture.asset(
             Assets.icons.navArrowLeft,
             package: 'grab_go_shared',
@@ -115,6 +134,35 @@ class FoodDetailsAppBar extends StatelessWidget {
           ),
         ),
         const Spacer(),
+
+        _buildActionButton(
+          context: context,
+          onTap: () async {
+            try {
+              await FoodShareLinkService.shareFoodItem(
+                sellerId: foodItem.sellerId.toString(),
+                foodName: foodItem.name,
+                sellerName: foodItem.sellerName,
+                imageUrl: foodItem.image,
+                description: foodItem.description,
+              );
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Failed to share: ${e.toString()}'), backgroundColor: colors.error),
+                );
+              }
+            }
+          },
+          icon: SvgPicture.asset(
+            Assets.icons.shareAndroid,
+            package: 'grab_go_shared',
+            height: 20.h,
+            width: 20.w,
+            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+          ),
+        ),
+        SizedBox(width: 10.w),
         Consumer<FavoritesProvider>(
           builder: (context, favoritesProvider, child) {
             final isFavorite = favoritesProvider.isFavorite(foodItem);
@@ -155,7 +203,7 @@ class FoodDetailsAppBar extends StatelessWidget {
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Container(
               decoration: BoxDecoration(
-                color: isFavorite ? Colors.red.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.4),
+                color: isFavorite ? Colors.red.withValues(alpha: 0.3) : Colors.grey.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: isFavorite ? Colors.red.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.2),

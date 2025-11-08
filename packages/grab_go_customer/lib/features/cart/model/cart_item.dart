@@ -56,6 +56,7 @@ class _CartItemState extends State<CartItem> {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final size = MediaQuery.sizeOf(context);
 
     return Consumer<CartProvider>(
       builder: (context, provider, child) {
@@ -187,24 +188,22 @@ class _CartItemState extends State<CartItem> {
                           topLeft: Radius.circular(KBorderSize.borderRadius15),
                           bottomLeft: Radius.circular(KBorderSize.borderRadius15),
                         ),
-                        child: SizedBox(
-                          height: 118.h,
-                          width: 118.w,
-                          child: CachedImageWidget(
-                            imageUrl: foodItem.image,
-                            width: 118.w,
-                            height: 118.h,
-                            fit: BoxFit.cover,
-                            placeholder: Container(
-                              color: colors.inputBorder,
-                              child: Center(
-                                child: SvgPicture.asset(
-                                  Assets.icons.utensilsCrossed,
-                                  package: 'grab_go_shared',
-                                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                                  width: 30.w,
-                                  height: 30.h,
-                                ),
+                        child: CachedImageWidget(
+                          imageUrl: foodItem.image,
+                          height: size.height * 0.14,
+                          width: size.width * 0.32,
+                          fit: BoxFit.cover,
+                          placeholder: Container(
+                            height: size.height * 0.14,
+                            width: size.width * 0.32,
+                            color: colors.inputBorder,
+                            child: Center(
+                              child: SvgPicture.asset(
+                                Assets.icons.utensilsCrossed,
+                                package: 'grab_go_shared',
+                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                width: 30.w,
+                                height: 30.h,
                               ),
                             ),
                           ),

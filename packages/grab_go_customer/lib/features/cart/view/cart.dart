@@ -324,35 +324,41 @@ class Cart extends StatelessWidget {
                         context.push("/checkout");
                       }
                     },
-                    child: Container(
-                      padding: EdgeInsets.symmetric(vertical: 16.h),
-                      decoration: BoxDecoration(
-                        color: provider.cartItems.isEmpty ? colors.inputBorder : colors.accentOrange,
-                        borderRadius: BorderRadius.circular(12.r),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            AppStrings.cartProceedToCheckout,
-                            style: TextStyle(
-                              color: provider.cartItems.isEmpty ? colors.textSecondary : Colors.white,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15.sp,
-                            ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        splashColor: Colors.white.withValues(alpha: 2),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(vertical: 16.h),
+                          decoration: BoxDecoration(
+                            color: provider.cartItems.isEmpty ? colors.inputBorder : colors.accentOrange,
+                            borderRadius: BorderRadius.circular(12.r),
                           ),
-                          SizedBox(width: 8.w),
-                          SvgPicture.asset(
-                            Assets.icons.navArrowRight,
-                            package: 'grab_go_shared',
-                            height: 18.h,
-                            width: 18.w,
-                            colorFilter: ColorFilter.mode(
-                              provider.cartItems.isEmpty ? colors.textSecondary : Colors.white,
-                              BlendMode.srcIn,
-                            ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                AppStrings.cartProceedToCheckout,
+                                style: TextStyle(
+                                  color: provider.cartItems.isEmpty ? colors.textSecondary : Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15.sp,
+                                ),
+                              ),
+                              SizedBox(width: 8.w),
+                              SvgPicture.asset(
+                                Assets.icons.navArrowRight,
+                                package: 'grab_go_shared',
+                                height: 18.h,
+                                width: 18.w,
+                                colorFilter: ColorFilter.mode(
+                                  provider.cartItems.isEmpty ? colors.textSecondary : Colors.white,
+                                  BlendMode.srcIn,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),

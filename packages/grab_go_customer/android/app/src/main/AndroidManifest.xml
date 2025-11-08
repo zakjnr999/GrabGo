@@ -11,6 +11,12 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    
+    <!-- URL Launcher Permissions -->
+    <!-- Note: QUERY_ALL_PACKAGES is not recommended for Play Store. -->
+    <!-- The intent queries below should be sufficient for most cases. -->
+    <!-- If you need to query specific apps, uncomment and use QUERY_PHONE_STATE instead. -->
+    <!-- <uses-permission android:name="android.permission.QUERY_PHONE_STATE" /> -->
 
     <application
         android:label="GrabGo"
@@ -38,6 +44,36 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            
+            <!-- Deep Link Intent Filter for Custom Scheme -->
+            <!-- Handle grabgo://food/* URLs -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data 
+                    android:scheme="grabgo" 
+                    android:host="food" 
+                    android:pathPrefix="/" />
+            </intent-filter>
+            <!-- Also handle grabgo:// URLs without host restriction -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="grabgo" />
+            </intent-filter>
+            
+            <!-- App Links Intent Filter (for https://grabgo.app/food/*) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="grabgo.app"
+                    android:pathPrefix="/food" />
+            </intent-filter>
         </activity>
 
         <meta-data
@@ -60,6 +96,26 @@
             <action android:name="android.intent.action.PROCESS_TEXT" />
             <data android:mimeType="text/plain" />
         </intent>
+        
+        <!-- URL Launcher Queries for Phone and Email -->
+        <!-- Phone calls -->
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+            <data android:scheme="tel" />
+        </intent>
+        
+        <!-- Email -->
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="mailto" />
+        </intent>
+        
+        <!-- Alternative: Query for specific packages if needed -->
+        <!--
+        <package android:name="com.android.phone" />
+        <package android:name="com.google.android.gm" />
+        <package android:name="com.android.email" />
+        -->
     </queries>
 
 </manifest>

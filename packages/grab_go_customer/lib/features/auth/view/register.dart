@@ -226,12 +226,10 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         final token = response.body!.token;
         User? user = response.body!.userData ?? response.body!.user;
 
-        // Save token if provided
         if (token != null && token.isNotEmpty) {
           await CacheService.saveAuthToken(token);
         }
 
-        // Save user data if provided
         if (user != null) {
           await UserService().setCurrentUser(user);
           if (user.id != null) {
@@ -398,14 +396,11 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         final token = response.body!.token;
         final user = response.body!.userData;
 
-        // Save token if provided
         if (token != null && token.isNotEmpty) {
           await CacheService.saveAuthToken(token);
         }
 
-        // Save user data if provided
         if (user != null) {
-          // Store user ID for phone verification
           FirebasePhoneAuthService().setUserId(user.id ?? '');
         }
 
@@ -611,6 +606,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                             hintText: AppStrings.registerUsernameHint,
                             borderColor: colors.inputBorder,
                             fillColor: colors.backgroundSecondary,
+                            borderActiveColor: colors.accentGreen,
                             borderRadius: KBorderSize.borderRadius15,
                             contentPadding: EdgeInsets.all(KSpacing.md15.r),
                             keyboardType: TextInputType.text,
@@ -635,6 +631,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                             hintText: AppStrings.registerEmailHint,
                             borderColor: colors.inputBorder,
                             fillColor: colors.backgroundSecondary,
+                            borderActiveColor: colors.accentGreen,
                             borderRadius: KBorderSize.borderRadius15,
                             contentPadding: EdgeInsets.all(KSpacing.md15.r),
                             keyboardType: TextInputType.emailAddress,
@@ -657,6 +654,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                             label: AppStrings.registerBdayLabel,
                             hintText: AppStrings.registerBdayHint,
                             fillColor: colors.backgroundSecondary,
+                            borderActiveColor: colors.accentGreen,
                             borderColor: colors.inputBorder,
                             borderRadius: KBorderSize.borderRadius15,
                             contentPadding: EdgeInsets.all(KSpacing.md15.r),
@@ -682,6 +680,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                             label: AppStrings.registerPasswordLabel,
                             hintText: AppStrings.registerPasswordHint,
                             fillColor: colors.backgroundSecondary,
+                            borderActiveColor: colors.accentGreen,
                             borderColor: colors.inputBorder,
                             borderRadius: KBorderSize.borderRadius15,
                             contentPadding: EdgeInsets.all(KSpacing.md15.r),
@@ -724,6 +723,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                             hintText: AppStrings.registerConfirmPasswordHint,
                             fillColor: colors.backgroundSecondary,
                             borderColor: colors.inputBorder,
+                            borderActiveColor: colors.accentGreen,
                             borderRadius: KBorderSize.borderRadius15,
                             contentPadding: EdgeInsets.all(KSpacing.md15.r),
                             obscureText: !isConfirmPasswordVisible,

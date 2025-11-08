@@ -4,6 +4,14 @@ environment:
 dev_dependencies:
   melos: ^7.3.0
 
+dependency_overrides:
+  # Force firebase_core version for workspace compatibility
+  # Note: We use custom deep links instead of deprecated Firebase Dynamic Links
+  firebase_core: 3.15.2
+  firebase_core_platform_interface: 5.4.1
+  firebase_core_web: 2.24.1
+  firebase_app_check_web: 0.1.0+2
+
 workspace:
   - packages/grab_go_customer
   - packages/grab_go_rider

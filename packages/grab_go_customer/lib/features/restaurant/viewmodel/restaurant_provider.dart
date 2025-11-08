@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:grab_go_customer/core/api/api_client.dart';
+import 'package:grab_go_customer/features/restaurant/repository/restaurant_repository.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurants_model.dart';
-import 'package:grab_go_customer/features/restaurant/model/restaurant_response.dart' as response;
 import 'package:grab_go_customer/shared/services/cache_service.dart';
 
 class RestaurantProvider extends ChangeNotifier {
@@ -14,7 +13,13 @@ class RestaurantProvider extends ChangeNotifier {
   String? get error => _error;
 
   Future<void> fetchRestaurants({bool forceRefresh = false}) async {
-    if (!forceRefresh && (_restaurants.isNotEmpty || _isLoading)) return;
+    // Don't fetch if already loading or if we have restaurants (unless force refresh)
+    if (!forceRefresh && (_restaurants.isNotEmpty || _isLoading)) {
+      if (kDebugMode) {
+        print('⏭️ Skipping fetch: restaurants=${_restaurants.isNotEmpty}, loading=$_isLoading');
+      }
+      return;
+    }
 
     // If force refresh, clear cache first
     if (forceRefresh) {
@@ -28,131 +33,102 @@ class RestaurantProvider extends ChangeNotifier {
       }
     }
 
+    // Load from cache first for instant display (same as food items)
+    bool cacheLoaded = false;
     if (!forceRefresh && _restaurants.isEmpty && CacheService.isRestaurantsCacheValid()) {
-      _loadRestaurantsFromCache();
-      if (_restaurants.isNotEmpty) {
-        if (kDebugMode) {
-          print('📦 Loaded ${_restaurants.length} restaurants from cache');
+      if (kDebugMode) {
+        print('📦 Attempting to load restaurants from cache...');
+      }
+      try {
+        _loadRestaurantsFromCache();
+        if (_restaurants.isNotEmpty) {
+          cacheLoaded = true;
+          if (kDebugMode) {
+            print('✅ Loaded ${_restaurants.length} restaurants from cache');
+          }
+          notifyListeners();
+          // Fetch fresh data in background without showing loading state
+          _fetchRestaurantsInBackground();
+        } else {
+          if (kDebugMode) {
+            print('⚠️ Cache is valid but restaurants list is empty');
+          }
         }
-        notifyListeners();
-        return;
+      } catch (e) {
+        if (kDebugMode) {
+          print('❌ Error loading from cache: $e');
+        }
+        // Clear restaurants in case of error
+        _restaurants = [];
       }
     }
 
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      final apiResponse = await restaurantService.getRestaurants();
-
+    // If cache loading failed or returned empty, fetch from API
+    if (!cacheLoaded && _restaurants.isEmpty) {
       if (kDebugMode) {
-        print('🔄 Restaurant API Response: ${apiResponse.body}');
-        print('📊 Response Type: ${apiResponse.body.runtimeType}');
-        print('✅ Response Status: ${apiResponse.statusCode}');
-
-        // Check if the specific restaurant is in the response
-        if (apiResponse.body is Map<String, dynamic>) {
-          final responseData = apiResponse.body as Map<String, dynamic>;
-          if (responseData.containsKey('data') && responseData['data'] is List) {
-            final allData = responseData['data'] as List;
-            final targetRestaurant = allData.firstWhere(
-              (r) => r is Map<String, dynamic> && r['_id']?.toString() == '690de37b36aa959e581c5582',
-              orElse: () => null,
-            );
-            if (targetRestaurant != null) {
-              print('🔎 Found "Adepa Resraurant" in API response');
-              print('   Status: ${(targetRestaurant as Map<String, dynamic>)['status']}');
-            } else {
-              print('❌ "Adepa Resraurant" (ID: 690de37b36aa959e581c5582) NOT found in API response');
-              print('   Total restaurants in response: ${allData.length}');
-            }
-          }
-        }
+        print('🔄 Fetching restaurants from API...');
       }
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
 
-      if (apiResponse.isSuccessful) {
-        List<RestaurantModel> allRestaurants = [];
-
-        if (apiResponse.body is List<response.RestaurantData>) {
-          final List<response.RestaurantData> restaurantData = apiResponse.body!;
-          // Filter to only approved restaurants before converting
-          final approvedRestaurants = restaurantData.where((data) => data.status.toLowerCase() == 'approved').toList();
-          allRestaurants = approvedRestaurants.map((data) => _convertRestaurantDataToModel(data)).toList();
-        } else if (apiResponse.body is Map<String, dynamic>) {
-          final Map<String, dynamic> responseData = apiResponse.body as Map<String, dynamic>;
-          if (responseData.containsKey('data')) {
-            final restaurantData = responseData['data'];
-            if (restaurantData is List) {
-              // Filter approved restaurants from raw JSON
-              final approvedList = restaurantData.where((json) {
-                if (json is Map<String, dynamic>) {
-                  final status = json['status']?.toString().toLowerCase() ?? '';
-                  return status == 'approved';
-                }
-                return false;
-              }).toList();
-              allRestaurants = approvedList
-                  .map((json) => RestaurantModel.fromJson(json as Map<String, dynamic>))
-                  .toList();
-            } else if (restaurantData is Map<String, dynamic>) {
-              final status = restaurantData['status']?.toString().toLowerCase() ?? '';
-              if (status == 'approved') {
-                allRestaurants = [RestaurantModel.fromJson(restaurantData)];
-              }
-            }
-          } else {
-            final status = responseData['status']?.toString().toLowerCase() ?? '';
-            if (status == 'approved') {
-              allRestaurants = [RestaurantModel.fromJson(responseData)];
-            }
-          }
-        } else if (apiResponse.body is List) {
-          final List<dynamic> data = apiResponse.body as List<dynamic>;
-          // Filter approved restaurants from raw list
-          final approvedList = data.where((json) {
-            if (json is Map<String, dynamic>) {
-              final status = json['status']?.toString().toLowerCase() ?? '';
-              return status == 'approved';
-            }
-            return false;
-          }).toList();
-          allRestaurants = approvedList.map((json) => RestaurantModel.fromJson(json as Map<String, dynamic>)).toList();
-        }
-
-        _restaurants = allRestaurants;
-        _saveRestaurantsToCache();
+      try {
+        // Use repository pattern like food items
+        _restaurants = await RestaurantRepository().fetchRestaurants();
 
         if (kDebugMode) {
-          print('✅ Parsed ${_restaurants.length} approved restaurants');
-          if (_restaurants.isNotEmpty) {
-            print('📋 Restaurants found:');
-            for (var restaurant in _restaurants) {
-              print('   - ${restaurant.name} (ID: ${restaurant.id})');
-            }
-          } else {
-            print('⚠️ No approved restaurants found in response');
-          }
+          print('✅ Loaded ${_restaurants.length} restaurants from API');
         }
-      } else {
-        _error = 'Failed to fetch restaurants: ${apiResponse.statusCode}';
+
+        // Save to cache asynchronously without blocking
+        _saveRestaurantsToCacheAsync();
+      } catch (e) {
+        String errorMessage = 'Error fetching restaurants';
+        if (e.toString().contains('SocketException') || e.toString().contains('Failed host lookup')) {
+          errorMessage = 'Cannot connect to server. Please check your internet connection or try again later.';
+        } else if (e.toString().contains('TimeoutException')) {
+          errorMessage = 'Request timed out. Please try again.';
+        } else {
+          errorMessage = 'Error fetching restaurants: ${e.toString()}';
+        }
+        _error = errorMessage;
+        if (kDebugMode) {
+          print('❌ Restaurant fetch error: $e');
+        }
+        // Don't clear restaurants if we had cache data
+        if (_restaurants.isEmpty) {
+          _restaurants = [];
+        }
+      } finally {
+        _isLoading = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  /// Fetch restaurants in background without showing loading state
+  /// This is called after cache is loaded to refresh data silently
+  Future<void> _fetchRestaurantsInBackground() async {
+    try {
+      if (kDebugMode) {
+        print('🔄 Fetching fresh restaurants in background...');
+      }
+      final freshRestaurants = await RestaurantRepository().fetchRestaurants();
+
+      if (freshRestaurants.isNotEmpty) {
+        _restaurants = freshRestaurants;
+        if (kDebugMode) {
+          print('✅ Updated ${_restaurants.length} restaurants from background fetch');
+        }
+        // Save to cache asynchronously without blocking
+        _saveRestaurantsToCacheAsync();
+        notifyListeners();
       }
     } catch (e) {
-      String errorMessage = 'Error fetching restaurants';
-      if (e.toString().contains('SocketException') || e.toString().contains('Failed host lookup')) {
-        errorMessage = 'Cannot connect to server. Please check your internet connection or try again later.';
-      } else if (e.toString().contains('TimeoutException')) {
-        errorMessage = 'Request timed out. Please try again.';
-      } else {
-        errorMessage = 'Error fetching restaurants: ${e.toString()}';
-      }
-      _error = errorMessage;
+      // Silently fail in background - we already have cache data
       if (kDebugMode) {
-        print('Restaurant fetch error: $e');
+        print('Background restaurant fetch error (ignored): $e');
       }
-    } finally {
-      _isLoading = false;
-      notifyListeners();
     }
   }
 
@@ -172,97 +148,18 @@ class RestaurantProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final apiResponse = await restaurantService.getRestaurants();
+      if (kDebugMode) {
+        print('🔄 Refreshing restaurants...');
+      }
+      // Use repository pattern like food items
+      _restaurants = await RestaurantRepository().fetchRestaurants();
 
       if (kDebugMode) {
-        print('🔄 Restaurant API Response (Refresh): ${apiResponse.body}');
-        print('📊 Response Type: ${apiResponse.body.runtimeType}');
-        print('✅ Response Status: ${apiResponse.statusCode}');
+        print('✅ Refreshed ${_restaurants.length} restaurants');
       }
 
-      if (apiResponse.isSuccessful) {
-        List<RestaurantModel> allRestaurants = [];
-
-        if (apiResponse.body is List<response.RestaurantData>) {
-          final List<response.RestaurantData> restaurantData = apiResponse.body!;
-          // Filter to only approved restaurants before converting
-          final approvedRestaurants = restaurantData.where((data) => data.status.toLowerCase() == 'approved').toList();
-          allRestaurants = approvedRestaurants.map((data) => _convertRestaurantDataToModel(data)).toList();
-        } else if (apiResponse.body is Map<String, dynamic>) {
-          final Map<String, dynamic> responseData = apiResponse.body as Map<String, dynamic>;
-          if (responseData.containsKey('data')) {
-            final restaurantData = responseData['data'];
-            if (restaurantData is List) {
-              // Filter approved restaurants from raw JSON
-              final approvedList = restaurantData.where((json) {
-                if (json is Map<String, dynamic>) {
-                  final status = json['status']?.toString().toLowerCase() ?? '';
-                  return status == 'approved';
-                }
-                return false;
-              }).toList();
-              allRestaurants = approvedList
-                  .map((json) => RestaurantModel.fromJson(json as Map<String, dynamic>))
-                  .toList();
-            } else if (restaurantData is Map<String, dynamic>) {
-              final status = restaurantData['status']?.toString().toLowerCase() ?? '';
-              if (status == 'approved') {
-                allRestaurants = [RestaurantModel.fromJson(restaurantData)];
-              }
-            }
-          } else {
-            final status = responseData['status']?.toString().toLowerCase() ?? '';
-            if (status == 'approved') {
-              allRestaurants = [RestaurantModel.fromJson(responseData)];
-            }
-          }
-        } else if (apiResponse.body is List) {
-          final List<dynamic> data = apiResponse.body as List<dynamic>;
-          // Filter approved restaurants from raw list
-          final approvedList = data.where((json) {
-            if (json is Map<String, dynamic>) {
-              final status = json['status']?.toString().toLowerCase() ?? '';
-              return status == 'approved';
-            }
-            return false;
-          }).toList();
-          allRestaurants = approvedList.map((json) => RestaurantModel.fromJson(json as Map<String, dynamic>)).toList();
-        }
-
-        _restaurants = allRestaurants;
-        _saveRestaurantsToCache();
-
-        if (kDebugMode) {
-          print('✅ Refreshed ${_restaurants.length} approved restaurants');
-          if (_restaurants.isNotEmpty) {
-            print('📋 Restaurants found:');
-            for (var restaurant in _restaurants) {
-              print('   - ${restaurant.name} (ID: ${restaurant.id})');
-            }
-          } else {
-            print('⚠️ No approved restaurants found after refresh');
-            print('🔍 Checking if restaurant with ID 690de37b36aa959e581c5582 is in response...');
-            if (apiResponse.body is Map<String, dynamic>) {
-              final responseData = apiResponse.body as Map<String, dynamic>;
-              if (responseData.containsKey('data') && responseData['data'] is List) {
-                final allData = responseData['data'] as List;
-                final targetRestaurant = allData.firstWhere(
-                  (r) => r['_id']?.toString() == '690de37b36aa959e581c5582',
-                  orElse: () => null,
-                );
-                if (targetRestaurant != null) {
-                  print('🔎 Found restaurant in response: ${targetRestaurant['restaurant_name']}');
-                  print('   Status: ${targetRestaurant['status']}');
-                } else {
-                  print('❌ Restaurant not found in API response');
-                }
-              }
-            }
-          }
-        }
-      } else {
-        _error = 'Failed to refresh restaurants: ${apiResponse.statusCode}';
-      }
+      // Save to cache asynchronously without blocking
+      _saveRestaurantsToCacheAsync();
     } catch (e) {
       String errorMessage = 'Error refreshing restaurants';
       if (e.toString().contains('SocketException') || e.toString().contains('Failed host lookup')) {
@@ -328,106 +225,107 @@ class RestaurantProvider extends ChangeNotifier {
   void _loadRestaurantsFromCache() {
     try {
       final cachedRestaurants = CacheService.getRestaurants();
+      if (kDebugMode) {
+        print('📦 Cache contains ${cachedRestaurants.length} restaurants');
+      }
+
       // Filter to only approved restaurants from cache (extra safety)
       final approvedCached = cachedRestaurants.where((json) {
-        final status = json['status']?.toString().toLowerCase() ?? '';
-        return status == 'approved';
+        try {
+          final status = json['status']?.toString().toLowerCase() ?? '';
+          return status == 'approved';
+        } catch (e) {
+          return false;
+        }
       }).toList();
-      _restaurants = approvedCached.map((json) => RestaurantModel.fromJson(json)).toList();
 
       if (kDebugMode) {
-        print('Loaded ${_restaurants.length} approved restaurants from cache');
+        print('📦 Found ${approvedCached.length} approved restaurants in cache');
       }
-    } catch (e) {
+
+      // Parse restaurants one by one, skipping invalid ones
+      final List<RestaurantModel> loadedRestaurants = [];
+      for (final json in approvedCached) {
+        try {
+          final restaurant = RestaurantModel.fromJson(json);
+          loadedRestaurants.add(restaurant);
+        } catch (e) {
+          if (kDebugMode) {
+            print('⚠️ Skipping invalid restaurant from cache: $e');
+          }
+          continue;
+        }
+      }
+
+      _restaurants = loadedRestaurants;
+
       if (kDebugMode) {
-        print('Error loading restaurants from cache: $e');
+        print('✅ Successfully loaded ${_restaurants.length} restaurants from cache');
+      }
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('❌ Error loading restaurants from cache: $e');
+        print('Stack trace: $stackTrace');
       }
       _restaurants = [];
+      rethrow; // Rethrow to let caller know cache loading failed
     }
   }
 
-  void _saveRestaurantsToCache() {
-    try {
-      final restaurantsJson = _restaurants
-          .map(
-            (restaurant) => {
-              'id': restaurant.id,
-              'name': restaurant.name,
-              'city': restaurant.city,
-              'foodType': restaurant.foodType,
-              'imageUrl': restaurant.imageUrl,
-              'bannerImages': restaurant.bannerImages,
-              'distance': restaurant.distance,
-              'rating': restaurant.rating,
-              'totalReviews': restaurant.totalReviews,
-              'averageDeliveryTime': restaurant.averageDeliveryTime,
-              'deliveryFee': restaurant.deliveryFee,
-              'minOrder': restaurant.minOrder,
-              'description': restaurant.description,
-              'phone': restaurant.phone,
-              'email': restaurant.email,
-              'address': restaurant.address,
-              'latitude': restaurant.latitude,
-              'longitude': restaurant.longitude,
-              'openingHours': restaurant.openingHours,
-              'isOpen': restaurant.isOpen,
-              'paymentMethods': restaurant.paymentMethods,
-              'socials': {'facebook': restaurant.socials.facebook, 'instagram': restaurant.socials.instagram},
-              'foods': restaurant.foods
-                  .map(
-                    (food) => {
-                      'id': food.id,
-                      'name': food.name,
-                      'description': food.description,
-                      'price': food.price,
-                      'imageUrl': food.imageUrl,
-                      'category': food.category,
-                      'sellerId': food.sellerId,
-                      'sellerName': food.sellerName,
-                    },
-                  )
-                  .toList(),
-            },
-          )
-          .toList();
+  /// Save restaurants to cache asynchronously without blocking the UI
+  void _saveRestaurantsToCacheAsync() {
+    // Schedule cache saving in the next microtask to avoid blocking
+    Future.microtask(() async {
+      try {
+        final restaurantsJson = _restaurants
+            .map(
+              (restaurant) => {
+                'id': restaurant.id,
+                'name': restaurant.name,
+                'city': restaurant.city,
+                'foodType': restaurant.foodType,
+                'imageUrl': restaurant.imageUrl,
+                'bannerImages': restaurant.bannerImages,
+                'distance': restaurant.distance,
+                'rating': restaurant.rating,
+                'totalReviews': restaurant.totalReviews,
+                'averageDeliveryTime': restaurant.averageDeliveryTime,
+                'deliveryFee': restaurant.deliveryFee,
+                'minOrder': restaurant.minOrder,
+                'description': restaurant.description,
+                'phone': restaurant.phone,
+                'email': restaurant.email,
+                'address': restaurant.address,
+                'latitude': restaurant.latitude,
+                'longitude': restaurant.longitude,
+                'openingHours': restaurant.openingHours,
+                'isOpen': restaurant.isOpen,
+                'paymentMethods': restaurant.paymentMethods,
+                'socials': {'facebook': restaurant.socials.facebook, 'instagram': restaurant.socials.instagram},
+                'foods': restaurant.foods
+                    .map(
+                      (food) => {
+                        'id': food.id,
+                        'name': food.name,
+                        'description': food.description,
+                        'price': food.price,
+                        'imageUrl': food.imageUrl,
+                        'category': food.category,
+                        'sellerId': food.sellerId,
+                        'sellerName': food.sellerName,
+                      },
+                    )
+                    .toList(),
+              },
+            )
+            .toList();
 
-      CacheService.saveRestaurants(restaurantsJson);
-
-      if (kDebugMode) {
-        print('Saved ${_restaurants.length} restaurants to cache');
+        await CacheService.saveRestaurants(restaurantsJson);
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error saving restaurants to cache: $e');
+        }
       }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error saving restaurants to cache: $e');
-      }
-    }
-  }
-
-  RestaurantModel _convertRestaurantDataToModel(response.RestaurantData data) {
-    return RestaurantModel(
-      id: int.tryParse(data.id.length > 6 ? data.id.substring(data.id.length - 6) : data.id) ?? 0,
-      name: data.restaurantName,
-      city: data.city,
-      foodType: data.foodType ?? 'Food',
-      imageUrl: data.logo ?? '',
-      bannerImages: data.bannerImages ?? [],
-      distance: 0.0,
-      rating: data.rating,
-      totalReviews: data.totalReviews ?? 0,
-      averageDeliveryTime: data.averageDeliveryTime ?? '30 mins',
-      deliveryFee: data.deliveryFee ?? 0.0,
-      minOrder: data.minOrder ?? 0.0,
-      description: data.description ?? '',
-      phone: data.phone,
-      email: data.email,
-      address: data.address,
-      latitude: data.latitude ?? 0.0,
-      longitude: data.longitude ?? 0.0,
-      openingHours: data.openingHours ?? '9:00 AM - 10:00 PM',
-      isOpen: data.isOpen ?? true,
-      paymentMethods: data.paymentMethods ?? [],
-      socials: Socials(facebook: data.socials?.facebook ?? '', instagram: data.socials?.instagram ?? ''),
-      foods: [],
-    );
+    });
   }
 }

@@ -39,7 +39,6 @@ class _HomePageState extends State<HomePage> {
       if (provider.categories.isEmpty) {
         provider.fetchCategories();
       } else {
-        // If categories already loaded, select first one
         if (provider.categories.isNotEmpty) {
           setState(() {
             _selectedCategory = provider.categories.first;
@@ -58,7 +57,6 @@ class _HomePageState extends State<HomePage> {
     final locationProvider = Provider.of<LocationProvider>(context);
     final itemsProvider = Provider.of<FoodProvider>(context);
 
-    // Update selected category when categories load
     if (itemsProvider.categories.isNotEmpty && _selectedCategory == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -87,6 +85,7 @@ class _HomePageState extends State<HomePage> {
                       child: GestureDetector(
                         onTap: () {},
                         child: Container(
+                          height: size.height * 0.08,
                           padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                           decoration: BoxDecoration(
                             color: colors.backgroundPrimary,
@@ -164,7 +163,8 @@ class _HomePageState extends State<HomePage> {
                     SizedBox(width: 12.w),
 
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                      height: size.height * 0.08,
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                       decoration: BoxDecoration(
                         color: colors.backgroundPrimary,
                         borderRadius: BorderRadius.circular(12.r),
@@ -401,10 +401,8 @@ class _HomePageState extends State<HomePage> {
 
               Builder(
                 builder: (context) {
-                  // Get items from selected category instead of random
                   List<FoodItem> recommendedFoods = [];
 
-                  // Always get fresh category from provider to avoid stale references
                   FoodCategoryModel? currentCategory;
                   if (_selectedCategory != null && itemsProvider.categories.isNotEmpty) {
                     currentCategory = itemsProvider.categories.firstWhere(
@@ -412,12 +410,10 @@ class _HomePageState extends State<HomePage> {
                       orElse: () => _selectedCategory!,
                     );
                   } else if (itemsProvider.categories.isNotEmpty) {
-                    // Fallback to first category if no category selected
                     currentCategory = itemsProvider.categories.first;
                   }
 
                   if (currentCategory != null && currentCategory.items.isNotEmpty) {
-                    // Remove duplicates and take up to 5 items
                     final Set<String> seenItems = {};
                     recommendedFoods = currentCategory.items
                         .where((item) {
@@ -480,24 +476,36 @@ class _HomePageState extends State<HomePage> {
                                   topLeft: Radius.circular(KBorderSize.borderRadius15),
                                   bottomLeft: Radius.circular(KBorderSize.borderRadius15),
                                 ),
-                                child: SizedBox(
-                                  height: 118.h,
-                                  width: 118.w,
-                                  child: CachedImageWidget(
-                                    imageUrl: item.image,
-                                    width: 118.w,
-                                    height: 118.h,
-                                    fit: BoxFit.cover,
-                                    placeholder: Container(
-                                      color: colors.inputBorder,
-                                      child: Center(
-                                        child: SvgPicture.asset(
-                                          Assets.icons.utensilsCrossed,
-                                          package: 'grab_go_shared',
-                                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                                          width: 30.w,
-                                          height: 30.h,
-                                        ),
+                                child: CachedImageWidget(
+                                  imageUrl: item.image,
+                                  height: size.height * 0.14,
+                                  width: size.width * 0.32,
+                                  fit: BoxFit.cover,
+                                  placeholder: Container(
+                                    height: size.height * 0.14,
+                                    width: size.width * 0.32,
+                                    color: colors.inputBorder,
+                                    child: Center(
+                                      child: SvgPicture.asset(
+                                        Assets.icons.utensilsCrossed,
+                                        package: 'grab_go_shared',
+                                        colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                        width: 30.w,
+                                        height: 30.h,
+                                      ),
+                                    ),
+                                  ),
+                                  errorWidget: Container(
+                                    height: size.height * 0.14,
+                                    width: size.width * 0.32,
+                                    color: colors.inputBorder,
+                                    child: Center(
+                                      child: SvgPicture.asset(
+                                        Assets.icons.utensilsCrossed,
+                                        package: 'grab_go_shared',
+                                        colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                        width: 30.w,
+                                        height: 30.h,
                                       ),
                                     ),
                                   ),

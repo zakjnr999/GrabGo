@@ -228,62 +228,62 @@ class _RestaurantsState extends State<Restaurants> {
                 SizedBox(height: 16.h),
                 Consumer<RestaurantProvider>(
                   builder: (context, provider, _) {
-                    if (provider.isLoading) {
-                      return SizedBox(
-                        height: size.height * 0.35,
-                        child: Shimmer.fromColors(
-                          baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-                          highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            physics: const BouncingScrollPhysics(),
-                            itemCount: 3,
-                            padding: EdgeInsets.symmetric(horizontal: 20.w),
-                            itemBuilder: (context, index) {
-                              return Container(
-                                width: size.width * 0.8,
-                                margin: EdgeInsets.only(right: 16.w),
-                                decoration: BoxDecoration(
-                                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-                                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      );
-                    }
-
-                    if (provider.error != null) {
-                      return SizedBox(
-                        height: size.height * 0.35,
-                        child: Shimmer.fromColors(
-                          baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-                          highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            physics: const BouncingScrollPhysics(),
-                            itemCount: 3,
-                            padding: EdgeInsets.symmetric(horizontal: 20.w),
-                            itemBuilder: (context, index) {
-                              return Container(
-                                width: size.width * 0.8,
-                                margin: EdgeInsets.only(right: 16.w),
-                                decoration: BoxDecoration(
-                                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-                                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      );
-                    }
-
                     final filteredRestaurants = provider.getRestaurantsByCityAndSearch(
                       locationCategories[selectedTabIndex],
                       searchQuery,
                     );
+
+                    if (provider.isLoading && provider.restaurants.isEmpty) {
+                      return SizedBox(
+                        height: size.height * 0.35,
+                        child: Shimmer.fromColors(
+                          baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                          highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: 3,
+                            padding: EdgeInsets.symmetric(horizontal: 20.w),
+                            itemBuilder: (context, index) {
+                              return Container(
+                                width: size.width * 0.8,
+                                margin: EdgeInsets.only(right: 16.w),
+                                decoration: BoxDecoration(
+                                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    }
+
+                    if (provider.error != null && provider.restaurants.isEmpty) {
+                      return SizedBox(
+                        height: size.height * 0.35,
+                        child: Shimmer.fromColors(
+                          baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                          highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: 3,
+                            padding: EdgeInsets.symmetric(horizontal: 20.w),
+                            itemBuilder: (context, index) {
+                              return Container(
+                                width: size.width * 0.8,
+                                margin: EdgeInsets.only(right: 16.w),
+                                decoration: BoxDecoration(
+                                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    }
 
                     if (filteredRestaurants.isEmpty) {
                       return SizedBox(

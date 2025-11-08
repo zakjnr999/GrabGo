@@ -17,6 +17,7 @@ import 'package:provider/provider.dart';
 import 'package:readmore/readmore.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class RestaurantDetails extends StatefulWidget {
   const RestaurantDetails({super.key, required this.restaurant});
@@ -32,12 +33,57 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
 
   List<FoodItem> get filteredFoodItems {
     final foodProvider = Provider.of<FoodProvider>(context, listen: false);
+
+    if (widget.restaurant.foods.isNotEmpty) {
+      final restaurantFoodItems = <FoodItem>[];
+
+      for (final food in widget.restaurant.foods) {
+        FoodItem? foundItem;
+        for (final category in foodProvider.categories) {
+          try {
+            foundItem = category.items.firstWhere(
+              (item) =>
+                  item.name.toLowerCase() == food.name.toLowerCase() &&
+                  item.sellerName.toLowerCase() == food.sellerName.toLowerCase(),
+            );
+            break;
+          } catch (e) {
+            continue;
+          }
+        }
+
+        if (foundItem != null) {
+          restaurantFoodItems.add(foundItem);
+        } else {
+          restaurantFoodItems.add(
+            FoodItem(
+              name: food.name,
+              image: food.imageUrl,
+              description: food.description,
+              sellerName: food.sellerName,
+              sellerId: food.sellerId,
+              price: food.price,
+              restaurantImage: widget.restaurant.imageUrl,
+            ),
+          );
+        }
+      }
+
+      if (restaurantFoodItems.isNotEmpty) {
+        return restaurantFoodItems;
+      }
+    }
+
     final allFoodItems = foodProvider.categories.expand((category) => category.items).where((item) {
-      final itemSellerName = item.sellerName.trim().toLowerCase();
-      final restaurantName = widget.restaurant.name.trim().toLowerCase();
+      final itemSellerName = item.sellerName.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+      final restaurantName = widget.restaurant.name.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
       final matchesByName = itemSellerName == restaurantName;
-      final matchesById = item.sellerId == widget.restaurant.id;
-      return matchesByName || matchesById;
+      final matchesById = item.sellerId != 0 && widget.restaurant.id != 0 && item.sellerId == widget.restaurant.id;
+      final matchesByContains = itemSellerName.contains(restaurantName) || restaurantName.contains(itemSellerName);
+
+      return matchesByName ||
+          matchesById ||
+          (matchesByContains && itemSellerName.length > 3 && restaurantName.length > 3);
     }).toList();
 
     return allFoodItems;
@@ -102,6 +148,7 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                               size: size,
                               colors: colors,
                               widget: widget,
+                              assetImg: Assets.icons.clock,
                               text: widget.restaurant.averageDeliveryTime,
                               subText: "Delivery time",
                             ),
@@ -112,6 +159,7 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                               size: size,
                               colors: colors,
                               widget: widget,
+                              assetImg: Assets.icons.creditCard,
                               text: "GHC ${widget.restaurant.deliveryFee.toStringAsFixed(2)}",
                               subText: "Delivery fee",
                             ),
@@ -122,6 +170,7 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                               size: size,
                               colors: colors,
                               widget: widget,
+                              assetImg: Assets.icons.deliveryTruck,
                               text: "GHC ${widget.restaurant.minOrder.toStringAsFixed(2)}",
                               subText: "Minimum order",
                             ),
@@ -157,77 +206,179 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                             trimExpandedText: " Show less",
                             moreStyle: TextStyle(
                               fontSize: 12.sp,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w900,
                               color: colors.textPrimary,
                             ),
                             lessStyle: TextStyle(
                               fontSize: 12.sp,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w900,
                               color: colors.textPrimary,
                             ),
                           ),
-                          SizedBox(height: 12.h),
-                          Row(
-                            children: [
-                              SvgPicture.asset(
-                                Assets.icons.mapPin,
-                                package: 'grab_go_shared',
-                                height: 16.h,
-                                width: 16.w,
-                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                              ),
-                              SizedBox(width: 5.w),
-                              Text(
-                                " ${widget.restaurant.address}",
-                                style: TextStyle(
-                                  fontSize: 14.sp,
-                                  fontWeight: FontWeight.w400,
-                                  color: colors.textPrimary,
+                          SizedBox(height: 20.h),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: colors.backgroundSecondary,
+                              borderRadius: BorderRadius.circular(12.r),
+                              border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Contact Information",
+                                  style: TextStyle(
+                                    fontSize: 17.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: colors.textPrimary,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 5.h),
-                          Row(
-                            children: [
-                              SvgPicture.asset(
-                                Assets.icons.phone,
-                                package: 'grab_go_shared',
-                                height: 16.h,
-                                width: 16.w,
-                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                              ),
-                              SizedBox(width: 5.w),
-                              Text(
-                                " ${widget.restaurant.phone}",
-                                style: TextStyle(
-                                  fontSize: 14.sp,
-                                  fontWeight: FontWeight.w400,
-                                  color: colors.textPrimary,
+                                SizedBox(height: 16.h),
+                                _buildContactRow(
+                                  icon: Assets.icons.mapPin,
+                                  iconColor: colors.accentOrange,
+                                  label: "Address",
+                                  value: widget.restaurant.address,
+                                  colors: colors,
+                                  onTap: null,
                                 ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 5.h),
-                          Row(
-                            children: [
-                              SvgPicture.asset(
-                                Assets.icons.mail,
-                                package: 'grab_go_shared',
-                                height: 16.h,
-                                width: 16.w,
-                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                              ),
-                              SizedBox(width: 5.w),
-                              Text(
-                                " ${widget.restaurant.email}",
-                                style: TextStyle(
-                                  fontSize: 14.sp,
-                                  fontWeight: FontWeight.w400,
-                                  color: colors.textPrimary,
+                                SizedBox(height: 6.h),
+                                _buildContactRow(
+                                  icon: Assets.icons.phone,
+                                  iconColor: colors.accentGreen,
+                                  label: "Phone",
+                                  value: widget.restaurant.phone,
+                                  colors: colors,
+                                  onTap: () => _makePhoneCall(widget.restaurant.phone),
                                 ),
-                              ),
-                            ],
+                                SizedBox(height: 6.h),
+                                _buildContactRow(
+                                  icon: Assets.icons.mail,
+                                  iconColor: colors.accentViolet,
+                                  label: "Email",
+                                  value: widget.restaurant.email,
+                                  colors: colors,
+                                  onTap: () => _sendEmail(widget.restaurant.email),
+                                ),
+                                if (widget.restaurant.openingHours.isNotEmpty) ...[
+                                  SizedBox(height: 6.h),
+                                  Padding(
+                                    padding: EdgeInsets.only(top: 4.h),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Container(
+                                          padding: EdgeInsets.all(6.w),
+                                          decoration: BoxDecoration(
+                                            color: colors.accentOrange.withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(8.r),
+                                          ),
+                                          child: SvgPicture.asset(
+                                            Assets.icons.clock,
+                                            package: 'grab_go_shared',
+                                            height: 16.h,
+                                            width: 16.w,
+                                            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                          ),
+                                        ),
+                                        SizedBox(width: 12.w),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                "Opening Hours",
+                                                style: TextStyle(
+                                                  fontSize: 12.sp,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: colors.textSecondary,
+                                                ),
+                                              ),
+                                              SizedBox(height: 4.h),
+                                              Text(
+                                                widget.restaurant.openingHours,
+                                                style: TextStyle(
+                                                  fontSize: 14.sp,
+                                                  fontWeight: FontWeight.w400,
+                                                  color: colors.textPrimary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                                if (widget.restaurant.paymentMethods.isNotEmpty) ...[
+                                  SizedBox(height: 12.h),
+                                  Padding(
+                                    padding: EdgeInsets.only(top: 4.h),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Container(
+                                          padding: EdgeInsets.all(6.w),
+                                          decoration: BoxDecoration(
+                                            color: colors.accentViolet.withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(8.r),
+                                          ),
+                                          child: SvgPicture.asset(
+                                            Assets.icons.creditCard,
+                                            package: 'grab_go_shared',
+                                            height: 16.h,
+                                            width: 16.w,
+                                            colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                                          ),
+                                        ),
+                                        SizedBox(width: 12.w),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                "Payment Methods",
+                                                style: TextStyle(
+                                                  fontSize: 12.sp,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: colors.textSecondary,
+                                                ),
+                                              ),
+                                              SizedBox(height: 4.h),
+                                              Wrap(
+                                                spacing: 8.w,
+                                                runSpacing: 8.h,
+                                                children: widget.restaurant.paymentMethods.map((method) {
+                                                  return Container(
+                                                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                                                    decoration: BoxDecoration(
+                                                      color: colors.backgroundPrimary,
+                                                      borderRadius: BorderRadius.circular(8.r),
+                                                      border: Border.all(
+                                                        color: colors.inputBorder.withValues(alpha: 0.5),
+                                                        width: 1,
+                                                      ),
+                                                    ),
+                                                    child: Text(
+                                                      method,
+                                                      style: TextStyle(
+                                                        fontSize: 12.sp,
+                                                        fontWeight: FontWeight.w500,
+                                                        color: colors.textPrimary,
+                                                      ),
+                                                    ),
+                                                  );
+                                                }).toList(),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -433,13 +584,13 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                                       ),
                                       child: Image.network(
                                         food.image,
-                                        height: 110.h,
-                                        width: 110.w,
+                                        height: 118.h,
+                                        width: 118.w,
                                         fit: BoxFit.cover,
                                         errorBuilder: (context, error, stackTrace) {
                                           return Container(
-                                            height: 110.h,
-                                            width: 110.w,
+                                            height: 118.h,
+                                            width: 118.w,
                                             color: colors.inputBorder,
                                             child: Center(
                                               child: SvgPicture.asset(
@@ -549,20 +700,8 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                                                       onTap: () {
                                                         if (isInCart) {
                                                           cartProvider.removeItemCompletely(food);
-                                                          AppToastMessage.show(
-                                                            context: context,
-                                                            icon: Icons.close,
-                                                            message: AppStrings.cartRemoveItem,
-                                                            backgroundColor: colors.error,
-                                                          );
                                                         } else {
                                                           cartProvider.addToCart(food);
-                                                          AppToastMessage.show(
-                                                            context: context,
-                                                            icon: Icons.check,
-                                                            message: AppStrings.cartAddItem,
-                                                            backgroundColor: colors.accentBlue,
-                                                          );
                                                         }
                                                       },
                                                       child: Container(
@@ -613,102 +752,226 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
             ],
           ),
 
-          bottomNavigationBar: ClipRRect(
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(KBorderSize.border),
-              topRight: Radius.circular(KBorderSize.border),
-            ),
-            child: Container(
-              height: size.height * 0.12,
-              padding: EdgeInsets.all(14.r),
-              decoration: BoxDecoration(
-                color: colors.accentOrange,
-                boxShadow: [
-                  BoxShadow(
-                    color: colors.accentOrange.withValues(alpha: 0.1),
-                    blurRadius: 20,
-                    offset: const Offset(0, -4),
-                  ),
-                ],
+          bottomNavigationBar: Container(
+            height: size.height * 0.12,
+            decoration: BoxDecoration(
+              color: colors.backgroundPrimary,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(KBorderSize.border),
+                topRight: Radius.circular(KBorderSize.border),
               ),
-              child: Consumer<CartProvider>(
-                builder: (context, provider, _) {
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                        child: Row(
-                          children: [
-                            SvgPicture.asset(
-                              Assets.icons.cart,
-                              package: 'grab_go_shared',
-                              height: 20.h,
-                              width: 20.w,
-                              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                            ),
-                            SizedBox(width: 5.w),
-                            Text(
-                              provider.totalQuantity == 0
-                                  ? "Empty cart"
-                                  : provider.totalQuantity > 1
-                                  ? "${provider.totalQuantity} items"
-                                  : "${provider.totalQuantity} item",
-                              style: TextStyle(fontSize: 14.sp, color: Colors.white, fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Text(
-                        "GHC ${provider.totalPrice.toStringAsFixed(2)}",
-                        style: TextStyle(fontSize: 14.sp, color: Colors.white, fontWeight: FontWeight.w600),
-                      ),
-
-                      Row(
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(10),
+                  spreadRadius: 1,
+                  blurRadius: 20,
+                  offset: const Offset(0, -3),
+                ),
+              ],
+            ),
+            padding: EdgeInsets.all(14.r),
+            child: Consumer<CartProvider>(
+              builder: (context, provider, _) {
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                      child: Row(
                         children: [
-                          Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () {
-                                context.push("/cart");
-                              },
-                              borderRadius: BorderRadius.circular(KBorderSize.border),
-                              splashColor: colors.accentOrange.withValues(alpha: 0.05),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      "View Cart",
-                                      style: TextStyle(
-                                        fontSize: 14.sp,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    SizedBox(width: 5.w),
-                                    SvgPicture.asset(
-                                      Assets.icons.navArrowRight,
-                                      package: 'grab_go_shared',
-                                      height: 20.h,
-                                      width: 20.w,
-                                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                          SvgPicture.asset(
+                            Assets.icons.cart,
+                            package: 'grab_go_shared',
+                            height: 20.h,
+                            width: 20.w,
+                            colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                          ),
+                          SizedBox(width: 5.w),
+                          Text(
+                            provider.totalQuantity == 0
+                                ? "Empty cart"
+                                : provider.totalQuantity > 1
+                                ? "${provider.totalQuantity} items"
+                                : "${provider.totalQuantity} item",
+                            style: TextStyle(fontSize: 14.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
                           ),
                         ],
                       ),
-                    ],
-                  );
-                },
-              ),
+                    ),
+                    Text(
+                      "GHC ${provider.totalPrice.toStringAsFixed(2)}",
+                      style: TextStyle(fontSize: 14.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
+                    ),
+
+                    Row(
+                      children: [
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              context.push("/cart");
+                            },
+                            borderRadius: BorderRadius.circular(KBorderSize.border),
+                            splashColor: colors.accentOrange.withValues(alpha: 0.05),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    "View Cart",
+                                    style: TextStyle(
+                                      fontSize: 14.sp,
+                                      color: colors.textPrimary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  SizedBox(width: 5.w),
+                                  SvgPicture.asset(
+                                    Assets.icons.navArrowRight,
+                                    package: 'grab_go_shared',
+                                    height: 20.h,
+                                    width: 20.w,
+                                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildContactRow({
+    required String icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    required AppColorsExtension colors,
+    VoidCallback? onTap,
+  }) {
+    final content = Padding(
+      padding: EdgeInsets.symmetric(vertical: 8.h),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: EdgeInsets.all(6.w),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8.r),
+            ),
+            child: SvgPicture.asset(
+              icon,
+              package: 'grab_go_shared',
+              height: 16.h,
+              width: 16.w,
+              colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+            ),
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                ),
+                SizedBox(height: 4.h),
+                Text(
+                  value,
+                  style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w400, color: colors.textPrimary),
+                ),
+              ],
+            ),
+          ),
+          if (onTap != null)
+            SvgPicture.asset(
+              Assets.icons.navArrowRight,
+              package: 'grab_go_shared',
+              height: 16.h,
+              width: 16.w,
+              colorFilter: ColorFilter.mode(colors.textSecondary.withValues(alpha: 0.5), BlendMode.srcIn),
+            ),
+        ],
+      ),
+    );
+
+    if (onTap != null) {
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(8.r), child: content),
+      );
+    }
+
+    return content;
+  }
+
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    try {
+      final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
+      if (await canLaunchUrl(phoneUri)) {
+        await launchUrl(phoneUri);
+      } else {
+        if (mounted) {
+          AppToastMessage.show(
+            context: context,
+            icon: Icons.error_outline,
+            message: 'Unable to open phone dialer. Please try again.',
+            backgroundColor: context.appColors.error,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        AppToastMessage.show(
+          context: context,
+          icon: Icons.error_outline,
+          message: 'Error opening phone dialer: $e',
+          backgroundColor: context.appColors.error,
+        );
+      }
+    }
+  }
+
+  Future<void> _sendEmail(String email) async {
+    try {
+      final Uri emailUri = Uri(
+        scheme: 'mailto',
+        path: email,
+        query: 'subject=${Uri.encodeComponent('Inquiry about ${widget.restaurant.name}')}',
+      );
+      if (await canLaunchUrl(emailUri)) {
+        await launchUrl(emailUri);
+      } else {
+        if (mounted) {
+          await Clipboard.setData(ClipboardData(text: email));
+          AppToastMessage.show(
+            context: context,
+            icon: Icons.check_circle,
+            message: 'Email copied to clipboard: $email',
+            backgroundColor: context.appColors.accentOrange,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        AppToastMessage.show(
+          context: context,
+          icon: Icons.error_outline,
+          message: 'Error opening email client: $e',
+          backgroundColor: context.appColors.error,
+        );
+      }
+    }
   }
 }

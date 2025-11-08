@@ -1,7 +1,10 @@
 import 'package:animations/animations.dart';
 import 'package:flutter/material.dart' hide Notification;
+import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/home/navigation/bottom_navigator.dart';
+import 'package:grab_go_customer/shared/widgets/food_from_link_handler.dart';
+import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/features/auth/view/email_verification.dart';
 import 'package:grab_go_customer/features/auth/view/login.dart';
@@ -20,7 +23,7 @@ import 'package:grab_go_customer/features/auth/view/verify_phone.dart';
 import 'package:grab_go_customer/features/cart/view/checkout.dart';
 import 'package:grab_go_customer/features/home/view/food_details.dart';
 import 'package:grab_go_customer/features/home/view/search_page.dart';
-import 'package:grab_go_customer/features/home/view/notification.dart';
+import 'package:grab_go_customer/features/home/view/notification.dart' as notification_page;
 import 'package:grab_go_customer/features/order/view/order_summary.dart';
 import 'package:grab_go_customer/features/order/view/order_tracking.dart';
 import 'package:grab_go_customer/features/profile/view/view_profile.dart';
@@ -36,9 +39,108 @@ import 'package:grab_go_customer/features/order/view/payment_complete.dart';
 import 'package:grab_go_customer/features/restaurant/view/restaurants.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/splash_screen.dart';
+import 'package:flutter/material.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: "/",
+  redirect: (BuildContext context, GoRouterState state) {
+    final uri = state.uri;
+    final location = state.uri.toString();
+    if (uri.scheme == 'grabgo') {
+      String? foodId;
+      if (uri.host == 'food' && uri.path.isNotEmpty) {
+        foodId = uri.path.replaceFirst('/', '').split('?').first.trim();
+      } else if (uri.path.startsWith('/food/')) {
+        foodId = uri.path.replaceFirst('/food/', '').split('?').first.trim();
+      } else if (location.contains('/food/')) {
+        final match = RegExp(r'/food/([^/?]+)').firstMatch(location);
+        if (match != null) {
+          foodId = match.group(1)?.trim();
+        }
+      } else if (uri.path.startsWith('/') && uri.path.length > 1) {
+        foodId = uri.path.replaceFirst('/', '').split('?').first.trim();
+      }
+
+      if (foodId != null && foodId.isNotEmpty) {
+        return '/food/$foodId';
+      }
+    }
+
+    if ((uri.scheme == 'https' || uri.scheme == 'http') && uri.host.contains('grabgo')) {
+      if (uri.path.startsWith('/food/')) {
+        final foodId = uri.path.replaceFirst('/food/', '').split('?').first.trim();
+        if (foodId.isNotEmpty) {
+          return '/food/$foodId';
+        }
+      }
+    }
+    return null;
+  },
+  errorBuilder: (context, state) {
+    final uri = state.uri;
+
+    final uriString = uri.toString();
+    if (uriString.contains('/food/')) {
+      final foodIdMatch = RegExp(r'/food/([^/?]+)').firstMatch(uriString);
+      if (foodIdMatch != null) {
+        final foodId = foodIdMatch.group(1) ?? '';
+        if (foodId.isNotEmpty) {
+          Future.microtask(() {
+            if (context.mounted) {
+              context.go('/food/$foodId');
+            }
+          });
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) {
+              LoadingDialog.instance().show(context: context, text: "Loading food item...");
+            }
+          });
+          return const Scaffold(backgroundColor: Colors.transparent, body: SizedBox.shrink());
+        }
+      }
+    }
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SvgPicture.asset(
+              Assets.icons.infoCircle,
+              package: 'grab_go_shared',
+              width: 64,
+              height: 64,
+              colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.onSurface, BlendMode.srcIn),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Oops!',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'The requested food item could not be found.',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => context.go('/'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.borderRadius12)),
+                padding: const EdgeInsets.all(10),
+              ),
+              child: const Text('Go Home'),
+            ),
+          ],
+        ),
+      ),
+    );
+  },
   routes: [
     GoRoute(path: "/", builder: (context, state) => const SplashScreen()),
     GoRoute(
@@ -560,13 +662,11 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) {
         final foodItem = state.extra as FoodItem?;
         if (foodItem == null) {
-          // Navigate back if foodItem is null
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (context.mounted) {
               context.pop();
             }
           });
-          // Return a placeholder page
           return CustomTransitionPage(
             key: state.pageKey,
             child: const SizedBox.shrink(),
@@ -593,11 +693,31 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: "/food/:foodId",
+      pageBuilder: (context, state) {
+        final foodId = state.pathParameters['foodId'] ?? '';
+
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: FoodFromLinkHandler(foodId: foodId),
+          transitionDuration: const Duration(milliseconds: 400),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.scaled,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
       path: "/notification",
       pageBuilder: (context, state) {
         return CustomTransitionPage(
           key: state.pageKey,
-          child: const Notification(),
+          child: const notification_page.Notification(),
           transitionDuration: const Duration(milliseconds: 400),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(

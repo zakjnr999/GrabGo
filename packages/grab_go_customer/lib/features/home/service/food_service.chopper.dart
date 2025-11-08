@@ -32,18 +32,17 @@ final class _$FoodService extends FoodService {
     String? isAvailable,
   }) {
     final Uri $url = Uri.parse('/foods');
-    final Map<String, dynamic> $params = <String, dynamic>{};
-    if (restaurant != null) {
-      $params['restaurant'] = restaurant;
-    }
-    if (category != null) {
-      $params['category'] = category;
-    }
-    if (isAvailable != null) {
-      $params['isAvailable'] = isAvailable;
-    }
-    final Uri $urlWithParams = $url.replace(queryParameters: $params);
-    final Request $request = Request('GET', $urlWithParams, client.baseUrl);
+    final Map<String, dynamic> $params = <String, dynamic>{
+      'restaurant': restaurant,
+      'category': category,
+      'isAvailable': isAvailable,
+    };
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+      parameters: $params,
+    );
     return client.send<dynamic, dynamic>($request);
   }
 }

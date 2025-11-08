@@ -50,7 +50,6 @@ class RestaurantModel {
   });
 
   factory RestaurantModel.fromJson(Map<String, dynamic> json) {
-    // Safely extract ID
     final idStr = json['_id']?.toString() ?? '';
     int restaurantId = 0;
     if (idStr.isNotEmpty) {
@@ -110,7 +109,7 @@ class Socials {
   Socials({required this.instagram, required this.facebook});
 
   factory Socials.fromJson(Map<String, dynamic> json) {
-    return Socials(instagram: json['instagram'] ?? '', facebook: json['facebook'] ?? '');
+    return Socials(instagram: json['instagram']?.toString() ?? '', facebook: json['facebook']?.toString() ?? '');
   }
 }
 
@@ -136,15 +135,34 @@ class Food {
   });
 
   factory Food.fromJson(Map<String, dynamic> json) {
+    int foodId = 0;
+    if (json['id'] != null) {
+      if (json['id'] is num) {
+        foodId = (json['id'] as num).toInt();
+      } else {
+        foodId = json['id'].toString().hashCode;
+      }
+    } else if (json['_id'] != null) {
+      foodId = json['_id'].toString().hashCode;
+    }
+
     return Food(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      price: (json['price'] ?? 0.0).toDouble(),
-      imageUrl: json['imageUrl'] ?? '',
-      category: json['category'] ?? '',
-      description: json['description'] ?? '',
-      sellerId: json['sellerId'] ?? 0,
-      sellerName: json['sellerName'] ?? '',
+      id: foodId,
+      name: json['name']?.toString() ?? json['food_name']?.toString() ?? '',
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
+      imageUrl: json['imageUrl']?.toString() ?? json['image_url']?.toString() ?? json['image']?.toString() ?? '',
+      category: json['category']?.toString() ?? json['category_name']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      sellerId:
+          (json['sellerId'] as num?)?.toInt() ??
+          (json['seller_id'] as num?)?.toInt() ??
+          (json['restaurant'] as num?)?.toInt() ??
+          0,
+      sellerName:
+          json['sellerName']?.toString() ??
+          json['seller_name']?.toString() ??
+          json['restaurant_name']?.toString() ??
+          '',
     );
   }
 }

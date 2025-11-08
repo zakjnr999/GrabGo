@@ -1,0 +1,135 @@
+[1mdiff --git a/packages/grab_go_customer/lib/features/restaurant/view/restaurant_details.dart b/packages/grab_go_customer/lib/features/restaurant/view/restaurant_details.dart[m
+[1mindex ca3d4d9..f144b76 100644[m
+[1m--- a/packages/grab_go_customer/lib/features/restaurant/view/restaurant_details.dart[m
+[1m+++ b/packages/grab_go_customer/lib/features/restaurant/view/restaurant_details.dart[m
+[36m@@ -32,12 +32,57 @@[m [mclass _RestaurantDetailsState extends State<RestaurantDetails> {[m
+ [m
+   List<FoodItem> get filteredFoodItems {[m
+     final foodProvider = Provider.of<FoodProvider>(context, listen: false);[m
+[32m+[m
+[32m+[m[32m    if (widget.restaurant.foods.isNotEmpty) {[m
+[32m+[m[32m      final restaurantFoodItems = <FoodItem>[];[m
+[32m+[m
+[32m+[m[32m      for (final food in widget.restaurant.foods) {[m
+[32m+[m[32m        FoodItem? foundItem;[m
+[32m+[m[32m        for (final category in foodProvider.categories) {[m
+[32m+[m[32m          try {[m
+[32m+[m[32m            foundItem = category.items.firstWhere([m
+[32m+[m[32m              (item) =>[m
+[32m+[m[32m                  item.name.toLowerCase() == food.name.toLowerCase() &&[m
+[32m+[m[32m                  item.sellerName.toLowerCase() == food.sellerName.toLowerCase(),[m
+[32m+[m[32m            );[m
+[32m+[m[32m            break;[m
+[32m+[m[32m          } catch (e) {[m
+[32m+[m[32m            continue;[m
+[32m+[m[32m          }[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        if (foundItem != null) {[m
+[32m+[m[32m          restaurantFoodItems.add(foundItem);[m
+[32m+[m[32m        } else {[m
+[32m+[m[32m          restaurantFoodItems.add([m
+[32m+[m[32m            FoodItem([m
+[32m+[m[32m              name: food.name,[m
+[32m+[m[32m              image: food.imageUrl,[m
+[32m+[m[32m              description: food.description,[m
+[32m+[m[32m              sellerName: food.sellerName,[m
+[32m+[m[32m              sellerId: food.sellerId,[m
+[32m+[m[32m              price: food.price,[m
+[32m+[m[32m              restaurantImage: widget.restaurant.imageUrl,[m
+[32m+[m[32m            ),[m
+[32m+[m[32m          );[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      if (restaurantFoodItems.isNotEmpty) {[m
+[32m+[m[32m        return restaurantFoodItems;[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m
+     final allFoodItems = foodProvider.categories.expand((category) => category.items).where((item) {[m
+[31m-      final itemSellerName = item.sellerName.trim().toLowerCase();[m
+[31m-      final restaurantName = widget.restaurant.name.trim().toLowerCase();[m
+[32m+[m[32m      final itemSellerName = item.sellerName.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');[m
+[32m+[m[32m      final restaurantName = widget.restaurant.name.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');[m
+       final matchesByName = itemSellerName == restaurantName;[m
+[31m-      final matchesById = item.sellerId == widget.restaurant.id;[m
+[31m-      return matchesByName || matchesById;[m
+[32m+[m[32m      final matchesById = item.sellerId != 0 && widget.restaurant.id != 0 && item.sellerId == widget.restaurant.id;[m
+[32m+[m[32m      final matchesByContains = itemSellerName.contains(restaurantName) || restaurantName.contains(itemSellerName);[m
+[32m+[m
+[32m+[m[32m      return matchesByName ||[m
+[32m+[m[32m          matchesById ||[m
+[32m+[m[32m          (matchesByContains && itemSellerName.length > 3 && restaurantName.length > 3);[m
+     }).toList();[m
+ [m
+     return allFoodItems;[m
+[36m@@ -182,7 +227,7 @@[m [mclass _RestaurantDetailsState extends State<RestaurantDetails> {[m
+                                 style: TextStyle([m
+                                   fontSize: 14.sp,[m
+                                   fontWeight: FontWeight.w400,[m
+[31m-                                  color: colors.textPrimary,[m
+[32m+[m[32m                                  color: colors.textSecondary,[m
+                                 ),[m
+                               ),[m
+                             ],[m
+[36m@@ -203,7 +248,7 @@[m [mclass _RestaurantDetailsState extends State<RestaurantDetails> {[m
+                                 style: TextStyle([m
+                                   fontSize: 14.sp,[m
+                                   fontWeight: FontWeight.w400,[m
+[31m-                                  color: colors.textPrimary,[m
+[32m+[m[32m                                  color: colors.textSecondary,[m
+                                 ),[m
+                               ),[m
+                             ],[m
+[36m@@ -224,11 +269,108 @@[m [mclass _RestaurantDetailsState extends State<RestaurantDetails> {[m
+                                 style: TextStyle([m
+                                   fontSize: 14.sp,[m
+                                   fontWeight: FontWeight.w400,[m
+[31m-                                  color: colors.textPrimary,[m
+[32m+[m[32m                                  color: colors.textSecondary,[m
+                                 ),[m
+                               ),[m
+                             ],[m
+                           ),[m
+[32m+[m[32m                          if (widget.restaurant.openingHours.isNotEmpty) ...[[m
+[32m+[m[32m                            SizedBox(height: 5.h),[m
+[32m+[m[32m                            Row([m
+[32m+[m[32m                              crossAxisAlignment: CrossAxisAlignment.start,[m
+[32m+[m[32m                              children: [[m
+[32m+[m[32m                                SvgPicture.asset([m
+[32m+[m[32m                                  Assets.icons.clock,[m
+[32m+[m[32m                                  package: 'grab_go_shared',[m
+[32m+[m[32m                                  height: 16.h,[m
+[32m+[m[32m                                  width: 16.w,[m
+[32m+[m[32m                                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),[m
+[32m+[m[32m                                ),[m
+[32m+[m[32m                                SizedBox(width: 5.w),[m
+[32m+[m[32m                                Expanded([m
+[32m+[m[32m                                  child: Column([m
+[32m+[m[32m                                    crossAxisAlignment: CrossAxisAlignment.start,[m
+[32m+[m[32m                                    children: [[m
+[32m+[m[32m                                      Text([m
+[32m+[m[32m                                        "Opening Hours",[m
+[32m+[m[32m                                        style: TextStyle([m
+[32m+[m[32m                                          fontSize: 12.sp,[m
+[32m+[m[32m                                          fontWeight: FontWeight.w500,[m
+[32m+[m[32m                                          color: colors.textSecondary,[m
+[32m+[m[32m                                        ),[m
+[32m+[m[32m                                      ),[m
+[32m+[m[32m                                      SizedBox(height: 2.h),[m
+[32m+[m[32m                                      Text([m
+[32m+[m[32m                                        widget.restaurant.openingHours,[m
+[32m+[m[32m                                        style: TextStyle([m
+[32m+[m[32m                                          fontSize: 14.sp,[m
+[32m+[m[32m                                          fontWeight: FontWeight.w400,[m
+[32m+[m[32m                                          color: colors.textSecondary,[m
+[32m+[m[32m                                        ),[m
+[32m+[m[32m                                      ),[m
+[32m+[m[32m                                    ],[m
+[32m+[m[32m                                  ),[m
+[32m+[m[32m                                ),[m
+[32m+[m[32m                              ],[m
+[32m+[m[32m                            ),[m
+[32m+[m[32m                          ],[m
+[32m+[m[32m                          if (widget.restaurant.paymentMetho

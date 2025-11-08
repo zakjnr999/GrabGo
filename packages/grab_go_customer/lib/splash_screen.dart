@@ -2,6 +2,7 @@
 
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
@@ -52,6 +53,13 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   Future<void> _initializeApp() async {
     await Future.delayed(const Duration(seconds: 3));
     if (!mounted) return;
+
+    final router = GoRouter.of(context);
+    final currentLocation = router.routerDelegate.currentConfiguration.uri.path;
+
+    if (currentLocation != '/' && currentLocation != '') {
+      return;
+    }
 
     final isFirst = await StorageService.isFirstLaunch();
 

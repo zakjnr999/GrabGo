@@ -21,7 +21,7 @@ class RestaurantDetailsAppBar extends StatelessWidget {
 
     return SliverAppBar(
       expandedHeight: size.height * 0.40,
-      backgroundColor: colors.backgroundPrimary,
+      backgroundColor: const Color(0xFF121212),
       surfaceTintColor: colors.backgroundPrimary,
       systemOverlayStyle: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -86,7 +86,7 @@ class RestaurantDetailsAppBar extends StatelessWidget {
                   children: [
                     Text(
                       restaurant.name,
-                      style: TextStyle(color: Colors.white, fontSize: 26.sp, fontWeight: FontWeight.w800, height: 1.2),
+                      style: TextStyle(color: Colors.white, fontSize: 30.sp, fontWeight: FontWeight.w800, height: 1.2),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -96,9 +96,9 @@ class RestaurantDetailsAppBar extends StatelessWidget {
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
+                            color: Colors.grey.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(10.r),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -129,13 +129,13 @@ class RestaurantDetailsAppBar extends StatelessWidget {
                             ],
                           ),
                         ),
-                        SizedBox(width: 12.w),
+                        SizedBox(width: 10.w),
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
+                            color: Colors.grey.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(10.r),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -160,7 +160,7 @@ class RestaurantDetailsAppBar extends StatelessWidget {
                           ),
                         ),
                         if (restaurant.isOpen) ...[
-                          SizedBox(width: 12.w),
+                          SizedBox(width: 10.w),
                           Container(
                             padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                             decoration: BoxDecoration(
@@ -224,7 +224,7 @@ class RestaurantDetailsAppBar extends StatelessWidget {
           ),
         ),
       ),
-      actionsPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+      actionsPadding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 2.h),
       actions: [
         _buildActionButton(
           context: context,
@@ -238,6 +238,18 @@ class RestaurantDetailsAppBar extends StatelessWidget {
           ),
         ),
         const Spacer(),
+        _buildActionButton(
+          context: context,
+          onTap: () => context.pop(),
+          icon: SvgPicture.asset(
+            Assets.icons.shareAndroid,
+            package: 'grab_go_shared',
+            height: 20.h,
+            width: 20.w,
+            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+          ),
+        ),
+        SizedBox(width: 10.w),
         _buildActionButton(
           context: context,
           onTap: () {},
@@ -270,7 +282,7 @@ class RestaurantDetailsAppBar extends StatelessWidget {
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Container(
               decoration: BoxDecoration(
-                color: isFavorite ? Colors.red.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.4),
+                color: isFavorite ? Colors.red.withValues(alpha: 0.3) : Colors.grey.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: isFavorite ? Colors.red.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.2),

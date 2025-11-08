@@ -7,11 +7,7 @@ class FoodCategoryList extends StatefulWidget {
   final List<FoodCategoryModel> categories;
   final ValueChanged<FoodCategoryModel> onCategorySelected;
 
-  const FoodCategoryList({
-    super.key,
-    required this.categories,
-    required this.onCategorySelected,
-  });
+  const FoodCategoryList({super.key, required this.categories, required this.onCategorySelected});
 
   @override
   State<FoodCategoryList> createState() => _FoodCategoryListState();
@@ -60,7 +56,11 @@ class _FoodCategoryListState extends State<FoodCategoryList> {
                 curve: Curves.easeInOut,
                 width: size.width * 0.22,
                 decoration: BoxDecoration(
-                  color: isSelected ? colors.accentOrange : colors.backgroundPrimary,
+                  gradient: LinearGradient(
+                    colors: isSelected
+                        ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
+                        : [colors.backgroundPrimary, colors.backgroundPrimary.withValues(alpha: 0.8)],
+                  ),
                   borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                   boxShadow: [
                     BoxShadow(
@@ -83,10 +83,7 @@ class _FoodCategoryListState extends State<FoodCategoryList> {
                     AnimatedDefaultTextStyle(
                       duration: const Duration(milliseconds: 300),
                       curve: Curves.easeInOut,
-                      style: TextStyle(
-                        fontSize: 30,
-                        color: isSelected ? colors.backgroundPrimary : colors.textPrimary,
-                      ),
+                      style: TextStyle(fontSize: 30, color: isSelected ? colors.backgroundPrimary : colors.textPrimary),
                       child: Text(category.emoji),
                     ),
                     SizedBox(height: KSpacing.md.h),
@@ -100,10 +97,7 @@ class _FoodCategoryListState extends State<FoodCategoryList> {
                       child: Text(
                         category.name,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w400,
-                          fontFamily: "Lato"
-                        ),
+                        style: const TextStyle(fontWeight: FontWeight.w400, fontFamily: "Lato"),
                       ),
                     ),
                   ],
@@ -116,6 +110,3 @@ class _FoodCategoryListState extends State<FoodCategoryList> {
     );
   }
 }
-
-
-

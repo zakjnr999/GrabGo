@@ -424,6 +424,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
 
   Widget _buildFavoriteItem(colors, FoodItem item) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final size = MediaQuery.sizeOf(context);
 
     return GestureDetector(
       onTap: () {
@@ -451,24 +452,22 @@ class _FavoritesPageState extends State<FavoritesPage> {
                 topLeft: Radius.circular(KBorderSize.borderRadius15),
                 bottomLeft: Radius.circular(KBorderSize.borderRadius15),
               ),
-              child: SizedBox(
-                height: 118.h,
-                width: 118.w,
-                child: CachedImageWidget(
-                  imageUrl: item.image,
-                  width: 118.w,
-                  height: 118.h,
-                  fit: BoxFit.cover,
-                  placeholder: Container(
-                    color: colors.inputBorder,
-                    child: Center(
-                      child: SvgPicture.asset(
-                        Assets.icons.utensilsCrossed,
-                        package: 'grab_go_shared',
-                        colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                        width: 30.w,
-                        height: 30.h,
-                      ),
+              child: CachedImageWidget(
+                imageUrl: item.image,
+                height: size.height * 0.14,
+                width: size.width * 0.32,
+                fit: BoxFit.cover,
+                placeholder: Container(
+                  height: size.height * 0.14,
+                  width: size.width * 0.32,
+                  color: colors.inputBorder,
+                  child: Center(
+                    child: SvgPicture.asset(
+                      Assets.icons.utensilsCrossed,
+                      package: 'grab_go_shared',
+                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                      width: 30.w,
+                      height: 30.h,
                     ),
                   ),
                 ),
@@ -645,7 +644,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Drag Handle
             Container(
               margin: EdgeInsets.only(top: 12.h, bottom: 8.h),
               width: 40.w,
@@ -653,7 +651,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
               decoration: BoxDecoration(color: colors.inputBorder, borderRadius: BorderRadius.circular(2.r)),
             ),
 
-            // Title
             Padding(
               padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w, vertical: KSpacing.md.h),
               child: Text(
@@ -668,7 +665,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
               padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w),
               child: Column(
                 children: [
-                  // Name (A-Z)
                   _buildSortOption(
                     colors: colors,
                     svgIcon: Assets.icons.arrowUpAZ,
@@ -677,12 +673,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
                     subtitle: 'Sort alphabetically',
                     onTap: () {
                       Navigator.pop(context);
-                      AppToastMessage.show(
-                        context: context,
-                        icon: Icons.check_circle,
-                        message: 'Sorted by name',
-                        backgroundColor: colors.accentGreen,
-                      );
                     },
                   ),
                   SizedBox(height: 12.h),
@@ -695,12 +685,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
                     subtitle: 'Cheapest first',
                     onTap: () {
                       Navigator.pop(context);
-                      AppToastMessage.show(
-                        context: context,
-                        icon: Icons.check_circle,
-                        message: 'Sorted by price',
-                        backgroundColor: colors.accentGreen,
-                      );
                     },
                   ),
                   SizedBox(height: 12.h),
@@ -713,12 +697,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
                     subtitle: 'Best rated first',
                     onTap: () {
                       Navigator.pop(context);
-                      AppToastMessage.show(
-                        context: context,
-                        icon: Icons.check_circle,
-                        message: 'Sorted by rating',
-                        backgroundColor: colors.accentGreen,
-                      );
                     },
                   ),
                 ],
@@ -765,6 +743,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
                         svgIcon,
                         height: 24.h,
                         width: 24.w,
+                        package: 'grab_go_shared',
                         colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
                       )
                     : Icon(icon ?? Icons.settings, size: 24.h, color: iconColor),

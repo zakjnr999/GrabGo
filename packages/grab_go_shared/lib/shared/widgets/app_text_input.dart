@@ -16,6 +16,7 @@ class AppTextInput extends StatelessWidget {
   final bool obscureText;
   final Color? borderColor;
   final Color? fillColor;
+  final Color? borderActiveColor;
   final double borderRadius;
   final EdgeInsetsGeometry? contentPadding;
   final TextStyle? textStyle;
@@ -37,6 +38,7 @@ class AppTextInput extends StatelessWidget {
     this.obscureText = false,
     this.borderColor,
     this.fillColor,
+    this.borderActiveColor,
     this.borderRadius = 8.0,
     this.contentPadding,
     this.textStyle,
@@ -187,7 +189,7 @@ class AppTextInput extends StatelessWidget {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(borderRadius),
               borderSide: BorderSide(
-                color: errorText != null ? colors.error : colors.accentOrange,
+                color: errorText != null ? colors.error : borderActiveColor!,
                 width: KBorderWidth.thick,
               ),
             ),

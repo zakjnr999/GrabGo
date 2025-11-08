@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:grab_go_customer/features/restaurant/view/restaurant_details.dart';
 import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
 import 'package:grab_go_shared/shared/utils/constants.dart';
@@ -12,6 +13,7 @@ class RestaurantDetailsInfoBox extends StatelessWidget {
     required this.widget,
     required this.text,
     required this.subText,
+    required this.assetImg,
   });
 
   final Size size;
@@ -19,7 +21,7 @@ class RestaurantDetailsInfoBox extends StatelessWidget {
   final RestaurantDetails widget;
   final String text;
   final String subText;
-
+  final String assetImg;
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -27,6 +29,10 @@ class RestaurantDetailsInfoBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withAlpha(4), spreadRadius: 1, blurRadius: 12, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withAlpha(2), spreadRadius: -1, blurRadius: 6, offset: const Offset(0, 2)),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -34,11 +40,7 @@ class RestaurantDetailsInfoBox extends StatelessWidget {
         children: [
           Text(
             text,
-            style: TextStyle(
-              fontSize: 14.sp,
-              fontWeight: FontWeight.w600,
-              color: colors.textPrimary,
-            ),
+            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
           ),
 
           Text(
@@ -49,10 +51,17 @@ class RestaurantDetailsInfoBox extends StatelessWidget {
               color: colors.textSecondary,
             ),
           ),
+          SizedBox(height: 4.h),
+
+          SvgPicture.asset(
+            assetImg,
+            package: 'grab_go_shared',
+            height: 14.h,
+            width: 14.w,
+            colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+          ),
         ],
       ),
     );
   }
 }
-
-

@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "init-db": "node scripts/init-db.js",
     "add-foods": "node scripts/add-sample-foods.js",
+    "setup-restaurants": "node scripts/setup-restaurants-and-foods.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

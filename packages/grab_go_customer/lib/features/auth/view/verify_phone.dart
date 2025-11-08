@@ -103,20 +103,12 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
     await FirebasePhoneAuthService().sendOTP(
       phoneNumber: phoneNumber,
       onCodeSent: (verificationId) {
-        debugPrint('✅ OTP sent successfully');
         if (mounted) {
           LoadingDialog.instance().hide();
-          AppToastMessage.show(
-            context: context,
-            icon: Icons.check_circle,
-            message: "OTP sent successfully!",
-            backgroundColor: Colors.green,
-          );
           context.push("/OTPVerification");
         }
       },
       onError: (error) {
-        debugPrint('❌ Error sending OTP: $error');
         if (mounted) {
           LoadingDialog.instance().hide();
           AppToastMessage.show(
@@ -128,7 +120,6 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
         }
       },
       onTimeout: () {
-        debugPrint('⏰ OTP sending timeout');
         if (mounted) {
           LoadingDialog.instance().hide();
           AppToastMessage.show(

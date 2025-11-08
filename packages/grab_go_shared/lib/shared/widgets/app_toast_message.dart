@@ -18,29 +18,18 @@ class AppToastMessage {
     final fToast = FToast();
     fToast.init(context);
 
-    // Calculate if message is long (more than 50 characters)
     final isLongMessage = message.length > 50;
     final actualMaxLines = maxLines ?? (isLongMessage ? 3 : 1);
     final actualDuration = duration ?? (isLongMessage ? const Duration(seconds: 4) : const Duration(seconds: 2));
-    // Always center the toast messages
     final actualGravity = gravity ?? ToastGravity.CENTER;
 
     Widget toast = Container(
-      constraints: BoxConstraints(
-        maxWidth: MediaQuery.of(context).size.width * 0.85,
-        minWidth: 200.w,
-      ),
+      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85, minWidth: 200.w),
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(KBorderSize.border),
         color: backgroundColor ?? colors.accentViolet,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: IntrinsicWidth(
         child: Row(
@@ -68,12 +57,6 @@ class AppToastMessage {
       ),
     );
 
-    fToast.showToast(
-      child: toast,
-      gravity: actualGravity,
-      toastDuration: actualDuration,
-    );
+    fToast.showToast(child: toast, gravity: actualGravity, toastDuration: actualDuration);
   }
 }
-
-

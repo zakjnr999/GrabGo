@@ -23,8 +23,7 @@ class AnimatedTabBar extends StatefulWidget {
   State<AnimatedTabBar> createState() => _AnimatedTabBarState();
 }
 
-class _AnimatedTabBarState extends State<AnimatedTabBar>
-    with TickerProviderStateMixin {
+class _AnimatedTabBarState extends State<AnimatedTabBar> with TickerProviderStateMixin {
   late AnimationController _slideController;
   late Animation<double> _slideAnimation;
   late ScrollController _scrollController;
@@ -33,14 +32,8 @@ class _AnimatedTabBarState extends State<AnimatedTabBar>
   @override
   void initState() {
     super.initState();
-    _slideController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _slideAnimation = CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeInOut,
-    );
+    _slideController = AnimationController(duration: const Duration(milliseconds: 300), vsync: this);
+    _slideAnimation = CurvedAnimation(parent: _slideController, curve: Curves.easeInOut);
     _scrollController = ScrollController();
     _scrollController.addListener(() {
       if (_scrollController.hasClients) {
@@ -71,17 +64,9 @@ class _AnimatedTabBarState extends State<AnimatedTabBar>
       final double maxScroll = _scrollController.position.maxScrollExtent;
       final double viewportWidth = _scrollController.position.viewportDimension;
 
-      final double idealOffset =
-          (targetOffset - viewportWidth / 2 + tabWidth / 2).clamp(
-            0.0,
-            maxScroll,
-          );
+      final double idealOffset = (targetOffset - viewportWidth / 2 + tabWidth / 2).clamp(0.0, maxScroll);
 
-      _scrollController.animateTo(
-        idealOffset,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
+      _scrollController.animateTo(idealOffset, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
     });
   }
 
@@ -116,17 +101,10 @@ class _AnimatedTabBarState extends State<AnimatedTabBar>
 
                   final double startPosition = _previousIndex * tabWidth;
                   final double endPosition = widget.selectedIndex * tabWidth;
-                  final double currentPosition =
-                      startPosition +
-                      (endPosition - startPosition) * _slideAnimation.value;
+                  final double currentPosition = startPosition + (endPosition - startPosition) * _slideAnimation.value;
 
                   return Positioned(
-                    left:
-                        currentPosition +
-                        -1.w -
-                        (_scrollController.hasClients
-                            ? _scrollController.offset
-                            : 0),
+                    left: currentPosition + -1.w - (_scrollController.hasClients ? _scrollController.offset : 0),
                     top: 4.h,
                     child: Container(
                       width: tabWidth - 1.w,
@@ -134,9 +112,7 @@ class _AnimatedTabBarState extends State<AnimatedTabBar>
                       margin: EdgeInsets.symmetric(horizontal: 2.w),
                       decoration: BoxDecoration(
                         color: colors.backgroundPrimary,
-                        borderRadius: BorderRadius.circular(
-                          KBorderSize.borderRadius8,
-                        ),
+                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius8),
                       ),
                     ),
                   );
@@ -168,16 +144,13 @@ class _AnimatedTabBarState extends State<AnimatedTabBar>
                             style: TextStyle(
                               fontFamily: "Lato",
                               fontSize: 12.sp,
-                              fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.w600,
-                              color: isSelected
-                                  ? colors.accentOrange
-                                  : colors.textSecondary,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w600,
+                              color: isSelected ? colors.accentOrange : colors.textSecondary,
                               height: 2,
                             ),
                             child: Text(
                               tab,
+                              style: TextStyle(fontFamily: "Lato", package: 'grab_go_shared', height: 2),
                               textAlign: TextAlign.center,
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,

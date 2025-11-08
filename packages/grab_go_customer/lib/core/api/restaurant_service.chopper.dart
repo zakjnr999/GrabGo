@@ -19,10 +19,10 @@ final class _$RestaurantService extends RestaurantService {
   final Type definitionType = RestaurantService;
 
   @override
-  Future<Response<List<RestaurantData>>> getRestaurants() {
+  Future<Response<dynamic>> getRestaurants() {
     final Uri $url = Uri.parse('/restaurants');
     final Request $request = Request('GET', $url, client.baseUrl);
-    return client.send<List<RestaurantData>, RestaurantData>($request);
+    return client.send<dynamic, dynamic>($request);
   }
 
   @override

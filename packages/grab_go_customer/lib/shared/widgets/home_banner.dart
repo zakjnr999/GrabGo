@@ -143,7 +143,40 @@ class _HomeBannerState extends State<HomeBanner> {
                             placeholder: Container(
                               width: double.infinity,
                               height: widget.size.height * 0.28,
-                              color: colors.backgroundPrimary,
+                              decoration: BoxDecoration(
+                                color: colors.backgroundPrimary,
+                                borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                              ),
+                              child: Center(
+                                child: SizedBox(
+                                  height: 40.h,
+                                  width: 40.w,
+                                  child: SvgPicture.asset(
+                                    Assets.icons.utensilsCrossed,
+                                    package: 'grab_go_shared',
+                                    colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            errorWidget: Container(
+                              width: double.infinity,
+                              height: widget.size.height * 0.28,
+                              decoration: BoxDecoration(
+                                color: colors.backgroundPrimary,
+                                borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                              ),
+                              child: Center(
+                                child: SizedBox(
+                                  height: 40.h,
+                                  width: 40.w,
+                                  child: SvgPicture.asset(
+                                    Assets.icons.utensilsCrossed,
+                                    package: 'grab_go_shared',
+                                    colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -151,27 +184,6 @@ class _HomeBannerState extends State<HomeBanner> {
                     ),
                   )
                   .toList(),
-            ),
-
-            Positioned(
-              top: 12.h,
-              left: 0,
-              right: 0,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  bannerFoods.length,
-                  (index) => Container(
-                    margin: EdgeInsets.symmetric(horizontal: 3.w),
-                    width: currentIndex == index ? 20.w : 6.w,
-                    height: 6.h,
-                    decoration: BoxDecoration(
-                      color: currentIndex == index ? Colors.white : Colors.white.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(3.r),
-                    ),
-                  ),
-                ),
-              ),
             ),
 
             Container(
@@ -186,32 +198,21 @@ class _HomeBannerState extends State<HomeBanner> {
                     children: [
                       Expanded(
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12.r),
+                          borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                           child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+                            filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
                             child: Container(
                               padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                               decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(12.r),
+                                color: Colors.black.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                                 border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
                               ),
                               child: Text(
                                 bannerFoods[currentIndex].name,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 15.sp,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                  shadows: [
-                                    Shadow(
-                                      color: Colors.black.withOpacity(0.3),
-                                      blurRadius: 4,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
+                                style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: Colors.white),
                               ),
                             ),
                           ),
@@ -230,14 +231,14 @@ class _HomeBannerState extends State<HomeBanner> {
                               }
                             },
                             child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12.r),
+                              borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                               child: BackdropFilter(
-                                filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+                                filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
                                 child: Container(
                                   padding: EdgeInsets.all(10.r),
                                   decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(12.r),
+                                    color: Colors.black.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                                     border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
                                   ),
                                   child: SvgPicture.asset(
@@ -260,14 +261,14 @@ class _HomeBannerState extends State<HomeBanner> {
                   ),
                   const Spacer(),
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(16.r),
+                    borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                     child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+                      filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
                       child: Container(
                         padding: EdgeInsets.all(12.r),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(16.r),
+                          color: Colors.black.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                           border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
                         ),
                         child: Row(
@@ -277,39 +278,9 @@ class _HomeBannerState extends State<HomeBanner> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: EdgeInsets.all(8.r),
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: colors.accentOrange.withOpacity(0.2),
-                                        ),
-                                        child: SvgPicture.asset(
-                                          Assets.icons.cart,
-                                          package: 'grab_go_shared',
-                                          height: 16.h,
-                                          width: 16.w,
-                                          colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                                        ),
-                                      ),
-                                      SizedBox(width: 10.w),
-                                      Text(
-                                        "GHS ${bannerFoods[currentIndex].price.toStringAsFixed(2)}",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16.sp,
-                                          fontWeight: FontWeight.w800,
-                                          shadows: [
-                                            Shadow(
-                                              color: Colors.black.withOpacity(0.3),
-                                              blurRadius: 4,
-                                              offset: const Offset(0, 2),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
+                                  Text(
+                                    "GHS ${bannerFoods[currentIndex].price.toStringAsFixed(2)}",
+                                    style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w800),
                                   ),
                                   SizedBox(height: 6.h),
                                   Row(
@@ -328,16 +299,8 @@ class _HomeBannerState extends State<HomeBanner> {
                                           color: Colors.white,
                                           fontSize: 13.sp,
                                           fontWeight: FontWeight.w600,
-                                          shadows: [
-                                            Shadow(
-                                              color: Colors.black.withOpacity(0.3),
-                                              blurRadius: 4,
-                                              offset: const Offset(0, 2),
-                                            ),
-                                          ],
                                         ),
                                       ),
-                                      // Show review count if available (optional enhancement)
                                       SizedBox(width: 4.w),
                                       Text(
                                         "(120+)",
@@ -360,17 +323,10 @@ class _HomeBannerState extends State<HomeBanner> {
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       colors: isInCart
-                                          ? [Colors.red.shade400, Colors.red.shade600]
+                                          ? [colors.error.withValues(alpha: 0.8), colors.error]
                                           : [colors.accentOrange, colors.accentOrange.withOpacity(0.8)],
                                     ),
-                                    borderRadius: BorderRadius.circular(12.r),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: (isInCart ? Colors.red : colors.accentOrange).withOpacity(0.4),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
+                                    borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                                   ),
                                   child: Material(
                                     color: Colors.transparent,
@@ -382,7 +338,7 @@ class _HomeBannerState extends State<HomeBanner> {
                                           cartProvider.addToCart(bannerFoods[currentIndex]);
                                         }
                                       },
-                                      borderRadius: BorderRadius.circular(12.r),
+                                      borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                                       child: Padding(
                                         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
                                         child: Row(
