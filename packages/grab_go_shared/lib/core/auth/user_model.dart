@@ -11,6 +11,7 @@ class RegisterRequest {
   final String? dateOfBirth;
   final int? phone;
   final String? profilePicture;
+  final String? role;
 
   RegisterRequest({
     required this.username,
@@ -19,6 +20,7 @@ class RegisterRequest {
     this.dateOfBirth,
     this.phone,
     this.profilePicture,
+    this.role,
   });
 
   factory RegisterRequest.fromJson(Map<String, dynamic> json) => _$RegisterRequestFromJson(json);
@@ -129,6 +131,7 @@ class GoogleSignInRequest {
   final String displayName;
   final String? photoUrl;
   final String? idToken;
+  final String? role;
 
   GoogleSignInRequest({
     required this.googleId,
@@ -136,6 +139,7 @@ class GoogleSignInRequest {
     required this.displayName,
     this.photoUrl,
     this.idToken,
+    this.role,
   });
 
   factory GoogleSignInRequest.fromJson(Map<String, dynamic> json) => _$GoogleSignInRequestFromJson(json);

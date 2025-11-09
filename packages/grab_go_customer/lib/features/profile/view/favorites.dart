@@ -1,4 +1,3 @@
-// ignore_for_file: deprecated_member_use, strict_top_level_inference
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -50,149 +49,146 @@ class _FavoritesPageState extends State<FavoritesPage> {
           scrolledUnderElevation: 0,
           automaticallyImplyLeading: false,
           backgroundColor: colors.backgroundSecondary,
-          title: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8.w),
-            child: Row(
-              children: [
-                Container(
-                  height: 44.h,
-                  width: 44.w,
-                  decoration: BoxDecoration(
-                    color: colors.backgroundPrimary,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                        spreadRadius: 0,
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => context.pop(),
-                      customBorder: const CircleBorder(),
-                      child: Padding(
-                        padding: EdgeInsets.all(10.r),
-                        child: SvgPicture.asset(
-                          Assets.icons.navArrowLeft,
-                          package: 'grab_go_shared',
-                          colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                        ),
+          title: Row(
+            children: [
+              Container(
+                height: 44.h,
+                width: 44.w,
+                decoration: BoxDecoration(
+                  color: colors.backgroundPrimary,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
+                      spreadRadius: 0,
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => context.pop(),
+                    customBorder: const CircleBorder(),
+                    child: Padding(
+                      padding: EdgeInsets.all(10.r),
+                      child: SvgPicture.asset(
+                        Assets.icons.navArrowLeft,
+                        package: 'grab_go_shared',
+                        colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                       ),
                     ),
                   ),
                 ),
+              ),
 
-                const Spacer(),
+              const Spacer(),
 
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                  decoration: BoxDecoration(
-                    color: colors.backgroundPrimary,
-                    borderRadius: BorderRadius.circular(20.r),
-                    border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                        spreadRadius: 0,
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                decoration: BoxDecoration(
+                  color: colors.backgroundPrimary,
+                  borderRadius: BorderRadius.circular(20.r),
+                  border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
+                      spreadRadius: 0,
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(6.r),
+                      decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), shape: BoxShape.circle),
+                      child: SvgPicture.asset(
+                        Assets.icons.heart,
+                        package: 'grab_go_shared',
+                        height: 16.h,
+                        width: 16.w,
+                        colorFilter: const ColorFilter.mode(Colors.red, BlendMode.srcIn),
+                      ),
+                    ),
+                    SizedBox(width: 8.w),
+                    Text(
+                      "My Favorites",
+                      style: TextStyle(
+                        fontFamily: "Lato",
+                        package: 'grab_go_shared',
+                        color: colors.textPrimary,
+                        fontSize: 17.sp,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const Spacer(),
+
+              Consumer<FavoritesProvider>(
+                builder: (context, favoritesProvider, child) {
+                  if (favoritesProvider.favoriteItems.isEmpty) {
+                    return SizedBox(width: 44.w);
+                  }
+
+                  return AppPopupMenu(
+                    items: [
+                      AppPopupMenuItem(
+                        value: 'sort',
+                        label: 'Sort Favorites',
+                        icon: Assets.icons.slidersHorizontal,
+                        iconColor: colors.accentOrange,
+                        backgroundColor: colors.accentOrange.withValues(alpha: 0.1),
+                      ),
+                      AppPopupMenuItem(
+                        value: 'clear_all',
+                        label: 'Clear All Favorites',
+                        icon: Assets.icons.binMinusIn,
+                        isDanger: true,
                       ),
                     ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(6.r),
-                        decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), shape: BoxShape.circle),
-                        child: SvgPicture.asset(
-                          Assets.icons.heart,
-                          package: 'grab_go_shared',
-                          height: 16.h,
-                          width: 16.w,
-                          colorFilter: const ColorFilter.mode(Colors.red, BlendMode.srcIn),
-                        ),
+                    onSelected: (value) {
+                      switch (value) {
+                        case 'sort':
+                          _showSortOptions(colors);
+                          break;
+                        case 'clear_all':
+                          _showClearAllDialog(colors);
+                          break;
+                      }
+                    },
+                    child: Container(
+                      height: 44.h,
+                      width: 44.w,
+                      decoration: BoxDecoration(
+                        color: colors.backgroundPrimary,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
+                            spreadRadius: 0,
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                      SizedBox(width: 8.w),
-                      Text(
-                        "My Favorites",
-                        style: TextStyle(
-                          fontFamily: "Lato",
-                          package: 'grab_go_shared',
-                          color: colors.textPrimary,
-                          fontSize: 17.sp,
-                          fontWeight: FontWeight.w800,
-                        ),
+                      child: Padding(
+                        padding: EdgeInsets.all(10.r),
+                        child: Icon(Icons.more_vert, size: 20.sp, color: colors.textPrimary),
                       ),
-                    ],
-                  ),
-                ),
-
-                const Spacer(),
-
-                Consumer<FavoritesProvider>(
-                  builder: (context, favoritesProvider, child) {
-                    if (favoritesProvider.favoriteItems.isEmpty) {
-                      return SizedBox(width: 44.w);
-                    }
-
-                    return AppPopupMenu(
-                      items: [
-                        AppPopupMenuItem(
-                          value: 'sort',
-                          label: 'Sort Favorites',
-                          icon: Assets.icons.slidersHorizontal,
-                          iconColor: colors.accentOrange,
-                          backgroundColor: colors.accentOrange.withOpacity(0.1),
-                        ),
-                        AppPopupMenuItem(
-                          value: 'clear_all',
-                          label: 'Clear All Favorites',
-                          icon: Assets.icons.binMinusIn,
-                          isDanger: true,
-                        ),
-                      ],
-                      onSelected: (value) {
-                        switch (value) {
-                          case 'sort':
-                            _showSortOptions(colors);
-                            break;
-                          case 'clear_all':
-                            _showClearAllDialog(colors);
-                            break;
-                        }
-                      },
-                      child: Container(
-                        height: 44.h,
-                        width: 44.w,
-                        decoration: BoxDecoration(
-                          color: colors.backgroundPrimary,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
-                          boxShadow: [
-                            BoxShadow(
-                              color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                              spreadRadius: 0,
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Padding(
-                          padding: EdgeInsets.all(10.r),
-                          child: Icon(Icons.more_vert, size: 20.sp, color: colors.textPrimary),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
         ),
         body: SafeArea(
@@ -234,7 +230,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-        border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
+        border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
         boxShadow: [
           BoxShadow(color: Colors.black.withAlpha(5), spreadRadius: 0, blurRadius: 8, offset: const Offset(0, 2)),
         ],
@@ -285,13 +281,13 @@ class _FavoritesPageState extends State<FavoritesPage> {
           children: [
             Container(
               padding: EdgeInsets.all(30.r),
-              decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), shape: BoxShape.circle),
+              decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), shape: BoxShape.circle),
               child: SvgPicture.asset(
                 Assets.icons.heart,
                 package: 'grab_go_shared',
                 width: 40.w,
                 height: 40.w,
-                colorFilter: ColorFilter.mode(Colors.red.withOpacity(0.5), BlendMode.srcIn),
+                colorFilter: ColorFilter.mode(Colors.red.withValues(alpha: 0.5), BlendMode.srcIn),
               ),
             ),
 
@@ -330,14 +326,14 @@ class _FavoritesPageState extends State<FavoritesPage> {
                 padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 16.h),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [colors.accentOrange, colors.accentOrange.withOpacity(0.8)],
+                    colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                   ),
                   borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
                   boxShadow: [
                     BoxShadow(
-                      color: colors.accentOrange.withOpacity(0.3),
+                      color: colors.accentOrange.withValues(alpha: 0.3),
                       spreadRadius: 0,
                       blurRadius: 12,
                       offset: const Offset(0, 4),
@@ -378,7 +374,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
           children: [
             Container(
               padding: EdgeInsets.all(24.r),
-              decoration: BoxDecoration(color: colors.accentOrange.withOpacity(0.1), shape: BoxShape.circle),
+              decoration: BoxDecoration(color: colors.accentOrange.withValues(alpha: 0.1), shape: BoxShape.circle),
               child: SvgPicture.asset(
                 Assets.icons.search,
                 package: 'grab_go_shared',
@@ -559,15 +555,15 @@ class _FavoritesPageState extends State<FavoritesPage> {
                                     padding: EdgeInsets.all(8.r),
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: Colors.red.withOpacity(0.1),
-                                      border: Border.all(color: Colors.red, width: 1),
+                                      color: colors.error.withOpacity(0.1),
+                                      border: Border.all(color: colors.error, width: 1),
                                     ),
                                     child: SvgPicture.asset(
                                       Assets.icons.heartSolid,
                                       package: 'grab_go_shared',
                                       height: 16.h,
                                       width: 16.w,
-                                      colorFilter: const ColorFilter.mode(Colors.red, BlendMode.srcIn),
+                                      colorFilter: ColorFilter.mode(colors.error, BlendMode.srcIn),
                                     ),
                                   ),
                                 );

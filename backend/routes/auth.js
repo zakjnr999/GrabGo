@@ -34,6 +34,7 @@ router.post("/", async (req, res) => {
       DateOfBirth,
       phone,
       profilePicture,
+      role,
     } = req.body;
 
     // Check if it's a Google sign-up
@@ -63,6 +64,7 @@ router.post("/", async (req, res) => {
         googleId,
         profilePicture: photoUrl,
         isEmailVerified: true,
+        role: role || 'customer',
       });
 
       const token = generateToken(user._id);
@@ -113,14 +115,46 @@ router.post("/", async (req, res) => {
     }
 
     // Create user
-    const user = await User.create({
+    console.log('📝 Registration request body:', {
+      username,
+      email,
+      DateOfBirth,
+      phone,
+      profilePicture,
+      role,
+    });
+    console.log('📝 Full req.body:', JSON.stringify(req.body, null, 2));
+    console.log('📝 Role from req.body:', req.body.role);
+    console.log('📝 Role type:', typeof req.body.role);
+    
+    // Validate role if provided
+    const validRoles = ['customer', 'restaurant', 'rider', 'admin'];
+    const receivedRole = req.body.role || role; // Try both ways
+    const userRole = receivedRole && validRoles.includes(String(receivedRole).toLowerCase()) 
+      ? String(receivedRole).toLowerCase() 
+      : 'customer';
+    
+    console.log('📝 Role validation:', { 
+      receivedRole: receivedRole, 
+      roleFromDestructure: role,
+      validRole: userRole 
+    });
+    
+    const userData = {
       username,
       email,
       password,
       DateOfBirth,
       phone,
       profilePicture,
-    });
+      role: userRole,
+    };
+    
+    console.log('📝 User data to create:', JSON.stringify(userData, null, 2));
+    
+    const user = await User.create(userData);
+    
+    console.log('✅ User created with role:', user.role);
 
     const token = generateToken(user._id);
 
@@ -180,6 +214,7 @@ router.post("/login", async (req, res) => {
           googleId,
           profilePicture: photoUrl,
           isEmailVerified: true,
+          role: req.body.role || 'customer',
         });
       } else {
         // Update Google ID if not set

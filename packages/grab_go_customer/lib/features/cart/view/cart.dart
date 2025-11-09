@@ -32,11 +32,105 @@ class Cart extends StatelessWidget {
           scrolledUnderElevation: 0,
           automaticallyImplyLeading: false,
           backgroundColor: colors.backgroundSecondary,
-          title: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8.w),
-            child: Row(
-              children: [
-                Container(
+          title: Row(
+            children: [
+              Container(
+                height: 44.h,
+                width: 44.w,
+                decoration: BoxDecoration(
+                  color: colors.backgroundPrimary,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
+                      spreadRadius: 0,
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => context.pop(),
+                    customBorder: const CircleBorder(),
+                    child: Padding(
+                      padding: EdgeInsets.all(10.r),
+                      child: SvgPicture.asset(
+                        Assets.icons.navArrowLeft,
+                        package: 'grab_go_shared',
+                        colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              const Spacer(),
+
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                decoration: BoxDecoration(
+                  color: colors.backgroundPrimary,
+                  borderRadius: BorderRadius.circular(20.r),
+                  border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
+                      spreadRadius: 0,
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(6.r),
+                      decoration: BoxDecoration(color: colors.accentOrange.withOpacity(0.1), shape: BoxShape.circle),
+                      child: SvgPicture.asset(
+                        Assets.icons.cart,
+                        package: 'grab_go_shared',
+                        height: 16.h,
+                        width: 16.w,
+                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                      ),
+                    ),
+                    SizedBox(width: 8.w),
+                    Text(
+                      AppStrings.cartMyCart,
+                      style: TextStyle(
+                        fontFamily: "Lato",
+                        package: 'grab_go_shared',
+                        color: colors.textPrimary,
+                        fontSize: 17.sp,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const Spacer(),
+
+              AppPopupMenu(
+                items: [
+                  AppPopupMenuItem(
+                    value: 'clear_all',
+                    label: AppStrings.cartClearCart,
+                    icon: Assets.icons.binMinusIn,
+                    isDanger: true,
+                  ),
+                ],
+                onSelected: (value) {
+                  switch (value) {
+                    case "clear_all":
+                      _showClearAllDialog(context, colors);
+                  }
+                },
+                child: Container(
                   height: 44.h,
                   width: 44.w,
                   decoration: BoxDecoration(
@@ -55,113 +149,16 @@ class Cart extends StatelessWidget {
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      onTap: () => context.pop(),
                       customBorder: const CircleBorder(),
                       child: Padding(
                         padding: EdgeInsets.all(10.r),
-                        child: SvgPicture.asset(
-                          Assets.icons.navArrowLeft,
-                          package: 'grab_go_shared',
-                          colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                        ),
+                        child: Icon(Icons.more_vert, size: 20, color: colors.textPrimary),
                       ),
                     ),
                   ),
                 ),
-
-                const Spacer(),
-
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                  decoration: BoxDecoration(
-                    color: colors.backgroundPrimary,
-                    borderRadius: BorderRadius.circular(20.r),
-                    border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                        spreadRadius: 0,
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(6.r),
-                        decoration: BoxDecoration(color: colors.accentOrange.withOpacity(0.1), shape: BoxShape.circle),
-                        child: SvgPicture.asset(
-                          Assets.icons.cart,
-                          package: 'grab_go_shared',
-                          height: 16.h,
-                          width: 16.w,
-                          colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                        ),
-                      ),
-                      SizedBox(width: 8.w),
-                      Text(
-                        AppStrings.cartMyCart,
-                        style: TextStyle(
-                          fontFamily: "Lato",
-                          package: 'grab_go_shared',
-                          color: colors.textPrimary,
-                          fontSize: 17.sp,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const Spacer(),
-
-                AppPopupMenu(
-                  items: [
-                    AppPopupMenuItem(
-                      value: 'clear_all',
-                      label: AppStrings.cartClearCart,
-                      icon: Assets.icons.binMinusIn,
-                      isDanger: true,
-                    ),
-                  ],
-                  onSelected: (value) {
-                    switch (value) {
-                      case "clear_all":
-                        _showClearAllDialog(context, colors);
-                    }
-                  },
-                  child: Container(
-                    height: 44.h,
-                    width: 44.w,
-                    decoration: BoxDecoration(
-                      color: colors.backgroundPrimary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                          spreadRadius: 0,
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        customBorder: const CircleBorder(),
-                        child: Padding(
-                          padding: EdgeInsets.all(10.r),
-                          child: Icon(Icons.more_vert, size: 20, color: colors.textPrimary),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
         backgroundColor: colors.backgroundSecondary,

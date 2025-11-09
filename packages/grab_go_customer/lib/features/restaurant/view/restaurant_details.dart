@@ -352,12 +352,9 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
                                                   return Container(
                                                     padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                                                     decoration: BoxDecoration(
-                                                      color: colors.backgroundPrimary,
+                                                      color: Colors.transparent,
                                                       borderRadius: BorderRadius.circular(8.r),
-                                                      border: Border.all(
-                                                        color: colors.inputBorder.withValues(alpha: 0.5),
-                                                        width: 1,
-                                                      ),
+                                                      border: Border.all(color: colors.inputBorder, width: 1),
                                                     ),
                                                     child: Text(
                                                       method,

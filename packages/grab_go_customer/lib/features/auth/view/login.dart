@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/shared/services/cache_service.dart';
+import 'package:grab_go_customer/shared/services/location_service.dart';
 import 'package:grab_go_customer/shared/services/storage_service.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -235,7 +236,8 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         }
 
         if (mounted) {
-          context.go("/homepage");
+          // Check if location permission screen should be shown (first time login)
+          await _navigateAfterLogin(context);
         }
       } else {
         String errorMessage = "Google Sign-In failed. Please try again.";
@@ -306,6 +308,32 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
     }
   }
 
+  /// Navigate after successful login - check location permission if first time
+  Future<void> _navigateAfterLogin(BuildContext context) async {
+    // Check if location permission screen has been shown before
+    final hasShownLocationScreen = StorageService.hasLocationPermissionScreenShown();
+
+    if (!hasShownLocationScreen) {
+      // First time login - check location permission
+      final hasPermission = await LocationService.hasPermission();
+      if (!hasPermission) {
+        // Show location permission screen
+        if (context.mounted) {
+          context.go("/locationPermission");
+        }
+        return;
+      } else {
+        // Permission already granted, mark screen as shown and go to homepage
+        await StorageService.setLocationPermissionScreenShown();
+      }
+    }
+
+    // Navigate to homepage
+    if (context.mounted) {
+      context.go("/homepage");
+    }
+  }
+
   Future<void> _handleLogin() async {
     if (!validateFields()) {
       return;
@@ -366,7 +394,6 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
           }
         }
 
-        // Save token if provided
         if (token != null && token.isNotEmpty) {
           await CacheService.saveAuthToken(token);
         }
@@ -398,7 +425,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         );
 
         if (mounted) {
-          context.go("/homepage");
+          await _navigateAfterLogin(context);
         }
       } else {
         String errorMessage = "Login failed. Please try again.";

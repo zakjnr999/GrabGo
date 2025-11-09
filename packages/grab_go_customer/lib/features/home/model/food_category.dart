@@ -137,10 +137,19 @@ class FoodItem {
 class FoodCategoryModel {
   final String id;
   final String name;
+  final String description;
   final String emoji;
+  final bool isActive;
   final List<FoodItem> items;
 
-  FoodCategoryModel({required this.id, required this.name, required this.emoji, required this.items});
+  FoodCategoryModel({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.emoji,
+    required this.isActive,
+    required this.items,
+  });
 
   factory FoodCategoryModel.fromJson(Map<String, dynamic> json) {
     var itemsList = (json['items'] as List<dynamic>?)?.map((item) => FoodItem.fromJson(item)).toList() ?? [];
@@ -148,7 +157,9 @@ class FoodCategoryModel {
     return FoodCategoryModel(
       id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
       name: json['categoryName'] ?? json['name'] ?? '',
+      description: json['description'] ?? '',
       emoji: json['emoji'] ?? '',
+      isActive: json['isActive'] ?? true,
       items: itemsList,
     );
   }
@@ -156,7 +167,9 @@ class FoodCategoryModel {
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
+    'description': description,
     'emoji': emoji,
+    'isActive': isActive,
     'items': items.map((e) => e.toJson()).toList(),
   };
 }

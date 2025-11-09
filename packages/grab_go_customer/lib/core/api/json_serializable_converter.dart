@@ -56,12 +56,10 @@ class JsonSerializableConverter extends JsonConverter {
     final isLoginEndpoint = urlPath.endsWith('/users/login') && (request.method == 'POST');
     final isRegisterEndpoint = urlPath.endsWith('/users') && (request.method == 'POST');
 
-    // Add API key for login endpoint
     if (isLoginEndpoint) {
       headers['API_KEY'] = AppConfig.apiKey;
     }
 
-    // Add auth token for protected endpoints (not login/register)
     if (!isLoginEndpoint && !isRegisterEndpoint) {
       final token = CacheService.getAuthToken();
       if (token != null && token.isNotEmpty) {

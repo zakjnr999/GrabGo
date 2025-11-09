@@ -384,8 +384,13 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
                                     padding: EdgeInsets.all(8.r),
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: isFavorite ? Colors.red : colors.backgroundSecondary,
-                                      border: Border.all(color: isFavorite ? Colors.red : colors.inputBorder, width: 1),
+                                      color: isFavorite
+                                          ? colors.error.withValues(alpha: 0.1)
+                                          : colors.backgroundSecondary,
+                                      border: Border.all(
+                                        color: isFavorite ? colors.error : colors.inputBorder,
+                                        width: 1,
+                                      ),
                                     ),
                                     child: SvgPicture.asset(
                                       isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
@@ -393,7 +398,7 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
                                       height: 16.h,
                                       width: 16.w,
                                       colorFilter: ColorFilter.mode(
-                                        isFavorite ? Colors.white : colors.textPrimary,
+                                        isFavorite ? colors.error : colors.textPrimary,
                                         BlendMode.srcIn,
                                       ),
                                     ),
@@ -667,7 +672,9 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 20.w),
                           child: Text(
-                            _selectedCategory?.name ?? "Menu Items",
+                            _selectedCategory?.description ?? "Menu Items",
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                             style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
                           ),
                         ),

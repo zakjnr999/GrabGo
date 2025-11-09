@@ -189,7 +189,7 @@ class AppTextInput extends StatelessWidget {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(borderRadius),
               borderSide: BorderSide(
-                color: errorText != null ? colors.error : borderActiveColor!,
+                color: errorText != null ? colors.error : (borderActiveColor ?? colors.accentOrange),
                 width: KBorderWidth.thick,
               ),
             ),

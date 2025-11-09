@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -33,94 +31,94 @@ class _CheckoutState extends State<Checkout> {
         scrolledUnderElevation: 0,
         automaticallyImplyLeading: false,
         backgroundColor: colors.backgroundSecondary,
-        title: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8.w),
-          child: Row(
-            children: [
-              Container(
-                height: 44.h,
-                width: 44.w,
-                decoration: BoxDecoration(
-                  color: colors.backgroundPrimary,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                      spreadRadius: 0,
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => context.pop(),
-                    customBorder: const CircleBorder(),
-                    child: Padding(
-                      padding: EdgeInsets.all(10.r),
-                      child: SvgPicture.asset(
-                        Assets.icons.navArrowLeft,
-                        package: 'grab_go_shared',
-                        colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                      ),
+        title: Row(
+          children: [
+            Container(
+              height: 44.h,
+              width: 44.w,
+              decoration: BoxDecoration(
+                color: colors.backgroundPrimary,
+                shape: BoxShape.circle,
+                border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
+                    spreadRadius: 0,
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => context.pop(),
+                  customBorder: const CircleBorder(),
+                  child: Padding(
+                    padding: EdgeInsets.all(10.r),
+                    child: SvgPicture.asset(
+                      Assets.icons.navArrowLeft,
+                      package: 'grab_go_shared',
+                      colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                     ),
                   ),
                 ),
               ),
+            ),
 
-              const Spacer(),
+            const Spacer(),
 
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                decoration: BoxDecoration(
-                  color: colors.backgroundPrimary,
-                  borderRadius: BorderRadius.circular(20.r),
-                  border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                      spreadRadius: 0,
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(6.r),
-                      decoration: BoxDecoration(color: colors.accentViolet.withOpacity(0.1), shape: BoxShape.circle),
-                      child: SvgPicture.asset(
-                        Assets.icons.creditCard,
-                        package: 'grab_go_shared',
-                        height: 16.h,
-                        width: 16.w,
-                        colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
-                      ),
-                    ),
-                    SizedBox(width: 8.w),
-                    Text(
-                      "Checkout",
-                      style: TextStyle(
-                        fontFamily: "Lato",
-                        package: 'grab_go_shared',
-                        color: colors.textPrimary,
-                        fontSize: 17.sp,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+              decoration: BoxDecoration(
+                color: colors.backgroundPrimary,
+                borderRadius: BorderRadius.circular(20.r),
+                border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
+                    spreadRadius: 0,
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(6.r),
+                    decoration: BoxDecoration(
+                      color: colors.accentViolet.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: SvgPicture.asset(
+                      Assets.icons.creditCard,
+                      package: 'grab_go_shared',
+                      height: 16.h,
+                      width: 16.w,
+                      colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  Text(
+                    "Checkout",
+                    style: TextStyle(
+                      fontFamily: "Lato",
+                      package: 'grab_go_shared',
+                      color: colors.textPrimary,
+                      fontSize: 17.sp,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
-              const Spacer(),
+            const Spacer(),
 
-              SizedBox(width: 44.w),
-            ],
-          ),
+            SizedBox(width: 44.w),
+          ],
         ),
       ),
       backgroundColor: colors.backgroundSecondary,
@@ -146,7 +144,7 @@ class _CheckoutState extends State<Checkout> {
                         Container(
                           padding: EdgeInsets.all(8.r),
                           decoration: BoxDecoration(
-                            color: colors.accentOrange.withOpacity(0.1),
+                            color: colors.accentOrange.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
                           child: SvgPicture.asset(
@@ -191,7 +189,7 @@ class _CheckoutState extends State<Checkout> {
                         Container(
                           padding: EdgeInsets.all(8.r),
                           decoration: BoxDecoration(
-                            color: colors.accentViolet.withOpacity(0.1),
+                            color: colors.accentViolet.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
                           child: SvgPicture.asset(
@@ -247,7 +245,7 @@ class _CheckoutState extends State<Checkout> {
             decoration: BoxDecoration(
               color: colors.backgroundPrimary,
               borderRadius: BorderRadius.only(topLeft: Radius.circular(24.r), topRight: Radius.circular(24.r)),
-              border: Border(top: BorderSide(color: colors.inputBorder.withOpacity(0.3), width: 0.5)),
+              border: Border(top: BorderSide(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5)),
               boxShadow: [
                 BoxShadow(
                   color: isDark ? Colors.black.withAlpha(40) : Colors.black.withAlpha(15),
@@ -267,7 +265,7 @@ class _CheckoutState extends State<Checkout> {
                     decoration: BoxDecoration(
                       color: colors.backgroundSecondary,
                       borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                      border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
+                      border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
                     ),
                     child: Column(
                       children: [
@@ -302,14 +300,14 @@ class _CheckoutState extends State<Checkout> {
                       padding: EdgeInsets.symmetric(vertical: 16.h),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [colors.accentOrange, colors.accentOrange.withOpacity(0.8)],
+                          colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                         ),
                         borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
                         boxShadow: [
                           BoxShadow(
-                            color: colors.accentOrange.withOpacity(0.3),
+                            color: colors.accentOrange.withValues(alpha: 0.3),
                             spreadRadius: 0,
                             blurRadius: 12,
                             offset: const Offset(0, 4),
@@ -393,7 +391,7 @@ class _CheckoutState extends State<Checkout> {
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
           border: Border.all(
-            color: isSelected ? colors.accentOrange : colors.inputBorder.withOpacity(0.3),
+            color: isSelected ? colors.accentOrange : colors.inputBorder.withValues(alpha: 0.3),
             width: isSelected ? 1.5 : 0.5,
           ),
           boxShadow: [
@@ -407,14 +405,13 @@ class _CheckoutState extends State<Checkout> {
         ),
         child: Row(
           children: [
-            // Custom Radio Button
             Container(
               height: 24.h,
               width: 24.w,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(color: isSelected ? colors.accentOrange : colors.inputBorder, width: 2),
-                color: isSelected ? colors.accentOrange.withOpacity(0.1) : Colors.transparent,
+                color: isSelected ? colors.accentOrange.withValues(alpha: 0.1) : Colors.transparent,
               ),
               child: isSelected
                   ? Center(
@@ -436,7 +433,7 @@ class _CheckoutState extends State<Checkout> {
                       Container(
                         padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                         decoration: BoxDecoration(
-                          color: isSelected ? colors.accentOrange.withOpacity(0.15) : colors.backgroundSecondary,
+                          color: isSelected ? colors.accentOrange.withValues(alpha: 0.15) : colors.backgroundSecondary,
                           borderRadius: BorderRadius.circular(6.r),
                         ),
                         child: Text(
@@ -531,7 +528,7 @@ class _CheckoutState extends State<Checkout> {
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
           border: Border.all(
-            color: isSelected ? colors.accentViolet : colors.inputBorder.withOpacity(0.3),
+            color: isSelected ? colors.accentViolet : colors.inputBorder.withValues(alpha: 0.3),
             width: isSelected ? 1.5 : 0.5,
           ),
           boxShadow: [
@@ -552,7 +549,7 @@ class _CheckoutState extends State<Checkout> {
               decoration: BoxDecoration(
                 color: colors.backgroundSecondary,
                 borderRadius: BorderRadius.circular(10.r),
-                border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
+                border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(10.r),
@@ -572,7 +569,7 @@ class _CheckoutState extends State<Checkout> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(color: isSelected ? colors.accentViolet : colors.inputBorder, width: 2),
-                color: isSelected ? colors.accentViolet.withOpacity(0.1) : Colors.transparent,
+                color: isSelected ? colors.accentViolet.withValues(alpha: 0.1) : Colors.transparent,
               ),
               child: isSelected
                   ? Center(

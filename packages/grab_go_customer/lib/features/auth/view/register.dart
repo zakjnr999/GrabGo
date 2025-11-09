@@ -9,6 +9,8 @@ import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_customer/shared/services/cache_service.dart';
+import 'package:grab_go_customer/shared/services/location_service.dart';
+import 'package:grab_go_customer/shared/services/storage_service.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -155,6 +157,32 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         birthdayError == null &&
         passwordError == null &&
         confirmPasswordError == null;
+  }
+
+  /// Navigate after successful registration - check location permission if first time
+  Future<void> _navigateAfterRegistration(BuildContext context) async {
+    // Check if location permission screen has been shown before
+    final hasShownLocationScreen = StorageService.hasLocationPermissionScreenShown();
+
+    if (!hasShownLocationScreen) {
+      // First time registration - check location permission
+      final hasPermission = await LocationService.hasPermission();
+      if (!hasPermission) {
+        // Show location permission screen
+        if (context.mounted) {
+          context.go("/locationPermission");
+        }
+        return;
+      } else {
+        // Permission already granted, mark screen as shown and go to homepage
+        await StorageService.setLocationPermissionScreenShown();
+      }
+    }
+
+    // Navigate to homepage
+    if (context.mounted) {
+      context.go("/homepage");
+    }
   }
 
   Future<void> handleRegister() async {
@@ -405,7 +433,8 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         }
 
         if (mounted) {
-          context.go("/homepage");
+          // Check if location permission screen should be shown (first time registration)
+          await _navigateAfterRegistration(context);
         }
       } else {
         String errorMessage = "Google Sign-Up failed. Please try again.";

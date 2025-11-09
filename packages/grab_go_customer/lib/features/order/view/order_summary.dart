@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
@@ -16,11 +14,7 @@ class OrderSummaryPage extends StatelessWidget {
   final String selectedAddress;
   final String selectedPaymentMethod;
 
-  const OrderSummaryPage({
-    super.key,
-    required this.selectedAddress,
-    required this.selectedPaymentMethod,
-  });
+  const OrderSummaryPage({super.key, required this.selectedAddress, required this.selectedPaymentMethod});
 
   @override
   Widget build(BuildContext context) {
@@ -35,213 +29,159 @@ class OrderSummaryPage extends StatelessWidget {
         scrolledUnderElevation: 0,
         automaticallyImplyLeading: false,
         backgroundColor: colors.backgroundSecondary,
-        title: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8.w),
-          child: Row(
-            children: [
-              // Back Button
-              Container(
-                height: 44.h,
-                width: 44.w,
-                decoration: BoxDecoration(
-                  color: colors.backgroundPrimary,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: colors.inputBorder.withOpacity(0.3),
-                    width: 0.5,
+        title: Row(
+          children: [
+            Container(
+              height: 44.h,
+              width: 44.w,
+              decoration: BoxDecoration(
+                color: colors.backgroundPrimary,
+                shape: BoxShape.circle,
+                border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
+                    spreadRadius: 0,
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: isDark
-                          ? Colors.black.withAlpha(20)
-                          : Colors.black.withAlpha(5),
-                      spreadRadius: 0,
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => context.pop(),
-                    customBorder: const CircleBorder(),
-                    child: Padding(
-                      padding: EdgeInsets.all(10.r),
-                      child: SvgPicture.asset(
-                        Assets.icons.navArrowLeft,
-                            package: 'grab_go_shared',
-                        colorFilter: ColorFilter.mode(
-                          colors.textPrimary,
-                          BlendMode.srcIn,
-                        ),
-                      ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => context.pop(),
+                  customBorder: const CircleBorder(),
+                  child: Padding(
+                    padding: EdgeInsets.all(10.r),
+                    child: SvgPicture.asset(
+                      Assets.icons.navArrowLeft,
+                      package: 'grab_go_shared',
+                      colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                     ),
                   ),
                 ),
               ),
-              
-              const Spacer(),
-              
-              // Title with Icon
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                decoration: BoxDecoration(
-                  color: colors.backgroundPrimary,
-                  borderRadius: BorderRadius.circular(20.r),
-                  border: Border.all(
-                    color: colors.inputBorder.withOpacity(0.3),
-                    width: 0.5,
+            ),
+
+            const Spacer(),
+
+            // Title with Icon
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+              decoration: BoxDecoration(
+                color: colors.backgroundPrimary,
+                borderRadius: BorderRadius.circular(20.r),
+                border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
+                    spreadRadius: 0,
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: isDark
-                          ? Colors.black.withAlpha(20)
-                          : Colors.black.withAlpha(5),
-                      spreadRadius: 0,
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(6.r),
-                      decoration: BoxDecoration(
-                        color: colors.accentGreen.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: SvgPicture.asset(
-                        Assets.icons.check,
-                            package: 'grab_go_shared',
-                        height: 16.h,
-                        width: 16.w,
-                        colorFilter: ColorFilter.mode(
-                          colors.accentGreen,
-                          BlendMode.srcIn,
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 8.w),
-                    Text(
-                      "Order Summary",
-                      style: TextStyle(
-                        color: colors.textPrimary,
-                        fontSize: 17.sp,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
+                ],
               ),
-              
-              const Spacer(),
-              
-              // Discard Button
-              Container(
-                height: 44.h,
-                width: 44.w,
-                decoration: BoxDecoration(
-                  color: colors.backgroundPrimary,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: colors.inputBorder.withOpacity(0.3),
-                    width: 0.5,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(6.r),
+                    decoration: BoxDecoration(color: colors.accentGreen.withValues(alpha: 0.1), shape: BoxShape.circle),
+                    child: SvgPicture.asset(
+                      Assets.icons.check,
+                      package: 'grab_go_shared',
+                      height: 16.h,
+                      width: 16.w,
+                      colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                    ),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: isDark
-                          ? Colors.black.withAlpha(20)
-                          : Colors.black.withAlpha(5),
-                      spreadRadius: 0,
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                  AwesomeDialog(
-                    context: context,
-                    dialogType: DialogType.info,
-                    animType: AnimType.scale,
-                    dialogBorderRadius: BorderRadius.circular(
-                      KBorderSize.border,
-                    ),
-                    padding: EdgeInsets.all(KSpacing.md.r),
-                    btnCancelColor: colors.error,
-                    btnOkText: "Yes",
-                    dismissOnBackKeyPress: false,
-                    dismissOnTouchOutside: false,
-                    customHeader: Container(
-                      height: 70.h,
-                      width: 70.w,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: colors.error,
-                      ),
-                      child: SvgPicture.asset(
-                        Assets.icons.infoCircle,
-                            package: 'grab_go_shared',
-                        colorFilter: ColorFilter.mode(
-                          colors.backgroundPrimary,
-                          BlendMode.srcIn,
+                  SizedBox(width: 8.w),
+                  Text(
+                    "Order Summary",
+                    style: TextStyle(color: colors.textPrimary, fontSize: 17.sp, fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ),
+            ),
+
+            const Spacer(),
+
+            // Discard Button
+            Container(
+              height: 44.h,
+              width: 44.w,
+              decoration: BoxDecoration(
+                color: colors.backgroundPrimary,
+                shape: BoxShape.circle,
+                border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
+                    spreadRadius: 0,
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    AwesomeDialog(
+                      context: context,
+                      dialogType: DialogType.info,
+                      animType: AnimType.scale,
+                      dialogBorderRadius: BorderRadius.circular(KBorderSize.border),
+                      padding: EdgeInsets.all(KSpacing.md.r),
+                      btnCancelColor: colors.error,
+                      btnOkText: "Yes",
+                      dismissOnBackKeyPress: false,
+                      dismissOnTouchOutside: false,
+                      customHeader: Container(
+                        height: 70.h,
+                        width: 70.w,
+                        decoration: BoxDecoration(shape: BoxShape.circle, color: colors.error),
+                        child: SvgPicture.asset(
+                          Assets.icons.infoCircle,
+                          package: 'grab_go_shared',
+                          colorFilter: ColorFilter.mode(colors.backgroundPrimary, BlendMode.srcIn),
                         ),
                       ),
-                    ),
-                    body: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "Discard Order?",
-                          style: TextStyle(
-                            color: colors.textPrimary,
-                            fontSize: 20.sp,
-                            fontWeight: FontWeight.bold,
+                      body: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Discard Order?",
+                            style: TextStyle(color: colors.textPrimary, fontSize: 20.sp, fontWeight: FontWeight.bold),
                           ),
-                        ),
-                        SizedBox(height: KSpacing.md.h),
-                        Text(
-                          "Are you sure you would like to discard this order?",
-                          style: TextStyle(
-                            color: colors.textPrimary,
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w400,
+                          SizedBox(height: KSpacing.md.h),
+                          Text(
+                            "Are you sure you would like to discard this order?",
+                            style: TextStyle(color: colors.textPrimary, fontSize: 12.sp, fontWeight: FontWeight.w400),
                           ),
-                        ),
-                      ],
-                    ),
-                    btnCancelOnPress: () {},
-                    btnOkOnPress: () {
-                      Provider.of<CartProvider>(
-                        context,
-                        listen: false,
-                      ).clearCart();
-                      context.go("/homepage");
-                    },
-                  ).show();
-                },
-                    customBorder: const CircleBorder(),
-                    child: Padding(
-                      padding: EdgeInsets.all(10.r),
-                      child: SvgPicture.asset(
-                        Assets.icons.binMinusIn,
-                            package: 'grab_go_shared',
-                        colorFilter: ColorFilter.mode(
-                          colors.error,
-                          BlendMode.srcIn,
-                        ),
+                        ],
                       ),
+                      btnCancelOnPress: () {},
+                      btnOkOnPress: () {
+                        Provider.of<CartProvider>(context, listen: false).clearCart();
+                        context.go("/homepage");
+                      },
+                    ).show();
+                  },
+                  customBorder: const CircleBorder(),
+                  child: Padding(
+                    padding: EdgeInsets.all(10.r),
+                    child: SvgPicture.asset(
+                      Assets.icons.binMinusIn,
+                      package: 'grab_go_shared',
+                      colorFilter: ColorFilter.mode(colors.error, BlendMode.srcIn),
                     ),
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
       backgroundColor: colors.backgroundSecondary,
@@ -256,15 +196,10 @@ class OrderSummaryPage extends StatelessWidget {
               decoration: BoxDecoration(
                 color: colors.backgroundPrimary,
                 borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                border: Border.all(
-                  color: colors.inputBorder.withOpacity(0.3),
-                  width: 0.5,
-                ),
+                border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
                 boxShadow: [
                   BoxShadow(
-                    color: isDark
-                        ? Colors.black.withAlpha(30)
-                        : Colors.black.withAlpha(8),
+                    color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
                     spreadRadius: 0,
                     blurRadius: 12,
                     offset: const Offset(0, 2),
@@ -279,28 +214,21 @@ class OrderSummaryPage extends StatelessWidget {
                       Container(
                         padding: EdgeInsets.all(8.r),
                         decoration: BoxDecoration(
-                          color: colors.accentOrange.withOpacity(0.1),
+                          color: colors.accentOrange.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: SvgPicture.asset(
                           Assets.icons.cart,
-                            package: 'grab_go_shared',
+                          package: 'grab_go_shared',
                           height: 16.h,
                           width: 16.w,
-                          colorFilter: ColorFilter.mode(
-                            colors.accentOrange,
-                            BlendMode.srcIn,
-                          ),
+                          colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                         ),
                       ),
                       SizedBox(width: 10.w),
                       Text(
                         "Order Items",
-                        style: TextStyle(
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.w800,
-                          color: colors.textPrimary,
-                        ),
+                        style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
                       ),
                     ],
                   ),
@@ -315,7 +243,7 @@ class OrderSummaryPage extends StatelessWidget {
                         dashLength: 4,
                         dashGapLength: 3,
                         lineThickness: 1,
-                        dashColor: colors.inputBorder.withOpacity(0.5),
+                        dashColor: colors.inputBorder.withValues(alpha: 0.5),
                       ),
                     ),
                     itemBuilder: (context, index) {
@@ -338,12 +266,9 @@ class OrderSummaryPage extends StatelessWidget {
                                 ),
                                 SizedBox(height: 4.h),
                                 Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 8.w,
-                                    vertical: 3.h,
-                                  ),
+                                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                                   decoration: BoxDecoration(
-                                    color: colors.accentViolet.withOpacity(0.1),
+                                    color: colors.accentViolet.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(6.r),
                                   ),
                                   child: Text(
@@ -360,12 +285,9 @@ class OrderSummaryPage extends StatelessWidget {
                           ),
                           SizedBox(width: 10.w),
                           Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 10.w,
-                              vertical: 6.h,
-                            ),
+                            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                             decoration: BoxDecoration(
-                              color: colors.accentOrange.withOpacity(0.15),
+                              color: colors.accentOrange.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(8.r),
                             ),
                             child: Text(
@@ -393,15 +315,10 @@ class OrderSummaryPage extends StatelessWidget {
               decoration: BoxDecoration(
                 color: colors.backgroundPrimary,
                 borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                border: Border.all(
-                  color: colors.inputBorder.withOpacity(0.3),
-                  width: 0.5,
-                ),
+                border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
                 boxShadow: [
                   BoxShadow(
-                    color: isDark
-                        ? Colors.black.withAlpha(30)
-                        : Colors.black.withAlpha(8),
+                    color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
                     spreadRadius: 0,
                     blurRadius: 12,
                     offset: const Offset(0, 2),
@@ -416,28 +333,21 @@ class OrderSummaryPage extends StatelessWidget {
                       Container(
                         padding: EdgeInsets.all(8.r),
                         decoration: BoxDecoration(
-                          color: colors.accentOrange.withOpacity(0.1),
+                          color: colors.accentOrange.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: SvgPicture.asset(
                           Assets.icons.mapPin,
-                            package: 'grab_go_shared',
+                          package: 'grab_go_shared',
                           height: 16.h,
                           width: 16.w,
-                          colorFilter: ColorFilter.mode(
-                            colors.accentOrange,
-                            BlendMode.srcIn,
-                          ),
+                          colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                         ),
                       ),
                       SizedBox(width: 10.w),
                       Text(
                         "Delivery Address",
-                        style: TextStyle(
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.w800,
-                          color: colors.textPrimary,
-                        ),
+                        style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
                       ),
                     ],
                   ),
@@ -448,18 +358,11 @@ class OrderSummaryPage extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: colors.backgroundSecondary,
                       borderRadius: BorderRadius.circular(10.r),
-                      border: Border.all(
-                        color: colors.inputBorder.withOpacity(0.3),
-                        width: 0.5,
-                      ),
+                      border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
                     ),
                     child: Text(
                       selectedAddress,
-                      style: TextStyle(
-                        fontSize: 13.sp,
-                        color: colors.textPrimary,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: TextStyle(fontSize: 13.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ],
@@ -474,15 +377,10 @@ class OrderSummaryPage extends StatelessWidget {
               decoration: BoxDecoration(
                 color: colors.backgroundPrimary,
                 borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                border: Border.all(
-                  color: colors.inputBorder.withOpacity(0.3),
-                  width: 0.5,
-                ),
+                border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
                 boxShadow: [
                   BoxShadow(
-                    color: isDark
-                        ? Colors.black.withAlpha(30)
-                        : Colors.black.withAlpha(8),
+                    color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
                     spreadRadius: 0,
                     blurRadius: 12,
                     offset: const Offset(0, 2),
@@ -497,28 +395,21 @@ class OrderSummaryPage extends StatelessWidget {
                       Container(
                         padding: EdgeInsets.all(8.r),
                         decoration: BoxDecoration(
-                          color: colors.accentViolet.withOpacity(0.1),
+                          color: colors.accentViolet.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: SvgPicture.asset(
                           Assets.icons.creditCard,
-                            package: 'grab_go_shared',
+                          package: 'grab_go_shared',
                           height: 16.h,
                           width: 16.w,
-                          colorFilter: ColorFilter.mode(
-                            colors.accentViolet,
-                            BlendMode.srcIn,
-                          ),
+                          colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
                         ),
                       ),
                       SizedBox(width: 10.w),
                       Text(
                         "Payment Method",
-                        style: TextStyle(
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.w800,
-                          color: colors.textPrimary,
-                        ),
+                        style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
                       ),
                     ],
                   ),
@@ -529,18 +420,11 @@ class OrderSummaryPage extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: colors.backgroundSecondary,
                       borderRadius: BorderRadius.circular(10.r),
-                      border: Border.all(
-                        color: colors.inputBorder.withOpacity(0.3),
-                        width: 0.5,
-                      ),
+                      border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
                     ),
                     child: Text(
                       selectedPaymentMethod,
-                      style: TextStyle(
-                        fontSize: 13.sp,
-                        color: colors.textPrimary,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: TextStyle(fontSize: 13.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ],
@@ -562,21 +446,11 @@ class OrderSummaryPage extends StatelessWidget {
             padding: EdgeInsets.all(20.r),
             decoration: BoxDecoration(
               color: colors.backgroundPrimary,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(24.r),
-                topRight: Radius.circular(24.r),
-              ),
-              border: Border(
-                top: BorderSide(
-                  color: colors.inputBorder.withOpacity(0.3),
-                  width: 0.5,
-                ),
-              ),
+              borderRadius: BorderRadius.only(topLeft: Radius.circular(24.r), topRight: Radius.circular(24.r)),
+              border: Border(top: BorderSide(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5)),
               boxShadow: [
                 BoxShadow(
-                  color: isDark
-                      ? Colors.black.withAlpha(40)
-                      : Colors.black.withAlpha(15),
+                  color: isDark ? Colors.black.withAlpha(40) : Colors.black.withAlpha(15),
                   spreadRadius: 0,
                   blurRadius: 20,
                   offset: const Offset(0, -4),
@@ -593,10 +467,7 @@ class OrderSummaryPage extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: colors.backgroundSecondary,
                       borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                      border: Border.all(
-                        color: colors.inputBorder.withOpacity(0.3),
-                        width: 0.5,
-                      ),
+                      border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
                     ),
                     child: Column(
                       children: [
@@ -617,7 +488,7 @@ class OrderSummaryPage extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: 16.h),
-                  
+
                   // Confirm & Pay Button
                   GestureDetector(
                     onTap: () {
@@ -636,17 +507,14 @@ class OrderSummaryPage extends StatelessWidget {
                       padding: EdgeInsets.symmetric(vertical: 16.h),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [
-                            colors.accentGreen,
-                            colors.accentGreen.withOpacity(0.8),
-                          ],
+                          colors: [colors.accentGreen, colors.accentGreen.withValues(alpha: 0.8)],
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                         ),
                         borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
                         boxShadow: [
                           BoxShadow(
-                            color: colors.accentGreen.withOpacity(0.3),
+                            color: colors.accentGreen.withValues(alpha: 0.3),
                             spreadRadius: 0,
                             blurRadius: 12,
                             offset: const Offset(0, 4),
@@ -661,19 +529,12 @@ class OrderSummaryPage extends StatelessWidget {
                             package: 'grab_go_shared',
                             height: 20.h,
                             width: 20.w,
-                            colorFilter: const ColorFilter.mode(
-                              Colors.white,
-                              BlendMode.srcIn,
-                            ),
+                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                           ),
                           SizedBox(width: 10.w),
                           Text(
                             "Confirm & Pay GHS ${total.toStringAsFixed(2)}",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 15.sp,
-                              fontWeight: FontWeight.w800,
-                            ),
+                            style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w800),
                           ),
                         ],
                       ),
@@ -712,7 +573,3 @@ class OrderSummaryPage extends StatelessWidget {
     );
   }
 }
-
-
-
-

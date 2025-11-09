@@ -525,6 +525,26 @@ class CacheService {
     }
   }
 
+  /// Save location permission screen shown status
+  static Future<bool> setLocationPermissionScreenShown() async {
+    try {
+      return await _instance.setBool('location_permission_screen_shown', true);
+    } catch (e) {
+      debugPrint('Error setting location permission screen shown: $e');
+      return false;
+    }
+  }
+
+  /// Check if location permission screen has been shown
+  static bool hasLocationPermissionScreenShown() {
+    try {
+      return _instance.getBool('location_permission_screen_shown') ?? false;
+    } catch (e) {
+      debugPrint('Error checking location permission screen shown: $e');
+      return false;
+    }
+  }
+
   /// Save last app version
   static Future<bool> saveLastAppVersion(String version) async {
     try {

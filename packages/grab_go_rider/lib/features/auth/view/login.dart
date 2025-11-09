@@ -184,7 +184,6 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         final token = response.body!.token;
         User? user = response.body!.userData;
 
-        // Save token if provided
         if (token != null && token.isNotEmpty) {
           await CacheService.saveAuthToken(token);
           debugPrint('✅ Auth token saved after Google sign-in');
@@ -319,7 +318,6 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         final token = response.body!.token;
         User? user = response.body!.userData;
 
-        // Save token if provided
         if (token != null && token.isNotEmpty) {
           await CacheService.saveAuthToken(token);
           debugPrint('✅ Auth token saved after login');

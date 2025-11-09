@@ -14,6 +14,7 @@ RegisterRequest _$RegisterRequestFromJson(Map<String, dynamic> json) =>
       dateOfBirth: json['DateOfBirth'] as String?,
       phone: (json['phone'] as num?)?.toInt(),
       profilePicture: json['profilePicture'] as String?,
+      role: json['role'] as String?,
     );
 
 Map<String, dynamic> _$RegisterRequestToJson(RegisterRequest instance) =>
@@ -24,6 +25,7 @@ Map<String, dynamic> _$RegisterRequestToJson(RegisterRequest instance) =>
       'DateOfBirth': instance.dateOfBirth,
       'phone': instance.phone,
       'profilePicture': instance.profilePicture,
+      'role': instance.role,
     };
 
 UserPermissions _$UserPermissionsFromJson(Map<String, dynamic> json) =>
@@ -102,6 +104,7 @@ GoogleSignInRequest _$GoogleSignInRequestFromJson(Map<String, dynamic> json) =>
       displayName: json['displayName'] as String,
       photoUrl: json['photoUrl'] as String?,
       idToken: json['idToken'] as String?,
+      role: json['role'] as String?,
     );
 
 Map<String, dynamic> _$GoogleSignInRequestToJson(
@@ -112,6 +115,7 @@ Map<String, dynamic> _$GoogleSignInRequestToJson(
   'displayName': instance.displayName,
   'photoUrl': instance.photoUrl,
   'idToken': instance.idToken,
+  'role': instance.role,
 };
 
 LoginRequest _$LoginRequestFromJson(Map<String, dynamic> json) => LoginRequest(

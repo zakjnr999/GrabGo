@@ -53,4 +53,12 @@ class StorageService {
   static Future<void> setFirstLaunchComplete() async {
     await CacheService.setFirstLaunchComplete();
   }
+
+  static Future<void> setLocationPermissionScreenShown() async {
+    await CacheService.setLocationPermissionScreenShown();
+  }
+
+  static bool hasLocationPermissionScreenShown() {
+    return CacheService.hasLocationPermissionScreenShown();
+  }
 }

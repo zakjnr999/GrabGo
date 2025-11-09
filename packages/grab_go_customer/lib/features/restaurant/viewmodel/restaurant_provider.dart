@@ -230,10 +230,13 @@ class RestaurantProvider extends ChangeNotifier {
       }
 
       // Filter to only approved restaurants from cache (extra safety)
+      // If status is missing, assume approved (for backward compatibility with old cache)
       final approvedCached = cachedRestaurants.where((json) {
         try {
           final status = json['status']?.toString().toLowerCase() ?? '';
-          return status == 'approved';
+          // If status is empty (missing), assume approved (backward compatibility)
+          // Otherwise, only include if explicitly approved
+          return status.isEmpty || status == 'approved';
         } catch (e) {
           return false;
         }
@@ -302,6 +305,7 @@ class RestaurantProvider extends ChangeNotifier {
                 'isOpen': restaurant.isOpen,
                 'paymentMethods': restaurant.paymentMethods,
                 'socials': {'facebook': restaurant.socials.facebook, 'instagram': restaurant.socials.instagram},
+                'status': 'approved', // Include status field for cache filtering
                 'foods': restaurant.foods
                     .map(
                       (food) => {

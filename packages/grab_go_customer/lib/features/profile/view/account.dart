@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -123,119 +121,116 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
             elevation: 0,
             scrolledUnderElevation: 0,
             backgroundColor: colors.backgroundSecondary,
-            title: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8.w),
-              child: Row(
-                children: [
-                  SizedBox(width: 44.w),
-                  const Spacer(),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                    decoration: BoxDecoration(
-                      color: colors.backgroundPrimary,
-                      borderRadius: BorderRadius.circular(20.r),
-                      border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                          spreadRadius: 0,
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(6.r),
-                          decoration: BoxDecoration(
-                            color: colors.accentViolet.withOpacity(0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: SvgPicture.asset(
-                            Assets.icons.user,
-                            package: 'grab_go_shared',
-                            height: 16.h,
-                            width: 16.w,
-                            colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
-                          ),
-                        ),
-                        SizedBox(width: 8.w),
-                        Text(
-                          "My Account",
-                          style: TextStyle(
-                            fontFamily: "Lato",
-                            package: 'grab_go_shared',
-                            color: colors.textPrimary,
-                            fontSize: 17.sp,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
+            title: Row(
+              children: [
+                SizedBox(width: 44.w),
+                const Spacer(),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                  decoration: BoxDecoration(
+                    color: colors.backgroundPrimary,
+                    borderRadius: BorderRadius.circular(20.r),
+                    border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
+                        spreadRadius: 0,
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-
-                  const Spacer(),
-
-                  Container(
-                    height: 44.h,
-                    width: 44.w,
-                    decoration: BoxDecoration(
-                      color: colors.backgroundPrimary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                          spreadRadius: 0,
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(6.r),
+                        decoration: BoxDecoration(
+                          color: colors.accentViolet.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
                         ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          _animationController.forward().then((_) {
-                            _animationController.reset();
-                          });
-                          themeProvider.toggleTheme();
-                        },
-                        customBorder: const CircleBorder(),
-                        child: Padding(
-                          padding: EdgeInsets.all(10.r),
-                          child: AnimatedBuilder(
-                            animation: _rotationAnimation,
-                            builder: (context, child) {
-                              return Transform.rotate(
-                                angle: _rotationAnimation.value * 2 * 3.14159,
-                                child: AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 300),
-                                  transitionBuilder: (child, animation) {
-                                    return ScaleTransition(scale: animation, child: child);
-                                  },
-                                  child: SvgPicture.asset(
-                                    themeProvider.themeMode == ThemeMode.light
-                                        ? Assets.icons.sunLight
-                                        : themeProvider.themeMode == ThemeMode.dark
-                                        ? Assets.icons.halfMoon
-                                        : Assets.icons.sunMoon,
-                                    key: ValueKey(themeProvider.themeMode),
-                                    package: "grab_go_shared",
-                                    colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                                  ),
+                        child: SvgPicture.asset(
+                          Assets.icons.user,
+                          package: 'grab_go_shared',
+                          height: 16.h,
+                          width: 16.w,
+                          colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
+                      Text(
+                        "My Account",
+                        style: TextStyle(
+                          fontFamily: "Lato",
+                          package: 'grab_go_shared',
+                          color: colors.textPrimary,
+                          fontSize: 17.sp,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const Spacer(),
+
+                Container(
+                  height: 44.h,
+                  width: 44.w,
+                  decoration: BoxDecoration(
+                    color: colors.backgroundPrimary,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
+                        spreadRadius: 0,
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        _animationController.forward().then((_) {
+                          _animationController.reset();
+                        });
+                        themeProvider.toggleTheme();
+                      },
+                      customBorder: const CircleBorder(),
+                      child: Padding(
+                        padding: EdgeInsets.all(10.r),
+                        child: AnimatedBuilder(
+                          animation: _rotationAnimation,
+                          builder: (context, child) {
+                            return Transform.rotate(
+                              angle: _rotationAnimation.value * 2 * 3.14159,
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 300),
+                                transitionBuilder: (child, animation) {
+                                  return ScaleTransition(scale: animation, child: child);
+                                },
+                                child: SvgPicture.asset(
+                                  themeProvider.themeMode == ThemeMode.light
+                                      ? Assets.icons.sunLight
+                                      : themeProvider.themeMode == ThemeMode.dark
+                                      ? Assets.icons.halfMoon
+                                      : Assets.icons.sunMoon,
+                                  key: ValueKey(themeProvider.themeMode),
+                                  package: "grab_go_shared",
+                                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                                 ),
-                              );
-                            },
-                          ),
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
           body: SafeArea(
@@ -250,14 +245,14 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                     padding: EdgeInsets.all(20.r),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [colors.accentViolet, colors.accentViolet.withOpacity(0.8)],
+                        colors: [colors.accentViolet, colors.accentViolet.withValues(alpha: 0.8)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
                       boxShadow: [
                         BoxShadow(
-                          color: colors.accentViolet.withOpacity(0.3),
+                          color: colors.accentViolet.withValues(alpha: 0.3),
                           spreadRadius: 0,
                           blurRadius: 20,
                           offset: const Offset(0, 8),
@@ -268,7 +263,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                       children: [
                         Container(
                           padding: EdgeInsets.all(4.r),
-                          decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(0.2)),
+                          decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.2)),
                           child: ClipOval(
                             child: GestureDetector(
                               onTap: () => context.push("/viewProfile", extra: _user),
@@ -312,7 +307,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                   Text(
                                     _isLoading ? "..." : (_user?.email ?? "Please log in to continue"),
                                     style: TextStyle(
-                                      color: Colors.white.withOpacity(0.9),
+                                      color: Colors.white.withValues(alpha: 0.9),
                                       fontSize: 13.sp,
                                       fontWeight: FontWeight.w500,
                                     ),
@@ -343,7 +338,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
 
                         Container(
                           padding: EdgeInsets.all(10.r),
-                          decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
@@ -370,7 +365,10 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                     children: [
                       Container(
                         padding: EdgeInsets.all(6.r),
-                        decoration: BoxDecoration(color: colors.accentOrange.withOpacity(0.1), shape: BoxShape.circle),
+                        decoration: BoxDecoration(
+                          color: colors.accentOrange.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
                         child: SvgPicture.asset(
                           Assets.icons.squareMenu,
                           package: 'grab_go_shared',
@@ -393,7 +391,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                     decoration: BoxDecoration(
                       color: colors.backgroundPrimary,
                       borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                      border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
+                      border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
                       boxShadow: [
                         BoxShadow(
                           color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
@@ -427,7 +425,10 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                     children: [
                       Container(
                         padding: EdgeInsets.all(6.r),
-                        decoration: BoxDecoration(color: colors.accentViolet.withOpacity(0.1), shape: BoxShape.circle),
+                        decoration: BoxDecoration(
+                          color: colors.accentViolet.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
                         child: SvgPicture.asset(
                           Assets.icons.infoCircle,
                           package: 'grab_go_shared',
@@ -450,7 +451,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                     decoration: BoxDecoration(
                       color: colors.backgroundPrimary,
                       borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                      border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
+                      border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
                       boxShadow: [
                         BoxShadow(
                           color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
@@ -497,8 +498,8 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        splashColor: colors.accentOrange.withOpacity(0.1),
-        highlightColor: colors.accentOrange.withOpacity(0.05),
+        splashColor: colors.accentOrange.withValues(alpha: 0.1),
+        highlightColor: colors.accentOrange.withValues(alpha: 0.05),
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
           child: Row(
@@ -540,8 +541,8 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
             onTap: () {
               context.push("/favorites");
             },
-            splashColor: colors.accentOrange.withOpacity(0.1),
-            highlightColor: colors.accentOrange.withOpacity(0.05),
+            splashColor: colors.accentOrange.withValues(alpha: 0.1),
+            highlightColor: colors.accentOrange.withValues(alpha: 0.05),
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
               child: Row(

@@ -86,9 +86,21 @@ class JsonSerializableConverter extends JsonConverter {
 
   /// Override this method in subclasses to handle specific request types
   dynamic _convertBody(dynamic body) {
-    if (body is RegisterRequest) return body.toJson();
+    if (body is RegisterRequest) {
+      final json = body.toJson();
+      debugPrint('🔄 Converting RegisterRequest to JSON:');
+      debugPrint('   Role: ${body.role}');
+      debugPrint('   JSON: $json');
+      return json;
+    }
     if (body is LoginRequest) return body.toJson();
-    if (body is GoogleSignInRequest) return body.toJson();
+    if (body is GoogleSignInRequest) {
+      final json = body.toJson();
+      debugPrint('🔄 Converting GoogleSignInRequest to JSON:');
+      debugPrint('   Role: ${body.role}');
+      debugPrint('   JSON: $json');
+      return json;
+    }
     if (body is PhoneVerificationRequest) return body.toJson();
     return body;
   }

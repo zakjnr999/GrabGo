@@ -202,7 +202,7 @@ class _HomeBannerState extends State<HomeBanner> {
                           child: BackdropFilter(
                             filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
                             child: Container(
-                              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                               decoration: BoxDecoration(
                                 color: Colors.black.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
@@ -265,7 +265,7 @@ class _HomeBannerState extends State<HomeBanner> {
                     child: BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
                       child: Container(
-                        padding: EdgeInsets.all(12.r),
+                        padding: EdgeInsets.all(10.r),
                         decoration: BoxDecoration(
                           color: Colors.black.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
@@ -319,53 +319,83 @@ class _HomeBannerState extends State<HomeBanner> {
                             Consumer<CartProvider>(
                               builder: (context, cartProvider, child) {
                                 final bool isInCart = cartProvider.cartItems.containsKey(bannerFoods[currentIndex]);
-                                return Container(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: isInCart
-                                          ? [colors.error.withValues(alpha: 0.8), colors.error]
-                                          : [colors.accentOrange, colors.accentOrange.withOpacity(0.8)],
+                                return GestureDetector(
+                                  onTap: () {
+                                    if (isInCart) {
+                                      cartProvider.removeItemCompletely(bannerFoods[currentIndex]);
+                                    } else {
+                                      cartProvider.addToCart(bannerFoods[currentIndex]);
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: EdgeInsets.all(8.r),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
+                                      border: Border.all(
+                                        color: isInCart ? colors.accentOrange : colors.inputBorder,
+                                        width: 1,
+                                      ),
                                     ),
-                                    borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                                  ),
-                                  child: Material(
-                                    color: Colors.transparent,
-                                    child: InkWell(
-                                      onTap: () {
-                                        if (isInCart) {
-                                          cartProvider.removeFromCart(bannerFoods[currentIndex]);
-                                        } else {
-                                          cartProvider.addToCart(bannerFoods[currentIndex]);
-                                        }
-                                      },
-                                      borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                                      child: Padding(
-                                        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            SvgPicture.asset(
-                                              Assets.icons.cart,
-                                              package: 'grab_go_shared',
-                                              height: 16.h,
-                                              width: 16.w,
-                                              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                                            ),
-                                            SizedBox(width: 6.w),
-                                            Text(
-                                              isInCart ? "Remove" : "Add",
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 13.sp,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                    child: SvgPicture.asset(
+                                      Assets.icons.cart,
+                                      package: 'grab_go_shared',
+                                      height: 16.h,
+                                      width: 16.w,
+                                      colorFilter: ColorFilter.mode(
+                                        isInCart ? Colors.white : colors.textPrimary,
+                                        BlendMode.srcIn,
                                       ),
                                     ),
                                   ),
                                 );
+                                // return Container(
+                                //   decoration: BoxDecoration(
+                                //     gradient: LinearGradient(
+                                //       colors: isInCart
+                                //           ? [colors.error.withValues(alpha: 0.8), colors.error]
+                                //           : [colors.accentOrange, colors.accentOrange.withOpacity(0.8)],
+                                //     ),
+                                //     borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                                //   ),
+                                //   child: Material(
+                                //     color: Colors.transparent,
+                                //     child: InkWell(
+                                //       onTap: () {
+                                //         if (isInCart) {
+                                //           cartProvider.removeFromCart(bannerFoods[currentIndex]);
+                                //         } else {
+                                //           cartProvider.addToCart(bannerFoods[currentIndex]);
+                                //         }
+                                //       },
+                                //       borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                                //       child: Padding(
+                                //         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+                                //         child: Row(
+                                //           mainAxisSize: MainAxisSize.min,
+                                //           children: [
+                                //             SvgPicture.asset(
+                                //               Assets.icons.cart,
+                                //               package: 'grab_go_shared',
+                                //               height: 16.h,
+                                //               width: 16.w,
+                                //               colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                //             ),
+                                //             SizedBox(width: 6.w),
+                                //             Text(
+                                //               isInCart ? "Remove" : "Add",
+                                //               style: TextStyle(
+                                //                 color: Colors.white,
+                                //                 fontSize: 13.sp,
+                                //                 fontWeight: FontWeight.w700,
+                                //               ),
+                                //             ),
+                                //           ],
+                                //         ),
+                                //       ),
+                                //     ),
+                                //   ),
+                                // );
                               },
                             ),
                           ],

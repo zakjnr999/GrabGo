@@ -154,4 +154,10 @@ class AppStrings {
   static const String riderRegisterUsernameLabel = "Full Name";
   static const String riderRegisterPasswordHint = "Minimum 8 characters";
   static const String riderRegisterPasswordLabel = "Set Password";
+
+  static const String locationPermissionTitle = "Enable Location to Discover Nearby Restaurants";
+  static const String locationPermissionDescription =
+      "To provide you with the fastest delivery and the best food options near you, we need access to your location. You can always change this later in your device settings.";
+  static const String locationPermissionAllow = "Allow Location";
+  static const String locationPermissionSkip = "Skip for Now";
 }

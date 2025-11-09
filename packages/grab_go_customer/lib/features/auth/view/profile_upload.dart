@@ -8,6 +8,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
+import 'package:grab_go_customer/shared/services/location_service.dart';
+import 'package:grab_go_customer/shared/services/storage_service.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -66,6 +68,32 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
   void dispose() {
     _animationController.dispose();
     super.dispose();
+  }
+
+  /// Navigate after profile upload - check location permission if first time
+  Future<void> _navigateAfterProfileUpload(BuildContext context) async {
+    // Check if location permission screen has been shown before
+    final hasShownLocationScreen = StorageService.hasLocationPermissionScreenShown();
+
+    if (!hasShownLocationScreen) {
+      // First time registration - check location permission
+      final hasPermission = await LocationService.hasPermission();
+      if (!hasPermission) {
+        // Show location permission screen
+        if (context.mounted) {
+          context.go("/locationPermission");
+        }
+        return;
+      } else {
+        // Permission already granted, mark screen as shown and go to homepage
+        await StorageService.setLocationPermissionScreenShown();
+      }
+    }
+
+    // Navigate to homepage
+    if (context.mounted) {
+      context.push("/homepage");
+    }
   }
 
   Future<void> _selectImage(ImageSource source) async {
@@ -631,7 +659,10 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
                         SizedBox(height: KSpacing.lg.h),
 
                         GestureDetector(
-                          onTap: () => context.push("/homepage"),
+                          onTap: () async {
+                            // Check if location permission screen should be shown (first time registration)
+                            await _navigateAfterProfileUpload(context);
+                          },
                           child: Container(
                             height: 56.h,
                             decoration: BoxDecoration(

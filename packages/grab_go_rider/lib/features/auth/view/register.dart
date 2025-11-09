@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -203,7 +201,15 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         email: emailController.text.trim(),
         password: passwordController.text,
         dateOfBirth: bdayController.text.trim(),
+        role: 'rider',
       );
+
+      debugPrint('📝 RegisterRequest created:');
+      debugPrint('   Username: ${request.username}');
+      debugPrint('   Email: ${request.email}');
+      debugPrint('   Role: ${request.role}');
+      debugPrint('   Request JSON: ${request.toJson()}');
+
       final response = await authService
           .registerUser(request)
           .timeout(
@@ -228,7 +234,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         final token = response.body!.token;
         final user = response.body!.userData;
 
-        // Save token if provided
         if (token != null && token.isNotEmpty) {
           final saved = await CacheService.saveAuthToken(token);
           debugPrint('✅ Auth token saved after registration: $saved');
@@ -381,6 +386,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         displayName: googleUserData['displayName'],
         photoUrl: googleUserData['photoUrl'],
         idToken: googleUserData['idToken'],
+        role: 'rider',
       );
 
       final response = await authService
@@ -818,7 +824,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                           SizedBox(height: KSpacing.lg25.h),
 
                           GestureDetector(
-                            onTap: () => context.push("/riderVerification"),
+                            onTap: () => handleRegister(),
                             child: Container(
                               height: 56.h,
                               decoration: BoxDecoration(

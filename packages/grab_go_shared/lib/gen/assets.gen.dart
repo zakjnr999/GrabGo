@@ -581,9 +581,13 @@ class Assets {
 
   static const $LibGen lib = $LibGen();
 
-  // Convenience getters for backward compatibility
+  /// Convenient access to icons
   static $LibAssetsIconsGen get icons => lib.assets.icons;
+
+  /// Convenient access to images
   static $LibAssetsImagesGen get images => lib.assets.images;
+
+  /// Convenient access to fonts
   static $LibAssetsFontsGen get fonts => lib.assets.fonts;
 }
 

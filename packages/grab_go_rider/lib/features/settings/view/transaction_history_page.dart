@@ -25,113 +25,113 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
 
   @override
   void initState() {
-    _loadTransactions();
+    // _loadTransactions();
     super.initState();
   }
 
-  void _loadTransactions() {
-    final now = DateTime.now();
-    _allTransactions = [
-      TransactionHistoryModel(
-        id: '1',
-        amount: 25.50,
-        type: TransactionHistoryModel.bankAccount,
-        description: 'Withdrawal to bank account',
-        dateTime: now.subtract(const Duration(hours: 2)),
-        status: TransactionHistoryModel.completed,
-      ),
-      TransactionHistoryModel(
-        id: '2',
-        amount: 10.00,
-        type: TransactionHistoryModel.mtnMobileMoney,
-        description: 'Withdrawal to MTN Mobile Money',
-        dateTime: now.subtract(const Duration(hours: 3)),
-        status: TransactionHistoryModel.completed,
-      ),
-      TransactionHistoryModel(
-        id: '3',
-        amount: 38.00,
-        type: TransactionHistoryModel.vodafoneCash,
-        description: 'Withdrawal to Vodafone Cash',
-        dateTime: now.subtract(const Duration(hours: 5)),
-        status: TransactionHistoryModel.completed,
-      ),
-      TransactionHistoryModel(
-        id: '4',
-        amount: 42.00,
-        type: TransactionHistoryModel.mtnMobileMoney,
-        description: 'Withdrawal to MTN Mobile Money',
-        dateTime: now.subtract(const Duration(days: 2, hours: 3)),
-        status: TransactionHistoryModel.pending,
-      ),
-      TransactionHistoryModel(
-        id: '5',
-        amount: 5.00,
-        type: TransactionHistoryModel.vodafoneCash,
-        description: 'Withdrawal to Vodafone Cash',
-        dateTime: now.subtract(const Duration(days: 3)),
-        status: TransactionHistoryModel.pending,
-      ),
-      TransactionHistoryModel(
-        id: '6',
-        amount: 30.00,
-        type: TransactionHistoryModel.mtnMobileMoney,
-        description: 'Withdrawal to MTN Mobile Money',
-        dateTime: now.subtract(const Duration(days: 4)),
-        status: TransactionHistoryModel.pending,
-      ),
-      TransactionHistoryModel(
-        id: '7',
-        amount: 50.00,
-        type: TransactionHistoryModel.vodafoneCash,
-        description: 'Withdrawal to Vodafone Cash',
-        dateTime: now.subtract(const Duration(days: 5)),
-        status: TransactionHistoryModel.pending,
-      ),
-      TransactionHistoryModel(
-        id: '8',
-        amount: 35.00,
-        type: TransactionHistoryModel.mtnMobileMoney,
-        description: 'Withdrawal to MTN Mobile Money',
-        dateTime: now.subtract(const Duration(days: 10)),
-        status: TransactionHistoryModel.pending,
-      ),
-      TransactionHistoryModel(
-        id: '9',
-        amount: 15.00,
-        type: TransactionHistoryModel.vodafoneCash,
-        description: 'Withdrawal to Vodafone Cash',
-        dateTime: now.subtract(const Duration(days: 12)),
-        status: TransactionHistoryModel.pending,
-      ),
-      TransactionHistoryModel(
-        id: '10',
-        amount: 28.00,
-        type: TransactionHistoryModel.mtnMobileMoney,
-        description: 'Withdrawal to MTN Mobile Money',
-        dateTime: now.subtract(const Duration(days: 15)),
-        status: TransactionHistoryModel.pending,
-      ),
-      TransactionHistoryModel(
-        id: '11',
-        amount: 100.00,
-        type: TransactionHistoryModel.vodafoneCash,
-        description: 'Withdrawal to Vodafone Cash',
-        dateTime: now.subtract(const Duration(days: 20)),
-        status: TransactionHistoryModel.pending,
-      ),
-      TransactionHistoryModel(
-        id: '12',
-        amount: 22.00,
-        type: TransactionHistoryModel.mtnMobileMoney,
-        description: 'Withdrawal to MTN Mobile Money',
-        dateTime: now.subtract(const Duration(days: 25)),
-        status: TransactionHistoryModel.pending,
-      ),
-    ];
+  // void _loadTransactions() {
+  //   final now = DateTime.now();
+  //   _allTransactions = [
+  //     TransactionHistoryModel(
+  //       id: '1',
+  //       amount: 25.50,
+  //       type: TransactionHistoryModel.bankAccount,
+  //       description: 'Withdrawal to bank account',
+  //       dateTime: now.subtract(const Duration(hours: 2)),
+  //       status: TransactionHistoryModel.completed,
+  //     ),
+  //     TransactionHistoryModel(
+  //       id: '2',
+  //       amount: 10.00,
+  //       type: TransactionHistoryModel.mtnMobileMoney,
+  //       description: 'Withdrawal to MTN Mobile Money',
+  //       dateTime: now.subtract(const Duration(hours: 3)),
+  //       status: TransactionHistoryModel.completed,
+  //     ),
+  //     TransactionHistoryModel(
+  //       id: '3',
+  //       amount: 38.00,
+  //       type: TransactionHistoryModel.vodafoneCash,
+  //       description: 'Withdrawal to Vodafone Cash',
+  //       dateTime: now.subtract(const Duration(hours: 5)),
+  //       status: TransactionHistoryModel.completed,
+  //     ),
+  //     TransactionHistoryModel(
+  //       id: '4',
+  //       amount: 42.00,
+  //       type: TransactionHistoryModel.mtnMobileMoney,
+  //       description: 'Withdrawal to MTN Mobile Money',
+  //       dateTime: now.subtract(const Duration(days: 2, hours: 3)),
+  //       status: TransactionHistoryModel.pending,
+  //     ),
+  //     TransactionHistoryModel(
+  //       id: '5',
+  //       amount: 5.00,
+  //       type: TransactionHistoryModel.vodafoneCash,
+  //       description: 'Withdrawal to Vodafone Cash',
+  //       dateTime: now.subtract(const Duration(days: 3)),
+  //       status: TransactionHistoryModel.pending,
+  //     ),
+  //     TransactionHistoryModel(
+  //       id: '6',
+  //       amount: 30.00,
+  //       type: TransactionHistoryModel.mtnMobileMoney,
+  //       description: 'Withdrawal to MTN Mobile Money',
+  //       dateTime: now.subtract(const Duration(days: 4)),
+  //       status: TransactionHistoryModel.pending,
+  //     ),
+  //     TransactionHistoryModel(
+  //       id: '7',
+  //       amount: 50.00,
+  //       type: TransactionHistoryModel.vodafoneCash,
+  //       description: 'Withdrawal to Vodafone Cash',
+  //       dateTime: now.subtract(const Duration(days: 5)),
+  //       status: TransactionHistoryModel.pending,
+  //     ),
+  //     TransactionHistoryModel(
+  //       id: '8',
+  //       amount: 35.00,
+  //       type: TransactionHistoryModel.mtnMobileMoney,
+  //       description: 'Withdrawal to MTN Mobile Money',
+  //       dateTime: now.subtract(const Duration(days: 10)),
+  //       status: TransactionHistoryModel.pending,
+  //     ),
+  //     TransactionHistoryModel(
+  //       id: '9',
+  //       amount: 15.00,
+  //       type: TransactionHistoryModel.vodafoneCash,
+  //       description: 'Withdrawal to Vodafone Cash',
+  //       dateTime: now.subtract(const Duration(days: 12)),
+  //       status: TransactionHistoryModel.pending,
+  //     ),
+  //     TransactionHistoryModel(
+  //       id: '10',
+  //       amount: 28.00,
+  //       type: TransactionHistoryModel.mtnMobileMoney,
+  //       description: 'Withdrawal to MTN Mobile Money',
+  //       dateTime: now.subtract(const Duration(days: 15)),
+  //       status: TransactionHistoryModel.pending,
+  //     ),
+  //     TransactionHistoryModel(
+  //       id: '11',
+  //       amount: 100.00,
+  //       type: TransactionHistoryModel.vodafoneCash,
+  //       description: 'Withdrawal to Vodafone Cash',
+  //       dateTime: now.subtract(const Duration(days: 20)),
+  //       status: TransactionHistoryModel.pending,
+  //     ),
+  //     TransactionHistoryModel(
+  //       id: '12',
+  //       amount: 22.00,
+  //       type: TransactionHistoryModel.mtnMobileMoney,
+  //       description: 'Withdrawal to MTN Mobile Money',
+  //       dateTime: now.subtract(const Duration(days: 25)),
+  //       status: TransactionHistoryModel.pending,
+  //     ),
+  //   ];
 
-    _applyFilter();
-  }
+  //   _applyFilter();
+  // }
 
   void _applyFilter() {
     final now = DateTime.now();
@@ -167,48 +167,48 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
     return _filteredTransactions.fold(0.0, (sum, transaction) => sum + transaction.amount);
   }
 
-  Color _getTransactionTypeColor(TransactionType type, AppColorsExtension colors) {
-    switch (type) {
-      case TransactionType.mobileMoney:
-        return colors.accentGreen;
-      case TransactionType.bankAccount:
-        return colors.accentGreen;
-      case TransactionType.vodafoneCash:
-        return colors.accentGreen;
-      case TransactionType.mtnMobileMoney:
-        return colors.accentGreen;
-    }
-  }
+  // Color _getTransactionTypeColor(TransactionType type, AppColorsExtension colors) {
+  //   switch (type) {
+  //     case TransactionType.mobileMoney:
+  //       return colors.accentGreen;
+  //     case TransactionType.bankAccount:
+  //       return colors.accentGreen;
+  //     case TransactionType.vodafoneCash:
+  //       return colors.accentGreen;
+  //     case TransactionType.mtnMobileMoney:
+  //       return colors.accentGreen;
+  //   }
+  // }
 
-  String _getTransactionTypeLabel(TransactionType type) {
-    switch (type) {
-      case TransactionType.delivery:
-        return 'Delivery';
-      case TransactionType.tip:
-        return 'Tip';
-      case TransactionType.bonus:
-        return 'Bonus';
-      case TransactionType.withdrawal:
-        return 'Withdrawal';
-      case TransactionType.penalty:
-        return 'Penalty';
-    }
-  }
+  // String _getTransactionTypeLabel(TransactionType type) {
+  //   switch (type) {
+  //     case TransactionType.delivery:
+  //       return 'Delivery';
+  //     case TransactionType.tip:
+  //       return 'Tip';
+  //     case TransactionType.bonus:
+  //       return 'Bonus';
+  //     case TransactionType.withdrawal:
+  //       return 'Withdrawal';
+  //     case TransactionType.penalty:
+  //       return 'Penalty';
+  //   }
+  // }
 
-  String _getTransactionIcon(TransactionType type) {
-    switch (type) {
-      case TransactionType.delivery:
-        return Assets.icons.deliveryTruck;
-      case TransactionType.tip:
-        return Assets.icons.gift;
-      case TransactionType.bonus:
-        return Assets.icons.star;
-      case TransactionType.withdrawal:
-        return Assets.icons.creditCard;
-      case TransactionType.penalty:
-        return Assets.icons.warningCircle;
-    }
-  }
+  // String _getTransactionIcon(TransactionType type) {
+  //   switch (type) {
+  //     case TransactionType.delivery:
+  //       return Assets.icons.deliveryTruck;
+  //     case TransactionType.tip:
+  //       return Assets.icons.gift;
+  //     case TransactionType.bonus:
+  //       return Assets.icons.star;
+  //     case TransactionType.withdrawal:
+  //       return Assets.icons.creditCard;
+  //     case TransactionType.penalty:
+  //       return Assets.icons.warningCircle;
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -341,129 +341,129 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
               ),
               SizedBox(height: 24.h),
 
-              if (_filteredTransactions.isEmpty)
-                _buildEmptyState(colors)
-              else
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _filteredTransactions.length,
-                  separatorBuilder: (context, index) => SizedBox(height: 12.h),
-                  itemBuilder: (context, index) {
-                    final transaction = _filteredTransactions[index];
-                    final typeColor = _getTransactionTypeColor(transaction.type, colors);
-                    final iconPath = _getTransactionIcon(transaction.type);
-                    final typeLabel = _getTransactionTypeLabel(transaction.type);
+              // if (_filteredTransactions.isEmpty)
+              //   _buildEmptyState(colors)
+              // else
+              // ListView.separated(
+              //   shrinkWrap: true,
+              //   physics: const NeverScrollableScrollPhysics(),
+              //   itemCount: _filteredTransactions.length,
+              //   separatorBuilder: (context, index) => SizedBox(height: 12.h),
+              //   itemBuilder: (context, index) {
+              //     final transaction = _filteredTransactions[index];
+              //     final typeColor = _getTransactionTypeColor(transaction.type, colors);
+              //     final iconPath = _getTransactionIcon(transaction.type);
+              //     final typeLabel = _getTransactionTypeLabel(transaction.type);
 
-                    final timeFormat = DateFormat('MMM dd, hh:mm a');
-                    final timeString = timeFormat.format(transaction.dateTime);
+              //     final timeFormat = DateFormat('MMM dd, hh:mm a');
+              //     final timeString = timeFormat.format(transaction.dateTime);
 
-                    return Container(
-                      padding: EdgeInsets.all(16.w),
-                      decoration: BoxDecoration(
-                        color: colors.backgroundPrimary,
-                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                        border: Border.all(color: colors.border, width: 1),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 48.w,
-                            height: 48.w,
-                            decoration: BoxDecoration(
-                              color: typeColor.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                            ),
-                            child: Center(
-                              child: SvgPicture.asset(
-                                iconPath,
-                                package: 'grab_go_shared',
-                                width: 24.w,
-                                height: 24.w,
-                                colorFilter: ColorFilter.mode(typeColor, BlendMode.srcIn),
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 16.w),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  transaction.description,
-                                  style: TextStyle(
-                                    color: colors.textPrimary,
-                                    fontSize: 14.sp,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                SizedBox(height: 6.h),
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                                      decoration: BoxDecoration(
-                                        color: typeColor.withValues(alpha: 0.15),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        typeLabel,
-                                        style: TextStyle(
-                                          color: typeColor,
-                                          fontSize: 10.sp,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(width: 8.w),
-                                    Flexible(
-                                      child: Text(
-                                        timeString,
-                                        style: TextStyle(
-                                          overflow: TextOverflow.ellipsis,
-                                          color: colors.textSecondary,
-                                          fontSize: 12.sp,
-                                          fontWeight: FontWeight.w400,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                "+GHC ${transaction.amount.toStringAsFixed(2)}",
-                                style: TextStyle(
-                                  color: colors.accentGreen,
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              SizedBox(height: 4.h),
-                              Container(
-                                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                                decoration: BoxDecoration(
-                                  color: colors.success.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  transaction.status.name.toUpperCase(),
-                                  style: TextStyle(color: colors.success, fontSize: 9.sp, fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+              //     return Container(
+              //       padding: EdgeInsets.all(16.w),
+              //       decoration: BoxDecoration(
+              //         color: colors.backgroundPrimary,
+              //         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+              //         border: Border.all(color: colors.border, width: 1),
+              //       ),
+              //       child: Row(
+              //         children: [
+              //           Container(
+              //             width: 48.w,
+              //             height: 48.w,
+              //             decoration: BoxDecoration(
+              //               color: typeColor.withValues(alpha: 0.1),
+              //               borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+              //             ),
+              //             child: Center(
+              //               child: SvgPicture.asset(
+              //                 iconPath,
+              //                 package: 'grab_go_shared',
+              //                 width: 24.w,
+              //                 height: 24.w,
+              //                 colorFilter: ColorFilter.mode(typeColor, BlendMode.srcIn),
+              //               ),
+              //             ),
+              //           ),
+              //           SizedBox(width: 16.w),
+              //           Expanded(
+              //             child: Column(
+              //               crossAxisAlignment: CrossAxisAlignment.start,
+              //               children: [
+              //                 Text(
+              //                   transaction.description,
+              //                   style: TextStyle(
+              //                     color: colors.textPrimary,
+              //                     fontSize: 14.sp,
+              //                     fontWeight: FontWeight.w600,
+              //                   ),
+              //                   maxLines: 1,
+              //                   overflow: TextOverflow.ellipsis,
+              //                 ),
+              //                 SizedBox(height: 6.h),
+              //                 Row(
+              //                   children: [
+              //                     Container(
+              //                       padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+              //                       decoration: BoxDecoration(
+              //                         color: typeColor.withValues(alpha: 0.15),
+              //                         borderRadius: BorderRadius.circular(4),
+              //                       ),
+              //                       child: Text(
+              //                         typeLabel,
+              //                         style: TextStyle(
+              //                           color: typeColor,
+              //                           fontSize: 10.sp,
+              //                           fontWeight: FontWeight.w600,
+              //                         ),
+              //                       ),
+              //                     ),
+              //                     SizedBox(width: 8.w),
+              //                     Flexible(
+              //                       child: Text(
+              //                         timeString,
+              //                         style: TextStyle(
+              //                           overflow: TextOverflow.ellipsis,
+              //                           color: colors.textSecondary,
+              //                           fontSize: 12.sp,
+              //                           fontWeight: FontWeight.w400,
+              //                         ),
+              //                       ),
+              //                     ),
+              //                   ],
+              //                 ),
+              //               ],
+              //             ),
+              //           ),
+              //           Column(
+              //             crossAxisAlignment: CrossAxisAlignment.end,
+              //             children: [
+              //               Text(
+              //                 "+GHC ${transaction.amount.toStringAsFixed(2)}",
+              //                 style: TextStyle(
+              //                   color: colors.accentGreen,
+              //                   fontSize: 16.sp,
+              //                   fontWeight: FontWeight.w700,
+              //                 ),
+              //               ),
+              //               SizedBox(height: 4.h),
+              //               Container(
+              //                 padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+              //                 decoration: BoxDecoration(
+              //                   color: colors.success.withValues(alpha: 0.15),
+              //                   borderRadius: BorderRadius.circular(4),
+              //                 ),
+              //                 child: Text(
+              //                   transaction.status.name.toUpperCase(),
+              //                   style: TextStyle(color: colors.success, fontSize: 9.sp, fontWeight: FontWeight.w600),
+              //                 ),
+              //               ),
+              //             ],
+              //           ),
+              //         ],
+              //       ),
+              //     );
+              //   },
+              // ),
             ],
           ),
         ),

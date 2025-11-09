@@ -35,25 +35,36 @@ class FoodRepository {
   }
 
   Future<List<FoodCategoryModel>> fetchCategoriesWithFoods() async {
-    // Fetch categories
     final categories = await fetchCategories();
 
     if (categories.isEmpty) {
       return [];
     }
 
-    // Fetch foods for each category and populate items
     final List<FoodCategoryModel> categoriesWithFoods = [];
     for (final category in categories) {
       try {
         final categoryFoods = await fetchFoods(categoryId: category.id);
         categoriesWithFoods.add(
-          FoodCategoryModel(id: category.id, name: category.name, emoji: category.emoji, items: categoryFoods),
+          FoodCategoryModel(
+            id: category.id,
+            name: category.name,
+            description: category.description,
+            emoji: category.emoji,
+            isActive: category.isActive,
+            items: categoryFoods,
+          ),
         );
       } catch (e) {
-        // If fetching foods for a category fails, add category with empty items
         categoriesWithFoods.add(
-          FoodCategoryModel(id: category.id, name: category.name, emoji: category.emoji, items: []),
+          FoodCategoryModel(
+            id: category.id,
+            name: category.name,
+            description: category.description,
+            emoji: category.emoji,
+            isActive: category.isActive,
+            items: [],
+          ),
         );
       }
     }
