@@ -230,7 +230,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       LoadingDialog.instance().hide();
 
       if (response.isSuccessful && response.body != null) {
-        final message = response.body!.message;
         final token = response.body!.token;
         final user = response.body!.userData;
 
@@ -248,20 +247,40 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         }
 
         // Save user data if provided
-        if (user != null) {
-          await CacheService.saveUserData(user.toJson());
-          debugPrint('✅ User data saved after registration');
-          // Store user ID for phone verification
-          FirebasePhoneAuthService().setUserId(user.id ?? '');
+        try {
+          if (user != null) {
+            await CacheService.saveUserData(user.toJson());
+            debugPrint('✅ User data saved after registration');
+            // Store user ID for phone verification
+            FirebasePhoneAuthService().setUserId(user.id ?? '');
+          }
+        } catch (e) {
+          debugPrint('⚠️ Error saving user data: $e');
+          // Continue anyway - navigation should still work
         }
 
+        // Navigate to rider verification after successful registration
         if (mounted) {
-          AppToastMessage.show(
-            context: context,
-            icon: Icons.check_circle,
-            message: message,
-            backgroundColor: Colors.green,
-          );
+          try {
+            await Future.delayed(const Duration(milliseconds: 300));
+            if (mounted) {
+              debugPrint('🚀 Navigating to rider verification...');
+              // Use push instead of go to preserve navigation stack for context.pop()
+              context.push("/riderVerification");
+              debugPrint('✅ Navigation successful');
+            }
+          } catch (e, stackTrace) {
+            debugPrint('❌ Navigation error: $e');
+            debugPrint('Stack trace: $stackTrace');
+            if (mounted) {
+              AppToastMessage.show(
+                context: context,
+                icon: Icons.error,
+                message: "Could not navigate. Please try again.",
+                backgroundColor: context.appColors.error,
+              );
+            }
+          }
         }
       } else {
         String errorMessage = "Username already taken.";
@@ -423,10 +442,20 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         if (user != null) {
           await CacheService.saveUserData(user.toJson());
           debugPrint('✅ User data saved after Google sign-up');
+          // Store user ID for phone verification
+          FirebasePhoneAuthService().setUserId(user.id ?? '');
         }
 
         if (mounted) {
-          // TODO: Navigate to home
+          // Navigate to rider verification after successful Google sign-up
+          // Don't show success message here, let the next page handle it
+          await Future.delayed(const Duration(milliseconds: 300));
+          if (mounted) {
+            debugPrint('🚀 Navigating to rider verification (Google sign-up)...');
+            // Use push instead of go to preserve navigation stack for context.pop()
+            context.push("/riderVerification");
+            debugPrint('✅ Navigation successful');
+          }
         }
       } else {
         String errorMessage = "Google Sign-Up failed. Please try again.";

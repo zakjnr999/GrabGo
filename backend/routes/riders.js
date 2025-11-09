@@ -3,7 +3,9 @@ const { body, validationResult } = require('express-validator');
 const Order = require('../models/Order');
 const Transaction = require('../models/Transaction');
 const RiderWallet = require('../models/RiderWallet');
+const Rider = require('../models/Rider');
 const { protect, authorize } = require('../middleware/auth');
+const { uploadSingle, uploadToCloudinary } = require('../middleware/upload');
 
 const router = express.Router();
 
@@ -353,6 +355,296 @@ router.put('/transactions/:transactionId/status', protect, authorize('admin'), [
     });
   } catch (error) {
     console.error('Update transaction status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// @route   POST /api/riders/verification
+// @desc    Submit rider verification data
+// @access  Private (rider only)
+router.post('/verification', protect, authorize('rider'), uploadSingle('vehicleImage'), uploadToCloudinary, async (req, res) => {
+  try {
+    const {
+      vehicleType,
+      licensePlateNumber,
+      vehicleBrand,
+      vehicleModel,
+      nationalIdType,
+      nationalIdNumber,
+      paymentMethod,
+      bankName,
+      accountNumber,
+      accountHolderName,
+      mobileMoneyProvider,
+      mobileMoneyNumber,
+      agreedToTerms,
+      agreedToLocationAccess,
+      agreedToAccuracy
+    } = req.body;
+
+    // Check if rider verification already exists
+    let rider = await Rider.findOne({ user: req.user._id });
+
+    if (rider && rider.verificationStatus === 'approved') {
+      return res.status(400).json({
+        success: false,
+        message: 'Your verification has already been approved. Contact support to make changes.'
+      });
+    }
+
+    // Prepare rider data
+    const riderData = {
+      user: req.user._id,
+      vehicleType,
+      licensePlateNumber,
+      vehicleBrand,
+      vehicleModel,
+      nationalIdType,
+      nationalIdNumber,
+      paymentMethod,
+      bankName,
+      accountNumber,
+      accountHolderName,
+      mobileMoneyProvider,
+      mobileMoneyNumber,
+      agreedToTerms: agreedToTerms === 'true' || agreedToTerms === true,
+      agreedToLocationAccess: agreedToLocationAccess === 'true' || agreedToLocationAccess === true,
+      agreedToAccuracy: agreedToAccuracy === 'true' || agreedToAccuracy === true,
+      verificationStatus: 'pending'
+    };
+
+    // Handle vehicle image upload
+    if (req.file && req.file.cloudinaryUrl) {
+      riderData.vehicleImage = req.file.cloudinaryUrl;
+    }
+
+    // Create or update rider verification
+    if (rider) {
+      // Update existing verification
+      Object.assign(rider, riderData);
+      await rider.save();
+    } else {
+      // Create new verification
+      rider = await Rider.create(riderData);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Verification data submitted successfully. Your application is under review.',
+      data: rider
+    });
+  } catch (error) {
+    console.error('Submit verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// @route   GET /api/riders/verification
+// @desc    Get rider verification data and status
+// @access  Private (rider only)
+router.get('/verification', protect, authorize('rider'), async (req, res) => {
+  try {
+    const rider = await Rider.findOne({ user: req.user._id });
+
+    if (!rider) {
+      return res.status(404).json({
+        success: false,
+        message: 'Verification data not found. Please submit your verification information.'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Verification data retrieved successfully',
+      data: rider
+    });
+  } catch (error) {
+    console.error('Get verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// @route   PUT /api/riders/verification
+// @desc    Update rider verification data (only if pending or rejected)
+// @access  Private (rider only)
+router.put('/verification', protect, authorize('rider'), uploadSingle('vehicleImage'), uploadToCloudinary, async (req, res) => {
+  try {
+    const rider = await Rider.findOne({ user: req.user._id });
+
+    if (!rider) {
+      return res.status(404).json({
+        success: false,
+        message: 'Verification data not found. Please submit your verification information first.'
+      });
+    }
+
+    if (rider.verificationStatus === 'approved') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot update approved verification. Contact support to make changes.'
+      });
+    }
+
+    // Update allowed fields
+    const allowedUpdates = [
+      'vehicleType', 'licensePlateNumber', 'vehicleBrand', 'vehicleModel',
+      'nationalIdType', 'nationalIdNumber',
+      'paymentMethod', 'bankName', 'accountNumber', 'accountHolderName',
+      'mobileMoneyProvider', 'mobileMoneyNumber',
+      'agreedToTerms', 'agreedToLocationAccess', 'agreedToAccuracy'
+    ];
+
+    allowedUpdates.forEach(field => {
+      if (req.body[field] !== undefined) {
+        if (field.includes('agreed')) {
+          rider[field] = req.body[field] === 'true' || req.body[field] === true;
+        } else {
+          rider[field] = req.body[field];
+        }
+      }
+    });
+
+    // Handle vehicle image upload
+    if (req.file && req.file.cloudinaryUrl) {
+      rider.vehicleImage = req.file.cloudinaryUrl;
+    }
+
+    // Reset status to pending if it was rejected
+    if (rider.verificationStatus === 'rejected') {
+      rider.verificationStatus = 'pending';
+      rider.rejectionReason = null;
+    }
+
+    await rider.save();
+
+    res.json({
+      success: true,
+      message: 'Verification data updated successfully',
+      data: rider
+    });
+  } catch (error) {
+    console.error('Update verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// @route   POST /api/riders/verification/upload-id
+// @desc    Upload ID images (front, back, or selfie)
+// @access  Private (rider only)
+router.post('/verification/upload-id', protect, authorize('rider'), uploadSingle('idImage'), uploadToCloudinary, async (req, res) => {
+  try {
+    const { imageType } = req.body; // 'front', 'back', or 'selfie'
+
+    if (!['front', 'back', 'selfie'].includes(imageType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid image type. Must be "front", "back", or "selfie"'
+      });
+    }
+
+    if (!req.file || !req.file.cloudinaryUrl) {
+      return res.status(400).json({
+        success: false,
+        message: 'No image uploaded'
+      });
+    }
+
+    let rider = await Rider.findOne({ user: req.user._id });
+
+    if (!rider) {
+      rider = await Rider.create({ user: req.user._id });
+    }
+
+    // Update the appropriate image field
+    if (imageType === 'front') {
+      rider.idFrontImage = req.file.cloudinaryUrl;
+    } else if (imageType === 'back') {
+      rider.idBackImage = req.file.cloudinaryUrl;
+    } else if (imageType === 'selfie') {
+      rider.selfiePhoto = req.file.cloudinaryUrl;
+    }
+
+    await rider.save();
+
+    res.json({
+      success: true,
+      message: 'ID image uploaded successfully',
+      data: {
+        imageType,
+        imageUrl: req.file.cloudinaryUrl
+      }
+    });
+  } catch (error) {
+    console.error('Upload ID image error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// @route   PUT /api/riders/verification/status
+// @desc    Update verification status (admin only)
+// @access  Private (admin only)
+router.put('/verification/status/:riderId', protect, authorize('admin'), [
+  body('status').isIn(['pending', 'under_review', 'approved', 'rejected']).withMessage('Invalid status'),
+  body('rejectionReason').optional().isString()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const { riderId } = req.params;
+    const { status, rejectionReason } = req.body;
+
+    const rider = await Rider.findById(riderId);
+    if (!rider) {
+      return res.status(404).json({
+        success: false,
+        message: 'Rider verification not found'
+      });
+    }
+
+    rider.verificationStatus = status;
+    if (status === 'approved') {
+      rider.verifiedAt = new Date();
+      rider.rejectionReason = null;
+    } else if (status === 'rejected' && rejectionReason) {
+      rider.rejectionReason = rejectionReason;
+    }
+
+    await rider.save();
+
+    res.json({
+      success: true,
+      message: 'Verification status updated successfully',
+      data: rider
+    });
+  } catch (error) {
+    console.error('Update verification status error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error',
