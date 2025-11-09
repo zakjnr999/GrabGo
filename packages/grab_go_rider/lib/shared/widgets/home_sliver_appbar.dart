@@ -6,10 +6,11 @@ import 'package:go_router/go_router.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
 import 'package:grab_go_shared/shared/utils/constants.dart';
+import 'package:chopper/chopper.dart';
 import 'package:grab_go_shared/core/auth/user_model.dart';
 import 'package:grab_go_shared/core/auth/rider_model.dart';
 import 'package:grab_go_rider/shared/service/cache_service.dart';
-import 'package:grab_go_rider/core/api/api_client.dart';
+import 'package:grab_go_rider/core/api/api_client.dart' show riderService;
 
 class HomeSliverAppbar extends StatefulWidget {
   const HomeSliverAppbar({super.key});
@@ -43,23 +44,69 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
 
   Future<void> _loadRiderData() async {
     try {
-      final response = await riderService.getVerification();
-      if (response.isSuccessful && response.body != null && response.body!.data != null) {
+      // Check if auth token exists before making request
+      final token = CacheService.getAuthToken();
+      if (token == null || token.isEmpty) {
         if (mounted) {
           setState(() {
-            _rider = response.body!.data;
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
+      // Manually add Authorization header since converter isn't being called
+      // Create a custom request with Authorization header
+      final uri = Uri.parse('${riderService.client.baseUrl}/riders/verification');
+      final request = Request('GET', uri, riderService.client.baseUrl, headers: {'Authorization': 'Bearer $token'});
+      final response = await riderService.client.send<RiderResponse, RiderResponse>(request);
+
+      if (response.isSuccessful && response.body != null) {
+        if (response.body!.data != null) {
+          if (mounted) {
+            setState(() {
+              _rider = response.body!.data;
+              _isLoading = false;
+            });
+          }
+        }
+      } else if (response.statusCode == 404) {
+        // Rider verification data doesn't exist yet - this is okay
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      } else if (response.statusCode == 401) {
+        // Unauthorized - token might be invalid or expired
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
           });
         }
       }
     } catch (e) {
       // Silently handle error - rider data might not exist yet
-      // If rider data doesn't exist, _rider will remain null and default image will show
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   Future<void> _loadWalletData() async {
     try {
-      final response = await riderService.getWallet();
+      final token = CacheService.getAuthToken();
+      if (token == null || token.isEmpty) {
+        return;
+      }
+
+      // Manually add Authorization header since converter isn't being called
+      final uri = Uri.parse('${riderService.client.baseUrl}/riders/wallet');
+      final request = Request('GET', uri, riderService.client.baseUrl, headers: {'Authorization': 'Bearer $token'});
+      final response = await riderService.client.send<Map<String, dynamic>, Map<String, dynamic>>(request);
+
       if (response.isSuccessful && response.body != null) {
         final data = response.body!['data'] as Map<String, dynamic>?;
         if (data != null && mounted) {
@@ -104,6 +151,11 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
     final height = size.height * 0.48 * expandRatio + size.height * 0.35 * reverseRatio;
     final width = size.width * 0.48 * expandRatio + size.width * 0.35 * reverseRatio;
 
+    // Don't show image while loading
+    if (_isLoading) {
+      return SizedBox(height: height, width: width);
+    }
+
     final normalizedType = vehicleType?.toLowerCase().trim();
 
     if (normalizedType == 'scooter') {
@@ -135,7 +187,7 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
         fit: BoxFit.contain,
       );
     } else {
-      // Default to motorcycle if vehicle type is null or unknown
+      // Default to motorcycle if vehicle type is null or unknown (only after loading is complete)
       return Assets.images.deliveryGuyMotorcycle.image(
         package: "grab_go_shared",
         height: height,

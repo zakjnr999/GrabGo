@@ -45,5 +45,14 @@ abstract class AuthService extends ChopperService {
   @GET(path: '/users/{userId}')
   Future<Response<UserResponse>> getUser(@Path() String userId);
 
+  @POST(path: '/users/verify-email')
+  Future<Response<Map<String, dynamic>>> verifyEmail(@Body() Map<String, dynamic> request);
+
+  @POST(path: '/users/resend-verification')
+  Future<Response<Map<String, dynamic>>> resendVerification(@Body() Map<String, dynamic> request);
+
+  @POST(path: '/users/send-verification')
+  Future<Response<Map<String, dynamic>>> sendVerification();
+
   static AuthService create([ChopperClient? client]) => _$AuthService(client);
 }

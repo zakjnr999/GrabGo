@@ -8,6 +8,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_rider/shared/service/cache_service.dart';
+import 'package:grab_go_rider/shared/service/user_service.dart';
 import 'package:grab_go_rider/core/api/api_client.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 
@@ -202,11 +203,11 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         }
 
         if (user != null) {
-          await CacheService.saveUserData(user.toJson());
+          await UserService().setCurrentUser(user);
         }
 
         if (mounted) {
-          context.push("/home");
+          context.go("/home");
         }
       } else {
         String errorMessage = "Google Sign-In failed. Please try again.";
@@ -347,7 +348,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         }
 
         if (user != null) {
-          await CacheService.saveUserData(user.toJson());
+          await UserService().setCurrentUser(user);
         }
 
         await CacheService.saveCredentials(
@@ -357,7 +358,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         );
 
         if (mounted) {
-          context.push("/home");
+          context.go("/home");
         }
       } else {
         String errorMessage = "Login failed. Please try again.";

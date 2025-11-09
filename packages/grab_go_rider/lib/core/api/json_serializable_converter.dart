@@ -36,7 +36,8 @@ class JsonSerializableConverter extends JsonConverter {
   @override
   Request convertRequest(Request request) {
     final req = super.convertRequest(request);
-    final headers = Map<String, String>.from(req.headers);
+    final headers = <String, String>{};
+    headers.addAll(req.headers);
 
     final urlPath = req.url.path;
     final isLoginEndpoint = urlPath.endsWith('/users/login') && (request.method == 'POST');
@@ -73,11 +74,13 @@ class JsonSerializableConverter extends JsonConverter {
       }
 
       final body = _convertBody(req.body);
-      return req.copyWith(headers: headers, body: body, parts: filteredParts);
+      final newRequest = req.copyWith(headers: headers, body: body, parts: filteredParts);
+      return newRequest;
     }
 
     final body = _convertBody(req.body);
-    return req.copyWith(headers: headers, body: body);
+    final newRequest = req.copyWith(headers: headers, body: body);
+    return newRequest;
   }
 
   /// Override this method in subclasses to handle specific request types

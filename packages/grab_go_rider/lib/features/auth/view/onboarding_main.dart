@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_rider/shared/utils/story_stepper.dart';
+import 'package:grab_go_rider/shared/service/storage_service.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'onboarding_one.dart';
 import 'onboarding_two.dart';
@@ -32,11 +33,15 @@ class OnboardingMainState extends State<OnboardingMain> with SingleTickerProvide
 
   void skip() => controller.jumpToPage(2);
 
-  void next() {
+  void next() async {
     if (_index < 2) {
       controller.nextPage(duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
     } else {
-      context.go('/login');
+      // Mark first launch as complete when user finishes onboarding
+      await StorageService.setFirstLaunchComplete();
+      if (mounted) {
+        context.go('/login');
+      }
     }
   }
 

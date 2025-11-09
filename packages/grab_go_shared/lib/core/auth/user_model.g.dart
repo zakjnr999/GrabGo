@@ -60,6 +60,7 @@ User _$UserFromJson(Map<String, dynamic> json) => User(
       ? null
       : UserPermissions.fromJson(json['permissions'] as Map<String, dynamic>),
   createdAt: json['createdAt'] as String?,
+  vehicleType: json['vehicleType'] as String?,
 );
 
 Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
@@ -76,6 +77,7 @@ Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
   'isActive': instance.isActive,
   'permissions': instance.permissions,
   'createdAt': instance.createdAt,
+  'vehicleType': instance.vehicleType,
 };
 
 UserResponse _$UserResponseFromJson(Map<String, dynamic> json) => UserResponse(

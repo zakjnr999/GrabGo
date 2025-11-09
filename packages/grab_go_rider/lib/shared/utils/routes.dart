@@ -10,6 +10,7 @@ import 'package:grab_go_rider/features/auth/view/rider_account_tracking.dart';
 import 'package:grab_go_rider/features/auth/view/rider_verification.dart';
 import 'package:grab_go_rider/features/auth/view/vehicle_details.dart';
 import 'package:grab_go_rider/features/auth/view/verify_email.dart';
+import 'package:grab_go_rider/features/auth/view/email_otp_verification.dart';
 import 'package:grab_go_rider/features/auth/view/verify_phone.dart';
 import 'package:grab_go_rider/features/home/view/bonuses_page.dart';
 import 'package:grab_go_rider/features/home/view/earnings_history_page.dart';
@@ -173,6 +174,43 @@ final GoRouter appRouter = GoRouter(
               animation: animation,
               secondaryAnimation: secondaryAnimation,
               transitionType: SharedAxisTransitionType.scaled,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/verifyEmail",
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const VerifyEmail(),
+          transitionDuration: const Duration(milliseconds: 800),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.vertical,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/emailOtpVerification",
+      pageBuilder: (context, state) {
+        final email = state.extra as String? ?? '';
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: EmailOtpVerification(email: email),
+          transitionDuration: const Duration(milliseconds: 800),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.vertical,
               child: child,
             );
           },

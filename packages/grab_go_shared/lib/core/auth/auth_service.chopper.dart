@@ -154,4 +154,31 @@ final class _$AuthService extends AuthService {
     final Request $request = Request('GET', $url, client.baseUrl);
     return client.send<UserResponse, UserResponse>($request);
   }
+
+  @override
+  Future<Response<Map<String, dynamic>>> verifyEmail(
+    Map<String, dynamic> request,
+  ) {
+    final Uri $url = Uri.parse('/users/verify-email');
+    final $body = request;
+    final Request $request = Request('POST', $url, client.baseUrl, body: $body);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
+
+  @override
+  Future<Response<Map<String, dynamic>>> resendVerification(
+    Map<String, dynamic> request,
+  ) {
+    final Uri $url = Uri.parse('/users/resend-verification');
+    final $body = request;
+    final Request $request = Request('POST', $url, client.baseUrl, body: $body);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
+
+  @override
+  Future<Response<Map<String, dynamic>>> sendVerification() {
+    final Uri $url = Uri.parse('/users/send-verification');
+    final Request $request = Request('POST', $url, client.baseUrl);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
 }

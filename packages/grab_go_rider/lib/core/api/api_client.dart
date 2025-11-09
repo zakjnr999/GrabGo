@@ -11,6 +11,11 @@ final chopperClient = ChopperClient(
   client: http.Client(),
 );
 
-FoodService get foodService => chopperClient.getService<FoodService>();
-AuthService get authService => chopperClient.getService<AuthService>();
-RiderService get riderService => chopperClient.getService<RiderService>();
+// Create services with explicit client reference to ensure converter is used
+final _foodService = FoodService.create(chopperClient);
+final _authService = AuthService.create(chopperClient);
+final _riderService = RiderService.create(chopperClient);
+
+FoodService get foodService => _foodService;
+AuthService get authService => _authService;
+RiderService get riderService => _riderService;

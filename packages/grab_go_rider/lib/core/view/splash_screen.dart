@@ -5,6 +5,9 @@ import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_rider/shared/service/storage_service.dart';
+import 'package:grab_go_rider/shared/service/auth_guard.dart';
+import 'package:grab_go_rider/shared/service/user_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -27,9 +30,26 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   }
 
   Future<void> _initialize() async {
-    await Future.delayed(const Duration(seconds: 4));
+    // Initialize UserService to load cached user data
+    await UserService().initialize();
+
+    await Future.delayed(const Duration(seconds: 3));
     if (!mounted) return;
-    context.go('/onboarding');
+
+    final router = GoRouter.of(context);
+    final currentLocation = router.routerDelegate.currentConfiguration.uri.path;
+
+    if (currentLocation != '/' && currentLocation != '') {
+      return;
+    }
+
+    final isFirst = await StorageService.isFirstLaunch();
+
+    if (isFirst) {
+      context.go("/onboarding");
+    } else {
+      await AuthGuard.checkAuthAndRedirect(context);
+    }
   }
 
   @override

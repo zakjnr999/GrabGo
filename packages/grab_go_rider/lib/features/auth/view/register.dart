@@ -241,13 +241,13 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
           // Continue anyway - navigation should still work
         }
 
-        // Navigate to rider verification after successful registration
+        // Navigate to email verification after successful registration
         if (mounted) {
           try {
             await Future.delayed(const Duration(milliseconds: 300));
             if (mounted) {
               // Use push instead of go to preserve navigation stack for context.pop()
-              context.push("/riderVerification");
+              context.push("/verifyEmail");
             }
           } catch (e) {
             if (mounted) {
