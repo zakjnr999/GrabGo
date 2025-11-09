@@ -140,4 +140,11 @@ final class _$RiderService extends RiderService {
     );
     return client.send<RiderResponse, RiderResponse>($request);
   }
+
+  @override
+  Future<Response<Map<String, dynamic>>> getWallet() {
+    final Uri $url = Uri.parse('/riders/wallet');
+    final Request $request = Request('GET', $url, client.baseUrl);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
 }

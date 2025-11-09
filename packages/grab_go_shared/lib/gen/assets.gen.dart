@@ -496,9 +496,21 @@ class $LibAssetsIconsGen {
 class $LibAssetsImagesGen {
   const $LibAssetsImagesGen();
 
-  /// File path: lib/assets/images/delivery_guy.png
-  AssetGenImage get deliveryGuy =>
-      const AssetGenImage('lib/assets/images/delivery_guy.png');
+  /// File path: lib/assets/images/delivery_guy_bicycle.png
+  AssetGenImage get deliveryGuyBicycle =>
+      const AssetGenImage('lib/assets/images/delivery_guy_bicycle.png');
+
+  /// File path: lib/assets/images/delivery_guy_car.png
+  AssetGenImage get deliveryGuyCar =>
+      const AssetGenImage('lib/assets/images/delivery_guy_car.png');
+
+  /// File path: lib/assets/images/delivery_guy_motorcycle.png
+  AssetGenImage get deliveryGuyMotorcycle =>
+      const AssetGenImage('lib/assets/images/delivery_guy_motorcycle.png');
+
+  /// File path: lib/assets/images/delivery_guy_scooter.png
+  AssetGenImage get deliveryGuyScooter =>
+      const AssetGenImage('lib/assets/images/delivery_guy_scooter.png');
 
   /// File path: lib/assets/images/delivery_package.png
   AssetGenImage get deliveryPackage =>
@@ -558,7 +570,10 @@ class $LibAssetsImagesGen {
 
   /// List of all assets
   List<AssetGenImage> get values => [
-    deliveryGuy,
+    deliveryGuyBicycle,
+    deliveryGuyCar,
+    deliveryGuyMotorcycle,
+    deliveryGuyScooter,
     deliveryPackage,
     dishOne,
     dishThree,
@@ -581,13 +596,8 @@ class Assets {
 
   static const $LibGen lib = $LibGen();
 
-  /// Convenient access to icons
   static $LibAssetsIconsGen get icons => lib.assets.icons;
-
-  /// Convenient access to images
   static $LibAssetsImagesGen get images => lib.assets.images;
-
-  /// Convenient access to fonts
   static $LibAssetsFontsGen get fonts => lib.assets.fonts;
 }
 

@@ -6,7 +6,9 @@ part of 'rider_model.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-RiderVerificationRequest _$RiderVerificationRequestFromJson(Map<String, dynamic> json) => RiderVerificationRequest(
+RiderVerificationRequest _$RiderVerificationRequestFromJson(
+  Map<String, dynamic> json,
+) => RiderVerificationRequest(
   vehicleType: json['vehicleType'] as String?,
   licensePlateNumber: json['licensePlateNumber'] as String?,
   vehicleBrand: json['vehicleBrand'] as String?,
@@ -24,7 +26,9 @@ RiderVerificationRequest _$RiderVerificationRequestFromJson(Map<String, dynamic>
   agreedToAccuracy: json['agreedToAccuracy'] as bool?,
 );
 
-Map<String, dynamic> _$RiderVerificationRequestToJson(RiderVerificationRequest instance) => <String, dynamic>{
+Map<String, dynamic> _$RiderVerificationRequestToJson(
+  RiderVerificationRequest instance,
+) => <String, dynamic>{
   'vehicleType': instance.vehicleType,
   'licensePlateNumber': instance.licensePlateNumber,
   'vehicleBrand': instance.vehicleBrand,
@@ -102,27 +106,18 @@ Map<String, dynamic> _$RiderToJson(Rider instance) => <String, dynamic>{
   'updatedAt': instance.updatedAt,
 };
 
-RiderResponse _$RiderResponseFromJson(Map<String, dynamic> json) {
-  Rider? riderData;
+RiderResponse _$RiderResponseFromJson(Map<String, dynamic> json) =>
+    RiderResponse(
+      message: json['message'] as String,
+      data: json['data'] == null
+          ? null
+          : Rider.fromJson(json['data'] as Map<String, dynamic>),
+      success: json['success'] as bool?,
+    );
 
-  // Handle different response formats
-  if (json['data'] != null) {
-    if (json['data'] is Map<String, dynamic>) {
-      riderData = Rider.fromJson(json['data'] as Map<String, dynamic>);
-    }
-  } else if (json.containsKey('vehicleType') || json.containsKey('verificationStatus')) {
-    riderData = Rider.fromJson(json);
-  }
-
-  return RiderResponse(
-    message: json['message'] as String? ?? '',
-    data: riderData,
-    success: json['success'] as bool? ?? true,
-  );
-}
-
-Map<String, dynamic> _$RiderResponseToJson(RiderResponse instance) => <String, dynamic>{
-  'message': instance.message,
-  'data': instance.data,
-  'success': instance.success,
-};
+Map<String, dynamic> _$RiderResponseToJson(RiderResponse instance) =>
+    <String, dynamic>{
+      'message': instance.message,
+      'data': instance.data,
+      'success': instance.success,
+    };

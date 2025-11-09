@@ -59,6 +59,7 @@ class User {
   final bool? isActive;
   final UserPermissions? permissions;
   final String? createdAt;
+  final String? vehicleType;
 
   User({
     this.id,
@@ -74,6 +75,7 @@ class User {
     this.isActive,
     this.permissions,
     this.createdAt,
+    this.vehicleType,
   });
 
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);

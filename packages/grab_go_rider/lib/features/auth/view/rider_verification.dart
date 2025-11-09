@@ -548,7 +548,6 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
             await riderService.uploadIdImage(imageType: 'selfie', imagePath: selfiePhoto!.path);
           }
         } catch (e) {
-          debugPrint('⚠️ Warning: Failed to upload some ID images: $e');
           // Continue even if ID image upload fails
         }
 
@@ -576,12 +575,10 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
           backgroundColor: context.appColors.error,
         );
       }
-    } catch (e, stackTrace) {
+    } catch (e) {
       if (mounted) {
         LoadingDialog.instance().hide();
       }
-      debugPrint('❌ Submit verification error: $e');
-      debugPrint('Stack trace: $stackTrace');
 
       String errorMessage = "An error occurred. Please try again.";
       if (e.toString().contains('Connection reset') || e.toString().contains('SocketException')) {

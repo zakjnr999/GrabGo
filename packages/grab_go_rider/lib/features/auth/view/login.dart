@@ -184,9 +184,21 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         final token = response.body!.token;
         User? user = response.body!.userData;
 
+        // Validate that the user has the "rider" role
+        if (user != null && user.role != null && user.role!.toLowerCase() != 'rider') {
+          if (mounted) {
+            AppToastMessage.show(
+              context: context,
+              icon: Icons.error_outline,
+              message: "User not found",
+              backgroundColor: context.appColors.error,
+            );
+          }
+          return;
+        }
+
         if (token != null && token.isNotEmpty) {
           await CacheService.saveAuthToken(token);
-          debugPrint('✅ Auth token saved after Google sign-in');
         }
 
         if (user != null) {
@@ -253,7 +265,6 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
       if (mounted) {
         LoadingDialog.instance().hide();
       }
-      debugPrint("Error: ${e.toString()}");
 
       if (mounted) {
         AppToastMessage.show(
@@ -318,9 +329,21 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         final token = response.body!.token;
         User? user = response.body!.userData;
 
+        // Validate that the user has the "rider" role
+        if (user != null && user.role != null && user.role!.toLowerCase() != 'rider') {
+          if (mounted) {
+            AppToastMessage.show(
+              context: context,
+              icon: Icons.error_outline,
+              message: "User not found",
+              backgroundColor: context.appColors.error,
+            );
+          }
+          return;
+        }
+
         if (token != null && token.isNotEmpty) {
           await CacheService.saveAuthToken(token);
-          debugPrint('✅ Auth token saved after login');
         }
 
         if (user != null) {

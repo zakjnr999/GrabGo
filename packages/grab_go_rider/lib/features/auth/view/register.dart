@@ -106,7 +106,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       client.close();
       return response.statusCode == 200 || response.statusCode == 404 || response.statusCode == 405;
     } catch (e) {
-      debugPrint('❌ Server connection failed: $e');
       return false;
     }
   }
@@ -204,12 +203,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         role: 'rider',
       );
 
-      debugPrint('📝 RegisterRequest created:');
-      debugPrint('   Username: ${request.username}');
-      debugPrint('   Email: ${request.email}');
-      debugPrint('   Role: ${request.role}');
-      debugPrint('   Request JSON: ${request.toJson()}');
-
       final response = await authService
           .registerUser(request)
           .timeout(
@@ -234,28 +227,17 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         final user = response.body!.userData;
 
         if (token != null && token.isNotEmpty) {
-          final saved = await CacheService.saveAuthToken(token);
-          debugPrint('✅ Auth token saved after registration: $saved');
-          debugPrint('   Token length: ${token.length}');
-          debugPrint('   Token preview: ${token.substring(0, token.length > 20 ? 20 : token.length)}...');
-
-          // Verify token was saved
-          final verifyToken = CacheService.getAuthToken();
-          debugPrint('   Token verification: ${verifyToken != null ? "✅ Saved" : "❌ Not found"}');
-        } else {
-          debugPrint('⚠️ No token received in registration response!');
+          await CacheService.saveAuthToken(token);
         }
 
         // Save user data if provided
         try {
           if (user != null) {
             await CacheService.saveUserData(user.toJson());
-            debugPrint('✅ User data saved after registration');
             // Store user ID for phone verification
             FirebasePhoneAuthService().setUserId(user.id ?? '');
           }
         } catch (e) {
-          debugPrint('⚠️ Error saving user data: $e');
           // Continue anyway - navigation should still work
         }
 
@@ -264,14 +246,10 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
           try {
             await Future.delayed(const Duration(milliseconds: 300));
             if (mounted) {
-              debugPrint('🚀 Navigating to rider verification...');
               // Use push instead of go to preserve navigation stack for context.pop()
               context.push("/riderVerification");
-              debugPrint('✅ Navigation successful');
             }
-          } catch (e, stackTrace) {
-            debugPrint('❌ Navigation error: $e');
-            debugPrint('Stack trace: $stackTrace');
+          } catch (e) {
             if (mounted) {
               AppToastMessage.show(
                 context: context,
@@ -435,13 +413,11 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         // Save token if provided
         if (token != null && token.isNotEmpty) {
           await CacheService.saveAuthToken(token);
-          debugPrint('✅ Auth token saved after Google sign-up');
         }
 
         // Save user data if provided
         if (user != null) {
           await CacheService.saveUserData(user.toJson());
-          debugPrint('✅ User data saved after Google sign-up');
           // Store user ID for phone verification
           FirebasePhoneAuthService().setUserId(user.id ?? '');
         }
@@ -451,10 +427,8 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
           // Don't show success message here, let the next page handle it
           await Future.delayed(const Duration(milliseconds: 300));
           if (mounted) {
-            debugPrint('🚀 Navigating to rider verification (Google sign-up)...');
             // Use push instead of go to preserve navigation stack for context.pop()
             context.push("/riderVerification");
-            debugPrint('✅ Navigation successful');
           }
         }
       } else {
@@ -469,8 +443,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         } else if (response.statusCode == 500) {
           errorMessage = "Server error. Please try again later.";
         }
-
-        debugPrint("API Error - Status: ${response.statusCode}, Error: ${response.error}");
 
         if (mounted) {
           AppToastMessage.show(

@@ -6,9 +6,144 @@ import 'package:go_router/go_router.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
 import 'package:grab_go_shared/shared/utils/constants.dart';
+import 'package:grab_go_shared/core/auth/user_model.dart';
+import 'package:grab_go_shared/core/auth/rider_model.dart';
+import 'package:grab_go_rider/shared/service/cache_service.dart';
+import 'package:grab_go_rider/core/api/api_client.dart';
 
-class HomeSliverAppbar extends StatelessWidget {
+class HomeSliverAppbar extends StatefulWidget {
   const HomeSliverAppbar({super.key});
+
+  @override
+  State<HomeSliverAppbar> createState() => _HomeSliverAppbarState();
+}
+
+class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
+  User? _user;
+  Rider? _rider;
+  double _balance = 0.0;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+    _loadRiderData();
+    _loadWalletData();
+  }
+
+  Future<void> _loadUserData() async {
+    final userData = CacheService.getUserData();
+    if (userData != null) {
+      setState(() {
+        _user = User.fromJson(userData);
+      });
+    }
+  }
+
+  Future<void> _loadRiderData() async {
+    try {
+      final response = await riderService.getVerification();
+      if (response.isSuccessful && response.body != null && response.body!.data != null) {
+        if (mounted) {
+          setState(() {
+            _rider = response.body!.data;
+          });
+        }
+      }
+    } catch (e) {
+      // Silently handle error - rider data might not exist yet
+      // If rider data doesn't exist, _rider will remain null and default image will show
+    }
+  }
+
+  Future<void> _loadWalletData() async {
+    try {
+      final response = await riderService.getWallet();
+      if (response.isSuccessful && response.body != null) {
+        final data = response.body!['data'] as Map<String, dynamic>?;
+        if (data != null && mounted) {
+          setState(() {
+            _balance = (data['balance'] as num?)?.toDouble() ?? 0.0;
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  String _getGreetingText() {
+    final username = _user?.username ?? '';
+    if (username.isEmpty) {
+      return _rider?.vehicleType?.toLowerCase() == "car" ? "Driver!" : "Rider!";
+    }
+
+    final firstName = username.split(' ').first.trim();
+
+    return _rider?.vehicleType?.toLowerCase() == "car" ? "Driver $firstName" : "Rider $firstName";
+  }
+
+  Widget _getVehicleImage({
+    required String? vehicleType,
+    required double expandRatio,
+    required double reverseRatio,
+    required Size size,
+  }) {
+    final height = size.height * 0.48 * expandRatio + size.height * 0.35 * reverseRatio;
+    final width = size.width * 0.48 * expandRatio + size.width * 0.35 * reverseRatio;
+
+    final normalizedType = vehicleType?.toLowerCase().trim();
+
+    if (normalizedType == 'scooter') {
+      return Assets.images.deliveryGuyScooter.image(
+        package: "grab_go_shared",
+        height: height,
+        width: width,
+        fit: BoxFit.contain,
+      );
+    } else if (normalizedType == 'car') {
+      return Assets.images.deliveryGuyCar.image(
+        package: "grab_go_shared",
+        height: height,
+        width: width,
+        fit: BoxFit.contain,
+      );
+    } else if (normalizedType == 'bicycle') {
+      return Assets.images.deliveryGuyBicycle.image(
+        package: "grab_go_shared",
+        height: height,
+        width: width,
+        fit: BoxFit.contain,
+      );
+    } else if (normalizedType == 'motorcycle') {
+      return Assets.images.deliveryGuyMotorcycle.image(
+        package: "grab_go_shared",
+        height: height,
+        width: width,
+        fit: BoxFit.contain,
+      );
+    } else {
+      // Default to motorcycle if vehicle type is null or unknown
+      return Assets.images.deliveryGuyMotorcycle.image(
+        package: "grab_go_shared",
+        height: height,
+        width: width,
+        fit: BoxFit.contain,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -140,7 +275,7 @@ class HomeSliverAppbar extends StatelessWidget {
                                       ),
                                     ),
                                     Text(
-                                      "Rider John!",
+                                      _getGreetingText(),
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w900,
@@ -186,7 +321,7 @@ class HomeSliverAppbar extends StatelessWidget {
                                         SizedBox(width: 4.w),
                                         Flexible(
                                           child: Text(
-                                            "184.90",
+                                            _isLoading ? "..." : _balance.toStringAsFixed(2),
                                             style: TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.w800,
@@ -234,11 +369,11 @@ class HomeSliverAppbar extends StatelessWidget {
                               right: -10.w * reverseRatio,
                               child: Transform.scale(
                                 scale: expandRatio * 0.2 + 0.8,
-                                child: Assets.images.deliveryGuy.image(
-                                  package: "grab_go_shared",
-                                  height: size.height * 0.48 * expandRatio + size.height * 0.35 * reverseRatio,
-                                  width: size.width * 0.48 * expandRatio + size.width * 0.35 * reverseRatio,
-                                  fit: BoxFit.contain,
+                                child: _getVehicleImage(
+                                  vehicleType: _rider?.vehicleType,
+                                  expandRatio: expandRatio,
+                                  reverseRatio: reverseRatio,
+                                  size: size,
                                 ),
                               ),
                             ),

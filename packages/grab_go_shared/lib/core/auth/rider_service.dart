@@ -57,5 +57,8 @@ abstract class RiderService extends ChopperService {
     @PartFile('idImage') required String imagePath,
   });
 
+  @GET(path: '/riders/wallet')
+  Future<Response<Map<String, dynamic>>> getWallet();
+
   static RiderService create([ChopperClient? client]) => _$RiderService(client);
 }
