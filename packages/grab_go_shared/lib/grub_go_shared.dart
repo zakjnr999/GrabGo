@@ -27,3 +27,5 @@ export 'core/repository/food_repository.dart';
 export 'core/auth/user_model.dart';
 export 'core/auth/auth_service.dart';
 export 'core/auth/google_sign_in_service.dart';
+export 'core/auth/rider_model.dart';
+export 'core/auth/rider_service.dart';

@@ -5,7 +5,7 @@ import 'package:grab_go_rider/core/api/json_serializable_converter.dart' as loca
 
 final chopperClient = ChopperClient(
   baseUrl: Uri.parse(AppConfig.apiBaseUrl),
-  services: [FoodService.create(), AuthService.create()],
+  services: [FoodService.create(), AuthService.create(), RiderService.create()],
   converter: const local.JsonSerializableConverter(),
   interceptors: [HttpLoggingInterceptor()],
   client: http.Client(),
@@ -13,3 +13,4 @@ final chopperClient = ChopperClient(
 
 FoodService get foodService => chopperClient.getService<FoodService>();
 AuthService get authService => chopperClient.getService<AuthService>();
+RiderService get riderService => chopperClient.getService<RiderService>();

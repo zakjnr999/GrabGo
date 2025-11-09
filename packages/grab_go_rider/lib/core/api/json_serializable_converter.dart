@@ -42,6 +42,10 @@ class JsonSerializableConverter extends JsonConverter {
         return UserPermissions.fromJson(data as Map<String, dynamic>);
       case const (PhoneVerificationRequest):
         return PhoneVerificationRequest.fromJson(data as Map<String, dynamic>);
+      case const (RiderResponse):
+        return RiderResponse.fromJson(data as Map<String, dynamic>);
+      case const (Rider):
+        return Rider.fromJson(data as Map<String, dynamic>);
       default:
         return data;
     }
@@ -78,6 +82,33 @@ class JsonSerializableConverter extends JsonConverter {
         debugPrint('❌ No auth token found for protected endpoint: ${request.url.path}');
         debugPrint('   Please ensure you are logged in or have registered recently.');
       }
+    }
+
+    // Filter out null values from multipart requests
+    if (req.multipart && req.parts.isNotEmpty) {
+      debugPrint('📤 Filtering multipart request parts...');
+      final filteredParts = <PartValue>[];
+      for (final part in req.parts) {
+        if (part is PartValueFile) {
+          final value = part.value;
+          if (value != null && value.toString().isNotEmpty) {
+            filteredParts.add(part);
+          }
+        } else if (part is PartValue) {
+          final value = part.value;
+          if (value != null && value.toString().isNotEmpty) {
+            filteredParts.add(part);
+          }
+        } else {
+          filteredParts.add(part);
+        }
+      }
+
+      debugPrint('   Original parts count: ${req.parts.length}');
+      debugPrint('   Filtered parts count: ${filteredParts.length}');
+
+      final body = _convertBody(req.body);
+      return req.copyWith(headers: headers, body: body, parts: filteredParts);
     }
 
     final body = _convertBody(req.body);

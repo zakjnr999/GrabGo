@@ -386,6 +386,42 @@ router.post('/verification', protect, authorize('rider'), uploadSingle('vehicleI
       agreedToAccuracy
     } = req.body;
 
+    // Validate vehicle type
+    const validVehicleTypes = ['motorcycle', 'bicycle', 'car', 'scooter'];
+    if (vehicleType && !validVehicleTypes.includes(vehicleType.toLowerCase())) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid vehicle type. Must be one of: ${validVehicleTypes.join(', ')}`
+      });
+    }
+
+    // Validate national ID type
+    const validNationalIdTypes = ['national_id', 'passport', 'drivers_license'];
+    if (nationalIdType && !validNationalIdTypes.includes(nationalIdType.toLowerCase())) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid national ID type. Must be one of: ${validNationalIdTypes.join(', ')}`
+      });
+    }
+
+    // Validate payment method
+    const validPaymentMethods = ['bank_account', 'mobile_money'];
+    if (paymentMethod && !validPaymentMethods.includes(paymentMethod.toLowerCase())) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid payment method. Must be one of: ${validPaymentMethods.join(', ')}`
+      });
+    }
+
+    // Validate mobile money provider
+    const validMobileMoneyProviders = ['mtn', 'vodafone', 'airtel', 'tigo'];
+    if (mobileMoneyProvider && !validMobileMoneyProviders.includes(mobileMoneyProvider.toLowerCase())) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid mobile money provider. Must be one of: ${validMobileMoneyProviders.join(', ')}`
+      });
+    }
+
     // Check if rider verification already exists
     let rider = await Rider.findOne({ user: req.user._id });
 
@@ -396,20 +432,20 @@ router.post('/verification', protect, authorize('rider'), uploadSingle('vehicleI
       });
     }
 
-    // Prepare rider data
+    // Prepare rider data with normalized values
     const riderData = {
       user: req.user._id,
-      vehicleType,
+      vehicleType: vehicleType ? vehicleType.toLowerCase() : null,
       licensePlateNumber,
       vehicleBrand,
       vehicleModel,
-      nationalIdType,
+      nationalIdType: nationalIdType ? nationalIdType.toLowerCase() : null,
       nationalIdNumber,
-      paymentMethod,
+      paymentMethod: paymentMethod ? paymentMethod.toLowerCase() : null,
       bankName,
       accountNumber,
       accountHolderName,
-      mobileMoneyProvider,
+      mobileMoneyProvider: mobileMoneyProvider ? mobileMoneyProvider.toLowerCase() : null,
       mobileMoneyNumber,
       agreedToTerms: agreedToTerms === 'true' || agreedToTerms === true,
       agreedToLocationAccess: agreedToLocationAccess === 'true' || agreedToLocationAccess === true,
@@ -439,6 +475,26 @@ router.post('/verification', protect, authorize('rider'), uploadSingle('vehicleI
     });
   } catch (error) {
     console.error('Submit verification error:', error);
+    
+    // Handle Mongoose validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: errors
+      });
+    }
+    
+    // Handle duplicate key errors
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({
+        success: false,
+        message: `${field} already exists`
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Server error',
@@ -497,6 +553,50 @@ router.put('/verification', protect, authorize('rider'), uploadSingle('vehicleIm
       });
     }
 
+    // Validate vehicle type if provided
+    if (req.body.vehicleType) {
+      const validVehicleTypes = ['motorcycle', 'bicycle', 'car', 'scooter'];
+      if (!validVehicleTypes.includes(req.body.vehicleType.toLowerCase())) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid vehicle type. Must be one of: ${validVehicleTypes.join(', ')}`
+        });
+      }
+    }
+
+    // Validate national ID type if provided
+    if (req.body.nationalIdType) {
+      const validNationalIdTypes = ['national_id', 'passport', 'drivers_license'];
+      if (!validNationalIdTypes.includes(req.body.nationalIdType.toLowerCase())) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid national ID type. Must be one of: ${validNationalIdTypes.join(', ')}`
+        });
+      }
+    }
+
+    // Validate payment method if provided
+    if (req.body.paymentMethod) {
+      const validPaymentMethods = ['bank_account', 'mobile_money'];
+      if (!validPaymentMethods.includes(req.body.paymentMethod.toLowerCase())) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid payment method. Must be one of: ${validPaymentMethods.join(', ')}`
+        });
+      }
+    }
+
+    // Validate mobile money provider if provided
+    if (req.body.mobileMoneyProvider) {
+      const validMobileMoneyProviders = ['mtn', 'vodafone', 'airtel', 'tigo'];
+      if (!validMobileMoneyProviders.includes(req.body.mobileMoneyProvider.toLowerCase())) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid mobile money provider. Must be one of: ${validMobileMoneyProviders.join(', ')}`
+        });
+      }
+    }
+
     // Update allowed fields
     const allowedUpdates = [
       'vehicleType', 'licensePlateNumber', 'vehicleBrand', 'vehicleModel',
@@ -510,6 +610,9 @@ router.put('/verification', protect, authorize('rider'), uploadSingle('vehicleIm
       if (req.body[field] !== undefined) {
         if (field.includes('agreed')) {
           rider[field] = req.body[field] === 'true' || req.body[field] === true;
+        } else if (field === 'vehicleType' || field === 'nationalIdType' || field === 'paymentMethod' || field === 'mobileMoneyProvider') {
+          // Normalize enum fields to lowercase
+          rider[field] = req.body[field] ? req.body[field].toLowerCase() : req.body[field];
         } else {
           rider[field] = req.body[field];
         }
@@ -536,6 +639,26 @@ router.put('/verification', protect, authorize('rider'), uploadSingle('vehicleIm
     });
   } catch (error) {
     console.error('Update verification error:', error);
+    
+    // Handle Mongoose validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: errors
+      });
+    }
+    
+    // Handle duplicate key errors
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({
+        success: false,
+        message: `${field} already exists`
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Server error',
