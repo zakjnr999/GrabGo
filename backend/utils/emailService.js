@@ -7,14 +7,24 @@ const createTransporter = () => {
   // For production, use a service like SendGrid, Mailgun, or AWS SES
   
   // Check if email credentials are configured
+  console.log('📧 Checking email configuration...');
+  console.log('EMAIL_HOST:', process.env.EMAIL_HOST ? `✅ Set (${process.env.EMAIL_HOST})` : '❌ Missing');
+  console.log('EMAIL_USER:', process.env.EMAIL_USER ? `✅ Set (${process.env.EMAIL_USER})` : '❌ Missing');
+  console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? '✅ Set (****)' : '❌ Missing');
+  console.log('EMAIL_PORT:', process.env.EMAIL_PORT || '587 (default)');
+  console.log('EMAIL_SECURE:', process.env.EMAIL_SECURE || 'false (default)');
+  
   if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
     console.warn('⚠️  Email service not configured. Email sending will be disabled.');
+    console.warn('⚠️  Please set EMAIL_HOST, EMAIL_USER, and EMAIL_PASS in your .env file');
     return null;
   }
 
+  console.log('✅ Email service configured. Creating transporter...');
+  
   return nodemailer.createTransport({
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: process.env.EMAIL_PORT || 587,
+    port: parseInt(process.env.EMAIL_PORT || '587'),
     secure: process.env.EMAIL_SECURE === 'true', // true for 465, false for other ports
     auth: {
       user: process.env.EMAIL_USER,
@@ -35,6 +45,11 @@ const generateOTP = () => {
 
 // Send email verification email with OTP
 const sendVerificationEmail = async (email, username, otp) => {
+  console.log('📧 Attempting to send verification email...');
+  console.log('To:', email);
+  console.log('Username:', username);
+  console.log('OTP:', otp);
+  
   try {
     const transporter = createTransporter();
     
@@ -42,6 +57,8 @@ const sendVerificationEmail = async (email, username, otp) => {
       console.warn('⚠️  Email service not configured. Skipping email send.');
       return { success: false, message: 'Email service not configured' };
     }
+    
+    console.log('✅ Transporter created. Preparing email...');
 
     const mailOptions = {
       from: `"${process.env.EMAIL_FROM_NAME || 'GrabGo'}" <${process.env.EMAIL_USER}>`,
@@ -105,11 +122,20 @@ const sendVerificationEmail = async (email, username, otp) => {
       `,
     };
 
+    console.log('📤 Sending email...');
     const info = await transporter.sendMail(mailOptions);
-    console.log('✅ Verification email sent:', info.messageId);
+    console.log('✅ Verification email sent successfully!');
+    console.log('Message ID:', info.messageId);
+    console.log('Response:', info.response);
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error('❌ Error sending verification email:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      command: error.command,
+      response: error.response,
+    });
     return { success: false, error: error.message };
   }
 };

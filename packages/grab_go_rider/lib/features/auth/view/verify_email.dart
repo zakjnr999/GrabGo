@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -138,7 +140,6 @@ class _VerifyEmailState extends State<VerifyEmail> with SingleTickerProviderStat
       if (!mounted) return;
 
       if (response.isSuccessful && response.body != null) {
-        // Navigate to OTP verification page
         if (mounted) {
           context.push("/emailOtpVerification", extra: emailController.text.trim());
         }
@@ -304,7 +305,7 @@ class _VerifyEmailState extends State<VerifyEmail> with SingleTickerProviderStat
                       child: Padding(
                         padding: EdgeInsets.symmetric(horizontal: KSpacing.sm.w),
                         child: Text(
-                          "We've sent a verification link to your email. Please check your inbox and click the link to verify your email address. After verification, you'll be able to complete your rider registration.",
+                          "Enter your email address below and tap the button to receive a verification code. We'll send a 6-digit code to your email. After verification, you'll be able to complete your rider registration.",
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 14.sp,
@@ -390,7 +391,7 @@ class _VerifyEmailState extends State<VerifyEmail> with SingleTickerProviderStat
                                     ),
                                   )
                                 : Text(
-                                    "Resend Verification Link",
+                                    "SEND VERIFICATION CODE",
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 16.sp,
@@ -404,42 +405,6 @@ class _VerifyEmailState extends State<VerifyEmail> with SingleTickerProviderStat
                     ),
                   ),
                   SizedBox(height: KSpacing.md.h),
-
-                  FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: SlideTransition(
-                      position: _slideAnimation,
-                      child: GestureDetector(
-                        onTap: () {
-                          AppToastMessage.show(
-                            context: context,
-                            icon: Icons.refresh,
-                            message: "Checking verification status...",
-                            backgroundColor: colors.accentViolet,
-                          );
-                        },
-                        child: Container(
-                          height: 50.h,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            border: Border.all(color: colors.accentViolet, width: 2),
-                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                          ),
-                          child: Center(
-                            child: Text(
-                              "I've Verified My Email",
-                              style: TextStyle(
-                                color: colors.accentViolet,
-                                fontSize: 16.sp,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),

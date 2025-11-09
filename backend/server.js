@@ -58,6 +58,17 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/grabgo')
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📡 API available at http://localhost:${PORT}/api`);
+    console.log('\n📧 Email Service Configuration:');
+    console.log('EMAIL_HOST:', process.env.EMAIL_HOST ? `✅ ${process.env.EMAIL_HOST}` : '❌ Not set');
+    console.log('EMAIL_USER:', process.env.EMAIL_USER ? `✅ ${process.env.EMAIL_USER}` : '❌ Not set');
+    console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? '✅ Set (hidden)' : '❌ Not set');
+    console.log('EMAIL_PORT:', process.env.EMAIL_PORT || '587 (default)');
+    if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      console.log('\n⚠️  WARNING: Email service is not configured!');
+      console.log('⚠️  Emails will not be sent. Please set EMAIL_HOST, EMAIL_USER, and EMAIL_PASS in your .env file');
+    } else {
+      console.log('\n✅ Email service is configured and ready!');
+    }
   });
 })
 .catch((error) => {

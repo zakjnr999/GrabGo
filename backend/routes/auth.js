@@ -148,9 +148,17 @@ router.post("/", async (req, res) => {
     const user = await User.create(userData);
 
     // Send verification email with OTP (non-blocking)
-    sendVerificationEmail(user.email, user.username, emailVerificationOTP).catch((error) => {
-      console.error("Error sending verification email:", error);
-    });
+    sendVerificationEmail(user.email, user.username, emailVerificationOTP)
+      .then((result) => {
+        if (result.success) {
+          console.log(`✅ Verification email sent to ${user.email} with OTP: ${emailVerificationOTP}`);
+        } else {
+          console.error(`❌ Failed to send verification email to ${user.email}:`, result.message || result.error);
+        }
+      })
+      .catch((error) => {
+        console.error(`❌ Error sending verification email to ${user.email}:`, error);
+      });
 
     const token = generateToken(user._id);
 
@@ -614,9 +622,16 @@ router.post("/verify-email", [
 router.post("/resend-verification", [
   body("email").isEmail().withMessage("Valid email is required"),
 ], async (req, res) => {
+  console.log('\n========================================');
+  console.log('📧 RESEND VERIFICATION REQUEST RECEIVED');
+  console.log('========================================');
+  console.log('Request body:', req.body);
+  console.log('Request headers:', req.headers);
+  
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.error('❌ Validation errors:', errors.array());
       return res.status(400).json({
         success: false,
         message: "Validation failed",
@@ -625,11 +640,14 @@ router.post("/resend-verification", [
     }
 
     const { email } = req.body;
+    console.log('📧 Processing resend verification for:', email);
 
     // Find user by email
     const user = await User.findOne({ email: email.toLowerCase() });
+    console.log('User found:', user ? 'Yes' : 'No');
 
     if (!user) {
+      console.log('⚠️  User not found for email:', email);
       // Don't reveal if user exists or not for security
       return res.json({
         success: true,
@@ -639,11 +657,14 @@ router.post("/resend-verification", [
 
     // Check if email is already verified
     if (user.isEmailVerified) {
+      console.log('⚠️  Email already verified for:', email);
       return res.status(400).json({
         success: false,
         message: "Email is already verified",
       });
     }
+    
+    console.log('✅ User found and email not verified. Generating OTP...');
 
     // Generate new verification OTP
     const emailVerificationOTP = generateOTP();
@@ -655,9 +676,17 @@ router.post("/resend-verification", [
     await user.save();
 
     // Send verification email with OTP (non-blocking)
-    sendVerificationEmail(user.email, user.username, emailVerificationOTP).catch((error) => {
-      console.error("Error sending verification email:", error);
-    });
+    sendVerificationEmail(user.email, user.username, emailVerificationOTP)
+      .then((result) => {
+        if (result.success) {
+          console.log(`✅ Verification email resent to ${user.email} with OTP: ${emailVerificationOTP}`);
+        } else {
+          console.error(`❌ Failed to resend verification email to ${user.email}:`, result.message || result.error);
+        }
+      })
+      .catch((error) => {
+        console.error(`❌ Error resending verification email to ${user.email}:`, error);
+      });
 
     res.json({
       success: true,
