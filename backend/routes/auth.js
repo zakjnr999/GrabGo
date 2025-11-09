@@ -676,8 +676,10 @@ router.post("/resend-verification", [
     await user.save();
 
     // Send verification email with OTP (non-blocking)
+    console.log('📧 Calling sendVerificationEmail function...');
     sendVerificationEmail(user.email, user.username, emailVerificationOTP)
       .then((result) => {
+        console.log('📧 sendVerificationEmail result:', result);
         if (result.success) {
           console.log(`✅ Verification email resent to ${user.email} with OTP: ${emailVerificationOTP}`);
         } else {
@@ -686,6 +688,7 @@ router.post("/resend-verification", [
       })
       .catch((error) => {
         console.error(`❌ Error resending verification email to ${user.email}:`, error);
+        console.error('Error stack:', error.stack);
       });
 
     res.json({

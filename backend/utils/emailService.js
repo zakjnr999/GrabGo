@@ -22,7 +22,7 @@ const createTransporter = () => {
 
   console.log('✅ Email service configured. Creating transporter...');
   
-  return nodemailer.createTransport({
+  const transporterConfig = {
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
     port: parseInt(process.env.EMAIL_PORT || '587'),
     secure: process.env.EMAIL_SECURE === 'true', // true for 465, false for other ports
@@ -30,7 +30,20 @@ const createTransporter = () => {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
+    // Add debug logging
+    debug: true,
+    logger: true,
+  };
+  
+  console.log('📧 Transporter config:', {
+    host: transporterConfig.host,
+    port: transporterConfig.port,
+    secure: transporterConfig.secure,
+    user: transporterConfig.auth.user,
+    pass: '****',
   });
+  
+  return nodemailer.createTransport(transporterConfig);
 };
 
 // Generate email verification token
@@ -123,11 +136,18 @@ const sendVerificationEmail = async (email, username, otp) => {
     };
 
     console.log('📤 Sending email...');
-    const info = await transporter.sendMail(mailOptions);
-    console.log('✅ Verification email sent successfully!');
-    console.log('Message ID:', info.messageId);
-    console.log('Response:', info.response);
-    return { success: true, messageId: info.messageId };
+    try {
+      const info = await transporter.sendMail(mailOptions);
+      console.log('✅ Verification email sent successfully!');
+      console.log('Message ID:', info.messageId);
+      console.log('Response:', info.response);
+      console.log('Accepted:', info.accepted);
+      console.log('Rejected:', info.rejected);
+      return { success: true, messageId: info.messageId };
+    } catch (sendError) {
+      console.error('❌ Error during sendMail:', sendError);
+      throw sendError; // Re-throw to be caught by outer catch
+    }
   } catch (error) {
     console.error('❌ Error sending verification email:', error);
     console.error('Error details:', {
@@ -135,6 +155,8 @@ const sendVerificationEmail = async (email, username, otp) => {
       code: error.code,
       command: error.command,
       response: error.response,
+      responseCode: error.responseCode,
+      stack: error.stack,
     });
     return { success: false, error: error.message };
   }
