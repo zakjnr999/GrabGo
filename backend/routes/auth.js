@@ -147,23 +147,13 @@ router.post("/", async (req, res) => {
 
     const user = await User.create(userData);
 
-    // Send verification email with OTP (non-blocking)
-    sendVerificationEmail(user.email, user.username, emailVerificationOTP)
-      .then((result) => {
-        if (result.success) {
-          console.log(`✅ Verification email sent to ${user.email} with OTP: ${emailVerificationOTP}`);
-        } else {
-          console.error(`❌ Failed to send verification email to ${user.email}:`, result.message || result.error);
-        }
-      })
-      .catch((error) => {
-        console.error(`❌ Error sending verification email to ${user.email}:`, error);
-      });
+    // Don't send verification email automatically - user will request it on the verify email page
+    // The OTP is generated and stored, but email is only sent when user explicitly requests it
 
     const token = generateToken(user._id);
 
     res.status(201).json({
-      message: "User registered successfully. Please check your email to verify your account.",
+      message: "User registered successfully. Please verify your email to continue.",
       user: {
         _id: user._id,
         username: user.username,
