@@ -5,11 +5,11 @@ import 'package:flutter_otp_text_field/flutter_otp_text_field.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:grab_go_customer/core/api/api_client.dart';
-import 'package:grab_go_customer/shared/services/cache_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:grab_go_customer/features/auth/service/firebase_phone_auth_service.dart';
+import 'package:grab_go_customer/features/auth/service/phone_auth_service.dart';
+import 'package:grab_go_customer/shared/services/user_service.dart';
+import 'package:grab_go_shared/core/auth/user_model.dart';
 
 class OtpVerification extends StatefulWidget {
   const OtpVerification({super.key});
@@ -59,7 +59,7 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
       ),
     );
 
-    phoneNumber = FirebasePhoneAuthService().phoneNumber;
+    phoneNumber = PhoneAuthService().phoneNumber;
 
     _startCountdown();
 
@@ -99,7 +99,7 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
       isLoading = true;
     });
 
-    final userCredential = await FirebasePhoneAuthService().verifyOTP(
+    final result = await PhoneAuthService().verifyOTP(
       otpCode: otp,
       onError: (error) {
         if (mounted) {
@@ -117,118 +117,61 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
       },
     );
 
-    if (userCredential != null && mounted) {
-      LoadingDialog.instance().show(context: context, text: "Updating phone verification...");
+    if (result != null && mounted) {
+      final userData = result['user'];
 
-      try {
-        final userId = FirebasePhoneAuthService().userId;
-        if (userId == null) {
-          if (mounted) {
-            LoadingDialog.instance().hide();
-            AppToastMessage.show(
-              context: context,
-              icon: Icons.error_outline,
-              message: "User ID not found. Please restart the registration process.",
-              backgroundColor: context.appColors.error,
-            );
-          }
-          return;
-        }
+      if (userData != null) {
+        // Update user data
+        final user = User.fromJson(userData);
+        await UserService().setCurrentUser(user);
 
-        // Check if auth token exists
-        final token = CacheService.getAuthToken();
-        if (token == null || token.isEmpty) {
-          if (mounted) {
-            LoadingDialog.instance().hide();
-            AppToastMessage.show(
-              context: context,
-              icon: Icons.error_outline,
-              message: "Authentication token missing. Please register or login again.",
-              backgroundColor: context.appColors.error,
-            );
-          }
-          return;
-        }
-
-        final request = PhoneVerificationRequest(
-          phoneNumber: FirebasePhoneAuthService().phoneNumber ?? '',
-          isPhoneVerified: true,
-        );
-
-        final response = await authService
-            .verifyPhone(userId, request)
-            .timeout(
-              const Duration(seconds: 30),
-              onTimeout: () {
-                throw TimeoutException('Server is taking too long to respond.');
-              },
-            );
-
-        if (response.isSuccessful && response.body != null) {
-          final message = response.body!.message;
-          final user = response.body!.user;
-
-          if (mounted) {
-            LoadingDialog.instance().hide();
-            AppToastMessage.show(
-              context: context,
-              icon: Icons.check_circle,
-              message: "Phone verified successfully!",
-              backgroundColor: Colors.green,
-            );
-
-            context.push("/profileUpload");
-          }
-        } else {
-          String errorMessage = "Failed to update phone verification. Please try again.";
-
-          if (response.error != null) {
-            errorMessage = response.error.toString();
-          } else if (response.statusCode == 400) {
-            errorMessage = "Invalid verification data.";
-          } else if (response.statusCode == 404) {
-            errorMessage = "User not found.";
-          } else if (response.statusCode == 500) {
-            errorMessage = "Server error. Please try again later.";
-          }
-
-          if (mounted) {
-            LoadingDialog.instance().hide();
-            AppToastMessage.show(
-              context: context,
-              icon: Icons.error_outline,
-              message: errorMessage,
-              backgroundColor: context.appColors.error,
-            );
-          }
-        }
-      } catch (e) {
         if (mounted) {
           LoadingDialog.instance().hide();
           AppToastMessage.show(
             context: context,
-            icon: Icons.error,
-            message: "Failed to update phone verification. Please try again.",
+            icon: Icons.check_circle,
+            message: "Phone verified successfully!",
+            backgroundColor: Colors.green,
+          );
+
+          await Future.delayed(const Duration(milliseconds: 500));
+          if (mounted) {
+            context.push("/profileUpload");
+          }
+        }
+      } else {
+        if (mounted) {
+          LoadingDialog.instance().hide();
+          AppToastMessage.show(
+            context: context,
+            icon: Icons.error_outline,
+            message: "Failed to verify phone. Please try again.",
             backgroundColor: context.appColors.error,
           );
         }
       }
     }
 
-    setState(() {
-      isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
   Future<void> _resendOTP() async {
-    final storedPhoneNumber = FirebasePhoneAuthService().phoneNumber;
-    if (storedPhoneNumber == null) {
-      AppToastMessage.show(
-        context: context,
-        icon: Icons.error_outline,
-        message: "Phone number not found. Please restart verification.",
-        backgroundColor: context.appColors.error,
-      );
+    final storedPhoneNumber = PhoneAuthService().phoneNumber;
+    final userId = UserService().currentUser?.id ?? PhoneAuthService().userId;
+
+    if (storedPhoneNumber == null || userId == null) {
+      if (mounted) {
+        AppToastMessage.show(
+          context: context,
+          icon: Icons.error_outline,
+          message: "Phone number or user ID not found. Please restart verification.",
+          backgroundColor: context.appColors.error,
+        );
+      }
       return;
     }
 
@@ -240,18 +183,19 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
       countdown = 60;
     });
 
-    await FirebasePhoneAuthService().resendOTP(
+    await PhoneAuthService().resendOTP(
       phoneNumber: storedPhoneNumber,
-      onCodeSent: (verificationId) {
+      userId: userId,
+      onCodeSent: () {
         if (mounted) {
           LoadingDialog.instance().hide();
+          _startCountdown();
           AppToastMessage.show(
             context: context,
             icon: Icons.check_circle,
             message: "OTP resent successfully!",
             backgroundColor: Colors.green,
           );
-          _startCountdown();
         }
       },
       onError: (error) {

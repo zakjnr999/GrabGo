@@ -218,9 +218,90 @@ const sendPasswordResetEmail = async (email, username, token) => {
   }
 };
 
+// Send SMS via SendGrid email-to-SMS gateway
+// Note: SendGrid doesn't have native SMS support, so we use email-to-SMS gateways
+// For production, consider using Twilio or AWS SNS for better reliability
+const sendSMS = async (phoneNumber, otp) => {
+  try {
+    if (!initializeSendGrid()) {
+      return { success: false, message: 'SMS service not configured' };
+    }
+
+    const fromEmail = process.env.EMAIL_FROM_EMAIL || 'noreply@grabgo.com';
+    const fromName = process.env.EMAIL_FROM_NAME || 'GrabGo';
+
+    // Format phone number for email-to-SMS gateway
+    // Common carriers: @txt.att.net (AT&T), @vtext.com (Verizon), @tmomail.net (T-Mobile), etc.
+    // This is a simplified approach - in production, you'd want to detect carrier or use a service like Twilio
+    const cleanPhone = phoneNumber.replace(/[^0-9]/g, '');
+    
+    // Try multiple carrier gateways (most common ones)
+    const carriers = [
+      '@txt.att.net',      // AT&T
+      '@vtext.com',        // Verizon
+      '@tmomail.net',      // T-Mobile
+      '@messaging.sprintpcs.com', // Sprint
+      '@msg.fi.google.com', // Google Fi
+    ];
+
+    // Use first carrier as default (AT&T)
+    const smsEmail = `${cleanPhone}${carriers[0]}`;
+    
+    const msg = {
+      to: smsEmail,
+      from: {
+        email: fromEmail,
+        name: fromName,
+      },
+      subject: 'GrabGo Verification Code',
+      text: `Your GrabGo verification code is: ${otp}. This code will expire in 10 minutes.`,
+    };
+
+    // Retry logic for connection timeouts
+    const maxRetries = 3;
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const sendPromise = sgMail.send(msg);
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('SMS sending timeout after 30 seconds')), 30000);
+        });
+        
+        const [response] = await Promise.race([sendPromise, timeoutPromise]);
+        return { success: true, messageId: response.headers['x-message-id'] || 'sent' };
+      } catch (sendError) {
+        lastError = sendError;
+        
+        // If it's a connection timeout or rate limit and we have retries left, wait and retry
+        if (
+          (sendError.code === 'ETIMEDOUT' || 
+           sendError.message.includes('timeout') ||
+           sendError.code === 429) && 
+          attempt < maxRetries
+        ) {
+          const waitTime = attempt * 2000; // 2s, 4s, 6s
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+        
+        // If it's not a retryable error or we're out of retries, break and throw
+        throw sendError;
+      }
+    }
+    
+    // If we get here, all retries failed
+    throw lastError;
+  } catch (error) {
+    console.error('Error sending SMS:', error.message);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   generateVerificationToken,
   generateOTP,
   sendVerificationEmail,
   sendPasswordResetEmail,
+  sendSMS,
 };

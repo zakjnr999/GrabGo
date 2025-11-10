@@ -4,7 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
-import 'package:grab_go_customer/features/auth/service/firebase_phone_auth_service.dart';
+import 'package:grab_go_customer/features/auth/service/phone_auth_service.dart';
 import 'package:grab_go_customer/shared/viewmodels/theme_provider.dart';
 import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -45,7 +45,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
 
       // If no user found, try to fetch from API using stored user ID
       if (user == null) {
-        final userId = FirebasePhoneAuthService().userId;
+        final userId = UserService().currentUser?.id ?? PhoneAuthService().userId;
         if (userId != null && userId.isNotEmpty) {
           user = await UserService().getUserById(userId);
           if (user != null) {

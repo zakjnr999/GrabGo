@@ -12,6 +12,7 @@ const {
   generateVerificationToken,
   generateOTP,
   sendVerificationEmail,
+  sendSMS,
 } = require("../utils/emailService");
 
 const router = express.Router();
@@ -738,6 +739,226 @@ router.post("/send-verification", protect, async (req, res) => {
     });
   } catch (error) {
     console.error("Send verification error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
+// @route   POST /api/users/send-phone-otp
+// @desc    Send OTP to phone number
+// @access  Public
+router.post("/send-phone-otp", async (req, res) => {
+  try {
+    const { phoneNumber, userId } = req.body;
+
+    if (!phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number is required",
+      });
+    }
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID is required",
+      });
+    }
+
+    // Find user by ID
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Check if phone is already verified
+    if (user.isPhoneVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone is already verified",
+      });
+    }
+
+    // Generate OTP
+    const phoneVerificationOTP = generateOTP();
+    const phoneVerificationOTPExpires = new Date();
+    phoneVerificationOTPExpires.setMinutes(
+      phoneVerificationOTPExpires.getMinutes() + 10
+    ); // 10 minutes expiry
+
+    // Save OTP to user
+    user.phoneVerificationOTP = phoneVerificationOTP;
+    user.phoneVerificationOTPExpires = phoneVerificationOTPExpires;
+    await user.save();
+
+    // Send SMS with OTP (non-blocking)
+    const smsResult = await sendSMS(phoneNumber, phoneVerificationOTP);
+
+    if (!smsResult.success) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send OTP",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "OTP sent successfully",
+    });
+  } catch (error) {
+    console.error("Send phone OTP error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
+// @route   POST /api/users/verify-phone-otp
+// @desc    Verify phone OTP
+// @access  Public
+router.post("/verify-phone-otp", async (req, res) => {
+  try {
+    const { phoneNumber, otp, userId } = req.body;
+
+    if (!phoneNumber || !otp || !userId) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number, OTP, and user ID are required",
+      });
+    }
+
+    // Find user by ID
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Check if OTP matches
+    if (user.phoneVerificationOTP !== otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
+    }
+
+    // Check if OTP has expired
+    if (user.phoneVerificationOTPExpires < new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP has expired",
+      });
+    }
+
+    // Verify phone
+    user.isPhoneVerified = true;
+    user.phone = phoneNumber;
+    user.phoneVerificationOTP = null;
+    user.phoneVerificationOTPExpires = null;
+    await user.save();
+
+    // Generate token for the verified user
+    const token = generateToken(user._id);
+
+    res.json({
+      success: true,
+      message: "Phone verified successfully",
+      user: {
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        phone: user.phone,
+        isPhoneVerified: user.isPhoneVerified,
+        isEmailVerified: user.isEmailVerified,
+        DateOfBirth: user.DateOfBirth,
+        profilePicture: user.profilePicture,
+        isAdmin: user.isAdmin,
+        role: user.role,
+        isActive: user.isActive,
+        permissions: user.permissions,
+        createdAt: user.createdAt,
+      },
+      token,
+    });
+  } catch (error) {
+    console.error("Verify phone OTP error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
+// @route   POST /api/users/resend-phone-otp
+// @desc    Resend phone OTP
+// @access  Public
+router.post("/resend-phone-otp", async (req, res) => {
+  try {
+    const { phoneNumber, userId } = req.body;
+
+    if (!phoneNumber || !userId) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number and user ID are required",
+      });
+    }
+
+    // Find user by ID
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Check if phone is already verified
+    if (user.isPhoneVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone is already verified",
+      });
+    }
+
+    // Generate new OTP
+    const phoneVerificationOTP = generateOTP();
+    const phoneVerificationOTPExpires = new Date();
+    phoneVerificationOTPExpires.setMinutes(
+      phoneVerificationOTPExpires.getMinutes() + 10
+    ); // 10 minutes expiry
+
+    // Save OTP to user
+    user.phoneVerificationOTP = phoneVerificationOTP;
+    user.phoneVerificationOTPExpires = phoneVerificationOTPExpires;
+    await user.save();
+
+    // Send SMS with OTP (non-blocking)
+    const smsResult = await sendSMS(phoneNumber, phoneVerificationOTP);
+
+    if (!smsResult.success) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send OTP",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "OTP resent successfully",
+    });
+  } catch (error) {
+    console.error("Resend phone OTP error:", error);
     res.status(500).json({
       success: false,
       message: "Server error",

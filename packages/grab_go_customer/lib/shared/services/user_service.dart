@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:grab_go_customer/features/auth/service/firebase_phone_auth_service.dart';
+import 'package:grab_go_customer/features/auth/service/phone_auth_service.dart';
 import 'cache_service.dart';
 
 class UserService {
@@ -127,9 +127,9 @@ class UserService {
         return _currentUser;
       }
 
-      final userId = FirebasePhoneAuthService().userId;
+      final userId = _currentUser?.id ?? PhoneAuthService().userId;
       if (userId == null) {
-        debugPrint('❌ User ID not found in Firebase service');
+        debugPrint('❌ User ID not found');
         return null;
       }
 
@@ -158,7 +158,7 @@ class UserService {
       await _saveUserDataToCache(user);
 
       if (user.id != null) {
-        FirebasePhoneAuthService().setUserId(user.id!);
+        PhoneAuthService().setUserId(user.id!);
       }
 
       debugPrint('✅ 2️⃣ User data saved successfully!');
@@ -187,7 +187,7 @@ class UserService {
       _currentUser = null;
       await _clearCachedUserData();
 
-      FirebasePhoneAuthService().setUserId('');
+      PhoneAuthService().clear();
 
       debugPrint('✅ 5️⃣ Logout successful!');
       debugPrint('   User will be asked to log in again next time');
@@ -197,7 +197,7 @@ class UserService {
   }
 
   String? getUserId() {
-    return _currentUser?.id ?? FirebasePhoneAuthService().userId;
+    return _currentUser?.id ?? PhoneAuthService().userId;
   }
 
   bool hasPermission(String permission) {

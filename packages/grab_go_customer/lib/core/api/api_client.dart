@@ -1,8 +1,9 @@
 import 'package:chopper/chopper.dart';
-import 'package:grab_go_shared/grub_go_shared.dart' hide FoodService;
+import 'package:grab_go_shared/grub_go_shared.dart' hide FoodService, AuthService;
 import 'package:http/http.dart' as http;
 import 'package:grab_go_customer/core/api/json_serializable_converter.dart' as local;
 import 'package:grab_go_customer/core/api/restaurant_service.dart';
+import 'package:grab_go_customer/core/api/auth_service.dart';
 import 'package:grab_go_customer/features/home/service/food_service.dart';
 
 final chopperClient = ChopperClient(

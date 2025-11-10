@@ -6,7 +6,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
-import 'package:grab_go_customer/features/auth/service/firebase_phone_auth_service.dart';
+import 'package:grab_go_customer/features/auth/service/phone_auth_service.dart';
+import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class VerifyPhone extends StatefulWidget {
@@ -96,13 +97,28 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
       phoneNumber = '+233$phoneNumber';
     }
 
-    debugPrint('📱 Sending OTP to: $phoneNumber');
-    debugPrint('📱 Phone number format: ${phoneNumber.length} digits');
-    debugPrint('📱 Country code: ${phoneNumber.substring(0, 4)}');
+    // Get user ID from current user
+    final userId = UserService().currentUser?.id;
+    if (userId == null) {
+      if (mounted) {
+        LoadingDialog.instance().hide();
+        AppToastMessage.show(
+          context: context,
+          icon: Icons.error_outline,
+          message: "User ID not found. Please register again.",
+          backgroundColor: context.appColors.error,
+        );
+      }
+      setState(() {
+        isLoading = false;
+      });
+      return;
+    }
 
-    await FirebasePhoneAuthService().sendOTP(
+    await PhoneAuthService().sendOTP(
       phoneNumber: phoneNumber,
-      onCodeSent: (verificationId) {
+      userId: userId,
+      onCodeSent: () {
         if (mounted) {
           LoadingDialog.instance().hide();
           context.push("/OTPVerification");
@@ -115,17 +131,6 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
             context: context,
             icon: Icons.error_outline,
             message: "Failed to send OTP: $error",
-            backgroundColor: context.appColors.error,
-          );
-        }
-      },
-      onTimeout: () {
-        if (mounted) {
-          LoadingDialog.instance().hide();
-          AppToastMessage.show(
-            context: context,
-            icon: Icons.timer_off,
-            message: "Request timeout. Please try again.",
             backgroundColor: context.appColors.error,
           );
         }

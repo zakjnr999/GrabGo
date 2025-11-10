@@ -10,6 +10,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_rider/core/api/api_client.dart';
+import 'package:grab_go_rider/shared/service/cache_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
@@ -536,6 +537,11 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
       LoadingDialog.instance().hide();
 
       if (response.isSuccessful && response.body != null) {
+        // Cache vehicle type for immediate display on next app launch
+        if (vehicleTypeController.text.trim().isNotEmpty) {
+          await CacheService.saveVehicleType(vehicleTypeController.text.trim());
+        }
+
         // Upload ID images separately after successful submission
         try {
           if (idFrontImage != null) {

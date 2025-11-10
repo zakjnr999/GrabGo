@@ -143,4 +143,34 @@ final class _$AuthService extends AuthService {
     final Request $request = Request('GET', $url, client.baseUrl);
     return client.send<UserResponse, UserResponse>($request);
   }
+
+  @override
+  Future<Response<Map<String, dynamic>>> sendPhoneOTP(
+    Map<String, dynamic> body,
+  ) {
+    final Uri $url = Uri.parse('/users/send-phone-otp');
+    final $body = body;
+    final Request $request = Request('POST', $url, client.baseUrl, body: $body);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
+
+  @override
+  Future<Response<Map<String, dynamic>>> verifyPhoneOTP(
+    Map<String, dynamic> body,
+  ) {
+    final Uri $url = Uri.parse('/users/verify-phone-otp');
+    final $body = body;
+    final Request $request = Request('POST', $url, client.baseUrl, body: $body);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
+
+  @override
+  Future<Response<Map<String, dynamic>>> resendPhoneOTP(
+    Map<String, dynamic> body,
+  ) {
+    final Uri $url = Uri.parse('/users/resend-phone-otp');
+    final $body = body;
+    final Request $request = Request('POST', $url, client.baseUrl, body: $body);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
 }

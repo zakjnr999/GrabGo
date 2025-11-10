@@ -495,6 +495,38 @@ class CacheService {
     }
   }
 
+  // ==================== RIDER DATA CACHING ====================
+
+  /// Save vehicle type
+  static Future<bool> saveVehicleType(String vehicleType) async {
+    try {
+      return await _instance.setString('vehicle_type', vehicleType);
+    } catch (e) {
+      debugPrint('Error saving vehicle type: $e');
+      return false;
+    }
+  }
+
+  /// Get vehicle type
+  static String? getVehicleType() {
+    try {
+      return _instance.getString('vehicle_type');
+    } catch (e) {
+      debugPrint('Error getting vehicle type: $e');
+      return null;
+    }
+  }
+
+  /// Clear vehicle type
+  static Future<bool> clearVehicleType() async {
+    try {
+      return await _instance.remove('vehicle_type');
+    } catch (e) {
+      debugPrint('Error clearing vehicle type: $e');
+      return false;
+    }
+  }
+
   // ==================== APP STATE CACHING ====================
 
   /// Save first launch status

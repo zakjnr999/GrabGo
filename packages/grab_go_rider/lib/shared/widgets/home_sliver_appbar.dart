@@ -29,6 +29,7 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
   void initState() {
     super.initState();
     _loadUserData();
+    _loadCachedVehicleType();
     _loadRiderData();
     _loadWalletData();
   }
@@ -38,6 +39,19 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
     if (userData != null) {
       setState(() {
         _user = User.fromJson(userData);
+      });
+    }
+  }
+
+  Future<void> _loadCachedVehicleType() async {
+    // Load cached vehicle type immediately to show correct image
+    final cachedVehicleType = CacheService.getVehicleType();
+    if (cachedVehicleType != null && mounted) {
+      setState(() {
+        // Create a temporary Rider object with cached vehicle type for immediate display
+        _rider = Rider(vehicleType: cachedVehicleType);
+        // Don't set _isLoading = false here - we still want to fetch latest data from API
+        // The image will show because we have cached vehicle type
       });
     }
   }
@@ -68,6 +82,10 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
               _rider = response.body!.data;
               _isLoading = false;
             });
+            // Cache the vehicle type for next time
+            if (_rider?.vehicleType != null) {
+              await CacheService.saveVehicleType(_rider!.vehicleType!);
+            }
           }
         }
       } else if (response.statusCode == 404) {
@@ -134,12 +152,16 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
   String _getGreetingText() {
     final username = _user?.username ?? '';
     if (username.isEmpty) {
-      return _rider?.vehicleType?.toLowerCase() == "car" ? "Driver!" : "Rider!";
+      // Use cached vehicle type if rider data not loaded yet
+      final vehicleType = _rider?.vehicleType ?? CacheService.getVehicleType();
+      return vehicleType?.toLowerCase() == "car" ? "Driver!" : "Rider!";
     }
 
     final firstName = username.split(' ').first.trim();
 
-    return _rider?.vehicleType?.toLowerCase() == "car" ? "Driver $firstName" : "Rider $firstName";
+    // Use cached vehicle type if rider data not loaded yet
+    final vehicleType = _rider?.vehicleType ?? CacheService.getVehicleType();
+    return vehicleType?.toLowerCase() == "car" ? "Driver $firstName" : "Rider $firstName";
   }
 
   Widget _getVehicleImage({
@@ -151,12 +173,16 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
     final height = size.height * 0.48 * expandRatio + size.height * 0.35 * reverseRatio;
     final width = size.width * 0.48 * expandRatio + size.width * 0.35 * reverseRatio;
 
-    // Don't show image while loading
-    if (_isLoading) {
+    // Use vehicle type from API if available, otherwise fall back to cached vehicle type
+    // This ensures we show the correct image immediately from cache, then update if API returns different value
+    final cachedVehicleType = CacheService.getVehicleType();
+    final effectiveVehicleType = vehicleType ?? cachedVehicleType;
+    final normalizedType = effectiveVehicleType?.toLowerCase().trim();
+
+    // If we don't have any vehicle type (neither from API nor cache), show nothing while loading
+    if (normalizedType == null && _isLoading) {
       return SizedBox(height: height, width: width);
     }
-
-    final normalizedType = vehicleType?.toLowerCase().trim();
 
     if (normalizedType == 'scooter') {
       return Assets.images.deliveryGuyScooter.image(

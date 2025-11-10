@@ -13,7 +13,7 @@ import 'package:grab_go_customer/shared/services/storage_service.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:grab_go_customer/features/auth/service/firebase_phone_auth_service.dart';
+import 'package:grab_go_customer/features/auth/service/phone_auth_service.dart';
 import 'package:image_picker/image_picker.dart';
 
 class ProfileUpload extends StatefulWidget {
@@ -117,7 +117,7 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
       return;
     }
 
-    final userId = FirebasePhoneAuthService().userId;
+    final userId = UserService().currentUser?.id ?? PhoneAuthService().userId;
     if (userId == null) {
       AppToastMessage.show(
         context: context,

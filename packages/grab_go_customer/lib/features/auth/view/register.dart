@@ -14,7 +14,7 @@ import 'package:grab_go_customer/shared/services/storage_service.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
-import 'package:grab_go_customer/features/auth/service/firebase_phone_auth_service.dart';
+import 'package:grab_go_customer/features/auth/service/phone_auth_service.dart';
 
 class Register extends StatefulWidget {
   const Register({super.key});
@@ -261,7 +261,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         if (user != null) {
           await UserService().setCurrentUser(user);
           if (user.id != null) {
-            FirebasePhoneAuthService().setUserId(user.id!);
+            PhoneAuthService().setUserId(user.id!);
           }
         }
 
@@ -429,7 +429,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         }
 
         if (user != null) {
-          FirebasePhoneAuthService().setUserId(user.id ?? '');
+          PhoneAuthService().setUserId(user.id ?? '');
         }
 
         if (mounted) {

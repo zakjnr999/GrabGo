@@ -1,5 +1,5 @@
 import 'package:chopper/chopper.dart';
-import 'package:grab_go_customer/features/auth/model/user_model.dart';
+import 'package:grab_go_shared/core/auth/user_model.dart';
 
 part 'auth_service.chopper.dart';
 
@@ -41,6 +41,16 @@ abstract class AuthService extends ChopperService {
 
   @GET(path: '/users/{userId}')
   Future<Response<UserResponse>> getUser(@Path() String userId);
+
+  // Phone OTP endpoints
+  @POST(path: '/users/send-phone-otp')
+  Future<Response<Map<String, dynamic>>> sendPhoneOTP(@Body() Map<String, dynamic> body);
+
+  @POST(path: '/users/verify-phone-otp')
+  Future<Response<Map<String, dynamic>>> verifyPhoneOTP(@Body() Map<String, dynamic> body);
+
+  @POST(path: '/users/resend-phone-otp')
+  Future<Response<Map<String, dynamic>>> resendPhoneOTP(@Body() Map<String, dynamic> body);
 
   static AuthService create([ChopperClient? client]) => _$AuthService(client);
 }
