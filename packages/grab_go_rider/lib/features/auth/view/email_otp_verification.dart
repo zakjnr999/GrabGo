@@ -157,13 +157,7 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
             await UserService().setCurrentUser(User.fromJson(responseUser));
 
             if (mounted) {
-              AppToastMessage.show(
-                context: context,
-                icon: Icons.check_circle,
-                message: "Email verified successfully!",
-                backgroundColor: Colors.green,
-              );
-              await Future.delayed(const Duration(milliseconds: 500));
+              await Future.delayed(const Duration(milliseconds: 200));
               if (mounted) {
                 context.push("/riderVerification");
               }
@@ -182,13 +176,7 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
                 if (user != null) {
                   await UserService().setCurrentUser(user);
                   if (mounted) {
-                    AppToastMessage.show(
-                      context: context,
-                      icon: Icons.check_circle,
-                      message: "Email verified successfully!",
-                      backgroundColor: Colors.green,
-                    );
-                    await Future.delayed(const Duration(milliseconds: 500));
+                    await Future.delayed(const Duration(milliseconds: 200));
                     if (mounted) {
                       context.push("/riderVerification");
                     }
@@ -295,12 +283,6 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
       LoadingDialog.instance().hide();
 
       if (response.isSuccessful && response.body != null) {
-        AppToastMessage.show(
-          context: context,
-          icon: Icons.check_circle,
-          message: "Verification code sent! Please check your inbox.",
-          backgroundColor: Colors.green,
-        );
         _startCountdown();
       } else {
         String errorMessage = "Failed to resend code. Please try again.";
@@ -413,7 +395,7 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
             physics: const BouncingScrollPhysics(),
             padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w, vertical: KSpacing.xl40.h),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(height: KSpacing.xl40.h),
 
@@ -422,28 +404,18 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
                   child: FadeTransition(
                     opacity: _fadeAnimation,
                     child: Container(
-                      height: 100.h,
-                      width: 100.h,
+                      height: 80.h,
+                      width: 80.w,
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [
-                            colors.accentViolet.withValues(alpha: 0.2),
-                            colors.accentGreen.withValues(alpha: 0.2),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        boxShadow: [
-                          BoxShadow(color: colors.accentViolet.withValues(alpha: 0.2), blurRadius: 30, spreadRadius: 5),
-                        ],
+                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                        color: colors.accentViolet.withValues(alpha: 0.15),
                       ),
                       child: Center(
                         child: SvgPicture.asset(
                           Assets.icons.shieldCheck,
                           package: 'grab_go_shared',
                           height: 50.h,
-                          width: 50.h,
+                          width: 50.w,
                           colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
                         ),
                       ),
@@ -458,7 +430,7 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
                     position: _slideAnimation,
                     child: Text(
                       AppStrings.otpMain,
-                      textAlign: TextAlign.center,
+                      textAlign: TextAlign.left,
                       style: TextStyle(
                         fontSize: 32.sp,
                         fontWeight: FontWeight.w900,
@@ -476,10 +448,10 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
                   child: SlideTransition(
                     position: _slideAnimation,
                     child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w),
+                      padding: EdgeInsets.zero,
                       child: Text(
-                        "Enter the 6-digit code sent to ${widget.email}",
-                        textAlign: TextAlign.center,
+                        "Enter the 6-digit code sent to ${widget.email}. \n If you didn't receive the code, please check your spam folder or request a new code.",
+                        textAlign: TextAlign.left,
                         style: TextStyle(
                           fontSize: 15.sp,
                           fontWeight: FontWeight.w500,
@@ -490,14 +462,14 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
                     ),
                   ),
                 ),
-                SizedBox(height: KSpacing.xl40.h),
+                SizedBox(height: KSpacing.xl.h),
 
                 FadeTransition(
                   opacity: _fadeAnimation,
                   child: SlideTransition(
                     position: _slideAnimation,
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         OtpTextField(
                           numberOfFields: 6,
@@ -507,7 +479,7 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
                           fillColor: colors.backgroundSecondary,
                           filled: true,
                           showFieldAsBox: true,
-                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                           contentPadding: EdgeInsets.symmetric(vertical: 16.h),
                           cursorColor: colors.accentViolet,
                           focusedBorderColor: colors.accentViolet,
@@ -546,7 +518,7 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
                               color: verificationCode != null && verificationCode!.length == 6 && !isLoading
                                   ? null
                                   : colors.inputBorder,
-                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                               boxShadow: verificationCode != null && verificationCode!.length == 6 && !isLoading
                                   ? [
                                       BoxShadow(

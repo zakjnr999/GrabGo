@@ -3,19 +3,11 @@ const crypto = require('crypto');
 
 // Initialize SendGrid
 const initializeSendGrid = () => {
-  console.log('📧 Checking email configuration...');
-  console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? '✅ Set (****)' : '❌ Missing (SendGrid API key)');
-  console.log('EMAIL_FROM_EMAIL:', process.env.EMAIL_FROM_EMAIL ? `✅ Set (${process.env.EMAIL_FROM_EMAIL})` : '⚠️  Not set (will use default)');
-  console.log('EMAIL_FROM_NAME:', process.env.EMAIL_FROM_NAME ? `✅ Set (${process.env.EMAIL_FROM_NAME})` : '✅ Using default (GrabGo)');
-  
   if (!process.env.EMAIL_PASS) {
-    console.warn('⚠️  Email service not configured. Email sending will be disabled.');
-    console.warn('⚠️  Please set EMAIL_PASS (SendGrid API key) in your .env file');
     return false;
   }
 
   sgMail.setApiKey(process.env.EMAIL_PASS);
-  console.log('✅ SendGrid API initialized successfully!');
   return true;
 };
 
@@ -31,14 +23,8 @@ const generateOTP = () => {
 
 // Send email verification email with OTP using SendGrid API
 const sendVerificationEmail = async (email, username, otp) => {
-  console.log('📧 Attempting to send verification email...');
-  console.log('To:', email);
-  console.log('Username:', username);
-  console.log('OTP:', otp);
-  
   try {
     if (!initializeSendGrid()) {
-      console.warn('⚠️  Email service not configured. Skipping email send.');
       return { success: false, message: 'Email service not configured' };
     }
 
@@ -110,26 +96,18 @@ const sendVerificationEmail = async (email, username, otp) => {
       `,
     };
 
-    console.log('📤 Sending email via SendGrid API...');
-    
     // Retry logic for connection timeouts
     const maxRetries = 3;
     let lastError;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`📤 Attempt ${attempt} of ${maxRetries}...`);
-        
         const sendPromise = sgMail.send(msg);
         const timeoutPromise = new Promise((_, reject) => {
           setTimeout(() => reject(new Error('Email sending timeout after 30 seconds')), 30000);
         });
         
         const [response] = await Promise.race([sendPromise, timeoutPromise]);
-        
-        console.log('✅ Verification email sent successfully!');
-        console.log('Response status:', response.statusCode);
-        console.log('Response headers:', response.headers);
         return { success: true, messageId: response.headers['x-message-id'] || 'sent' };
       } catch (sendError) {
         lastError = sendError;
@@ -142,7 +120,6 @@ const sendVerificationEmail = async (email, username, otp) => {
           attempt < maxRetries
         ) {
           const waitTime = attempt * 2000; // 2s, 4s, 6s
-          console.log(`⏳ Error on attempt ${attempt} (${sendError.message}). Retrying in ${waitTime}ms...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
           continue;
         }
@@ -155,30 +132,7 @@ const sendVerificationEmail = async (email, username, otp) => {
     // If we get here, all retries failed
     throw lastError;
   } catch (error) {
-    console.error('❌ Error sending verification email:', error);
-    
-    // Log SendGrid-specific error details
-    if (error.response && error.response.body) {
-      console.error('📧 SendGrid Error Response:', JSON.stringify(error.response.body, null, 2));
-      if (error.response.body.errors && Array.isArray(error.response.body.errors)) {
-        error.response.body.errors.forEach((err, index) => {
-          console.error(`   Error ${index + 1}:`, err.message || err);
-          if (err.field) {
-            console.error(`   Field: ${err.field}`);
-          }
-          if (err.help) {
-            console.error(`   Help: ${err.help}`);
-          }
-        });
-      }
-    }
-    
-    console.error('Error details:', {
-      message: error.message,
-      code: error.code || error.response?.statusCode,
-      statusCode: error.response?.statusCode,
-      response: error.response?.body,
-    });
+    console.error('Error sending verification email:', error.message);
     return { success: false, error: error.message };
   }
 };
@@ -187,7 +141,6 @@ const sendVerificationEmail = async (email, username, otp) => {
 const sendPasswordResetEmail = async (email, username, token) => {
   try {
     if (!initializeSendGrid()) {
-      console.warn('⚠️  Email service not configured. Skipping email send.');
       return { success: false, message: 'Email service not configured' };
     }
 
@@ -257,12 +210,10 @@ const sendPasswordResetEmail = async (email, username, token) => {
       `,
     };
 
-    console.log('📤 Sending password reset email via SendGrid API...');
     const [response] = await sgMail.send(msg);
-    console.log('✅ Password reset email sent:', response.statusCode);
     return { success: true, messageId: response.headers['x-message-id'] || 'sent' };
   } catch (error) {
-    console.error('❌ Error sending password reset email:', error);
+    console.error('Error sending password reset email:', error.message);
     return { success: false, error: error.message };
   }
 };

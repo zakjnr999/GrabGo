@@ -58,18 +58,8 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/grabgo')
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📡 API available at http://localhost:${PORT}/api`);
-    console.log('\n📧 Email Service Configuration:');
-    console.log('EMAIL_HOST:', process.env.EMAIL_HOST ? `✅ ${process.env.EMAIL_HOST}` : `✅ Default (smtp.sendgrid.net)`);
-    console.log('EMAIL_USER:', process.env.EMAIL_USER ? `✅ ${process.env.EMAIL_USER}` : '✅ Default (apikey for SendGrid)');
-    console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? '✅ Set (hidden)' : '❌ Not set (SendGrid API key)');
-    console.log('EMAIL_PORT:', process.env.EMAIL_PORT || '587 (default)');
-    console.log('EMAIL_FROM_EMAIL:', process.env.EMAIL_FROM_EMAIL || 'Not set');
     if (!process.env.EMAIL_PASS) {
-      console.log('\n⚠️  WARNING: Email service is not configured!');
-      console.log('⚠️  Emails will not be sent. Please set EMAIL_PASS (SendGrid API key) in your .env file');
-      console.log('⚠️  For SendGrid: EMAIL_USER should be "apikey" and EMAIL_PASS should be your SendGrid API key');
-    } else {
-      console.log('\n✅ Email service is configured and ready!');
+      console.log('⚠️  Email service not configured');
     }
   });
 })

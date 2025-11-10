@@ -69,7 +69,7 @@ router.post("/", async (req, res) => {
         googleId,
         profilePicture: photoUrl,
         isEmailVerified: true,
-        role: role || 'customer',
+        role: role || "customer",
       });
 
       const token = generateToken(user._id);
@@ -121,12 +121,13 @@ router.post("/", async (req, res) => {
 
     // Create user
     // Validate role if provided
-    const validRoles = ['customer', 'restaurant', 'rider', 'admin'];
+    const validRoles = ["customer", "restaurant", "rider", "admin"];
     const receivedRole = req.body.role || role; // Try both ways
-    const userRole = receivedRole && validRoles.includes(String(receivedRole).toLowerCase()) 
-      ? String(receivedRole).toLowerCase() 
-      : 'customer';
-    
+    const userRole =
+      receivedRole && validRoles.includes(String(receivedRole).toLowerCase())
+        ? String(receivedRole).toLowerCase()
+        : "customer";
+
     const userData = {
       username,
       email,
@@ -136,7 +137,7 @@ router.post("/", async (req, res) => {
       profilePicture,
       role: userRole,
     };
-    
+
     // Don't generate OTP during registration - it will be generated when user requests it on verify email page
     // This prevents unnecessary OTP generation and ensures email is only sent when user explicitly requests it
     const user = await User.create(userData);
@@ -144,7 +145,8 @@ router.post("/", async (req, res) => {
     const token = generateToken(user._id);
 
     res.status(201).json({
-      message: "User registered successfully. Please verify your email to continue.",
+      message:
+        "User registered successfully. Please verify your email to continue.",
       user: {
         _id: user._id,
         username: user.username,
@@ -199,7 +201,7 @@ router.post("/login", async (req, res) => {
           googleId,
           profilePicture: photoUrl,
           isEmailVerified: true,
-          role: req.body.role || 'customer',
+          role: req.body.role || "customer",
         });
       } else {
         // Update Google ID if not set
@@ -533,171 +535,157 @@ router.get("/:userId", protect, async (req, res) => {
 // @route   POST /api/users/verify-email
 // @desc    Verify email address with OTP code
 // @access  Public
-router.post("/verify-email", [
-  body("email").isEmail().withMessage("Valid email is required"),
-  body("otp").isLength({ min: 6, max: 6 }).withMessage("OTP must be 6 digits"),
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
+router.post(
+  "/verify-email",
+  [
+    body("email").isEmail().withMessage("Valid email is required"),
+    body("otp")
+      .isLength({ min: 6, max: 6 })
+      .withMessage("OTP must be 6 digits"),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: errors.array(),
+        });
+      }
+
+      const { email, otp } = req.body;
+
+      // Find user with matching email and OTP, check if OTP is not expired
+      const user = await User.findOne({
+        email: email.toLowerCase(),
+        emailVerificationOTP: otp,
+        emailVerificationOTPExpires: { $gt: new Date() },
+      });
+
+      if (!user) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid or expired verification code",
+        });
+      }
+
+      // Check if email is already verified
+      if (user.isEmailVerified) {
+        return res.status(400).json({
+          success: false,
+          message: "Email is already verified",
+        });
+      }
+
+      // Verify email
+      user.isEmailVerified = true;
+      user.emailVerificationOTP = null;
+      user.emailVerificationOTPExpires = null;
+      await user.save();
+
+      // Generate token for the verified user
+      const token = generateToken(user._id);
+
+      res.json({
+        success: true,
+        user: {
+          _id: user._id,
+          username: user.username,
+          email: user.email,
+          phone: user.phone,
+          isPhoneVerified: user.isPhoneVerified,
+          isEmailVerified: user.isEmailVerified,
+          DateOfBirth: user.DateOfBirth,
+          profilePicture: user.profilePicture,
+          isAdmin: user.isAdmin,
+          role: user.role,
+          isActive: user.isActive,
+          permissions: user.permissions,
+          createdAt: user.createdAt,
+        },
+        token,
+      });
+    } catch (error) {
+      console.error("Verify email error:", error);
+      res.status(500).json({
         success: false,
-        message: "Validation failed",
-        errors: errors.array(),
+        message: "Server error",
+        error: error.message,
       });
     }
-
-    const { email, otp } = req.body;
-
-    // Find user with matching email and OTP, check if OTP is not expired
-    const user = await User.findOne({
-      email: email.toLowerCase(),
-      emailVerificationOTP: otp,
-      emailVerificationOTPExpires: { $gt: new Date() },
-    });
-
-    if (!user) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid or expired verification code",
-      });
-    }
-
-    // Check if email is already verified
-    if (user.isEmailVerified) {
-      return res.status(400).json({
-        success: false,
-        message: "Email is already verified",
-      });
-    }
-
-    // Verify email
-    user.isEmailVerified = true;
-    user.emailVerificationOTP = null;
-    user.emailVerificationOTPExpires = null;
-    await user.save();
-
-    // Generate token for the verified user
-    const token = generateToken(user._id);
-
-    res.json({
-      success: true,
-      message: "Email verified successfully",
-      user: {
-        _id: user._id,
-        username: user.username,
-        email: user.email,
-        phone: user.phone,
-        isPhoneVerified: user.isPhoneVerified,
-        isEmailVerified: user.isEmailVerified,
-        DateOfBirth: user.DateOfBirth,
-        profilePicture: user.profilePicture,
-        isAdmin: user.isAdmin,
-        role: user.role,
-        isActive: user.isActive,
-        permissions: user.permissions,
-        createdAt: user.createdAt,
-      },
-      token,
-    });
-  } catch (error) {
-    console.error("Verify email error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
   }
-});
+);
 
 // @route   POST /api/users/resend-verification
 // @desc    Resend email verification
 // @access  Public
-router.post("/resend-verification", [
-  body("email").isEmail().withMessage("Valid email is required"),
-], async (req, res) => {
-  console.log('\n========================================');
-  console.log('📧 RESEND VERIFICATION REQUEST RECEIVED');
-  console.log('========================================');
-  console.log('Request body:', req.body);
-  console.log('Request headers:', req.headers);
-  
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      console.error('❌ Validation errors:', errors.array());
-      return res.status(400).json({
-        success: false,
-        message: "Validation failed",
-        errors: errors.array(),
-      });
-    }
+router.post(
+  "/resend-verification",
+  [body("email").isEmail().withMessage("Valid email is required")],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: errors.array(),
+        });
+      }
 
-    const { email } = req.body;
-    console.log('📧 Processing resend verification for:', email);
+      const { email } = req.body;
 
-    // Find user by email
-    const user = await User.findOne({ email: email.toLowerCase() });
-    console.log('User found:', user ? 'Yes' : 'No');
+      // Find user by email
+      const user = await User.findOne({ email: email.toLowerCase() });
 
-    if (!user) {
-      console.log('⚠️  User not found for email:', email);
-      // Don't reveal if user exists or not for security
-      return res.json({
+      if (!user) {
+        // Don't reveal if user exists or not for security
+        return res.json({
+          success: true,
+          message:
+            "If an account exists with this email, a verification email has been sent.",
+        });
+      }
+
+      // Check if email is already verified
+      if (user.isEmailVerified) {
+        return res.status(400).json({
+          success: false,
+          message: "Email is already verified",
+        });
+      }
+
+      // Generate new verification OTP
+      const emailVerificationOTP = generateOTP();
+      const emailVerificationOTPExpires = new Date();
+      emailVerificationOTPExpires.setMinutes(
+        emailVerificationOTPExpires.getMinutes() + 10
+      ); // 10 minutes expiry
+
+      user.emailVerificationOTP = emailVerificationOTP;
+      user.emailVerificationOTPExpires = emailVerificationOTPExpires;
+      await user.save();
+
+      // Send verification email with OTP (non-blocking)
+      sendVerificationEmail(user.email, user.username, emailVerificationOTP)
+        .catch((error) => {
+          console.error("Error sending verification email:", error.message);
+        });
+
+      res.json({
         success: true,
-        message: "If an account exists with this email, a verification email has been sent.",
       });
-    }
-
-    // Check if email is already verified
-    if (user.isEmailVerified) {
-      console.log('⚠️  Email already verified for:', email);
-      return res.status(400).json({
+    } catch (error) {
+      console.error("Resend verification error:", error);
+      res.status(500).json({
         success: false,
-        message: "Email is already verified",
+        message: "Server error",
+        error: error.message,
       });
     }
-    
-    console.log('✅ User found and email not verified. Generating OTP...');
-
-    // Generate new verification OTP
-    const emailVerificationOTP = generateOTP();
-    const emailVerificationOTPExpires = new Date();
-    emailVerificationOTPExpires.setMinutes(emailVerificationOTPExpires.getMinutes() + 10); // 10 minutes expiry
-
-    user.emailVerificationOTP = emailVerificationOTP;
-    user.emailVerificationOTPExpires = emailVerificationOTPExpires;
-    await user.save();
-
-    // Send verification email with OTP (non-blocking)
-    console.log('📧 Calling sendVerificationEmail function...');
-    sendVerificationEmail(user.email, user.username, emailVerificationOTP)
-      .then((result) => {
-        console.log('📧 sendVerificationEmail result:', result);
-        if (result.success) {
-          console.log(`✅ Verification email resent to ${user.email} with OTP: ${emailVerificationOTP}`);
-        } else {
-          console.error(`❌ Failed to resend verification email to ${user.email}:`, result.message || result.error);
-        }
-      })
-      .catch((error) => {
-        console.error(`❌ Error resending verification email to ${user.email}:`, error);
-        console.error('Error stack:', error.stack);
-      });
-
-    res.json({
-      success: true,
-      message: "Verification email sent successfully. Please check your inbox.",
-    });
-  } catch (error) {
-    console.error("Resend verification error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
   }
-});
+);
 
 // @route   POST /api/users/send-verification
 // @desc    Send verification email (for authenticated users)
@@ -724,25 +712,29 @@ router.post("/send-verification", protect, async (req, res) => {
     // Generate new verification OTP
     const emailVerificationOTP = generateOTP();
     const emailVerificationOTPExpires = new Date();
-    emailVerificationOTPExpires.setMinutes(emailVerificationOTPExpires.getMinutes() + 10); // 10 minutes expiry
+    emailVerificationOTPExpires.setMinutes(
+      emailVerificationOTPExpires.getMinutes() + 10
+    ); // 10 minutes expiry
 
     user.emailVerificationOTP = emailVerificationOTP;
     user.emailVerificationOTPExpires = emailVerificationOTPExpires;
     await user.save();
 
     // Send verification email with OTP (non-blocking)
-    const emailResult = await sendVerificationEmail(user.email, user.username, emailVerificationOTP);
+    const emailResult = await sendVerificationEmail(
+      user.email,
+      user.username,
+      emailVerificationOTP
+    );
 
     if (!emailResult.success) {
       return res.status(500).json({
         success: false,
-        message: "Failed to send verification email. Please try again later.",
       });
     }
 
     res.json({
       success: true,
-      message: "Verification email sent successfully. Please check your inbox.",
     });
   } catch (error) {
     console.error("Send verification error:", error);

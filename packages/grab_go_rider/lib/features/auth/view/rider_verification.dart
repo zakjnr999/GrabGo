@@ -1132,7 +1132,7 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                       fillColor: colors.backgroundSecondary,
                       borderRadius: KBorderSize.borderRadius4,
                       contentPadding: EdgeInsets.all(KSpacing.md15.r),
-                      keyboardType: TextInputType.text,
+                      keyboardType: TextInputType.number,
                     ),
                   ],
 

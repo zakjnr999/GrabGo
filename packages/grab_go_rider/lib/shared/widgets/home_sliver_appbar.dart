@@ -281,31 +281,34 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
                               AnimatedOpacity(
                                 opacity: expandRatio,
                                 duration: const Duration(milliseconds: 200),
-                                child: Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius50),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        width: 6.w,
-                                        height: 6.w,
-                                        decoration: BoxDecoration(color: colors.accentGreen, shape: BoxShape.circle),
-                                      ),
-                                      SizedBox(width: 6.w),
-                                      Text(
-                                        "Level 4",
-                                        style: TextStyle(
-                                          color: colors.accentGreen,
-                                          fontSize: 12.sp,
-                                          fontWeight: FontWeight.w700,
-                                          letterSpacing: 0.5,
+                                child: GestureDetector(
+                                  onTap: () => context.push("/verifyEmail"),
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius50),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          width: 6.w,
+                                          height: 6.w,
+                                          decoration: BoxDecoration(color: colors.accentGreen, shape: BoxShape.circle),
                                         ),
-                                      ),
-                                    ],
+                                        SizedBox(width: 6.w),
+                                        Text(
+                                          "Level 4",
+                                          style: TextStyle(
+                                            color: colors.accentGreen,
+                                            fontSize: 12.sp,
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),

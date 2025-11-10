@@ -185,7 +185,6 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         final token = response.body!.token;
         User? user = response.body!.userData;
 
-        // Validate that the user has the "rider" role
         if (user != null && user.role != null && user.role!.toLowerCase() != 'rider') {
           if (mounted) {
             AppToastMessage.show(

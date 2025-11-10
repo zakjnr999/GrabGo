@@ -238,32 +238,18 @@ class _VerifyEmailState extends State<VerifyEmail> with SingleTickerProviderStat
               physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w, vertical: KSpacing.xl40.h),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ScaleTransition(
                     scale: _scaleAnimation,
                     child: FadeTransition(
                       opacity: _fadeAnimation,
                       child: Container(
-                        height: 100.h,
-                        width: 100.w,
+                        height: 80.h,
+                        width: 80.w,
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [
-                              colors.accentViolet.withValues(alpha: 0.2),
-                              colors.accentViolet.withValues(alpha: 0.2),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: colors.accentViolet.withValues(alpha: 0.2),
-                              blurRadius: 30,
-                              spreadRadius: 5,
-                            ),
-                          ],
+                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                          color: colors.accentViolet.withValues(alpha: 0.15),
                         ),
                         child: Center(
                           child: SvgPicture.asset(
@@ -285,7 +271,7 @@ class _VerifyEmailState extends State<VerifyEmail> with SingleTickerProviderStat
                       position: _slideAnimation,
                       child: Text(
                         "Let's Get You Verified!",
-                        textAlign: TextAlign.center,
+                        textAlign: TextAlign.left,
                         style: TextStyle(
                           fontSize: 28.sp,
                           fontWeight: FontWeight.w900,
@@ -303,10 +289,10 @@ class _VerifyEmailState extends State<VerifyEmail> with SingleTickerProviderStat
                     child: SlideTransition(
                       position: _slideAnimation,
                       child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: KSpacing.sm.w),
+                        padding: EdgeInsets.zero,
                         child: Text(
                           "Enter your email address below and tap the button to receive a verification code. We'll send a 6-digit code to your email. After verification, you'll be able to complete your rider registration.",
-                          textAlign: TextAlign.center,
+                          textAlign: TextAlign.left,
                           style: TextStyle(
                             fontSize: 14.sp,
                             fontWeight: FontWeight.w500,
@@ -331,7 +317,7 @@ class _VerifyEmailState extends State<VerifyEmail> with SingleTickerProviderStat
                         borderColor: colors.inputBorder,
                         fillColor: colors.backgroundSecondary,
                         borderActiveColor: colors.accentViolet,
-                        borderRadius: KBorderSize.borderRadius15,
+                        borderRadius: KBorderSize.borderRadius4,
                         contentPadding: EdgeInsets.all(KSpacing.md15.r),
                         keyboardType: TextInputType.emailAddress,
                         errorText: emailError,
@@ -358,7 +344,7 @@ class _VerifyEmailState extends State<VerifyEmail> with SingleTickerProviderStat
                       child: GestureDetector(
                         onTap: isResending ? null : _sendVerificationEmail,
                         child: Container(
-                          height: 50.h,
+                          height: 56.h,
                           width: double.infinity,
                           decoration: BoxDecoration(
                             gradient: isResending
@@ -369,7 +355,7 @@ class _VerifyEmailState extends State<VerifyEmail> with SingleTickerProviderStat
                                     end: Alignment.centerRight,
                                   ),
                             color: isResending ? colors.backgroundSecondary : null,
-                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                             boxShadow: isResending
                                 ? null
                                 : [

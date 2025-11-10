@@ -649,6 +649,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                             hintText: AppStrings.riderRegisterUsernameHint,
                             borderColor: colors.inputBorder,
                             fillColor: colors.backgroundSecondary,
+                            borderActiveColor: colors.accentGreen,
                             borderRadius: KBorderSize.borderRadius4,
                             contentPadding: EdgeInsets.all(KSpacing.md15.r),
                             keyboardType: TextInputType.text,

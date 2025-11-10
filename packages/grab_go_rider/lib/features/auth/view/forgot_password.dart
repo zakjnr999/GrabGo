@@ -211,6 +211,7 @@ class _VerifyPhoneState extends State<ForgotPassword> with SingleTickerProviderS
                             hintText: AppStrings.loginEmailHint,
                             borderColor: colors.inputBorder,
                             fillColor: colors.backgroundSecondary,
+                            borderActiveColor: colors.accentViolet,
                             borderRadius: KBorderSize.borderRadius4,
                             contentPadding: EdgeInsets.all(KSpacing.md15.r),
                             keyboardType: TextInputType.emailAddress,
