@@ -1,62 +1,22 @@
-const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
 const crypto = require('crypto');
 
-// Create reusable transporter object using SMTP transport
-const createTransporter = () => {
-  // For development, you can use Gmail or other SMTP services
-  // For production, use a service like SendGrid, Mailgun, or AWS SES
-  
-  // Check if email credentials are configured
+// Initialize SendGrid
+const initializeSendGrid = () => {
   console.log('📧 Checking email configuration...');
-  console.log('EMAIL_HOST:', process.env.EMAIL_HOST ? `✅ Set (${process.env.EMAIL_HOST})` : `✅ Using default (smtp.sendgrid.net)`);
-  console.log('EMAIL_USER:', process.env.EMAIL_USER ? `✅ Set (${process.env.EMAIL_USER})` : '✅ Using default (apikey for SendGrid)');
   console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? '✅ Set (****)' : '❌ Missing (SendGrid API key)');
-  console.log('EMAIL_PORT:', process.env.EMAIL_PORT || '587 (default)');
-  console.log('EMAIL_SECURE:', process.env.EMAIL_SECURE || 'false (default)');
+  console.log('EMAIL_FROM_EMAIL:', process.env.EMAIL_FROM_EMAIL ? `✅ Set (${process.env.EMAIL_FROM_EMAIL})` : '⚠️  Not set (will use default)');
+  console.log('EMAIL_FROM_NAME:', process.env.EMAIL_FROM_NAME ? `✅ Set (${process.env.EMAIL_FROM_NAME})` : '✅ Using default (GrabGo)');
   
   if (!process.env.EMAIL_PASS) {
     console.warn('⚠️  Email service not configured. Email sending will be disabled.');
     console.warn('⚠️  Please set EMAIL_PASS (SendGrid API key) in your .env file');
-    console.warn('⚠️  For SendGrid: EMAIL_USER should be "apikey" and EMAIL_PASS should be your SendGrid API key');
-    return null;
+    return false;
   }
 
-  console.log('✅ Email service configured. Creating transporter...');
-  
-  // Determine if using SendGrid (default) or another provider
-  const isSendGrid = !process.env.EMAIL_HOST || process.env.EMAIL_HOST.includes('sendgrid');
-  
-  const transporterConfig = {
-    host: process.env.EMAIL_HOST || 'smtp.sendgrid.net',
-    port: parseInt(process.env.EMAIL_PORT || '587'),
-    secure: process.env.EMAIL_SECURE === 'true', // true for 465, false for other ports
-    auth: {
-      // For SendGrid, username is always 'apikey' and password is the API key
-      user: isSendGrid ? 'apikey' : (process.env.EMAIL_USER || 'apikey'),
-      pass: process.env.EMAIL_PASS, // SendGrid API key or other provider password
-    },
-    // Add debug logging
-    debug: true,
-    logger: true,
-    // Increase connection timeouts for cloud platforms like Render
-    connectionTimeout: 30000, // 30 seconds (increased from 10)
-    greetingTimeout: 30000, // 30 seconds (increased from 10)
-    socketTimeout: 30000, // 30 seconds (increased from 10)
-    // Add keepalive to maintain connection
-    pool: true,
-    maxConnections: 1,
-    maxMessages: 3,
-  };
-  
-  console.log('📧 Transporter config:', {
-    host: transporterConfig.host,
-    port: transporterConfig.port,
-    secure: transporterConfig.secure,
-    user: transporterConfig.auth.user,
-    pass: '****',
-  });
-  
-  return nodemailer.createTransport(transporterConfig);
+  sgMail.setApiKey(process.env.EMAIL_PASS);
+  console.log('✅ SendGrid API initialized successfully!');
+  return true;
 };
 
 // Generate email verification token
@@ -69,7 +29,7 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Send email verification email with OTP
+// Send email verification email with OTP using SendGrid API
 const sendVerificationEmail = async (email, username, otp) => {
   console.log('📧 Attempting to send verification email...');
   console.log('To:', email);
@@ -77,21 +37,20 @@ const sendVerificationEmail = async (email, username, otp) => {
   console.log('OTP:', otp);
   
   try {
-    const transporter = createTransporter();
-    
-    if (!transporter) {
+    if (!initializeSendGrid()) {
       console.warn('⚠️  Email service not configured. Skipping email send.');
       return { success: false, message: 'Email service not configured' };
     }
-    
-    console.log('✅ Transporter created. Preparing email...');
 
-    const fromEmail = process.env.EMAIL_FROM_EMAIL || process.env.EMAIL_USER || 'noreply@grabgo.com';
+    const fromEmail = process.env.EMAIL_FROM_EMAIL || 'noreply@grabgo.com';
     const fromName = process.env.EMAIL_FROM_NAME || 'GrabGo';
-    
-    const mailOptions = {
-      from: `"${fromName}" <${fromEmail}>`,
+
+    const msg = {
       to: email,
+      from: {
+        email: fromEmail,
+        name: fromName,
+      },
       subject: 'Verify Your Email Address - GrabGo',
       html: `
         <!DOCTYPE html>
@@ -151,7 +110,7 @@ const sendVerificationEmail = async (email, username, otp) => {
       `,
     };
 
-    console.log('📤 Sending email...');
+    console.log('📤 Sending email via SendGrid API...');
     
     // Retry logic for connection timeouts
     const maxRetries = 3;
@@ -161,31 +120,34 @@ const sendVerificationEmail = async (email, username, otp) => {
       try {
         console.log(`📤 Attempt ${attempt} of ${maxRetries}...`);
         
-        // Add timeout to prevent hanging
-        const sendPromise = transporter.sendMail(mailOptions);
+        const sendPromise = sgMail.send(msg);
         const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Email sending timeout after 45 seconds')), 45000);
+          setTimeout(() => reject(new Error('Email sending timeout after 30 seconds')), 30000);
         });
         
-        const info = await Promise.race([sendPromise, timeoutPromise]);
+        const [response] = await Promise.race([sendPromise, timeoutPromise]);
+        
         console.log('✅ Verification email sent successfully!');
-        console.log('Message ID:', info.messageId);
-        console.log('Response:', info.response);
-        console.log('Accepted:', info.accepted);
-        console.log('Rejected:', info.rejected);
-        return { success: true, messageId: info.messageId };
+        console.log('Response status:', response.statusCode);
+        console.log('Response headers:', response.headers);
+        return { success: true, messageId: response.headers['x-message-id'] || 'sent' };
       } catch (sendError) {
         lastError = sendError;
         
-        // If it's a connection timeout and we have retries left, wait and retry
-        if ((sendError.code === 'ETIMEDOUT' || sendError.message.includes('timeout')) && attempt < maxRetries) {
+        // If it's a connection timeout or rate limit and we have retries left, wait and retry
+        if (
+          (sendError.code === 'ETIMEDOUT' || 
+           sendError.message.includes('timeout') ||
+           sendError.code === 429) && 
+          attempt < maxRetries
+        ) {
           const waitTime = attempt * 2000; // 2s, 4s, 6s
-          console.log(`⏳ Connection timeout on attempt ${attempt}. Retrying in ${waitTime}ms...`);
+          console.log(`⏳ Error on attempt ${attempt} (${sendError.message}). Retrying in ${waitTime}ms...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
           continue;
         }
         
-        // If it's not a timeout or we're out of retries, break and throw
+        // If it's not a retryable error or we're out of retries, break and throw
         throw sendError;
       }
     }
@@ -197,33 +159,32 @@ const sendVerificationEmail = async (email, username, otp) => {
     console.error('Error details:', {
       message: error.message,
       code: error.code,
-      command: error.command,
-      response: error.response,
-      responseCode: error.responseCode,
+      response: error.response?.body,
+      statusCode: error.code,
       stack: error.stack,
     });
     return { success: false, error: error.message };
   }
 };
 
-// Send password reset email
+// Send password reset email using SendGrid API
 const sendPasswordResetEmail = async (email, username, token) => {
   try {
-    const transporter = createTransporter();
-    
-    if (!transporter) {
+    if (!initializeSendGrid()) {
       console.warn('⚠️  Email service not configured. Skipping email send.');
       return { success: false, message: 'Email service not configured' };
     }
 
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
-
-    const fromEmail = process.env.EMAIL_FROM_EMAIL || process.env.EMAIL_USER || 'noreply@grabgo.com';
+    const fromEmail = process.env.EMAIL_FROM_EMAIL || 'noreply@grabgo.com';
     const fromName = process.env.EMAIL_FROM_NAME || 'GrabGo';
-    
-    const mailOptions = {
-      from: `"${fromName}" <${fromEmail}>`,
+
+    const msg = {
       to: email,
+      from: {
+        email: fromEmail,
+        name: fromName,
+      },
       subject: 'Reset Your Password - GrabGo',
       html: `
         <!DOCTYPE html>
@@ -280,9 +241,10 @@ const sendPasswordResetEmail = async (email, username, token) => {
       `,
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log('✅ Password reset email sent:', info.messageId);
-    return { success: true, messageId: info.messageId };
+    console.log('📤 Sending password reset email via SendGrid API...');
+    const [response] = await sgMail.send(msg);
+    console.log('✅ Password reset email sent:', response.statusCode);
+    return { success: true, messageId: response.headers['x-message-id'] || 'sent' };
   } catch (error) {
     console.error('❌ Error sending password reset email:', error);
     return { success: false, error: error.message };
@@ -295,4 +257,3 @@ module.exports = {
   sendVerificationEmail,
   sendPasswordResetEmail,
 };
-
