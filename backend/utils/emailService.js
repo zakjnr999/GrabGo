@@ -156,12 +156,28 @@ const sendVerificationEmail = async (email, username, otp) => {
     throw lastError;
   } catch (error) {
     console.error('❌ Error sending verification email:', error);
+    
+    // Log SendGrid-specific error details
+    if (error.response && error.response.body) {
+      console.error('📧 SendGrid Error Response:', JSON.stringify(error.response.body, null, 2));
+      if (error.response.body.errors && Array.isArray(error.response.body.errors)) {
+        error.response.body.errors.forEach((err, index) => {
+          console.error(`   Error ${index + 1}:`, err.message || err);
+          if (err.field) {
+            console.error(`   Field: ${err.field}`);
+          }
+          if (err.help) {
+            console.error(`   Help: ${err.help}`);
+          }
+        });
+      }
+    }
+    
     console.error('Error details:', {
       message: error.message,
-      code: error.code,
+      code: error.code || error.response?.statusCode,
+      statusCode: error.response?.statusCode,
       response: error.response?.body,
-      statusCode: error.code,
-      stack: error.stack,
     });
     return { success: false, error: error.message };
   }
