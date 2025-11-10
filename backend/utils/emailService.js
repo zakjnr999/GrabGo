@@ -38,10 +38,14 @@ const createTransporter = () => {
     // Add debug logging
     debug: true,
     logger: true,
-    // Add connection timeout
-    connectionTimeout: 10000, // 10 seconds
-    greetingTimeout: 10000, // 10 seconds
-    socketTimeout: 10000, // 10 seconds
+    // Increase connection timeouts for cloud platforms like Render
+    connectionTimeout: 30000, // 30 seconds (increased from 10)
+    greetingTimeout: 30000, // 30 seconds (increased from 10)
+    socketTimeout: 30000, // 30 seconds (increased from 10)
+    // Add keepalive to maintain connection
+    pool: true,
+    maxConnections: 1,
+    maxMessages: 3,
   };
   
   console.log('📧 Transporter config:', {
@@ -148,35 +152,46 @@ const sendVerificationEmail = async (email, username, otp) => {
     };
 
     console.log('📤 Sending email...');
-    try {
-      // Add timeout to prevent hanging
-      const sendPromise = transporter.sendMail(mailOptions);
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Email sending timeout after 30 seconds')), 30000);
-      });
-      
-      const info = await Promise.race([sendPromise, timeoutPromise]);
-      console.log('✅ Verification email sent successfully!');
-      console.log('Message ID:', info.messageId);
-      console.log('Response:', info.response);
-      console.log('Accepted:', info.accepted);
-      console.log('Rejected:', info.rejected);
-      return { success: true, messageId: info.messageId };
-    } catch (sendError) {
-      console.error('❌ Error during sendMail:', sendError);
-      console.error('Error name:', sendError.name);
-      console.error('Error message:', sendError.message);
-      if (sendError.code) {
-        console.error('Error code:', sendError.code);
+    
+    // Retry logic for connection timeouts
+    const maxRetries = 3;
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`📤 Attempt ${attempt} of ${maxRetries}...`);
+        
+        // Add timeout to prevent hanging
+        const sendPromise = transporter.sendMail(mailOptions);
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Email sending timeout after 45 seconds')), 45000);
+        });
+        
+        const info = await Promise.race([sendPromise, timeoutPromise]);
+        console.log('✅ Verification email sent successfully!');
+        console.log('Message ID:', info.messageId);
+        console.log('Response:', info.response);
+        console.log('Accepted:', info.accepted);
+        console.log('Rejected:', info.rejected);
+        return { success: true, messageId: info.messageId };
+      } catch (sendError) {
+        lastError = sendError;
+        
+        // If it's a connection timeout and we have retries left, wait and retry
+        if ((sendError.code === 'ETIMEDOUT' || sendError.message.includes('timeout')) && attempt < maxRetries) {
+          const waitTime = attempt * 2000; // 2s, 4s, 6s
+          console.log(`⏳ Connection timeout on attempt ${attempt}. Retrying in ${waitTime}ms...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+        
+        // If it's not a timeout or we're out of retries, break and throw
+        throw sendError;
       }
-      if (sendError.response) {
-        console.error('Error response:', sendError.response);
-      }
-      if (sendError.responseCode) {
-        console.error('Error response code:', sendError.responseCode);
-      }
-      throw sendError; // Re-throw to be caught by outer catch
     }
+    
+    // If we get here, all retries failed
+    throw lastError;
   } catch (error) {
     console.error('❌ Error sending verification email:', error);
     console.error('Error details:', {
