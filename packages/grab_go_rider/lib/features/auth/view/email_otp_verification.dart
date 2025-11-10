@@ -143,28 +143,55 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
       if (response.isSuccessful && response.body != null) {
         final success = response.body!['success'] as bool? ?? false;
         if (success) {
-          // Email verified successfully, refresh user data and navigate
-          final userData = CacheService.getUserData();
-          if (userData != null && userData['_id'] != null) {
-            final userId = userData['_id'];
-            final userResponse = await authService
-                .getUser(userId)
-                .timeout(const Duration(seconds: 10), onTimeout: () => throw TimeoutException('Request timeout'));
+          // Email verified successfully - use the user data from the response
+          final responseUser = response.body!['user'];
+          final responseToken = response.body!['token'];
 
-            if (userResponse.isSuccessful && userResponse.body != null) {
-              final user = userResponse.body!.userData ?? userResponse.body!.user;
-              if (user != null) {
-                await UserService().setCurrentUser(user);
-                if (mounted) {
-                  AppToastMessage.show(
-                    context: context,
-                    icon: Icons.check_circle,
-                    message: "Email verified successfully!",
-                    backgroundColor: Colors.green,
-                  );
-                  await Future.delayed(const Duration(milliseconds: 500));
+          if (responseUser != null) {
+            // Update token if provided
+            if (responseToken != null && responseToken.toString().isNotEmpty) {
+              await CacheService.saveAuthToken(responseToken.toString());
+            }
+
+            // Update user data with verified status
+            await UserService().setCurrentUser(User.fromJson(responseUser));
+
+            if (mounted) {
+              AppToastMessage.show(
+                context: context,
+                icon: Icons.check_circle,
+                message: "Email verified successfully!",
+                backgroundColor: Colors.green,
+              );
+              await Future.delayed(const Duration(milliseconds: 500));
+              if (mounted) {
+                context.push("/riderVerification");
+              }
+            }
+          } else {
+            // Fallback: refresh user data if response doesn't include user
+            final userData = CacheService.getUserData();
+            if (userData != null && userData['_id'] != null) {
+              final userId = userData['_id'];
+              final userResponse = await authService
+                  .getUser(userId)
+                  .timeout(const Duration(seconds: 10), onTimeout: () => throw TimeoutException('Request timeout'));
+
+              if (userResponse.isSuccessful && userResponse.body != null) {
+                final user = userResponse.body!.userData ?? userResponse.body!.user;
+                if (user != null) {
+                  await UserService().setCurrentUser(user);
                   if (mounted) {
-                    context.push("/riderVerification");
+                    AppToastMessage.show(
+                      context: context,
+                      icon: Icons.check_circle,
+                      message: "Email verified successfully!",
+                      backgroundColor: Colors.green,
+                    );
+                    await Future.delayed(const Duration(milliseconds: 500));
+                    if (mounted) {
+                      context.push("/riderVerification");
+                    }
                   }
                 }
               }

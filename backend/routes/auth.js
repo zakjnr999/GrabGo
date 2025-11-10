@@ -137,18 +137,9 @@ router.post("/", async (req, res) => {
       role: userRole,
     };
     
-    // Generate email verification OTP
-    const emailVerificationOTP = generateOTP();
-    const emailVerificationOTPExpires = new Date();
-    emailVerificationOTPExpires.setMinutes(emailVerificationOTPExpires.getMinutes() + 10); // 10 minutes expiry
-
-    userData.emailVerificationOTP = emailVerificationOTP;
-    userData.emailVerificationOTPExpires = emailVerificationOTPExpires;
-
+    // Don't generate OTP during registration - it will be generated when user requests it on verify email page
+    // This prevents unnecessary OTP generation and ensures email is only sent when user explicitly requests it
     const user = await User.create(userData);
-
-    // Don't send verification email automatically - user will request it on the verify email page
-    // The OTP is generated and stored, but email is only sent when user explicitly requests it
 
     const token = generateToken(user._id);
 
@@ -586,6 +577,9 @@ router.post("/verify-email", [
     user.emailVerificationOTPExpires = null;
     await user.save();
 
+    // Generate token for the verified user
+    const token = generateToken(user._id);
+
     res.json({
       success: true,
       message: "Email verified successfully",
@@ -593,8 +587,18 @@ router.post("/verify-email", [
         _id: user._id,
         username: user.username,
         email: user.email,
+        phone: user.phone,
+        isPhoneVerified: user.isPhoneVerified,
         isEmailVerified: user.isEmailVerified,
+        DateOfBirth: user.DateOfBirth,
+        profilePicture: user.profilePicture,
+        isAdmin: user.isAdmin,
+        role: user.role,
+        isActive: user.isActive,
+        permissions: user.permissions,
+        createdAt: user.createdAt,
       },
+      token,
     });
   } catch (error) {
     console.error("Verify email error:", error);
