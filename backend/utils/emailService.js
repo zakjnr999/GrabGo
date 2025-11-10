@@ -1,5 +1,6 @@
 const sgMail = require('@sendgrid/mail');
 const crypto = require('crypto');
+const twilio = require('twilio');
 
 // Initialize SendGrid
 const initializeSendGrid = () => {
@@ -9,6 +10,18 @@ const initializeSendGrid = () => {
 
   sgMail.setApiKey(process.env.EMAIL_PASS);
   return true;
+};
+
+// Initialize Twilio client
+const initializeTwilio = () => {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  
+  if (!accountSid || !authToken) {
+    return null;
+  }
+  
+  return twilio(accountSid, authToken);
 };
 
 // Generate email verification token
@@ -224,16 +237,94 @@ const sendPasswordResetEmail = async (email, username, token) => {
 const sendSMS = async (phoneNumber, otp) => {
   try {
     if (!initializeSendGrid()) {
+      console.error('❌ SMS service not configured - EMAIL_PASS environment variable is missing');
       return { success: false, message: 'SMS service not configured' };
     }
 
     const fromEmail = process.env.EMAIL_FROM_EMAIL || 'noreply@grabgo.com';
     const fromName = process.env.EMAIL_FROM_NAME || 'GrabGo';
 
-    // Format phone number for email-to-SMS gateway
-    // Common carriers: @txt.att.net (AT&T), @vtext.com (Verizon), @tmomail.net (T-Mobile), etc.
-    // This is a simplified approach - in production, you'd want to detect carrier or use a service like Twilio
-    const cleanPhone = phoneNumber.replace(/[^0-9]/g, '');
+    // Format phone number for SMS
+    // Note: Email-to-SMS gateways only work for US carriers
+    // For Ghana (+233) and other international numbers, you need a proper SMS service like Twilio
+    const cleanPhone = phoneNumber.replace(/[^0-9+]/g, '');
+    
+    // Check if it's a Ghana phone number (+233)
+    const isGhanaNumber = cleanPhone.startsWith('233') || cleanPhone.startsWith('+233');
+    
+    if (isGhanaNumber) {
+      // Format Ghana phone number for Twilio
+      let ghanaPhone = cleanPhone.replace(/[^0-9]/g, '');
+      
+      // If it starts with 0, replace with 233 (local format to international)
+      if (ghanaPhone.startsWith('0')) {
+        ghanaPhone = `233${ghanaPhone.substring(1)}`;
+      } else if (!ghanaPhone.startsWith('233')) {
+        ghanaPhone = `233${ghanaPhone}`;
+      }
+      
+      // Ensure it starts with + for Twilio
+      const formattedGhanaPhone = `+${ghanaPhone}`;
+      
+      console.log(`📱 Ghana phone number detected: ${formattedGhanaPhone}`);
+      
+      // Try to use Twilio for Ghana numbers
+      const twilioClient = initializeTwilio();
+      if (!twilioClient) {
+        console.error('❌ Twilio not configured - TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN required for Ghana numbers');
+        return {
+          success: false,
+          error: 'Twilio not configured. Please set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN environment variables.',
+          message: 'For Ghana phone numbers, Twilio SMS service is required.',
+        };
+      }
+      
+      const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
+      if (!twilioPhoneNumber) {
+        console.error('❌ Twilio phone number not configured - TWILIO_PHONE_NUMBER required');
+        return {
+          success: false,
+          error: 'Twilio phone number not configured. Please set TWILIO_PHONE_NUMBER environment variable.',
+          message: 'Twilio phone number is required to send SMS.',
+        };
+      }
+      
+      try {
+        console.log(`📤 Sending SMS via Twilio to ${formattedGhanaPhone}...`);
+        const message = await twilioClient.messages.create({
+          body: `Your GrabGo verification code is: ${otp}. This code will expire in 10 minutes.`,
+          from: twilioPhoneNumber,
+          to: formattedGhanaPhone,
+        });
+        
+        console.log(`✅ SMS sent successfully via Twilio. Message SID: ${message.sid}`);
+        return { 
+          success: true, 
+          messageId: message.sid,
+          provider: 'twilio',
+        };
+      } catch (twilioError) {
+        console.error('❌ Twilio SMS error:', {
+          message: twilioError.message,
+          code: twilioError.code,
+          status: twilioError.status,
+        });
+        return {
+          success: false,
+          error: twilioError.message,
+          code: twilioError.code,
+          details: `Twilio error: ${twilioError.message}`,
+        };
+      }
+    }
+    
+    // Handle US phone numbers (for email-to-SMS gateway)
+    let formattedPhone = cleanPhone.replace(/^\+?1/, ''); // Remove US country code if present
+    
+    // Ensure phone number has country code (assume US if missing)
+    if (formattedPhone.length === 10) {
+      formattedPhone = `1${formattedPhone}`; // Add US country code
+    }
     
     // Try multiple carrier gateways (most common ones)
     const carriers = [
@@ -245,7 +336,9 @@ const sendSMS = async (phoneNumber, otp) => {
     ];
 
     // Use first carrier as default (AT&T)
-    const smsEmail = `${cleanPhone}${carriers[0]}`;
+    const smsEmail = `${formattedPhone}${carriers[0]}`;
+    
+    console.log(`📧 Sending SMS via email-to-SMS gateway (US only): ${smsEmail}`);
     
     const msg = {
       to: smsEmail,
@@ -269,9 +362,11 @@ const sendSMS = async (phoneNumber, otp) => {
         });
         
         const [response] = await Promise.race([sendPromise, timeoutPromise]);
+        console.log(`✅ SMS sent successfully via SendGrid. Message ID: ${response.headers['x-message-id'] || 'sent'}`);
         return { success: true, messageId: response.headers['x-message-id'] || 'sent' };
       } catch (sendError) {
         lastError = sendError;
+        console.warn(`⚠️  SMS send attempt ${attempt}/${maxRetries} failed:`, sendError.message);
         
         // If it's a connection timeout or rate limit and we have retries left, wait and retry
         if (
@@ -281,6 +376,7 @@ const sendSMS = async (phoneNumber, otp) => {
           attempt < maxRetries
         ) {
           const waitTime = attempt * 2000; // 2s, 4s, 6s
+          console.log(`⏳ Retrying SMS send in ${waitTime}ms...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
           continue;
         }
@@ -293,8 +389,13 @@ const sendSMS = async (phoneNumber, otp) => {
     // If we get here, all retries failed
     throw lastError;
   } catch (error) {
-    console.error('Error sending SMS:', error.message);
-    return { success: false, error: error.message };
+    console.error('❌ Error sending SMS:', {
+      message: error.message,
+      code: error.code,
+      response: error.response?.body,
+      phoneNumber: phoneNumber,
+    });
+    return { success: false, error: error.message, details: error.response?.body };
   }
 };
 

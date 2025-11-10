@@ -206,7 +206,6 @@ class _HomeBannerState extends State<HomeBanner> {
                               decoration: BoxDecoration(
                                 color: Colors.black.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                                border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
                               ),
                               child: Text(
                                 bannerFoods[currentIndex].name,
@@ -239,7 +238,6 @@ class _HomeBannerState extends State<HomeBanner> {
                                   decoration: BoxDecoration(
                                     color: Colors.black.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                                    border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
                                   ),
                                   child: SvgPicture.asset(
                                     isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
@@ -269,7 +267,6 @@ class _HomeBannerState extends State<HomeBanner> {
                         decoration: BoxDecoration(
                           color: Colors.black.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                          border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
                         ),
                         child: Row(
                           children: [

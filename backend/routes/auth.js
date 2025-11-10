@@ -798,15 +798,50 @@ router.post("/send-phone-otp", async (req, res) => {
     await user.save();
 
     // Send SMS with OTP (non-blocking)
+    console.log(`📱 Attempting to send OTP to ${phoneNumber}: ${phoneVerificationOTP}`);
     const smsResult = await sendSMS(phoneNumber, phoneVerificationOTP);
 
     if (!smsResult.success) {
+      console.error(`❌ Failed to send SMS:`, smsResult.error || smsResult.message);
+      
+      const isGhanaNumber = phoneNumber.includes('233') || phoneNumber.includes('+233');
+      const isTwilioNotConfigured = smsResult.error?.includes('Twilio not configured') || 
+                                     smsResult.error?.includes('TWILIO_ACCOUNT_SID') ||
+                                     smsResult.error?.includes('TWILIO_PHONE_NUMBER');
+      
+      // In development, still return success but log the error (for testing)
+      if (process.env.NODE_ENV === 'development' && !isTwilioNotConfigured) {
+        const message = isGhanaNumber 
+          ? `OTP generated successfully. Twilio SMS failed - check server logs. OTP: ${phoneVerificationOTP}`
+          : `OTP generated successfully (SMS sending failed - check server logs for OTP)`;
+        
+        console.log(`⚠️  Development mode: OTP is ${phoneVerificationOTP} (SMS sending failed)`);
+        
+        return res.json({
+          success: true,
+          message: message,
+          // Only include OTP in development for debugging
+          otp: phoneVerificationOTP,
+        });
+      }
+      
+      // If Twilio is not configured for Ghana numbers, return clear error
+      if (isGhanaNumber && isTwilioNotConfigured) {
+        return res.status(500).json({
+          success: false,
+          message: "SMS service not configured for Ghana numbers. Please set up Twilio (see TWILIO_SETUP.md).",
+          error: process.env.NODE_ENV === 'development' ? smsResult.error : undefined,
+        });
+      }
+      
       return res.status(500).json({
         success: false,
-        message: "Failed to send OTP",
+        message: "Failed to send OTP. Please try again or contact support.",
+        error: process.env.NODE_ENV === 'development' ? smsResult.error : undefined,
       });
     }
 
+    console.log(`✅ SMS sent successfully to ${phoneNumber}`);
     res.json({
       success: true,
       message: "OTP sent successfully",
@@ -944,14 +979,50 @@ router.post("/resend-phone-otp", async (req, res) => {
     await user.save();
 
     // Send SMS with OTP (non-blocking)
+    console.log(`📱 Attempting to resend OTP to ${phoneNumber}: ${phoneVerificationOTP}`);
     const smsResult = await sendSMS(phoneNumber, phoneVerificationOTP);
 
     if (!smsResult.success) {
+      console.error(`❌ Failed to resend SMS:`, smsResult.error || smsResult.message);
+      
+      const isGhanaNumber = phoneNumber.includes('233') || phoneNumber.includes('+233');
+      const isTwilioNotConfigured = smsResult.error?.includes('Twilio not configured') || 
+                                     smsResult.error?.includes('TWILIO_ACCOUNT_SID') ||
+                                     smsResult.error?.includes('TWILIO_PHONE_NUMBER');
+      
+      // In development, still return success but log the error (for testing)
+      if (process.env.NODE_ENV === 'development' && !isTwilioNotConfigured) {
+        const message = isGhanaNumber 
+          ? `OTP generated successfully. Twilio SMS failed - check server logs. OTP: ${phoneVerificationOTP}`
+          : `OTP generated successfully (SMS sending failed - check server logs for OTP)`;
+        
+        console.log(`⚠️  Development mode: OTP is ${phoneVerificationOTP} (SMS sending failed)`);
+        
+        return res.json({
+          success: true,
+          message: message,
+          // Only include OTP in development for debugging
+          otp: phoneVerificationOTP,
+        });
+      }
+      
+      // If Twilio is not configured for Ghana numbers, return clear error
+      if (isGhanaNumber && isTwilioNotConfigured) {
+        return res.status(500).json({
+          success: false,
+          message: "SMS service not configured for Ghana numbers. Please set up Twilio (see TWILIO_SETUP.md).",
+          error: process.env.NODE_ENV === 'development' ? smsResult.error : undefined,
+        });
+      }
+      
       return res.status(500).json({
         success: false,
-        message: "Failed to send OTP",
+        message: "Failed to resend OTP. Please try again or contact support.",
+        error: process.env.NODE_ENV === 'development' ? smsResult.error : undefined,
       });
     }
+
+    console.log(`✅ SMS resent successfully to ${phoneNumber}`);
 
     res.json({
       success: true,
