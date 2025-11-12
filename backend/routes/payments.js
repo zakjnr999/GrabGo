@@ -84,8 +84,14 @@ router.post(
 
       const formattedPhoneNumber = mtnMomoService.formatPhoneNumber(phoneNumber);
 
+      // Generate reference ID
+      const timestamp = Date.now();
+      const random = Math.floor(Math.random() * 10000);
+      const referenceId = `PAY-${timestamp}-${random}`;
+
       // Create payment record
       const payment = await Payment.create({
+        referenceId,
         order: orderId,
         customer: req.user._id,
         paymentMethod: 'mobile_money',
