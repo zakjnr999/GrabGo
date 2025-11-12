@@ -110,8 +110,17 @@ router.get("/", protect, async (req, res) => {
   try {
     let query = {};
 
+    // Debug logging
+    console.log("🔍 Orders API Debug:");
+    console.log("- User ID:", req.user._id);
+    console.log("- User role:", req.user.role);
+    console.log("- User email:", req.user.email);
+
     if (req.user.role === "customer") {
       query.customer = req.user._id;
+      console.log("- Query for customer:", query);
+      console.log("- User ID type:", typeof req.user._id);
+      console.log("- User ID string:", req.user._id.toString());
     } else if (req.user.role === "restaurant") {
       const restaurant = await Restaurant.findOne({ email: req.user.email });
       if (restaurant) {
@@ -133,6 +142,11 @@ router.get("/", protect, async (req, res) => {
       .populate("rider", "username email phone")
       .populate("items.food", "name price image")
       .sort({ createdAt: -1 });
+
+    console.log("- Orders found:", orders.length);
+    if (orders.length > 0) {
+      console.log("- First order:", orders[0].orderNumber, "for customer:", orders[0].customer);
+    }
 
     res.json({
       success: true,

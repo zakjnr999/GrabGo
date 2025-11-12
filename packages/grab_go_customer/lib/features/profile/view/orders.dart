@@ -1,6 +1,5 @@
 // ignore_for_file: deprecated_member_use
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -9,15 +8,15 @@ import 'package:go_router/go_router.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:intl/intl.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:grab_go_customer/features/order/service/order_service_wrapper.dart';
-import 'package:grab_go_customer/shared/services/user_service.dart';
-import 'package:grab_go_customer/shared/services/cache_service.dart';
+import 'package:grab_go_customer/features/order/viewmodel/order_provider.dart';
+import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
+import 'package:provider/provider.dart';
 
 class OrderModel {
   final String id;
   final String orderNumber;
   final String restaurantName;
-  final Image restaurantImage;
+  final String? restaurantLogo;
   final List<OrderItem> items;
   final double totalAmount;
   final DateTime orderDate;
@@ -30,7 +29,7 @@ class OrderModel {
     required this.id,
     required this.orderNumber,
     required this.restaurantName,
-    required this.restaurantImage,
+    this.restaurantLogo,
     required this.items,
     required this.totalAmount,
     required this.orderDate,
@@ -70,69 +69,12 @@ class _OrdersState extends State<Orders> {
     AppStrings.ordersCancelled,
   ];
 
-  List<OrderModel> _allOrders = [];
-  List<OrderModel> _filteredOrders = [];
-
   @override
   void initState() {
     super.initState();
-    _loadOrdersFromAPI();
-  }
-
-  Future<void> _loadOrdersFromAPI() async {
-    try {
-      // Check authentication status
-      final userService = UserService();
-      final isAuthenticated = userService.isLoggedIn;
-      final userId = userService.getUserId();
-
-      // Check if token exists
-      final token = CacheService.getAuthToken();
-
-      debugPrint('🔐 Authentication Status: $isAuthenticated');
-      debugPrint('👤 User ID: $userId');
-      debugPrint('🔑 Token exists: ${token != null && token.isNotEmpty}');
-      if (token != null) {
-        debugPrint('🔑 Token preview: ${token.substring(0, token.length > 20 ? 20 : token.length)}...');
-      }
-
-      if (!isAuthenticated || userId == null) {
-        debugPrint('⚠️ User not authenticated, cannot fetch orders');
-        _allOrders = [];
-        _filterOrders();
-        if (mounted) setState(() {});
-        return;
-      }
-
-      if (token == null || token.isEmpty) {
-        debugPrint('⚠️ No authentication token found, cannot fetch orders');
-        debugPrint('⚠️ User appears authenticated but token is missing');
-        _allOrders = [];
-        _filterOrders();
-        if (mounted) setState(() {});
-        return;
-      }
-
-      final orderService = OrderServiceWrapper();
-      final ordersData = await orderService.getUserOrders();
-
-      debugPrint('📦 Loaded ${ordersData.length} orders from API');
-      if (ordersData.isNotEmpty) {
-        debugPrint('📦 First order sample: ${ordersData.first.keys}');
-        debugPrint('📦 First order customer ID: ${ordersData.first['customer']}');
-      }
-
-      _allOrders = ordersData.map((orderData) => _convertAPIOrderToOrderModel(orderData)).toList();
-      _filterOrders();
-      if (mounted) setState(() {});
-    } catch (e, stackTrace) {
-      debugPrint('❌ Error loading orders: $e');
-      debugPrint('❌ Stack trace: $stackTrace');
-      // No fallback - show empty state if API fails
-      _allOrders = [];
-      _filterOrders();
-      if (mounted) setState(() {});
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<OrderProvider>(context, listen: false).fetchOrders();
+    });
   }
 
   OrderModel _convertAPIOrderToOrderModel(Map<String, dynamic> apiOrder) {
@@ -171,11 +113,13 @@ class _OrdersState extends State<Orders> {
         status = OrderStatus.pending;
     }
 
-    // Extract restaurant name - handle both populated object and ID
+    // Extract restaurant name and logo - handle both populated object and ID
     String restaurantName = 'Unknown Restaurant';
+    String? restaurantLogo;
     if (apiOrder['restaurant'] != null) {
       if (apiOrder['restaurant'] is Map) {
         restaurantName = apiOrder['restaurant']?['restaurant_name'] ?? 'Unknown Restaurant';
+        restaurantLogo = apiOrder['restaurant']?['logo'];
       } else if (apiOrder['restaurant'] is String) {
         restaurantName = 'Restaurant ${apiOrder['restaurant'].substring(0, 8)}...';
       }
@@ -202,7 +146,7 @@ class _OrdersState extends State<Orders> {
       id: apiOrder['_id']?.toString() ?? '',
       orderNumber: apiOrder['orderNumber']?.toString() ?? '',
       restaurantName: restaurantName,
-      restaurantImage: Assets.images.sampleOne.image(package: 'grab_go_shared'), // Default image
+      restaurantLogo: restaurantLogo,
       items: items,
       totalAmount: (apiOrder['totalAmount'] ?? 0.0).toDouble(),
       orderDate: orderDate,
@@ -213,23 +157,21 @@ class _OrdersState extends State<Orders> {
     );
   }
 
-  void _filterOrders() {
-    setState(() {
-      switch (selectedTabIndex) {
-        case 0:
-          _filteredOrders = _allOrders.where((order) => order.status == OrderStatus.pending).toList();
-          break;
-        case 1:
-          _filteredOrders = _allOrders.where((order) => order.status == OrderStatus.ongoing).toList();
-          break;
-        case 2:
-          _filteredOrders = _allOrders.where((order) => order.status == OrderStatus.completed).toList();
-          break;
-        case 3:
-          _filteredOrders = _allOrders.where((order) => order.status == OrderStatus.cancelled).toList();
-          break;
-      }
-    });
+  List<OrderModel> _getFilteredOrders(List<Map<String, dynamic>> allOrders) {
+    final convertedOrders = allOrders.map((orderData) => _convertAPIOrderToOrderModel(orderData)).toList();
+
+    switch (selectedTabIndex) {
+      case 0:
+        return convertedOrders.where((order) => order.status == OrderStatus.pending).toList();
+      case 1:
+        return convertedOrders.where((order) => order.status == OrderStatus.ongoing).toList();
+      case 2:
+        return convertedOrders.where((order) => order.status == OrderStatus.completed).toList();
+      case 3:
+        return convertedOrders.where((order) => order.status == OrderStatus.cancelled).toList();
+      default:
+        return convertedOrders;
+    }
   }
 
   String _getTimeAgo(DateTime timestamp) {
@@ -403,23 +345,91 @@ class _OrdersState extends State<Orders> {
                   setState(() {
                     selectedTabIndex = index;
                   });
-                  _filterOrders();
                 },
               ),
             ),
             Expanded(
-              child: _filteredOrders.isEmpty
-                  ? _buildEmptyState(colors)
-                  : ListView.separated(
+              child: Consumer<OrderProvider>(
+                builder: (context, orderProvider, _) {
+                  if (orderProvider.isLoading && orderProvider.orders.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(color: colors.accentViolet),
+                          SizedBox(height: 16.h),
+                          Text(
+                            "Loading your orders...",
+                            style: TextStyle(fontSize: 16.sp, color: colors.textSecondary, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  if (orderProvider.error != null && orderProvider.orders.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(20.r),
+                            decoration: BoxDecoration(color: colors.error.withOpacity(0.1), shape: BoxShape.circle),
+                            child: Icon(Icons.error_outline, size: 48.sp, color: colors.error),
+                          ),
+                          SizedBox(height: 16.h),
+                          Text(
+                            "Failed to load orders",
+                            style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                          ),
+                          SizedBox(height: 8.h),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 40.w),
+                            child: Text(
+                              orderProvider.error!,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 14.sp, color: colors.textSecondary),
+                            ),
+                          ),
+                          SizedBox(height: 24.h),
+                          ElevatedButton(
+                            onPressed: () => orderProvider.refreshOrders(),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: colors.accentViolet,
+                              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                            ),
+                            child: Text(
+                              "Try Again",
+                              style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final filteredOrders = _getFilteredOrders(orderProvider.orders);
+
+                  if (filteredOrders.isEmpty) {
+                    return _buildEmptyState(colors);
+                  }
+
+                  return RefreshIndicator(
+                    color: colors.accentViolet,
+                    onRefresh: () => orderProvider.refreshOrders(),
+                    child: ListView.separated(
                       physics: const BouncingScrollPhysics(),
                       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                      itemCount: _filteredOrders.length,
+                      itemCount: filteredOrders.length,
                       separatorBuilder: (context, index) => SizedBox(height: 16.h),
                       itemBuilder: (context, index) {
-                        final order = _filteredOrders[index];
+                        final order = filteredOrders[index];
                         return _buildOrderCard(order, colors, isDark);
                       },
                     ),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -521,9 +531,15 @@ class _OrdersState extends State<Orders> {
                           AppStrings.ordersOrderNumber,
                           style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
                         ),
-                        Text(
-                          order.orderNumber,
-                          style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                        Flexible(
+                          child: Padding(
+                            padding: EdgeInsets.only(right: 12.w),
+                            child: Text(
+                              order.orderNumber,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -577,13 +593,34 @@ class _OrdersState extends State<Orders> {
           SizedBox(height: 16.h),
           Row(
             children: [
-              ClipRRect(
+              CachedImageWidget(
+                imageUrl: order.restaurantLogo ?? '',
+                width: 60.w,
+                height: 60.h,
+                fit: BoxFit.cover,
                 borderRadius: BorderRadius.circular(12.r),
-                child: Assets.images.sampleOne.image(
+                placeholder: Container(
                   width: 60.w,
                   height: 60.h,
-                  fit: BoxFit.cover,
-                  package: 'grab_go_shared',
+                  padding: EdgeInsets.all(10.r),
+                  decoration: BoxDecoration(
+                    color: colors.backgroundSecondary,
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: SvgPicture.asset(
+                    Assets.icons.chefHat,
+                    package: "grab_go_shared",
+                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                  ),
+                ),
+                errorWidget: ClipRRect(
+                  borderRadius: BorderRadius.circular(12.r),
+                  child: Assets.images.sampleOne.image(
+                    width: 60.w,
+                    height: 60.h,
+                    fit: BoxFit.cover,
+                    package: 'grab_go_shared',
+                  ),
                 ),
               ),
               SizedBox(width: 12.w),

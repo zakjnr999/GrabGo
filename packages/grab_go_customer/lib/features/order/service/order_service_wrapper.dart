@@ -8,7 +8,15 @@ import 'package:grab_go_customer/core/api/api_client.dart';
 class OrderServiceWrapper {
   final OrderServiceChopper _orderService;
 
-  OrderServiceWrapper() : _orderService = chopperClient.getService<OrderServiceChopper>();
+  OrderServiceWrapper() : _orderService = chopperClient.getService<OrderServiceChopper>() {
+    if (kDebugMode) {
+      print('🔧 OrderServiceWrapper initialized');
+      print('🔧 Using chopperClient: ${chopperClient.hashCode}');
+      print('🔧 Base URL: ${chopperClient.baseUrl}');
+      print('🔧 Converter: ${chopperClient.converter}');
+      print('🔧 Interceptors: ${chopperClient.interceptors.map((i) => i.runtimeType).toList()}');
+    }
+  }
 
   // Create a new order
   Future<String> createOrder({
@@ -100,7 +108,10 @@ class OrderServiceWrapper {
   Future<List<Map<String, dynamic>>> getUserOrders() async {
     try {
       debugPrint('🔄 Fetching user orders from API...');
+      debugPrint('🔄 Order service instance: ${_orderService.hashCode}');
+      debugPrint('🔄 About to call _orderService.getUserOrders()...');
       final response = await _orderService.getUserOrders();
+      debugPrint('🔄 API call completed, processing response...');
 
       debugPrint('📡 API Response Status: ${response.statusCode}');
       debugPrint('📡 API Response Successful: ${response.isSuccessful}');
