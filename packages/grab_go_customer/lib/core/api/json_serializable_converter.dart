@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:chopper/chopper.dart';
+import 'package:flutter/foundation.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurant_response.dart';
 import 'package:grab_go_customer/shared/services/cache_service.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -61,9 +62,38 @@ class JsonSerializableConverter extends JsonConverter {
     }
 
     if (!isLoginEndpoint && !isRegisterEndpoint) {
-      final token = CacheService.getAuthToken();
-      if (token != null && token.isNotEmpty) {
-        headers['Authorization'] = 'Bearer $token';
+      try {
+        debugPrint('🔍 Checking CacheService availability: ${CacheService.isCacheAvailable()}');
+        final token = CacheService.getAuthToken();
+        debugPrint('🔍 Retrieved token from cache: ${token != null ? "${token.substring(0, token.length > 20 ? 20 : token.length)}..." : "null"}');
+        
+        if (token != null && token.isNotEmpty) {
+          headers['Authorization'] = 'Bearer $token';
+          debugPrint('🔑 ✅ Token added to request for: ${req.url.path}');
+          debugPrint('🔑 Authorization header: Bearer ${token.substring(0, 20)}...');
+        } else {
+          debugPrint('⚠️ ❌ No token found for request: ${req.url.path}');
+          debugPrint('⚠️ Token value: ${token ?? "null"}');
+          debugPrint('⚠️ Token empty: ${token?.isEmpty ?? "token is null"}');
+          
+          // Try alternative token retrieval methods as fallback
+          try {
+            final userData = CacheService.getUserData();
+            if (userData != null && userData.containsKey('token')) {
+              final fallbackToken = userData['token'] as String?;
+              if (fallbackToken != null && fallbackToken.isNotEmpty) {
+                headers['Authorization'] = 'Bearer $fallbackToken';
+                debugPrint('🔄 ✅ Fallback token from userData used for: ${req.url.path}');
+              }
+            }
+          } catch (fallbackError) {
+            debugPrint('🔄 ❌ Fallback token retrieval also failed: $fallbackError');
+          }
+        }
+      } catch (e) {
+        debugPrint('❌ Error getting token from CacheService: $e');
+        debugPrint('❌ This might mean CacheService is not initialized');
+        debugPrint('❌ CacheService available: ${CacheService.isCacheAvailable()}');
       }
     }
 

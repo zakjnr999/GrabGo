@@ -1,5 +1,6 @@
 // ignore_for_file: deprecated_member_use
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -9,6 +10,8 @@ import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:intl/intl.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/features/order/service/order_service_wrapper.dart';
+import 'package:grab_go_customer/shared/services/user_service.dart';
+import 'package:grab_go_customer/shared/services/cache_service.dart';
 
 class OrderModel {
   final String id;
@@ -60,7 +63,12 @@ class Orders extends StatefulWidget {
 
 class _OrdersState extends State<Orders> {
   int selectedTabIndex = 0;
-  final List<String> orderTabs = ["Pending", AppStrings.ordersOngoing, AppStrings.ordersCompleted, AppStrings.ordersCancelled];
+  final List<String> orderTabs = [
+    "Pending",
+    AppStrings.ordersOngoing,
+    AppStrings.ordersCompleted,
+    AppStrings.ordersCancelled,
+  ];
 
   List<OrderModel> _allOrders = [];
   List<OrderModel> _filteredOrders = [];
@@ -73,14 +81,53 @@ class _OrdersState extends State<Orders> {
 
   Future<void> _loadOrdersFromAPI() async {
     try {
+      // Check authentication status
+      final userService = UserService();
+      final isAuthenticated = userService.isLoggedIn;
+      final userId = userService.getUserId();
+
+      // Check if token exists
+      final token = CacheService.getAuthToken();
+
+      debugPrint('🔐 Authentication Status: $isAuthenticated');
+      debugPrint('👤 User ID: $userId');
+      debugPrint('🔑 Token exists: ${token != null && token.isNotEmpty}');
+      if (token != null) {
+        debugPrint('🔑 Token preview: ${token.substring(0, token.length > 20 ? 20 : token.length)}...');
+      }
+
+      if (!isAuthenticated || userId == null) {
+        debugPrint('⚠️ User not authenticated, cannot fetch orders');
+        _allOrders = [];
+        _filterOrders();
+        if (mounted) setState(() {});
+        return;
+      }
+
+      if (token == null || token.isEmpty) {
+        debugPrint('⚠️ No authentication token found, cannot fetch orders');
+        debugPrint('⚠️ User appears authenticated but token is missing');
+        _allOrders = [];
+        _filterOrders();
+        if (mounted) setState(() {});
+        return;
+      }
+
       final orderService = OrderServiceWrapper();
       final ordersData = await orderService.getUserOrders();
-      
+
+      debugPrint('📦 Loaded ${ordersData.length} orders from API');
+      if (ordersData.isNotEmpty) {
+        debugPrint('📦 First order sample: ${ordersData.first.keys}');
+        debugPrint('📦 First order customer ID: ${ordersData.first['customer']}');
+      }
+
       _allOrders = ordersData.map((orderData) => _convertAPIOrderToOrderModel(orderData)).toList();
       _filterOrders();
       if (mounted) setState(() {});
-    } catch (e) {
-      print('Error loading orders: $e');
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error loading orders: $e');
+      debugPrint('❌ Stack trace: $stackTrace');
       // No fallback - show empty state if API fails
       _allOrders = [];
       _filterOrders();
@@ -91,15 +138,19 @@ class _OrdersState extends State<Orders> {
   OrderModel _convertAPIOrderToOrderModel(Map<String, dynamic> apiOrder) {
     // Convert API order to OrderModel
     final items = (apiOrder['items'] as List? ?? []).map((item) {
-      return OrderItem(
-        name: item['name'] ?? 'Unknown Item',
-        quantity: item['quantity'] ?? 1,
-        price: (item['price'] ?? 0.0).toDouble(),
-      );
+      // Items have name, quantity, price, and image stored directly
+      // Also may have food populated with name, price, image
+      final itemName = item['name'] ?? item['food']?['name'] ?? 'Unknown Item';
+      final itemPrice = (item['price'] ?? item['food']?['price'] ?? 0.0).toDouble();
+      final itemImage = item['image'] ?? item['food']?['image'];
+
+      return OrderItem(name: itemName, quantity: item['quantity'] ?? 1, price: itemPrice, image: itemImage);
     }).toList();
 
+    // Determine order status
     OrderStatus status;
-    switch (apiOrder['status']?.toLowerCase()) {
+    final orderStatus = (apiOrder['status'] as String? ?? '').toLowerCase();
+    switch (orderStatus) {
       case 'pending':
         status = OrderStatus.pending;
         break;
@@ -120,22 +171,47 @@ class _OrdersState extends State<Orders> {
         status = OrderStatus.pending;
     }
 
+    // Extract restaurant name - handle both populated object and ID
+    String restaurantName = 'Unknown Restaurant';
+    if (apiOrder['restaurant'] != null) {
+      if (apiOrder['restaurant'] is Map) {
+        restaurantName = apiOrder['restaurant']?['restaurant_name'] ?? 'Unknown Restaurant';
+      } else if (apiOrder['restaurant'] is String) {
+        restaurantName = 'Restaurant ${apiOrder['restaurant'].substring(0, 8)}...';
+      }
+    }
+
+    // Parse dates - handle both ISO strings and Date objects
+    DateTime? parseDate(dynamic dateValue) {
+      if (dateValue == null) return null;
+      if (dateValue is String) {
+        return DateTime.tryParse(dateValue);
+      }
+      if (dateValue is int) {
+        return DateTime.fromMillisecondsSinceEpoch(dateValue);
+      }
+      return null;
+    }
+
+    final orderDate = parseDate(apiOrder['orderDate'] ?? apiOrder['createdAt']) ?? DateTime.now();
+    final expectedDelivery = parseDate(apiOrder['expectedDelivery']);
+    final deliveredDate = parseDate(apiOrder['deliveredDate']);
+    final cancelledDate = parseDate(apiOrder['cancelledDate']);
+
     return OrderModel(
-      id: apiOrder['_id'] ?? '',
-      orderNumber: apiOrder['orderNumber'] ?? '',
-      restaurantName: apiOrder['restaurant']?['restaurant_name'] ?? 'Unknown Restaurant',
+      id: apiOrder['_id']?.toString() ?? '',
+      orderNumber: apiOrder['orderNumber']?.toString() ?? '',
+      restaurantName: restaurantName,
       restaurantImage: Assets.images.sampleOne.image(package: 'grab_go_shared'), // Default image
       items: items,
       totalAmount: (apiOrder['totalAmount'] ?? 0.0).toDouble(),
-      orderDate: DateTime.tryParse(apiOrder['createdAt'] ?? '') ?? DateTime.now(),
-      expectedDelivery: DateTime.now().add(const Duration(minutes: 30)), // Default estimate
+      orderDate: orderDate,
+      expectedDelivery: expectedDelivery,
       status: status,
-      deliveredDate: apiOrder['status'] == 'delivered' 
-        ? DateTime.tryParse(apiOrder['updatedAt'] ?? '') 
-        : null,
+      deliveredDate: deliveredDate,
+      cancelledDate: cancelledDate,
     );
   }
-
 
   void _filterOrders() {
     setState(() {

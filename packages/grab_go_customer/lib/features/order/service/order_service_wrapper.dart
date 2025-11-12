@@ -99,17 +99,40 @@ class OrderServiceWrapper {
   // Get user orders
   Future<List<Map<String, dynamic>>> getUserOrders() async {
     try {
+      debugPrint('🔄 Fetching user orders from API...');
       final response = await _orderService.getUserOrders();
+
+      debugPrint('📡 API Response Status: ${response.statusCode}');
+      debugPrint('📡 API Response Successful: ${response.isSuccessful}');
+      debugPrint('📡 API Response Body: ${response.body}');
 
       if (response.isSuccessful && response.body != null) {
         final responseData = response.body!;
+        debugPrint('📡 Response Data Keys: ${responseData.keys}');
+        debugPrint('📡 Success Flag: ${responseData['success']}');
+        debugPrint('📡 Data Type: ${responseData['data'].runtimeType}');
+        debugPrint('📡 Data Value: ${responseData['data']}');
+
         if (responseData['success'] == true) {
-          return List<Map<String, dynamic>>.from(responseData['data']);
+          final orders = responseData['data'];
+          if (orders is List) {
+            debugPrint('✅ Found ${orders.length} orders');
+            return List<Map<String, dynamic>>.from(orders);
+          } else {
+            debugPrint('⚠️ Data is not a List, it is: ${orders.runtimeType}');
+            return [];
+          }
+        } else {
+          debugPrint('⚠️ API returned success: false. Message: ${responseData['message']}');
         }
+      } else {
+        debugPrint('❌ API request failed. Error: ${response.error}');
+        debugPrint('❌ Status Code: ${response.statusCode}');
       }
       return [];
-    } catch (e) {
-      debugPrint('Get user orders error: $e');
+    } catch (e, stackTrace) {
+      debugPrint('❌ Get user orders error: $e');
+      debugPrint('❌ Stack trace: $stackTrace');
       return [];
     }
   }
