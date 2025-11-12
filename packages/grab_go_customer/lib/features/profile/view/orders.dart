@@ -49,7 +49,7 @@ class OrderItem {
   OrderItem({required this.name, required this.quantity, required this.price, this.image});
 }
 
-enum OrderStatus { ongoing, completed, cancelled }
+enum OrderStatus { pending, ongoing, completed, cancelled }
 
 class Orders extends StatefulWidget {
   const Orders({super.key});
@@ -60,7 +60,7 @@ class Orders extends StatefulWidget {
 
 class _OrdersState extends State<Orders> {
   int selectedTabIndex = 0;
-  final List<String> orderTabs = [AppStrings.ordersOngoing, AppStrings.ordersCompleted, AppStrings.ordersCancelled];
+  final List<String> orderTabs = ["Pending", AppStrings.ordersOngoing, AppStrings.ordersCompleted, AppStrings.ordersCancelled];
 
   List<OrderModel> _allOrders = [];
   List<OrderModel> _filteredOrders = [];
@@ -101,6 +101,8 @@ class _OrdersState extends State<Orders> {
     OrderStatus status;
     switch (apiOrder['status']?.toLowerCase()) {
       case 'pending':
+        status = OrderStatus.pending;
+        break;
       case 'confirmed':
       case 'preparing':
       case 'ready':
@@ -115,7 +117,7 @@ class _OrdersState extends State<Orders> {
         status = OrderStatus.cancelled;
         break;
       default:
-        status = OrderStatus.ongoing;
+        status = OrderStatus.pending;
     }
 
     return OrderModel(
@@ -139,12 +141,15 @@ class _OrdersState extends State<Orders> {
     setState(() {
       switch (selectedTabIndex) {
         case 0:
-          _filteredOrders = _allOrders.where((order) => order.status == OrderStatus.ongoing).toList();
+          _filteredOrders = _allOrders.where((order) => order.status == OrderStatus.pending).toList();
           break;
         case 1:
-          _filteredOrders = _allOrders.where((order) => order.status == OrderStatus.completed).toList();
+          _filteredOrders = _allOrders.where((order) => order.status == OrderStatus.ongoing).toList();
           break;
         case 2:
+          _filteredOrders = _allOrders.where((order) => order.status == OrderStatus.completed).toList();
+          break;
+        case 3:
           _filteredOrders = _allOrders.where((order) => order.status == OrderStatus.cancelled).toList();
           break;
       }
@@ -352,14 +357,18 @@ class _OrdersState extends State<Orders> {
 
     switch (selectedTabIndex) {
       case 0:
-        title = AppStrings.ordersNoOrders;
-        message = AppStrings.ordersNoOngoingOrders;
+        title = "No Pending Orders";
+        message = "You don't have any orders waiting for payment.";
         break;
       case 1:
         title = AppStrings.ordersNoOrders;
-        message = AppStrings.ordersNoCompletedOrders;
+        message = AppStrings.ordersNoOngoingOrders;
         break;
       case 2:
+        title = AppStrings.ordersNoOrders;
+        message = AppStrings.ordersNoCompletedOrders;
+        break;
+      case 3:
         title = AppStrings.ordersNoOrders;
         message = AppStrings.ordersNoCancelledOrders;
         break;
@@ -405,6 +414,7 @@ class _OrdersState extends State<Orders> {
   Widget _buildOrderCard(OrderModel order, AppColorsExtension colors, bool isDark) {
     final isCancelled = order.status == OrderStatus.cancelled;
     final isOngoing = order.status == OrderStatus.ongoing;
+    final isPending = order.status == OrderStatus.pending;
 
     return Container(
       padding: EdgeInsets.all(16.r),
@@ -458,13 +468,17 @@ class _OrdersState extends State<Orders> {
                 decoration: BoxDecoration(
                   color: isCancelled
                       ? colors.error.withOpacity(0.15)
+                      : isPending
+                      ? colors.accentViolet.withOpacity(0.15)
                       : isOngoing
                       ? colors.accentOrange.withOpacity(0.15)
                       : colors.accentGreen.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(20.r),
                 ),
                 child: Text(
-                  order.status == OrderStatus.ongoing
+                  order.status == OrderStatus.pending
+                      ? "Pending Payment"
+                      : order.status == OrderStatus.ongoing
                       ? AppStrings.ordersOngoing
                       : order.status == OrderStatus.completed
                       ? AppStrings.ordersCompleted
@@ -474,6 +488,8 @@ class _OrdersState extends State<Orders> {
                     fontWeight: FontWeight.w700,
                     color: isCancelled
                         ? colors.error
+                        : isPending
+                        ? colors.accentViolet
                         : isOngoing
                         ? colors.accentOrange
                         : colors.accentGreen,
@@ -564,6 +580,8 @@ class _OrdersState extends State<Orders> {
                   decoration: BoxDecoration(
                     color: isCancelled
                         ? colors.error.withOpacity(0.1)
+                        : isPending
+                        ? colors.accentViolet.withOpacity(0.1)
                         : isOngoing
                         ? colors.accentOrange.withOpacity(0.1)
                         : colors.accentGreen.withOpacity(0.1),
@@ -572,6 +590,8 @@ class _OrdersState extends State<Orders> {
                   child: SvgPicture.asset(
                     isCancelled
                         ? Assets.icons.binMinusIn
+                        : isPending
+                        ? Assets.icons.creditCard
                         : isOngoing
                         ? Assets.icons.deliveryTruck
                         : Assets.icons.check,
@@ -581,6 +601,8 @@ class _OrdersState extends State<Orders> {
                     colorFilter: ColorFilter.mode(
                       isCancelled
                           ? colors.error
+                          : isPending
+                          ? colors.accentViolet
                           : isOngoing
                           ? colors.accentOrange
                           : colors.accentGreen,
@@ -596,6 +618,8 @@ class _OrdersState extends State<Orders> {
                       Text(
                         isCancelled
                             ? AppStrings.ordersCancelledOn
+                            : isPending
+                            ? "Awaiting Payment"
                             : isOngoing
                             ? AppStrings.ordersExpectedDelivery
                             : AppStrings.ordersDeliveredOn,
@@ -607,6 +631,8 @@ class _OrdersState extends State<Orders> {
                             ? (order.cancelledDate != null
                                   ? '${_getTimeAgo(order.cancelledDate!)} at ${_formatTime(order.cancelledDate!)}'
                                   : 'N/A')
+                            : isPending
+                            ? "Complete payment to proceed"
                             : isOngoing
                             ? (order.expectedDelivery != null ? _formatTime(order.expectedDelivery!) : 'N/A')
                             : (order.deliveredDate != null
@@ -625,7 +651,36 @@ class _OrdersState extends State<Orders> {
             ),
           ),
           SizedBox(height: 16.h),
-          if (isOngoing)
+          if (isPending)
+            GestureDetector(
+              onTap: () {
+                // Navigate back to payment for this order
+                context.push("/checkout", extra: order);
+              },
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(vertical: 14.h),
+                decoration: BoxDecoration(color: colors.accentViolet, borderRadius: BorderRadius.circular(12.r)),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SvgPicture.asset(
+                      Assets.icons.creditCard,
+                      package: 'grab_go_shared',
+                      height: 16.h,
+                      width: 16.w,
+                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                    ),
+                    SizedBox(width: 8.w),
+                    Text(
+                      "Complete Payment",
+                      style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else if (isOngoing)
             GestureDetector(
               onTap: () {
                 context.push("/mapTracking");
