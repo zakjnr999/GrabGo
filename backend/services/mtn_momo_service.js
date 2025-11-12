@@ -133,41 +133,54 @@ class MTNMomoService {
     try {
       // Mock payment status for development testing
       if (process.env.NODE_ENV === 'development' || this.targetEnvironment === 'sandbox') {
-        if (referenceId.startsWith('PAY-')) {
-          console.log('🧪 MOCK PAYMENT STATUS: Simulating payment completion');
+        // Handle both internal PAY- references and external references
+        if (referenceId.startsWith('PAY-') || referenceId.length > 10) {
+          console.log('🧪 MOCK PAYMENT STATUS: Simulating payment completion for:', referenceId);
           
-          // Simulate payment progression: pending -> successful after 10 seconds
-          const paymentCreatedAt = parseInt(referenceId.split('-')[1]);
+          // Extract timestamp from PAY- format, or use creation time for other formats
+          let paymentCreatedAt;
+          if (referenceId.startsWith('PAY-')) {
+            paymentCreatedAt = parseInt(referenceId.split('-')[1]);
+          } else {
+            // For external references, find the payment record to get creation time
+            const Payment = require('../models/Payment');
+            try {
+              const payment = await Payment.findOne({ 
+                $or: [
+                  { referenceId: referenceId },
+                  { externalReferenceId: referenceId }
+                ]
+              });
+              if (payment) {
+                paymentCreatedAt = payment.createdAt.getTime();
+              } else {
+                paymentCreatedAt = Date.now() - 15000; // Default to 15 seconds ago = successful
+              }
+            } catch (error) {
+              paymentCreatedAt = Date.now() - 15000; // Default to successful
+            }
+          }
+          
           const now = Date.now();
           const timeDiff = now - paymentCreatedAt;
           
           if (timeDiff < 10000) { // First 10 seconds = pending
             return {
               success: true,
-              data: {
-                paymentId: referenceId,
-                status: 'pending',
-                amount: 27.00, // Mock amount
-                currency: 'EUR',
-                financialTransactionId: null,
-                completedAt: null,
-                errorMessage: null,
-                expiresAt: new Date(Date.now() + 300000).toISOString() // 5 minutes from now
-              }
+              status: 'PENDING', // Backend expects uppercase
+              financialTransactionId: null,
+              amount: 27.00,
+              currency: 'EUR',
+              reason: 'Payment is being processed...'
             };
           } else { // After 10 seconds = successful
             return {
               success: true,
-              data: {
-                paymentId: referenceId,
-                status: 'successful',
-                amount: 27.00, // Mock amount
-                currency: 'EUR',
-                financialTransactionId: `TXN-${Date.now()}`,
-                completedAt: new Date().toISOString(),
-                errorMessage: null,
-                expiresAt: null
-              }
+              status: 'SUCCESSFUL', // Backend expects uppercase
+              financialTransactionId: `TXN-${Date.now()}`,
+              amount: 27.00,
+              currency: 'EUR',
+              reason: 'Payment completed successfully'
             };
           }
         }
