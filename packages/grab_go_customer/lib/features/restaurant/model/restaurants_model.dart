@@ -1,5 +1,6 @@
 class RestaurantModel {
   final int id;
+  final String backendId;
   final String name;
   final String city;
   final String foodType;
@@ -25,6 +26,7 @@ class RestaurantModel {
 
   RestaurantModel({
     required this.id,
+    required this.backendId,
     required this.name,
     required this.city,
     required this.foodType,
@@ -50,18 +52,22 @@ class RestaurantModel {
   });
 
   factory RestaurantModel.fromJson(Map<String, dynamic> json) {
-    final idStr = json['_id']?.toString() ?? '';
+    final backendId = json['_id']?.toString() ?? json['backendId']?.toString() ?? '';
+    final dynamic rawId = json['id'];
+
     int restaurantId = 0;
-    if (idStr.isNotEmpty) {
-      try {
-        restaurantId = int.tryParse(idStr.length > 6 ? idStr.substring(idStr.length - 6) : idStr) ?? 0;
-      } catch (e) {
-        restaurantId = idStr.hashCode % 1000000;
-      }
+    if (rawId is num) {
+      restaurantId = rawId.toInt();
+    } else if (rawId is String && rawId.isNotEmpty) {
+      restaurantId = int.tryParse(rawId) ?? rawId.hashCode % 1000000;
+    } else if (backendId.isNotEmpty) {
+      final tail = backendId.length > 6 ? backendId.substring(backendId.length - 6) : backendId;
+      restaurantId = int.tryParse(tail) ?? backendId.hashCode % 1000000;
     }
 
     return RestaurantModel(
       id: restaurantId,
+      backendId: backendId,
       name: json['restaurant_name']?.toString() ?? json['name']?.toString() ?? '',
       city: json['city']?.toString() ?? '',
       foodType: json['food_type']?.toString() ?? '',
@@ -114,6 +120,7 @@ class Socials {
 }
 
 class Food {
+  final String backendId;
   final int id;
   final String name;
   final double price;
@@ -122,8 +129,10 @@ class Food {
   final String description;
   final int sellerId;
   final String sellerName;
+  final String restaurantId;
 
   Food({
+    required this.backendId,
     required this.id,
     required this.name,
     required this.price,
@@ -132,9 +141,12 @@ class Food {
     required this.description,
     required this.sellerId,
     required this.sellerName,
+    required this.restaurantId,
   });
 
   factory Food.fromJson(Map<String, dynamic> json) {
+    final backendId = json['_id']?.toString() ?? json['backendId']?.toString() ?? json['id']?.toString() ?? '';
+
     int foodId = 0;
     if (json['id'] != null) {
       if (json['id'] is num) {
@@ -142,11 +154,27 @@ class Food {
       } else {
         foodId = json['id'].toString().hashCode;
       }
-    } else if (json['_id'] != null) {
-      foodId = json['_id'].toString().hashCode;
+    } else if (backendId.isNotEmpty) {
+      foodId = backendId.hashCode;
+    }
+
+    String restaurantId = '';
+    final restaurantField = json['restaurant'];
+    if (restaurantField is Map<String, dynamic>) {
+      restaurantId =
+          restaurantField['_id']?.toString() ??
+          restaurantField['backendId']?.toString() ??
+          restaurantField['id']?.toString() ??
+          '';
+    } else if (restaurantField != null) {
+      restaurantId = restaurantField.toString();
+    }
+    if (restaurantId.isEmpty) {
+      restaurantId = json['restaurantId']?.toString() ?? json['restaurant_id']?.toString() ?? '';
     }
 
     return Food(
+      backendId: backendId,
       id: foodId,
       name: json['name']?.toString() ?? json['food_name']?.toString() ?? '',
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
@@ -163,6 +191,7 @@ class Food {
           json['seller_name']?.toString() ??
           json['restaurant_name']?.toString() ??
           '',
+      restaurantId: restaurantId,
     );
   }
 }

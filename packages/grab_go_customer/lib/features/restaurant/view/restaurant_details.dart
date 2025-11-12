@@ -57,11 +57,13 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
         } else {
           restaurantFoodItems.add(
             FoodItem(
+              id: food.backendId.isNotEmpty ? food.backendId : food.id.toString(),
               name: food.name,
               image: food.imageUrl,
               description: food.description,
               sellerName: food.sellerName,
               sellerId: food.sellerId,
+              restaurantId: widget.restaurant.backendId.isNotEmpty ? widget.restaurant.backendId : '',
               price: food.price,
               restaurantImage: widget.restaurant.imageUrl,
             ),

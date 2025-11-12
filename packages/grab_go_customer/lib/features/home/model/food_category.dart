@@ -1,12 +1,12 @@
-import 'package:flutter/foundation.dart';
-
 class FoodItem {
+  final String id;
   final String name;
   final String image;
   final String restaurantImage;
   final String description;
   final String sellerName;
   final int sellerId;
+  final String restaurantId;
   final double price;
   final double rating;
   final int prepTimeMinutes;
@@ -17,11 +17,13 @@ class FoodItem {
   final double discountPercentage;
 
   FoodItem({
+    required this.id,
     required this.name,
     required this.image,
     required this.description,
     required this.sellerName,
     required this.sellerId,
+    required this.restaurantId,
     required this.price,
     this.rating = 4.5,
     this.prepTimeMinutes = 15,
@@ -34,7 +36,10 @@ class FoodItem {
   });
 
   factory FoodItem.fromJson(Map<String, dynamic> json) {
+    final id = json['_id']?.toString() ?? json['id']?.toString() ?? '';
     final restaurant = json['restaurant'];
+
+    String restaurantId = '';
 
     String restaurantName = '';
     if (restaurant != null && restaurant is Map<String, dynamic>) {
@@ -44,9 +49,11 @@ class FoodItem {
       restaurantName = json['sellerName']?.toString() ?? '';
     }
 
-    String restaurantId = '';
     if (restaurant != null && restaurant is Map<String, dynamic>) {
       restaurantId = restaurant['_id']?.toString() ?? '';
+    }
+    if (restaurantId.isEmpty) {
+      restaurantId = json['restaurantId']?.toString() ?? '';
     }
     if (restaurantId.isEmpty) {
       restaurantId = json['sellerId']?.toString() ?? '';
@@ -80,11 +87,13 @@ class FoodItem {
     final safeRestaurantImage = restaurantImage.isEmpty ? '' : restaurantImage;
 
     return FoodItem(
+      id: id,
       name: name,
       image: image,
       description: description,
       sellerName: safeSellerName,
       sellerId: sellerIdInt,
+      restaurantId: restaurantId,
       restaurantImage: safeRestaurantImage,
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
@@ -105,11 +114,13 @@ class FoodItem {
   }
 
   Map<String, dynamic> toJson() => {
+    'id': id,
     'name': name,
     'image': image,
     'description': description,
     'sellerName': sellerName,
     'sellerId': sellerId,
+    'restaurantId': restaurantId,
     'restaurantImage': restaurantImage,
     'price': price,
     'rating': rating,
@@ -124,12 +135,20 @@ class FoodItem {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
+    if (other is! FoodItem) return false;
 
-    return other is FoodItem && other.name == name && other.sellerId == sellerId && other.sellerName == sellerName;
+    if (id.isNotEmpty && other.id.isNotEmpty) {
+      return other.id == id;
+    }
+
+    return other.name == name && other.sellerId == sellerId && other.sellerName == sellerName;
   }
 
   @override
   int get hashCode {
+    if (id.isNotEmpty) {
+      return id.hashCode;
+    }
     return name.hashCode ^ sellerId.hashCode ^ sellerName.hashCode;
   }
 }

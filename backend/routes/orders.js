@@ -33,7 +33,7 @@ router.post(
         });
       }
 
-      const { restaurant, items, deliveryAddress, paymentMethod, notes } =
+      const { restaurant, items, deliveryAddress, paymentMethod, notes, orderNumber } =
         req.body;
 
       const restaurantDoc = await Restaurant.findById(restaurant);
@@ -73,6 +73,7 @@ router.post(
       const totalAmount = subtotal + deliveryFee + tax;
 
       const order = await Order.create({
+        orderNumber,
         customer: req.user._id,
         restaurant: restaurant,
         items: orderItems,

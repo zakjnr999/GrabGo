@@ -284,6 +284,7 @@ class RestaurantProvider extends ChangeNotifier {
             .map(
               (restaurant) => {
                 'id': restaurant.id,
+                'backendId': restaurant.backendId,
                 'name': restaurant.name,
                 'city': restaurant.city,
                 'foodType': restaurant.foodType,
@@ -310,6 +311,7 @@ class RestaurantProvider extends ChangeNotifier {
                     .map(
                       (food) => {
                         'id': food.id,
+                        'backendId': food.backendId,
                         'name': food.name,
                         'description': food.description,
                         'price': food.price,
@@ -317,6 +319,7 @@ class RestaurantProvider extends ChangeNotifier {
                         'category': food.category,
                         'sellerId': food.sellerId,
                         'sellerName': food.sellerName,
+                        'restaurantId': food.restaurantId,
                       },
                     )
                     .toList(),

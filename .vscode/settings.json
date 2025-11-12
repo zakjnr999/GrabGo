@@ -26,7 +26,5 @@
     "**/.flutter-plugins-dependencies": true,
     "**/pubspec.lock": true
   },
-  "dart.flutterAdditionalArgs": [
-    "--dart-define-from-file=${workspaceFolder}/.dart_defines.json"
-  ]
+  "cSpell.words": ["Momo"]
 }
