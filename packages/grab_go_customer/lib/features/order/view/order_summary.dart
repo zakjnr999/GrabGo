@@ -25,7 +25,7 @@ class OrderSummaryPage extends StatefulWidget {
 class _OrderSummaryPageState extends State<OrderSummaryPage> {
   bool _isProcessingPayment = false;
   final String _momoNumber = "0536997662"; // User's saved MOMO number
-  
+
   void _handlePayment(BuildContext context, double total, double subtotal, double deliveryFee) async {
     if (widget.selectedPaymentMethod == "MTN MOMO") {
       await _handleMtnMomoPayment(context, total, subtotal, deliveryFee);
@@ -52,12 +52,12 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
     try {
       // First create the order
       final orderId = await _createOrder(context, total, subtotal, deliveryFee);
-      
+
       if (orderId != null) {
         setState(() {
           _isProcessingPayment = false;
         });
-        
+
         // Show MTN MOMO payment dialog
         if (mounted) {
           showDialog(
@@ -81,7 +81,7 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
       setState(() {
         _isProcessingPayment = false;
       });
-      
+
       if (mounted) {
         _showErrorDialog(context, "Failed to create order: ${e.toString()}");
       }
@@ -91,7 +91,7 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
   Future<String?> _createOrder(BuildContext context, double total, double subtotal, double deliveryFee) async {
     final cart = context.read<CartProvider>();
     final orderService = OrderServiceWrapper();
-    
+
     try {
       final orderId = await orderService.createOrder(
         cartItems: cart.cartItems,
@@ -102,9 +102,8 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
         total: total,
         notes: null, // You can add notes field if needed
       );
-      
+
       return orderId;
-      
     } catch (e) {
       debugPrint("Order creation error: $e");
       throw Exception("Failed to create order: ${e.toString()}");
@@ -114,18 +113,9 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
   void _handlePaymentSuccess(BuildContext context) {
     // Clear cart
     context.read<CartProvider>().clearCart();
-    
+
     // Navigate to order tracking or success page
     context.go('/payment-complete');
-    
-    // Show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Payment successful! Your order has been placed.'),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 
   void _handlePaymentFailure(BuildContext context) {
@@ -138,12 +128,7 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
       builder: (context) => AlertDialog(
         title: const Text('Payment Error'),
         content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
+        actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK'))],
       ),
     );
   }
@@ -680,8 +665,8 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
                             ),
                           SizedBox(width: 10.w),
                           Text(
-                            _isProcessingPayment 
-                                ? "Processing Payment..." 
+                            _isProcessingPayment
+                                ? "Processing Payment..."
                                 : "Confirm & Pay GHS ${total.toStringAsFixed(2)}",
                             style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w800),
                           ),

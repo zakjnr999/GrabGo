@@ -5,6 +5,7 @@ import 'package:grab_go_shared/grub_go_shared.dart';
 import 'features/auth/view/login_screen.dart';
 import 'features/dashboard/view/admin_dashboard.dart';
 import 'features/restaurants/viewmodel/restaurant_provider.dart';
+import 'features/orders/viewmodel/order_provider.dart';
 import 'shared/services/token_service.dart';
 
 void main() async {
@@ -33,6 +34,7 @@ class GrabGoAdmin extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (context) => ThemeProvider()),
         ChangeNotifierProvider(create: (context) => RestaurantProvider()),
+        ChangeNotifierProvider(create: (context) => OrderProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
