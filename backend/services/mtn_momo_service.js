@@ -66,18 +66,11 @@ class MTNMomoService {
           console.log('🧪 MOCK PAYMENT MODE: Simulating successful payment for Ghana number');
           console.log('Payment Data:', JSON.stringify(paymentData, null, 2));
           
+          // Return exact same structure as real MTN MOMO service
           return {
             success: true,
-            message: 'Payment request initiated successfully (MOCK)',
-            data: {
-              paymentId: paymentData.externalId,
-              referenceId: paymentData.externalId,
-              externalReferenceId: paymentData.externalId,
-              status: 'PENDING',
-              amount: parseFloat(paymentData.amount),
-              currency: paymentData.currency || 'EUR',
-              phoneNumber: paymentData.phoneNumber
-            }
+            referenceId: paymentData.externalId,
+            status: 'PENDING'
           };
         }
       }
