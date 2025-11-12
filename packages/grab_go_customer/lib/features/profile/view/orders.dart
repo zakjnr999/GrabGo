@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:intl/intl.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_customer/features/order/service/order_service_wrapper.dart';
 
 class OrderModel {
   final String id;
@@ -67,117 +68,72 @@ class _OrdersState extends State<Orders> {
   @override
   void initState() {
     super.initState();
-    _loadSampleOrders();
-    _filterOrders();
+    _loadOrdersFromAPI();
   }
 
-  void _loadSampleOrders() {
-    final now = DateTime.now();
-
-    _allOrders = [
-      OrderModel(
-        id: '1',
-        orderNumber: '1234',
-        restaurantName: 'KFC - Accra Mall',
-        restaurantImage: Assets.images.sampleOne.image(package: 'grab_go_shared'),
-        items: [
-          OrderItem(name: 'Zinger Burger', quantity: 2, price: 45.00),
-          OrderItem(name: 'French Fries', quantity: 1, price: 15.00),
-          OrderItem(name: 'Coca Cola', quantity: 2, price: 10.00),
-        ],
-        totalAmount: 125.00,
-        orderDate: now.subtract(const Duration(minutes: 30)),
-        expectedDelivery: now.add(const Duration(minutes: 30)),
-        status: OrderStatus.ongoing,
-      ),
-      OrderModel(
-        id: '2',
-        orderNumber: '1235',
-        restaurantName: 'Papa\'s Pizza',
-        restaurantImage: Assets.images.sampleTwo.image(package: 'grab_go_shared'),
-        items: [
-          OrderItem(name: 'Margherita Pizza (Large)', quantity: 1, price: 85.00),
-          OrderItem(name: 'Garlic Bread', quantity: 2, price: 25.00),
-        ],
-        totalAmount: 135.00,
-        orderDate: now.subtract(const Duration(hours: 1)),
-        expectedDelivery: now.add(const Duration(hours: 1)),
-        status: OrderStatus.ongoing,
-      ),
-      OrderModel(
-        id: '3',
-        orderNumber: '1233',
-        restaurantName: 'Chicken Republic',
-        restaurantImage: Assets.images.sampleThree.image(package: 'grab_go_shared'),
-        items: [
-          OrderItem(name: 'Grilled Chicken', quantity: 2, price: 60.00),
-          OrderItem(name: 'Jollof Rice', quantity: 2, price: 30.00),
-          OrderItem(name: 'Coleslaw', quantity: 2, price: 15.00),
-        ],
-        totalAmount: 210.00,
-        orderDate: now.subtract(const Duration(days: 1)),
-        deliveredDate: now.subtract(const Duration(hours: 23)),
-        status: OrderStatus.completed,
-      ),
-      OrderModel(
-        id: '4',
-        orderNumber: '1232',
-        restaurantName: 'Burger King',
-        restaurantImage: Assets.images.sampleFour.image(package: 'grab_go_shared'),
-        items: [
-          OrderItem(name: 'Whopper Burger', quantity: 1, price: 50.00),
-          OrderItem(name: 'Onion Rings', quantity: 1, price: 20.00),
-          OrderItem(name: 'Milkshake', quantity: 1, price: 25.00),
-        ],
-        totalAmount: 95.00,
-        orderDate: now.subtract(const Duration(days: 2)),
-        deliveredDate: now.subtract(const Duration(days: 2, hours: -1)),
-        status: OrderStatus.completed,
-      ),
-      OrderModel(
-        id: '5',
-        orderNumber: '1231',
-        restaurantName: 'Subway',
-        restaurantImage: Assets.images.sampleOne.image(package: 'grab_go_shared'),
-        items: [
-          OrderItem(name: 'Turkey Sub (12 inch)', quantity: 2, price: 70.00),
-          OrderItem(name: 'Cookies', quantity: 4, price: 20.00),
-        ],
-        totalAmount: 160.00,
-        orderDate: now.subtract(const Duration(days: 3)),
-        deliveredDate: now.subtract(const Duration(days: 3, hours: -30, minutes: 30)),
-        status: OrderStatus.completed,
-      ),
-      OrderModel(
-        id: '6',
-        orderNumber: '1230',
-        restaurantName: 'Pizza Hut',
-        restaurantImage: Assets.images.sampleTwo.image(package: 'grab_go_shared'),
-        items: [
-          OrderItem(name: 'Pepperoni Pizza (Large)', quantity: 1, price: 90.00),
-          OrderItem(name: 'Chicken Wings', quantity: 1, price: 40.00),
-        ],
-        totalAmount: 130.00,
-        orderDate: now.subtract(const Duration(days: 4)),
-        cancelledDate: now.subtract(const Duration(days: 4, hours: -1)),
-        status: OrderStatus.cancelled,
-      ),
-      OrderModel(
-        id: '7',
-        orderNumber: '1229',
-        restaurantName: 'McDonald\'s',
-        restaurantImage: Assets.images.sampleThree.image(package: 'grab_go_shared'),
-        items: [
-          OrderItem(name: 'Big Mac', quantity: 1, price: 45.00),
-          OrderItem(name: 'McFlurry', quantity: 1, price: 18.00),
-        ],
-        totalAmount: 63.00,
-        orderDate: now.subtract(const Duration(days: 5)),
-        cancelledDate: now.subtract(const Duration(days: 5, hours: -30)),
-        status: OrderStatus.cancelled,
-      ),
-    ];
+  Future<void> _loadOrdersFromAPI() async {
+    try {
+      final orderService = OrderServiceWrapper();
+      final ordersData = await orderService.getUserOrders();
+      
+      _allOrders = ordersData.map((orderData) => _convertAPIOrderToOrderModel(orderData)).toList();
+      _filterOrders();
+      if (mounted) setState(() {});
+    } catch (e) {
+      print('Error loading orders: $e');
+      // No fallback - show empty state if API fails
+      _allOrders = [];
+      _filterOrders();
+      if (mounted) setState(() {});
+    }
   }
+
+  OrderModel _convertAPIOrderToOrderModel(Map<String, dynamic> apiOrder) {
+    // Convert API order to OrderModel
+    final items = (apiOrder['items'] as List? ?? []).map((item) {
+      return OrderItem(
+        name: item['name'] ?? 'Unknown Item',
+        quantity: item['quantity'] ?? 1,
+        price: (item['price'] ?? 0.0).toDouble(),
+      );
+    }).toList();
+
+    OrderStatus status;
+    switch (apiOrder['status']?.toLowerCase()) {
+      case 'pending':
+      case 'confirmed':
+      case 'preparing':
+      case 'ready':
+      case 'picked_up':
+      case 'on_the_way':
+        status = OrderStatus.ongoing;
+        break;
+      case 'delivered':
+        status = OrderStatus.completed;
+        break;
+      case 'cancelled':
+        status = OrderStatus.cancelled;
+        break;
+      default:
+        status = OrderStatus.ongoing;
+    }
+
+    return OrderModel(
+      id: apiOrder['_id'] ?? '',
+      orderNumber: apiOrder['orderNumber'] ?? '',
+      restaurantName: apiOrder['restaurant']?['restaurant_name'] ?? 'Unknown Restaurant',
+      restaurantImage: Assets.images.sampleOne.image(package: 'grab_go_shared'), // Default image
+      items: items,
+      totalAmount: (apiOrder['totalAmount'] ?? 0.0).toDouble(),
+      orderDate: DateTime.tryParse(apiOrder['createdAt'] ?? '') ?? DateTime.now(),
+      expectedDelivery: DateTime.now().add(const Duration(minutes: 30)), // Default estimate
+      status: status,
+      deliveredDate: apiOrder['status'] == 'delivered' 
+        ? DateTime.tryParse(apiOrder['updatedAt'] ?? '') 
+        : null,
+    );
+  }
+
 
   void _filterOrders() {
     setState(() {

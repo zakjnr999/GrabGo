@@ -36,18 +36,9 @@ final class _$OrderServiceChopper extends OrderServiceChopper {
   }
 
   @override
-  Future<Response<Map<String, dynamic>>> getUserOrders(int page, int limit) {
-    final Uri $url = Uri.parse('/orders/my-orders');
-    final Map<String, dynamic> $params = <String, dynamic>{
-      'page': page,
-      'limit': limit,
-    };
-    final Request $request = Request(
-      'GET',
-      $url,
-      client.baseUrl,
-      parameters: $params,
-    );
+  Future<Response<Map<String, dynamic>>> getUserOrders() {
+    final Uri $url = Uri.parse('/orders');
+    final Request $request = Request('GET', $url, client.baseUrl);
     return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
   }
 }

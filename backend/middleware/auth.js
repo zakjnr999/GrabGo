@@ -24,11 +24,18 @@ exports.verifyApiKey = (req, res, next) => {
 exports.protect = async (req, res, next) => {
   let token;
 
+  // Debug auth headers
+  console.log('\n🔑 AUTHENTICATION DEBUG:');
+  console.log('  Endpoint:', req.method, req.path);
+  console.log('  Authorization header:', req.headers.authorization ? 'Present' : 'Missing');
+  
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     token = req.headers.authorization.split(' ')[1];
+    console.log('  Token extracted:', token ? `${token.substring(0, 20)}...` : 'Failed to extract');
   }
 
   if (!token) {
+    console.log('  ❌ AUTH FAILED: No token provided');
     return res.status(401).json({
       success: false,
       message: 'Not authorized, no token provided'
@@ -37,9 +44,12 @@ exports.protect = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('  ✅ Token verified for user:', decoded.id);
+    
     req.user = await User.findById(decoded.id).select('-password');
     
     if (!req.user) {
+      console.log('  ❌ AUTH FAILED: User not found for ID:', decoded.id);
       return res.status(401).json({
         success: false,
         message: 'User not found'
@@ -47,14 +57,17 @@ exports.protect = async (req, res, next) => {
     }
 
     if (!req.user.isActive) {
+      console.log('  ❌ AUTH FAILED: User account deactivated');
       return res.status(403).json({
         success: false,
         message: 'Account is deactivated'
       });
     }
 
+    console.log('  ✅ Authentication successful for:', req.user.email || req.user.username);
     next();
   } catch (error) {
+    console.log('  ❌ AUTH FAILED: Token verification error:', error.message);
     return res.status(401).json({
       success: false,
       message: 'Not authorized, token failed'

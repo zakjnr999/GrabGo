@@ -97,9 +97,9 @@ class OrderServiceWrapper {
   }
 
   // Get user orders
-  Future<List<Map<String, dynamic>>> getUserOrders({int page = 1, int limit = 10}) async {
+  Future<List<Map<String, dynamic>>> getUserOrders() async {
     try {
-      final response = await _orderService.getUserOrders(page, limit);
+      final response = await _orderService.getUserOrders();
 
       if (response.isSuccessful && response.body != null) {
         final responseData = response.body!;
