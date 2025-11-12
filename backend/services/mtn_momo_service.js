@@ -135,7 +135,10 @@ class MTNMomoService {
       if (process.env.NODE_ENV === 'development' || this.targetEnvironment === 'sandbox') {
         // Handle both internal PAY- references and external references
         if (referenceId.startsWith('PAY-') || referenceId.length > 10) {
-          console.log('🧪 MOCK PAYMENT STATUS: Simulating payment completion for:', referenceId);
+          console.log('\n🧪 MOCK PAYMENT STATUS CHECK:');
+          console.log('  Reference ID:', referenceId);
+          console.log('  Environment:', this.targetEnvironment);
+          console.log('  NODE_ENV:', process.env.NODE_ENV);
           
           // Extract timestamp from PAY- format, or use creation time for other formats
           let paymentCreatedAt;
@@ -163,6 +166,11 @@ class MTNMomoService {
           
           const now = Date.now();
           const timeDiff = now - paymentCreatedAt;
+          
+          console.log('  Payment created at:', new Date(paymentCreatedAt).toLocaleString());
+          console.log('  Current time:', new Date(now).toLocaleString());
+          console.log('  Time difference:', timeDiff + 'ms (' + (timeDiff/1000).toFixed(1) + 's)');
+          console.log('  Status will be:', timeDiff < 10000 ? 'PENDING' : 'SUCCESSFUL');
           
           if (timeDiff < 10000) { // First 10 seconds = pending
             return {
