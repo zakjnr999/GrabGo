@@ -70,8 +70,13 @@ class MTNMomoService {
             success: true,
             message: 'Payment request initiated successfully (MOCK)',
             data: {
+              paymentId: paymentData.externalId,
               referenceId: paymentData.externalId,
-              status: 'PENDING'
+              externalReferenceId: paymentData.externalId,
+              status: 'PENDING',
+              amount: parseFloat(paymentData.amount),
+              currency: paymentData.currency || 'EUR',
+              phoneNumber: paymentData.phoneNumber
             }
           };
         }
@@ -146,16 +151,30 @@ class MTNMomoService {
           if (timeDiff < 10000) { // First 10 seconds = pending
             return {
               success: true,
-              status: 'PENDING',
-              financialTransactionId: null,
-              reason: 'Payment is being processed...'
+              data: {
+                paymentId: referenceId,
+                status: 'pending',
+                amount: 27.00, // Mock amount
+                currency: 'EUR',
+                financialTransactionId: null,
+                completedAt: null,
+                errorMessage: null,
+                expiresAt: new Date(Date.now() + 300000).toISOString() // 5 minutes from now
+              }
             };
           } else { // After 10 seconds = successful
             return {
               success: true,
-              status: 'SUCCESSFUL',
-              financialTransactionId: `TXN-${Date.now()}`,
-              reason: 'Payment completed successfully'
+              data: {
+                paymentId: referenceId,
+                status: 'successful',
+                amount: 27.00, // Mock amount
+                currency: 'EUR',
+                financialTransactionId: `TXN-${Date.now()}`,
+                completedAt: new Date().toISOString(),
+                errorMessage: null,
+                expiresAt: null
+              }
             };
           }
         }
