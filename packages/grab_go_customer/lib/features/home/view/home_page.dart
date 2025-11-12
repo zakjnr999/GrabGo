@@ -25,11 +25,61 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   FoodCategoryModel? _selectedCategory;
+  late ScrollController _scrollController;
+  bool _isFabVisible = true;
+  double _lastScrollOffset = 0.0;
 
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
     _initializeData();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+
+    final currentOffset = _scrollController.offset;
+    final scrollDelta = currentOffset - _lastScrollOffset;
+
+    // Show FAB when at the top
+    if (currentOffset <= 0) {
+      if (!_isFabVisible) {
+        setState(() {
+          _isFabVisible = true;
+        });
+      }
+      _lastScrollOffset = currentOffset;
+      return;
+    }
+
+    // Hide FAB when scrolling down (with threshold to prevent flickering)
+    // Show FAB when scrolling up
+    if (scrollDelta > 5 && currentOffset > 50) {
+      // Scrolling down significantly
+      if (_isFabVisible) {
+        setState(() {
+          _isFabVisible = false;
+        });
+      }
+    } else if (scrollDelta < -5) {
+      // Scrolling up significantly
+      if (!_isFabVisible) {
+        setState(() {
+          _isFabVisible = true;
+        });
+      }
+    }
+
+    _lastScrollOffset = currentOffset;
   }
 
   void _initializeData() {
@@ -73,6 +123,7 @@ class _HomePageState extends State<HomePage> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
+          controller: _scrollController,
           physics: const BouncingScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -654,6 +705,42 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ),
+
+      floatingActionButton: Provider.of<CartProvider>(context, listen: true).cartItems.isNotEmpty
+          ? AnimatedOpacity(
+              opacity: _isFabVisible ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              child: IgnorePointer(
+                ignoring: !_isFabVisible,
+                child: Consumer<CartProvider>(
+                  builder: (context, cartProvider, child) {
+                    return FloatingActionButton.extended(
+                      onPressed: () => context.push("/cart"),
+                      extendedPadding: EdgeInsets.all(10.r),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.border)),
+                      backgroundColor: colors.accentOrange,
+                      label: Text(
+                        "${cartProvider.cartItems.length} ${cartProvider.cartItems.length > 1 ? "items in cart" : "item in cart"}",
+                        style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: colors.backgroundPrimary),
+                      ),
+                      icon: Container(
+                        padding: EdgeInsets.all(8.r),
+                        decoration: BoxDecoration(color: colors.backgroundPrimary, shape: BoxShape.circle),
+                        child: SvgPicture.asset(
+                          Assets.icons.cart,
+                          height: 20.h,
+                          width: 20.w,
+                          package: 'grab_go_shared',
+                          colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            )
+          : const SizedBox.shrink(),
     );
   }
 }

@@ -8,6 +8,32 @@ packages:
   - packages/grab_go_admin
 
 scripts:
+  # Development run commands (easy to use!)
+  run:customer:
+    run: |
+      cd packages/grab_go_customer
+      flutter run --dart-define-from-file=../../.env.local
+    description: 🚀 Run customer app with dev environment
+
+  run:rider:
+    run: |
+      cd packages/grab_go_rider
+      flutter run --dart-define-from-file=../../.env.local
+    description: 🚀 Run rider app with dev environment
+
+  run:admin:
+    run: |
+      cd packages/grab_go_admin
+      flutter run --dart-define-from-file=../../.env.local
+    description: 🚀 Run admin app with dev environment
+
+  run:restaurant:
+    run: |
+      cd packages/grab_go_restaurant
+      flutter run --dart-define-from-file=../../.env.local
+    description: 🚀 Run restaurant app with dev environment
+
+  # Standard maintenance commands
   analyze:
     run: melos exec -- flutter analyze
     description: Run `flutter analyze` in all packages
@@ -24,13 +50,26 @@ scripts:
     run: melos exec -- flutter pub get
     description: Run `flutter pub get` in all packages
 
+  # Environment-aware build scripts
+  build:dev:
+    run: |
+      cd packages/grab_go_customer
+      flutter build apk --dart-define-from-file=../../.env.local
+    description: Build customer APK with development configuration
+
+  build:prod:
+    run: |
+      cd packages/grab_go_customer  
+      flutter build apk --release --dart-define-from-file=../../.env.production
+    description: Build customer APK with production configuration
+
   build:android:
     run: melos exec -- flutter build apk
-    description: Build Android APK for all packages
+    description: Build Android APK for all packages (requires environment setup)
 
   build:ios:
     run: melos exec -- flutter build ios
-    description: Build iOS app for all packages
+    description: Build iOS app for all packages (requires environment setup)
 
   format:
     run: melos exec -- dart format .

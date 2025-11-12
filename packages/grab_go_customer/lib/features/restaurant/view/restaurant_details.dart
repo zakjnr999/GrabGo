@@ -404,6 +404,67 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
 
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 20.w),
+                      child: DottedLine(
+                        dashLength: 6,
+                        dashGapLength: 4,
+                        lineThickness: 1,
+                        dashColor: colors.textSecondary.withAlpha(50),
+                      ),
+                    ),
+
+                    SizedBox(height: KSpacing.lg.h),
+
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20.w),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(8.r),
+                            decoration: BoxDecoration(
+                              color: colors.accentViolet.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: SvgPicture.asset(
+                              Assets.icons.starSolid,
+                              package: 'grab_go_shared',
+                              height: 18.h,
+                              width: 18.w,
+                              colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                            ),
+                          ),
+                          SizedBox(width: 10.w),
+                          Text(
+                            "Customer Reviews",
+                            style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                            decoration: BoxDecoration(
+                              color: colors.accentViolet.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            child: Text(
+                              "${widget.restaurant.totalReviews > 0 ? widget.restaurant.totalReviews : 8} ${(widget.restaurant.totalReviews > 0 ? widget.restaurant.totalReviews : 8) == 1 ? 'review' : 'reviews'}",
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w600,
+                                color: colors.accentViolet,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(height: 16.h),
+
+                    _buildReviewsSection(colors, size),
+
+                    SizedBox(height: KSpacing.lg.h),
+
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20.w),
                       child: Row(
                         children: [
                           Container(
@@ -970,5 +1031,271 @@ class _RestaurantDetailsState extends State<RestaurantDetails> {
         );
       }
     }
+  }
+
+  Widget _buildReviewsSection(AppColorsExtension colors, Size size) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final reviews = [
+      {
+        'name': 'John Doe',
+        'rating': 5.0,
+        'date': '2 days ago',
+        'comment':
+            'Amazing food and fast delivery! The quality is excellent and the portions are generous. Highly recommend!',
+      },
+      {
+        'name': 'Sarah Williams',
+        'rating': 4.5,
+        'date': '1 week ago',
+        'comment':
+            'Great restaurant with delicious meals. The delivery was on time and the food was still hot. Will order again!',
+      },
+      {
+        'name': 'Michael Chen',
+        'rating': 4.0,
+        'date': '2 weeks ago',
+        'comment':
+            'Good food quality and reasonable prices. The only downside was a slight delay in delivery, but overall satisfied.',
+      },
+      {
+        'name': 'Emily Rodriguez',
+        'rating': 5.0,
+        'date': '3 days ago',
+        'comment':
+            'Absolutely loved everything! The food arrived hot and fresh. The portions are huge and the taste is incredible. This is now my go-to restaurant!',
+      },
+      {
+        'name': 'David Thompson',
+        'rating': 4.5,
+        'date': '5 days ago',
+        'comment':
+            'Excellent service and delicious food. The packaging was great and everything arrived intact. Will definitely order from here again.',
+      },
+      {
+        'name': 'Lisa Anderson',
+        'rating': 4.0,
+        'date': '1 week ago',
+        'comment':
+            'Really good food at reasonable prices. The delivery was a bit late but the food quality made up for it. Satisfied customer!',
+      },
+      {
+        'name': 'James Wilson',
+        'rating': 5.0,
+        'date': '4 days ago',
+        'comment':
+            'Best restaurant in town! The food is always fresh, tasty, and well-prepared. Customer service is top-notch. Highly recommended!',
+      },
+      {
+        'name': 'Maria Garcia',
+        'rating': 4.5,
+        'date': '6 days ago',
+        'comment':
+            'Great variety of dishes and everything tastes amazing. The delivery time is usually accurate. Very happy with my orders!',
+      },
+    ];
+
+    // Show reviews if we have reviews data, regardless of totalReviews count
+    if (reviews.isEmpty) {
+      return Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20.w),
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(24.r),
+          decoration: BoxDecoration(
+            color: colors.backgroundPrimary,
+            borderRadius: BorderRadius.circular(12.r),
+            border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+          ),
+          child: Column(
+            children: [
+              Container(
+                padding: EdgeInsets.all(16.r),
+                decoration: BoxDecoration(color: colors.accentViolet.withValues(alpha: 0.1), shape: BoxShape.circle),
+                child: SvgPicture.asset(
+                  Assets.icons.starSolid,
+                  package: 'grab_go_shared',
+                  height: 32.h,
+                  width: 32.w,
+                  colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                ),
+              ),
+              SizedBox(height: 16.h),
+              Text(
+                'No reviews yet',
+                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+              ),
+              SizedBox(height: 8.h),
+              Text(
+                'Be the first to review this restaurant!',
+                style: TextStyle(fontSize: 14.sp, color: colors.textSecondary),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
+      child: Column(
+        children: [
+          // Show first 3 reviews, add "View All" if more exist
+          ...reviews.take(3).map<Widget>((review) {
+            return Container(
+              margin: EdgeInsets.only(bottom: 12.h),
+              padding: EdgeInsets.all(16.r),
+              decoration: BoxDecoration(
+                color: colors.backgroundPrimary,
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
+                    spreadRadius: 0,
+                    blurRadius: 12,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 40.w,
+                        height: 40.h,
+                        decoration: BoxDecoration(
+                          color: colors.accentViolet.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            (review['name'] as String).substring(0, 1).toUpperCase(),
+                            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700, color: colors.accentViolet),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12.w),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              review['name'] as String,
+                              style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                            ),
+                            SizedBox(height: 4.h),
+                            Row(
+                              children: [
+                                ...List.generate(5, (index) {
+                                  final rating = review['rating'] as double;
+                                  final isFilled = index < rating.floor();
+                                  final isHalf = index == rating.floor() && rating % 1 >= 0.5;
+                                  return Padding(
+                                    padding: EdgeInsets.only(right: 2.w),
+                                    child: SvgPicture.asset(
+                                      Assets.icons.starSolid,
+                                      package: 'grab_go_shared',
+                                      height: 14.h,
+                                      width: 14.w,
+                                      colorFilter: ColorFilter.mode(
+                                        isFilled || isHalf ? colors.accentOrange : colors.inputBorder,
+                                        BlendMode.srcIn,
+                                      ),
+                                    ),
+                                  );
+                                }),
+                                SizedBox(width: 6.w),
+                                Text(
+                                  (review['rating'] as double).toStringAsFixed(1),
+                                  style: TextStyle(
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: colors.textPrimary,
+                                  ),
+                                ),
+                                SizedBox(width: 8.w),
+                                Container(
+                                  width: 3.w,
+                                  height: 3.h,
+                                  decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
+                                ),
+                                SizedBox(width: 8.w),
+                                Text(
+                                  review['date'] as String,
+                                  style: TextStyle(
+                                    fontSize: 12.sp,
+                                    color: colors.textSecondary,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12.h),
+                  Text(
+                    review['comment'] as String,
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      color: colors.textPrimary,
+                      fontWeight: FontWeight.w400,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+
+          // "View All Reviews" button if there are more reviews
+          if (reviews.length > 3)
+            Padding(
+              padding: EdgeInsets.only(top: 8.h),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    // Navigate to full reviews page
+                    // context.push('/restaurantReviews', extra: widget.restaurant);
+                  },
+                  borderRadius: BorderRadius.circular(12.r),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
+                    decoration: BoxDecoration(
+                      color: colors.accentViolet.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(color: colors.accentViolet.withValues(alpha: 0.3), width: 1),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'View All ${reviews.length} Reviews',
+                          style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.accentViolet),
+                        ),
+                        SizedBox(width: 8.w),
+                        SvgPicture.asset(
+                          Assets.icons.navArrowRight,
+                          package: 'grab_go_shared',
+                          height: 16.h,
+                          width: 16.w,
+                          colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }

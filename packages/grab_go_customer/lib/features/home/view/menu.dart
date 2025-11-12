@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
@@ -29,6 +30,9 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
   late AnimationController _filterAnimationController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _filterSlideAnimation;
+  late ScrollController _scrollController;
+  bool _isFabVisible = true;
+  double _lastScrollOffset = 0.0;
 
   String _selectedPriceFilter = 'all';
   bool _showFilterChips = false;
@@ -44,6 +48,8 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _searchController = TextEditingController();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
     _animationController = AnimationController(duration: const Duration(milliseconds: 400), vsync: this);
     _filterAnimationController = AnimationController(duration: const Duration(milliseconds: 300), vsync: this);
     _fadeAnimation = Tween<double>(
@@ -80,10 +86,50 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     _searchController.dispose();
     _animationController.dispose();
     _filterAnimationController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+
+    final currentOffset = _scrollController.offset;
+    final scrollDelta = currentOffset - _lastScrollOffset;
+
+    // Show FAB when at the top
+    if (currentOffset <= 0) {
+      if (!_isFabVisible) {
+        setState(() {
+          _isFabVisible = true;
+        });
+      }
+      _lastScrollOffset = currentOffset;
+      return;
+    }
+
+    // Hide FAB when scrolling down (with threshold to prevent flickering)
+    // Show FAB when scrolling up
+    if (scrollDelta > 5 && currentOffset > 50) {
+      // Scrolling down significantly
+      if (_isFabVisible) {
+        setState(() {
+          _isFabVisible = false;
+        });
+      }
+    } else if (scrollDelta < -5) {
+      // Scrolling up significantly
+      if (!_isFabVisible) {
+        setState(() {
+          _isFabVisible = true;
+        });
+      }
+    }
+
+    _lastScrollOffset = currentOffset;
   }
 
   void _onCategorySelected(int index, List<FoodCategoryModel> categories) {
@@ -553,6 +599,7 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
           color: colors.accentOrange,
           onRefresh: _onRefresh,
           child: SingleChildScrollView(
+            controller: _scrollController,
             physics: const ClampingScrollPhysics(),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -807,6 +854,43 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
           ),
         ),
       ),
+
+      floatingActionButton: Provider.of<CartProvider>(context, listen: true).cartItems.isNotEmpty
+          ? AnimatedOpacity(
+              opacity: _isFabVisible ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              child: IgnorePointer(
+                ignoring: !_isFabVisible,
+                child: Consumer<CartProvider>(
+                  builder: (context, cartProvider, child) {
+                    return FloatingActionButton.extended(
+                      onPressed: () => context.push("/cart"),
+
+                      extendedPadding: EdgeInsets.all(10.r),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.border)),
+                      backgroundColor: colors.accentOrange,
+                      label: Text(
+                        "${cartProvider.cartItems.length} ${cartProvider.cartItems.length > 1 ? "items in cart" : "item in cart"}",
+                        style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: colors.backgroundPrimary),
+                      ),
+                      icon: Container(
+                        padding: EdgeInsets.all(8.r),
+                        decoration: BoxDecoration(color: colors.backgroundPrimary, shape: BoxShape.circle),
+                        child: SvgPicture.asset(
+                          Assets.icons.cart,
+                          height: 20.h,
+                          width: 20.w,
+                          package: 'grab_go_shared',
+                          colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            )
+          : const SizedBox.shrink(),
     );
   }
 

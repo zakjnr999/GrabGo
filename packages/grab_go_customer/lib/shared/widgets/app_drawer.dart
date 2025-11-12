@@ -439,44 +439,44 @@ class _AppDrawerState extends State<AppDrawer> {
               ),
             ),
 
-            Container(
-              margin: EdgeInsets.all(20.r),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    context.pop();
-                    _handleLogout();
-                  },
-                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(vertical: 16.h),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                      border: Border.all(color: Colors.red.withOpacity(0.3), width: 1),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SvgPicture.asset(
-                          Assets.icons.logOut,
-                          package: 'grab_go_shared',
-                          height: 20.h,
-                          width: 20.w,
-                          colorFilter: const ColorFilter.mode(Colors.red, BlendMode.srcIn),
-                        ),
-                        SizedBox(width: 10.w),
-                        Text(
-                          "Logout",
-                          style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700, color: Colors.red),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            // Container(
+            //   margin: EdgeInsets.all(20.r),
+            //   child: Material(
+            //     color: Colors.transparent,
+            //     child: InkWell(
+            //       onTap: () {
+            //         context.pop();
+            //         _handleLogout();
+            //       },
+            //       borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+            //       child: Container(
+            //         padding: EdgeInsets.symmetric(vertical: 16.h),
+            //         decoration: BoxDecoration(
+            //           color: Colors.red.withOpacity(0.1),
+            //           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+            //           border: Border.all(color: Colors.red.withOpacity(0.3), width: 1),
+            //         ),
+            //         child: Row(
+            //           mainAxisAlignment: MainAxisAlignment.center,
+            //           children: [
+            //             SvgPicture.asset(
+            //               Assets.icons.logOut,
+            //               package: 'grab_go_shared',
+            //               height: 20.h,
+            //               width: 20.w,
+            //               colorFilter: const ColorFilter.mode(Colors.red, BlendMode.srcIn),
+            //             ),
+            //             SizedBox(width: 10.w),
+            //             Text(
+            //               "Logout",
+            //               style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700, color: Colors.red),
+            //             ),
+            //           ],
+            //         ),
+            //       ),
+            //     ),
+            //   ),
+            // ),
           ],
         ),
       ),

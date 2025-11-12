@@ -2,10 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:grab_go_restaurant/features/dashboard/view/restaurant_dashboard.dart';
 import 'package:grab_go_restaurant/shared/providers/theme_provider.dart';
 import 'package:grab_go_restaurant/shared/app_theme.dart';
+import 'package:grab_go_shared/shared/utils/config.dart';
 import 'package:provider/provider.dart';
 import 'features/auth/view/login_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    AppConfig.validateConfiguration();
+    if (AppConfig.enableLogging) {
+      debugPrint('✅ Restaurant: Environment configuration validated');
+    }
+  } catch (e) {
+    debugPrint('❌ Restaurant Configuration Error: $e');
+    rethrow;
+  }
+
   runApp(const GrabGoRestaurant());
 }
 

@@ -6,29 +6,30 @@
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_customer",
-      "flutterMode": "debug"
+      "flutterMode": "debug",
+      "toolArgs": [
+        "--dart-define-from-file=${workspaceFolder}/.dart_defines.json"
+      ]
     },
     {
       "name": "Customer App (Profile)",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_customer",
-      "flutterMode": "profile"
+      "flutterMode": "profile",
+      "toolArgs": [
+        "--dart-define-from-file=${workspaceFolder}/.dart_defines.json"
+      ]
     },
     {
       "name": "Customer App (Release)",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_customer",
-      "flutterMode": "release"
-    },
-    {
-      "name": "Customer App - Windows",
-      "type": "dart",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/packages/grab_go_customer",
-      "flutterMode": "debug",
-      "args": ["-d", "windows"]
+      "flutterMode": "release",
+      "toolArgs": [
+        "--dart-define-from-file=${workspaceFolder}/.dart_defines.json"
+      ]
     },
     {
       "name": "Customer App - Android",
@@ -36,98 +37,20 @@
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_customer",
       "flutterMode": "debug",
-      "args": ["-d", "android"]
+      "args": ["-d", "android"],
+      "toolArgs": [
+        "--dart-define-from-file=${workspaceFolder}/.dart_defines.json"
+      ]
     },
-    {
-      "name": "Customer App - iOS",
-      "type": "dart",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/packages/grab_go_customer",
-      "flutterMode": "debug",
-      "args": ["-d", "ios"]
-    },
-    {
-      "name": "Restaurant App (Debug)",
-      "type": "dart",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/packages/grab_go_restaurant",
-      "flutterMode": "debug"
-    },
-    {
-      "name": "Restaurant App (Profile)",
-      "type": "dart",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/packages/grab_go_restaurant",
-      "flutterMode": "profile"
-    },
-    {
-      "name": "Restaurant App (Release)",
-      "type": "dart",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/packages/grab_go_restaurant",
-      "flutterMode": "release"
-    },
-    {
-      "name": "Restaurant App - Windows",
-      "type": "dart",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/packages/grab_go_restaurant",
-      "flutterMode": "debug",
-      "args": ["-d", "windows"]
-    },
-    {
-      "name": "Restaurant App - Android",
-      "type": "dart",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/packages/grab_go_restaurant",
-      "flutterMode": "debug",
-      "args": ["-d", "android"]
-    },
-    {
-      "name": "Restaurant App - iOS",
-      "type": "dart",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/packages/grab_go_restaurant",
-      "flutterMode": "debug",
-      "args": ["-d", "ios"]
-    },
-
     {
       "name": "Rider App (Debug)",
       "type": "dart",
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_rider",
-      "flutterMode": "debug"
-    },
-    {
-      "name": "Rider App (Profile)",
-      "type": "dart",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/packages/grab_go_rider",
-      "flutterMode": "profile"
-    },
-    {
-      "name": "Rider App (Release)",
-      "type": "dart",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/packages/grab_go_rider",
-      "flutterMode": "release"
-    },
-    {
-      "name": "Rider App - Android",
-      "type": "dart",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/packages/grab_go_rider",
       "flutterMode": "debug",
-      "args": ["-d", "android"]
-    },
-    {
-      "name": "Rider App - iOS",
-      "type": "dart",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/packages/grab_go_rider",
-      "flutterMode": "debug",
-      "args": ["-d", "ios"]
+      "toolArgs": [
+        "--dart-define-from-file=${workspaceFolder}/.dart_defines.json"
+      ]
     },
     {
       "name": "Admin App (Debug)",
@@ -135,52 +58,10 @@
       "request": "launch",
       "cwd": "${workspaceFolder}/packages/grab_go_admin",
       "flutterMode": "debug",
-      "args": ["-d", "chrome"]
-    },
-    {
-      "name": "Admin App (Profile)",
-      "type": "dart",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/packages/grab_go_admin",
-      "flutterMode": "profile",
-      "args": ["-d", "chrome"]
-    },
-    {
-      "name": "Admin App (Release)",
-      "type": "dart",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/packages/grab_go_admin",
-      "flutterMode": "release",
-      "args": ["-d", "chrome"]
-    },
-    {
-      "name": "Admin App - Chrome",
-      "type": "dart",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/packages/grab_go_admin",
-      "flutterMode": "debug",
-      "args": ["-d", "chrome"]
-    },
-    {
-      "name": "Admin App - Edge",
-      "type": "dart",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/packages/grab_go_admin",
-      "flutterMode": "debug",
-      "args": ["-d", "edge"]
-    },
-    {
-      "name": "Flutter Attach",
-      "type": "dart",
-      "request": "attach"
-    },
-    {
-      "name": "Customer App - Hot Reload Preset",
-      "type": "dart",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/packages/grab_go_customer",
-      "flutterMode": "debug",
-      "args": ["--hot"]
+      "args": ["-d", "chrome"],
+      "toolArgs": [
+        "--dart-define-from-file=${workspaceFolder}/.dart_defines.json"
+      ]
     }
   ]
 }

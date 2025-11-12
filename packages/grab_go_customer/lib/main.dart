@@ -18,8 +18,11 @@ import 'package:provider/provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Validate environment configuration before proceeding
+  AppConfig.validateConfiguration();
   await CacheService.initialize();
   await ImageCacheService.initialize();
+  await _initializeBackgroundServices();
 
   runApp(
     MultiProvider(
@@ -36,11 +39,9 @@ void main() async {
       child: const GrabGoCustomerApp(),
     ),
   );
-
-  _initializeBackgroundServices();
 }
 
-void _initializeBackgroundServices() async {
+Future<void> _initializeBackgroundServices() async {
   try {
     await GoogleSignInService().initialize();
     await UserService().initialize();

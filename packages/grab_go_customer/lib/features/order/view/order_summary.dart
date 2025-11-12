@@ -6,15 +6,147 @@ import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/cart/service/paystack_box.dart';
+import 'package:grab_go_customer/features/cart/view/mtn_momo_payment_dialog.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
+import 'package:grab_go_customer/features/order/service/order_service_wrapper.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
-class OrderSummaryPage extends StatelessWidget {
+class OrderSummaryPage extends StatefulWidget {
   final String selectedAddress;
   final String selectedPaymentMethod;
 
   const OrderSummaryPage({super.key, required this.selectedAddress, required this.selectedPaymentMethod});
+
+  @override
+  State<OrderSummaryPage> createState() => _OrderSummaryPageState();
+}
+
+class _OrderSummaryPageState extends State<OrderSummaryPage> {
+  bool _isProcessingPayment = false;
+  final String _momoNumber = "0536997662"; // User's saved MOMO number
+  
+  void _handlePayment(BuildContext context, double total, double subtotal, double deliveryFee) async {
+    if (widget.selectedPaymentMethod == "MTN MOMO") {
+      await _handleMtnMomoPayment(context, total, subtotal, deliveryFee);
+    } else {
+      // Handle other payment methods (existing Paystack implementation)
+      final paystackService = PaystackService();
+      paystackService.makePayment(
+        context: context,
+        amount: total,
+        email: "zakjnr5@gmail.com",
+        method: widget.selectedPaymentMethod,
+        subTotal: subtotal,
+        total: total,
+        deliveryFee: deliveryFee,
+      );
+    }
+  }
+
+  Future<void> _handleMtnMomoPayment(BuildContext context, double total, double subtotal, double deliveryFee) async {
+    setState(() {
+      _isProcessingPayment = true;
+    });
+
+    try {
+      // First create the order
+      final orderId = await _createOrder(context, total, subtotal, deliveryFee);
+      
+      if (orderId != null) {
+        setState(() {
+          _isProcessingPayment = false;
+        });
+        
+        // Show MTN MOMO payment dialog
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => MtnMomoPaymentDialog(
+              orderId: orderId,
+              totalAmount: total,
+              phoneNumber: _momoNumber,
+              onPaymentSuccess: () {
+                _handlePaymentSuccess(context);
+              },
+              onPaymentFailed: () {
+                _handlePaymentFailure(context);
+              },
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _isProcessingPayment = false;
+      });
+      
+      if (mounted) {
+        _showErrorDialog(context, "Failed to create order: ${e.toString()}");
+      }
+    }
+  }
+
+  Future<String?> _createOrder(BuildContext context, double total, double subtotal, double deliveryFee) async {
+    final cart = context.read<CartProvider>();
+    final orderService = OrderServiceWrapper();
+    
+    try {
+      final orderId = await orderService.createOrder(
+        cartItems: cart.cartItems,
+        deliveryAddress: widget.selectedAddress,
+        paymentMethod: widget.selectedPaymentMethod,
+        subtotal: subtotal,
+        deliveryFee: deliveryFee,
+        total: total,
+        notes: null, // You can add notes field if needed
+      );
+      
+      return orderId;
+      
+    } catch (e) {
+      debugPrint("Order creation error: $e");
+      throw Exception("Failed to create order: ${e.toString()}");
+    }
+  }
+
+  void _handlePaymentSuccess(BuildContext context) {
+    // Clear cart
+    context.read<CartProvider>().clearCart();
+    
+    // Navigate to order tracking or success page
+    context.go('/payment-complete');
+    
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Payment successful! Your order has been placed.'),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _handlePaymentFailure(BuildContext context) {
+    _showErrorDialog(context, "Payment failed. Please try again.");
+  }
+
+  void _showErrorDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Payment Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +198,6 @@ class OrderSummaryPage extends StatelessWidget {
 
             const Spacer(),
 
-            // Title with Icon
             Container(
               padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
               decoration: BoxDecoration(
@@ -107,7 +238,6 @@ class OrderSummaryPage extends StatelessWidget {
 
             const Spacer(),
 
-            // Discard Button
             Container(
               height: 44.h,
               width: 44.w,
@@ -190,7 +320,6 @@ class OrderSummaryPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Order Items Card
             Container(
               padding: EdgeInsets.all(16.r),
               decoration: BoxDecoration(
@@ -309,7 +438,6 @@ class OrderSummaryPage extends StatelessWidget {
 
             SizedBox(height: 16.h),
 
-            // Delivery Address Card
             Container(
               padding: EdgeInsets.all(16.r),
               decoration: BoxDecoration(
@@ -361,7 +489,7 @@ class OrderSummaryPage extends StatelessWidget {
                       border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
                     ),
                     child: Text(
-                      selectedAddress,
+                      widget.selectedAddress,
                       style: TextStyle(fontSize: 13.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
                     ),
                   ),
@@ -371,7 +499,6 @@ class OrderSummaryPage extends StatelessWidget {
 
             SizedBox(height: 16.h),
 
-            // Payment Method Card
             Container(
               padding: EdgeInsets.all(16.r),
               decoration: BoxDecoration(
@@ -422,9 +549,31 @@ class OrderSummaryPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10.r),
                       border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
                     ),
-                    child: Text(
-                      selectedPaymentMethod,
-                      style: TextStyle(fontSize: 13.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
+                    child: Row(
+                      children: [
+                        Text(
+                          widget.selectedPaymentMethod,
+                          style: TextStyle(fontSize: 13.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
+                        ),
+                        if (widget.selectedPaymentMethod == "MTN MOMO") ...[
+                          const Spacer(),
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFD700).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6.r),
+                            ),
+                            child: Text(
+                              _momoNumber,
+                              style: TextStyle(
+                                fontSize: 11.sp,
+                                color: const Color(0xFFFFD700),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ],
@@ -461,7 +610,6 @@ class OrderSummaryPage extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Price Breakdown Card
                   Container(
                     padding: EdgeInsets.all(16.r),
                     decoration: BoxDecoration(
@@ -489,19 +637,8 @@ class OrderSummaryPage extends StatelessWidget {
                   ),
                   SizedBox(height: 16.h),
 
-                  // Confirm & Pay Button
                   GestureDetector(
-                    onTap: () {
-                      paystackService.makePayment(
-                        context: context,
-                        amount: total,
-                        email: "zakjnr5@gmail.com",
-                        method: selectedPaymentMethod,
-                        subTotal: subtotal,
-                        total: total,
-                        deliveryFee: deliveryFee,
-                      );
-                    },
+                    onTap: _isProcessingPayment ? null : () => _handlePayment(context, total, subtotal, deliveryFee),
                     child: Container(
                       width: double.infinity,
                       padding: EdgeInsets.symmetric(vertical: 16.h),
@@ -524,16 +661,28 @@ class OrderSummaryPage extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          SvgPicture.asset(
-                            Assets.icons.check,
-                            package: 'grab_go_shared',
-                            height: 20.h,
-                            width: 20.w,
-                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                          ),
+                          if (_isProcessingPayment)
+                            SizedBox(
+                              height: 20.h,
+                              width: 20.w,
+                              child: const CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          else
+                            SvgPicture.asset(
+                              Assets.icons.check,
+                              package: 'grab_go_shared',
+                              height: 20.h,
+                              width: 20.w,
+                              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                            ),
                           SizedBox(width: 10.w),
                           Text(
-                            "Confirm & Pay GHS ${total.toStringAsFixed(2)}",
+                            _isProcessingPayment 
+                                ? "Processing Payment..." 
+                                : "Confirm & Pay GHS ${total.toStringAsFixed(2)}",
                             style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w800),
                           ),
                         ],

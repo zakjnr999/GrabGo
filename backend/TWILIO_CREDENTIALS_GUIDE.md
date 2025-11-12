@@ -25,18 +25,26 @@
 - Top right corner of the dashboard
 - Or in the left sidebar under "Account" → "Account Info"
 
-## Step 3: Get a Twilio Phone Number
+## Step 3: Get a Twilio Phone Number (US Number)
 
 ### Direct Link: https://console.twilio.com/us1/develop/phone-numbers/manage/incoming
+
+**⚠️ IMPORTANT:** You need a **US Twilio phone number** (starting with +1) to send SMS to Ghana numbers. You cannot use a Ghana phone number as the Twilio sender.
 
 1. In the Twilio Console, click **"Phone Numbers"** in the left sidebar
 2. Click **"Manage"** → **"Buy a number"** (or use trial number)
 3. Select:
-   - **Country**: United States (or your preferred country)
+   - **Country**: **United States** (NOT Ghana - you need a US number!)
    - **Capabilities**: Check **"SMS"**
    - Click **"Search"**
-4. Choose a number and click **"Buy"** (or use free trial number)
-5. Copy the full phone number (e.g., `+14155552671`)
+4. Choose a **US number** (starts with +1, e.g., `+14155552671`)
+5. Click **"Buy"** (or use free trial number)
+6. Copy the full phone number (e.g., `+14155552671`)
+
+**Why a US number?**
+- Twilio phone numbers are typically US numbers
+- A US Twilio number can send SMS to Ghana numbers
+- You don't need a Ghana number to send SMS to Ghana
 
 **Alternative - Use Trial Number:**
 - If you're on a trial account, Twilio may provide a trial number
@@ -51,13 +59,15 @@ Once you have all three values, add them to your `backend/.env` file:
 # Twilio SMS Configuration (for Ghana +233 numbers)
 TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 TWILIO_AUTH_TOKEN=your_auth_token_here
-TWILIO_PHONE_NUMBER=+14155552671
+TWILIO_PHONE_NUMBER=+14155552671  # Must be a US number (starting with +1)
 ```
 
 **Important Notes:**
 - Replace `ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx` with your actual Account SID
 - Replace `your_auth_token_here` with your actual Auth Token
-- Replace `+14155552671` with your actual Twilio phone number
+- Replace `+14155552671` with your actual **US Twilio phone number** (must start with `+1`)
+- **Do NOT use a Ghana number** (`+233`) as the Twilio sender
+- A US Twilio number can send SMS to Ghana numbers
 - Keep the `+` sign in the phone number
 
 ## Quick Links

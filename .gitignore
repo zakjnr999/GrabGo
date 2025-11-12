@@ -1,0 +1,65 @@
+# Environment and Configuration Files
+# CRITICAL: Never commit environment files containing sensitive data
+.env
+.env.local
+.env.production
+.env.staging
+.env.development
+*.env
+
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+flutter_*.png
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# API Keys and Secrets (additional protection)
+**/api_keys.dart
+**/secrets.dart
+**/config/prod_*.dart
+key.properties
+google-services.json
+GoogleService-Info.plist
+
+# Build artifacts
+*.apk
+*.aab
+*.ipa
+*.app
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# Node modules (for backend)
+node_modules/
+npm-debug.log*
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Coverage
+coverage/
+lcov.info

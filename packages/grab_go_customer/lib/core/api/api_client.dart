@@ -5,10 +5,18 @@ import 'package:grab_go_customer/core/api/json_serializable_converter.dart' as l
 import 'package:grab_go_customer/core/api/restaurant_service.dart';
 import 'package:grab_go_customer/core/api/auth_service.dart';
 import 'package:grab_go_customer/features/home/service/food_service.dart';
+import 'package:grab_go_customer/features/cart/service/payment_service.dart';
+import 'package:grab_go_customer/features/order/service/order_service_chopper.dart';
 
 final chopperClient = ChopperClient(
   baseUrl: Uri.parse(AppConfig.apiBaseUrl),
-  services: [FoodService.create(), AuthService.create(), RestaurantService.create()],
+  services: [
+    FoodService.create(), 
+    AuthService.create(), 
+    RestaurantService.create(),
+    PaymentService.create(),
+    OrderServiceChopper.create(),
+  ],
   converter: const local.JsonSerializableConverter(),
   interceptors: [HttpLoggingInterceptor()],
   client: http.Client(),
@@ -17,3 +25,5 @@ final chopperClient = ChopperClient(
 FoodService get foodService => chopperClient.getService<FoodService>();
 AuthService get authService => chopperClient.getService<AuthService>();
 RestaurantService get restaurantService => chopperClient.getService<RestaurantService>();
+PaymentService get paymentService => chopperClient.getService<PaymentService>();
+OrderServiceChopper get orderServiceChopper => chopperClient.getService<OrderServiceChopper>();

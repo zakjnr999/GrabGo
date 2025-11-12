@@ -1,87 +1,32 @@
 {
-  "cSpell.words": [
-    "Adenta",
-    "Appbar",
-    "googlegmail",
-    "grabgo",
-    "Kasoa",
-    "Lato",
-    "Madina",
-    "MOMO",
-    "prefs",
-    "Takoradi",
-    "Tema",
-    "viewmodel",
-    "viewmodels"
-  ],
-
-  "dart.flutterSdkPath": null,
-  "dart.flutterAdditionalArgs": [],
-  "dart.lineLength": 120,
-  "dart.runPubGetOnPubspecChanges": "never",
-  "dart.runPubGetOnNestedProjects": "none",
+  "dart.flutterSdkPath": "C:/dev/flutter",
   "dart.enableSdkFormatter": true,
-  "dart.analysisExcludedFolders": ["**/build", "**/.dart_tool"],
+  "dart.lineLength": 120,
+  "editor.rulers": [120],
+  "editor.formatOnSave": true,
+  "dart.previewFlutterUiGuides": true,
+  "dart.previewFlutterUiGuidesCustomTracking": true,
+  "dart.flutterHotReloadOnSave": "always",
+  "dart.flutterCreateAndroidLanguage": "kotlin",
+  "dart.flutterCreateIOSLanguage": "swift",
+  "dart.analysisExcludedFolders": [
+    ".dart_tool",
+    "build",
+    ".flutter-plugins-dependencies"
+  ],
   "files.watcherExclude": {
     "**/.dart_tool/**": true,
-    "**/build/**": true
-  },
-  "dart.onlyAnalyzeProjectsWithOpenFiles": false,
-
-  "files.associations": {
-    "*.dart": "dart",
-    "*.yaml": "yaml"
-  },
-
-  "[dart]": {
-    "editor.defaultFormatter": "Dart-Code.dart-code",
-    "editor.formatOnSave": true,
-    "editor.formatOnType": true,
-    "editor.rulers": [120],
-    "editor.selectionHighlight": false,
-    "editor.suggest.snippetsPreventQuickSuggestions": false,
-    "editor.suggestSelection": "first",
-    "editor.tabCompletion": "onlySnippets",
-    "editor.wordBasedSuggestions": "off"
-  },
-
-  "files.exclude": {
-    "**/.dart_tool": true,
-    "**/.flutter-plugins": true,
+    "**/build/**": true,
     "**/.flutter-plugins-dependencies": true,
-    "**/.packages": true,
-    "**/build": true,
-    "**/ios/Pods": true,
-    "**/ios/.symlinks": true,
-    "**/ios/Flutter/Flutter.framework": true,
-    "**/ios/Flutter/Flutter.podspec": true,
-    "**/.ios/Flutter/Generated.xcconfig": true,
-    "**/.ios/Flutter/App.framework": true,
-    "**/.ios/Flutter/flutter_export_environment.sh": true,
-    "**/android/.gradle": true,
-    "**/android/captures": true,
-    "**/android/gradlew": true,
-    "**/android/gradlew.bat": true,
-    "**/android/local.properties": true,
-    "**/.idea": true,
-    "**/*.iml": true
+    "**/pubspec.lock": true
   },
-
   "search.exclude": {
     "**/.dart_tool": true,
     "**/build": true,
-    "**/ios/Pods": true,
-    "**/.gradle": true,
-    "**/.idea": true,
-    "**/*.iml": true,
-    "**/packages/**/build": true
+    "**/.flutter-plugins-dependencies": true,
+    "**/pubspec.lock": true
   },
-
-  "terminal.integrated.defaultProfile.windows": "PowerShell",
-  "terminal.integrated.profiles.windows": {
-    "PowerShell": {
-      "source": "PowerShell",
-      "icon": "terminal-powershell"
-    }
-  }
+  "dart.flutterAdditionalArgs": [
+    "--dart-define-from-file=${workspaceFolder}/.dart_defines.json"
+  ]
 }

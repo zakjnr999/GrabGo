@@ -1,0 +1,9 @@
+{
+  "PAYSTACK_PUBLIC_KEY": "pk_test_d8c9105dfd25cb02a538c4af3214a04ae7a3a804",
+  "PAYSTACK_SECRET_KEY": "sk_test_41f11b58301bb0fe6aa1537d6f71dd2b97f73c21",
+  "API_BASE_URL": "https://grabgo-backend.onrender.com/api",
+  "API_KEY": "pAuLInepisT_les",
+  "APP_NAME": "GrabGo Dev",
+  "DEVELOPMENT": "true",
+  "ENABLE_LOGGING": "true"
+}

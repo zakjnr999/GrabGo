@@ -38,7 +38,7 @@ class _RestaurantListState extends State<RestaurantList> {
               context.push("/restaurantDetails", extra: restaurant);
             },
             child: Container(
-              width: size.width * 0.75,
+              width: size.width * 0.8,
               margin: EdgeInsets.only(right: 16.w),
               decoration: BoxDecoration(
                 color: colors.backgroundPrimary,
@@ -113,8 +113,8 @@ class _RestaurantListState extends State<RestaurantList> {
                           SizedBox(height: KSpacing.sm.h),
 
                           Wrap(
-                            spacing: 6.w,
-                            runSpacing: 6.h,
+                            spacing: 4.w,
+                            runSpacing: 4.h,
                             children: [
                               Container(
                                 padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),

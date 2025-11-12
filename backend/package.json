@@ -9,6 +9,7 @@
     "init-db": "node scripts/init-db.js",
     "add-foods": "node scripts/add-sample-foods.js",
     "setup-restaurants": "node scripts/setup-restaurants-and-foods.js",
+    "test-mtn-momo": "node scripts/test-mtn-momo.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -21,6 +22,7 @@
   "license": "ISC",
   "dependencies": {
     "@sendgrid/mail": "^8.1.6",
+    "axios": "^1.6.0",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.41.0",
     "compression": "^1.7.4",

@@ -289,11 +289,39 @@ const sendSMS = async (phoneNumber, otp) => {
         };
       }
       
+      // Validate Twilio phone number format (should be a US number starting with +1)
+      const cleanTwilioNumber = twilioPhoneNumber.replace(/[^0-9+]/g, '');
+      if (!cleanTwilioNumber.startsWith('+1') && !cleanTwilioNumber.startsWith('1')) {
+        console.error(`❌ Invalid Twilio phone number format: ${twilioPhoneNumber}`);
+        console.error('⚠️  Twilio phone numbers must be US numbers (starting with +1)');
+        console.error('💡 You can use a US Twilio number to send SMS to Ghana numbers');
+        return {
+          success: false,
+          error: `Invalid Twilio phone number format: ${twilioPhoneNumber}. Twilio phone numbers must be US numbers (starting with +1).`,
+          message: 'Please use a US Twilio phone number (e.g., +14155552671). You can get one from the Twilio Console.',
+        };
+      }
+      
+      // Ensure Twilio number starts with +1
+      const formattedTwilioNumber = cleanTwilioNumber.startsWith('+') 
+        ? cleanTwilioNumber 
+        : `+${cleanTwilioNumber}`;
+      
+      // Prevent sending to the same number
+      if (formattedTwilioNumber === formattedGhanaPhone) {
+        console.error(`❌ Cannot use Ghana number as Twilio sender: ${formattedGhanaPhone}`);
+        return {
+          success: false,
+          error: 'Cannot use a Ghana phone number as the Twilio sender. Please use a US Twilio number (starting with +1).',
+          message: 'Twilio phone numbers must be US numbers. Get a US number from Twilio Console to send SMS to Ghana.',
+        };
+      }
+      
       try {
-        console.log(`📤 Sending SMS via Twilio to ${formattedGhanaPhone}...`);
+        console.log(`📤 Sending SMS via Twilio from ${formattedTwilioNumber} to ${formattedGhanaPhone}...`);
         const message = await twilioClient.messages.create({
           body: `Your GrabGo verification code is: ${otp}. This code will expire in 10 minutes.`,
-          from: twilioPhoneNumber,
+          from: formattedTwilioNumber,
           to: formattedGhanaPhone,
         });
         

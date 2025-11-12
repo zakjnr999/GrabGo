@@ -1,15 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:grab_go_admin/shared/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:grab_go_shared/grub_go_shared.dart';
 import 'features/auth/view/login_screen.dart';
 import 'features/dashboard/view/admin_dashboard.dart';
 import 'features/restaurants/viewmodel/restaurant_provider.dart';
-import 'shared/utils/app_theme.dart';
 import 'shared/services/token_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Initialize TokenService to cache token for synchronous access
+
+  try {
+    AppConfig.validateConfiguration();
+    if (AppConfig.enableLogging) {
+      debugPrint('✅ Admin: Environment configuration validated');
+    }
+  } catch (e) {
+    debugPrint('❌ Admin Configuration Error: $e');
+    rethrow;
+  }
+
   await TokenService.initialize();
   runApp(const GrabGoAdmin());
 }

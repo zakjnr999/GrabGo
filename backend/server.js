@@ -26,6 +26,7 @@ app.use('/uploads', express.static('uploads'));
 app.use('/api/users', require('./routes/auth'));
 app.use('/api/restaurants', require('./routes/restaurants'));
 app.use('/api/orders', require('./routes/orders'));
+app.use('/api/payments', require('./routes/payments'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/foods', require('./routes/foods'));
 app.use('/api/riders', require('./routes/riders'));

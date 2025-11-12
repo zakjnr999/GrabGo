@@ -2,7 +2,6 @@
 
 import 'dart:async';
 import 'dart:io';
-
 import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,11 +12,6 @@ import 'package:grab_go_rider/core/api/api_client.dart';
 import 'package:grab_go_rider/shared/service/cache_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
-import 'package:grab_go_shared/shared/utils/constants.dart';
-import 'package:grab_go_shared/shared/utils/theme_helper.dart';
-import 'package:grab_go_shared/shared/widgets/app_text_input.dart';
-import 'package:grab_go_shared/shared/widgets/logo_upload_widget.dart';
 
 class RiderVerification extends StatefulWidget {
   const RiderVerification({super.key});
@@ -32,7 +26,6 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
   late Animation<Offset> _slideAnimation;
   late Animation<double> _scaleAnimation;
 
-  // Form Controllers
   final TextEditingController vehicleTypeController = TextEditingController();
   final TextEditingController licensePlateController = TextEditingController();
   final TextEditingController vehicleBrandController = TextEditingController();
@@ -46,29 +39,24 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
   final TextEditingController mobileMoneyProviderController = TextEditingController();
   final TextEditingController mobileMoneyNumberController = TextEditingController();
 
-  // Image files
   File? vehicleImage;
   File? idFrontImage;
   File? idBackImage;
   File? selfiePhoto;
 
-  // Agreement checkboxes
   bool agreedToTerms = false;
   bool agreedToLocationAccess = false;
   bool agreedToAccuracy = false;
 
-  // Error messages
   String? vehicleTypeError;
   String? licensePlateError;
   String? nationalIdTypeError;
   String? nationalIdNumberError;
 
-  // Helper method to format display names
   String _formatDisplayName(String value) {
     return value.split('_').map((word) => word[0].toUpperCase() + word.substring(1)).join(' ');
   }
 
-  // Show vehicle type selector
   void _showVehicleTypeSelector() {
     final colors = context.appColors;
     final options = [
@@ -85,8 +73,8 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(KBorderSize.borderRadius20),
-            topRight: Radius.circular(KBorderSize.borderRadius20),
+            topLeft: Radius.circular(KBorderSize.borderRadius8),
+            topRight: Radius.circular(KBorderSize.borderRadius8),
           ),
         ),
         child: Column(
@@ -143,7 +131,6 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
     );
   }
 
-  // Show national ID type selector
   void _showNationalIdTypeSelector() {
     final colors = context.appColors;
     final options = [
@@ -159,8 +146,8 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(KBorderSize.borderRadius20),
-            topRight: Radius.circular(KBorderSize.borderRadius20),
+            topLeft: Radius.circular(KBorderSize.borderRadius8),
+            topRight: Radius.circular(KBorderSize.borderRadius8),
           ),
         ),
         child: Column(
@@ -217,7 +204,6 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
     );
   }
 
-  // Show payment method selector
   void _showPaymentMethodSelector() {
     final colors = context.appColors;
     final options = [
@@ -232,8 +218,8 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(KBorderSize.borderRadius20),
-            topRight: Radius.circular(KBorderSize.borderRadius20),
+            topLeft: Radius.circular(KBorderSize.borderRadius8),
+            topRight: Radius.circular(KBorderSize.borderRadius8),
           ),
         ),
         child: Column(
@@ -276,7 +262,6 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                   onTap: () {
                     setState(() {
                       paymentMethodController.text = option['value']!;
-                      // Clear related fields when payment method changes
                       if (option['value'] == 'bank_account') {
                         mobileMoneyProviderController.clear();
                         mobileMoneyNumberController.clear();
@@ -298,7 +283,6 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
     );
   }
 
-  // Show mobile money provider selector
   void _showMobileMoneyProviderSelector() {
     final colors = context.appColors;
     final options = [
@@ -315,8 +299,8 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(KBorderSize.borderRadius20),
-            topRight: Radius.circular(KBorderSize.borderRadius20),
+            topLeft: Radius.circular(KBorderSize.borderRadius8),
+            topRight: Radius.circular(KBorderSize.borderRadius8),
           ),
         ),
         child: Column(
@@ -507,7 +491,6 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
     LoadingDialog.instance().show(context: context, text: "Submitting verification...");
 
     try {
-      // Submit verification data (vehicle image will be uploaded with the form)
       final response = await riderService.submitVerification(
         vehicleType: vehicleTypeController.text.trim(),
         licensePlateNumber: licensePlateController.text.trim(),
@@ -533,11 +516,7 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
         vehicleImagePath: vehicleImage?.path,
       );
 
-      if (!mounted) return;
-      LoadingDialog.instance().hide();
-
       if (response.isSuccessful && response.body != null) {
-        // Cache vehicle type for immediate display on next app launch
         if (vehicleTypeController.text.trim().isNotEmpty) {
           await CacheService.saveVehicleType(vehicleTypeController.text.trim());
         }
@@ -557,12 +536,7 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
           // Continue even if ID image upload fails
         }
 
-        AppToastMessage.show(
-          context: context,
-          icon: Icons.check_circle,
-          message: response.body!.message,
-          backgroundColor: Colors.green,
-        );
+        LoadingDialog.instance().hide();
 
         await Future.delayed(const Duration(milliseconds: 500));
         if (mounted) {

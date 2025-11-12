@@ -83,8 +83,17 @@ const orderSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['cash', 'card', 'mobile_money', 'online'],
+    enum: ['cash', 'card', 'mobile_money', 'mtn_momo', 'online'],
     required: true
+  },
+  paymentProvider: {
+    type: String,
+    enum: ['mtn_momo', 'vodafone_cash', 'airtel_money', 'tigo_cash', 'stripe', 'paystack'],
+    default: null
+  },
+  paymentReferenceId: {
+    type: String,
+    default: null
   },
   paymentStatus: {
     type: String,
