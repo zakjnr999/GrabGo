@@ -60,9 +60,12 @@ class MTNMomoService {
       const accessToken = await this.getAccessToken();
       const referenceId = this.generateReferenceId();
 
+      // MTN MOMO sandbox typically uses EUR for testing, even for Ghana
+      const currency = this.targetEnvironment === 'sandbox' ? 'EUR' : (paymentData.currency || 'GHS');
+      
       const payload = {
         amount: paymentData.amount.toString(),
-        currency: paymentData.currency || 'GHS',
+        currency: currency,
         externalId: paymentData.externalId,
         payer: {
           partyIdType: 'MSISDN',
@@ -87,6 +90,7 @@ class MTNMomoService {
       );
 
       console.log('MTN MOMO Request Response:', response.status, response.statusText);
+      console.log('MTN MOMO Payload sent:', JSON.stringify(payload, null, 2));
       
       return {
         success: true,
