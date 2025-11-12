@@ -2,6 +2,7 @@ const axios = require('axios');
 
 class MTNMomoService {
   constructor() {
+    // Back to sandbox mode with mock testing support
     this.baseURL = process.env.MTN_MOMO_BASE_URL || 'https://sandbox.momodeveloper.mtn.com';
     this.subscriptionKey = process.env.MTN_MOMO_SUBSCRIPTION_KEY;
     this.apiKey = process.env.MTN_MOMO_API_KEY;
@@ -57,6 +58,24 @@ class MTNMomoService {
    */
   async requestToPay(paymentData) {
     try {
+      // Mock payment for development testing
+      if (process.env.NODE_ENV === 'development' || this.targetEnvironment === 'sandbox') {
+        // Check if it's a Ghana number (for UI testing)
+        const phoneNumber = paymentData.phoneNumber.replace(/[^\d]/g, '');
+        if (phoneNumber.startsWith('233') && phoneNumber.length === 12) {
+          console.log('🧪 MOCK PAYMENT MODE: Simulating successful payment for Ghana number');
+          console.log('Payment Data:', JSON.stringify(paymentData, null, 2));
+          
+          return {
+            success: true,
+            message: 'Payment request initiated successfully (MOCK)',
+            data: {
+              referenceId: paymentData.externalId,
+              status: 'PENDING'
+            }
+          };
+        }
+      }
       const accessToken = await this.getAccessToken();
       const referenceId = this.generateReferenceId();
 
@@ -114,6 +133,33 @@ class MTNMomoService {
    */
   async getPaymentStatus(referenceId) {
     try {
+      // Mock payment status for development testing
+      if (process.env.NODE_ENV === 'development' || this.targetEnvironment === 'sandbox') {
+        if (referenceId.startsWith('PAY-')) {
+          console.log('🧪 MOCK PAYMENT STATUS: Simulating payment completion');
+          
+          // Simulate payment progression: pending -> successful after 10 seconds
+          const paymentCreatedAt = parseInt(referenceId.split('-')[1]);
+          const now = Date.now();
+          const timeDiff = now - paymentCreatedAt;
+          
+          if (timeDiff < 10000) { // First 10 seconds = pending
+            return {
+              success: true,
+              status: 'PENDING',
+              financialTransactionId: null,
+              reason: 'Payment is being processed...'
+            };
+          } else { // After 10 seconds = successful
+            return {
+              success: true,
+              status: 'SUCCESSFUL',
+              financialTransactionId: `TXN-${Date.now()}`,
+              reason: 'Payment completed successfully'
+            };
+          }
+        }
+      }
       const accessToken = await this.getAccessToken();
 
       const response = await axios.get(
@@ -166,6 +212,16 @@ class MTNMomoService {
   }
 
   /**
+   * Check if phone number is a valid sandbox test number
+   * @param {string} phoneNumber - Phone number to check
+   */
+  isSandboxTestNumber(phoneNumber) {
+    const testNumbers = ['46733123453', '46733123454', '46733123455'];
+    const cleaned = phoneNumber.replace(/[^\d]/g, '');
+    return testNumbers.includes(cleaned);
+  }
+
+  /**
    * Format phone number to MTN MOMO required format
    * @param {string} phoneNumber - Phone number to format
    */
@@ -173,7 +229,12 @@ class MTNMomoService {
     // Remove any non-digits except +
     let cleaned = phoneNumber.replace(/[^\d\+]/g, '');
     
-    // Handle different formats
+    // For sandbox environment, keep test numbers as-is
+    if (this.targetEnvironment === 'sandbox' && this.isSandboxTestNumber(cleaned)) {
+      return cleaned;
+    }
+    
+    // Handle Ghana phone number formats
     if (cleaned.startsWith('+233')) {
       return cleaned.substring(1); // Remove the + sign
     } else if (cleaned.startsWith('233')) {
