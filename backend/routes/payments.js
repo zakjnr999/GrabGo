@@ -168,6 +168,9 @@ router.post(
 router.get('/mtn-momo/status/:paymentId', protect, async (req, res) => {
   try {
     const { paymentId } = req.params;
+    console.log('\n🔍 PAYMENT STATUS CHECK ENDPOINT CALLED:');
+    console.log('  Payment ID:', paymentId);
+    console.log('  Request from user:', req.user.username || req.user.email);
 
     // Find the payment
     const payment = await Payment.findById(paymentId).populate('order');
