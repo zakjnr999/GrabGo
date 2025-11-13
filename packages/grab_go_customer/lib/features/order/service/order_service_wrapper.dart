@@ -8,15 +8,7 @@ import 'package:grab_go_customer/core/api/api_client.dart';
 class OrderServiceWrapper {
   final OrderServiceChopper _orderService;
 
-  OrderServiceWrapper() : _orderService = chopperClient.getService<OrderServiceChopper>() {
-    if (kDebugMode) {
-      print('🔧 OrderServiceWrapper initialized');
-      print('🔧 Using chopperClient: ${chopperClient.hashCode}');
-      print('🔧 Base URL: ${chopperClient.baseUrl}');
-      print('🔧 Converter: ${chopperClient.converter}');
-      print('🔧 Interceptors: ${chopperClient.interceptors.map((i) => i.runtimeType).toList()}');
-    }
-  }
+  OrderServiceWrapper() : _orderService = chopperClient.getService<OrderServiceChopper>();
 
   // Create a new order
   Future<String> createOrder({
@@ -48,6 +40,7 @@ class OrderServiceWrapper {
       // Convert cart items to the format expected by the backend
       final items = cartItems.entries.map((entry) {
         final foodId = entry.key.id;
+
         if (foodId.isEmpty) {
           throw Exception('Missing identifier for item ${entry.key.name}. Please refresh your menu data.');
         }
@@ -78,7 +71,14 @@ class OrderServiceWrapper {
         throw Exception('Order creation failed: ${response.error}');
       }
     } catch (e) {
-      debugPrint('Order creation error: $e');
+      // Handle specific food not found errors
+      final errorMessage = e.toString();
+      if (errorMessage.contains('Food item') && errorMessage.contains('not found')) {
+        throw Exception(
+          'Some items in your cart are no longer available. Please refresh the menu and add items again.',
+        );
+      }
+
       throw Exception('Failed to create order: $e');
     }
   }
@@ -99,7 +99,6 @@ class OrderServiceWrapper {
         throw Exception('Failed to get order: ${response.error}');
       }
     } catch (e) {
-      debugPrint('Get order error: $e');
       throw Exception('Failed to get order: $e');
     }
   }
@@ -107,43 +106,22 @@ class OrderServiceWrapper {
   // Get user orders
   Future<List<Map<String, dynamic>>> getUserOrders() async {
     try {
-      debugPrint('🔄 Fetching user orders from API...');
-      debugPrint('🔄 Order service instance: ${_orderService.hashCode}');
-      debugPrint('🔄 About to call _orderService.getUserOrders()...');
       final response = await _orderService.getUserOrders();
-      debugPrint('🔄 API call completed, processing response...');
-
-      debugPrint('📡 API Response Status: ${response.statusCode}');
-      debugPrint('📡 API Response Successful: ${response.isSuccessful}');
-      debugPrint('📡 API Response Body: ${response.body}');
 
       if (response.isSuccessful && response.body != null) {
         final responseData = response.body!;
-        debugPrint('📡 Response Data Keys: ${responseData.keys}');
-        debugPrint('📡 Success Flag: ${responseData['success']}');
-        debugPrint('📡 Data Type: ${responseData['data'].runtimeType}');
-        debugPrint('📡 Data Value: ${responseData['data']}');
 
         if (responseData['success'] == true) {
           final orders = responseData['data'];
           if (orders is List) {
-            debugPrint('✅ Found ${orders.length} orders');
             return List<Map<String, dynamic>>.from(orders);
           } else {
-            debugPrint('⚠️ Data is not a List, it is: ${orders.runtimeType}');
             return [];
           }
-        } else {
-          debugPrint('⚠️ API returned success: false. Message: ${responseData['message']}');
         }
-      } else {
-        debugPrint('❌ API request failed. Error: ${response.error}');
-        debugPrint('❌ Status Code: ${response.statusCode}');
       }
       return [];
-    } catch (e, stackTrace) {
-      debugPrint('❌ Get user orders error: $e');
-      debugPrint('❌ Stack trace: $stackTrace');
+    } catch (e) {
       return [];
     }
   }

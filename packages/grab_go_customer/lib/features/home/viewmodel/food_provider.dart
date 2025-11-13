@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:grab_go_customer/features/home/repository/food_repository.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/services/cache_service.dart';
+import 'package:grab_go_customer/shared/services/restaurant_detail_service.dart';
 
 class FoodProvider with ChangeNotifier {
   List<FoodCategoryModel> _categories = [];
@@ -30,6 +31,9 @@ class FoodProvider with ChangeNotifier {
 
     try {
       _categories = await FoodRepository().fetchCategoriesWithFoods();
+      
+      // Enhance food items with restaurant details
+      await _enhanceFoodItemsWithRestaurantDetails();
 
       _saveCategoriesToCache();
     } catch (e) {
@@ -112,6 +116,86 @@ class FoodProvider with ChangeNotifier {
         items: categoryFoods,
       );
       notifyListeners();
+    }
+  }
+
+  /// Enhance food items with restaurant details for items that only have restaurant IDs
+  Future<void> _enhanceFoodItemsWithRestaurantDetails() async {
+    if (_categories.isEmpty) return;
+
+    try {
+      if (kDebugMode) {
+        print('🔄 Enhancing food items with restaurant details...');
+      }
+
+      for (int categoryIndex = 0; categoryIndex < _categories.length; categoryIndex++) {
+        final category = _categories[categoryIndex];
+        final List<FoodItem> enhancedItems = [];
+
+        for (final foodItem in category.items) {
+          // Check if food item needs restaurant details
+          if (foodItem.sellerName == 'Loading Restaurant...' && foodItem.restaurantId.isNotEmpty) {
+            
+            if (kDebugMode) {
+              print('🔍 Food item "${foodItem.name}" needs restaurant details for ID: ${foodItem.restaurantId}');
+            }
+            
+            // Fetch restaurant details
+            final restaurantDetails = await RestaurantDetailService.getRestaurantDetails(foodItem.restaurantId);
+            
+            if (restaurantDetails != null) {
+              // Create updated food item with restaurant details
+              final enhancedItem = FoodItem(
+                id: foodItem.id,
+                name: foodItem.name,
+                image: foodItem.image,
+                description: foodItem.description,
+                sellerName: restaurantDetails['restaurant_name'] ?? foodItem.sellerName,
+                sellerId: foodItem.sellerId,
+                restaurantId: foodItem.restaurantId,
+                restaurantImage: restaurantDetails['logo'] ?? foodItem.restaurantImage,
+                price: foodItem.price,
+                rating: foodItem.rating,
+                prepTimeMinutes: foodItem.prepTimeMinutes,
+                calories: foodItem.calories,
+                dietaryTags: foodItem.dietaryTags,
+                deliveryTimeMinutes: foodItem.deliveryTimeMinutes,
+                isAvailable: foodItem.isAvailable,
+                discountPercentage: foodItem.discountPercentage,
+              );
+              enhancedItems.add(enhancedItem);
+              
+              if (kDebugMode) {
+                print('✅ Enhanced ${foodItem.name} with restaurant: ${restaurantDetails['restaurant_name']}');
+              }
+            } else {
+              enhancedItems.add(foodItem);
+            }
+          } else {
+            enhancedItems.add(foodItem);
+          }
+        }
+
+        // Update category with enhanced items
+        _categories[categoryIndex] = FoodCategoryModel(
+          id: category.id,
+          name: category.name,
+          description: category.description,
+          isActive: category.isActive,
+          emoji: category.emoji,
+          items: enhancedItems,
+        );
+      }
+
+      notifyListeners();
+      
+      if (kDebugMode) {
+        print('✅ Completed enhancing food items with restaurant details');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error enhancing food items with restaurant details: $e');
+      }
     }
   }
 }

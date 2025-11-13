@@ -40,30 +40,33 @@ class FoodItem {
     final restaurant = json['restaurant'];
 
     String restaurantId = '';
-
     String restaurantName = '';
-    if (restaurant != null && restaurant is Map<String, dynamic>) {
-      restaurantName = restaurant['restaurant_name']?.toString() ?? '';
+    String restaurantImage = '';
+
+    // Handle different restaurant field formats
+    if (restaurant != null) {
+      if (restaurant is Map<String, dynamic>) {
+        // Case 1: Restaurant is a populated object with full details
+        restaurantName = restaurant['restaurant_name']?.toString() ?? restaurant['name']?.toString() ?? '';
+        restaurantId = restaurant['_id']?.toString() ?? '';
+        restaurantImage = restaurant['logo']?.toString() ?? restaurant['image']?.toString() ?? '';
+      } else {
+        // Case 2: Restaurant is a string ID (your server format)
+        restaurantId = restaurant.toString();
+        restaurantName = ''; // Will be fetched later
+        restaurantImage = '';
+      }
+    }
+
+    // Fallback for missing restaurant data
+    if (restaurantId.isEmpty) {
+      restaurantId = json['restaurantId']?.toString() ?? json['sellerId']?.toString() ?? '';
     }
     if (restaurantName.isEmpty) {
-      restaurantName = json['sellerName']?.toString() ?? '';
-    }
-
-    if (restaurant != null && restaurant is Map<String, dynamic>) {
-      restaurantId = restaurant['_id']?.toString() ?? '';
-    }
-    if (restaurantId.isEmpty) {
-      restaurantId = json['restaurantId']?.toString() ?? '';
-    }
-    if (restaurantId.isEmpty) {
-      restaurantId = json['sellerId']?.toString() ?? '';
-    }
-    String restaurantImage = '';
-    if (restaurant != null && restaurant is Map<String, dynamic>) {
-      restaurantImage = restaurant['logo']?.toString() ?? '';
+      restaurantName = json['sellerName']?.toString() ?? json['restaurant_name']?.toString() ?? '';
     }
     if (restaurantImage.isEmpty) {
-      restaurantImage = json['restaurantImage']?.toString() ?? '';
+      restaurantImage = json['restaurantImage']?.toString() ?? json['restaurant_logo']?.toString() ?? '';
     }
 
     int sellerIdInt = 0;
@@ -83,7 +86,8 @@ class FoodItem {
     final image = imageStr.isEmpty ? '' : imageStr;
 
     final description = json['description']?.toString() ?? '';
-    final safeSellerName = restaurantName.isEmpty ? 'Unknown Restaurant' : restaurantName;
+    // Mark items that need restaurant details to be fetched
+    final safeSellerName = restaurantName.isEmpty && restaurantId.isNotEmpty ? 'Loading Restaurant...' : (restaurantName.isEmpty ? 'Unknown Restaurant' : restaurantName);
     final safeRestaurantImage = restaurantImage.isEmpty ? '' : restaurantImage;
 
     return FoodItem(

@@ -58,7 +58,6 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
           _isProcessingPayment = false;
         });
 
-        // Show MTN MOMO payment dialog
         if (mounted) {
           showDialog(
             context: context,
@@ -111,11 +110,30 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
   }
 
   void _handlePaymentSuccess(BuildContext context) {
+    // Get cart details before clearing
+    final cart = context.read<CartProvider>();
+    final cartSubtotal = cart.totalPrice;
+    const double deliveryFeeAmount = 2.0;
+    final double totalAmount = cartSubtotal + deliveryFeeAmount;
+    
     // Clear cart
-    context.read<CartProvider>().clearCart();
+    cart.clearCart();
 
-    // Navigate to order tracking or success page
-    context.go('/payment-complete');
+    // Navigate to payment success page with actual details
+    context.go('/paymentComplete', extra: {
+      'method': widget.selectedPaymentMethod,
+      'total': totalAmount,
+      'subTotal': cartSubtotal,
+      'deliveryFee': deliveryFeeAmount,
+      'orderNumber': _generateOrderNumber(),
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+  }
+
+  String _generateOrderNumber() {
+    final now = DateTime.now();
+    final timestamp = now.millisecondsSinceEpoch.toString();
+    return 'ORD${timestamp.substring(timestamp.length - 8)}';
   }
 
   void _handlePaymentFailure(BuildContext context) {

@@ -9,6 +9,7 @@
     "init-db": "node scripts/init-db.js",
     "add-foods": "node scripts/add-sample-foods.js",
     "setup-restaurants": "node scripts/setup-restaurants-and-foods.js",
+    "create-dummy-data": "node scripts/tmp_rovodev_create_dummy_food_data.js",
     "test-mtn-momo": "node scripts/test-mtn-momo.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

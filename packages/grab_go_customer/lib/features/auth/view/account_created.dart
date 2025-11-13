@@ -16,7 +16,6 @@ class AccountCreated extends StatefulWidget {
 }
 
 class _AccountCreatedState extends State<AccountCreated> with SingleTickerProviderStateMixin {
-  final TextEditingController phoneController = TextEditingController();
   late AnimationController animationController;
   late Animation<double> scaleAnimation;
   late Animation<double> fadeAnimation;
@@ -55,31 +54,24 @@ class _AccountCreatedState extends State<AccountCreated> with SingleTickerProvid
   @override
   void dispose() {
     animationController.dispose();
-    phoneController.dispose();
     super.dispose();
   }
 
-  /// Navigate after account created - check location permission if first time
   Future<void> _navigateAfterRegistration(BuildContext context) async {
-    // Check if location permission screen has been shown before
     final hasShownLocationScreen = StorageService.hasLocationPermissionScreenShown();
 
     if (!hasShownLocationScreen) {
-      // First time registration - check location permission
       final hasPermission = await LocationService.hasPermission();
       if (!hasPermission) {
-        // Show location permission screen
         if (context.mounted) {
           context.go("/locationPermission");
         }
         return;
       } else {
-        // Permission already granted, mark screen as shown and go to homepage
         await StorageService.setLocationPermissionScreenShown();
       }
     }
 
-    // Navigate to homepage
     if (context.mounted) {
       context.push("/homepage");
     }
@@ -171,7 +163,6 @@ class _AccountCreatedState extends State<AccountCreated> with SingleTickerProvid
                             await Future.delayed(const Duration(seconds: 1));
                             LoadingDialog.instance().hide();
 
-                            // Check if location permission screen should be shown (first time registration)
                             await _navigateAfterRegistration(context);
                           },
                           child: Container(

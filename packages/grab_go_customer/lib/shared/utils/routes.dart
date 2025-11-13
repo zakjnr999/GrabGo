@@ -4,6 +4,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/auth/view/location_permission.dart';
 import 'package:grab_go_customer/features/home/navigation/bottom_navigator.dart';
+import 'package:grab_go_customer/shared/widgets/deep_link_error_screen.dart';
 import 'package:grab_go_customer/shared/widgets/food_from_link_handler.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -100,47 +101,7 @@ final GoRouter appRouter = GoRouter(
         }
       }
     }
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SvgPicture.asset(
-              Assets.icons.infoCircle,
-              package: 'grab_go_shared',
-              width: 64,
-              height: 64,
-              colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.onSurface, BlendMode.srcIn),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Oops!',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'The requested food item could not be found.',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () => context.go('/'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.borderRadius12)),
-                padding: const EdgeInsets.all(10),
-              ),
-              child: const Text('Go Home'),
-            ),
-          ],
-        ),
-      ),
-    );
+    return const DeepLinkErrorScreen();
   },
   routes: [
     GoRoute(path: "/", builder: (context, state) => const SplashScreen()),
@@ -585,6 +546,8 @@ final GoRouter appRouter = GoRouter(
             total: extra["total"] as double? ?? 0.0,
             subTotal: extra["subTotal"] as double? ?? 0.0,
             deliveryFee: extra["deliveryFee"] as double? ?? 0.0,
+            orderNumber: extra["orderNumber"] as String?,
+            timestamp: extra["timestamp"] as String?,
           ),
           transitionDuration: const Duration(milliseconds: 400),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {

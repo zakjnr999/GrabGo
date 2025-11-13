@@ -13,46 +13,12 @@ class OrderProvider extends ChangeNotifier {
   String? get error => _error;
 
   Future<void> fetchOrders({bool forceRefresh = false}) async {
-    // Debug authentication status
-    if (kDebugMode) {
-      print('=== AUTHENTICATION DEBUG ===');
-      final userService = UserService();
-      print('🔐 User Service Logged In: ${userService.isLoggedIn}');
-      print('👤 User ID: ${userService.getUserId()}');
-      print('👤 Current User: ${userService.currentUser?.username}');
-      
-      final cacheAvailable = CacheService.isCacheAvailable();
-      print('📦 Cache Service Available: $cacheAvailable');
-      
-      final token = CacheService.getAuthToken();
-      print('🔑 Token Exists: ${token != null}');
-      print('🔑 Token Empty: ${token?.isEmpty ?? "null"}');
-      print('🔑 Token Length: ${token?.length ?? 0}');
-      if (token != null && token.isNotEmpty) {
-        print('🔑 Token Preview: ${token.substring(0, token.length > 50 ? 50 : token.length)}...');
-      }
-      
-      final userData = CacheService.getUserData();
-      print('👤 User Data Exists: ${userData != null}');
-      print('👤 User Data Keys: ${userData?.keys.toList()}');
-      print('=== END DEBUG ===');
-    }
 
     // Check authentication first
     final userService = UserService();
     final token = CacheService.getAuthToken();
-    
-    if (kDebugMode) {
-      print('🔍 Authentication Check Results:');
-      print('   - UserService.isLoggedIn: ${userService.isLoggedIn}');
-      print('   - Token exists: ${token != null}');
-      print('   - Token not empty: ${token != null && token.isNotEmpty}');
-    }
 
     if (!userService.isLoggedIn) {
-      if (kDebugMode) {
-        print('❌ User not logged in, stopping API call');
-      }
       _error = 'Please log in to view your orders';
       _isLoading = false;
       notifyListeners();
@@ -60,17 +26,10 @@ class OrderProvider extends ChangeNotifier {
     }
 
     if (token == null || token.isEmpty) {
-      if (kDebugMode) {
-        print('❌ No authentication token found, stopping API call');
-      }
       _error = 'Authentication required. Please log in again.';
       _isLoading = false;
       notifyListeners();
       return;
-    }
-    
-    if (kDebugMode) {
-      print('✅ Authentication checks passed, proceeding with API call');
     }
 
     // Don't fetch if already loading or if we have orders (unless force refresh)

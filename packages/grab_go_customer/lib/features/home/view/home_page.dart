@@ -50,7 +50,6 @@ class _HomePageState extends State<HomePage> {
     final currentOffset = _scrollController.offset;
     final scrollDelta = currentOffset - _lastScrollOffset;
 
-    // Show FAB when at the top
     if (currentOffset <= 0) {
       if (!_isFabVisible) {
         setState(() {
@@ -61,17 +60,13 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    // Hide FAB when scrolling down (with threshold to prevent flickering)
-    // Show FAB when scrolling up
     if (scrollDelta > 5 && currentOffset > 50) {
-      // Scrolling down significantly
       if (_isFabVisible) {
         setState(() {
           _isFabVisible = false;
         });
       }
     } else if (scrollDelta < -5) {
-      // Scrolling up significantly
       if (!_isFabVisible) {
         setState(() {
           _isFabVisible = true;
@@ -134,7 +129,9 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     Expanded(
                       child: GestureDetector(
-                        onTap: () {},
+                        onTap: () {
+                          context.push("/paymentComplete");
+                        },
                         child: Container(
                           height: size.height * 0.08,
                           padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),

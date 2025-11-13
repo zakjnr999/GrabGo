@@ -319,6 +319,22 @@ class CacheService {
     }
   }
 
+  /// Clear food categories cache
+  static Future<void> clearFoodCategoriesCache() async {
+    try {
+      await _prefs?.remove('foodCategories');
+      await _prefs?.remove('foodCategoriesCacheTime');
+      if (kDebugMode) {
+        print('✅ Food categories cache cleared');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error clearing food categories cache: $e');
+      }
+      throw e;
+    }
+  }
+
   /// Clear order history
   static Future<bool> clearOrderHistory() async {
     try {
