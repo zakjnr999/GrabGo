@@ -361,28 +361,9 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                   ),
                   SizedBox(height: 24.h),
 
-                  Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(6.r),
-                        decoration: BoxDecoration(
-                          color: colors.accentOrange.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: SvgPicture.asset(
-                          Assets.icons.squareMenu,
-                          package: 'grab_go_shared',
-                          height: 14.h,
-                          width: 14.w,
-                          colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                        ),
-                      ),
-                      SizedBox(width: 10.w),
-                      Text(
-                        "General",
-                        style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
-                      ),
-                    ],
+                  Text(
+                    "General",
+                    style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
                   ),
                   SizedBox(height: 12.h),
 
@@ -421,28 +402,9 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                   ),
                   SizedBox(height: 24.h),
 
-                  Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(6.r),
-                        decoration: BoxDecoration(
-                          color: colors.accentViolet.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: SvgPicture.asset(
-                          Assets.icons.infoCircle,
-                          package: 'grab_go_shared',
-                          height: 14.h,
-                          width: 14.w,
-                          colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
-                        ),
-                      ),
-                      SizedBox(width: 10.w),
-                      Text(
-                        "Other Information",
-                        style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
-                      ),
-                    ],
+                  Text(
+                    "Other Information",
+                    style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
                   ),
                   SizedBox(height: 12.h),
 

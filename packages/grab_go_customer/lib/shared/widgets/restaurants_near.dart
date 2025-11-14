@@ -79,7 +79,7 @@ class _RestaurantListState extends State<RestaurantsNear> {
               decoration: BoxDecoration(
                 color: colors.backgroundPrimary,
                 borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 1.5),
                 boxShadow: [
                   BoxShadow(
                     color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),

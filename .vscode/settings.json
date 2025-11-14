@@ -26,5 +26,5 @@
     "**/.flutter-plugins-dependencies": true,
     "**/pubspec.lock": true
   },
-  "cSpell.words": ["Momo"]
+  "cSpell.words": ["Lato", "Momo"]
 }

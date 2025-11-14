@@ -328,21 +328,9 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
                         shadowColor: Colors.transparent,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SvgPicture.asset(
-                            Assets.icons.deliveryTruck,
-                            package: 'grab_go_shared',
-                            height: 20.h,
-                            colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                          ),
-                          SizedBox(width: 8.w),
-                          Text(
-                            "Track Order",
-                            style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
-                          ),
-                        ],
+                      child: Text(
+                        "Track Order",
+                        style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                       ),
                     ),
                   ),
@@ -377,21 +365,9 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
                         shadowColor: Colors.transparent,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SvgPicture.asset(
-                            Assets.icons.home,
-                            package: 'grab_go_shared',
-                            height: 20.h,
-                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                          ),
-                          SizedBox(width: 8.w),
-                          Text(
-                            "Order More",
-                            style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: Colors.white),
-                          ),
-                        ],
+                      child: Text(
+                        "Order More",
+                        style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: Colors.white),
                       ),
                     ),
                   ),

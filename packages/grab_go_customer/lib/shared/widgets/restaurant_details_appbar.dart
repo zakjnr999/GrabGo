@@ -45,7 +45,18 @@ class RestaurantDetailsAppBar extends StatelessWidget {
                 color: colors.inputBorder,
                 padding: EdgeInsets.all(45.r),
                 child: SvgPicture.asset(
-                  Assets.icons.cookingPot,
+                  Assets.icons.chefHat,
+                  package: 'grab_go_shared',
+                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                ),
+              ),
+              errorWidget: Container(
+                height: size.height * 0.40,
+                width: double.infinity,
+                color: colors.inputBorder,
+                padding: EdgeInsets.all(45.r),
+                child: SvgPicture.asset(
+                  Assets.icons.chefHat,
                   package: 'grab_go_shared',
                   colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                 ),

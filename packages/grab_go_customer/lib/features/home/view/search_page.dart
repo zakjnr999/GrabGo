@@ -24,17 +24,59 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  late ScrollController _scrollController;
   List<String> _searchHistory = [];
   List<FoodItem> _searchResults = [];
   List<FoodItem> _suggestions = [];
   bool _isSearching = false;
   String _currentSearchQuery = '';
+  int _itemsToShow = 10;
+  final int _itemsPerPage = 10;
+  bool _isLoadingMore = false;
 
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
     _loadSearchHistory();
     _loadSuggestions();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    _searchController.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+
+    // Load more when scrolled to 90% of the content
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.9) {
+      if (!_isLoadingMore && _itemsToShow < _searchResults.length) {
+        _loadMoreItems();
+      }
+    }
+  }
+
+  void _loadMoreItems() {
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    // Simulate loading delay for smooth UX
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        setState(() {
+          _itemsToShow = (_itemsToShow + _itemsPerPage).clamp(0, _searchResults.length);
+          _isLoadingMore = false;
+        });
+      }
+    });
   }
 
   void _loadSearchHistory() {
@@ -45,9 +87,18 @@ class _SearchPageState extends State<SearchPage> {
   void _loadSuggestions() {
     final foodProvider = Provider.of<FoodProvider>(context, listen: false);
     final allFoods = <FoodItem>[];
+    final Set<String> seenItemKeys = {};
 
+    // Collect items and remove duplicates immediately
     for (var category in foodProvider.categories) {
-      allFoods.addAll(category.items);
+      for (var item in category.items) {
+        // Use a unique key to identify duplicates
+        final key = '${item.id}_${item.sellerId}';
+        if (!seenItemKeys.contains(key)) {
+          seenItemKeys.add(key);
+          allFoods.add(item);
+        }
+      }
     }
 
     allFoods.sort((a, b) => b.rating.compareTo(a.rating));
@@ -61,6 +112,7 @@ class _SearchPageState extends State<SearchPage> {
         _searchResults = [];
         _isSearching = false;
         _currentSearchQuery = '';
+        _itemsToShow = _itemsPerPage; // Reset items to show
       });
       return;
     }
@@ -73,12 +125,20 @@ class _SearchPageState extends State<SearchPage> {
   void _performSearch(String query) {
     final foodProvider = Provider.of<FoodProvider>(context, listen: false);
     final results = <FoodItem>[];
+    final Set<String> seenItemKeys = {};
 
+    // Search through all categories and remove duplicates immediately
     for (var category in foodProvider.categories) {
       for (var item in category.items) {
-        if (item.name.toLowerCase().contains(query.toLowerCase()) ||
-            item.description.toLowerCase().contains(query.toLowerCase()) ||
-            item.sellerName.toLowerCase().contains(query.toLowerCase())) {
+        // Use a unique key to identify duplicates
+        final key = '${item.id}_${item.sellerId}';
+
+        // Check if item matches search query and hasn't been added yet
+        if (!seenItemKeys.contains(key) &&
+            (item.name.toLowerCase().contains(query.toLowerCase()) ||
+                item.description.toLowerCase().contains(query.toLowerCase()) ||
+                item.sellerName.toLowerCase().contains(query.toLowerCase()))) {
+          seenItemKeys.add(key);
           results.add(item);
         }
       }
@@ -86,6 +146,7 @@ class _SearchPageState extends State<SearchPage> {
 
     setState(() {
       _searchResults = results;
+      _itemsToShow = _itemsPerPage; // Reset to initial page size when new search
     });
   }
 
@@ -118,13 +179,6 @@ class _SearchPageState extends State<SearchPage> {
   void _clearSearchHistory() {
     CacheService.clearSearchHistory();
     _loadSearchHistory();
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _focusNode.dispose();
-    super.dispose();
   }
 
   @override
@@ -186,7 +240,7 @@ class _SearchPageState extends State<SearchPage> {
                   decoration: InputDecoration(
                     contentPadding: EdgeInsets.only(bottom: 5.h),
                     border: InputBorder.none,
-                    hintText: "Search for food, restaurants...",
+                    hintText: "Search by food or restaurant...",
                     hintStyle: TextStyle(color: colors.textTertiary, fontSize: 14.sp),
                   ),
                 ),
@@ -208,6 +262,7 @@ class _SearchPageState extends State<SearchPage> {
         ),
       ),
       body: ListView(
+        controller: _scrollController,
         padding: EdgeInsets.all(20.w),
         children: [
           if (_isSearching && _searchResults.isNotEmpty)
@@ -228,10 +283,52 @@ class _SearchPageState extends State<SearchPage> {
                   ],
                 ),
                 SizedBox(height: 16.h),
-                Column(
-                  children: _searchResults
-                      .map((item) => _buildFoodItem(item, colors, isDark, isFromSearch: true))
-                      .toList(),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _itemsToShow.clamp(0, _searchResults.length) + (_isLoadingMore ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    // Show loading indicator at the end
+                    if (index >= _itemsToShow.clamp(0, _searchResults.length)) {
+                      return Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16.h),
+                        child: Center(
+                          child: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+                            decoration: BoxDecoration(
+                              color: colors.backgroundPrimary,
+                              borderRadius: BorderRadius.circular(20.r),
+                              border: Border.all(color: colors.accentGreen.withOpacity(0.3), width: 1),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 18.w,
+                                  height: 18.h,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(colors.accentOrange),
+                                  ),
+                                ),
+                                SizedBox(width: 12.w),
+                                Text(
+                                  "Loading more...",
+                                  style: TextStyle(
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: colors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+
+                    return _buildFoodItem(_searchResults[index], colors, isDark, isFromSearch: true);
+                  },
                 ),
               ],
             )

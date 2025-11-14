@@ -312,20 +312,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                             ],
                           ),
                         ),
-
-                        SizedBox(height: 50.h),
-
-                        FadeTransition(
-                          opacity: _fadeAnimation,
-                          child: SizedBox(
-                            width: 40.w,
-                            height: 40.h,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 3,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withOpacity(0.8)),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),

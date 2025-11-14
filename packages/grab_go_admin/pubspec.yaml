@@ -1,11 +1,11 @@
 name: grab_go_admin
 description: "GrabGo Admin - Administrative dashboard for GrabGo food delivery platform."
-publish_to: 'none'
+publish_to: "none"
 version: 1.0.0+1
 resolution: workspace
 
 environment:
-  sdk: ^3.9.2
+  sdk: ^3.10.0-290.4
 
 dependencies:
   flutter:

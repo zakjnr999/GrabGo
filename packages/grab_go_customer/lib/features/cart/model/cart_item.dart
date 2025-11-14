@@ -171,7 +171,7 @@ class _CartItemState extends State<CartItem> {
                   decoration: BoxDecoration(
                     color: colors.backgroundPrimary,
                     borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                    border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
+                    border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 1),
                     boxShadow: [
                       BoxShadow(
                         color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),

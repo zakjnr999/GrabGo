@@ -272,7 +272,7 @@ class _ChatsState extends State<Chats> {
               child: _filteredConversations.isEmpty
                   ? _buildEmptyState(colors)
                   : ListView.separated(
-                      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+                      padding: EdgeInsets.symmetric(horizontal: 20.w),
                       physics: const BouncingScrollPhysics(),
                       itemCount: _filteredConversations.length,
                       separatorBuilder: (context, index) => SizedBox(height: 8.h),

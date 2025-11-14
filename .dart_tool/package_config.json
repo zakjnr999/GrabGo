@@ -813,9 +813,9 @@
     },
     {
       "name": "meta",
-      "rootUri": "file:///C:/Users/user/AppData/Local/Pub/Cache/hosted/pub.dev/meta-1.16.0",
+      "rootUri": "file:///C:/Users/user/AppData/Local/Pub/Cache/hosted/pub.dev/meta-1.17.0",
       "packageUri": "lib/",
-      "languageVersion": "2.12"
+      "languageVersion": "3.5"
     },
     {
       "name": "mime",
@@ -1203,7 +1203,7 @@
     },
     {
       "name": "test_api",
-      "rootUri": "file:///C:/Users/user/AppData/Local/Pub/Cache/hosted/pub.dev/test_api-0.7.6",
+      "rootUri": "file:///C:/Users/user/AppData/Local/Pub/Cache/hosted/pub.dev/test_api-0.7.7",
       "packageUri": "lib/",
       "languageVersion": "3.5"
     },
@@ -1403,36 +1403,36 @@
       "name": "grab_go_customer",
       "rootUri": "../packages/grab_go_customer",
       "packageUri": "lib/",
-      "languageVersion": "3.9"
+      "languageVersion": "3.10"
     },
     {
       "name": "grab_go_rider",
       "rootUri": "../packages/grab_go_rider",
       "packageUri": "lib/",
-      "languageVersion": "3.9"
+      "languageVersion": "3.10"
     },
     {
       "name": "grab_go_shared",
       "rootUri": "../packages/grab_go_shared",
       "packageUri": "lib/",
-      "languageVersion": "3.9"
+      "languageVersion": "3.10"
     },
     {
       "name": "grab_go_restaurant",
       "rootUri": "../packages/grab_go_restaurant",
       "packageUri": "lib/",
-      "languageVersion": "3.9"
+      "languageVersion": "3.10"
     },
     {
       "name": "grab_go_admin",
       "rootUri": "../packages/grab_go_admin",
       "packageUri": "lib/",
-      "languageVersion": "3.9"
+      "languageVersion": "3.10"
     }
   ],
   "generator": "pub",
-  "generatorVersion": "3.9.2",
+  "generatorVersion": "3.10.0-290.4.beta",
   "flutterRoot": "file:///C:/dev/flutter",
-  "flutterVersion": "3.35.6",
+  "flutterVersion": "3.38.0",
   "pubCache": "file:///C:/Users/user/AppData/Local/Pub/Cache"
 }

@@ -213,6 +213,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
 
               return Column(
                 children: [
+                  SizedBox(height: 12.h),
                   _buildSearchBar(colors),
                   Expanded(child: _buildFavoritesList(colors, filteredItems)),
                 ],
@@ -226,7 +227,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
 
   Widget _buildSearchBar(colors) {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+      margin: EdgeInsets.symmetric(horizontal: 20.w),
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
@@ -431,7 +432,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-          border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
+          border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 1),
           boxShadow: [
             BoxShadow(
               color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),

@@ -36,6 +36,9 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
 
   String _selectedPriceFilter = 'all';
   bool _showFilterChips = false;
+  int _itemsToShow = 10;
+  final int _itemsPerPage = 10;
+  bool _isLoadingMore = false;
   final List<Map<String, dynamic>> _priceFilters = [
     {'key': 'all', 'label': 'All', 'min': 0, 'max': 1000},
     {'key': 'under_20', 'label': 'Under GHS 20', 'min': 0, 'max': 20},
@@ -100,6 +103,13 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
     final currentOffset = _scrollController.offset;
     final scrollDelta = currentOffset - _lastScrollOffset;
 
+    // Load more when scrolled to 90% of the content
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.9) {
+      if (!_isLoadingMore) {
+        _loadMoreItems();
+      }
+    }
+
     // Show FAB when at the top
     if (currentOffset <= 0) {
       if (!_isFabVisible) {
@@ -132,11 +142,28 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
     _lastScrollOffset = currentOffset;
   }
 
+  void _loadMoreItems() {
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    // Simulate loading delay for smooth UX
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        setState(() {
+          _itemsToShow += _itemsPerPage;
+          _isLoadingMore = false;
+        });
+      }
+    });
+  }
+
   void _onCategorySelected(int index, List<FoodCategoryModel> categories) {
     if (index < categories.length) {
       setState(() {
         _selectedCategoryIndex = index;
         _selectedCategory = categories[index];
+        _itemsToShow = _itemsPerPage; // Reset items to show when category changes
       });
 
       if (_selectedCategory != null && _selectedCategory!.items.isEmpty) {
@@ -278,6 +305,7 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
     final popularItems = _getPopularItems();
     final isPopular = popularItems.contains(item);
     final size = MediaQuery.sizeOf(context);
+    final colors = context.appColors;
 
     return GestureDetector(
       onTap: () => context.push("/foodDetails", extra: item),
@@ -286,7 +314,7 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-          border: Border.all(color: Colors.transparent, width: 0),
+          border: Border.all(color: Colors.transparent, width: 1),
           boxShadow: [
             BoxShadow(
               color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
@@ -467,14 +495,14 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
                 child: Container(
                   padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Colors.red, Colors.orange],
+                    gradient: LinearGradient(
+                      colors: [colors.error, colors.accentOrange.withValues(alpha: 0.8)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(12.r),
                     boxShadow: [
-                      BoxShadow(color: Colors.red.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2)),
+                      BoxShadow(color: colors.error.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2)),
                     ],
                   ),
                   child: Row(
@@ -796,6 +824,7 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
                                             _searchQuery = '';
                                             _selectedPriceFilter = 'all';
                                             _searchController.clear();
+                                            _itemsToShow = _itemsPerPage; // Reset items to show when clearing filters
                                           });
                                         },
                                         backgroundColor: Colors.transparent,
@@ -833,12 +862,62 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
                               );
                             }
 
+                            final displayedItems = filteredItems.take(_itemsToShow).toList();
+                            final hasMoreItems = filteredItems.length > _itemsToShow;
+
                             return FadeTransition(
                               opacity: _fadeAnimation,
                               child: Column(
-                                children: filteredItems.map((item) {
-                                  return _buildFoodItemCard(item, colors, isDark);
-                                }).toList(),
+                                children: [
+                                  ListView.builder(
+                                    shrinkWrap: true,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    itemCount: displayedItems.length + (hasMoreItems && _isLoadingMore ? 1 : 0),
+                                    itemBuilder: (context, index) {
+                                      if (index >= displayedItems.length) {
+                                        return Padding(
+                                          padding: EdgeInsets.symmetric(vertical: 16.h),
+                                          child: Center(
+                                            child: Container(
+                                              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+                                              decoration: BoxDecoration(
+                                                color: colors.backgroundPrimary,
+                                                borderRadius: BorderRadius.circular(20.r),
+                                                border: Border.all(
+                                                  color: colors.accentGreen.withValues(alpha: 0.3),
+                                                  width: 1,
+                                                ),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  SizedBox(
+                                                    width: 18.w,
+                                                    height: 18.h,
+                                                    child: CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      valueColor: AlwaysStoppedAnimation<Color>(colors.accentOrange),
+                                                    ),
+                                                  ),
+                                                  SizedBox(width: 12.w),
+                                                  Text(
+                                                    "Loading more...",
+                                                    style: TextStyle(
+                                                      fontSize: 13.sp,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: colors.textSecondary,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                      return _buildFoodItemCard(displayedItems[index], colors, isDark);
+                                    },
+                                  ),
+                                ],
                               ),
                             );
                           },
