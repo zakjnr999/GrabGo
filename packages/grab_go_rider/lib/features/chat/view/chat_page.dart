@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:grab_go_rider/features/chat/service/chat_service.dart';
 import 'package:grab_go_rider/features/chat/view/chat_detail_page.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -40,6 +41,9 @@ class _ChatPageState extends State<ChatPage> {
   final TextEditingController _searchController = TextEditingController();
   List<_ChatMessage> _conversations = [];
   List<_ChatMessage> _filteredConversations = [];
+  final ChatService _chatService = ChatService();
+  bool _isLoading = false;
+  String? _error;
 
   @override
   void initState() {
@@ -55,79 +59,57 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _loadConversations() {
-    final now = DateTime.now();
-    _conversations = [
-      _ChatMessage(
-        id: '1',
-        senderId: 'customer1',
-        senderName: 'Sarah Mensah',
-        lastMessage: 'Hello, I\'m waiting for my order. Can you give me an update?',
-        timestamp: now.subtract(const Duration(minutes: 5)),
-        unreadCount: 2,
-        isOnline: true,
-        orderId: 'ORD-1234',
-      ),
-      _ChatMessage(
-        id: '2',
-        senderId: 'customer2',
-        senderName: 'Kwame Asante',
-        lastMessage: 'Thank you for the quick delivery!',
-        timestamp: now.subtract(const Duration(hours: 1)),
-        unreadCount: 0,
-        isOnline: false,
-        orderId: 'ORD-1235',
-      ),
-      _ChatMessage(
-        id: '3',
+    _fetchConversations();
+  }
+
+  Future<void> _fetchConversations() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final apiChats = await _chatService.getChats();
+      final now = DateTime.now();
+
+      final List<_ChatMessage> loaded = apiChats.map((chat) {
+        final senderId = chat.otherUserId ?? 'unknown_user';
+        final senderName = chat.otherUserName ?? (chat.otherUserRole == 'customer' ? 'Customer' : 'User');
+
+        return _ChatMessage(
+          id: chat.id,
+          senderId: senderId,
+          senderName: senderName,
+          lastMessage: chat.lastMessage,
+          timestamp: chat.lastMessageAt,
+          unreadCount: chat.unreadCount,
+          isOnline: false,
+          orderId: chat.orderNumber,
+        );
+      }).toList();
+
+      final supportChat = _ChatMessage(
+        id: 'support',
         senderId: 'support',
         senderName: 'GrabGo Support',
-        lastMessage: 'Your payment has been processed successfully.',
-        timestamp: now.subtract(const Duration(hours: 2)),
-        unreadCount: 1,
+        lastMessage: 'Chat with GrabGo Support',
+        timestamp: now,
+        unreadCount: 0,
         isOnline: true,
-      ),
-      _ChatMessage(
-        id: '4',
-        senderId: 'customer3',
-        senderName: 'Ama Owusu',
-        lastMessage: 'I\'m at the gate. Where are you?',
-        timestamp: now.subtract(const Duration(hours: 3)),
-        unreadCount: 0,
-        isOnline: false,
-        orderId: 'ORD-1236',
-      ),
-      _ChatMessage(
-        id: '5',
-        senderId: 'customer4',
-        senderName: 'John Kofi',
-        lastMessage: 'The food arrived cold. Can you help?',
-        timestamp: now.subtract(const Duration(days: 1)),
-        unreadCount: 0,
-        isOnline: false,
-        orderId: 'ORD-1237',
-      ),
-      _ChatMessage(
-        id: '6',
-        senderId: 'customer5',
-        senderName: 'Mary Adjei',
-        lastMessage: 'Thanks for the tip! Really appreciate it.',
-        timestamp: now.subtract(const Duration(days: 1, hours: 5)),
-        unreadCount: 0,
-        isOnline: false,
-        orderId: 'ORD-1238',
-      ),
-      _ChatMessage(
-        id: '7',
-        senderId: 'customer6',
-        senderName: 'David Tetteh',
-        lastMessage: 'Can you confirm the delivery address?',
-        timestamp: now.subtract(const Duration(days: 2)),
-        unreadCount: 0,
-        isOnline: false,
-        orderId: 'ORD-1239',
-      ),
-    ];
-    _filteredConversations = _conversations;
+        orderId: null,
+      );
+
+      _conversations = [supportChat, ...loaded];
+      _filteredConversations = _conversations;
+    } catch (e) {
+      _error = 'Failed to load chats. Please try again.';
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   void _filterConversations() {
@@ -249,7 +231,20 @@ class _ChatPageState extends State<ChatPage> {
 
             // Conversations List
             Expanded(
-              child: _filteredConversations.isEmpty
+              child: _isLoading
+                  ? Center(
+                      child: SizedBox(
+                        width: 24.w,
+                        height: 24.w,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor: AlwaysStoppedAnimation<Color>(colors.accentGreen),
+                        ),
+                      ),
+                    )
+                  : _error != null
+                  ? _buildErrorState(colors)
+                  : _filteredConversations.isEmpty
                   ? _buildEmptyState(colors)
                   : ListView.separated(
                       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
@@ -448,6 +443,35 @@ class _ChatPageState extends State<ChatPage> {
               "Start a conversation with customers or support",
               textAlign: TextAlign.center,
               style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(AppColorsExtension colors) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(40.w),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Unable to load chats',
+              style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w600),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 8.h),
+            Text(
+              _error ?? 'Please check your connection and try again.',
+              style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 16.h),
+            SizedBox(
+              height: 40.h,
+              child: AppButton(onPressed: _fetchConversations, buttonText: 'Retry'),
             ),
           ],
         ),

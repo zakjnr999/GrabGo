@@ -322,8 +322,8 @@ class CacheService {
   /// Clear food categories cache
   static Future<void> clearFoodCategoriesCache() async {
     try {
-      await _prefs?.remove('foodCategories');
-      await _prefs?.remove('foodCategoriesCacheTime');
+      await _instance.remove('food_categories');
+      await _instance.remove('food_categories_cache_timestamp');
       if (kDebugMode) {
         print('✅ Food categories cache cleared');
       }

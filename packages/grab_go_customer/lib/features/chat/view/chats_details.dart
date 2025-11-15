@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:grab_go_customer/features/chat/service/chat_service.dart';
+import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:intl/intl.dart';
@@ -40,11 +42,16 @@ class _ChatDetailState extends State<ChatDetail> {
   final ScrollController _scrollController = ScrollController();
   final FocusNode _messageFocusNode = FocusNode();
   List<ChatMessage> _messages = [];
+  final ChatService _chatService = ChatService();
+  final UserService _userService = UserService();
+  bool _isLoading = false;
+  String? _error;
+  String? _currentUserId;
 
   @override
   void initState() {
     super.initState();
-    _loadMessages();
+    _initAndLoadMessages();
     _messageFocusNode.addListener(() {
       if (_messageFocusNode.hasFocus) {
         Future.delayed(const Duration(milliseconds: 300), () {
@@ -62,81 +69,150 @@ class _ChatDetailState extends State<ChatDetail> {
     super.dispose();
   }
 
-  void _loadMessages() {
-    final now = DateTime.now();
-    _messages = [
-      ChatMessage(
-        id: '1',
-        text: 'Hello, I\'m waiting for my order. Can you give me an update?',
-        timestamp: now.subtract(const Duration(minutes: 10)),
-        isSentByMe: false,
-        isRead: true,
-      ),
-      ChatMessage(
-        id: '2',
-        text: 'Hi! I\'m on my way to your location. I should be there in about 10 minutes.',
-        timestamp: now.subtract(const Duration(minutes: 9)),
-        isSentByMe: true,
-        isRead: true,
-      ),
-      ChatMessage(
-        id: '3',
-        text: 'Great! Thank you for the update.',
-        timestamp: now.subtract(const Duration(minutes: 8)),
-        isSentByMe: false,
-        isRead: true,
-      ),
-      ChatMessage(
-        id: '4',
-        text: 'I\'ve just arrived. Please come to the gate.',
-        timestamp: now.subtract(const Duration(minutes: 5)),
-        isSentByMe: true,
-        isRead: true,
-      ),
-      ChatMessage(
-        id: '5',
-        text: 'Okay, I\'m coming now.',
-        timestamp: now.subtract(const Duration(minutes: 4)),
-        isSentByMe: false,
-        isRead: true,
-      ),
-    ];
+  Future<void> _initAndLoadMessages() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      if (widget.isSupport) {
+        _loadSupportMessages();
+      } else {
+        _currentUserId = _userService.getUserId();
+        final chatDetail = await _chatService.getChat(widget.chatId);
+
+        if (!mounted) return;
+
+        if (chatDetail == null) {
+          setState(() {
+            _messages = [];
+            _error = 'Unable to load conversation.';
+          });
+        } else {
+          final currentUserId = _currentUserId;
+          final loadedMessages = chatDetail.messages.map((m) {
+            final isSentByMe = currentUserId != null && m.senderId == currentUserId;
+            final isRead = currentUserId != null && m.readBy.contains(currentUserId);
+
+            return ChatMessage(id: m.id, text: m.text, timestamp: m.sentAt, isSentByMe: isSentByMe, isRead: isRead);
+          }).toList();
+
+          setState(() {
+            _messages = loadedMessages;
+          });
+
+          _scrollToBottom();
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Failed to load messages. Please try again.';
+        _messages = [];
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
-  void _sendMessage() {
-    if (_messageController.text.trim().isEmpty) return;
+  void _loadSupportMessages() {
+    final now = DateTime.now();
+    setState(() {
+      _messages = [
+        ChatMessage(
+          id: '1',
+          text: 'Hello, how can we help you today?',
+          timestamp: now.subtract(const Duration(minutes: 5)),
+          isSentByMe: false,
+          isRead: true,
+        ),
+        ChatMessage(
+          id: '2',
+          text: 'You can ask about orders, payments, or general support.',
+          timestamp: now.subtract(const Duration(minutes: 4)),
+          isSentByMe: false,
+          isRead: true,
+        ),
+      ];
+    });
+  }
+
+  void _appendLocalSupportMessage() {
+    final text = _messageController.text.trim();
+    _messageController.clear();
+
+    if (text.isEmpty) return;
+
+    final userMessage = ChatMessage(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      text: text,
+      timestamp: DateTime.now(),
+      isSentByMe: true,
+      isRead: true,
+    );
 
     setState(() {
-      _messages.add(
-        ChatMessage(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          text: _messageController.text.trim(),
-          timestamp: DateTime.now(),
-          isSentByMe: true,
-          isRead: false,
-        ),
-      );
-      _messageController.clear();
+      _messages.add(userMessage);
+    });
+
+    _scrollToBottom();
+  }
+
+  Future<void> _sendMessage() async {
+    if (_messageController.text.trim().isEmpty) return;
+
+    if (widget.isSupport) {
+      _appendLocalSupportMessage();
+      return;
+    }
+
+    final text = _messageController.text.trim();
+    _messageController.clear();
+
+    final tempId = DateTime.now().millisecondsSinceEpoch.toString();
+    final optimisticMessage = ChatMessage(
+      id: tempId,
+      text: text,
+      timestamp: DateTime.now(),
+      isSentByMe: true,
+      isRead: false,
+    );
+
+    setState(() {
+      _messages.add(optimisticMessage);
     });
 
     _scrollToBottom();
 
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
+    try {
+      final sent = await _chatService.sendMessage(widget.chatId, text);
+      if (!mounted || sent == null) return;
+
+      final index = _messages.indexWhere((m) => m.id == tempId);
+      if (index != -1) {
+        final updated = ChatMessage(
+          id: sent.id,
+          text: sent.text,
+          timestamp: sent.sentAt,
+          isSentByMe: true,
+          isRead: false,
+        );
+
         setState(() {
-          _messages.add(
-            ChatMessage(
-              id: DateTime.now().millisecondsSinceEpoch.toString(),
-              text: 'Thank you for your message!',
-              timestamp: DateTime.now(),
-              isSentByMe: false,
-              isRead: false,
-            ),
-          );
+          _messages[index] = updated;
         });
-        _scrollToBottom();
       }
-    });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _messages.removeWhere((m) => m.id == tempId);
+      });
+    }
   }
 
   void _scrollToBottom() {
@@ -279,45 +355,58 @@ class _ChatDetailState extends State<ChatDetail> {
         body: Column(
           children: [
             Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                physics: const BouncingScrollPhysics(),
-                itemCount: _messages.length,
-                itemBuilder: (context, index) {
-                  final message = _messages[index];
-                  final showDateDivider = _shouldShowDateDivider(index);
+              child: _isLoading
+                  ? Center(
+                      child: SizedBox(
+                        width: 24.w,
+                        height: 24.w,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor: AlwaysStoppedAnimation<Color>(colors.accentOrange),
+                        ),
+                      ),
+                    )
+                  : _error != null
+                  ? _buildErrorState(colors)
+                  : ListView.builder(
+                      controller: _scrollController,
+                      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: _messages.length,
+                      itemBuilder: (context, index) {
+                        final message = _messages[index];
+                        final showDateDivider = _shouldShowDateDivider(index);
 
-                  return Column(
-                    children: [
-                      if (showDateDivider)
-                        Padding(
-                          padding: EdgeInsets.symmetric(vertical: 16.h),
-                          child: Center(
-                            child: Container(
-                              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                              decoration: BoxDecoration(
-                                color: colors.backgroundPrimary,
-                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius12),
-                                border: Border.all(color: colors.border, width: 1),
-                              ),
-                              child: Text(
-                                DateFormat('MMM dd, yyyy').format(message.timestamp),
-                                style: TextStyle(
-                                  color: colors.textSecondary,
-                                  fontSize: 11.sp,
-                                  fontWeight: FontWeight.w500,
+                        return Column(
+                          children: [
+                            if (showDateDivider)
+                              Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16.h),
+                                child: Center(
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                                    decoration: BoxDecoration(
+                                      color: colors.backgroundPrimary,
+                                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius12),
+                                      border: Border.all(color: colors.border, width: 1),
+                                    ),
+                                    child: Text(
+                                      DateFormat('MMM dd, yyyy').format(message.timestamp),
+                                      style: TextStyle(
+                                        color: colors.textSecondary,
+                                        fontSize: 11.sp,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
-                        ),
-                      _buildMessageBubble(message, colors, size),
-                      SizedBox(height: 8.h),
-                    ],
-                  );
-                },
-              ),
+                            _buildMessageBubble(message, colors, size),
+                            SizedBox(height: 8.h),
+                          ],
+                        );
+                      },
+                    ),
             ),
 
             Container(
@@ -446,6 +535,35 @@ class _ChatDetailState extends State<ChatDetail> {
                   ),
                 ],
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(AppColorsExtension colors) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(40.w),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Unable to load messages',
+              style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w600),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 8.h),
+            Text(
+              _error ?? 'Please check your connection and try again.',
+              style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 16.h),
+            SizedBox(
+              height: 40.h,
+              child: AppButton(onPressed: _initAndLoadMessages, buttonText: 'Retry'),
             ),
           ],
         ),

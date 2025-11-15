@@ -57,6 +57,8 @@ class FoodProvider with ChangeNotifier {
     try {
       _categories = await FoodRepository().fetchCategoriesWithFoods();
 
+      await _enhanceFoodItemsWithRestaurantDetails();
+
       _saveCategoriesToCache();
     } catch (e) {
       _error = "Failed to refresh categories: ${e.toString()}";
@@ -103,18 +105,26 @@ class FoodProvider with ChangeNotifier {
   }
 
   Future<void> fetchFoodsForCategory(String categoryId) async {
-    final categoryFoods = await FoodRepository().fetchFoods(categoryId: categoryId);
+    try {
+      final categoryFoods = await FoodRepository().fetchFoods(categoryId: categoryId);
 
-    final categoryIndex = _categories.indexWhere((cat) => cat.id == categoryId);
-    if (categoryIndex >= 0) {
-      _categories[categoryIndex] = FoodCategoryModel(
-        id: _categories[categoryIndex].id,
-        name: _categories[categoryIndex].name,
-        description: _categories[categoryIndex].description,
-        isActive: _categories[categoryIndex].isActive,
-        emoji: _categories[categoryIndex].emoji,
-        items: categoryFoods,
-      );
+      final categoryIndex = _categories.indexWhere((cat) => cat.id == categoryId);
+      if (categoryIndex >= 0) {
+        _categories[categoryIndex] = FoodCategoryModel(
+          id: _categories[categoryIndex].id,
+          name: _categories[categoryIndex].name,
+          description: _categories[categoryIndex].description,
+          isActive: _categories[categoryIndex].isActive,
+          emoji: _categories[categoryIndex].emoji,
+          items: categoryFoods,
+        );
+        notifyListeners();
+      }
+    } catch (e) {
+      _error = "Failed to load foods for category: ${e.toString()}";
+      if (kDebugMode) {
+        print('❌ Error fetching foods for category $categoryId: $e');
+      }
       notifyListeners();
     }
   }

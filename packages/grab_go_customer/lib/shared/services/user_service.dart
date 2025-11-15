@@ -186,6 +186,7 @@ class UserService {
 
       _currentUser = null;
       await _clearCachedUserData();
+      await CacheService.clearUserSpecificData();
 
       PhoneAuthService().clear();
 

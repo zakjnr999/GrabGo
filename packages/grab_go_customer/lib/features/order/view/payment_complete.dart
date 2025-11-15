@@ -181,8 +181,6 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
                           SizedBox(height: 48.h),
 
                           _buildPaymentDetailsCard(colors),
-
-                          if (widget.orderNumber != null) ...[SizedBox(height: 24.h), _buildOrderInfoCard(colors)],
                         ],
                       ),
                     ),
@@ -405,109 +403,6 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
         ),
       ],
     );
-  }
-
-  Widget _buildOrderInfoCard(AppColorsExtension colors) {
-    if (widget.orderNumber == null) return const SizedBox.shrink();
-
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(20.r),
-      decoration: BoxDecoration(
-        color: colors.backgroundPrimary,
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: colors.accentGreen.withOpacity(0.2), width: 1),
-        gradient: LinearGradient(
-          colors: [colors.accentGreen.withOpacity(0.05), colors.accentGreen.withOpacity(0.01)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(8.r),
-                decoration: BoxDecoration(color: colors.accentGreen.withOpacity(0.15), shape: BoxShape.circle),
-                child: SvgPicture.asset(
-                  Assets.icons.deliveryTruck,
-                  package: 'grab_go_shared',
-                  height: 18.h,
-                  colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
-                ),
-              ),
-              SizedBox(width: 12.w),
-              Text(
-                "Order Details",
-                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
-              ),
-            ],
-          ),
-
-          SizedBox(height: 16.h),
-
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Order Number",
-                    style: TextStyle(fontSize: 12.sp, color: colors.textSecondary, fontWeight: FontWeight.w500),
-                  ),
-                  SizedBox(height: 4.h),
-                  Text(
-                    widget.orderNumber!,
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      color: colors.textPrimary,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                ],
-              ),
-              if (widget.timestamp != null)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      "Order Time",
-                      style: TextStyle(fontSize: 12.sp, color: colors.textSecondary, fontWeight: FontWeight.w500),
-                    ),
-                    SizedBox(height: 4.h),
-                    Text(
-                      _formatTimestamp(widget.timestamp!),
-                      style: TextStyle(fontSize: 14.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatTimestamp(String timestamp) {
-    try {
-      final dateTime = DateTime.parse(timestamp);
-      final now = DateTime.now();
-      final difference = now.difference(dateTime);
-
-      if (difference.inMinutes < 1) {
-        return "Just now";
-      } else if (difference.inHours < 1) {
-        return "${difference.inMinutes} min ago";
-      } else {
-        return "${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}";
-      }
-    } catch (e) {
-      return "Now";
-    }
   }
 
   String _getPaymentMethodIcon(String method) {
