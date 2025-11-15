@@ -1,6 +1,7 @@
 const express = require("express");
 const Chat = require("../models/Chat");
 const { protect } = require("../middleware/auth");
+const { io } = require("../server");
 
 const router = express.Router();
 
@@ -216,18 +217,24 @@ router.post("/:chatId/messages", protect, async (req, res) => {
 
     const savedMessage = chat.messages[chat.messages.length - 1];
 
+    const payload = {
+      chatId: chat._id.toString(),
+      message: {
+        id: savedMessage._id.toString(),
+        text: savedMessage.text,
+        senderId: savedMessage.sender.toString(),
+        sentAt: savedMessage.createdAt,
+      },
+    };
+
+    if (io) {
+      io.to(`chat:${chat._id.toString()}`).emit("chat:new_message", payload);
+    }
+
     res.status(201).json({
       success: true,
       message: "Message sent successfully",
-      data: {
-        chatId: chat._id.toString(),
-        message: {
-          id: savedMessage._id.toString(),
-          text: savedMessage.text,
-          senderId: savedMessage.sender.toString(),
-          sentAt: savedMessage.createdAt,
-        },
-      },
+      data: payload,
     });
   } catch (error) {
     console.error("Send message error:", error);

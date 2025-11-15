@@ -5,6 +5,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_rider/features/orders/service/available_orders_service.dart';
 
 class OrdersPage extends StatefulWidget {
   const OrdersPage({super.key});
@@ -21,6 +22,243 @@ class _OrdersPageState extends State<OrdersPage> {
     "Mary's Office, Kasoa Millennium City",
     "Kek Building, Adenta, Libya Quaters",
   ];
+
+  final AvailableOrdersService _availableOrdersService = AvailableOrdersService();
+  List<AvailableOrderDto> _availableOrders = [];
+  bool _isLoadingOrders = false;
+  String? _ordersError;
+
+  Future<void> _loadAvailableOrders() async {
+    setState(() {
+      _isLoadingOrders = true;
+      _ordersError = null;
+    });
+
+    try {
+      final orders = await _availableOrdersService.getAvailableOrders();
+      if (!mounted) return;
+      setState(() {
+        _availableOrders = orders;
+        if (orders.isEmpty) {
+          _ordersError = 'No available orders at the moment.';
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _ordersError = 'Failed to load available orders. Please try again.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingOrders = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _acceptOrder(AvailableOrderDto order, AppColorsExtension colors, BuildContext context) async {
+    final accepted = await _availableOrdersService.acceptOrder(order.id);
+
+    if (!mounted) return;
+
+    if (accepted == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: const Text('Failed to accept order. Please try again.'), backgroundColor: colors.error),
+      );
+      return;
+    }
+
+    Navigator.of(context).pop();
+
+    context.push(
+      '/order-confirmation',
+      extra: {
+        'orderId': accepted.orderNumber,
+        'restaurantName': accepted.restaurantName,
+        'restaurantAddress': accepted.restaurantAddress,
+        'customerName': accepted.customerName,
+        'customerAddress': accepted.customerAddress,
+        'customerPhone': accepted.customerPhone,
+        'orderTotal': 'GHS ${accepted.totalAmount.toStringAsFixed(2)}',
+        'orderItems': accepted.orderItems,
+        'specialInstructions': accepted.notes,
+      },
+    );
+  }
+
+  Future<void> _showAvailableOrdersSheet(BuildContext context, AppColorsExtension colors) async {
+    await _loadAvailableOrders();
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Container(
+          decoration: BoxDecoration(
+            color: colors.backgroundPrimary,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(KBorderSize.borderRadius20),
+              topRight: Radius.circular(KBorderSize.borderRadius20),
+            ),
+          ),
+          padding: EdgeInsets.only(
+            left: 20.w,
+            right: 20.w,
+            top: 16.h,
+            bottom: MediaQuery.of(sheetContext).padding.bottom + 16.h,
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40.w,
+                    height: 4.h,
+                    margin: EdgeInsets.only(bottom: 16.h),
+                    decoration: BoxDecoration(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2.r),
+                    ),
+                  ),
+                ),
+                Text(
+                  'Available orders',
+                  style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w700),
+                ),
+                SizedBox(height: 12.h),
+                if (_isLoadingOrders)
+                  Center(
+                    child: SizedBox(
+                      width: 24.w,
+                      height: 24.w,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation<Color>(colors.accentGreen),
+                      ),
+                    ),
+                  )
+                else if (_availableOrders.isEmpty)
+                  Padding(
+                    padding: EdgeInsets.only(top: 12.h, bottom: 12.h),
+                    child: Text(
+                      _ordersError ?? 'No available orders at the moment.',
+                      style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400),
+                    ),
+                  )
+                else
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: _availableOrders.length,
+                      separatorBuilder: (_, __) => SizedBox(height: 12.h),
+                      itemBuilder: (context, index) {
+                        final order = _availableOrders[index];
+                        return Container(
+                          padding: EdgeInsets.all(16.w),
+                          decoration: BoxDecoration(
+                            color: colors.backgroundSecondary,
+                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                            border: Border.all(color: colors.border, width: 1),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          order.restaurantName,
+                                          style: TextStyle(
+                                            color: colors.textPrimary,
+                                            fontSize: 14.sp,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        SizedBox(height: 4.h),
+                                        Text(
+                                          order.customerAddress,
+                                          style: TextStyle(
+                                            color: colors.textSecondary,
+                                            fontSize: 12.sp,
+                                            fontWeight: FontWeight.w400,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(width: 12.w),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        'GHS ${order.totalAmount.toStringAsFixed(2)}',
+                                        style: TextStyle(
+                                          color: colors.accentGreen,
+                                          fontSize: 14.sp,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      SizedBox(height: 4.h),
+                                      Text(
+                                        order.orderNumber,
+                                        style: TextStyle(
+                                          color: colors.textSecondary,
+                                          fontSize: 11.sp,
+                                          fontWeight: FontWeight.w400,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              if (order.orderItems.isNotEmpty) ...[
+                                SizedBox(height: 8.h),
+                                Text(
+                                  order.orderItems.join(', '),
+                                  style: TextStyle(
+                                    color: colors.textSecondary,
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                              SizedBox(height: 12.h),
+                              SizedBox(
+                                height: 40.h,
+                                width: double.infinity,
+                                child: AppButton(
+                                  onPressed: () => _acceptOrder(order, colors, context),
+                                  buttonText: 'Accept order',
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -476,7 +714,10 @@ class _OrdersPageState extends State<OrdersPage> {
                   SizedBox(height: 16.h),
 
                   GestureDetector(
-                    onTap: () {},
+                    onTap: () {
+                      final colors = context.appColors;
+                      _showAvailableOrdersSheet(context, colors);
+                    },
                     child: Container(
                       width: double.infinity,
                       padding: EdgeInsets.symmetric(vertical: 18.h, horizontal: 20.w),

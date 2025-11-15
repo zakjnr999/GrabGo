@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -8,6 +10,7 @@ import 'package:grab_go_rider/shared/service/user_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:intl/intl.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 class ChatMessage {
   final String id;
@@ -53,11 +56,16 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   bool _isLoading = false;
   String? _error;
   String? _currentUserId;
+  bool _hasPendingSend = false;
+  IO.Socket? _socket;
 
   @override
   void initState() {
     super.initState();
     _initAndLoadMessages();
+    if (!widget.isSupport) {
+      _setupSocket();
+    }
     _messageFocusNode.addListener(() {
       if (_messageFocusNode.hasFocus) {
         Future.delayed(const Duration(milliseconds: 300), () {
@@ -69,6 +77,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
   @override
   void dispose() {
+    _socket?.dispose();
     _messageController.dispose();
     _scrollController.dispose();
     _messageFocusNode.dispose();
@@ -122,6 +131,71 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     }
   }
 
+  String _buildSocketUrl() {
+    final apiBase = AppConfig.apiBaseUrl;
+    if (apiBase.endsWith('/api/')) {
+      return apiBase.substring(0, apiBase.length - 5);
+    }
+    if (apiBase.endsWith('/api')) {
+      return apiBase.substring(0, apiBase.length - 4);
+    }
+    return apiBase;
+  }
+
+  void _setupSocket() {
+    if (widget.isSupport) return;
+
+    final socketUrl = _buildSocketUrl();
+
+    _socket = IO.io(socketUrl, IO.OptionBuilder().setTransports(['websocket']).disableAutoConnect().build());
+
+    _socket!.onConnect((_) {
+      _socket!.emit('chat:join', {'chatId': widget.chatId});
+    });
+
+    _socket!.on('chat:new_message', (data) {
+      _handleIncomingSocketMessage(data);
+    });
+
+    _socket!.connect();
+  }
+
+  void _handleIncomingSocketMessage(dynamic data) {
+    if (!mounted || widget.isSupport) return;
+    if (data is! Map) return;
+
+    final map = Map<String, dynamic>.from(data as Map);
+    final payloadChatId = map['chatId']?.toString();
+    if (payloadChatId != widget.chatId) return;
+
+    final messageJson = map['message'];
+    if (messageJson is! Map) return;
+
+    final messageMap = Map<String, dynamic>.from(messageJson as Map);
+    final id = messageMap['id']?.toString() ?? '';
+    if (id.isEmpty) return;
+
+    final exists = _messages.any((m) => m.id == id);
+    if (exists) return;
+
+    _currentUserId ??= _userService.currentUser?.id;
+    final senderId = messageMap['senderId']?.toString() ?? '';
+
+    final msg = ChatMessage(
+      id: id,
+      text: messageMap['text']?.toString() ?? '',
+      timestamp: DateTime.tryParse(messageMap['sentAt']?.toString() ?? '') ?? DateTime.now(),
+      isSentByMe: _currentUserId != null && senderId == _currentUserId,
+      isRead: _currentUserId != null && senderId == _currentUserId,
+    );
+
+    setState(() {
+      _messages.add(msg);
+    });
+
+    _scrollToBottom();
+  }
+
   Future<void> _sendMessage() async {
     if (_messageController.text.trim().isEmpty) return;
 
@@ -143,6 +217,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
     _scrollToBottom();
 
+    _hasPendingSend = true;
     try {
       final sent = await _chatService.sendMessage(widget.chatId, text);
       if (!mounted || sent == null) return;
@@ -166,6 +241,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       setState(() {
         _messages.removeWhere((m) => m.id == tempId);
       });
+    } finally {
+      _hasPendingSend = false;
     }
   }
 

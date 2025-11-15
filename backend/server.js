@@ -4,9 +4,35 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const compression = require("compression");
+const http = require("http");
+const { Server } = require("socket.io");
 require("dotenv").config();
 
 const app = express();
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: process.env.ALLOWED_ORIGINS?.split(",") || "*",
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+});
+
+module.exports = { app, io };
+
+io.on("connection", (socket) => {
+  console.log("🔌 New WebSocket connection", socket.id);
+
+  socket.on("chat:join", ({ chatId }) => {
+    if (!chatId) return;
+    socket.join(`chat:${chatId}`);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("🔌 WebSocket disconnected", socket.id);
+  });
+});
 
 // Middleware
 app.use(helmet());
@@ -60,7 +86,7 @@ mongoose
   .then(() => {
     console.log("✅ Connected to MongoDB");
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📡 API available at http://localhost:${PORT}/api`);
       if (!process.env.EMAIL_PASS) {
@@ -69,8 +95,6 @@ mongoose
     });
   })
   .catch((error) => {
-    console.error("❌ MongoDB connection error:", error);
+    console.error(" MongoDB connection error:", error);
     process.exit(1);
   });
-
-module.exports = app;

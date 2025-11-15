@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -44,22 +46,34 @@ class _ChatsState extends State<Chats> {
   final ChatService _chatService = ChatService();
   bool _isLoading = false;
   String? _error;
+  Timer? _pollingTimer;
 
   @override
   void initState() {
     super.initState();
     _loadConversations();
+    _startPolling();
     _searchController.addListener(_filterConversations);
   }
 
   @override
   void dispose() {
+    _pollingTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
   void _loadConversations() {
     _fetchConversations();
+  }
+
+  void _startPolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (!_isLoading) {
+        _refreshConversationsSilently();
+      }
+    });
   }
 
   Future<void> _fetchConversations() async {
@@ -109,6 +123,62 @@ class _ChatsState extends State<Chats> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _refreshConversationsSilently() async {
+    try {
+      final apiChats = await _chatService.getChats();
+      final now = DateTime.now();
+
+      final List<_ChatMessage> loaded = apiChats.map((chat) {
+        final senderId = chat.otherUserId ?? 'unknown_user';
+        final senderName = chat.otherUserName ?? (chat.otherUserRole == 'rider' ? 'Your rider' : 'User');
+
+        return _ChatMessage(
+          id: chat.id,
+          senderId: senderId,
+          senderName: senderName,
+          lastMessage: chat.lastMessage,
+          timestamp: chat.lastMessageAt,
+          unreadCount: chat.unreadCount,
+          isOnline: false,
+          orderId: chat.orderNumber,
+        );
+      }).toList();
+
+      final supportChat = _ChatMessage(
+        id: 'support',
+        senderId: 'support',
+        senderName: 'GrabGo Support',
+        lastMessage: 'Chat with GrabGo Support',
+        timestamp: now,
+        unreadCount: 0,
+        isOnline: true,
+        orderId: null,
+      );
+
+      if (!mounted) return;
+
+      final query = _searchController.text.toLowerCase();
+      final all = [supportChat, ...loaded];
+
+      setState(() {
+        _conversations = all;
+        if (query.isEmpty) {
+          _filteredConversations = all;
+        } else {
+          _filteredConversations = all
+              .where(
+                (chat) =>
+                    chat.senderName.toLowerCase().contains(query) || chat.lastMessage.toLowerCase().contains(query),
+              )
+              .toList();
+        }
+        _error = null;
+      });
+    } catch (e) {
+      // Silent fail on polling; keep current UI
     }
   }
 
@@ -378,7 +448,7 @@ class _ChatsState extends State<Chats> {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            conversation.orderId!,
+                            conversation.orderId!.substring(0, 8),
                             style: TextStyle(color: colors.accentOrange, fontSize: 10.sp, fontWeight: FontWeight.w600),
                           ),
                         ),

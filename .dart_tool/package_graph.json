@@ -64,6 +64,7 @@
         "shared_preferences",
         "shimmer",
         "smooth_page_indicator",
+        "socket_io_client",
         "swipe_refresh",
         "url_launcher",
         "uuid",
@@ -127,6 +128,7 @@
         "shared_preferences",
         "shimmer",
         "smooth_page_indicator",
+        "socket_io_client",
         "swipe_refresh",
         "url_launcher",
         "uuid",
@@ -800,6 +802,15 @@
         "geolocator_platform_interface",
         "geolocator_web",
         "geolocator_windows"
+      ]
+    },
+    {
+      "name": "socket_io_client",
+      "version": "2.0.3+1",
+      "dependencies": [
+        "js",
+        "logging",
+        "socket_io_common"
       ]
     },
     {
@@ -1919,6 +1930,13 @@
         "meta",
         "plugin_platform_interface",
         "vector_math"
+      ]
+    },
+    {
+      "name": "socket_io_common",
+      "version": "2.0.3",
+      "dependencies": [
+        "logging"
       ]
     },
     {
