@@ -93,6 +93,57 @@ class _BottomNavigatorState extends State<BottomNavigator> {
     final navigationProvider = Provider.of<NavigationProvider>(context);
     final bool selected = navigationProvider.selectedIndex == index;
     final colors = context.appColors;
+    final int unread = navigationProvider.chatUnreadCount;
+
+    Widget iconWidget = AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOutCubic,
+      padding: EdgeInsets.all(selected ? 6.0 : 0),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: selected ? colors.accentOrange : Colors.transparent),
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOutCubic,
+        scale: selected ? 1.0 : 0.95,
+        child: SvgPicture.asset(
+          icon,
+          package: 'grab_go_shared',
+          height: KIconSize.lg,
+          width: KIconSize.lg,
+          colorFilter: ColorFilter.mode(selected ? colors.backgroundPrimary : colors.textPrimary, BlendMode.srcIn),
+        ),
+      ),
+    );
+
+    if (index == 2 && unread > 0) {
+      iconWidget = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          iconWidget,
+          Positioned(
+            right: -4,
+            top: -4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: colors.accentOrange,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: colors.backgroundPrimary, width: 2),
+              ),
+              child: Text(
+                unread > 9 ? '9+' : unread.toString(),
+                style: TextStyle(
+                  fontFamily: 'Lato',
+                  package: 'grab_go_shared',
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: colors.backgroundPrimary,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
 
     return GestureDetector(
       onTap: () => _onItemSelected(index),
@@ -100,30 +151,7 @@ class _BottomNavigatorState extends State<BottomNavigator> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOutCubic,
-            padding: EdgeInsets.all(selected ? 6.0 : 0),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: selected ? colors.accentOrange : Colors.transparent,
-            ),
-            child: AnimatedScale(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOutCubic,
-              scale: selected ? 1.0 : 0.95,
-              child: SvgPicture.asset(
-                icon,
-                package: 'grab_go_shared',
-                height: KIconSize.lg,
-                width: KIconSize.lg,
-                colorFilter: ColorFilter.mode(
-                  selected ? colors.backgroundPrimary : colors.textPrimary,
-                  BlendMode.srcIn,
-                ),
-              ),
-            ),
-          ),
+          iconWidget,
           const SizedBox(height: 4),
           AnimatedDefaultTextStyle(
             duration: const Duration(milliseconds: 300),

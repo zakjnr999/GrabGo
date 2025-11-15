@@ -6,9 +6,13 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:grab_go_rider/features/chat/service/chat_service.dart';
 import 'package:grab_go_rider/features/chat/view/chat_detail_page.dart';
+import 'package:grab_go_rider/shared/service/user_service.dart';
+import 'package:grab_go_rider/shared/viewmodel/bottom_nav_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -26,6 +30,7 @@ class _ChatMessage {
   final int unreadCount;
   final bool isOnline;
   final String? orderId;
+  final bool isTyping;
 
   _ChatMessage({
     required this.id,
@@ -36,6 +41,7 @@ class _ChatMessage {
     this.unreadCount = 0,
     this.isOnline = false,
     this.orderId,
+    this.isTyping = false,
   });
 }
 
@@ -44,21 +50,26 @@ class _ChatPageState extends State<ChatPage> {
   List<_ChatMessage> _conversations = [];
   List<_ChatMessage> _filteredConversations = [];
   final ChatService _chatService = ChatService();
+  final UserService _userService = UserService();
   bool _isLoading = false;
   String? _error;
   Timer? _pollingTimer;
+  IO.Socket? _socket;
+  String? _currentUserId;
 
   @override
   void initState() {
     super.initState();
     _loadConversations();
     _startPolling();
+    _setupSocket();
     _searchController.addListener(_filterConversations);
   }
 
   @override
   void dispose() {
     _pollingTimer?.cancel();
+    _socket?.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -74,6 +85,29 @@ class _ChatPageState extends State<ChatPage> {
         _refreshConversationsSilently();
       }
     });
+  }
+
+  void _markChatAsRead(String chatId) {
+    bool changed = false;
+    _conversations = _conversations.map((c) {
+      if (c.id != chatId) return c;
+      if (c.unreadCount == 0 && !c.isTyping) return c;
+      changed = true;
+      return _ChatMessage(
+        id: c.id,
+        senderId: c.senderId,
+        senderName: c.senderName,
+        lastMessage: c.lastMessage,
+        timestamp: c.timestamp,
+        unreadCount: 0,
+        isOnline: c.isOnline,
+        orderId: c.orderId,
+        isTyping: false,
+      );
+    }).toList();
+
+    if (!changed) return;
+    _resortAndFilterConversations();
   }
 
   Future<void> _fetchConversations() async {
@@ -115,6 +149,7 @@ class _ChatPageState extends State<ChatPage> {
 
       _conversations = [supportChat, ...loaded];
       _filteredConversations = _conversations;
+      _joinAllChatsIfReady();
     } catch (e) {
       _error = 'Failed to load chats. Please try again.';
     } finally {
@@ -177,9 +212,223 @@ class _ChatPageState extends State<ChatPage> {
         }
         _error = null;
       });
+      _joinAllChatsIfReady();
     } catch (e) {
       // Silent fail; keep current list
     }
+  }
+
+  String _buildSocketUrl() {
+    final apiBase = AppConfig.apiBaseUrl;
+    if (apiBase.endsWith('/api/')) {
+      return apiBase.substring(0, apiBase.length - 5);
+    }
+    if (apiBase.endsWith('/api')) {
+      return apiBase.substring(0, apiBase.length - 4);
+    }
+    return apiBase;
+  }
+
+  void _setupSocket() {
+    final socketUrl = _buildSocketUrl();
+
+    _socket = IO.io(socketUrl, IO.OptionBuilder().setTransports(['websocket']).disableAutoConnect().build());
+
+    _socket!.onConnect((_) {
+      _currentUserId ??= _userService.currentUser?.id;
+      _joinAllChatsIfReady();
+    });
+
+    _socket!.on('chat:new_message', _handleNewMessageEvent);
+    _socket!.on('chat:presence', _handlePresenceEvent);
+    _socket!.on('chat:typing', _handleTypingEvent);
+    _socket!.on('chat:read', _handleReadEvent);
+
+    _socket!.connect();
+  }
+
+  void _joinAllChatsIfReady() {
+    if (_socket == null || !_socket!.connected) return;
+    _currentUserId ??= _userService.currentUser?.id;
+    final userId = _currentUserId;
+    if (userId == null || userId.isEmpty) return;
+
+    for (final chat in _conversations) {
+      if (chat.id == 'support') continue;
+      _socket!.emit('chat:join', {'chatId': chat.id, 'userId': userId});
+    }
+  }
+
+  void _handleNewMessageEvent(dynamic data) {
+    if (!mounted) return;
+    final route = ModalRoute.of(context);
+    if (route == null || !route.isCurrent) return;
+    if (data is! Map) return;
+
+    final map = Map<String, dynamic>.from(data as Map);
+    final chatId = map['chatId']?.toString();
+    if (chatId == null) return;
+
+    final messageJson = map['message'];
+    if (messageJson is! Map) return;
+
+    final messageMap = Map<String, dynamic>.from(messageJson as Map);
+    final text = messageMap['text']?.toString() ?? '';
+    final sentAtStr = messageMap['sentAt']?.toString();
+    final sentAt = DateTime.tryParse(sentAtStr ?? '') ?? DateTime.now();
+    final senderId = messageMap['senderId']?.toString() ?? '';
+
+    _currentUserId ??= _userService.currentUser?.id;
+    final isFromMe = _currentUserId != null && senderId == _currentUserId;
+
+    final index = _conversations.indexWhere((c) => c.id == chatId);
+    if (index == -1) return;
+
+    final convo = _conversations[index];
+    final newUnread = isFromMe ? convo.unreadCount : convo.unreadCount + 1;
+
+    _conversations[index] = _ChatMessage(
+      id: convo.id,
+      senderId: convo.senderId,
+      senderName: convo.senderName,
+      lastMessage: text,
+      timestamp: sentAt,
+      unreadCount: newUnread,
+      isOnline: !isFromMe ? true : convo.isOnline,
+      orderId: convo.orderId,
+      isTyping: false,
+    );
+
+    _resortAndFilterConversations();
+  }
+
+  void _handlePresenceEvent(dynamic data) {
+    if (!mounted) return;
+    final route = ModalRoute.of(context);
+    if (route == null || !route.isCurrent) return;
+    if (data is! Map) return;
+
+    final map = Map<String, dynamic>.from(data as Map);
+    final chatId = map['chatId']?.toString();
+    final userId = map['userId']?.toString();
+    if (chatId == null || userId == null) return;
+
+    _currentUserId ??= _userService.currentUser?.id;
+    if (_currentUserId != null && userId == _currentUserId) return;
+
+    final online = map['online'] == true;
+    final index = _conversations.indexWhere((c) => c.id == chatId);
+    if (index == -1) return;
+
+    final convo = _conversations[index];
+    _conversations[index] = _ChatMessage(
+      id: convo.id,
+      senderId: convo.senderId,
+      senderName: convo.senderName,
+      lastMessage: convo.lastMessage,
+      timestamp: convo.timestamp,
+      unreadCount: convo.unreadCount,
+      isOnline: online,
+      orderId: convo.orderId,
+      isTyping: online ? convo.isTyping : false,
+    );
+
+    _resortAndFilterConversations(applySearch: false);
+  }
+
+  void _handleReadEvent(dynamic data) {
+    if (!mounted) return;
+    if (data is! Map) return;
+
+    final map = Map<String, dynamic>.from(data as Map);
+    final chatId = map['chatId']?.toString();
+    final userId = map['userId']?.toString();
+    if (chatId == null || userId == null) return;
+
+    _currentUserId ??= _userService.currentUser?.id;
+    if (_currentUserId == null || userId != _currentUserId) return;
+
+    final index = _conversations.indexWhere((c) => c.id == chatId);
+    if (index == -1) return;
+
+    final convo = _conversations[index];
+    if (convo.unreadCount == 0 && !convo.isTyping) return;
+
+    _conversations[index] = _ChatMessage(
+      id: convo.id,
+      senderId: convo.senderId,
+      senderName: convo.senderName,
+      lastMessage: convo.lastMessage,
+      timestamp: convo.timestamp,
+      unreadCount: 0,
+      isOnline: convo.isOnline,
+      orderId: convo.orderId,
+      isTyping: false,
+    );
+
+    _resortAndFilterConversations(applySearch: false);
+  }
+
+  void _handleTypingEvent(dynamic data) {
+    if (!mounted) return;
+    final route = ModalRoute.of(context);
+    if (route == null || !route.isCurrent) return;
+    if (data is! Map) return;
+
+    final map = Map<String, dynamic>.from(data as Map);
+    final chatId = map['chatId']?.toString();
+    final userId = map['userId']?.toString();
+    if (chatId == null || userId == null) return;
+
+    _currentUserId ??= _userService.currentUser?.id;
+    if (_currentUserId != null && userId == _currentUserId) return;
+
+    final isTyping = map['isTyping'] == true;
+    final index = _conversations.indexWhere((c) => c.id == chatId);
+    if (index == -1) return;
+
+    final convo = _conversations[index];
+    _conversations[index] = _ChatMessage(
+      id: convo.id,
+      senderId: convo.senderId,
+      senderName: convo.senderName,
+      lastMessage: convo.lastMessage,
+      timestamp: convo.timestamp,
+      unreadCount: convo.unreadCount,
+      isOnline: isTyping ? true : convo.isOnline,
+      orderId: convo.orderId,
+      isTyping: isTyping,
+    );
+
+    _resortAndFilterConversations(applySearch: false);
+  }
+
+  void _resortAndFilterConversations({bool applySearch = true}) {
+    if (_conversations.isEmpty) return;
+
+    _conversations.sort((a, b) {
+      if (a.id == 'support') return -1;
+      if (b.id == 'support') return 1;
+      return b.timestamp.compareTo(a.timestamp);
+    });
+
+    final query = _searchController.text.toLowerCase();
+
+    setState(() {
+      if (!applySearch || query.isEmpty) {
+        _filteredConversations = List<_ChatMessage>.from(_conversations);
+      } else {
+        _filteredConversations = _conversations
+            .where(
+              (chat) => chat.senderName.toLowerCase().contains(query) || chat.lastMessage.toLowerCase().contains(query),
+            )
+            .toList();
+      }
+    });
+
+    final nav = Provider.of<BottomNavProvider>(context, listen: false);
+    final totalUnread = _conversations.fold<int>(0, (sum, c) => sum + (c.unreadCount > 0 ? c.unreadCount : 0));
+    nav.setChatUnreadCount(totalUnread);
   }
 
   void _filterConversations() {
@@ -326,6 +575,7 @@ class _ChatPageState extends State<ChatPage> {
 
     return GestureDetector(
       onTap: () {
+        _markChatAsRead(conversation.id);
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -435,11 +685,16 @@ class _ChatPageState extends State<ChatPage> {
                     children: [
                       Expanded(
                         child: Text(
-                          conversation.lastMessage,
+                          conversation.isTyping ? 'Typing...' : conversation.lastMessage,
                           style: TextStyle(
-                            color: hasUnread ? colors.textPrimary : colors.textSecondary,
+                            color: conversation.isTyping
+                                ? colors.textSecondary
+                                : (hasUnread ? colors.textPrimary : colors.textSecondary),
                             fontSize: 14.sp,
-                            fontWeight: hasUnread ? FontWeight.w500 : FontWeight.w400,
+                            fontWeight: conversation.isTyping
+                                ? FontWeight.w400
+                                : (hasUnread ? FontWeight.w500 : FontWeight.w400),
+                            fontStyle: conversation.isTyping ? FontStyle.italic : FontStyle.normal,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

@@ -119,6 +119,13 @@ router.get("/:chatId", protect, async (req, res) => {
 
     if (changed) {
       await chat.save();
+
+      if (io) {
+        io.to(`chat:${chat._id.toString()}`).emit("chat:read", {
+          chatId: chat._id.toString(),
+          userId: userIdStr,
+        });
+      }
     }
 
     const messages = chat.messages.map((msg) => ({
