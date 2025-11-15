@@ -50,16 +50,18 @@ class _ChatDetailState extends State<ChatDetail> {
   bool _isLoading = false;
   String? _error;
   String? _currentUserId;
-  Timer? _pollingTimer;
   bool _hasPendingSend = false;
   IO.Socket? _socket;
+  bool _isPeerOnline = false;
+  bool _isPeerTyping = false;
+  bool _isTyping = false;
+  Timer? _typingTimer;
 
   @override
   void initState() {
     super.initState();
     _initAndLoadMessages();
     if (!widget.isSupport) {
-      _startPolling();
       _setupSocket();
     }
     _messageFocusNode.addListener(() {
@@ -73,7 +75,7 @@ class _ChatDetailState extends State<ChatDetail> {
 
   @override
   void dispose() {
-    _pollingTimer?.cancel();
+    _typingTimer?.cancel();
     _socket?.dispose();
     _messageController.dispose();
     _scrollController.dispose();
@@ -151,11 +153,20 @@ class _ChatDetailState extends State<ChatDetail> {
     _socket = IO.io(socketUrl, IO.OptionBuilder().setTransports(['websocket']).disableAutoConnect().build());
 
     _socket!.onConnect((_) {
-      _socket!.emit('chat:join', {'chatId': widget.chatId});
+      final userId = _userService.getUserId();
+      _socket!.emit('chat:join', {'chatId': widget.chatId, 'userId': userId});
     });
 
     _socket!.on('chat:new_message', (data) {
       _handleIncomingSocketMessage(data);
+    });
+
+    _socket!.on('chat:presence', (data) {
+      _handlePresenceEvent(data);
+    });
+
+    _socket!.on('chat:typing', (data) {
+      _handleTypingEvent(data);
     });
 
     _socket!.connect();
@@ -197,36 +208,60 @@ class _ChatDetailState extends State<ChatDetail> {
     _scrollToBottom();
   }
 
-  void _startPolling() {
-    _pollingTimer?.cancel();
-    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (!_isLoading && !_hasPendingSend && !widget.isSupport) {
-        _refreshMessagesSilently();
+  void _handlePresenceEvent(dynamic data) {
+    if (!mounted || widget.isSupport) return;
+    if (data is! Map) return;
+
+    final map = Map<String, dynamic>.from(data as Map);
+    final payloadChatId = map['chatId']?.toString();
+    if (payloadChatId != widget.chatId) return;
+
+    final online = map['online'] == true;
+
+    setState(() {
+      _isPeerOnline = online;
+      if (!online) {
+        _isPeerTyping = false;
       }
     });
   }
 
-  Future<void> _refreshMessagesSilently() async {
-    try {
-      _currentUserId ??= _userService.getUserId();
-      final chatDetail = await _chatService.getChat(widget.chatId);
-      if (!mounted || chatDetail == null) return;
+  void _handleTypingEvent(dynamic data) {
+    if (!mounted || widget.isSupport) return;
+    if (data is! Map) return;
 
-      final currentUserId = _currentUserId;
-      final loadedMessages = chatDetail.messages.map((m) {
-        final isSentByMe = currentUserId != null && m.senderId == currentUserId;
-        final isRead = currentUserId != null && m.readBy.contains(currentUserId);
+    final map = Map<String, dynamic>.from(data as Map);
+    final payloadChatId = map['chatId']?.toString();
+    if (payloadChatId != widget.chatId) return;
 
-        return ChatMessage(id: m.id, text: m.text, timestamp: m.sentAt, isSentByMe: isSentByMe, isRead: isRead);
-      }).toList();
+    final isTyping = map['isTyping'] == true;
 
-      setState(() {
-        _messages = loadedMessages;
-        _error = null;
-      });
-    } catch (e) {
-      // Silent fail during polling; keep current messages
+    setState(() {
+      _isPeerTyping = isTyping;
+      if (isTyping) {
+        _isPeerOnline = true;
+      }
+    });
+  }
+
+  void _handleMessageChanged(String value) {
+    if (widget.isSupport) return;
+    if (_socket == null) return;
+
+    final userId = _userService.getUserId();
+    if (userId == null || userId.isEmpty) return;
+
+    if (!_isTyping) {
+      _isTyping = true;
+      _socket!.emit('chat:typing', {'chatId': widget.chatId, 'userId': userId, 'isTyping': true});
     }
+
+    _typingTimer?.cancel();
+    _typingTimer = Timer(const Duration(seconds: 2), () {
+      if (!_isTyping) return;
+      _isTyping = false;
+      _socket?.emit('chat:typing', {'chatId': widget.chatId, 'userId': userId, 'isTyping': false});
+    });
   }
 
   void _loadSupportMessages() {
@@ -278,6 +313,15 @@ class _ChatDetailState extends State<ChatDetail> {
     if (widget.isSupport) {
       _appendLocalSupportMessage();
       return;
+    }
+
+    _typingTimer?.cancel();
+    if (_isTyping) {
+      final userId = _userService.getUserId();
+      if (userId != null && userId.isNotEmpty && _socket != null) {
+        _socket!.emit('chat:typing', {'chatId': widget.chatId, 'userId': userId, 'isTyping': false});
+      }
+      _isTyping = false;
     }
 
     final text = _messageController.text.trim();
@@ -440,6 +484,21 @@ class _ChatDetailState extends State<ChatDetail> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (_isPeerTyping)
+                      Text(
+                        'Typing...',
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w400,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      )
+                    else if (_isPeerOnline)
+                      Text(
+                        'Online',
+                        style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+                      ),
                     if (widget.orderId != null)
                       Text(
                         widget.orderId!,
@@ -558,6 +617,7 @@ class _ChatDetailState extends State<ChatDetail> {
                           contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                         ),
                         style: TextStyle(color: colors.textPrimary, fontSize: 14.sp),
+                        onChanged: _handleMessageChanged,
                         onSubmitted: (_) => _sendMessage(),
                       ),
                     ),

@@ -58,6 +58,10 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   String? _currentUserId;
   bool _hasPendingSend = false;
   IO.Socket? _socket;
+  bool _isPeerOnline = false;
+  bool _isPeerTyping = false;
+  bool _isTyping = false;
+  Timer? _typingTimer;
 
   @override
   void initState() {
@@ -77,6 +81,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
   @override
   void dispose() {
+    _typingTimer?.cancel();
     _socket?.dispose();
     _messageController.dispose();
     _scrollController.dispose();
@@ -150,11 +155,20 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     _socket = IO.io(socketUrl, IO.OptionBuilder().setTransports(['websocket']).disableAutoConnect().build());
 
     _socket!.onConnect((_) {
-      _socket!.emit('chat:join', {'chatId': widget.chatId});
+      final userId = _userService.currentUser?.id;
+      _socket!.emit('chat:join', {'chatId': widget.chatId, 'userId': userId});
     });
 
     _socket!.on('chat:new_message', (data) {
       _handleIncomingSocketMessage(data);
+    });
+
+    _socket!.on('chat:presence', (data) {
+      _handlePresenceEvent(data);
+    });
+
+    _socket!.on('chat:typing', (data) {
+      _handleTypingEvent(data);
     });
 
     _socket!.connect();
@@ -196,8 +210,73 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     _scrollToBottom();
   }
 
+  void _handlePresenceEvent(dynamic data) {
+    if (!mounted || widget.isSupport) return;
+    if (data is! Map) return;
+
+    final map = Map<String, dynamic>.from(data as Map);
+    final payloadChatId = map['chatId']?.toString();
+    if (payloadChatId != widget.chatId) return;
+
+    final online = map['online'] == true;
+
+    setState(() {
+      _isPeerOnline = online;
+      if (!online) {
+        _isPeerTyping = false;
+      }
+    });
+  }
+
+  void _handleTypingEvent(dynamic data) {
+    if (!mounted || widget.isSupport) return;
+    if (data is! Map) return;
+
+    final map = Map<String, dynamic>.from(data as Map);
+    final payloadChatId = map['chatId']?.toString();
+    if (payloadChatId != widget.chatId) return;
+
+    final isTyping = map['isTyping'] == true;
+
+    setState(() {
+      _isPeerTyping = isTyping;
+      if (isTyping) {
+        _isPeerOnline = true;
+      }
+    });
+  }
+
+  void _handleMessageChanged(String value) {
+    if (widget.isSupport) return;
+    if (_socket == null) return;
+
+    final userId = _userService.currentUser?.id;
+    if (userId == null || userId.isEmpty) return;
+
+    if (!_isTyping) {
+      _isTyping = true;
+      _socket!.emit('chat:typing', {'chatId': widget.chatId, 'userId': userId, 'isTyping': true});
+    }
+
+    _typingTimer?.cancel();
+    _typingTimer = Timer(const Duration(seconds: 2), () {
+      if (!_isTyping) return;
+      _isTyping = false;
+      _socket?.emit('chat:typing', {'chatId': widget.chatId, 'userId': userId, 'isTyping': false});
+    });
+  }
+
   Future<void> _sendMessage() async {
     if (_messageController.text.trim().isEmpty) return;
+
+    _typingTimer?.cancel();
+    if (_isTyping) {
+      final userId = _userService.currentUser?.id;
+      if (userId != null && userId.isNotEmpty && _socket != null) {
+        _socket!.emit('chat:typing', {'chatId': widget.chatId, 'userId': userId, 'isTyping': false});
+      }
+      _isTyping = false;
+    }
 
     final text = _messageController.text.trim();
     _messageController.clear();
@@ -359,6 +438,21 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (_isPeerTyping)
+                      Text(
+                        'Typing...',
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w400,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      )
+                    else if (_isPeerOnline)
+                      Text(
+                        'Online',
+                        style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+                      ),
                     if (widget.orderId != null)
                       Text(
                         widget.orderId!,
@@ -477,6 +571,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                           contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                         ),
                         style: TextStyle(color: colors.textPrimary, fontSize: 14.sp),
+                        onChanged: _handleMessageChanged,
                         onSubmitted: (_) => _sendMessage(),
                       ),
                     ),

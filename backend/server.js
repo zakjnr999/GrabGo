@@ -24,12 +24,49 @@ module.exports = { app, io };
 io.on("connection", (socket) => {
   console.log("🔌 New WebSocket connection", socket.id);
 
-  socket.on("chat:join", ({ chatId }) => {
+  socket.on("chat:join", ({ chatId, userId }) => {
     if (!chatId) return;
-    socket.join(`chat:${chatId}`);
+
+    const room = `chat:${chatId}`;
+    socket.join(room);
+
+    // Track which user and chats this socket is associated with
+    if (userId) {
+      socket.data.userId = userId;
+    }
+    if (!socket.data.chats) {
+      socket.data.chats = new Set();
+    }
+    socket.data.chats.add(room);
+
+    if (userId) {
+      socket.to(room).emit("chat:presence", { chatId, userId, online: true });
+    }
+  });
+
+  socket.on("chat:typing", ({ chatId, userId, isTyping }) => {
+    if (!chatId || !userId) return;
+    const room = `chat:${chatId}`;
+    socket.to(room).emit("chat:typing", {
+      chatId,
+      userId,
+      isTyping: !!isTyping,
+    });
   });
 
   socket.on("disconnect", () => {
+    const userId = socket.data.userId;
+    const chats = socket.data.chats;
+
+    if (userId && chats && typeof chats.forEach === "function") {
+      chats.forEach((room) => {
+        const chatId = room.replace("chat:", "");
+        socket
+          .to(room)
+          .emit("chat:presence", { chatId, userId, online: false });
+      });
+    }
+
     console.log("🔌 WebSocket disconnected", socket.id);
   });
 });
