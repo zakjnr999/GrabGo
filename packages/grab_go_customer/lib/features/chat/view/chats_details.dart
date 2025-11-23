@@ -187,11 +187,18 @@ class _ChatDetailState extends State<ChatDetail> {
     final id = messageMap['id']?.toString() ?? '';
     if (id.isEmpty) return;
 
-    final exists = _messages.any((m) => m.id == id);
-    if (exists) return;
-
     _currentUserId ??= _userService.getUserId();
     final senderId = messageMap['senderId']?.toString() ?? '';
+
+    // Ignore messages that we ourselves sent. These are already shown via the
+    // optimistic message in _sendMessage, and updated when the HTTP call
+    // returns, so processing the socket echo would create duplicates.
+    if (_currentUserId != null && senderId == _currentUserId) {
+      return;
+    }
+
+    final exists = _messages.any((m) => m.id == id);
+    if (exists) return;
 
     final msg = ChatMessage(
       id: id,

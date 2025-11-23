@@ -1,8 +1,10 @@
 {
-  "dart.flutterSdkPath": "C:/dev/flutter",
+  "dart.flutterSdkPath": "C:/sdk/flutter",
   "dart.enableSdkFormatter": true,
   "dart.lineLength": 120,
-  "editor.rulers": [120],
+  "editor.rulers": [
+    120
+  ],
   "editor.formatOnSave": true,
   "dart.previewFlutterUiGuides": true,
   "dart.previewFlutterUiGuidesCustomTracking": true,
@@ -26,5 +28,8 @@
     "**/.flutter-plugins-dependencies": true,
     "**/pubspec.lock": true
   },
-  "cSpell.words": ["Lato", "Momo"]
+  "cSpell.words": [
+    "Lato",
+    "Momo"
+  ]
 }

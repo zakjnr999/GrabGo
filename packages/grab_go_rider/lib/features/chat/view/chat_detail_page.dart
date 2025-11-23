@@ -152,7 +152,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
     final socketUrl = _buildSocketUrl();
 
-    _socket = IO.io(socketUrl, IO.OptionBuilder().setTransports(['websocket']).disableAutoConnect().build());
+    _socket = IO.io(socketUrl, <String, dynamic>{
+      'transports': ['websocket'],
+      'autoConnect': false,
+      'forceNew': true,
+    });
 
     _socket!.onConnect((_) {
       final userId = _userService.currentUser?.id;

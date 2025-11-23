@@ -8,6 +8,7 @@ import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_rider/shared/service/storage_service.dart';
 import 'package:grab_go_rider/shared/service/auth_guard.dart';
 import 'package:grab_go_rider/shared/service/user_service.dart';
+import 'package:grab_go_rider/shared/service/chat_socket_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -32,6 +33,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   Future<void> _initialize() async {
     // Initialize UserService to load cached user data
     await UserService().initialize();
+    await ChatSocketService().initialize();
 
     await Future.delayed(const Duration(seconds: 3));
     if (!mounted) return;

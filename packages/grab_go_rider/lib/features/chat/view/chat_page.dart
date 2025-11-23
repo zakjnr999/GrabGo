@@ -7,6 +7,8 @@ import 'package:flutter_svg/svg.dart';
 import 'package:grab_go_rider/features/chat/service/chat_service.dart';
 import 'package:grab_go_rider/features/chat/view/chat_detail_page.dart';
 import 'package:grab_go_rider/shared/service/user_service.dart';
+import 'package:grab_go_rider/shared/service/cache_service.dart';
+import 'package:grab_go_rider/shared/service/chat_socket_service.dart';
 import 'package:grab_go_rider/shared/viewmodel/bottom_nav_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -60,6 +62,7 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void initState() {
     super.initState();
+    _loadCachedConversations();
     _loadConversations();
     _startPolling();
     _setupSocket();
@@ -75,7 +78,56 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void _loadConversations() {
-    _fetchConversations();
+    final hasCached = _conversations.isNotEmpty;
+    _fetchConversations(showLoader: !hasCached);
+  }
+
+  void _loadCachedConversations() {
+    final cached = CacheService.getChatList();
+    if (cached.isEmpty) return;
+
+    final List<_ChatMessage> loaded = cached
+        .map((chat) {
+          final id = chat['id']?.toString() ?? '';
+          if (id.isEmpty) {
+            return null;
+          }
+          final senderId = chat['senderId']?.toString() ?? 'unknown_user';
+          final senderName = chat['senderName']?.toString() ?? 'User';
+          final lastMessage = chat['lastMessage']?.toString() ?? '';
+          final tsStr = chat['timestamp']?.toString();
+          final timestamp = DateTime.tryParse(tsStr ?? '') ?? DateTime.now();
+          final unreadRaw = chat['unreadCount'];
+          final unreadCount = unreadRaw is int ? unreadRaw : int.tryParse(unreadRaw?.toString() ?? '0') ?? 0;
+          final isOnline = chat['isOnline'] == true;
+          final orderId = chat['orderId']?.toString();
+          final isTyping = chat['isTyping'] == true;
+
+          return _ChatMessage(
+            id: id,
+            senderId: senderId,
+            senderName: senderName,
+            lastMessage: lastMessage,
+            timestamp: timestamp,
+            unreadCount: unreadCount,
+            isOnline: isOnline,
+            orderId: orderId,
+            isTyping: isTyping,
+          );
+        })
+        .whereType<_ChatMessage>()
+        .toList();
+
+    if (loaded.isEmpty) return;
+
+    setState(() {
+      _conversations = loaded;
+      _filteredConversations = loaded;
+      _isLoading = false;
+      _error = null;
+    });
+
+    _resortAndFilterConversations(applySearch: false);
   }
 
   void _startPolling() {
@@ -89,10 +141,12 @@ class _ChatPageState extends State<ChatPage> {
 
   void _markChatAsRead(String chatId) {
     bool changed = false;
+    int cleared = 0;
     _conversations = _conversations.map((c) {
       if (c.id != chatId) return c;
       if (c.unreadCount == 0 && !c.isTyping) return c;
       changed = true;
+      cleared = c.unreadCount;
       return _ChatMessage(
         id: c.id,
         senderId: c.senderId,
@@ -107,14 +161,23 @@ class _ChatPageState extends State<ChatPage> {
     }).toList();
 
     if (!changed) return;
+    if (cleared > 0) {
+      ChatSocketService().markChatAsReadLocally(chatId, cleared);
+    }
     _resortAndFilterConversations();
   }
 
-  Future<void> _fetchConversations() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+  Future<void> _fetchConversations({bool showLoader = true}) async {
+    if (showLoader) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    } else {
+      setState(() {
+        _error = null;
+      });
+    }
 
     try {
       final apiChats = await _chatService.getChats();
@@ -150,10 +213,11 @@ class _ChatPageState extends State<ChatPage> {
       _conversations = [supportChat, ...loaded];
       _filteredConversations = _conversations;
       _joinAllChatsIfReady();
+      ChatSocketService().updateKnownChats(_conversations.map((c) => c.id).where((id) => id != 'support').toList());
     } catch (e) {
       _error = 'Failed to load chats. Please try again.';
     } finally {
-      if (mounted) {
+      if (mounted && showLoader) {
         setState(() {
           _isLoading = false;
         });
@@ -213,6 +277,7 @@ class _ChatPageState extends State<ChatPage> {
         _error = null;
       });
       _joinAllChatsIfReady();
+      ChatSocketService().updateKnownChats(all.map((c) => c.id).where((id) => id != 'support').toList());
     } catch (e) {
       // Silent fail; keep current list
     }
@@ -232,7 +297,11 @@ class _ChatPageState extends State<ChatPage> {
   void _setupSocket() {
     final socketUrl = _buildSocketUrl();
 
-    _socket = IO.io(socketUrl, IO.OptionBuilder().setTransports(['websocket']).disableAutoConnect().build());
+    _socket = IO.io(socketUrl, <String, dynamic>{
+      'transports': ['websocket'],
+      'autoConnect': false,
+      'forceNew': true,
+    });
 
     _socket!.onConnect((_) {
       _currentUserId ??= _userService.currentUser?.id;
@@ -426,9 +495,22 @@ class _ChatPageState extends State<ChatPage> {
       }
     });
 
-    final nav = Provider.of<BottomNavProvider>(context, listen: false);
-    final totalUnread = _conversations.fold<int>(0, (sum, c) => sum + (c.unreadCount > 0 ? c.unreadCount : 0));
-    nav.setChatUnreadCount(totalUnread);
+    final serialized = _conversations
+        .map(
+          (c) => {
+            'id': c.id,
+            'senderId': c.senderId,
+            'senderName': c.senderName,
+            'lastMessage': c.lastMessage,
+            'timestamp': c.timestamp.toIso8601String(),
+            'unreadCount': c.unreadCount,
+            'isOnline': c.isOnline,
+            'orderId': c.orderId,
+            'isTyping': c.isTyping,
+          },
+        )
+        .toList();
+    unawaited(CacheService.saveChatList(serialized));
   }
 
   void _filterConversations() {

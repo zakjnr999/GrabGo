@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:grab_go_rider/shared/service/chat_socket_service.dart';
 
 class BottomNavProvider extends ChangeNotifier {
   int _selectedIndex = 0;
@@ -7,15 +8,23 @@ class BottomNavProvider extends ChangeNotifier {
   int get selectedIndex => _selectedIndex;
   int get chatUnreadCount => _chatUnreadCount;
 
+  BottomNavProvider() {
+    _chatUnreadCount = ChatSocketService().totalUnread;
+
+    ChatSocketService().registerUnreadListener((count) {
+      if (count == _chatUnreadCount) return;
+      _chatUnreadCount = count;
+      notifyListeners();
+    });
+  }
+
   void setIndex(int index) {
     _selectedIndex = index;
     notifyListeners();
   }
 
   void setChatUnreadCount(int count) {
-    if (count == _chatUnreadCount) return;
-    _chatUnreadCount = count < 0 ? 0 : count;
-    notifyListeners();
+    ChatSocketService().overrideTotalUnread(count);
   }
 
   void navigateToHome() {

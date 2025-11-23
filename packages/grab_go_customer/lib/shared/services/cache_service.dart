@@ -345,6 +345,62 @@ class CacheService {
     }
   }
 
+  static Future<bool> saveChatList(List<Map<String, dynamic>> chats) async {
+    try {
+      final chatsJson = jsonEncode(chats);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      await _instance.setString('chat_list', chatsJson);
+      await _instance.setInt('chat_list_cache_timestamp', timestamp);
+      return true;
+    } catch (e) {
+      debugPrint('Error saving chat list: $e');
+      return false;
+    }
+  }
+
+  static List<Map<String, dynamic>> getChatList() {
+    try {
+      final chatsJson = _instance.getString('chat_list');
+      if (chatsJson != null) {
+        final List<dynamic> chatsList = jsonDecode(chatsJson);
+        return chatsList.cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting chat list: $e');
+      return [];
+    }
+  }
+
+  static Future<bool> clearChatList() async {
+    try {
+      await _instance.remove('chat_list');
+      await _instance.remove('chat_list_cache_timestamp');
+      return true;
+    } catch (e) {
+      debugPrint('Error clearing chat list: $e');
+      return false;
+    }
+  }
+
+  static Future<bool> saveChatUnreadCount(int count) async {
+    try {
+      return await _instance.setInt('chat_unread_count', count);
+    } catch (e) {
+      debugPrint('Error saving chat unread count: $e');
+      return false;
+    }
+  }
+
+  static int getChatUnreadCount() {
+    try {
+      return _instance.getInt('chat_unread_count') ?? 0;
+    } catch (e) {
+      debugPrint('Error getting chat unread count: $e');
+      return 0;
+    }
+  }
+
   // ==================== APP SETTINGS CACHING ====================
 
   /// Save theme mode

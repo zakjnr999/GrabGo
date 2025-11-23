@@ -7,6 +7,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:grab_go_customer/features/chat/service/chat_service.dart';
 import 'package:grab_go_customer/features/chat/view/chats_details.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
+import 'package:grab_go_customer/shared/services/cache_service.dart';
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -60,6 +61,7 @@ class _ChatsState extends State<Chats> {
   @override
   void initState() {
     super.initState();
+    _loadCachedConversations();
     _loadConversations();
     _startPolling();
     _setupSocket();
@@ -75,7 +77,56 @@ class _ChatsState extends State<Chats> {
   }
 
   void _loadConversations() {
-    _fetchConversations();
+    final hasCached = _conversations.isNotEmpty;
+    _fetchConversations(showLoader: !hasCached);
+  }
+
+  void _loadCachedConversations() {
+    final cached = CacheService.getChatList();
+    if (cached.isEmpty) return;
+
+    final List<_ChatMessage> loaded = cached
+        .map((chat) {
+          final id = chat['id']?.toString() ?? '';
+          if (id.isEmpty) {
+            return null;
+          }
+          final senderId = chat['senderId']?.toString() ?? 'unknown_user';
+          final senderName = chat['senderName']?.toString() ?? 'User';
+          final lastMessage = chat['lastMessage']?.toString() ?? '';
+          final tsStr = chat['timestamp']?.toString();
+          final timestamp = DateTime.tryParse(tsStr ?? '') ?? DateTime.now();
+          final unreadRaw = chat['unreadCount'];
+          final unreadCount = unreadRaw is int ? unreadRaw : int.tryParse(unreadRaw?.toString() ?? '0') ?? 0;
+          final isOnline = chat['isOnline'] == true;
+          final orderId = chat['orderId']?.toString();
+          final isTyping = chat['isTyping'] == true;
+
+          return _ChatMessage(
+            id: id,
+            senderId: senderId,
+            senderName: senderName,
+            lastMessage: lastMessage,
+            timestamp: timestamp,
+            unreadCount: unreadCount,
+            isOnline: isOnline,
+            orderId: orderId,
+            isTyping: isTyping,
+          );
+        })
+        .whereType<_ChatMessage>()
+        .toList();
+
+    if (loaded.isEmpty) return;
+
+    setState(() {
+      _conversations = loaded;
+      _filteredConversations = loaded;
+      _isLoading = false;
+      _error = null;
+    });
+
+    _resortAndFilterConversations(applySearch: false);
   }
 
   void _startPolling() {
@@ -87,11 +138,17 @@ class _ChatsState extends State<Chats> {
     });
   }
 
-  Future<void> _fetchConversations() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+  Future<void> _fetchConversations({bool showLoader = true}) async {
+    if (showLoader) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    } else {
+      setState(() {
+        _error = null;
+      });
+    }
 
     try {
       final apiChats = await _chatService.getChats();
@@ -130,7 +187,7 @@ class _ChatsState extends State<Chats> {
     } catch (e) {
       _error = 'Failed to load chats. Please try again.';
     } finally {
-      if (mounted) {
+      if (mounted && showLoader) {
         setState(() {
           _isLoading = false;
         });
@@ -403,6 +460,23 @@ class _ChatsState extends State<Chats> {
         .where((c) => c.id != 'support')
         .fold<int>(0, (sum, c) => sum + (c.unreadCount > 0 ? c.unreadCount : 0));
     nav.setChatUnreadCount(totalUnread);
+
+    final serialized = _conversations
+        .map(
+          (c) => {
+            'id': c.id,
+            'senderId': c.senderId,
+            'senderName': c.senderName,
+            'lastMessage': c.lastMessage,
+            'timestamp': c.timestamp.toIso8601String(),
+            'unreadCount': c.unreadCount,
+            'isOnline': c.isOnline,
+            'orderId': c.orderId,
+            'isTyping': c.isTyping,
+          },
+        )
+        .toList();
+    unawaited(CacheService.saveChatList(serialized));
   }
 
   void _markChatAsRead(String chatId) {

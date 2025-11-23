@@ -124,7 +124,7 @@ class _BottomNavigatorState extends State<BottomNavigator> {
       ),
     );
 
-    if (index == 2 && unread > 0) {
+    if (index == 2 && unread > 0 && !selected) {
       iconWidget = Stack(
         clipBehavior: Clip.none,
         children: [

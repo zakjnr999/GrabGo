@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_rider/shared/service/cache_service.dart';
 import 'package:grab_go_rider/shared/service/user_service.dart';
+import 'package:grab_go_rider/shared/service/chat_socket_service.dart';
 import 'package:grab_go_rider/core/api/api_client.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 
@@ -203,6 +204,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
 
         if (user != null) {
           await UserService().setCurrentUser(user);
+          await ChatSocketService().initialize();
         }
 
         if (mounted) {
@@ -348,6 +350,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
 
         if (user != null) {
           await UserService().setCurrentUser(user);
+          await ChatSocketService().initialize();
         }
 
         await CacheService.saveCredentials(

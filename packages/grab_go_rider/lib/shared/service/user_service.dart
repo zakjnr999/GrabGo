@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_rider/shared/service/chat_socket_service.dart';
 import 'cache_service.dart';
 
 class UserService {
@@ -65,6 +66,7 @@ class UserService {
       _currentUser = null;
       await CacheService.clearUserData();
       await CacheService.clearAuthToken();
+      ChatSocketService().dispose();
       debugPrint('✅ User logged out successfully');
     } catch (e) {
       debugPrint('❌ Error logging out: $e');
