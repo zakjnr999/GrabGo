@@ -10,17 +10,6 @@ import 'package:provider/provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Validate environment configuration
-  try {
-    AppConfig.validateConfiguration();
-    if (AppConfig.enableLogging) {
-      debugPrint('✅ Rider: Environment configuration validated');
-    }
-  } catch (e) {
-    debugPrint('❌ Rider Configuration Error: $e');
-    rethrow;
-  }
-
   await CacheService.initialize();
   runApp(
     MultiProvider(
