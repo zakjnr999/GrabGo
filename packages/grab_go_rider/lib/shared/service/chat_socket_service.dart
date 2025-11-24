@@ -8,6 +8,8 @@ import 'package:grab_go_rider/shared/service/user_service.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
+enum ChatSocketConnectionState { disconnected, connecting, connected, reconnecting }
+
 class ChatSocketService {
   ChatSocketService._();
   static final ChatSocketService _instance = ChatSocketService._();
@@ -21,7 +23,22 @@ class ChatSocketService {
   final Map<String, int> _unreadByChatId = {};
   void Function(int)? _onUnreadChanged;
 
+  final List<void Function(dynamic)> _newMessageListeners = [];
+  final List<void Function(dynamic)> _presenceListeners = [];
+  final List<void Function(dynamic)> _typingListeners = [];
+  final List<void Function(dynamic)> _readListeners = [];
+
+  final Set<String> _joinedChats = <String>{};
+
+  ChatSocketConnectionState _connectionState = ChatSocketConnectionState.disconnected;
+  final List<void Function(ChatSocketConnectionState)> _connectionListeners = [];
+
+  Timer? _reconnectTimer;
+  int _reconnectAttempts = 0;
+  static const int _maxReconnectAttempts = 5;
+
   int get totalUnread => _totalUnread;
+  ChatSocketConnectionState get connectionState => _connectionState;
 
   Future<void> initialize() async {
     try {
@@ -42,6 +59,51 @@ class ChatSocketService {
 
   void registerUnreadListener(void Function(int) listener) {
     _onUnreadChanged = listener;
+  }
+
+  void addNewMessageListener(void Function(dynamic) listener) {
+    _newMessageListeners.add(listener);
+  }
+
+  void removeNewMessageListener(void Function(dynamic) listener) {
+    _newMessageListeners.remove(listener);
+  }
+
+  void addPresenceListener(void Function(dynamic) listener) {
+    _presenceListeners.add(listener);
+  }
+
+  void removePresenceListener(void Function(dynamic) listener) {
+    _presenceListeners.remove(listener);
+  }
+
+  void addTypingListener(void Function(dynamic) listener) {
+    _typingListeners.add(listener);
+  }
+
+  void removeTypingListener(void Function(dynamic) listener) {
+    _typingListeners.remove(listener);
+  }
+
+  void addReadListener(void Function(dynamic) listener) {
+    _readListeners.add(listener);
+  }
+
+  void removeReadListener(void Function(dynamic) listener) {
+    _readListeners.remove(listener);
+  }
+
+  void addConnectionListener(void Function(ChatSocketConnectionState) listener) {
+    _connectionListeners.add(listener);
+    try {
+      listener(_connectionState);
+    } catch (e) {
+      debugPrint('Error in ChatSocketService connection listener (initial): $e');
+    }
+  }
+
+  void removeConnectionListener(void Function(ChatSocketConnectionState) listener) {
+    _connectionListeners.remove(listener);
   }
 
   void overrideTotalUnread(int count) {
@@ -73,6 +135,66 @@ class ChatSocketService {
     _updateCachedChatUnread(chatId, 0);
   }
 
+  void joinChat(String chatId) {
+    if (chatId.isEmpty) return;
+    if (_joinedChats.contains(chatId)) return;
+
+    _connectIfNeeded();
+    final socket = _socket;
+    if (socket == null || !socket.connected) return;
+
+    socket.emit('chat:join', {'chatId': chatId});
+    _joinedChats.add(chatId);
+  }
+
+  void setTyping(String chatId, bool isTyping) {
+    if (chatId.isEmpty) return;
+    _connectIfNeeded();
+    final socket = _socket;
+    if (socket == null || !socket.connected) return;
+    socket.emit('chat:typing', {'chatId': chatId, 'isTyping': isTyping});
+  }
+
+  void _setConnectionState(ChatSocketConnectionState state) {
+    if (_connectionState == state) return;
+    _connectionState = state;
+    for (final listener in _connectionListeners) {
+      try {
+        listener(state);
+      } catch (e) {
+        debugPrint('Error in ChatSocketService connection listener: $e');
+      }
+    }
+  }
+
+  void _scheduleReconnect() {
+    _reconnectTimer?.cancel();
+
+    if (_reconnectAttempts >= _maxReconnectAttempts) {
+      _setConnectionState(ChatSocketConnectionState.disconnected);
+      return;
+    }
+
+    final delaySeconds = 2 * (_reconnectAttempts + 1);
+    _reconnectAttempts += 1;
+
+    _setConnectionState(ChatSocketConnectionState.reconnecting);
+
+    _reconnectTimer = Timer(Duration(seconds: delaySeconds), () {
+      _connectIfNeeded();
+    });
+  }
+
+  void _handleSocketDisconnectOrError() {
+    _connecting = false;
+    try {
+      _socket?.dispose();
+    } catch (_) {}
+    _socket = null;
+    _joinedChats.clear();
+    _scheduleReconnect();
+  }
+
   void _notifyUnreadChanged() {
     final listener = _onUnreadChanged;
     final currentTotal = _totalUnread;
@@ -93,22 +215,91 @@ class ChatSocketService {
   void _connectIfNeeded() {
     if (_socket != null || _connecting) return;
     _connecting = true;
+    _setConnectionState(
+      _reconnectAttempts > 0 ? ChatSocketConnectionState.reconnecting : ChatSocketConnectionState.connecting,
+    );
 
     final socketUrl = _buildSocketUrl();
-    _socket = IO.io(socketUrl, IO.OptionBuilder().setTransports(['websocket']).disableAutoConnect().build());
+    final token = CacheService.getAuthToken();
+    if (token == null || token.isEmpty) {
+      _connecting = false;
+      _setConnectionState(ChatSocketConnectionState.disconnected);
+      return;
+    }
+
+    _socket = IO.io(
+      socketUrl,
+      IO.OptionBuilder()
+          .setTransports(['websocket'])
+          .setAuth({'token': token})
+          .disableAutoConnect()
+          .disableReconnection()
+          .build(),
+    );
 
     _socket!.onConnect((_) {
       _currentUserId ??= UserService().currentUser?.id;
+      _connecting = false;
+      _reconnectAttempts = 0;
+      _setConnectionState(ChatSocketConnectionState.connected);
+      _joinedChats.clear();
       _joinAllCachedChats();
     });
 
-    _socket!.on('chat:new_message', _handleNewMessageInternal);
-    _socket!.on('chat:read', _handleReadInternal);
+    _socket!.onConnectError((error) {
+      debugPrint('Chat socket connect error (rider): $error');
+      _handleSocketDisconnectOrError();
+    });
+
+    _socket!.onError((error) {
+      debugPrint('Chat socket error (rider): $error');
+    });
+
+    _socket!.on('chat:new_message', (data) {
+      _handleNewMessageInternal(data);
+      for (final listener in _newMessageListeners) {
+        try {
+          listener(data);
+        } catch (e) {
+          debugPrint('Error in chat:new_message listener: $e');
+        }
+      }
+    });
+
+    _socket!.on('chat:presence', (data) {
+      for (final listener in _presenceListeners) {
+        try {
+          listener(data);
+        } catch (e) {
+          debugPrint('Error in chat:presence listener: $e');
+        }
+      }
+    });
+
+    _socket!.on('chat:typing', (data) {
+      for (final listener in _typingListeners) {
+        try {
+          listener(data);
+        } catch (e) {
+          debugPrint('Error in chat:typing listener: $e');
+        }
+      }
+    });
+
+    _socket!.on('chat:read', (data) {
+      _handleReadInternal(data);
+      for (final listener in _readListeners) {
+        try {
+          listener(data);
+        } catch (e) {
+          debugPrint('Error in chat:read listener: $e');
+        }
+      }
+    });
 
     _socket!.onDisconnect((_) {
-      _connecting = false;
-      // Allow a fresh connection to be created on next demand.
-      _socket = null;
+      debugPrint('Chat socket disconnected (rider)');
+      _handleSocketDisconnectOrError();
     });
 
     _socket!.connect();
@@ -186,11 +377,15 @@ class ChatSocketService {
     final userId = _currentUserId;
     if (userId == null || userId.isEmpty) return;
 
-    final cached = CacheService.getChatList();
-    for (final chat in cached) {
-      final id = chat['id']?.toString();
-      if (id == null || id.isEmpty || id == 'support') continue;
-      _socket!.emit('chat:join', {'chatId': id, 'userId': userId});
+    try {
+      final cached = CacheService.getChatList();
+      for (final chat in cached) {
+        final id = chat['id']?.toString();
+        if (id == null || id.isEmpty || id == 'support') continue;
+        joinChat(id);
+      }
+    } catch (e) {
+      debugPrint('Error joining cached chats (rider): $e');
     }
   }
 
@@ -199,13 +394,14 @@ class ChatSocketService {
       _connectIfNeeded();
     }
     if (_socket == null || !_socket!.connected) return;
+
     _currentUserId ??= UserService().currentUser?.id;
     final userId = _currentUserId;
     if (userId == null || userId.isEmpty) return;
 
     for (final chatId in chatIds) {
       if (chatId == 'support') continue;
-      _socket!.emit('chat:join', {'chatId': chatId, 'userId': userId});
+      joinChat(chatId);
     }
   }
 
@@ -293,7 +489,7 @@ class ChatSocketService {
   void _handleReadInternal(dynamic data) {
     if (data is! Map) return;
 
-    final map = Map<String, dynamic>.from(data as Map);
+    final map = Map<String, dynamic>.from(data);
     final chatId = map['chatId']?.toString();
     final userId = map['userId']?.toString();
     if (chatId == null || userId == null) return;
@@ -318,9 +514,13 @@ class ChatSocketService {
       _socket?.dispose();
       _socket = null;
       _connecting = false;
+      _reconnectTimer?.cancel();
+      _reconnectTimer = null;
+      _joinedChats.clear();
       _unreadByChatId.clear();
       _totalUnread = 0;
       _notifyUnreadChanged();
+      _setConnectionState(ChatSocketConnectionState.disconnected);
     } catch (_) {}
   }
 }

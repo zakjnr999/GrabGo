@@ -345,6 +345,112 @@ class CacheService {
     }
   }
 
+  // ==================== CHAT CACHING ====================
+
+  /// Save per-chat text draft
+  static Future<bool> saveChatDraft(String chatId, String text) async {
+    try {
+      final key = 'chat_draft_$chatId';
+      if (text.isEmpty) {
+        return await _instance.remove(key);
+      }
+      return await _instance.setString(key, text);
+    } catch (e) {
+      debugPrint('Error saving chat draft: $e');
+      return false;
+    }
+  }
+
+  /// Get per-chat text draft
+  static String getChatDraft(String chatId) {
+    try {
+      final key = 'chat_draft_$chatId';
+      return _instance.getString(key) ?? '';
+    } catch (e) {
+      debugPrint('Error getting chat draft: $e');
+      return '';
+    }
+  }
+
+  /// Clear per-chat text draft
+  static Future<bool> clearChatDraft(String chatId) async {
+    try {
+      final key = 'chat_draft_$chatId';
+      return await _instance.remove(key);
+    } catch (e) {
+      debugPrint('Error clearing chat draft: $e');
+      return false;
+    }
+  }
+
+  /// Save per-chat last seen timestamp (for unread separators)
+  static Future<bool> saveChatLastSeen(String chatId, DateTime timestamp) async {
+    try {
+      final key = 'chat_last_seen_$chatId';
+      return await _instance.setInt(key, timestamp.millisecondsSinceEpoch);
+    } catch (e) {
+      debugPrint('Error saving chat last seen: $e');
+      return false;
+    }
+  }
+
+  /// Get per-chat last seen timestamp
+  static DateTime? getChatLastSeen(String chatId) {
+    try {
+      final key = 'chat_last_seen_$chatId';
+      final millis = _instance.getInt(key);
+      if (millis == null) return null;
+      return DateTime.fromMillisecondsSinceEpoch(millis);
+    } catch (e) {
+      debugPrint('Error getting chat last seen: $e');
+      return null;
+    }
+  }
+
+  /// Clear per-chat last seen timestamp
+  static Future<bool> clearChatLastSeen(String chatId) async {
+    try {
+      final key = 'chat_last_seen_$chatId';
+      return await _instance.remove(key);
+    } catch (e) {
+      debugPrint('Error clearing chat last seen: $e');
+      return false;
+    }
+  }
+
+  /// Save last known order status for a specific order
+  static Future<bool> saveOrderLastStatus(String orderId, String status) async {
+    try {
+      final key = 'order_last_status_$orderId';
+      return await _instance.setString(key, status);
+    } catch (e) {
+      debugPrint('Error saving order last status: $e');
+      return false;
+    }
+  }
+
+  /// Get last known order status for a specific order
+  static String? getOrderLastStatus(String orderId) {
+    try {
+      final key = 'order_last_status_$orderId';
+      return _instance.getString(key);
+    } catch (e) {
+      debugPrint('Error getting order last status: $e');
+      return null;
+    }
+  }
+
+  /// Clear last known order status for a specific order
+  static Future<bool> clearOrderLastStatus(String orderId) async {
+    try {
+      final key = 'order_last_status_$orderId';
+      return await _instance.remove(key);
+    } catch (e) {
+      debugPrint('Error clearing order last status: $e');
+      return false;
+    }
+  }
+
   static Future<bool> saveChatList(List<Map<String, dynamic>> chats) async {
     try {
       final chatsJson = jsonEncode(chats);
@@ -398,6 +504,36 @@ class CacheService {
     } catch (e) {
       debugPrint('Error getting chat unread count: $e');
       return 0;
+    }
+  }
+
+  /// Save messages for a specific chat so the detail view can load instantly
+  static Future<bool> saveChatMessages(String chatId, List<Map<String, dynamic>> messages) async {
+    try {
+      final key = 'chat_messages_$chatId';
+      final json = jsonEncode(messages);
+      return await _instance.setString(key, json);
+    } catch (e) {
+      debugPrint('Error saving chat messages: $e');
+      return false;
+    }
+  }
+
+  /// Get cached messages for a specific chat
+  static List<Map<String, dynamic>> getChatMessages(String chatId) {
+    try {
+      final key = 'chat_messages_$chatId';
+      final json = _instance.getString(key);
+      if (json == null) return [];
+
+      final decoded = jsonDecode(json);
+      if (decoded is List) {
+        return decoded.cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting chat messages: $e');
+      return [];
     }
   }
 

@@ -265,8 +265,15 @@ class _ChatsState extends State<Chats> {
 
   void _setupSocket() {
     final socketUrl = _buildSocketUrl();
+    final token = CacheService.getAuthToken();
+    if (token == null || token.isEmpty) {
+      return;
+    }
 
-    _socket = IO.io(socketUrl, IO.OptionBuilder().setTransports(['websocket']).disableAutoConnect().build());
+    _socket = IO.io(
+      socketUrl,
+      IO.OptionBuilder().setTransports(['websocket']).setAuth({'token': token}).disableAutoConnect().build(),
+    );
 
     _socket!.onConnect((_) {
       _currentUserId ??= _userService.getUserId();
@@ -289,7 +296,7 @@ class _ChatsState extends State<Chats> {
 
     for (final chat in _conversations) {
       if (chat.id == 'support') continue;
-      _socket!.emit('chat:join', {'chatId': chat.id, 'userId': userId});
+      _socket!.emit('chat:join', {'chatId': chat.id});
     }
   }
 

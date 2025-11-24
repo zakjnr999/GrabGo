@@ -6,6 +6,9 @@ const morgan = require("morgan");
 const compression = require("compression");
 const http = require("http");
 const { Server } = require("socket.io");
+const jwt = require("jsonwebtoken");
+const User = require("./models/User");
+const Chat = require("./models/Chat");
 require("dotenv").config();
 
 const app = express();
@@ -19,37 +22,102 @@ const io = new Server(server, {
   },
 });
 
+// Track per-chat presence across all sockets so that a user only appears
+// offline for a chat when all of their sockets for that chat have
+// disconnected.
+const chatPresence = new Map(); // key: `${chatId}:${userId}`, value: connection count
+
+io.use(async (socket, next) => {
+  try {
+    const headers = socket.handshake.headers || {};
+    let token;
+
+    const authHeader =
+      headers.authorization ||
+      headers.Authorization;
+
+    if (authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
+    } else if (socket.handshake.auth && typeof socket.handshake.auth.token === "string") {
+      token = socket.handshake.auth.token;
+    }
+
+    if (!token) {
+      return next(new Error("Not authorized, no token provided"));
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select("_id role isActive");
+
+    if (!user || !user.isActive) {
+      return next(new Error("Not authorized"));
+    }
+
+    socket.data.userId = user._id.toString();
+    socket.data.userRole = user.role;
+    return next();
+  } catch (error) {
+    console.error("Socket auth error:", error.message);
+    return next(new Error("Not authorized"));
+  }
+});
+
 module.exports = { app, io };
 
 io.on("connection", (socket) => {
   console.log("🔌 New WebSocket connection", socket.id);
 
-  socket.on("chat:join", ({ chatId, userId }) => {
-    if (!chatId) return;
+  socket.on("chat:join", async ({ chatId }) => {
+    try {
+      const userId = socket.data.userId;
+      if (!chatId || !userId) return;
 
-    const room = `chat:${chatId}`;
-    socket.join(room);
+      const chat = await Chat.findById(chatId).select("customer rider");
+      if (!chat) {
+        return;
+      }
 
-    // Track which user and chats this socket is associated with
-    if (userId) {
-      socket.data.userId = userId;
-    }
-    if (!socket.data.chats) {
-      socket.data.chats = new Set();
-    }
-    socket.data.chats.add(room);
+      const userIdStr = userId.toString();
+      const isParticipant =
+        (chat.customer && chat.customer.toString() === userIdStr) ||
+        (chat.rider && chat.rider.toString() === userIdStr);
 
-    if (userId) {
-      socket.to(room).emit("chat:presence", { chatId, userId, online: true });
+      if (!isParticipant) {
+        console.warn(
+          `Unauthorized chat:join attempt. userId=${userIdStr}, chatId=${chatId}`
+        );
+        return;
+      }
+
+      const room = `chat:${chatId}`;
+      socket.join(room);
+
+      if (!socket.data.chats) {
+        socket.data.chats = new Set();
+      }
+      socket.data.chats.add(room);
+
+      const presenceKey = `${chatId}:${userIdStr}`;
+      const previousCount = chatPresence.get(presenceKey) || 0;
+      const nextCount = previousCount + 1;
+      chatPresence.set(presenceKey, nextCount);
+
+      if (previousCount === 0) {
+        socket.to(room).emit("chat:presence", { chatId, userId: userIdStr, online: true });
+      }
+    } catch (error) {
+      console.error("chat:join error:", error.message);
     }
   });
 
-  socket.on("chat:typing", ({ chatId, userId, isTyping }) => {
+  socket.on("chat:typing", ({ chatId, isTyping }) => {
+    const userId = socket.data.userId;
     if (!chatId || !userId) return;
+    const userIdStr = userId.toString();
     const room = `chat:${chatId}`;
     socket.to(room).emit("chat:typing", {
       chatId,
-      userId,
+      userId: userIdStr,
       isTyping: !!isTyping,
     });
   });
@@ -59,11 +127,21 @@ io.on("connection", (socket) => {
     const chats = socket.data.chats;
 
     if (userId && chats && typeof chats.forEach === "function") {
+      const userIdStr = userId.toString();
       chats.forEach((room) => {
         const chatId = room.replace("chat:", "");
-        socket
-          .to(room)
-          .emit("chat:presence", { chatId, userId, online: false });
+        const presenceKey = `${chatId}:${userIdStr}`;
+        const previousCount = chatPresence.get(presenceKey) || 0;
+        const nextCount = previousCount - 1;
+
+        if (nextCount <= 0) {
+          chatPresence.delete(presenceKey);
+          socket
+            .to(room)
+            .emit("chat:presence", { chatId, userId: userIdStr, online: false });
+        } else {
+          chatPresence.set(presenceKey, nextCount);
+        }
       });
     }
 

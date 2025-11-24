@@ -9,12 +9,9 @@ import 'package:grab_go_rider/features/chat/view/chat_detail_page.dart';
 import 'package:grab_go_rider/shared/service/user_service.dart';
 import 'package:grab_go_rider/shared/service/cache_service.dart';
 import 'package:grab_go_rider/shared/service/chat_socket_service.dart';
-import 'package:grab_go_rider/shared/viewmodel/bottom_nav_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -56,8 +53,8 @@ class _ChatPageState extends State<ChatPage> {
   bool _isLoading = false;
   String? _error;
   Timer? _pollingTimer;
-  IO.Socket? _socket;
   String? _currentUserId;
+  ChatSocketConnectionState _connectionState = ChatSocketConnectionState.disconnected;
 
   @override
   void initState() {
@@ -65,14 +62,25 @@ class _ChatPageState extends State<ChatPage> {
     _loadCachedConversations();
     _loadConversations();
     _startPolling();
-    _setupSocket();
     _searchController.addListener(_filterConversations);
+
+    final chatSocket = ChatSocketService();
+    chatSocket.addConnectionListener(_handleConnectionStateChanged);
+    chatSocket.addNewMessageListener(_handleNewMessageEvent);
+    chatSocket.addPresenceListener(_handlePresenceEvent);
+    chatSocket.addTypingListener(_handleTypingEvent);
+    chatSocket.addReadListener(_handleReadEvent);
   }
 
   @override
   void dispose() {
     _pollingTimer?.cancel();
-    _socket?.dispose();
+    final chatSocket = ChatSocketService();
+    chatSocket.removeConnectionListener(_handleConnectionStateChanged);
+    chatSocket.removeNewMessageListener(_handleNewMessageEvent);
+    chatSocket.removePresenceListener(_handlePresenceEvent);
+    chatSocket.removeTypingListener(_handleTypingEvent);
+    chatSocket.removeReadListener(_handleReadEvent);
     _searchController.dispose();
     super.dispose();
   }
@@ -136,6 +144,13 @@ class _ChatPageState extends State<ChatPage> {
       if (!_isLoading) {
         _refreshConversationsSilently();
       }
+    });
+  }
+
+  void _handleConnectionStateChanged(ChatSocketConnectionState state) {
+    if (!mounted) return;
+    setState(() {
+      _connectionState = state;
     });
   }
 
@@ -212,7 +227,6 @@ class _ChatPageState extends State<ChatPage> {
 
       _conversations = [supportChat, ...loaded];
       _filteredConversations = _conversations;
-      _joinAllChatsIfReady();
       ChatSocketService().updateKnownChats(_conversations.map((c) => c.id).where((id) => id != 'support').toList());
     } catch (e) {
       _error = 'Failed to load chats. Please try again.';
@@ -276,55 +290,9 @@ class _ChatPageState extends State<ChatPage> {
         }
         _error = null;
       });
-      _joinAllChatsIfReady();
       ChatSocketService().updateKnownChats(all.map((c) => c.id).where((id) => id != 'support').toList());
     } catch (e) {
       // Silent fail; keep current list
-    }
-  }
-
-  String _buildSocketUrl() {
-    final apiBase = AppConfig.apiBaseUrl;
-    if (apiBase.endsWith('/api/')) {
-      return apiBase.substring(0, apiBase.length - 5);
-    }
-    if (apiBase.endsWith('/api')) {
-      return apiBase.substring(0, apiBase.length - 4);
-    }
-    return apiBase;
-  }
-
-  void _setupSocket() {
-    final socketUrl = _buildSocketUrl();
-
-    _socket = IO.io(socketUrl, <String, dynamic>{
-      'transports': ['websocket'],
-      'autoConnect': false,
-      'forceNew': true,
-    });
-
-    _socket!.onConnect((_) {
-      _currentUserId ??= _userService.currentUser?.id;
-      _joinAllChatsIfReady();
-    });
-
-    _socket!.on('chat:new_message', _handleNewMessageEvent);
-    _socket!.on('chat:presence', _handlePresenceEvent);
-    _socket!.on('chat:typing', _handleTypingEvent);
-    _socket!.on('chat:read', _handleReadEvent);
-
-    _socket!.connect();
-  }
-
-  void _joinAllChatsIfReady() {
-    if (_socket == null || !_socket!.connected) return;
-    _currentUserId ??= _userService.currentUser?.id;
-    final userId = _currentUserId;
-    if (userId == null || userId.isEmpty) return;
-
-    for (final chat in _conversations) {
-      if (chat.id == 'support') continue;
-      _socket!.emit('chat:join', {'chatId': chat.id, 'userId': userId});
     }
   }
 
@@ -617,6 +585,12 @@ class _ChatPageState extends State<ChatPage> {
               ),
             ),
 
+            if (_connectionState == ChatSocketConnectionState.reconnecting ||
+                _connectionState == ChatSocketConnectionState.connecting)
+              _buildConnectionBanner('Reconnecting to chat…', colors, isWarning: false)
+            else if (_connectionState == ChatSocketConnectionState.disconnected)
+              _buildConnectionBanner('Offline. Messages may be delayed.', colors, isWarning: true),
+
             // Conversations List
             Expanded(
               child: _isLoading
@@ -647,6 +621,36 @@ class _ChatPageState extends State<ChatPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildConnectionBanner(String text, AppColorsExtension colors, {required bool isWarning}) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
+      color: colors.backgroundPrimary,
+      child: Row(
+        children: [
+          if (!isWarning)
+            SizedBox(
+              width: 14.w,
+              height: 14.w,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(colors.accentGreen),
+              ),
+            )
+          else
+            Icon(Icons.wifi_off, size: 16.w, color: colors.textSecondary),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+            ),
+          ),
+        ],
       ),
     );
   }
