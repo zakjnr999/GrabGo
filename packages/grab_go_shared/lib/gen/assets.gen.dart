@@ -91,11 +91,17 @@ class $LibAssetsIconsGen {
   AssetGenImage get backgroundIconRider =>
       const AssetGenImage('lib/assets/icons/background_icon_rider.png');
 
+  /// File path: lib/assets/icons/badge-check.svg
+  String get badgeCheck => 'lib/assets/icons/badge-check.svg';
+
   /// File path: lib/assets/icons/ban.svg
   String get ban => 'lib/assets/icons/ban.svg';
 
   /// File path: lib/assets/icons/bbq.svg
   String get bbq => 'lib/assets/icons/bbq.svg';
+
+  /// File path: lib/assets/icons/bell-notification.svg
+  String get bellNotification => 'lib/assets/icons/bell-notification.svg';
 
   /// File path: lib/assets/icons/bell.svg
   String get bell => 'lib/assets/icons/bell.svg';
@@ -184,9 +190,15 @@ class $LibAssetsIconsGen {
   AssetGenImage get facebook =>
       const AssetGenImage('lib/assets/icons/facebook.png');
 
+  /// File path: lib/assets/icons/fast-arrow-down.svg
+  String get fastArrowDown => 'lib/assets/icons/fast-arrow-down.svg';
+
   /// File path: lib/assets/icons/fast-delivery.png
   AssetGenImage get fastDelivery =>
       const AssetGenImage('lib/assets/icons/fast-delivery.png');
+
+  /// File path: lib/assets/icons/fire-flame.svg
+  String get fireFlame => 'lib/assets/icons/fire-flame.svg';
 
   /// File path: lib/assets/icons/flame.svg
   String get flame => 'lib/assets/icons/flame.svg';
@@ -257,6 +269,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/media-image.svg
   String get mediaImage => 'lib/assets/icons/media-image.svg';
 
+  /// File path: lib/assets/icons/media-video.svg
+  String get mediaVideo => 'lib/assets/icons/media-video.svg';
+
   /// File path: lib/assets/icons/menu.svg
   String get menu => 'lib/assets/icons/menu.svg';
 
@@ -294,14 +309,23 @@ class $LibAssetsIconsGen {
   AssetGenImage get packageDelivered =>
       const AssetGenImage('lib/assets/icons/package-delivered.png');
 
+  /// File path: lib/assets/icons/percentage-circle.svg
+  String get percentageCircle => 'lib/assets/icons/percentage-circle.svg';
+
   /// File path: lib/assets/icons/phone-solid.svg
   String get phoneSolid => 'lib/assets/icons/phone-solid.svg';
 
   /// File path: lib/assets/icons/phone.svg
   String get phone => 'lib/assets/icons/phone.svg';
 
+  /// File path: lib/assets/icons/play.svg
+  String get play => 'lib/assets/icons/play.svg';
+
   /// File path: lib/assets/icons/plus.svg
   String get plus => 'lib/assets/icons/plus.svg';
+
+  /// File path: lib/assets/icons/profile-circle.svg
+  String get profileCircle => 'lib/assets/icons/profile-circle.svg';
 
   /// File path: lib/assets/icons/refresh.svg
   String get refresh => 'lib/assets/icons/refresh.svg';
@@ -351,6 +375,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/star_heavy.svg
   String get starHeavy => 'lib/assets/icons/star_heavy.svg';
 
+  /// File path: lib/assets/icons/style-border.svg
+  String get styleBorder => 'lib/assets/icons/style-border.svg';
+
   /// File path: lib/assets/icons/sun-light.svg
   String get sunLight => 'lib/assets/icons/sun-light.svg';
 
@@ -397,8 +424,10 @@ class $LibAssetsIconsGen {
     arrowUpAZ,
     backgroundIconMain,
     backgroundIconRider,
+    badgeCheck,
     ban,
     bbq,
+    bellNotification,
     bell,
     binMinusIn,
     boxIso,
@@ -427,7 +456,9 @@ class $LibAssetsIconsGen {
     eye,
     facebookTag,
     facebook,
+    fastArrowDown,
     fastDelivery,
+    fireFlame,
     flame,
     foregroundIconCustomer,
     foregroundIconRider,
@@ -450,6 +481,7 @@ class $LibAssetsIconsGen {
     mediaImagePlus,
     mediaImageXmark,
     mediaImage,
+    mediaVideo,
     menu,
     mom,
     moreVert,
@@ -461,9 +493,12 @@ class $LibAssetsIconsGen {
     orderFood,
     orderTrackSample,
     packageDelivered,
+    percentageCircle,
     phoneSolid,
     phone,
+    play,
     plus,
+    profileCircle,
     refresh,
     riderOnboardingOne,
     riderOnboardingThree,
@@ -479,6 +514,7 @@ class $LibAssetsIconsGen {
     starSolid,
     star,
     starHeavy,
+    styleBorder,
     sunLight,
     sunMoon,
     tiktok,
@@ -596,9 +632,9 @@ class Assets {
 
   static const $LibGen lib = $LibGen();
 
-  static $LibAssetsIconsGen get icons => lib.assets.icons;
-  static $LibAssetsImagesGen get images => lib.assets.images;
-  static $LibAssetsFontsGen get fonts => lib.assets.fonts;
+  static $LibAssetsIconsGen get icons => const $LibAssetsIconsGen();
+  static $LibAssetsImagesGen get images => const $LibAssetsImagesGen();
+  static $LibAssetsFontsGen get fonts => const $LibAssetsFontsGen();
 }
 
 class AssetGenImage {

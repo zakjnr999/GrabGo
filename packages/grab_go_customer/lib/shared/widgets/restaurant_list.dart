@@ -24,7 +24,7 @@ class _RestaurantListState extends State<RestaurantList> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SizedBox(
-      height: size.height * 0.42,
+      height: 360.h,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),

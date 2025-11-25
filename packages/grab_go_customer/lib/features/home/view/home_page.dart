@@ -9,10 +9,9 @@ import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/widgets/food_category.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:grab_go_customer/shared/widgets/app_drawer.dart';
 import 'package:grab_go_customer/shared/widgets/home_search.dart';
 import 'package:grab_go_customer/shared/widgets/home_banner.dart';
-import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
+import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
 import 'package:grab_go_customer/features/home/model/filter_model.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
@@ -115,9 +114,6 @@ class _HomePageState extends State<HomePage> {
     }
 
     return Scaffold(
-      drawer: AppDrawer(
-        controller: DrawerController(alignment: DrawerAlignment.start, child: Container()),
-      ),
       body: SafeArea(
         child: SingleChildScrollView(
           controller: _scrollController,
@@ -230,24 +226,19 @@ class _HomePageState extends State<HomePage> {
                       ),
                       child: Row(
                         children: [
-                          Badge(
-                            backgroundColor: colors.accentViolet,
-                            label: Text("4", style: TextStyle(fontSize: 8.sp)),
-                            offset: const Offset(-4, 4),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () {
-                                  context.push("/notification");
-                                },
-                                customBorder: const CircleBorder(),
-                                child: Padding(
-                                  padding: EdgeInsets.all(10.r),
-                                  child: SvgPicture.asset(
-                                    Assets.icons.bell,
-                                    package: 'grab_go_shared',
-                                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                                  ),
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                context.push("/notification");
+                              },
+                              customBorder: const CircleBorder(),
+                              child: Padding(
+                                padding: EdgeInsets.all(10.r),
+                                child: SvgPicture.asset(
+                                  Assets.icons.bellNotification,
+                                  package: 'grab_go_shared',
+                                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                                 ),
                               ),
                             ),
@@ -258,13 +249,13 @@ class _HomePageState extends State<HomePage> {
                             child: Builder(
                               builder: (context) => InkWell(
                                 onTap: () {
-                                  Scaffold.of(context).openDrawer();
+                                  context.push("/statusMain");
                                 },
                                 customBorder: const CircleBorder(),
                                 child: Padding(
                                   padding: EdgeInsets.all(10.r),
                                   child: SvgPicture.asset(
-                                    Assets.icons.menu,
+                                    Assets.icons.styleBorder,
                                     package: 'grab_go_shared',
                                     colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                                   ),
@@ -286,9 +277,7 @@ class _HomePageState extends State<HomePage> {
                 onFilterApplied: (FilterModel filter) {
                   setState(() {
                     _activeFilter = filter.copyWith();
-                    // Reset selected category if it's not in the filtered categories
                     if (filter.isActive && filter.selectedCategories.isNotEmpty) {
-                      // Validate selected categories exist
                       final validCategoryIds = itemsProvider.categories
                           .map((cat) => cat.id)
                           .where((id) => id.isNotEmpty)
@@ -303,21 +292,18 @@ class _HomePageState extends State<HomePage> {
                             .where((cat) => validSelectedCategories.contains(cat.id))
                             .toList();
 
-                        // Check if current selected category is still valid
                         if (_selectedCategory != null && !validSelectedCategories.contains(_selectedCategory!.id)) {
                           _selectedCategory = filteredCategories.first;
                         } else {
                           _selectedCategory ??= filteredCategories.first;
                         }
                       } else {
-                        // No valid categories in filter, clear filter categories and use selected category
                         _activeFilter.selectedCategories.clear();
                         if (_selectedCategory == null && itemsProvider.categories.isNotEmpty) {
                           _selectedCategory = itemsProvider.categories.first;
                         }
                       }
                     } else {
-                      // If filter is cleared, select first category if none selected
                       if (itemsProvider.categories.isNotEmpty) {
                         if (_selectedCategory == null ||
                             !itemsProvider.categories.any((cat) => cat.id == _selectedCategory!.id)) {
@@ -410,10 +396,8 @@ class _HomePageState extends State<HomePage> {
                     );
                   }
 
-                  // Filter categories if filter is active and categories are selected
                   List<FoodCategoryModel> categoriesToShow = itemsProvider.categories;
                   if (_activeFilter.isActive && _activeFilter.selectedCategories.isNotEmpty) {
-                    // Validate that selected category IDs actually exist
                     final validCategoryIds = itemsProvider.categories
                         .map((cat) => cat.id)
                         .where((id) => id.isNotEmpty)
@@ -428,9 +412,7 @@ class _HomePageState extends State<HomePage> {
                           .where((category) => validSelectedCategories.contains(category.id))
                           .toList();
                     } else {
-                      // Selected categories no longer exist, show all categories
                       categoriesToShow = itemsProvider.categories;
-                      // Clear invalid categories from filter
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         if (mounted) {
                           setState(() {
@@ -440,7 +422,6 @@ class _HomePageState extends State<HomePage> {
                       });
                     }
 
-                    // If no categories match the filter, show empty state
                     if (categoriesToShow.isEmpty) {
                       return Container(
                         height: 95.h,
@@ -548,10 +529,8 @@ class _HomePageState extends State<HomePage> {
                 builder: (context) {
                   List<FoodItem> recommendedFoods = [];
 
-                  // Get all food items from categories (filtered by category selection if active)
                   List<FoodItem> allFoods = [];
 
-                  // Early return if no categories
                   if (itemsProvider.categories.isEmpty) {
                     return Container(
                       height: size.height * 0.15,
@@ -660,12 +639,10 @@ class _HomePageState extends State<HomePage> {
                     }
                   }
 
-                  // Apply filter if active (price, rating, restaurant filters)
                   if (_activeFilter.isActive && allFoods.isNotEmpty) {
                     allFoods = _applyFilter(allFoods, itemsProvider.categories, _activeFilter);
                   }
 
-                  // Limit to 5 items
                   if (allFoods.isNotEmpty) {
                     recommendedFoods = allFoods.take(5).toList();
                   }
@@ -710,199 +687,45 @@ class _HomePageState extends State<HomePage> {
                     itemBuilder: (context, index) {
                       final item = recommendedFoods[index];
 
-                      return GestureDetector(
-                        onTap: () => context.push("/foodDetails", extra: item),
-                        child: Container(
-                          margin: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 12.h),
-                          decoration: BoxDecoration(
-                            color: colors.backgroundPrimary,
-                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                            border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 1),
-                            boxShadow: [
-                              BoxShadow(
-                                color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
-                                spreadRadius: 0,
-                                blurRadius: 12,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              ClipRRect(
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(KBorderSize.borderRadius15),
-                                  bottomLeft: Radius.circular(KBorderSize.borderRadius15),
-                                ),
-                                child: CachedImageWidget(
-                                  imageUrl: item.image,
-                                  height: size.height * 0.14,
-                                  width: size.width * 0.32,
-                                  fit: BoxFit.cover,
-                                  placeholder: Container(
-                                    height: size.height * 0.14,
-                                    width: size.width * 0.32,
-                                    color: colors.inputBorder,
-                                    child: Center(
-                                      child: SvgPicture.asset(
-                                        Assets.icons.utensilsCrossed,
-                                        package: 'grab_go_shared',
-                                        colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                                        width: 30.w,
-                                        height: 30.h,
-                                      ),
-                                    ),
-                                  ),
-                                  errorWidget: Container(
-                                    height: size.height * 0.14,
-                                    width: size.width * 0.32,
-                                    color: colors.inputBorder,
-                                    child: Center(
-                                      child: SvgPicture.asset(
-                                        Assets.icons.utensilsCrossed,
-                                        package: 'grab_go_shared',
-                                        colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                                        width: 30.w,
-                                        height: 30.h,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
+                      return Consumer<CartProvider>(
+                        builder: (context, provider, _) {
+                          final bool isInCart = provider.cartItems.containsKey(item);
 
-                              Expanded(
-                                child: Padding(
-                                  padding: EdgeInsets.all(12.r),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            item.name,
-                                            style: TextStyle(
-                                              fontSize: 15.sp,
-                                              fontWeight: FontWeight.w700,
-                                              color: colors.textPrimary,
-                                            ),
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          SizedBox(height: 6.h),
-                                          Row(
-                                            children: [
-                                              SvgPicture.asset(
-                                                Assets.icons.starSolid,
-                                                package: 'grab_go_shared',
-                                                height: 13.h,
-                                                width: 13.w,
-                                                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                                              ),
-                                              SizedBox(width: 4.w),
-                                              Text(
-                                                item.rating.toStringAsFixed(1),
-                                                style: TextStyle(
-                                                  fontSize: 12.sp,
-                                                  color: colors.textPrimary,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                              SizedBox(width: 8.w),
-                                              Container(
-                                                width: 3.w,
-                                                height: 3.h,
-                                                decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  color: colors.textSecondary,
-                                                ),
-                                              ),
-                                              SizedBox(width: 8.w),
-                                              SvgPicture.asset(
-                                                Assets.icons.timer,
-                                                package: 'grab_go_shared',
-                                                height: 12.h,
-                                                width: 12.w,
-                                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                                              ),
-                                              SizedBox(width: 4.w),
-                                              Text(
-                                                "25-30 min",
-                                                style: TextStyle(
-                                                  fontSize: 11.sp,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: colors.textSecondary,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: 10.h),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Container(
-                                            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-                                            decoration: BoxDecoration(
-                                              color: colors.accentOrange.withValues(alpha: 0.15),
-                                              borderRadius: BorderRadius.circular(8.r),
-                                            ),
-                                            child: Text(
-                                              "GHS ${item.price.toStringAsFixed(2)}",
-                                              style: TextStyle(
-                                                fontSize: 13.sp,
-                                                fontWeight: FontWeight.w800,
-                                                color: colors.accentOrange,
-                                              ),
-                                            ),
-                                          ),
-                                          Consumer<CartProvider>(
-                                            builder: (context, provider, _) {
-                                              final bool isInCart = provider.cartItems.containsKey(item);
-
-                                              return GestureDetector(
-                                                onTap: () {
-                                                  if (isInCart) {
-                                                    provider.removeItemCompletely(item);
-                                                  } else {
-                                                    provider.addToCart(item);
-                                                  }
-                                                },
-                                                child: Container(
-                                                  padding: EdgeInsets.all(8.r),
-                                                  decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
-                                                    border: Border.all(
-                                                      color: isInCart ? colors.accentOrange : colors.inputBorder,
-                                                      width: 1,
-                                                    ),
-                                                  ),
-                                                  child: SvgPicture.asset(
-                                                    Assets.icons.cart,
-                                                    package: 'grab_go_shared',
-                                                    height: 16.h,
-                                                    width: 16.w,
-                                                    colorFilter: ColorFilter.mode(
-                                                      isInCart ? Colors.white : colors.textPrimary,
-                                                      BlendMode.srcIn,
-                                                    ),
-                                                  ),
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    ],
+                          return FoodItemCard(
+                            item: item,
+                            onTap: () => context.push("/foodDetails", extra: item),
+                            trailing: GestureDetector(
+                              onTap: () {
+                                if (isInCart) {
+                                  provider.removeItemCompletely(item);
+                                } else {
+                                  provider.addToCart(item);
+                                }
+                              },
+                              child: Container(
+                                padding: EdgeInsets.all(8.r),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
+                                  border: Border.all(
+                                    color: isInCart ? colors.accentOrange : colors.inputBorder,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: SvgPicture.asset(
+                                  Assets.icons.cart,
+                                  package: 'grab_go_shared',
+                                  height: 16.h,
+                                  width: 16.w,
+                                  colorFilter: ColorFilter.mode(
+                                    isInCart ? Colors.white : colors.textPrimary,
+                                    BlendMode.srcIn,
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
+                            ),
+                          );
+                        },
                       );
                     },
                   );

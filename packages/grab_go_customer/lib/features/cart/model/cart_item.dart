@@ -168,6 +168,7 @@ class _CartItemState extends State<CartItem> {
                 ],
                 child: Container(
                   margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
+                  padding: EdgeInsets.all(2.r),
                   decoration: BoxDecoration(
                     color: colors.backgroundPrimary,
                     borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
@@ -212,7 +213,7 @@ class _CartItemState extends State<CartItem> {
 
                       Expanded(
                         child: Padding(
-                          padding: EdgeInsets.all(12.r),
+                          padding: EdgeInsets.symmetric(horizontal: 12.r, vertical: 8.h),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,

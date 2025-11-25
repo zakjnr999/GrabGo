@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/features/restaurant/viewmodel/restaurant_provider.dart';
-import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurants_model.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
@@ -18,6 +17,7 @@ import 'package:readmore/readmore.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
 
 class RestaurantDetails extends StatefulWidget {
   const RestaurantDetails({super.key, required this.restaurant});
@@ -191,7 +191,7 @@ class _RestaurantDetailsState extends State<RestaurantDetails> with TickerProvid
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
-        systemNavigationBarColor: colors.accentOrange,
+        systemNavigationBarColor: colors.backgroundPrimary,
         systemNavigationBarIconBrightness: Brightness.light,
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.dark,
@@ -723,220 +723,49 @@ class _RestaurantDetailsState extends State<RestaurantDetails> with TickerProvid
                                           );
                                         }
                                         final food = displayedItems[index];
-                                        final isDark = Theme.of(context).brightness == Brightness.dark;
 
-                                        return GestureDetector(
-                                          onTap: () {
-                                            context.push('/foodDetails', extra: food);
-                                          },
-                                          child: Container(
-                                            margin: EdgeInsets.symmetric(vertical: 6.h),
-                                            decoration: BoxDecoration(
-                                              color: colors.backgroundPrimary,
-                                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                                              border: Border.all(
-                                                color: colors.inputBorder.withValues(alpha: 0.3),
-                                                width: 1,
+                                        return Consumer<CartProvider>(
+                                          builder: (context, cartProvider, _) {
+                                            final bool isInCart = cartProvider.cartItems.containsKey(food);
+
+                                            return FoodItemCard(
+                                              item: food,
+                                              margin: EdgeInsets.symmetric(vertical: 6.h),
+                                              onTap: () {
+                                                context.push('/foodDetails', extra: food);
+                                              },
+                                              trailing: GestureDetector(
+                                                onTap: () {
+                                                  if (isInCart) {
+                                                    cartProvider.removeItemCompletely(food);
+                                                  } else {
+                                                    cartProvider.addToCart(food);
+                                                  }
+                                                },
+                                                child: Container(
+                                                  padding: EdgeInsets.all(8.r),
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
+                                                    border: Border.all(
+                                                      color: isInCart ? colors.accentOrange : colors.inputBorder,
+                                                      width: 1,
+                                                    ),
+                                                  ),
+                                                  child: SvgPicture.asset(
+                                                    Assets.icons.cart,
+                                                    package: 'grab_go_shared',
+                                                    height: 16.h,
+                                                    width: 16.w,
+                                                    colorFilter: ColorFilter.mode(
+                                                      isInCart ? Colors.white : colors.textPrimary,
+                                                      BlendMode.srcIn,
+                                                    ),
+                                                  ),
+                                                ),
                                               ),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: isDark
-                                                      ? Colors.black.withAlpha(30)
-                                                      : Colors.black.withAlpha(8),
-                                                  spreadRadius: 0,
-                                                  blurRadius: 12,
-                                                  offset: const Offset(0, 2),
-                                                ),
-                                              ],
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                ClipRRect(
-                                                  borderRadius: const BorderRadius.only(
-                                                    topLeft: Radius.circular(KBorderSize.borderRadius15),
-                                                    bottomLeft: Radius.circular(KBorderSize.borderRadius15),
-                                                  ),
-                                                  child: CachedImageWidget(
-                                                    imageUrl: food.image,
-                                                    height: size.height * 0.14,
-                                                    width: size.width * 0.32,
-                                                    fit: BoxFit.cover,
-                                                    placeholder: Container(
-                                                      height: size.height * 0.14,
-                                                      width: size.width * 0.32,
-                                                      color: colors.inputBorder,
-                                                      child: Center(
-                                                        child: SvgPicture.asset(
-                                                          Assets.icons.utensilsCrossed,
-                                                          package: 'grab_go_shared',
-                                                          colorFilter: ColorFilter.mode(
-                                                            colors.textSecondary,
-                                                            BlendMode.srcIn,
-                                                          ),
-                                                          width: 30.w,
-                                                          height: 30.h,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    errorWidget: Container(
-                                                      height: size.height * 0.14,
-                                                      width: size.width * 0.32,
-                                                      color: colors.inputBorder,
-                                                      child: Center(
-                                                        child: SvgPicture.asset(
-                                                          Assets.icons.utensilsCrossed,
-                                                          package: 'grab_go_shared',
-                                                          colorFilter: ColorFilter.mode(
-                                                            colors.textSecondary,
-                                                            BlendMode.srcIn,
-                                                          ),
-                                                          width: 30.w,
-                                                          height: 30.h,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-
-                                                Expanded(
-                                                  child: Padding(
-                                                    padding: EdgeInsets.all(12.r),
-                                                    child: Column(
-                                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                      children: [
-                                                        Column(
-                                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                                          children: [
-                                                            Text(
-                                                              food.name,
-                                                              style: TextStyle(
-                                                                fontSize: 15.sp,
-                                                                fontWeight: FontWeight.w700,
-                                                                color: colors.textPrimary,
-                                                              ),
-                                                              maxLines: 2,
-                                                              overflow: TextOverflow.ellipsis,
-                                                            ),
-                                                            SizedBox(height: 6.h),
-                                                            Row(
-                                                              children: [
-                                                                SvgPicture.asset(
-                                                                  Assets.icons.starSolid,
-                                                                  package: 'grab_go_shared',
-                                                                  height: 13.h,
-                                                                  width: 13.w,
-                                                                  colorFilter: ColorFilter.mode(
-                                                                    colors.accentOrange,
-                                                                    BlendMode.srcIn,
-                                                                  ),
-                                                                ),
-                                                                SizedBox(width: 4.w),
-                                                                Text(
-                                                                  food.rating.toStringAsFixed(1),
-                                                                  style: TextStyle(
-                                                                    fontSize: 12.sp,
-                                                                    color: colors.textPrimary,
-                                                                    fontWeight: FontWeight.w600,
-                                                                  ),
-                                                                ),
-                                                                SizedBox(width: 8.w),
-                                                                Container(
-                                                                  width: 3.w,
-                                                                  height: 3.h,
-                                                                  decoration: BoxDecoration(
-                                                                    shape: BoxShape.circle,
-                                                                    color: colors.textSecondary,
-                                                                  ),
-                                                                ),
-                                                                SizedBox(width: 8.w),
-                                                                Expanded(
-                                                                  child: Text(
-                                                                    _getCategoryNameForFood(food),
-                                                                    style: TextStyle(
-                                                                      fontSize: 11.sp,
-                                                                      fontWeight: FontWeight.w500,
-                                                                      color: colors.textSecondary,
-                                                                    ),
-                                                                    overflow: TextOverflow.ellipsis,
-                                                                  ),
-                                                                ),
-                                                              ],
-                                                            ),
-                                                          ],
-                                                        ),
-                                                        SizedBox(height: 10.h),
-                                                        Row(
-                                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                          children: [
-                                                            Container(
-                                                              padding: EdgeInsets.symmetric(
-                                                                horizontal: 10.w,
-                                                                vertical: 6.h,
-                                                              ),
-                                                              decoration: BoxDecoration(
-                                                                color: colors.accentOrange.withValues(alpha: 0.15),
-                                                                borderRadius: BorderRadius.circular(8.r),
-                                                              ),
-                                                              child: Text(
-                                                                "GHS ${food.price.toStringAsFixed(2)}",
-                                                                style: TextStyle(
-                                                                  fontSize: 13.sp,
-                                                                  fontWeight: FontWeight.w800,
-                                                                  color: colors.accentOrange,
-                                                                ),
-                                                              ),
-                                                            ),
-                                                            Consumer<CartProvider>(
-                                                              builder: (context, cartProvider, _) {
-                                                                final bool isInCart = cartProvider.cartItems
-                                                                    .containsKey(food);
-
-                                                                return GestureDetector(
-                                                                  onTap: () {
-                                                                    if (isInCart) {
-                                                                      cartProvider.removeItemCompletely(food);
-                                                                    } else {
-                                                                      cartProvider.addToCart(food);
-                                                                    }
-                                                                  },
-                                                                  child: Container(
-                                                                    padding: EdgeInsets.all(8.r),
-                                                                    decoration: BoxDecoration(
-                                                                      shape: BoxShape.circle,
-                                                                      color: isInCart
-                                                                          ? colors.accentOrange
-                                                                          : colors.backgroundSecondary,
-                                                                      border: Border.all(
-                                                                        color: isInCart
-                                                                            ? colors.accentOrange
-                                                                            : colors.inputBorder,
-                                                                        width: 1,
-                                                                      ),
-                                                                    ),
-                                                                    child: SvgPicture.asset(
-                                                                      Assets.icons.cart,
-                                                                      package: 'grab_go_shared',
-                                                                      height: 16.h,
-                                                                      width: 16.w,
-                                                                      colorFilter: ColorFilter.mode(
-                                                                        isInCart ? Colors.white : colors.textPrimary,
-                                                                        BlendMode.srcIn,
-                                                                      ),
-                                                                    ),
-                                                                  ),
-                                                                );
-                                                              },
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
+                                            );
+                                          },
                                         );
                                       },
                                     ),

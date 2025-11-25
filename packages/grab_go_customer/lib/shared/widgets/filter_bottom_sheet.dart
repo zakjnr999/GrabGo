@@ -34,41 +34,26 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
   void initState() {
     super.initState();
     _filter = widget.initialFilter.copyWith();
-    // Clean up stale filter data - remove categories/restaurants that no longer exist
     _cleanupStaleFilterData();
 
-    // Initialize animation controller with smooth timing
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 350),
       reverseDuration: const Duration(milliseconds: 250),
     );
 
-    // Slide animation - slides up from bottom with smooth easing
-    _slideAnimation =
-        Tween<Offset>(
-          begin: const Offset(0, 1), // Start from bottom (off-screen)
-          end: Offset.zero, // End at normal position
-        ).animate(
-          CurvedAnimation(
-            parent: _animationController,
-            curve: Curves.easeOutCubic, // Smooth deceleration
-          ),
-        );
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic));
 
-    // Fade animation - fades in with slightly faster curve
-    _fadeAnimation =
-        Tween<double>(
-          begin: 0.0, // Start invisible
-          end: 1.0, // End fully visible
-        ).animate(
-          CurvedAnimation(
-            parent: _animationController,
-            curve: const Interval(0.0, 0.6, curve: Curves.easeOut), // Fade completes faster than slide
-          ),
-        );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+      ),
+    );
 
-    // Start animation after widget is built to ensure it's visible
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _animationController.forward();
@@ -83,11 +68,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
   }
 
   void _cleanupStaleFilterData() {
-    // Remove category IDs that don't exist in the current categories list
     final validCategoryIds = widget.categories.map((cat) => cat.id).where((id) => id.isNotEmpty).toSet();
     _filter.selectedCategories.removeWhere((id) => !validCategoryIds.contains(id));
 
-    // Remove restaurant names that don't exist in the current restaurants list
     final validRestaurants = widget.restaurants.where((r) => r.isNotEmpty).toSet();
     _filter.selectedRestaurants.removeWhere((restaurant) => !validRestaurants.contains(restaurant));
   }
@@ -302,7 +285,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
     for (var filter in priceFilters) {
       final filterMin = (filter['min'] as num).toDouble();
       final filterMax = (filter['max'] as num).toDouble();
-      // Use epsilon comparison for floating point values
       if ((_filter.minPrice - filterMin).abs() < 0.01 && (_filter.maxPrice - filterMax).abs() < 0.01) {
         currentPriceFilter = filter['key'];
         break;
@@ -433,62 +415,59 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
       );
     }
 
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
-      child: Wrap(
-        spacing: 8.w,
-        runSpacing: 8.h,
-        children: [
-          for (var category in widget.categories)
-            GestureDetector(
-              onTap: () {
-                if (category.id.isEmpty) return; // Guard against empty category ID
-                setState(() {
-                  if (_filter.selectedCategories.contains(category.id)) {
-                    _filter.selectedCategories.remove(category.id);
-                  } else {
-                    _filter.selectedCategories.add(category.id);
-                  }
-                });
-              },
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: _filter.selectedCategories.contains(category.id)
-                        ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
-                        : [colors.backgroundPrimary, colors.backgroundPrimary],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  color: _filter.selectedCategories.contains(category.id) ? colors.accentOrange : Colors.transparent,
-                  border: Border.all(
-                    color: _filter.selectedCategories.contains(category.id) ? colors.accentOrange : colors.inputBorder,
-                    width: 1.5,
-                  ),
-                  borderRadius: BorderRadius.circular(8.r),
+    return Wrap(
+      spacing: 8.w,
+      runSpacing: 8.h,
+      children: [
+        for (var category in widget.categories)
+          GestureDetector(
+            onTap: () {
+              if (category.id.isEmpty) return;
+              setState(() {
+                if (_filter.selectedCategories.contains(category.id)) {
+                  _filter.selectedCategories.remove(category.id);
+                } else {
+                  _filter.selectedCategories.add(category.id);
+                }
+              });
+            },
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: _filter.selectedCategories.contains(category.id)
+                      ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
+                      : [colors.backgroundPrimary, colors.backgroundPrimary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(category.emoji, style: TextStyle(fontSize: 16.sp)),
-                    SizedBox(width: 6.w),
-                    Text(
-                      category.name,
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w600,
-                        color: _filter.selectedCategories.contains(category.id)
-                            ? colors.backgroundPrimary
-                            : colors.textPrimary,
-                      ),
+                color: _filter.selectedCategories.contains(category.id) ? colors.accentOrange : Colors.transparent,
+                border: Border.all(
+                  color: _filter.selectedCategories.contains(category.id) ? colors.accentOrange : colors.inputBorder,
+                  width: 1.5,
+                ),
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(category.emoji, style: TextStyle(fontSize: 16.sp)),
+                  SizedBox(width: 6.w),
+                  Text(
+                    category.name,
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                      color: _filter.selectedCategories.contains(category.id)
+                          ? colors.backgroundPrimary
+                          : colors.textPrimary,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 

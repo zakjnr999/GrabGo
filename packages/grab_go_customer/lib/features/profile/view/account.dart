@@ -278,11 +278,15 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                     width: size.width * 0.15,
                                     decoration: BoxDecoration(color: colors.backgroundPrimary, shape: BoxShape.circle),
                                   ),
-                                  errorWidget: Assets.icons.noProfile.image(
+                                  errorWidget: Container(
                                     height: size.width * 0.15,
                                     width: size.width * 0.15,
-                                    fit: BoxFit.cover,
-                                    package: 'grab_go_shared',
+                                    padding: EdgeInsets.all(12.r),
+                                    child: SvgPicture.asset(
+                                      Assets.icons.profileCircle,
+                                      package: "grab_go_shared",
+                                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                    ),
                                   ),
                                 ),
                               ),

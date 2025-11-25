@@ -12,7 +12,7 @@ import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
+import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
 
 class Menu extends StatefulWidget {
   const Menu({super.key});
@@ -304,223 +304,81 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
   Widget _buildFoodItemCard(FoodItem item, AppColorsExtension colors, bool isDark) {
     final popularItems = _getPopularItems();
     final isPopular = popularItems.contains(item);
-    final size = MediaQuery.sizeOf(context);
     final colors = context.appColors;
 
-    return GestureDetector(
-      onTap: () => context.push("/foodDetails", extra: item),
-      child: Container(
-        margin: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 12.h),
-        decoration: BoxDecoration(
-          color: colors.backgroundPrimary,
-          borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-          border: Border.all(color: Colors.transparent, width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
-              spreadRadius: 0,
-              blurRadius: 12,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            Row(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(KBorderSize.borderRadius15),
-                    bottomLeft: Radius.circular(KBorderSize.borderRadius15),
-                  ),
-                  child: CachedImageWidget(
-                    imageUrl: item.image,
-                    height: size.height * 0.14,
-                    width: size.width * 0.32,
-                    fit: BoxFit.cover,
-                    placeholder: Container(
-                      height: size.height * 0.14,
-                      width: size.width * 0.32,
-                      color: colors.inputBorder,
-                      child: Center(
-                        child: SvgPicture.asset(
-                          Assets.icons.utensilsCrossed,
-                          package: 'grab_go_shared',
-                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                          width: 30.w,
-                          height: 30.h,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.all(12.r),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: EdgeInsets.only(right: isPopular ? 70.w : 0),
-                              child: Text(
-                                item.name,
-                                style: TextStyle(
-                                  fontSize: 15.sp,
-                                  fontWeight: FontWeight.w700,
-                                  color: colors.textPrimary,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            SizedBox(height: 6.h),
-                            Row(
-                              children: [
-                                SvgPicture.asset(
-                                  Assets.icons.starSolid,
-                                  package: 'grab_go_shared',
-                                  height: 13.h,
-                                  width: 13.w,
-                                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                                ),
-                                SizedBox(width: 4.w),
-                                Text(
-                                  item.rating.toStringAsFixed(1),
-                                  style: TextStyle(
-                                    fontSize: 12.sp,
-                                    color: colors.textPrimary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                SizedBox(width: 8.w),
-                                Container(
-                                  width: 3.w,
-                                  height: 3.h,
-                                  decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
-                                ),
-                                SizedBox(width: 8.w),
-                                SvgPicture.asset(
-                                  Assets.icons.timer,
-                                  package: 'grab_go_shared',
-                                  height: 12.h,
-                                  width: 12.w,
-                                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                                ),
-                                SizedBox(width: 4.w),
-                                Text(
-                                  "${item.deliveryTimeMinutes} min",
-                                  style: TextStyle(
-                                    fontSize: 11.sp,
-                                    fontWeight: FontWeight.w500,
-                                    color: colors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 10.h),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Container(
-                              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-                              decoration: BoxDecoration(
-                                color: colors.accentOrange.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(8.r),
-                              ),
-                              child: Text(
-                                "GHS ${item.price.toStringAsFixed(2)}",
-                                style: TextStyle(
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.w800,
-                                  color: colors.accentOrange,
-                                ),
-                              ),
-                            ),
-                            Consumer<FavoritesProvider>(
-                              builder: (context, favoritesProvider, _) {
-                                final bool isFavorite = favoritesProvider.isFavorite(item);
+    return Stack(
+      children: [
+        FoodItemCard(
+          item: item,
+          onTap: () => context.push("/foodDetails", extra: item),
+          trailing: Consumer<FavoritesProvider>(
+            builder: (context, favoritesProvider, _) {
+              final bool isFavorite = favoritesProvider.isFavorite(item);
 
-                                return GestureDetector(
-                                  onTap: () {
-                                    if (isFavorite) {
-                                      favoritesProvider.removeFromFavorites(item);
-                                    } else {
-                                      favoritesProvider.addToFavorites(item);
-                                    }
-                                  },
-                                  child: Container(
-                                    padding: EdgeInsets.all(8.r),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: isFavorite
-                                          ? colors.error.withValues(alpha: 0.1)
-                                          : colors.backgroundSecondary,
-                                      border: Border.all(
-                                        color: isFavorite ? colors.error : colors.inputBorder,
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: SvgPicture.asset(
-                                      isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
-                                      package: 'grab_go_shared',
-                                      height: 16.h,
-                                      width: 16.w,
-                                      colorFilter: ColorFilter.mode(
-                                        isFavorite ? colors.error : colors.textPrimary,
-                                        BlendMode.srcIn,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            if (isPopular)
-              Positioned(
-                top: 8.h,
-                right: 8.w,
+              return GestureDetector(
+                onTap: () {
+                  if (isFavorite) {
+                    favoritesProvider.removeFromFavorites(item);
+                  } else {
+                    favoritesProvider.addToFavorites(item);
+                  }
+                },
                 child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                  padding: EdgeInsets.all(8.r),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [colors.error, colors.accentOrange.withValues(alpha: 0.8)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(12.r),
-                    boxShadow: [
-                      BoxShadow(color: colors.error.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2)),
-                    ],
+                    shape: BoxShape.circle,
+                    color: isFavorite ? colors.error.withValues(alpha: 0.1) : colors.backgroundSecondary,
+                    border: Border.all(color: isFavorite ? colors.error : colors.inputBorder, width: 1),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.local_fire_department, color: Colors.white, size: 12.r),
-                      SizedBox(width: 4.w),
-                      Text(
-                        'Popular',
-                        style: TextStyle(color: Colors.white, fontSize: 10.sp, fontWeight: FontWeight.w700),
-                      ),
-                    ],
+                  child: SvgPicture.asset(
+                    isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
+                    package: 'grab_go_shared',
+                    height: 16.h,
+                    width: 16.w,
+                    colorFilter: ColorFilter.mode(isFavorite ? colors.error : colors.textPrimary, BlendMode.srcIn),
                   ),
                 ),
-              ),
-          ],
+              );
+            },
+          ),
         ),
-      ),
+        if (isPopular)
+          Positioned(
+            top: 8.h,
+            right: 24.w,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [colors.error, colors.accentOrange.withValues(alpha: 0.8)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12.r),
+                boxShadow: [
+                  BoxShadow(color: colors.error.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2)),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SvgPicture.asset(
+                    Assets.icons.fireFlame,
+                    package: "grab_go_shared",
+                    height: 16.h,
+                    width: 16.w,
+                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                  ),
+                  SizedBox(width: 4.w),
+                  Text(
+                    'Popular',
+                    style: TextStyle(color: Colors.white, fontSize: 10.sp, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 

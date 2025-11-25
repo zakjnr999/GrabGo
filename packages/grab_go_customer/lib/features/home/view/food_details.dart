@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 import 'package:readmore/readmore.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
+import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
 
 class FoodDetails extends StatefulWidget {
   const FoodDetails({super.key, required this.foodItem});
@@ -520,7 +521,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                         ),
                                         SizedBox(height: 12.h),
                                         SizedBox(
-                                          height: 200.h,
+                                          height: 210.h,
                                           child: ListView.builder(
                                             padding: EdgeInsets.only(left: 20.w),
                                             scrollDirection: Axis.horizontal,
@@ -592,7 +593,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                             children: displayedItems.map((item) {
                                               return Padding(
                                                 padding: EdgeInsets.only(bottom: 12.h),
-                                                child: _buildRestaurantFoodItem(item, colors, size, isDark),
+                                                child: _buildRestaurantFoodItem(item, colors),
                                               );
                                             }).toList(),
                                           ),
@@ -977,162 +978,43 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
     );
   }
 
-  Widget _buildRestaurantFoodItem(FoodItem item, AppColorsExtension colors, Size size, bool isDark) {
-    return GestureDetector(
-      onTap: () {
-        context.push("/foodDetails", extra: item);
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: colors.backgroundPrimary,
-          borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-          border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
-              spreadRadius: 0,
-              blurRadius: 12,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(KBorderSize.borderRadius15),
-                bottomLeft: Radius.circular(KBorderSize.borderRadius15),
-              ),
-              child: CachedImageWidget(
-                imageUrl: item.image,
-                height: size.height * 0.14,
-                width: size.width * 0.32,
-                fit: BoxFit.cover,
-                placeholder: Container(
-                  height: size.height * 0.14,
-                  width: size.width * 0.32,
-                  color: colors.inputBorder,
-                  child: Center(
-                    child: SvgPicture.asset(
-                      Assets.icons.utensilsCrossed,
-                      package: 'grab_go_shared',
-                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                      width: 30.w,
-                      height: 30.h,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.all(12.r),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      item.name,
-                      style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    SizedBox(height: 6.h),
-                    Row(
-                      children: [
-                        SvgPicture.asset(
-                          Assets.icons.starSolid,
-                          package: 'grab_go_shared',
-                          height: 13.h,
-                          width: 13.w,
-                          colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                        ),
-                        SizedBox(width: 4.w),
-                        Text(
-                          item.rating.toStringAsFixed(1),
-                          style: TextStyle(fontSize: 12.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
-                        ),
-                        SizedBox(width: 8.w),
-                        Container(
-                          width: 3.w,
-                          height: 3.h,
-                          decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
-                        ),
-                        SizedBox(width: 8.w),
-                        SvgPicture.asset(
-                          Assets.icons.timer,
-                          package: 'grab_go_shared',
-                          height: 12.h,
-                          width: 12.w,
-                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                        ),
-                        SizedBox(width: 4.w),
-                        Text(
-                          "25-30 min",
-                          style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 10.h),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-                          decoration: BoxDecoration(
-                            color: colors.accentOrange.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(8.r),
-                          ),
-                          child: Text(
-                            "GHS ${item.price.toStringAsFixed(2)}",
-                            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800, color: colors.accentOrange),
-                          ),
-                        ),
-                        Consumer<CartProvider>(
-                          builder: (context, provider, _) {
-                            final bool isInCart = provider.cartItems.containsKey(item);
+  Widget _buildRestaurantFoodItem(FoodItem item, AppColorsExtension colors) {
+    return Consumer<CartProvider>(
+      builder: (context, cartProvider, child) {
+        final bool isInCart = cartProvider.cartItems.containsKey(item);
 
-                            return GestureDetector(
-                              onTap: () {
-                                if (isInCart) {
-                                  provider.removeItemCompletely(item);
-                                } else {
-                                  provider.addToCart(item);
-                                }
-                              },
-                              child: Container(
-                                padding: EdgeInsets.all(8.r),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
-                                  border: Border.all(
-                                    color: isInCart ? colors.accentOrange : colors.inputBorder,
-                                    width: 1,
-                                  ),
-                                ),
-                                child: SvgPicture.asset(
-                                  Assets.icons.cart,
-                                  package: 'grab_go_shared',
-                                  height: 16.h,
-                                  width: 16.w,
-                                  colorFilter: ColorFilter.mode(
-                                    isInCart ? Colors.white : colors.textPrimary,
-                                    BlendMode.srcIn,
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+        return FoodItemCard(
+          item: item,
+          margin: EdgeInsets.zero,
+          onTap: () {
+            context.push("/foodDetails", extra: item);
+          },
+          trailing: GestureDetector(
+            onTap: () {
+              if (isInCart) {
+                cartProvider.removeItemCompletely(item);
+              } else {
+                cartProvider.addToCart(item);
+              }
+            },
+            child: Container(
+              padding: EdgeInsets.all(8.r),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
+                border: Border.all(color: isInCart ? colors.accentOrange : colors.inputBorder, width: 1),
+              ),
+              child: SvgPicture.asset(
+                Assets.icons.cart,
+                package: 'grab_go_shared',
+                height: 16.h,
+                width: 16.w,
+                colorFilter: ColorFilter.mode(isInCart ? Colors.white : colors.textPrimary, BlendMode.srcIn),
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

@@ -6,7 +6,7 @@ import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/features/home/model/filter_model.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
-import 'package:grab_go_customer/features/home/view/filter_bottom_sheet.dart';
+import 'package:grab_go_customer/shared/widgets/filter_bottom_sheet.dart';
 
 class HomeSearch extends StatefulWidget {
   final List<FoodCategoryModel> categories;
@@ -31,11 +31,9 @@ class _HomeSearchState extends State<HomeSearch> {
   @override
   void didUpdateWidget(HomeSearch oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Update internal filter state when activeFilter changes from parent
     final newFilter = widget.activeFilter?.copyWith() ?? FilterModel();
     final oldFilter = oldWidget.activeFilter?.copyWith() ?? FilterModel();
 
-    // Check if filter has actually changed by comparing values
     if (newFilter.minPrice != oldFilter.minPrice ||
         newFilter.maxPrice != oldFilter.maxPrice ||
         newFilter.minRating != oldFilter.minRating ||
