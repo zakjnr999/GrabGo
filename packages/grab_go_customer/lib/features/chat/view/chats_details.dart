@@ -9,10 +9,10 @@ import 'package:grab_go_customer/features/chat/service/chat_service.dart';
 import 'package:grab_go_customer/features/order/service/order_service_wrapper.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_customer/shared/services/cache_service.dart';
+import 'package:grab_go_customer/shared/services/chat_socket_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:intl/intl.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 class ChatMessage {
   final String id;
@@ -20,9 +20,13 @@ class ChatMessage {
   final DateTime timestamp;
   final bool isSentByMe;
   final bool isRead;
+  final DateTime? readAt;
   final bool isPending;
   final bool isFailed;
   final bool isSystem;
+  final String? replyToId;
+  final String? replyToText;
+  final bool? replyToIsSentByMe;
 
   ChatMessage({
     required this.id,
@@ -30,9 +34,13 @@ class ChatMessage {
     required this.timestamp,
     required this.isSentByMe,
     this.isRead = false,
+    this.readAt,
     this.isPending = false,
     this.isFailed = false,
     this.isSystem = false,
+    this.replyToId,
+    this.replyToText,
+    this.replyToIsSentByMe,
   });
 }
 
@@ -60,7 +68,6 @@ class _ChatDetailState extends State<ChatDetail> {
   String? _error;
   String? _currentUserId;
   bool _hasPendingSend = false;
-  IO.Socket? _socket;
   bool _isPeerOnline = false;
   bool _isPeerTyping = false;
   bool _isTyping = false;
@@ -77,8 +84,13 @@ class _ChatDetailState extends State<ChatDetail> {
   ];
   int? _firstUnreadIndex;
   bool _showScrollToBottomButton = false;
+  ChatMessage? _replyingTo;
   int _pendingNewMessages = 0;
   final GlobalKey _firstUnreadKey = GlobalKey();
+
+  // Pagination state
+  bool _hasMoreMessages = false;
+  bool _isLoadingMore = false;
 
   void _loadCachedMessages() {
     final cached = CacheService.getChatMessages(widget.chatId);
@@ -167,7 +179,7 @@ class _ChatDetailState extends State<ChatDetail> {
     _loadCachedMessages();
     _initAndLoadMessages();
     if (!widget.isSupport) {
-      _setupSocket();
+      _setupSocketListeners();
     }
     final initialDraft = CacheService.getChatDraft(widget.chatId);
     if (initialDraft.isNotEmpty) {
@@ -187,7 +199,23 @@ class _ChatDetailState extends State<ChatDetail> {
   void dispose() {
     _orderStatusTimer?.cancel();
     _typingTimer?.cancel();
-    _socket?.dispose();
+
+    // Send typing stopped if we were typing
+    if (_isTyping && !widget.isSupport) {
+      ChatSocketService().setTyping(widget.chatId, false);
+    }
+
+    // Remove socket listeners
+    if (!widget.isSupport) {
+      final chatSocket = ChatSocketService();
+      chatSocket.removeNewMessageListener(_handleIncomingSocketMessage);
+      chatSocket.removePresenceListener(_handlePresenceEvent);
+      chatSocket.removeTypingListener(_handleTypingEvent);
+      chatSocket.removeReadListener(_handleReadEvent);
+      chatSocket.removeRetryListener(_handleQueuedMessageRetry);
+      chatSocket.removeDeleteListener(_handleMessageDeleted);
+    }
+
     _scrollController.removeListener(_handleScrollPositionChanged);
     unawaited(CacheService.saveChatDraft(widget.chatId, _messageController.text));
     final lastSeen = _messages.isNotEmpty ? _messages.last.timestamp : DateTime.now();
@@ -262,6 +290,7 @@ class _ChatDetailState extends State<ChatDetail> {
             _orderId = chatDetail.orderId ?? widget.orderId;
             _orderNumber = chatDetail.orderNumber;
             _firstUnreadIndex = firstUnreadIndex;
+            _hasMoreMessages = chatDetail.pagination?.hasMore ?? false;
           });
 
           _cacheMessages();
@@ -296,52 +325,77 @@ class _ChatDetailState extends State<ChatDetail> {
     } finally {}
   }
 
-  String _buildSocketUrl() {
-    final apiBase = AppConfig.apiBaseUrl;
-    if (apiBase.endsWith('/api/')) {
-      return apiBase.substring(0, apiBase.length - 5);
-    }
-    if (apiBase.endsWith('/api')) {
-      return apiBase.substring(0, apiBase.length - 4);
-    }
-    return apiBase;
-  }
-
-  void _setupSocket() {
+  void _setupSocketListeners() {
+    debugPrint('[ChatDetail] _setupSocketListeners called, isSupport: ${widget.isSupport}, chatId: ${widget.chatId}');
     if (widget.isSupport) return;
 
-    final socketUrl = _buildSocketUrl();
-    final token = CacheService.getAuthToken();
-    if (token == null || token.isEmpty) {
-      return;
-    }
+    final chatSocket = ChatSocketService();
+    chatSocket.addNewMessageListener(_handleIncomingSocketMessage);
+    chatSocket.addPresenceListener(_handlePresenceEvent);
+    chatSocket.addTypingListener(_handleTypingEvent);
+    chatSocket.addReadListener(_handleReadEvent);
+    chatSocket.addRetryListener(_handleQueuedMessageRetry);
+    chatSocket.addDeleteListener(_handleMessageDeleted);
 
-    _socket = IO.io(
-      socketUrl,
-      IO.OptionBuilder().setTransports(['websocket']).setAuth({'token': token}).disableAutoConnect().build(),
-    );
+    // Ensure we're joined to this chat
+    debugPrint('[ChatDetail] Calling joinChat with chatId: ${widget.chatId}');
+    chatSocket.joinChat(widget.chatId);
+  }
 
-    _socket!.onConnect((_) {
-      _socket!.emit('chat:join', {'chatId': widget.chatId});
+  void _handleMessageDeleted(dynamic data) {
+    if (!mounted || widget.isSupport) return;
+    if (data is! Map) return;
+
+    final map = Map<String, dynamic>.from(data);
+    final payloadChatId = map['chatId']?.toString();
+    if (payloadChatId != widget.chatId) return;
+
+    final messageId = map['messageId']?.toString();
+    if (messageId == null) return;
+
+    setState(() {
+      _messages.removeWhere((m) => m.id == messageId);
     });
+    _cacheMessages();
+  }
 
-    _socket!.on('chat:new_message', (data) {
-      _handleIncomingSocketMessage(data);
+  void _handleQueuedMessageRetry(String chatId, String tempId, bool success, String? newId) {
+    if (!mounted || chatId != widget.chatId) return;
+
+    final index = _messages.indexWhere((m) => m.id == tempId);
+    if (index == -1) return;
+
+    setState(() {
+      if (success && newId != null) {
+        // Update the message with the real ID and mark as sent
+        final existing = _messages[index];
+        _messages[index] = ChatMessage(
+          id: newId,
+          text: existing.text,
+          timestamp: existing.timestamp,
+          isSentByMe: true,
+          isRead: false,
+          isPending: false,
+          isFailed: false,
+          isSystem: false,
+        );
+        HapticFeedback.lightImpact();
+      } else {
+        // Mark as permanently failed after max retries
+        final existing = _messages[index];
+        _messages[index] = ChatMessage(
+          id: existing.id,
+          text: existing.text,
+          timestamp: existing.timestamp,
+          isSentByMe: existing.isSentByMe,
+          isRead: existing.isRead,
+          isPending: false,
+          isFailed: true,
+          isSystem: existing.isSystem,
+        );
+      }
     });
-
-    _socket!.on('chat:presence', (data) {
-      _handlePresenceEvent(data);
-    });
-
-    _socket!.on('chat:typing', (data) {
-      _handleTypingEvent(data);
-    });
-
-    _socket!.on('chat:read', (data) {
-      _handleReadEvent(data);
-    });
-
-    _socket!.connect();
+    _cacheMessages();
   }
 
   void _handleIncomingSocketMessage(dynamic data) {
@@ -400,14 +454,23 @@ class _ChatDetailState extends State<ChatDetail> {
   }
 
   void _handlePresenceEvent(dynamic data) {
+    debugPrint('[ChatDetail] Presence event received: $data');
     if (!mounted || widget.isSupport) return;
     if (data is! Map) return;
 
     final map = Map<String, dynamic>.from(data);
     final payloadChatId = map['chatId']?.toString();
+    debugPrint('[ChatDetail] Presence chatId: $payloadChatId, widget.chatId: ${widget.chatId}');
     if (payloadChatId != widget.chatId) return;
 
+    // Ignore our own presence events
+    final eventUserId = map['userId']?.toString();
+    _currentUserId ??= _userService.getUserId();
+    debugPrint('[ChatDetail] Presence eventUserId: $eventUserId, currentUserId: $_currentUserId');
+    if (eventUserId == _currentUserId) return;
+
     final online = map['online'] == true;
+    debugPrint('[ChatDetail] Setting _isPeerOnline to: $online');
 
     setState(() {
       _isPeerOnline = online;
@@ -419,14 +482,23 @@ class _ChatDetailState extends State<ChatDetail> {
   }
 
   void _handleTypingEvent(dynamic data) {
+    debugPrint('[ChatDetail] Typing event received: $data');
     if (!mounted || widget.isSupport) return;
     if (data is! Map) return;
 
     final map = Map<String, dynamic>.from(data);
     final payloadChatId = map['chatId']?.toString();
+    debugPrint('[ChatDetail] Typing chatId: $payloadChatId, widget.chatId: ${widget.chatId}');
     if (payloadChatId != widget.chatId) return;
 
+    // Ignore our own typing events
+    final eventUserId = map['userId']?.toString();
+    _currentUserId ??= _userService.getUserId();
+    debugPrint('[ChatDetail] Typing eventUserId: $eventUserId, currentUserId: $_currentUserId');
+    if (eventUserId == _currentUserId) return;
+
     final isTyping = map['isTyping'] == true;
+    debugPrint('[ChatDetail] Setting _isPeerTyping to: $isTyping');
 
     setState(() {
       _isPeerTyping = isTyping;
@@ -453,6 +525,10 @@ class _ChatDetailState extends State<ChatDetail> {
 
     if (readerId == currentUserId) return;
 
+    // Parse readAt timestamp from event, or use current time
+    final readAtStr = map['readAt']?.toString();
+    final readAt = readAtStr != null ? DateTime.tryParse(readAtStr) : DateTime.now();
+
     setState(() {
       _messages = _messages
           .map(
@@ -463,6 +539,7 @@ class _ChatDetailState extends State<ChatDetail> {
                     timestamp: m.timestamp,
                     isSentByMe: m.isSentByMe,
                     isRead: true,
+                    readAt: readAt,
                     isPending: m.isPending,
                     isFailed: m.isFailed,
                     isSystem: m.isSystem,
@@ -477,21 +554,23 @@ class _ChatDetailState extends State<ChatDetail> {
   void _handleMessageChanged(String value) {
     CacheService.saveChatDraft(widget.chatId, value);
     if (widget.isSupport) return;
-    if (_socket == null) return;
 
     final userId = _userService.getUserId();
     if (userId == null || userId.isEmpty) return;
 
+    final chatSocket = ChatSocketService();
+    if (!chatSocket.isConnected) return;
+
     if (!_isTyping) {
       _isTyping = true;
-      _socket!.emit('chat:typing', {'chatId': widget.chatId, 'isTyping': true});
+      chatSocket.setTyping(widget.chatId, true);
     }
 
     _typingTimer?.cancel();
     _typingTimer = Timer(const Duration(seconds: 2), () {
       if (!_isTyping) return;
       _isTyping = false;
-      _socket?.emit('chat:typing', {'chatId': widget.chatId, 'isTyping': false});
+      ChatSocketService().setTyping(widget.chatId, false);
     });
   }
 
@@ -551,8 +630,8 @@ class _ChatDetailState extends State<ChatDetail> {
     _typingTimer?.cancel();
     if (_isTyping) {
       final userId = _userService.getUserId();
-      if (userId != null && userId.isNotEmpty && _socket != null) {
-        _socket!.emit('chat:typing', {'chatId': widget.chatId, 'isTyping': false});
+      if (userId != null && userId.isNotEmpty) {
+        ChatSocketService().setTyping(widget.chatId, false);
       }
       _isTyping = false;
     }
@@ -560,10 +639,14 @@ class _ChatDetailState extends State<ChatDetail> {
     final text = _messageController.text.trim();
     _messageController.clear();
 
-    await _sendQuickMessage(text);
+    // Capture reply before clearing
+    final replyTo = _replyingTo;
+    _cancelReply();
+
+    await _sendQuickMessage(text, replyTo: replyTo);
   }
 
-  Future<void> _sendQuickMessage(String text) async {
+  Future<void> _sendQuickMessage(String text, {ChatMessage? replyTo}) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
 
@@ -576,6 +659,9 @@ class _ChatDetailState extends State<ChatDetail> {
       isRead: false,
       isPending: true,
       isFailed: false,
+      replyToId: replyTo?.id,
+      replyToText: replyTo?.text,
+      replyToIsSentByMe: replyTo?.isSentByMe,
     );
 
     setState(() {
@@ -626,6 +712,10 @@ class _ChatDetailState extends State<ChatDetail> {
             isFailed: true,
             isSystem: existing.isSystem,
           );
+          // Queue for automatic retry when connection is restored
+          if (!widget.isSupport) {
+            ChatSocketService().queueFailedMessage(widget.chatId, tempId, trimmed);
+          }
         }
       });
       _cacheMessages();
@@ -640,6 +730,9 @@ class _ChatDetailState extends State<ChatDetail> {
 
     final index = _messages.indexWhere((m) => m.id == message.id);
     if (index == -1) return;
+
+    // Remove from queue since we're manually retrying
+    ChatSocketService().removeFromQueue(message.id);
 
     setState(() {
       _messages[index] = ChatMessage(
@@ -720,6 +813,12 @@ class _ChatDetailState extends State<ChatDetail> {
 
     final position = _scrollController.position;
     final isNearBottom = (position.maxScrollExtent - position.pixels) < 100;
+    final isNearTop = position.pixels < 100;
+
+    // Load more messages when scrolling near the top
+    if (isNearTop && _hasMoreMessages && !_isLoadingMore && !widget.isSupport) {
+      _loadMoreMessages();
+    }
 
     if (isNearBottom) {
       if (_showScrollToBottomButton || _pendingNewMessages != 0) {
@@ -732,6 +831,74 @@ class _ChatDetailState extends State<ChatDetail> {
       if (!_showScrollToBottomButton) {
         setState(() {
           _showScrollToBottomButton = true;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadMoreMessages() async {
+    if (_isLoadingMore || !_hasMoreMessages || _messages.isEmpty) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final oldestMessageId = _messages.first.id;
+      final chatDetail = await _chatService.getChat(widget.chatId, limit: 50, beforeMessageId: oldestMessageId);
+
+      if (!mounted || chatDetail == null) return;
+
+      final currentUserId = _currentUserId;
+      String? otherUserId;
+      if (currentUserId != null) {
+        if (chatDetail.customerId == currentUserId) {
+          otherUserId = chatDetail.riderId;
+        } else if (chatDetail.riderId == currentUserId) {
+          otherUserId = chatDetail.customerId;
+        }
+      }
+
+      final olderMessages = chatDetail.messages.map((m) {
+        final isSentByMe = currentUserId != null && m.senderId == currentUserId;
+        bool isReadByOther = false;
+        if (isSentByMe && otherUserId != null) {
+          isReadByOther = m.readBy.contains(otherUserId);
+        }
+
+        return ChatMessage(id: m.id, text: m.text, timestamp: m.sentAt, isSentByMe: isSentByMe, isRead: isReadByOther);
+      }).toList();
+
+      if (olderMessages.isNotEmpty) {
+        // Remember scroll position before adding messages
+        final scrollOffset = _scrollController.position.pixels;
+        final oldMaxExtent = _scrollController.position.maxScrollExtent;
+
+        setState(() {
+          _messages = [...olderMessages, ..._messages];
+          _hasMoreMessages = chatDetail.pagination?.hasMore ?? false;
+        });
+
+        // Restore scroll position after messages are added
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || !_scrollController.hasClients) return;
+          final newMaxExtent = _scrollController.position.maxScrollExtent;
+          final addedHeight = newMaxExtent - oldMaxExtent;
+          _scrollController.jumpTo(scrollOffset + addedHeight);
+        });
+
+        _cacheMessages();
+      } else {
+        setState(() {
+          _hasMoreMessages = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading more messages: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingMore = false;
         });
       }
     }
@@ -750,6 +917,26 @@ class _ChatDetailState extends State<ChatDetail> {
     } else {
       return DateFormat('MMM dd, hh:mm a').format(timestamp);
     }
+  }
+
+  String _formatReadTime(DateTime readAt) {
+    final now = DateTime.now();
+    final timePart = DateFormat('h:mm a').format(readAt);
+
+    if (now.difference(readAt).inMinutes < 1) {
+      return 'just now';
+    }
+
+    if (DateUtils.isSameDay(now, readAt)) {
+      return 'at $timePart';
+    }
+
+    final yesterday = now.subtract(const Duration(days: 1));
+    if (DateUtils.isSameDay(yesterday, readAt)) {
+      return 'yesterday at $timePart';
+    }
+
+    return 'on ${DateFormat('MMM d').format(readAt)} at $timePart';
   }
 
   String _formatLastSeenText(DateTime timestamp) {
@@ -979,13 +1166,30 @@ class _ChatDetailState extends State<ChatDetail> {
                           controller: _scrollController,
                           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
                           physics: const BouncingScrollPhysics(),
-                          itemCount: _messages.length,
+                          itemCount: _messages.length + (_isLoadingMore ? 1 : 0),
                           itemBuilder: (context, index) {
-                            final message = _messages[index];
-                            final previous = index > 0 ? _messages[index - 1] : null;
-                            final next = index < _messages.length - 1 ? _messages[index + 1] : null;
-                            final showDateDivider = _shouldShowDateDivider(index);
-                            final isFirstUnreadMessage = _firstUnreadIndex != null && index == _firstUnreadIndex;
+                            if (_isLoadingMore && index == 0) {
+                              return Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16.h),
+                                child: Center(
+                                  child: SizedBox(
+                                    width: 24.w,
+                                    height: 24.w,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(colors.accentOrange),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+
+                            final messageIndex = _isLoadingMore ? index - 1 : index;
+                            final message = _messages[messageIndex];
+                            final previous = messageIndex > 0 ? _messages[messageIndex - 1] : null;
+                            final next = messageIndex < _messages.length - 1 ? _messages[messageIndex + 1] : null;
+                            final showDateDivider = _shouldShowDateDivider(messageIndex);
+                            final isFirstUnreadMessage = _firstUnreadIndex != null && messageIndex == _firstUnreadIndex;
 
                             if (message.isSystem) {
                               final content = Column(
@@ -1151,6 +1355,9 @@ class _ChatDetailState extends State<ChatDetail> {
 
             if (!widget.isSupport && _quickIssueTemplates.isNotEmpty) _buildQuickIssueChips(colors),
 
+            // Reply preview
+            if (_replyingTo != null) _buildReplyPreview(colors),
+
             Container(
               padding: EdgeInsets.only(
                 left: 20.w,
@@ -1252,7 +1459,13 @@ class _ChatDetailState extends State<ChatDetail> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.arrow_downward, size: 18.w, color: colors.textPrimary),
+            SvgPicture.asset(
+              Assets.icons.fastArrowDown,
+              package: "grab_go_shared",
+              height: 18.h,
+              width: 18.w,
+              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+            ),
             if (hasCount) ...[
               SizedBox(width: 6.w),
               Text(
@@ -1341,6 +1554,57 @@ class _ChatDetailState extends State<ChatDetail> {
                   ),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReplyPreview(AppColorsExtension colors) {
+    final replyTo = _replyingTo;
+    if (replyTo == null) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+      decoration: BoxDecoration(
+        color: colors.backgroundPrimary,
+        border: Border(top: BorderSide(color: colors.border, width: 1)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 4.w,
+            height: 40.h,
+            decoration: BoxDecoration(color: colors.accentOrange, borderRadius: BorderRadius.circular(2.w)),
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  replyTo.isSentByMe ? 'You' : widget.senderName,
+                  style: TextStyle(color: colors.accentOrange, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  replyTo.text,
+                  style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w400),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 8.w),
+          GestureDetector(
+            onTap: _cancelReply,
+            child: Container(
+              padding: EdgeInsets.all(4.w),
+              child: Icon(Icons.close, size: 20.w, color: colors.textSecondary),
             ),
           ),
         ],
@@ -1443,7 +1707,7 @@ class _ChatDetailState extends State<ChatDetail> {
     final isSent = message.isSentByMe;
     final canRetry = isSent && message.isFailed;
 
-    final radiusBig = Radius.circular(KBorderSize.borderRadius12);
+    final radiusBig = const Radius.circular(KBorderSize.borderRadius12);
     const radiusSmall = Radius.circular(4);
 
     final topLeft = isSent ? (isFirstInGroup ? radiusSmall : radiusBig) : (isFirstInGroup ? radiusBig : radiusSmall);
@@ -1457,7 +1721,7 @@ class _ChatDetailState extends State<ChatDetail> {
               : message.isFailed
               ? 'Failed. Tap to retry.'
               : message.isRead
-              ? 'Read'
+              ? (message.readAt != null ? 'Seen ${_formatReadTime(message.readAt!)}' : 'Seen')
               : 'Sent')
         : null;
 
@@ -1480,13 +1744,60 @@ class _ChatDetailState extends State<ChatDetail> {
                 ),
                 border: isSent ? null : Border.all(color: colors.border, width: 1),
               ),
-              child: Text(
-                message.text,
-                style: TextStyle(
-                  color: isSent ? Colors.white : colors.textPrimary,
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w400,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Reply preview in bubble
+                  if (message.replyToId != null && message.replyToText != null)
+                    Container(
+                      margin: EdgeInsets.only(bottom: 8.h),
+                      padding: EdgeInsets.all(8.w),
+                      decoration: BoxDecoration(
+                        color: isSent
+                            ? Colors.white.withValues(alpha: 0.15)
+                            : colors.accentOrange.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8.w),
+                        border: Border(
+                          left: BorderSide(
+                            color: isSent ? Colors.white.withValues(alpha: 0.5) : colors.accentOrange,
+                            width: 3.w,
+                          ),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            message.replyToIsSentByMe == true ? 'You' : widget.senderName,
+                            style: TextStyle(
+                              color: isSent ? Colors.white.withValues(alpha: 0.9) : colors.accentOrange,
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(height: 2.h),
+                          Text(
+                            message.replyToText!,
+                            style: TextStyle(
+                              color: isSent ? Colors.white.withValues(alpha: 0.7) : colors.textSecondary,
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w400,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  Text(
+                    message.text,
+                    style: TextStyle(
+                      color: isSent ? Colors.white : colors.textPrimary,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
               ),
             ),
             if (isLastInGroup) ...[
@@ -1510,7 +1821,13 @@ class _ChatDetailState extends State<ChatDetail> {
                         ),
                       )
                     else if (message.isFailed)
-                      Icon(Icons.error_outline, size: 14.w, color: Colors.redAccent)
+                      SvgPicture.asset(
+                        Assets.icons.warningCircle,
+                        package: "grab_go_shared",
+                        height: 14.h,
+                        width: 14.w,
+                        colorFilter: ColorFilter.mode(colors.error, BlendMode.srcIn),
+                      )
                     else
                       Icon(
                         message.isRead ? Icons.done_all : Icons.done,
@@ -1533,6 +1850,21 @@ class _ChatDetailState extends State<ChatDetail> {
       ),
     );
 
+    final canSwipeToReply = !message.isSystem && !widget.isSupport && !message.isPending;
+
+    if (canSwipeToReply) {
+      return _SwipeToReply(
+        onSwipe: () => _setReplyingTo(message),
+        isSentByMe: isSent,
+        child: GestureDetector(
+          onTap: canRetry ? () => _retrySendMessage(message) : null,
+          onLongPress: () => _showMessageActions(message, colors),
+          behavior: HitTestBehavior.translucent,
+          child: bubble,
+        ),
+      );
+    }
+
     return GestureDetector(
       onTap: canRetry ? () => _retrySendMessage(message) : null,
       onLongPress: () => _showMessageActions(message, colors),
@@ -1541,13 +1873,27 @@ class _ChatDetailState extends State<ChatDetail> {
     );
   }
 
+  void _setReplyingTo(ChatMessage message) {
+    setState(() {
+      _replyingTo = message;
+    });
+    _messageFocusNode.requestFocus();
+    HapticFeedback.selectionClick();
+  }
+
+  void _cancelReply() {
+    setState(() {
+      _replyingTo = null;
+    });
+  }
+
   void _showMessageActions(ChatMessage message, AppColorsExtension colors) {
     HapticFeedback.selectionClick();
 
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: colors.backgroundPrimary,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(KBorderSize.borderRadius12)),
       ),
       builder: (context) {
@@ -1556,7 +1902,13 @@ class _ChatDetailState extends State<ChatDetail> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: Icon(Icons.copy, color: colors.textPrimary, size: 20.w),
+                leading: SvgPicture.asset(
+                  Assets.icons.edit,
+                  package: "grab_go_shared",
+                  height: 20.h,
+                  width: 20.w,
+                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                ),
                 title: Text(
                   'Copy',
                   style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
@@ -1568,7 +1920,13 @@ class _ChatDetailState extends State<ChatDetail> {
               ),
               if (message.isSentByMe && message.isFailed)
                 ListTile(
-                  leading: Icon(Icons.refresh, color: colors.textPrimary, size: 20.w),
+                  leading: SvgPicture.asset(
+                    Assets.icons.refresh,
+                    package: "grab_go_shared",
+                    height: 20.h,
+                    width: 20.w,
+                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                  ),
                   title: Text(
                     'Resend',
                     style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
@@ -1578,8 +1936,32 @@ class _ChatDetailState extends State<ChatDetail> {
                     _retrySendMessage(message);
                   },
                 ),
+              if (message.isSentByMe && !message.isPending && !widget.isSupport)
+                ListTile(
+                  leading: SvgPicture.asset(
+                    Assets.icons.binMinusIn,
+                    package: "grab_go_shared",
+                    height: 20.h,
+                    width: 20.w,
+                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                  ),
+                  title: Text(
+                    'Delete for everyone',
+                    style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                  ),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _deleteMessageForEveryone(message);
+                  },
+                ),
               ListTile(
-                leading: Icon(Icons.delete_outline, color: colors.textPrimary, size: 20.w),
+                leading: SvgPicture.asset(
+                  Assets.icons.binMinusIn,
+                  package: "grab_go_shared",
+                  height: 20.h,
+                  width: 20.w,
+                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                ),
                 title: Text(
                   'Delete for me',
                   style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
@@ -1600,6 +1982,26 @@ class _ChatDetailState extends State<ChatDetail> {
     setState(() {
       _messages.removeWhere((m) => m.id == message.id);
     });
+    _cacheMessages();
+  }
+
+  Future<void> _deleteMessageForEveryone(ChatMessage message) async {
+    // Optimistically remove from UI
+    setState(() {
+      _messages.removeWhere((m) => m.id == message.id);
+    });
+    _cacheMessages();
+
+    // Also remove from queue if it was a failed message
+    ChatSocketService().removeFromQueue(message.id);
+
+    // Call backend to delete
+    final success = await _chatService.deleteMessage(widget.chatId, message.id);
+
+    if (!success && mounted) {
+      // If delete failed, show error (message is already removed from UI)
+      AppToastMessage.show(context: context, icon: Icons.error_outline, message: "Failed to delete message");
+    }
   }
 
   Widget _buildErrorState(AppColorsExtension colors) {
@@ -1627,6 +2029,93 @@ class _ChatDetailState extends State<ChatDetail> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Swipe-to-reply widget for message bubbles
+class _SwipeToReply extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onSwipe;
+  final bool isSentByMe;
+
+  const _SwipeToReply({required this.child, required this.onSwipe, required this.isSentByMe});
+
+  @override
+  State<_SwipeToReply> createState() => _SwipeToReplyState();
+}
+
+class _SwipeToReplyState extends State<_SwipeToReply> {
+  double _dragExtent = 0;
+  static const double _swipeThreshold = 60.0;
+  bool _hasTriggered = false;
+
+  void _handleDragUpdate(DragUpdateDetails details) {
+    // For sent messages (right side), swipe left (negative)
+    // For received messages (left side), swipe right (positive)
+    final delta = details.primaryDelta ?? 0;
+
+    if (widget.isSentByMe) {
+      // Sent messages: only allow swipe left (negative delta)
+      _dragExtent = (_dragExtent + delta).clamp(-_swipeThreshold * 1.5, 0);
+    } else {
+      // Received messages: only allow swipe right (positive delta)
+      _dragExtent = (_dragExtent + delta).clamp(0, _swipeThreshold * 1.5);
+    }
+
+    setState(() {});
+
+    // Trigger haptic when threshold is reached
+    if (_dragExtent.abs() >= _swipeThreshold && !_hasTriggered) {
+      _hasTriggered = true;
+      HapticFeedback.mediumImpact();
+    } else if (_dragExtent.abs() < _swipeThreshold) {
+      _hasTriggered = false;
+    }
+  }
+
+  void _handleDragEnd(DragEndDetails details) {
+    if (_dragExtent.abs() >= _swipeThreshold) {
+      widget.onSwipe();
+    }
+
+    // Animate back to original position
+    _dragExtent = 0;
+    _hasTriggered = false;
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AppColorsExtension>()!;
+    final progress = (_dragExtent.abs() / _swipeThreshold).clamp(0.0, 1.0);
+
+    return GestureDetector(
+      onHorizontalDragUpdate: _handleDragUpdate,
+      onHorizontalDragEnd: _handleDragEnd,
+      child: Stack(
+        alignment: widget.isSentByMe ? Alignment.centerRight : Alignment.centerLeft,
+        children: [
+          // Reply icon that appears during swipe
+          Positioned(
+            left: widget.isSentByMe ? null : 8.w,
+            right: widget.isSentByMe ? 8.w : null,
+            child: Opacity(
+              opacity: progress,
+              child: Transform.scale(
+                scale: 0.5 + (progress * 0.5),
+                child: Container(
+                  padding: EdgeInsets.all(8.w),
+                  decoration: BoxDecoration(color: colors.accentOrange.withValues(alpha: 0.2), shape: BoxShape.circle),
+                  child: Icon(Icons.reply, size: 20.w, color: colors.accentOrange),
+                ),
+              ),
+            ),
+          ),
+          // The message bubble
+          Transform.translate(offset: Offset(_dragExtent, 0), child: widget.child),
+        ],
       ),
     );
   }

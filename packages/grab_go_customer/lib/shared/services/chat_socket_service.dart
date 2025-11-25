@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
-import 'package:grab_go_rider/features/chat/service/chat_service.dart';
-import 'package:grab_go_rider/shared/service/cache_service.dart';
-import 'package:grab_go_rider/shared/service/user_service.dart';
+import 'package:grab_go_customer/features/chat/service/chat_service.dart';
+import 'package:grab_go_customer/shared/services/cache_service.dart';
+import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
@@ -25,6 +25,22 @@ class QueuedMessage {
     required this.queuedAt,
     this.retryCount = 0,
   });
+
+  Map<String, dynamic> toJson() => {
+    'chatId': chatId,
+    'tempId': tempId,
+    'text': text,
+    'queuedAt': queuedAt.toIso8601String(),
+    'retryCount': retryCount,
+  };
+
+  factory QueuedMessage.fromJson(Map<String, dynamic> json) => QueuedMessage(
+    chatId: json['chatId'] as String,
+    tempId: json['tempId'] as String,
+    text: json['text'] as String,
+    queuedAt: DateTime.parse(json['queuedAt'] as String),
+    retryCount: (json['retryCount'] as int?) ?? 0,
+  );
 }
 
 class ChatSocketService {
@@ -59,14 +75,13 @@ class ChatSocketService {
   // Callback for when a queued message is retried
   final List<void Function(String chatId, String tempId, bool success, String? newId)> _retryListeners = [];
 
-  bool get isConnected => _socket != null && _socket!.connected;
-
   Timer? _reconnectTimer;
   int _reconnectAttempts = 0;
   static const int _maxReconnectAttempts = 5;
 
   int get totalUnread => _totalUnread;
   ChatSocketConnectionState get connectionState => _connectionState;
+  bool get isConnected => _socket != null && _socket!.connected;
 
   Future<void> initialize() async {
     try {
@@ -81,7 +96,7 @@ class ChatSocketService {
       await _bootstrapChats();
       _connectIfNeeded();
     } catch (e) {
-      debugPrint('Error initializing ChatSocketService (rider): $e');
+      debugPrint('Error initializing ChatSocketService: $e');
     }
   }
 
@@ -166,7 +181,6 @@ class ChatSocketService {
   void markChatAsReadLocally(String chatId, int cleared) {
     if (cleared <= 0) return;
 
-    // Use the tracked per-chat value to avoid double-subtracting
     final previous = _unreadByChatId[chatId] ?? 0;
     if (previous <= 0) return;
 
@@ -180,27 +194,37 @@ class ChatSocketService {
   }
 
   void joinChat(String chatId) {
-    if (chatId.isEmpty) return;
-    if (_joinedChats.contains(chatId)) return;
+    debugPrint(
+      '[ChatSocket] joinChat called with chatId: $chatId, socket connected: ${_socket?.connected}, connectionState: $_connectionState',
+    );
+    if (chatId.isEmpty || chatId == 'support') {
+      debugPrint('[ChatSocket] joinChat skipped - empty or support');
+      return;
+    }
+    if (_joinedChats.contains(chatId)) {
+      debugPrint('[ChatSocket] joinChat skipped - already joined. Socket connected: ${_socket?.connected}');
+      return;
+    }
 
     _connectIfNeeded();
     final socket = _socket;
-    if (socket == null || !socket.connected) return;
+    if (socket == null || !socket.connected) {
+      debugPrint(
+        '[ChatSocket] joinChat skipped - socket null or not connected. socket: $socket, connected: ${socket?.connected}',
+      );
+      return;
+    }
 
+    debugPrint('[ChatSocket] Emitting chat:join for chatId: $chatId');
     socket.emit('chat:join', {'chatId': chatId});
     _joinedChats.add(chatId);
   }
 
   void setTyping(String chatId, bool isTyping) {
-    debugPrint('[ChatSocket-Rider] setTyping called: chatId=$chatId, isTyping=$isTyping');
-    if (chatId.isEmpty) return;
+    if (chatId.isEmpty || chatId == 'support') return;
     _connectIfNeeded();
     final socket = _socket;
-    if (socket == null || !socket.connected) {
-      debugPrint('[ChatSocket-Rider] setTyping skipped - socket not connected');
-      return;
-    }
-    debugPrint('[ChatSocket-Rider] Emitting chat:typing');
+    if (socket == null || !socket.connected) return;
     socket.emit('chat:typing', {'chatId': chatId, 'isTyping': isTyping});
   }
 
@@ -249,9 +273,6 @@ class ChatSocketService {
     final currentTotal = _totalUnread;
 
     if (listener != null) {
-      // Defer the notification to the next frame to avoid triggering provider rebuilds
-      // during widget build, but explicitly schedule a frame so this still runs even
-      // when the UI is otherwise idle.
       WidgetsBinding.instance.scheduleFrame();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         listener(currentTotal);
@@ -287,6 +308,7 @@ class ChatSocketService {
     );
 
     _socket!.onConnect((_) {
+      debugPrint('[ChatSocket] Socket connected!');
       _currentUserId ??= UserService().currentUser?.id;
       _connecting = false;
       _reconnectAttempts = 0;
@@ -298,17 +320,17 @@ class ChatSocketService {
     });
 
     _socket!.onConnectError((error) {
-      debugPrint('Chat socket connect error (rider): $error');
+      debugPrint('Chat socket connect error: $error');
       _handleSocketDisconnectOrError();
     });
 
     _socket!.onError((error) {
-      debugPrint('Chat socket error (rider): $error');
+      debugPrint('Chat socket error: $error');
     });
 
     _socket!.on('chat:new_message', (data) {
       _handleNewMessageInternal(data);
-      for (final listener in _newMessageListeners) {
+      for (final listener in List.from(_newMessageListeners)) {
         try {
           listener(data);
         } catch (e) {
@@ -318,7 +340,8 @@ class ChatSocketService {
     });
 
     _socket!.on('chat:presence', (data) {
-      for (final listener in _presenceListeners) {
+      debugPrint('[ChatSocket] chat:presence received: $data, listeners: ${_presenceListeners.length}');
+      for (final listener in List.from(_presenceListeners)) {
         try {
           listener(data);
         } catch (e) {
@@ -328,7 +351,8 @@ class ChatSocketService {
     });
 
     _socket!.on('chat:typing', (data) {
-      for (final listener in _typingListeners) {
+      debugPrint('[ChatSocket] chat:typing received: $data, listeners: ${_typingListeners.length}');
+      for (final listener in List.from(_typingListeners)) {
         try {
           listener(data);
         } catch (e) {
@@ -339,7 +363,7 @@ class ChatSocketService {
 
     _socket!.on('chat:read', (data) {
       _handleReadInternal(data);
-      for (final listener in _readListeners) {
+      for (final listener in List.from(_readListeners)) {
         try {
           listener(data);
         } catch (e) {
@@ -359,7 +383,7 @@ class ChatSocketService {
     });
 
     _socket!.onDisconnect((_) {
-      debugPrint('Chat socket disconnected (rider)');
+      debugPrint('Chat socket disconnected');
       _handleSocketDisconnectOrError();
     });
 
@@ -387,7 +411,7 @@ class ChatSocketService {
 
       for (final chat in apiChats) {
         final senderId = chat.otherUserId ?? 'unknown_user';
-        final senderName = chat.otherUserName ?? (chat.otherUserRole == 'customer' ? 'Customer' : 'User');
+        final senderName = chat.otherUserName ?? (chat.otherUserRole == 'rider' ? 'Your rider' : 'User');
         final unread = chat.unreadCount;
 
         if (unread > 0) {
@@ -428,7 +452,7 @@ class ChatSocketService {
       _notifyUnreadChanged();
       unawaited(CacheService.saveChatList(serialized));
     } catch (e) {
-      debugPrint('Error bootstrapping chats for ChatSocketService (rider): $e');
+      debugPrint('Error bootstrapping chats for ChatSocketService: $e');
     }
   }
 
@@ -446,7 +470,7 @@ class ChatSocketService {
         joinChat(id);
       }
     } catch (e) {
-      debugPrint('Error joining cached chats (rider): $e');
+      debugPrint('Error joining cached chats: $e');
     }
   }
 
@@ -489,7 +513,7 @@ class ChatSocketService {
         unawaited(CacheService.saveChatList(cached));
       }
     } catch (e) {
-      debugPrint('Error updating cached chat list on new message (rider): $e');
+      debugPrint('Error updating cached chat list on new message: $e');
     }
   }
 
@@ -511,7 +535,7 @@ class ChatSocketService {
         unawaited(CacheService.saveChatList(cached));
       }
     } catch (e) {
-      debugPrint('Error updating cached chat list unread (rider): $e');
+      debugPrint('Error updating cached chat list unread: $e');
     }
   }
 
@@ -574,13 +598,14 @@ class ChatSocketService {
 
   /// Queue a failed message for retry when connection is restored
   void queueFailedMessage(String chatId, String tempId, String text) {
+    // Don't queue duplicates
     if (_messageQueue.any((m) => m.tempId == tempId)) return;
 
     _messageQueue.add(QueuedMessage(chatId: chatId, tempId: tempId, text: text, queuedAt: DateTime.now()));
     debugPrint('Queued message for retry: $tempId');
   }
 
-  /// Remove a message from the queue
+  /// Remove a message from the queue (e.g., if user manually retried or deleted)
   void removeFromQueue(String tempId) {
     _messageQueue.removeWhere((m) => m.tempId == tempId);
   }
@@ -612,6 +637,7 @@ class ChatSocketService {
 
         if (sent != null) {
           toRemove.add(queuedMsg.tempId);
+          // Notify listeners of successful retry
           for (final listener in List.from(_retryListeners)) {
             try {
               listener(queuedMsg.chatId, queuedMsg.tempId, true, sent.id);
@@ -624,6 +650,7 @@ class ChatSocketService {
           queuedMsg.retryCount++;
           if (queuedMsg.retryCount >= _maxRetries) {
             toRemove.add(queuedMsg.tempId);
+            // Notify listeners of permanent failure
             for (final listener in List.from(_retryListeners)) {
               try {
                 listener(queuedMsg.chatId, queuedMsg.tempId, false, null);
@@ -642,6 +669,7 @@ class ChatSocketService {
       }
     }
 
+    // Remove processed messages
     _messageQueue.removeWhere((m) => toRemove.contains(m.tempId));
     _isProcessingQueue = false;
 

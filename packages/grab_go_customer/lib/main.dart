@@ -6,6 +6,7 @@ import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/features/order/viewmodel/order_provider.dart';
 import 'package:grab_go_customer/features/restaurant/viewmodel/restaurant_provider.dart';
 import 'package:grab_go_customer/shared/services/cache_service.dart';
+import 'package:grab_go_customer/shared/services/chat_socket_service.dart';
 import 'package:grab_go_customer/shared/services/image_cache_service.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_customer/shared/utils/routes.dart';
@@ -45,6 +46,7 @@ Future<void> _initializeBackgroundServices() async {
   try {
     await GoogleSignInService().initialize();
     await UserService().initialize();
+    await ChatSocketService().initialize();
   } catch (e) {
     debugPrint('Error initializing background services: $e');
   }

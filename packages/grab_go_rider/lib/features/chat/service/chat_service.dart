@@ -72,6 +72,22 @@ class ChatMessageDto {
   }
 }
 
+class ChatPaginationDto {
+  final bool hasMore;
+  final int totalCount;
+  final int returnedCount;
+
+  ChatPaginationDto({required this.hasMore, required this.totalCount, required this.returnedCount});
+
+  factory ChatPaginationDto.fromJson(Map<String, dynamic> json) {
+    return ChatPaginationDto(
+      hasMore: json['hasMore'] as bool? ?? false,
+      totalCount: (json['totalCount'] as num?)?.toInt() ?? 0,
+      returnedCount: (json['returnedCount'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
 class ChatDetailDto {
   final String id;
   final String? orderId;
@@ -81,6 +97,7 @@ class ChatDetailDto {
   final String? riderId;
   final String? riderName;
   final List<ChatMessageDto> messages;
+  final ChatPaginationDto? pagination;
 
   ChatDetailDto({
     required this.id,
@@ -91,11 +108,13 @@ class ChatDetailDto {
     required this.riderId,
     required this.riderName,
     required this.messages,
+    this.pagination,
   });
 
   factory ChatDetailDto.fromJson(Map<String, dynamic> json) {
     final customer = json['customer'] as Map<String, dynamic>?;
     final rider = json['rider'] as Map<String, dynamic>?;
+    final paginationJson = json['pagination'] as Map<String, dynamic>?;
 
     return ChatDetailDto(
       id: json['id'] as String,
@@ -108,6 +127,7 @@ class ChatDetailDto {
       messages: (json['messages'] as List<dynamic>? ?? [])
           .map((e) => ChatMessageDto.fromJson(e as Map<String, dynamic>))
           .toList(),
+      pagination: paginationJson != null ? ChatPaginationDto.fromJson(paginationJson) : null,
     );
   }
 }
@@ -156,8 +176,17 @@ class ChatService {
     }
   }
 
-  Future<ChatDetailDto?> getChat(String chatId) async {
-    final uri = Uri.parse('$_baseUrl/chats/$chatId');
+  /// Fetches chat details with messages.
+  /// [limit] - Maximum number of messages to fetch (default 50, max 100)
+  /// [beforeMessageId] - Fetch messages before this message ID (for pagination)
+  Future<ChatDetailDto?> getChat(String chatId, {int? limit, String? beforeMessageId}) async {
+    final queryParams = <String, String>{};
+    if (limit != null) queryParams['limit'] = limit.toString();
+    if (beforeMessageId != null) queryParams['before'] = beforeMessageId;
+
+    final uri = Uri.parse(
+      '$_baseUrl/chats/$chatId',
+    ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
     try {
       final response = await _client.get(uri, headers: _buildHeaders());
@@ -199,6 +228,25 @@ class ChatService {
     } catch (e) {
       debugPrint('ChatService.sendMessage error: $e');
       return null;
+    }
+  }
+
+  /// Delete a message from a chat
+  Future<bool> deleteMessage(String chatId, String messageId) async {
+    final uri = Uri.parse('$_baseUrl/chats/$chatId/messages/$messageId');
+
+    try {
+      final response = await _client.delete(uri, headers: _buildHeaders());
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        debugPrint('ChatService.deleteMessage failed: ${response.statusCode} ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('ChatService.deleteMessage error: $e');
+      return false;
     }
   }
 }

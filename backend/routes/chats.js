@@ -50,10 +50,10 @@ router.get("/", protect, async (req, res) => {
         orderNumber: chat.order ? chat.order.orderNumber : null,
         otherUser: otherUser
           ? {
-              id: otherUser._id.toString(),
-              username: otherUser.username,
-              role: otherUser.role,
-            }
+            id: otherUser._id.toString(),
+            username: otherUser.username,
+            role: otherUser.role,
+          }
           : null,
         lastMessage: lastMessage ? lastMessage.text : "",
         lastMessageAt: lastMessage ? lastMessage.createdAt : chat.updatedAt,
@@ -76,10 +76,13 @@ router.get("/", protect, async (req, res) => {
   }
 });
 
-// Get single chat with messages
+// Get single chat with messages (supports pagination)
+// Query params: limit (default 50), before (message ID to fetch messages before)
 router.get("/:chatId", protect, async (req, res) => {
   try {
     const { chatId } = req.params;
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100); // Max 100 messages per request
+    const beforeMessageId = req.query.before; // For loading older messages
 
     const chat = await Chat.findById(chatId)
       .populate("order", "orderNumber")
@@ -107,28 +110,56 @@ router.get("/:chatId", protect, async (req, res) => {
       });
     }
 
-    // Mark messages as read by current user
-    let changed = false;
-    chat.messages.forEach((msg) => {
-      const alreadyRead = msg.readBy.some((id) => id.toString() === userIdStr);
-      if (!alreadyRead) {
-        msg.readBy.push(req.user._id);
-        changed = true;
-      }
-    });
+    // Mark messages as read by current user (only on initial load, not pagination)
+    if (!beforeMessageId) {
+      let changed = false;
+      chat.messages.forEach((msg) => {
+        const alreadyRead = msg.readBy.some((id) => id.toString() === userIdStr);
+        if (!alreadyRead) {
+          msg.readBy.push(req.user._id);
+          changed = true;
+        }
+      });
 
-    if (changed) {
-      await chat.save();
+      if (changed) {
+        await chat.save();
 
-      if (io) {
-        io.to(`chat:${chat._id.toString()}`).emit("chat:read", {
-          chatId: chat._id.toString(),
-          userId: userIdStr,
-        });
+        if (io) {
+          io.to(`chat:${chat._id.toString()}`).emit("chat:read", {
+            chatId: chat._id.toString(),
+            userId: userIdStr,
+            readAt: new Date().toISOString(),
+          });
+        }
       }
     }
 
-    const messages = chat.messages.map((msg) => ({
+    // Apply pagination - get messages before a certain message ID or get latest
+    let messagesToReturn = chat.messages;
+    let hasMore = false;
+
+    if (beforeMessageId) {
+      // Find the index of the message to paginate before
+      const beforeIndex = chat.messages.findIndex(
+        (msg) => msg._id.toString() === beforeMessageId
+      );
+      if (beforeIndex > 0) {
+        // Get messages before this index
+        const startIndex = Math.max(0, beforeIndex - limit);
+        messagesToReturn = chat.messages.slice(startIndex, beforeIndex);
+        hasMore = startIndex > 0;
+      } else {
+        messagesToReturn = [];
+      }
+    } else {
+      // Get the latest messages
+      const totalMessages = chat.messages.length;
+      const startIndex = Math.max(0, totalMessages - limit);
+      messagesToReturn = chat.messages.slice(startIndex);
+      hasMore = startIndex > 0;
+    }
+
+    const messages = messagesToReturn.map((msg) => ({
       id: msg._id.toString(),
       text: msg.text,
       senderId:
@@ -150,19 +181,24 @@ router.get("/:chatId", protect, async (req, res) => {
         orderNumber: chat.order ? chat.order.orderNumber : null,
         customer: chat.customer
           ? {
-              id: chat.customer._id.toString(),
-              username: chat.customer.username,
-              role: chat.customer.role,
-            }
+            id: chat.customer._id.toString(),
+            username: chat.customer.username,
+            role: chat.customer.role,
+          }
           : null,
         rider: chat.rider
           ? {
-              id: chat.rider._id.toString(),
-              username: chat.rider.username,
-              role: chat.rider.role,
-            }
+            id: chat.rider._id.toString(),
+            username: chat.rider.username,
+            role: chat.rider.role,
+          }
           : null,
         messages,
+        pagination: {
+          hasMore,
+          totalCount: chat.messages.length,
+          returnedCount: messages.length,
+        },
       },
     });
   } catch (error) {
@@ -231,6 +267,7 @@ router.post("/:chatId/messages", protect, async (req, res) => {
         text: savedMessage.text,
         senderId: savedMessage.sender.toString(),
         sentAt: savedMessage.createdAt,
+        readBy: savedMessage.readBy.map((id) => id.toString()),
       },
     };
 
@@ -245,6 +282,86 @@ router.post("/:chatId/messages", protect, async (req, res) => {
     });
   } catch (error) {
     console.error("Send message error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
+// Delete a message from a chat
+router.delete("/:chatId/messages/:messageId", protect, async (req, res) => {
+  try {
+    const { chatId, messageId } = req.params;
+
+    const chat = await Chat.findById(chatId);
+
+    if (!chat) {
+      return res.status(404).json({
+        success: false,
+        message: "Chat not found",
+      });
+    }
+
+    const userIdStr = req.user._id.toString();
+    const isParticipant =
+      (chat.customer && chat.customer.toString() === userIdStr) ||
+      (chat.rider && chat.rider.toString() === userIdStr) ||
+      req.user.role === "admin";
+
+    if (!isParticipant) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to delete messages in this chat",
+      });
+    }
+
+    // Find the message
+    const messageIndex = chat.messages.findIndex(
+      (msg) => msg._id.toString() === messageId
+    );
+
+    if (messageIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: "Message not found",
+      });
+    }
+
+    const message = chat.messages[messageIndex];
+
+    // Only allow sender or admin to delete
+    if (message.sender.toString() !== userIdStr && req.user.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "You can only delete your own messages",
+      });
+    }
+
+    // Remove the message
+    chat.messages.splice(messageIndex, 1);
+    await chat.save();
+
+    // Emit socket event for real-time sync
+    if (io) {
+      io.to(`chat:${chat._id.toString()}`).emit("chat:message_deleted", {
+        chatId: chat._id.toString(),
+        messageId: messageId,
+        deletedBy: userIdStr,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Message deleted successfully",
+      data: {
+        chatId: chat._id.toString(),
+        messageId: messageId,
+      },
+    });
+  } catch (error) {
+    console.error("Delete message error:", error);
     res.status(500).json({
       success: false,
       message: "Server error",

@@ -196,7 +196,6 @@ class _ChatPageState extends State<ChatPage> {
 
     try {
       final apiChats = await _chatService.getChats();
-      final now = DateTime.now();
 
       final List<_ChatMessage> loaded = apiChats.map((chat) {
         final senderId = chat.otherUserId ?? 'unknown_user';
@@ -214,20 +213,10 @@ class _ChatPageState extends State<ChatPage> {
         );
       }).toList();
 
-      final supportChat = _ChatMessage(
-        id: 'support',
-        senderId: 'support',
-        senderName: 'GrabGo Support',
-        lastMessage: 'Chat with GrabGo Support',
-        timestamp: now,
-        unreadCount: 0,
-        isOnline: true,
-        orderId: null,
-      );
-
-      _conversations = [supportChat, ...loaded];
+      // Support chat removed - will be implemented separately
+      _conversations = loaded;
       _filteredConversations = _conversations;
-      ChatSocketService().updateKnownChats(_conversations.map((c) => c.id).where((id) => id != 'support').toList());
+      ChatSocketService().updateKnownChats(_conversations.map((c) => c.id).toList());
     } catch (e) {
       _error = 'Failed to load chats. Please try again.';
     } finally {
@@ -242,7 +231,6 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _refreshConversationsSilently() async {
     try {
       final apiChats = await _chatService.getChats();
-      final now = DateTime.now();
 
       final List<_ChatMessage> loaded = apiChats.map((chat) {
         final senderId = chat.otherUserId ?? 'unknown_user';
@@ -260,28 +248,18 @@ class _ChatPageState extends State<ChatPage> {
         );
       }).toList();
 
-      final supportChat = _ChatMessage(
-        id: 'support',
-        senderId: 'support',
-        senderName: 'GrabGo Support',
-        lastMessage: 'Chat with GrabGo Support',
-        timestamp: now,
-        unreadCount: 0,
-        isOnline: true,
-        orderId: null,
-      );
+      // Support chat removed - will be implemented separately
 
       if (!mounted) return;
 
       final query = _searchController.text.toLowerCase();
-      final all = [supportChat, ...loaded];
 
       setState(() {
-        _conversations = all;
+        _conversations = loaded;
         if (query.isEmpty) {
-          _filteredConversations = all;
+          _filteredConversations = loaded;
         } else {
-          _filteredConversations = all
+          _filteredConversations = loaded
               .where(
                 (chat) =>
                     chat.senderName.toLowerCase().contains(query) || chat.lastMessage.toLowerCase().contains(query),
@@ -290,7 +268,7 @@ class _ChatPageState extends State<ChatPage> {
         }
         _error = null;
       });
-      ChatSocketService().updateKnownChats(all.map((c) => c.id).where((id) => id != 'support').toList());
+      ChatSocketService().updateKnownChats(loaded.map((c) => c.id).toList());
     } catch (e) {
       // Silent fail; keep current list
     }

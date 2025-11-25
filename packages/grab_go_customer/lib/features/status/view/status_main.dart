@@ -145,6 +145,7 @@ class _StatusMainState extends State<StatusMain> {
                 SizedBox(
                   height: 350.h,
                   child: ListView.builder(
+                    padding: EdgeInsets.only(left: 10.r),
                     scrollDirection: Axis.horizontal,
                     physics: const BouncingScrollPhysics(),
                     itemCount: filteredPosts.length,

@@ -6,14 +6,16 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:grab_go_customer/features/chat/service/chat_service.dart';
 import 'package:grab_go_customer/features/chat/view/chats_details.dart';
+import 'package:grab_go_customer/features/chat/view/waiting_for_rider_screen.dart';
+import 'package:grab_go_customer/features/order/service/order_service_wrapper.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_customer/shared/services/cache_service.dart';
+import 'package:grab_go_customer/shared/services/chat_socket_service.dart';
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 class Chats extends StatefulWidget {
   const Chats({super.key});
@@ -46,16 +48,62 @@ class _ChatMessage {
   });
 }
 
+/// Represents an order that is waiting for a rider to accept
+class _PendingOrder {
+  final String orderId;
+  final String orderNumber;
+  final String restaurantName;
+  final String? restaurantLogo;
+  final DateTime orderDate;
+  final double totalAmount;
+  final String status;
+
+  _PendingOrder({
+    required this.orderId,
+    required this.orderNumber,
+    required this.restaurantName,
+    this.restaurantLogo,
+    required this.orderDate,
+    required this.totalAmount,
+    required this.status,
+  });
+
+  factory _PendingOrder.fromApiOrder(Map<String, dynamic> order) {
+    String restaurantName = 'Restaurant';
+    String? restaurantLogo;
+    if (order['restaurant'] is Map) {
+      restaurantName = order['restaurant']?['restaurant_name'] ?? 'Restaurant';
+      restaurantLogo = order['restaurant']?['logo'];
+    }
+
+    return _PendingOrder(
+      orderId: order['_id']?.toString() ?? '',
+      orderNumber: order['orderNumber']?.toString() ?? '',
+      restaurantName: restaurantName,
+      restaurantLogo: restaurantLogo,
+      orderDate: DateTime.tryParse(order['createdAt']?.toString() ?? '') ?? DateTime.now(),
+      totalAmount: (order['totalAmount'] ?? 0.0).toDouble(),
+      status: (order['status'] as String? ?? '').toLowerCase(),
+    );
+  }
+
+  /// Check if this order is waiting for a rider (pending or confirmed but no rider yet)
+  bool get isWaitingForRider {
+    return status == 'pending' || status == 'confirmed';
+  }
+}
+
 class _ChatsState extends State<Chats> {
   final TextEditingController _searchController = TextEditingController();
   List<_ChatMessage> _conversations = [];
   List<_ChatMessage> _filteredConversations = [];
+  List<_PendingOrder> _pendingOrders = [];
   final ChatService _chatService = ChatService();
   final UserService _userService = UserService();
+  final OrderServiceWrapper _orderService = OrderServiceWrapper();
   bool _isLoading = false;
   String? _error;
   Timer? _pollingTimer;
-  IO.Socket? _socket;
   String? _currentUserId;
 
   @override
@@ -63,15 +111,27 @@ class _ChatsState extends State<Chats> {
     super.initState();
     _loadCachedConversations();
     _loadConversations();
+    _fetchPendingOrders();
     _startPolling();
-    _setupSocket();
     _searchController.addListener(_filterConversations);
+
+    final chatSocket = ChatSocketService();
+    chatSocket.addConnectionListener(_handleConnectionStateChanged);
+    chatSocket.addNewMessageListener(_handleNewMessageEvent);
+    chatSocket.addPresenceListener(_handlePresenceEvent);
+    chatSocket.addTypingListener(_handleTypingEvent);
+    chatSocket.addReadListener(_handleReadEvent);
   }
 
   @override
   void dispose() {
     _pollingTimer?.cancel();
-    _socket?.dispose();
+    final chatSocket = ChatSocketService();
+    chatSocket.removeConnectionListener(_handleConnectionStateChanged);
+    chatSocket.removeNewMessageListener(_handleNewMessageEvent);
+    chatSocket.removePresenceListener(_handlePresenceEvent);
+    chatSocket.removeTypingListener(_handleTypingEvent);
+    chatSocket.removeReadListener(_handleReadEvent);
     _searchController.dispose();
     super.dispose();
   }
@@ -134,8 +194,35 @@ class _ChatsState extends State<Chats> {
     _pollingTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (!_isLoading) {
         _refreshConversationsSilently();
+        _fetchPendingOrders();
       }
     });
+  }
+
+  /// Fetch orders that are waiting for a rider to accept
+  Future<void> _fetchPendingOrders() async {
+    try {
+      final orders = await _orderService.getUserOrders();
+
+      // Filter orders that are waiting for rider (pending or confirmed without chat)
+      final pendingOrders = orders
+          .map((order) => _PendingOrder.fromApiOrder(order))
+          .where((order) => order.isWaitingForRider)
+          .toList();
+
+      // Filter out orders that already have a chat
+      final chatOrderNumbers = _conversations.where((c) => c.orderId != null).map((c) => c.orderId).toSet();
+
+      final ordersWithoutChat = pendingOrders.where((order) => !chatOrderNumbers.contains(order.orderNumber)).toList();
+
+      if (!mounted) return;
+      setState(() {
+        _pendingOrders = ordersWithoutChat;
+      });
+    } catch (e) {
+      // Silent fail - pending orders are optional
+      debugPrint('Error fetching pending orders: $e');
+    }
   }
 
   Future<void> _fetchConversations({bool showLoader = true}) async {
@@ -152,7 +239,6 @@ class _ChatsState extends State<Chats> {
 
     try {
       final apiChats = await _chatService.getChats();
-      final now = DateTime.now();
 
       final List<_ChatMessage> loaded = apiChats.map((chat) {
         final senderId = chat.otherUserId ?? 'unknown_user';
@@ -170,20 +256,10 @@ class _ChatsState extends State<Chats> {
         );
       }).toList();
 
-      final supportChat = _ChatMessage(
-        id: 'support',
-        senderId: 'support',
-        senderName: 'GrabGo Support',
-        lastMessage: 'Chat with GrabGo Support',
-        timestamp: now,
-        unreadCount: 0,
-        isOnline: true,
-        orderId: null,
-      );
-
-      _conversations = [supportChat, ...loaded];
+      // Support chat removed - will be implemented separately
+      _conversations = loaded;
       _filteredConversations = _conversations;
-      _joinAllChatsIfReady();
+      ChatSocketService().updateKnownChats(_conversations.map((c) => c.id).toList());
     } catch (e) {
       _error = 'Failed to load chats. Please try again.';
     } finally {
@@ -198,7 +274,6 @@ class _ChatsState extends State<Chats> {
   Future<void> _refreshConversationsSilently() async {
     try {
       final apiChats = await _chatService.getChats();
-      final now = DateTime.now();
 
       final List<_ChatMessage> loaded = apiChats.map((chat) {
         final senderId = chat.otherUserId ?? 'unknown_user';
@@ -216,28 +291,18 @@ class _ChatsState extends State<Chats> {
         );
       }).toList();
 
-      final supportChat = _ChatMessage(
-        id: 'support',
-        senderId: 'support',
-        senderName: 'GrabGo Support',
-        lastMessage: 'Chat with GrabGo Support',
-        timestamp: now,
-        unreadCount: 0,
-        isOnline: true,
-        orderId: null,
-      );
+      // Support chat removed - will be implemented separately
 
       if (!mounted) return;
 
       final query = _searchController.text.toLowerCase();
-      final all = [supportChat, ...loaded];
 
       setState(() {
-        _conversations = all;
+        _conversations = loaded;
         if (query.isEmpty) {
-          _filteredConversations = all;
+          _filteredConversations = loaded;
         } else {
-          _filteredConversations = all
+          _filteredConversations = loaded
               .where(
                 (chat) =>
                     chat.senderName.toLowerCase().contains(query) || chat.lastMessage.toLowerCase().contains(query),
@@ -246,72 +311,59 @@ class _ChatsState extends State<Chats> {
         }
         _error = null;
       });
-      _joinAllChatsIfReady();
+      ChatSocketService().updateKnownChats(loaded.map((c) => c.id).toList());
     } catch (e) {
       // Silent fail on polling; keep current UI
     }
   }
 
-  String _buildSocketUrl() {
-    final apiBase = AppConfig.apiBaseUrl;
-    if (apiBase.endsWith('/api/')) {
-      return apiBase.substring(0, apiBase.length - 5);
-    }
-    if (apiBase.endsWith('/api')) {
-      return apiBase.substring(0, apiBase.length - 4);
-    }
-    return apiBase;
+  void _handleConnectionStateChanged(ChatSocketConnectionState state) {
+    // Connection state changes can be used for UI feedback if needed
+    if (!mounted) return;
   }
 
-  void _setupSocket() {
-    final socketUrl = _buildSocketUrl();
-    final token = CacheService.getAuthToken();
-    if (token == null || token.isEmpty) {
-      return;
+  void _markChatAsRead(String chatId) {
+    bool changed = false;
+    int cleared = 0;
+    _conversations = _conversations.map((c) {
+      if (c.id != chatId) return c;
+      if (c.unreadCount == 0 && !c.isTyping) return c;
+      changed = true;
+      cleared = c.unreadCount;
+      return _ChatMessage(
+        id: c.id,
+        senderId: c.senderId,
+        senderName: c.senderName,
+        lastMessage: c.lastMessage,
+        timestamp: c.timestamp,
+        unreadCount: 0,
+        isOnline: c.isOnline,
+        orderId: c.orderId,
+        isTyping: false,
+      );
+    }).toList();
+
+    if (!changed) return;
+    if (cleared > 0) {
+      ChatSocketService().markChatAsReadLocally(chatId, cleared);
     }
-
-    _socket = IO.io(
-      socketUrl,
-      IO.OptionBuilder().setTransports(['websocket']).setAuth({'token': token}).disableAutoConnect().build(),
-    );
-
-    _socket!.onConnect((_) {
-      _currentUserId ??= _userService.getUserId();
-      _joinAllChatsIfReady();
-    });
-
-    _socket!.on('chat:new_message', _handleNewMessageEvent);
-    _socket!.on('chat:presence', _handlePresenceEvent);
-    _socket!.on('chat:typing', _handleTypingEvent);
-    _socket!.on('chat:read', _handleReadEvent);
-
-    _socket!.connect();
-  }
-
-  void _joinAllChatsIfReady() {
-    if (_socket == null || !_socket!.connected) return;
-    _currentUserId ??= _userService.getUserId();
-    final userId = _currentUserId;
-    if (userId == null || userId.isEmpty) return;
-
-    for (final chat in _conversations) {
-      if (chat.id == 'support') continue;
-      _socket!.emit('chat:join', {'chatId': chat.id});
-    }
+    _resortAndFilterConversations();
   }
 
   void _handleNewMessageEvent(dynamic data) {
     if (!mounted) return;
+    final route = ModalRoute.of(context);
+    if (route == null || !route.isCurrent) return;
     if (data is! Map) return;
 
-    final map = Map<String, dynamic>.from(data as Map);
+    final map = Map<String, dynamic>.from(data);
     final chatId = map['chatId']?.toString();
     if (chatId == null) return;
 
     final messageJson = map['message'];
     if (messageJson is! Map) return;
 
-    final messageMap = Map<String, dynamic>.from(messageJson as Map);
+    final messageMap = Map<String, dynamic>.from(messageJson);
     final text = messageMap['text']?.toString() ?? '';
     final sentAtStr = messageMap['sentAt']?.toString();
     final sentAt = DateTime.tryParse(sentAtStr ?? '') ?? DateTime.now();
@@ -343,9 +395,11 @@ class _ChatsState extends State<Chats> {
 
   void _handlePresenceEvent(dynamic data) {
     if (!mounted) return;
+    final route = ModalRoute.of(context);
+    if (route == null || !route.isCurrent) return;
     if (data is! Map) return;
 
-    final map = Map<String, dynamic>.from(data as Map);
+    final map = Map<String, dynamic>.from(data);
     final chatId = map['chatId']?.toString();
     final userId = map['userId']?.toString();
     if (chatId == null || userId == null) return;
@@ -377,7 +431,7 @@ class _ChatsState extends State<Chats> {
     if (!mounted) return;
     if (data is! Map) return;
 
-    final map = Map<String, dynamic>.from(data as Map);
+    final map = Map<String, dynamic>.from(data);
     final chatId = map['chatId']?.toString();
     final userId = map['userId']?.toString();
     if (chatId == null || userId == null) return;
@@ -408,9 +462,11 @@ class _ChatsState extends State<Chats> {
 
   void _handleTypingEvent(dynamic data) {
     if (!mounted) return;
+    final route = ModalRoute.of(context);
+    if (route == null || !route.isCurrent) return;
     if (data is! Map) return;
 
-    final map = Map<String, dynamic>.from(data as Map);
+    final map = Map<String, dynamic>.from(data);
     final chatId = map['chatId']?.toString();
     final userId = map['userId']?.toString();
     if (chatId == null || userId == null) return;
@@ -484,29 +540,6 @@ class _ChatsState extends State<Chats> {
         )
         .toList();
     unawaited(CacheService.saveChatList(serialized));
-  }
-
-  void _markChatAsRead(String chatId) {
-    bool changed = false;
-    _conversations = _conversations.map((c) {
-      if (c.id != chatId) return c;
-      if (c.unreadCount == 0 && !c.isTyping) return c;
-      changed = true;
-      return _ChatMessage(
-        id: c.id,
-        senderId: c.senderId,
-        senderName: c.senderName,
-        lastMessage: c.lastMessage,
-        timestamp: c.timestamp,
-        unreadCount: 0,
-        isOnline: c.isOnline,
-        orderId: c.orderId,
-        isTyping: false,
-      );
-    }).toList();
-
-    if (!changed) return;
-    _resortAndFilterConversations();
   }
 
   void _filterConversations() {
@@ -661,16 +694,28 @@ class _ChatsState extends State<Chats> {
                     )
                   : _error != null
                   ? _buildErrorState(colors)
-                  : _filteredConversations.isEmpty
+                  : (_filteredConversations.isEmpty && _pendingOrders.isEmpty)
                   ? _buildEmptyState(colors)
-                  : ListView.separated(
+                  : ListView.builder(
                       padding: EdgeInsets.symmetric(horizontal: 20.w),
                       physics: const BouncingScrollPhysics(),
-                      itemCount: _filteredConversations.length,
-                      separatorBuilder: (context, index) => SizedBox(height: 8.h),
+                      itemCount: _pendingOrders.length + _filteredConversations.length,
                       itemBuilder: (context, index) {
-                        final conversation = _filteredConversations[index];
-                        return _buildConversationItem(conversation, colors);
+                        // Show pending orders first
+                        if (index < _pendingOrders.length) {
+                          final pendingOrder = _pendingOrders[index];
+                          return Padding(
+                            padding: EdgeInsets.only(bottom: 8.h),
+                            child: _buildPendingOrderItem(pendingOrder, colors),
+                          );
+                        }
+                        // Then show conversations
+                        final conversationIndex = index - _pendingOrders.length;
+                        final conversation = _filteredConversations[conversationIndex];
+                        return Padding(
+                          padding: EdgeInsets.only(bottom: 8.h),
+                          child: _buildConversationItem(conversation, colors),
+                        );
                       },
                     ),
             ),
@@ -821,6 +866,140 @@ class _ChatsState extends State<Chats> {
                           ),
                         ),
                       ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPendingOrderItem(_PendingOrder order, AppColorsExtension colors) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => WaitingForRiderScreen(
+              orderId: order.orderId,
+              orderNumber: order.orderNumber,
+              restaurantName: order.restaurantName,
+              totalAmount: order.totalAmount,
+              orderDate: order.orderDate,
+              onRiderAccepted: () {
+                // Refresh conversations when rider accepts
+                _fetchConversations();
+                _fetchPendingOrders();
+              },
+            ),
+          ),
+        );
+      },
+      child: Container(
+        padding: EdgeInsets.all(16.w),
+        decoration: BoxDecoration(
+          color: colors.backgroundPrimary,
+          borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+          border: Border.all(color: colors.accentViolet.withValues(alpha: 0.3), width: 1),
+        ),
+        child: Row(
+          children: [
+            // Animated waiting icon
+            Stack(
+              children: [
+                Container(
+                  width: 56.w,
+                  height: 56.w,
+                  decoration: BoxDecoration(color: colors.accentViolet.withValues(alpha: 0.1), shape: BoxShape.circle),
+                  child: Center(
+                    child: SvgPicture.asset(
+                      Assets.icons.deliveryTruck,
+                      package: 'grab_go_shared',
+                      width: 28.w,
+                      height: 28.w,
+                      colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                    ),
+                  ),
+                ),
+                // Pulsing indicator
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    width: 14.w,
+                    height: 14.w,
+                    decoration: BoxDecoration(
+                      color: colors.accentViolet,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: colors.backgroundPrimary, width: 2),
+                    ),
+                    child: Center(
+                      child: Icon(Icons.hourglass_empty, size: 8.w, color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(width: 16.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          order.restaurantName,
+                          style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                        decoration: BoxDecoration(
+                          color: colors.accentViolet.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '#${order.orderNumber.substring(0, 8)}',
+                          style: TextStyle(color: colors.accentViolet, fontSize: 10.sp, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 4.h),
+                  Row(
+                    children: [
+                      Container(
+                        width: 8.w,
+                        height: 8.w,
+                        decoration: BoxDecoration(color: colors.accentViolet, shape: BoxShape.circle),
+                      ),
+                      SizedBox(width: 6.w),
+                      Expanded(
+                        child: Text(
+                          'Waiting for rider to accept...',
+                          style: TextStyle(
+                            color: colors.accentViolet,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w500,
+                            fontStyle: FontStyle.italic,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      SvgPicture.asset(
+                        Assets.icons.navArrowRight,
+                        package: "grab_go_shared",
+                        colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                        height: 20.h,
+                        width: 20.w,
+                      ),
                     ],
                   ),
                 ],

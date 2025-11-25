@@ -21,9 +21,13 @@ class ChatMessage {
   final DateTime timestamp;
   final bool isSentByMe;
   final bool isRead;
+  final DateTime? readAt;
   final bool isPending;
   final bool isFailed;
   final bool isSystem;
+  final String? replyToId;
+  final String? replyToText;
+  final bool? replyToIsSentByMe;
 
   ChatMessage({
     required this.id,
@@ -31,9 +35,13 @@ class ChatMessage {
     required this.timestamp,
     required this.isSentByMe,
     this.isRead = false,
+    this.readAt,
     this.isPending = false,
     this.isFailed = false,
     this.isSystem = false,
+    this.replyToId,
+    this.replyToText,
+    this.replyToIsSentByMe,
   });
 }
 
@@ -85,6 +93,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     'One item is unavailable, can we replace it?',
   ];
   DateTime? _peerLastSeenAt;
+  ChatMessage? _replyingTo;
+
+  // Pagination state
+  bool _hasMoreMessages = false;
+  bool _isLoadingMore = false;
 
   void _loadCachedMessages() {
     final cached = CacheService.getChatMessages(widget.chatId);
@@ -180,6 +193,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       chatSocket.addPresenceListener(_handlePresenceEvent);
       chatSocket.addTypingListener(_handleTypingEvent);
       chatSocket.addReadListener(_handleReadEvent);
+      chatSocket.addRetryListener(_handleQueuedMessageRetry);
+      chatSocket.addDeleteListener(_handleMessageDeleted);
     }
     final initialDraft = CacheService.getChatDraft(widget.chatId);
     if (initialDraft.isNotEmpty) {
@@ -199,6 +214,12 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   void dispose() {
     _orderStatusTimer?.cancel();
     _typingTimer?.cancel();
+
+    // Send typing stopped if we were typing
+    if (_isTyping && !widget.isSupport) {
+      ChatSocketService().setTyping(widget.chatId, false);
+    }
+
     final chatSocket = ChatSocketService();
     chatSocket.removeConnectionListener(_handleConnectionStateChanged);
     if (!widget.isSupport) {
@@ -206,6 +227,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       chatSocket.removePresenceListener(_handlePresenceEvent);
       chatSocket.removeTypingListener(_handleTypingEvent);
       chatSocket.removeReadListener(_handleReadEvent);
+      chatSocket.removeRetryListener(_handleQueuedMessageRetry);
+      chatSocket.removeDeleteListener(_handleMessageDeleted);
     }
     _scrollController.removeListener(_handleScrollPositionChanged);
     unawaited(CacheService.saveChatDraft(widget.chatId, _messageController.text));
@@ -279,6 +302,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           _orderId = chatDetail.orderId ?? widget.orderId;
           _orderNumber = chatDetail.orderNumber;
           _firstUnreadIndex = firstUnreadIndex;
+          _hasMoreMessages = chatDetail.pagination?.hasMore ?? false;
         });
 
         _cacheMessages();
@@ -334,7 +358,13 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.arrow_downward, size: 18.w, color: colors.textPrimary),
+            SvgPicture.asset(
+              Assets.icons.fastArrowDown,
+              package: "grab_go_shared",
+              height: 18.h,
+              width: 18.w,
+              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+            ),
             if (hasCount) ...[
               SizedBox(width: 6.w),
               Text(
@@ -353,6 +383,60 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     setState(() {
       _connectionState = state;
     });
+  }
+
+  void _handleMessageDeleted(dynamic data) {
+    if (!mounted || widget.isSupport) return;
+    if (data is! Map) return;
+
+    final map = Map<String, dynamic>.from(data);
+    final payloadChatId = map['chatId']?.toString();
+    if (payloadChatId != widget.chatId) return;
+
+    final messageId = map['messageId']?.toString();
+    if (messageId == null) return;
+
+    setState(() {
+      _messages.removeWhere((m) => m.id == messageId);
+    });
+    _cacheMessages();
+  }
+
+  void _handleQueuedMessageRetry(String chatId, String tempId, bool success, String? newId) {
+    if (!mounted || chatId != widget.chatId) return;
+
+    final index = _messages.indexWhere((m) => m.id == tempId);
+    if (index == -1) return;
+
+    setState(() {
+      if (success && newId != null) {
+        final existing = _messages[index];
+        _messages[index] = ChatMessage(
+          id: newId,
+          text: existing.text,
+          timestamp: existing.timestamp,
+          isSentByMe: true,
+          isRead: false,
+          isPending: false,
+          isFailed: false,
+          isSystem: false,
+        );
+        HapticFeedback.lightImpact();
+      } else {
+        final existing = _messages[index];
+        _messages[index] = ChatMessage(
+          id: existing.id,
+          text: existing.text,
+          timestamp: existing.timestamp,
+          isSentByMe: existing.isSentByMe,
+          isRead: existing.isRead,
+          isPending: false,
+          isFailed: true,
+          isSystem: existing.isSystem,
+        );
+      }
+    });
+    _cacheMessages();
   }
 
   void _handleIncomingSocketMessage(dynamic data) {
@@ -415,6 +499,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     final payloadChatId = map['chatId']?.toString();
     if (payloadChatId != widget.chatId) return;
 
+    // Ignore our own presence events
+    final eventUserId = map['userId']?.toString();
+    _currentUserId ??= _userService.currentUser?.id;
+    if (eventUserId == _currentUserId) return;
+
     final online = map['online'] == true;
 
     setState(() {
@@ -433,6 +522,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     final map = Map<String, dynamic>.from(data);
     final payloadChatId = map['chatId']?.toString();
     if (payloadChatId != widget.chatId) return;
+
+    // Ignore our own typing events
+    final eventUserId = map['userId']?.toString();
+    _currentUserId ??= _userService.currentUser?.id;
+    if (eventUserId == _currentUserId) return;
 
     final isTyping = map['isTyping'] == true;
 
@@ -461,6 +555,10 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
     if (readerId == currentUserId) return;
 
+    // Parse readAt timestamp from event, or use current time
+    final readAtStr = map['readAt']?.toString();
+    final readAt = readAtStr != null ? DateTime.tryParse(readAtStr) : DateTime.now();
+
     // When the other user reads the chat, all our sent messages in this
     // conversation become "read" from our perspective.
     setState(() {
@@ -473,6 +571,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                     timestamp: m.timestamp,
                     isSentByMe: m.isSentByMe,
                     isRead: true,
+                    readAt: readAt,
                     isPending: m.isPending,
                     isFailed: m.isFailed,
                     isSystem: m.isSystem,
@@ -520,10 +619,14 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     _messageController.clear();
     unawaited(CacheService.saveChatDraft(widget.chatId, ''));
 
-    await _sendQuickMessage(text);
+    // Capture reply before clearing
+    final replyTo = _replyingTo;
+    _cancelReply();
+
+    await _sendQuickMessage(text, replyTo: replyTo);
   }
 
-  Future<void> _sendQuickMessage(String text) async {
+  Future<void> _sendQuickMessage(String text, {ChatMessage? replyTo}) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
 
@@ -537,6 +640,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       isPending: true,
       isFailed: false,
       isSystem: false,
+      replyToId: replyTo?.id,
+      replyToText: replyTo?.text,
+      replyToIsSentByMe: replyTo?.isSentByMe,
     );
 
     setState(() {
@@ -587,6 +693,10 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             isFailed: true,
             isSystem: existing.isSystem,
           );
+          // Queue for automatic retry when connection is restored
+          if (!widget.isSupport) {
+            ChatSocketService().queueFailedMessage(widget.chatId, tempId, trimmed);
+          }
         }
       });
       _cacheMessages();
@@ -601,6 +711,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
     final index = _messages.indexWhere((m) => m.id == message.id);
     if (index == -1) return;
+
+    // Remove from queue since we're manually retrying
+    ChatSocketService().removeFromQueue(message.id);
 
     setState(() {
       _messages[index] = ChatMessage(
@@ -682,6 +795,12 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
     final position = _scrollController.position;
     final isNearBottom = (position.maxScrollExtent - position.pixels) < 100;
+    final isNearTop = position.pixels < 100;
+
+    // Load more messages when scrolling near the top
+    if (isNearTop && _hasMoreMessages && !_isLoadingMore && !widget.isSupport) {
+      _loadMoreMessages();
+    }
 
     if (isNearBottom) {
       if (_showScrollToBottomButton || _pendingNewMessages != 0) {
@@ -694,6 +813,74 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       if (!_showScrollToBottomButton) {
         setState(() {
           _showScrollToBottomButton = true;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadMoreMessages() async {
+    if (_isLoadingMore || !_hasMoreMessages || _messages.isEmpty) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final oldestMessageId = _messages.first.id;
+      final chatDetail = await _chatService.getChat(widget.chatId, limit: 50, beforeMessageId: oldestMessageId);
+
+      if (!mounted || chatDetail == null) return;
+
+      final currentUserId = _currentUserId;
+      String? otherUserId;
+      if (currentUserId != null) {
+        if (chatDetail.customerId == currentUserId) {
+          otherUserId = chatDetail.riderId;
+        } else if (chatDetail.riderId == currentUserId) {
+          otherUserId = chatDetail.customerId;
+        }
+      }
+
+      final olderMessages = chatDetail.messages.map((m) {
+        final isSentByMe = currentUserId != null && m.senderId == currentUserId;
+        bool isReadByOther = false;
+        if (isSentByMe && otherUserId != null) {
+          isReadByOther = m.readBy.contains(otherUserId);
+        }
+
+        return ChatMessage(id: m.id, text: m.text, timestamp: m.sentAt, isSentByMe: isSentByMe, isRead: isReadByOther);
+      }).toList();
+
+      if (olderMessages.isNotEmpty) {
+        // Remember scroll position before adding messages
+        final scrollOffset = _scrollController.position.pixels;
+        final oldMaxExtent = _scrollController.position.maxScrollExtent;
+
+        setState(() {
+          _messages = [...olderMessages, ..._messages];
+          _hasMoreMessages = chatDetail.pagination?.hasMore ?? false;
+        });
+
+        // Restore scroll position after messages are added
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || !_scrollController.hasClients) return;
+          final newMaxExtent = _scrollController.position.maxScrollExtent;
+          final addedHeight = newMaxExtent - oldMaxExtent;
+          _scrollController.jumpTo(scrollOffset + addedHeight);
+        });
+
+        _cacheMessages();
+      } else {
+        setState(() {
+          _hasMoreMessages = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading more messages: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingMore = false;
         });
       }
     }
@@ -712,6 +899,26 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     } else {
       return DateFormat('MMM dd, hh:mm a').format(timestamp);
     }
+  }
+
+  String _formatReadTime(DateTime readAt) {
+    final now = DateTime.now();
+    final timePart = DateFormat('h:mm a').format(readAt);
+
+    if (now.difference(readAt).inMinutes < 1) {
+      return 'just now';
+    }
+
+    if (DateUtils.isSameDay(now, readAt)) {
+      return 'at $timePart';
+    }
+
+    final yesterday = now.subtract(const Duration(days: 1));
+    if (DateUtils.isSameDay(yesterday, readAt)) {
+      return 'yesterday at $timePart';
+    }
+
+    return 'on ${DateFormat('MMM d').format(readAt)} at $timePart';
   }
 
   String _formatLastSeenText(DateTime timestamp) {
@@ -975,13 +1182,31 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                           controller: _scrollController,
                           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
                           physics: const BouncingScrollPhysics(),
-                          itemCount: _messages.length,
+                          itemCount: _messages.length + (_isLoadingMore ? 1 : 0),
                           itemBuilder: (context, index) {
-                            final message = _messages[index];
-                            final previous = index > 0 ? _messages[index - 1] : null;
-                            final next = index < _messages.length - 1 ? _messages[index + 1] : null;
-                            final showDateDivider = _shouldShowDateDivider(index);
-                            final isFirstUnreadMessage = _firstUnreadIndex != null && index == _firstUnreadIndex;
+                            // Show loading indicator at the top when loading more
+                            if (_isLoadingMore && index == 0) {
+                              return Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16.h),
+                                child: Center(
+                                  child: SizedBox(
+                                    width: 24.w,
+                                    height: 24.w,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(colors.accentOrange),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+
+                            final messageIndex = _isLoadingMore ? index - 1 : index;
+                            final message = _messages[messageIndex];
+                            final previous = messageIndex > 0 ? _messages[messageIndex - 1] : null;
+                            final next = messageIndex < _messages.length - 1 ? _messages[messageIndex + 1] : null;
+                            final showDateDivider = _shouldShowDateDivider(messageIndex);
+                            final isFirstUnreadMessage = _firstUnreadIndex != null && messageIndex == _firstUnreadIndex;
 
                             if (message.isSystem) {
                               final content = Column(
@@ -1147,6 +1372,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
             if (!widget.isSupport && _quickIssueTemplates.isNotEmpty) _buildQuickIssueChips(colors),
 
+            // Reply preview
+            if (_replyingTo != null) _buildReplyPreview(colors),
+
             Container(
               padding: EdgeInsets.only(
                 left: 20.w,
@@ -1308,6 +1536,57 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     );
   }
 
+  Widget _buildReplyPreview(AppColorsExtension colors) {
+    final replyTo = _replyingTo;
+    if (replyTo == null) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+      decoration: BoxDecoration(
+        color: colors.backgroundPrimary,
+        border: Border(top: BorderSide(color: colors.border, width: 1)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 4.w,
+            height: 40.h,
+            decoration: BoxDecoration(color: colors.accentGreen, borderRadius: BorderRadius.circular(2.w)),
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  replyTo.isSentByMe ? 'You' : widget.senderName,
+                  style: TextStyle(color: colors.accentGreen, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  replyTo.text,
+                  style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w400),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 8.w),
+          GestureDetector(
+            onTap: _cancelReply,
+            child: Container(
+              padding: EdgeInsets.all(4.w),
+              child: Icon(Icons.close, size: 20.w, color: colors.textSecondary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildQuickIssueChips(AppColorsExtension colors) {
     final templates = _getQuickIssueTemplates();
     if (templates.isEmpty) {
@@ -1414,7 +1693,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               : message.isFailed
               ? 'Failed. Tap to retry.'
               : message.isRead
-              ? 'Read'
+              ? (message.readAt != null ? 'Seen ${_formatReadTime(message.readAt!)}' : 'Seen')
               : 'Sent')
         : null;
 
@@ -1437,13 +1716,60 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                 ),
                 border: isSent ? null : Border.all(color: colors.border, width: 1),
               ),
-              child: Text(
-                message.text,
-                style: TextStyle(
-                  color: isSent ? Colors.white : colors.textPrimary,
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w400,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Reply preview in bubble
+                  if (message.replyToId != null && message.replyToText != null)
+                    Container(
+                      margin: EdgeInsets.only(bottom: 8.h),
+                      padding: EdgeInsets.all(8.w),
+                      decoration: BoxDecoration(
+                        color: isSent
+                            ? Colors.white.withValues(alpha: 0.15)
+                            : colors.accentGreen.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8.w),
+                        border: Border(
+                          left: BorderSide(
+                            color: isSent ? Colors.white.withValues(alpha: 0.5) : colors.accentGreen,
+                            width: 3.w,
+                          ),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            message.replyToIsSentByMe == true ? 'You' : widget.senderName,
+                            style: TextStyle(
+                              color: isSent ? Colors.white.withValues(alpha: 0.9) : colors.accentGreen,
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(height: 2.h),
+                          Text(
+                            message.replyToText!,
+                            style: TextStyle(
+                              color: isSent ? Colors.white.withValues(alpha: 0.7) : colors.textSecondary,
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w400,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  Text(
+                    message.text,
+                    style: TextStyle(
+                      color: isSent ? Colors.white : colors.textPrimary,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
               ),
             ),
             if (isLastInGroup) ...[
@@ -1467,7 +1793,13 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                         ),
                       )
                     else if (message.isFailed)
-                      Icon(Icons.error_outline, size: 14.w, color: isSent ? Colors.white : Colors.redAccent)
+                      SvgPicture.asset(
+                        Assets.icons.warningCircle,
+                        package: "grab_go_shared",
+                        height: 14.h,
+                        width: 14.w,
+                        colorFilter: ColorFilter.mode(colors.error, BlendMode.srcIn),
+                      )
                     else
                       Icon(
                         message.isRead ? Icons.done_all : Icons.done,
@@ -1490,12 +1822,41 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       ),
     );
 
+    final canSwipeToReply = !message.isSystem && !widget.isSupport && !message.isPending;
+
+    if (canSwipeToReply) {
+      return _SwipeToReply(
+        onSwipe: () => _setReplyingTo(message),
+        isSentByMe: isSent,
+        child: GestureDetector(
+          onTap: canRetry ? () => _retrySendMessage(message) : null,
+          onLongPress: () => _showMessageActions(message, colors),
+          behavior: HitTestBehavior.translucent,
+          child: bubble,
+        ),
+      );
+    }
+
     return GestureDetector(
       onTap: canRetry ? () => _retrySendMessage(message) : null,
       onLongPress: () => _showMessageActions(message, colors),
       behavior: HitTestBehavior.translucent,
       child: bubble,
     );
+  }
+
+  void _setReplyingTo(ChatMessage message) {
+    setState(() {
+      _replyingTo = message;
+    });
+    _messageFocusNode.requestFocus();
+    HapticFeedback.selectionClick();
+  }
+
+  void _cancelReply() {
+    setState(() {
+      _replyingTo = null;
+    });
   }
 
   void _showMessageActions(ChatMessage message, AppColorsExtension colors) {
@@ -1513,7 +1874,13 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: Icon(Icons.copy, color: colors.textPrimary, size: 20.w),
+                leading: SvgPicture.asset(
+                  Assets.icons.edit,
+                  package: "grab_go_shared",
+                  height: 20.h,
+                  width: 20.w,
+                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                ),
                 title: Text(
                   'Copy',
                   style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
@@ -1525,7 +1892,13 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               ),
               if (message.isSentByMe && message.isFailed)
                 ListTile(
-                  leading: Icon(Icons.refresh, color: colors.textPrimary, size: 20.w),
+                  leading: SvgPicture.asset(
+                    Assets.icons.refresh,
+                    package: "grab_go_shared",
+                    height: 20.h,
+                    width: 20.w,
+                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                  ),
                   title: Text(
                     'Resend',
                     style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
@@ -1535,8 +1908,32 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                     _retrySendMessage(message);
                   },
                 ),
+              if (message.isSentByMe && !message.isPending && !widget.isSupport)
+                ListTile(
+                  leading: SvgPicture.asset(
+                    Assets.icons.binMinusIn,
+                    package: "grab_go_shared",
+                    height: 20.h,
+                    width: 20.w,
+                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                  ),
+                  title: Text(
+                    'Delete for everyone',
+                    style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                  ),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _deleteMessageForEveryone(message);
+                  },
+                ),
               ListTile(
-                leading: Icon(Icons.delete_outline, color: colors.textPrimary, size: 20.w),
+                leading: SvgPicture.asset(
+                  Assets.icons.binMinusIn,
+                  package: "grab_go_shared",
+                  height: 20.h,
+                  width: 20.w,
+                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                ),
                 title: Text(
                   'Delete for me',
                   style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
@@ -1557,6 +1954,31 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     setState(() {
       _messages.removeWhere((m) => m.id == message.id);
     });
+    _cacheMessages();
+  }
+
+  Future<void> _deleteMessageForEveryone(ChatMessage message) async {
+    // Optimistically remove from UI
+    setState(() {
+      _messages.removeWhere((m) => m.id == message.id);
+    });
+    _cacheMessages();
+
+    // Also remove from queue if it was a failed message
+    ChatSocketService().removeFromQueue(message.id);
+
+    // Call backend to delete
+    final success = await _chatService.deleteMessage(widget.chatId, message.id);
+
+    if (!success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Failed to delete message'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Widget _buildConnectionBanner(String text, AppColorsExtension colors, {required bool isWarning}) {
@@ -1614,6 +2036,85 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Swipe-to-reply widget for message bubbles
+class _SwipeToReply extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onSwipe;
+  final bool isSentByMe;
+
+  const _SwipeToReply({required this.child, required this.onSwipe, required this.isSentByMe});
+
+  @override
+  State<_SwipeToReply> createState() => _SwipeToReplyState();
+}
+
+class _SwipeToReplyState extends State<_SwipeToReply> {
+  double _dragExtent = 0;
+  static const double _swipeThreshold = 60.0;
+  bool _hasTriggered = false;
+
+  void _handleDragUpdate(DragUpdateDetails details) {
+    final delta = details.primaryDelta ?? 0;
+
+    if (widget.isSentByMe) {
+      _dragExtent = (_dragExtent + delta).clamp(-_swipeThreshold * 1.5, 0);
+    } else {
+      _dragExtent = (_dragExtent + delta).clamp(0, _swipeThreshold * 1.5);
+    }
+
+    setState(() {});
+
+    if (_dragExtent.abs() >= _swipeThreshold && !_hasTriggered) {
+      _hasTriggered = true;
+      HapticFeedback.mediumImpact();
+    } else if (_dragExtent.abs() < _swipeThreshold) {
+      _hasTriggered = false;
+    }
+  }
+
+  void _handleDragEnd(DragEndDetails details) {
+    if (_dragExtent.abs() >= _swipeThreshold) {
+      widget.onSwipe();
+    }
+
+    _dragExtent = 0;
+    _hasTriggered = false;
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AppColorsExtension>()!;
+    final progress = (_dragExtent.abs() / _swipeThreshold).clamp(0.0, 1.0);
+
+    return GestureDetector(
+      onHorizontalDragUpdate: _handleDragUpdate,
+      onHorizontalDragEnd: _handleDragEnd,
+      child: Stack(
+        alignment: widget.isSentByMe ? Alignment.centerRight : Alignment.centerLeft,
+        children: [
+          Positioned(
+            left: widget.isSentByMe ? null : 8.w,
+            right: widget.isSentByMe ? 8.w : null,
+            child: Opacity(
+              opacity: progress,
+              child: Transform.scale(
+                scale: 0.5 + (progress * 0.5),
+                child: Container(
+                  padding: EdgeInsets.all(8.w),
+                  decoration: BoxDecoration(color: colors.accentGreen.withValues(alpha: 0.2), shape: BoxShape.circle),
+                  child: Icon(Icons.reply, size: 20.w, color: colors.accentGreen),
+                ),
+              ),
+            ),
+          ),
+          Transform.translate(offset: Offset(_dragExtent, 0), child: widget.child),
+        ],
       ),
     );
   }

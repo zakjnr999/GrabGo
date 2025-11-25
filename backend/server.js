@@ -70,10 +70,12 @@ io.on("connection", (socket) => {
   socket.on("chat:join", async ({ chatId }) => {
     try {
       const userId = socket.data.userId;
+      console.log(`[Socket] chat:join received: chatId=${chatId}, userId=${userId}`);
       if (!chatId || !userId) return;
 
       const chat = await Chat.findById(chatId).select("customer rider");
       if (!chat) {
+        console.log(`[Socket] chat:join - chat not found: ${chatId}`);
         return;
       }
 
@@ -91,6 +93,7 @@ io.on("connection", (socket) => {
 
       const room = `chat:${chatId}`;
       socket.join(room);
+      console.log(`[Socket] User ${userIdStr} joined room ${room}`);
 
       if (!socket.data.chats) {
         socket.data.chats = new Set();
@@ -112,9 +115,15 @@ io.on("connection", (socket) => {
 
   socket.on("chat:typing", ({ chatId, isTyping }) => {
     const userId = socket.data.userId;
-    if (!chatId || !userId) return;
+    console.log(`[Socket] chat:typing received: chatId=${chatId}, userId=${userId}, isTyping=${isTyping}`);
+    if (!chatId || !userId) {
+      console.log(`[Socket] chat:typing skipped - missing chatId or userId`);
+      return;
+    }
     const userIdStr = userId.toString();
     const room = `chat:${chatId}`;
+    const roomSockets = io.sockets.adapter.rooms.get(room);
+    console.log(`[Socket] Emitting chat:typing to room ${room}, sockets in room: ${roomSockets ? roomSockets.size : 0}`);
     socket.to(room).emit("chat:typing", {
       chatId,
       userId: userIdStr,
