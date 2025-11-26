@@ -135,6 +135,44 @@ io.on("connection", (socket) => {
     });
   });
 
+  socket.on("chat:mark_read", async ({ chatId }) => {
+    try {
+      const userId = socket.data.userId;
+      if (!chatId || !userId) return;
+
+      const chat = await Chat.findById(chatId);
+      if (!chat) return;
+
+      const userIdStr = userId.toString();
+      const isParticipant =
+        (chat.customer && chat.customer.toString() === userIdStr) ||
+        (chat.rider && chat.rider.toString() === userIdStr);
+
+      if (!isParticipant) return;
+
+      let changed = false;
+      chat.messages.forEach((msg) => {
+        const alreadyRead = msg.readBy.some((id) => id.toString() === userIdStr);
+        if (!alreadyRead) {
+          msg.readBy.push(userId);
+          changed = true;
+        }
+      });
+
+      if (changed) {
+        await chat.save();
+        const room = `chat:${chatId}`;
+        io.to(room).emit("chat:read", {
+          chatId,
+          userId: userIdStr,
+          readAt: new Date().toISOString(),
+        });
+      }
+    } catch (error) {
+      console.error("chat:mark_read error:", error.message);
+    }
+  });
+
   socket.on("disconnect", () => {
     const userId = socket.data.userId;
     const chats = socket.data.chats;

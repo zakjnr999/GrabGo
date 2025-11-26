@@ -218,6 +218,14 @@ class ChatSocketService {
     socket.emit('chat:typing', {'chatId': chatId, 'isTyping': isTyping});
   }
 
+  void markAsRead(String chatId) {
+    if (chatId.isEmpty || chatId == 'support') return;
+    _connectIfNeeded();
+    final socket = _socket;
+    if (socket == null || !socket.connected) return;
+    socket.emit('chat:mark_read', {'chatId': chatId});
+  }
+
   void _setConnectionState(ChatSocketConnectionState state) {
     if (_connectionState == state) return;
     _connectionState = state;

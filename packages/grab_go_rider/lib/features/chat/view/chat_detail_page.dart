@@ -490,6 +490,20 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     final exists = _messages.any((m) => m.id == id);
     if (exists) return;
 
+    // Parse reply data from socket message
+    final replyTo = messageMap['replyTo'] as Map<String, dynamic>?;
+    String? replyToId;
+    String? replyToText;
+    bool? replyToIsSentByMe;
+    if (replyTo != null) {
+      replyToId = replyTo['id']?.toString();
+      replyToText = replyTo['text']?.toString();
+      final replyToSenderId = replyTo['senderId']?.toString();
+      if (replyToSenderId != null && _currentUserId != null) {
+        replyToIsSentByMe = replyToSenderId == _currentUserId;
+      }
+    }
+
     final msg = ChatMessage(
       id: id,
       text: messageMap['text']?.toString() ?? '',
@@ -497,6 +511,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       isSentByMe: _currentUserId != null && senderId == _currentUserId,
       isRead: _currentUserId != null && senderId == _currentUserId,
       isSystem: false,
+      replyToId: replyToId,
+      replyToText: replyToText,
+      replyToIsSentByMe: replyToIsSentByMe,
     );
 
     final isNearBottom =
@@ -515,6 +532,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     if (isNearBottom) {
       _scrollToBottom();
     }
+
+    // Mark message as read since we're viewing the chat
+    ChatSocketService().markAsRead(widget.chatId);
   }
 
   void _handlePresenceEvent(dynamic data) {
