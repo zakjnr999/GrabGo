@@ -62,8 +62,8 @@ const uploadToCloudinary = async (file, options = {}) => {
 const deleteFromCloudinary = async (publicId) => {
   try {
     if (!publicId) return null;
-    
-    const id = publicId.includes('/') 
+
+    const id = publicId.includes('/')
       ? publicId.split('/').pop().split('.')[0]
       : publicId;
 
@@ -120,10 +120,52 @@ const uploadMulterFile = async (file, options = {}) => {
   }
 };
 
+/**
+ * Upload audio file from multer file object (for voice messages)
+ * @param {Object} file - Multer file object
+ * @param {Object} options - Upload options
+ * @returns {Promise<Object>} Cloudinary upload result with audio URL and duration
+ */
+const uploadAudioFile = async (file, options = {}) => {
+  if (!file) {
+    throw new Error('No file provided');
+  }
+
+  const {
+    folder = 'grabgo',
+    subfolder = 'voice_messages',
+  } = options;
+
+  const uploadFolder = subfolder ? `${folder}/${subfolder}` : folder;
+
+  const base64Data = file.buffer.toString('base64');
+  const dataUri = `data:${file.mimetype};base64,${base64Data}`;
+
+  try {
+    const result = await cloudinary.uploader.upload(dataUri, {
+      folder: uploadFolder,
+      resource_type: 'video', // Cloudinary uses 'video' for audio files
+      format: 'ogg', // Convert to ogg for consistent playback
+    });
+
+    return {
+      url: result.secure_url,
+      public_id: result.public_id,
+      format: result.format,
+      bytes: result.bytes,
+      duration: result.duration || 0, // Duration in seconds
+    };
+  } catch (error) {
+    console.error('Cloudinary uploadAudioFile error:', error);
+    throw new Error(`Failed to upload audio file to Cloudinary: ${error.message}`);
+  }
+};
+
 module.exports = {
   cloudinary,
   uploadToCloudinary,
   deleteFromCloudinary,
   uploadMulterFile,
+  uploadAudioFile,
 };
 

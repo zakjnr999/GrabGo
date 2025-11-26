@@ -43,9 +43,30 @@ class ChatConversationDto {
   }
 }
 
+/// Message types supported in chat
+enum MessageType {
+  text,
+  voice,
+  image;
+
+  static MessageType fromString(String? value) {
+    switch (value) {
+      case 'voice':
+        return MessageType.voice;
+      case 'image':
+        return MessageType.image;
+      default:
+        return MessageType.text;
+    }
+  }
+}
+
 class ChatMessageDto {
   final String id;
-  final String text;
+  final MessageType messageType;
+  final String? text;
+  final String? audioUrl;
+  final double audioDuration; // Duration in seconds
   final String senderId;
   final String? senderName;
   final DateTime sentAt;
@@ -56,7 +77,10 @@ class ChatMessageDto {
 
   ChatMessageDto({
     required this.id,
-    required this.text,
+    this.messageType = MessageType.text,
+    this.text,
+    this.audioUrl,
+    this.audioDuration = 0,
     required this.senderId,
     required this.senderName,
     required this.sentAt,
@@ -66,11 +90,18 @@ class ChatMessageDto {
     this.replyToSenderId,
   });
 
+  bool get isVoiceMessage => messageType == MessageType.voice;
+  bool get isImageMessage => messageType == MessageType.image;
+  bool get isTextMessage => messageType == MessageType.text;
+
   factory ChatMessageDto.fromJson(Map<String, dynamic> json) {
     final replyTo = json['replyTo'] as Map<String, dynamic>?;
     return ChatMessageDto(
       id: json['id'] as String,
-      text: json['text'] as String? ?? '',
+      messageType: MessageType.fromString(json['messageType'] as String?),
+      text: json['text'] as String?,
+      audioUrl: json['audioUrl'] as String?,
+      audioDuration: (json['audioDuration'] as num?)?.toDouble() ?? 0,
       senderId: json['senderId'] as String? ?? '',
       senderName: json['senderName'] as String?,
       sentAt: DateTime.tryParse(json['sentAt']?.toString() ?? '') ?? DateTime.now(),
@@ -242,6 +273,50 @@ class ChatService {
       }
     } catch (e) {
       debugPrint('ChatService.sendMessage error: $e');
+      return null;
+    }
+  }
+
+  /// Send a voice message by uploading audio file
+  /// [audioFilePath] - Path to the local audio file
+  /// [duration] - Duration of the audio in seconds
+  Future<ChatMessageDto?> sendVoiceMessage(String chatId, String audioFilePath, {double? duration}) async {
+    final uri = Uri.parse('$_baseUrl/chats/$chatId/voice-message');
+
+    try {
+      final request = http.MultipartRequest('POST', uri);
+
+      // Add auth header
+      final token = CacheService.getAuthToken();
+      if (token != null && token.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+
+      // Add audio file
+      request.files.add(await http.MultipartFile.fromPath('audio', audioFilePath));
+
+      // Add duration if provided
+      if (duration != null) {
+        request.fields['duration'] = duration.toString();
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+        final data = decoded['data'];
+        if (data is Map<String, dynamic> && data['message'] is Map<String, dynamic>) {
+          final messageJson = data['message'] as Map<String, dynamic>;
+          return ChatMessageDto.fromJson(messageJson);
+        }
+        return null;
+      } else {
+        debugPrint('ChatService.sendVoiceMessage failed: ${response.statusCode} ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('ChatService.sendVoiceMessage error: $e');
       return null;
     }
   }

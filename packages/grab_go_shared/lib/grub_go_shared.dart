@@ -29,3 +29,6 @@ export 'core/auth/auth_service.dart';
 export 'core/auth/google_sign_in_service.dart';
 export 'core/auth/rider_model.dart';
 export 'core/auth/rider_service.dart';
+export 'shared/services/voice_recorder_service.dart';
+export 'shared/services/voice_player_service.dart';
+export 'shared/widgets/voice_message_bubble.dart';

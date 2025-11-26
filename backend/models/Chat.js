@@ -7,10 +7,28 @@ const messageSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    messageType: {
+      type: String,
+      enum: ["text", "voice", "image"],
+      default: "text",
+    },
     text: {
       type: String,
-      required: true,
       trim: true,
+      required: function () {
+        return this.messageType === "text";
+      },
+    },
+    // Voice message fields
+    audioUrl: {
+      type: String,
+      required: function () {
+        return this.messageType === "voice";
+      },
+    },
+    audioDuration: {
+      type: Number, // Duration in seconds
+      default: 0,
     },
     createdAt: {
       type: Date,

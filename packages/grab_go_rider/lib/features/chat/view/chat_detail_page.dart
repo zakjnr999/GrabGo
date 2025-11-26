@@ -17,7 +17,10 @@ import 'package:intl/intl.dart';
 
 class ChatMessage {
   final String id;
+  final MessageType messageType;
   final String text;
+  final String? audioUrl;
+  final double audioDuration;
   final DateTime timestamp;
   final bool isSentByMe;
   final bool isRead;
@@ -31,7 +34,10 @@ class ChatMessage {
 
   ChatMessage({
     required this.id,
+    this.messageType = MessageType.text,
     required this.text,
+    this.audioUrl,
+    this.audioDuration = 0,
     required this.timestamp,
     required this.isSentByMe,
     this.isRead = false,
@@ -43,6 +49,10 @@ class ChatMessage {
     this.replyToText,
     this.replyToIsSentByMe,
   });
+
+  bool get isVoiceMessage => messageType == MessageType.voice;
+  bool get isImageMessage => messageType == MessageType.image;
+  bool get isTextMessage => messageType == MessageType.text;
 }
 
 class ChatDetailPage extends StatefulWidget {
@@ -100,6 +110,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   bool _hasMoreMessages = false;
   bool _isLoadingMore = false;
 
+  // Voice recording state
+  final VoiceRecorderService _voiceRecorder = VoiceRecorderService();
+  bool _isRecording = false;
+  Duration _recordingDuration = Duration.zero;
+
   void _loadCachedMessages() {
     final cached = CacheService.getChatMessages(widget.chatId);
     if (cached.isEmpty) return;
@@ -109,7 +124,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           final id = m['id']?.toString() ?? '';
           if (id.isEmpty) return null;
 
+          final messageTypeStr = m['messageType']?.toString();
+          final messageType = MessageType.fromString(messageTypeStr);
           final text = m['text']?.toString() ?? '';
+          final audioUrl = m['audioUrl']?.toString();
+          final audioDuration = (m['audioDuration'] as num?)?.toDouble() ?? 0;
           final tsStr = m['timestamp']?.toString();
           final timestamp = DateTime.tryParse(tsStr ?? '') ?? DateTime.now();
           final isSentByMe = m['isSentByMe'] == true;
@@ -123,7 +142,10 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
           return ChatMessage(
             id: id,
+            messageType: messageType,
             text: text,
+            audioUrl: audioUrl,
+            audioDuration: audioDuration,
             timestamp: timestamp,
             isSentByMe: isSentByMe,
             isRead: isRead,
@@ -182,7 +204,10 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         .map(
           (m) => {
             'id': m.id,
+            'messageType': m.messageType.name,
             'text': m.text,
+            if (m.audioUrl != null) 'audioUrl': m.audioUrl,
+            'audioDuration': m.audioDuration,
             'timestamp': m.timestamp.toIso8601String(),
             'isSentByMe': m.isSentByMe,
             'isRead': m.isRead,
@@ -306,7 +331,10 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
           return ChatMessage(
             id: m.id,
-            text: m.text,
+            messageType: m.messageType,
+            text: m.text ?? '',
+            audioUrl: m.audioUrl,
+            audioDuration: m.audioDuration,
             timestamp: m.sentAt,
             isSentByMe: isSentByMe,
             isRead: isReadByOther,
@@ -534,7 +562,10 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
     final msg = ChatMessage(
       id: id,
+      messageType: MessageType.fromString(messageMap['messageType']?.toString()),
       text: messageMap['text']?.toString() ?? '',
+      audioUrl: messageMap['audioUrl']?.toString(),
+      audioDuration: (messageMap['audioDuration'] as num?)?.toDouble() ?? 0,
       timestamp: DateTime.tryParse(messageMap['sentAt']?.toString() ?? '') ?? DateTime.now(),
       isSentByMe: _currentUserId != null && senderId == _currentUserId,
       isRead: _currentUserId != null && senderId == _currentUserId,
@@ -747,7 +778,10 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         final existing = _messages[index];
         final updated = ChatMessage(
           id: sent.id,
-          text: sent.text,
+          messageType: sent.messageType,
+          text: sent.text ?? '',
+          audioUrl: sent.audioUrl,
+          audioDuration: sent.audioDuration,
           timestamp: sent.sentAt,
           isSentByMe: true,
           isRead: false,
@@ -834,7 +868,10 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         final existing = _messages[newIndex];
         final updated = ChatMessage(
           id: sent.id,
-          text: sent.text,
+          messageType: sent.messageType,
+          text: sent.text ?? '',
+          audioUrl: sent.audioUrl,
+          audioDuration: sent.audioDuration,
           timestamp: sent.sentAt,
           isSentByMe: true,
           isRead: false,
@@ -893,6 +930,155 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
       );
+    }
+  }
+
+  // Voice recording methods
+  Future<void> _startRecording() async {
+    if (_isRecording) return;
+
+    _voiceRecorder.onDurationChanged = (duration) {
+      if (mounted) {
+        setState(() {
+          _recordingDuration = duration;
+        });
+      }
+    };
+
+    _voiceRecorder.onError = (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+        _cancelRecording();
+      }
+    };
+
+    final started = await _voiceRecorder.startRecording();
+    if (started && mounted) {
+      setState(() {
+        _isRecording = true;
+        _recordingDuration = Duration.zero;
+      });
+      HapticFeedback.mediumImpact();
+    }
+  }
+
+  Future<void> _stopAndSendRecording() async {
+    if (!_isRecording) return;
+
+    final result = await _voiceRecorder.stopRecording();
+    if (result == null || !mounted) {
+      _cancelRecording();
+      return;
+    }
+
+    final (filePath, duration) = result;
+
+    setState(() {
+      _isRecording = false;
+      _recordingDuration = Duration.zero;
+    });
+
+    if (filePath == null || filePath.isEmpty) return;
+
+    // Don't send very short recordings (less than 1 second)
+    if (duration.inMilliseconds < 1000) {
+      _voiceRecorder.deleteRecording(filePath);
+      return;
+    }
+
+    await _sendVoiceMessage(filePath, duration.inSeconds.toDouble());
+  }
+
+  void _cancelRecording() {
+    if (!_isRecording) return;
+
+    _voiceRecorder.cancelRecording();
+    setState(() {
+      _isRecording = false;
+      _recordingDuration = Duration.zero;
+    });
+    HapticFeedback.lightImpact();
+  }
+
+  Future<void> _sendVoiceMessage(String audioPath, double duration) async {
+    final tempId = DateTime.now().millisecondsSinceEpoch.toString();
+
+    // Add optimistic message
+    final optimisticMessage = ChatMessage(
+      id: tempId,
+      messageType: MessageType.voice,
+      text: '',
+      audioUrl: audioPath,
+      audioDuration: duration,
+      timestamp: DateTime.now(),
+      isSentByMe: true,
+      isRead: false,
+      isPending: true,
+      isFailed: false,
+    );
+
+    setState(() {
+      _messages.add(optimisticMessage);
+    });
+
+    _cacheMessages();
+    _scrollToBottom(force: true);
+
+    try {
+      final sent = await _chatService.sendVoiceMessage(widget.chatId, audioPath, duration: duration);
+
+      _voiceRecorder.deleteRecording(audioPath);
+
+      if (!mounted || sent == null) {
+        _markVoiceMessageFailed(tempId);
+        return;
+      }
+
+      final index = _messages.indexWhere((m) => m.id == tempId);
+      if (index != -1) {
+        setState(() {
+          _messages[index] = ChatMessage(
+            id: sent.id,
+            messageType: sent.messageType,
+            text: sent.text ?? '',
+            audioUrl: sent.audioUrl,
+            audioDuration: sent.audioDuration,
+            timestamp: sent.sentAt,
+            isSentByMe: true,
+            isRead: false,
+            isPending: false,
+            isFailed: false,
+          );
+        });
+        _cacheMessages();
+        HapticFeedback.lightImpact();
+      }
+    } catch (e) {
+      _markVoiceMessageFailed(tempId);
+    }
+  }
+
+  void _markVoiceMessageFailed(String messageId) {
+    if (!mounted) return;
+    final index = _messages.indexWhere((m) => m.id == messageId);
+    if (index != -1) {
+      final existing = _messages[index];
+      setState(() {
+        _messages[index] = ChatMessage(
+          id: existing.id,
+          messageType: existing.messageType,
+          text: existing.text,
+          audioUrl: existing.audioUrl,
+          audioDuration: existing.audioDuration,
+          timestamp: existing.timestamp,
+          isSentByMe: existing.isSentByMe,
+          isRead: existing.isRead,
+          isPending: false,
+          isFailed: true,
+        );
+      });
+      _cacheMessages();
+      HapticFeedback.mediumImpact();
     }
   }
 
@@ -959,7 +1145,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           isReadByOther = m.readBy.contains(otherUserId);
         }
 
-        return ChatMessage(id: m.id, text: m.text, timestamp: m.sentAt, isSentByMe: isSentByMe, isRead: isReadByOther);
+        return ChatMessage(id: m.id, text: m.text!, timestamp: m.sentAt, isSentByMe: isSentByMe, isRead: isReadByOther);
       }).toList();
 
       if (olderMessages.isNotEmpty) {
@@ -1471,82 +1657,196 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             // Reply preview
             if (_replyingTo != null) _buildReplyPreview(colors),
 
-            Container(
-              padding: EdgeInsets.only(
-                left: 20.w,
-                right: 20.w,
-                top: 12.h,
-                bottom: MediaQuery.of(context).padding.bottom + 12.h,
-              ),
-              decoration: BoxDecoration(
-                color: colors.backgroundPrimary,
-                border: Border(top: BorderSide(color: colors.border, width: 1)),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(KBorderSize.borderRadius4),
-                  topRight: Radius.circular(KBorderSize.borderRadius4),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      constraints: BoxConstraints(maxHeight: 120.h),
-                      decoration: BoxDecoration(
-                        color: colors.backgroundSecondary,
-                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                        border: Border.all(color: colors.border, width: 1),
-                      ),
-                      child: TextField(
-                        controller: _messageController,
-                        focusNode: _messageFocusNode,
-                        maxLines: null,
-                        textCapitalization: TextCapitalization.sentences,
-                        decoration: InputDecoration(
-                          hintText: "Type a message...",
-                          hintStyle: TextStyle(color: colors.textSecondary.withValues(alpha: 0.6), fontSize: 14.sp),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                        ),
-                        style: TextStyle(color: colors.textPrimary, fontSize: 14.sp),
-                        onChanged: _handleMessageChanged,
-                        onSubmitted: (_) => _sendMessage(),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 12.w),
-                  GestureDetector(
-                    onTap: _sendMessage,
-                    child: Container(
-                      width: 48.w,
-                      height: 48.w,
-                      decoration: BoxDecoration(
-                        color: colors.accentGreen,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: colors.accentGreen.withValues(alpha: 0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: SvgPicture.asset(
-                          Assets.icons.sendDiagonal,
-                          package: 'grab_go_shared',
-                          width: 20.w,
-                          height: 20.w,
-                          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _buildInputArea(colors),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildInputArea(AppColorsExtension colors) {
+    final hasText = _messageController.text.trim().isNotEmpty;
+
+    return Container(
+      padding: EdgeInsets.only(
+        left: 20.w,
+        right: 20.w,
+        top: 12.h,
+        bottom: MediaQuery.of(context).padding.bottom + 12.h,
+      ),
+      decoration: BoxDecoration(
+        color: colors.backgroundPrimary,
+        border: Border(top: BorderSide(color: colors.border, width: 1)),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(KBorderSize.borderRadius4),
+          topRight: Radius.circular(KBorderSize.borderRadius4),
+        ),
+      ),
+      child: _isRecording ? _buildRecordingUI(colors) : _buildTextInputUI(colors, hasText),
+    );
+  }
+
+  Widget _buildTextInputUI(AppColorsExtension colors, bool hasText) {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            constraints: BoxConstraints(maxHeight: 120.h),
+            decoration: BoxDecoration(
+              color: colors.backgroundSecondary,
+              borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+              border: Border.all(color: colors.border, width: 1),
+            ),
+            child: TextField(
+              controller: _messageController,
+              focusNode: _messageFocusNode,
+              maxLines: null,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                hintText: "Type a message...",
+                hintStyle: TextStyle(color: colors.textSecondary.withValues(alpha: 0.6), fontSize: 14.sp),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+              ),
+              style: TextStyle(color: colors.textPrimary, fontSize: 14.sp),
+              onChanged: _handleMessageChanged,
+              onSubmitted: (_) => _sendMessage(),
+            ),
+          ),
+        ),
+        SizedBox(width: 12.w),
+        if (hasText)
+          GestureDetector(
+            onTap: _sendMessage,
+            child: Container(
+              width: 48.w,
+              height: 48.w,
+              decoration: BoxDecoration(
+                color: colors.accentGreen,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: colors.accentGreen.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: SvgPicture.asset(
+                  Assets.icons.sendDiagonal,
+                  package: 'grab_go_shared',
+                  width: 20.w,
+                  height: 20.w,
+                  colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                ),
+              ),
+            ),
+          )
+        else
+          GestureDetector(
+            onLongPressStart: (_) => _startRecording(),
+            onLongPressEnd: (_) => _stopAndSendRecording(),
+            onLongPressCancel: () => _cancelRecording(),
+            child: Container(
+              width: 48.w,
+              height: 48.w,
+              decoration: BoxDecoration(
+                color: colors.accentGreen,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: colors.accentGreen.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Icon(Icons.mic, color: Colors.white, size: 24.w),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildRecordingUI(AppColorsExtension colors) {
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: _cancelRecording,
+          child: Container(
+            width: 40.w,
+            height: 40.w,
+            decoration: BoxDecoration(color: colors.error.withValues(alpha: 0.1), shape: BoxShape.circle),
+            child: Icon(Icons.delete_outline, color: colors.error, size: 22.w),
+          ),
+        ),
+        SizedBox(width: 12.w),
+        Expanded(
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+            decoration: BoxDecoration(
+              color: colors.backgroundSecondary,
+              borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+              border: Border.all(color: colors.error.withValues(alpha: 0.3), width: 1),
+            ),
+            child: Row(
+              children: [
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.5, end: 1.0),
+                  duration: const Duration(milliseconds: 500),
+                  builder: (context, value, child) {
+                    return Container(
+                      width: 10.w,
+                      height: 10.w,
+                      decoration: BoxDecoration(
+                        color: colors.error.withValues(alpha: value),
+                        shape: BoxShape.circle,
+                      ),
+                    );
+                  },
+                ),
+                SizedBox(width: 12.w),
+                Text(
+                  VoiceRecorderService.formatDuration(_recordingDuration),
+                  style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w500),
+                ),
+                const Spacer(),
+                Text(
+                  'Recording...',
+                  style: TextStyle(color: colors.textSecondary, fontSize: 12.sp),
+                ),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(width: 12.w),
+        GestureDetector(
+          onTap: _stopAndSendRecording,
+          child: Container(
+            width: 48.w,
+            height: 48.w,
+            decoration: BoxDecoration(
+              color: colors.accentGreen,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(color: colors.accentGreen.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2)),
+              ],
+            ),
+            child: Center(
+              child: SvgPicture.asset(
+                Assets.icons.sendDiagonal,
+                package: 'grab_go_shared',
+                width: 20.w,
+                height: 20.w,
+                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1784,14 +2084,29 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                         ],
                       ),
                     ),
-                  Text(
-                    message.text,
-                    style: TextStyle(
-                      color: isSent ? Colors.white : colors.textPrimary,
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w400,
+                  // Message content based on type
+                  if (message.isVoiceMessage && message.audioUrl != null)
+                    VoiceMessageBubble(
+                      audioUrl: message.audioUrl!,
+                      duration: message.audioDuration,
+                      isSentByMe: isSent,
+                      isRead: message.isRead,
+                      timestamp: message.timestamp,
+                      bubbleColor: Colors.transparent,
+                      iconColor: isSent ? Colors.white : colors.accentGreen,
+                      textColor: isSent ? Colors.white70 : colors.textSecondary,
+                      progressColor: isSent ? Colors.white : colors.accentGreen,
+                      progressBackgroundColor: isSent ? Colors.white24 : colors.border,
+                    )
+                  else
+                    Text(
+                      message.text,
+                      style: TextStyle(
+                        color: isSent ? Colors.white : colors.textPrimary,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w400,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),

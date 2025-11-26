@@ -2,6 +2,7 @@ const express = require("express");
 const Chat = require("../models/Chat");
 const { protect } = require("../middleware/auth");
 const { io } = require("../server");
+const { uploadAudioSingle, uploadAudioToCloudinary } = require("../middleware/upload");
 
 const router = express.Router();
 
@@ -44,6 +45,20 @@ router.get("/", protect, async (req, res) => {
         return !sentByMe && !readByUser;
       }).length;
 
+      // Determine last message display text based on type
+      let lastMessageText = "";
+      let lastMessageType = "text";
+      if (lastMessage) {
+        lastMessageType = lastMessage.messageType || "text";
+        if (lastMessageType === "voice") {
+          lastMessageText = "🎤 Voice message";
+        } else if (lastMessageType === "image") {
+          lastMessageText = "📷 Image";
+        } else {
+          lastMessageText = lastMessage.text || "";
+        }
+      }
+
       return {
         id: chat._id.toString(),
         orderId: chat.order ? chat.order._id.toString() : null,
@@ -55,7 +70,8 @@ router.get("/", protect, async (req, res) => {
             role: otherUser.role,
           }
           : null,
-        lastMessage: lastMessage ? lastMessage.text : "",
+        lastMessage: lastMessageText,
+        lastMessageType: lastMessageType,
         lastMessageAt: lastMessage ? lastMessage.createdAt : chat.updatedAt,
         unreadCount,
       };
@@ -161,7 +177,10 @@ router.get("/:chatId", protect, async (req, res) => {
 
     const messages = messagesToReturn.map((msg) => ({
       id: msg._id.toString(),
+      messageType: msg.messageType || "text",
       text: msg.text,
+      audioUrl: msg.audioUrl || null,
+      audioDuration: msg.audioDuration || 0,
       senderId:
         msg.sender && msg.sender._id
           ? msg.sender._id.toString()
@@ -255,6 +274,7 @@ router.post("/:chatId/messages", protect, async (req, res) => {
 
     const message = {
       sender: req.user._id,
+      messageType: "text",
       text: text.trim(),
       createdAt: new Date(),
       readBy: [req.user._id],
@@ -282,7 +302,10 @@ router.post("/:chatId/messages", protect, async (req, res) => {
       chatId: chat._id.toString(),
       message: {
         id: savedMessage._id.toString(),
+        messageType: savedMessage.messageType || "text",
         text: savedMessage.text,
+        audioUrl: null,
+        audioDuration: 0,
         senderId: savedMessage.sender.toString(),
         sentAt: savedMessage.createdAt,
         readBy: savedMessage.readBy.map((id) => id.toString()),
@@ -312,6 +335,100 @@ router.post("/:chatId/messages", protect, async (req, res) => {
     });
   }
 });
+
+// Send a voice message in an existing chat
+router.post(
+  "/:chatId/voice-message",
+  protect,
+  uploadAudioSingle("audio"),
+  uploadAudioToCloudinary,
+  async (req, res) => {
+    try {
+      const { chatId } = req.params;
+      const { duration } = req.body; // Client can send duration if known
+
+      if (!req.file || !req.file.cloudinaryUrl) {
+        return res.status(400).json({
+          success: false,
+          message: "Audio file is required",
+        });
+      }
+
+      const chat = await Chat.findById(chatId)
+        .populate("customer", "username email role")
+        .populate("rider", "username email role");
+
+      if (!chat) {
+        return res.status(404).json({
+          success: false,
+          message: "Chat not found",
+        });
+      }
+
+      const userIdStr = req.user._id.toString();
+      const isParticipant =
+        (chat.customer && chat.customer._id.toString() === userIdStr) ||
+        (chat.rider && chat.rider._id.toString() === userIdStr) ||
+        req.user.role === "admin";
+
+      if (!isParticipant) {
+        return res.status(403).json({
+          success: false,
+          message: "Not authorized to send messages in this chat",
+        });
+      }
+
+      // Use duration from Cloudinary if available, otherwise from client
+      const audioDuration = req.file.duration || parseFloat(duration) || 0;
+
+      const message = {
+        sender: req.user._id,
+        messageType: "voice",
+        audioUrl: req.file.cloudinaryUrl,
+        audioDuration: audioDuration,
+        createdAt: new Date(),
+        readBy: [req.user._id],
+      };
+
+      chat.messages.push(message);
+      await chat.save();
+
+      const savedMessage = chat.messages[chat.messages.length - 1];
+
+      const payload = {
+        chatId: chat._id.toString(),
+        message: {
+          id: savedMessage._id.toString(),
+          messageType: "voice",
+          text: null,
+          audioUrl: savedMessage.audioUrl,
+          audioDuration: savedMessage.audioDuration,
+          senderId: savedMessage.sender.toString(),
+          sentAt: savedMessage.createdAt,
+          readBy: savedMessage.readBy.map((id) => id.toString()),
+          replyTo: null,
+        },
+      };
+
+      if (io) {
+        io.to(`chat:${chat._id.toString()}`).emit("chat:new_message", payload);
+      }
+
+      res.status(201).json({
+        success: true,
+        message: "Voice message sent successfully",
+        data: payload,
+      });
+    } catch (error) {
+      console.error("Send voice message error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message,
+      });
+    }
+  }
+);
 
 // Delete a message from a chat
 router.delete("/:chatId/messages/:messageId", protect, async (req, res) => {
