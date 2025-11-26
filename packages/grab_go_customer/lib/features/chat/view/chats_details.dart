@@ -326,7 +326,6 @@ class _ChatDetailState extends State<ChatDetail> {
   }
 
   void _setupSocketListeners() {
-    debugPrint('[ChatDetail] _setupSocketListeners called, isSupport: ${widget.isSupport}, chatId: ${widget.chatId}');
     if (widget.isSupport) return;
 
     final chatSocket = ChatSocketService();
@@ -336,9 +335,6 @@ class _ChatDetailState extends State<ChatDetail> {
     chatSocket.addReadListener(_handleReadEvent);
     chatSocket.addRetryListener(_handleQueuedMessageRetry);
     chatSocket.addDeleteListener(_handleMessageDeleted);
-
-    // Ensure we're joined to this chat
-    debugPrint('[ChatDetail] Calling joinChat with chatId: ${widget.chatId}');
     chatSocket.joinChat(widget.chatId);
   }
 
@@ -454,23 +450,19 @@ class _ChatDetailState extends State<ChatDetail> {
   }
 
   void _handlePresenceEvent(dynamic data) {
-    debugPrint('[ChatDetail] Presence event received: $data');
     if (!mounted || widget.isSupport) return;
     if (data is! Map) return;
 
     final map = Map<String, dynamic>.from(data);
     final payloadChatId = map['chatId']?.toString();
-    debugPrint('[ChatDetail] Presence chatId: $payloadChatId, widget.chatId: ${widget.chatId}');
     if (payloadChatId != widget.chatId) return;
 
     // Ignore our own presence events
     final eventUserId = map['userId']?.toString();
     _currentUserId ??= _userService.getUserId();
-    debugPrint('[ChatDetail] Presence eventUserId: $eventUserId, currentUserId: $_currentUserId');
     if (eventUserId == _currentUserId) return;
 
     final online = map['online'] == true;
-    debugPrint('[ChatDetail] Setting _isPeerOnline to: $online');
 
     setState(() {
       _isPeerOnline = online;
@@ -482,23 +474,19 @@ class _ChatDetailState extends State<ChatDetail> {
   }
 
   void _handleTypingEvent(dynamic data) {
-    debugPrint('[ChatDetail] Typing event received: $data');
     if (!mounted || widget.isSupport) return;
     if (data is! Map) return;
 
     final map = Map<String, dynamic>.from(data);
     final payloadChatId = map['chatId']?.toString();
-    debugPrint('[ChatDetail] Typing chatId: $payloadChatId, widget.chatId: ${widget.chatId}');
     if (payloadChatId != widget.chatId) return;
 
     // Ignore our own typing events
     final eventUserId = map['userId']?.toString();
     _currentUserId ??= _userService.getUserId();
-    debugPrint('[ChatDetail] Typing eventUserId: $eventUserId, currentUserId: $_currentUserId');
     if (eventUserId == _currentUserId) return;
 
     final isTyping = map['isTyping'] == true;
-    debugPrint('[ChatDetail] Setting _isPeerTyping to: $isTyping');
 
     setState(() {
       _isPeerTyping = isTyping;

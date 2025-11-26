@@ -70,14 +70,10 @@ io.on("connection", (socket) => {
   socket.on("chat:join", async ({ chatId }) => {
     try {
       const userId = socket.data.userId;
-      console.log(`[Socket] chat:join received: chatId=${chatId}, userId=${userId}`);
       if (!chatId || !userId) return;
 
       const chat = await Chat.findById(chatId).select("customer rider");
-      if (!chat) {
-        console.log(`[Socket] chat:join - chat not found: ${chatId}`);
-        return;
-      }
+      if (!chat) return;
 
       const userIdStr = userId.toString();
       const isParticipant =
@@ -93,7 +89,6 @@ io.on("connection", (socket) => {
 
       const room = `chat:${chatId}`;
       socket.join(room);
-      console.log(`[Socket] User ${userIdStr} joined room ${room}`);
 
       if (!socket.data.chats) {
         socket.data.chats = new Set();
@@ -106,7 +101,22 @@ io.on("connection", (socket) => {
       chatPresence.set(presenceKey, nextCount);
 
       if (previousCount === 0) {
+        // Notify others in the room that this user is now online
         socket.to(room).emit("chat:presence", { chatId, userId: userIdStr, online: true });
+      }
+
+      // Check if the other participant is online and notify the joining user
+      const otherUserId = chat.customer?.toString() === userIdStr
+        ? chat.rider?.toString()
+        : chat.customer?.toString();
+
+      if (otherUserId) {
+        const otherPresenceKey = `${chatId}:${otherUserId}`;
+        const otherCount = chatPresence.get(otherPresenceKey) || 0;
+        if (otherCount > 0) {
+          // The other user is online, notify the joining user
+          socket.emit("chat:presence", { chatId, userId: otherUserId, online: true });
+        }
       }
     } catch (error) {
       console.error("chat:join error:", error.message);
@@ -115,15 +125,9 @@ io.on("connection", (socket) => {
 
   socket.on("chat:typing", ({ chatId, isTyping }) => {
     const userId = socket.data.userId;
-    console.log(`[Socket] chat:typing received: chatId=${chatId}, userId=${userId}, isTyping=${isTyping}`);
-    if (!chatId || !userId) {
-      console.log(`[Socket] chat:typing skipped - missing chatId or userId`);
-      return;
-    }
+    if (!chatId || !userId) return;
     const userIdStr = userId.toString();
     const room = `chat:${chatId}`;
-    const roomSockets = io.sockets.adapter.rooms.get(room);
-    console.log(`[Socket] Emitting chat:typing to room ${room}, sockets in room: ${roomSockets ? roomSockets.size : 0}`);
     socket.to(room).emit("chat:typing", {
       chatId,
       userId: userIdStr,

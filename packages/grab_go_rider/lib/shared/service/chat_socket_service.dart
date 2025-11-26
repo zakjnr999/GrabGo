@@ -47,6 +47,7 @@ class ChatSocketService {
   final List<void Function(dynamic)> _deleteListeners = [];
 
   final Set<String> _joinedChats = <String>{};
+  final Set<String> _pendingJoinChats = <String>{};
 
   ChatSocketConnectionState _connectionState = ChatSocketConnectionState.disconnected;
   final List<void Function(ChatSocketConnectionState)> _connectionListeners = [];
@@ -181,26 +182,26 @@ class ChatSocketService {
 
   void joinChat(String chatId) {
     if (chatId.isEmpty) return;
-    if (_joinedChats.contains(chatId)) return;
 
     _connectIfNeeded();
     final socket = _socket;
-    if (socket == null || !socket.connected) return;
+    if (socket == null || !socket.connected) {
+      // Add to pending chats to join when connected
+      _pendingJoinChats.add(chatId);
+      return;
+    }
+
+    if (_joinedChats.contains(chatId)) return;
 
     socket.emit('chat:join', {'chatId': chatId});
     _joinedChats.add(chatId);
   }
 
   void setTyping(String chatId, bool isTyping) {
-    debugPrint('[ChatSocket-Rider] setTyping called: chatId=$chatId, isTyping=$isTyping');
     if (chatId.isEmpty) return;
     _connectIfNeeded();
     final socket = _socket;
-    if (socket == null || !socket.connected) {
-      debugPrint('[ChatSocket-Rider] setTyping skipped - socket not connected');
-      return;
-    }
-    debugPrint('[ChatSocket-Rider] Emitting chat:typing');
+    if (socket == null || !socket.connected) return;
     socket.emit('chat:typing', {'chatId': chatId, 'isTyping': isTyping});
   }
 
@@ -293,6 +294,8 @@ class ChatSocketService {
       _setConnectionState(ChatSocketConnectionState.connected);
       _joinedChats.clear();
       _joinAllCachedChats();
+      // Join any pending chats that were requested before connection
+      _joinPendingChats();
       // Process any queued messages when connection is restored
       _processMessageQueue();
     });
@@ -447,6 +450,15 @@ class ChatSocketService {
       }
     } catch (e) {
       debugPrint('Error joining cached chats (rider): $e');
+    }
+  }
+
+  void _joinPendingChats() {
+    if (_pendingJoinChats.isEmpty) return;
+    final pending = List<String>.from(_pendingJoinChats);
+    _pendingJoinChats.clear();
+    for (final chatId in pending) {
+      joinChat(chatId);
     }
   }
 

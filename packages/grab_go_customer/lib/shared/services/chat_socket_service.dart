@@ -63,6 +63,7 @@ class ChatSocketService {
   final List<void Function(dynamic)> _deleteListeners = [];
 
   final Set<String> _joinedChats = <String>{};
+  final Set<String> _pendingJoinChats = <String>{};
 
   ChatSocketConnectionState _connectionState = ChatSocketConnectionState.disconnected;
   final List<void Function(ChatSocketConnectionState)> _connectionListeners = [];
@@ -194,28 +195,17 @@ class ChatSocketService {
   }
 
   void joinChat(String chatId) {
-    debugPrint(
-      '[ChatSocket] joinChat called with chatId: $chatId, socket connected: ${_socket?.connected}, connectionState: $_connectionState',
-    );
-    if (chatId.isEmpty || chatId == 'support') {
-      debugPrint('[ChatSocket] joinChat skipped - empty or support');
-      return;
-    }
-    if (_joinedChats.contains(chatId)) {
-      debugPrint('[ChatSocket] joinChat skipped - already joined. Socket connected: ${_socket?.connected}');
-      return;
-    }
+    if (chatId.isEmpty || chatId == 'support') return;
 
     _connectIfNeeded();
     final socket = _socket;
     if (socket == null || !socket.connected) {
-      debugPrint(
-        '[ChatSocket] joinChat skipped - socket null or not connected. socket: $socket, connected: ${socket?.connected}',
-      );
+      _pendingJoinChats.add(chatId);
       return;
     }
 
-    debugPrint('[ChatSocket] Emitting chat:join for chatId: $chatId');
+    if (_joinedChats.contains(chatId)) return;
+
     socket.emit('chat:join', {'chatId': chatId});
     _joinedChats.add(chatId);
   }
@@ -308,13 +298,14 @@ class ChatSocketService {
     );
 
     _socket!.onConnect((_) {
-      debugPrint('[ChatSocket] Socket connected!');
       _currentUserId ??= UserService().currentUser?.id;
       _connecting = false;
       _reconnectAttempts = 0;
       _setConnectionState(ChatSocketConnectionState.connected);
       _joinedChats.clear();
       _joinAllCachedChats();
+      // Join any pending chats that were requested before connection
+      _joinPendingChats();
       // Process any queued messages when connection is restored
       _processMessageQueue();
     });
@@ -340,7 +331,6 @@ class ChatSocketService {
     });
 
     _socket!.on('chat:presence', (data) {
-      debugPrint('[ChatSocket] chat:presence received: $data, listeners: ${_presenceListeners.length}');
       for (final listener in List.from(_presenceListeners)) {
         try {
           listener(data);
@@ -351,7 +341,6 @@ class ChatSocketService {
     });
 
     _socket!.on('chat:typing', (data) {
-      debugPrint('[ChatSocket] chat:typing received: $data, listeners: ${_typingListeners.length}');
       for (final listener in List.from(_typingListeners)) {
         try {
           listener(data);
@@ -471,6 +460,15 @@ class ChatSocketService {
       }
     } catch (e) {
       debugPrint('Error joining cached chats: $e');
+    }
+  }
+
+  void _joinPendingChats() {
+    if (_pendingJoinChats.isEmpty) return;
+    final pending = List<String>.from(_pendingJoinChats);
+    _pendingJoinChats.clear();
+    for (final chatId in pending) {
+      joinChat(chatId);
     }
   }
 
