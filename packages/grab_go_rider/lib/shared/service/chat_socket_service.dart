@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:grab_go_rider/features/chat/service/chat_service.dart';
 import 'package:grab_go_rider/shared/service/cache_service.dart';
@@ -180,7 +179,7 @@ class ChatSocketService {
     _updateCachedChatUnread(chatId, 0);
   }
 
-  void joinChat(String chatId) {
+  void joinChat(String chatId, {bool forceRejoin = false}) {
     if (chatId.isEmpty) return;
 
     _connectIfNeeded();
@@ -191,7 +190,7 @@ class ChatSocketService {
       return;
     }
 
-    if (_joinedChats.contains(chatId)) return;
+    if (_joinedChats.contains(chatId) && !forceRejoin) return;
 
     socket.emit('chat:join', {'chatId': chatId});
     _joinedChats.add(chatId);
@@ -220,7 +219,7 @@ class ChatSocketService {
       try {
         listener(state);
       } catch (e) {
-        debugPrint('Error in ChatSocketService connection listener: $e');
+        // Silent in production
       }
     }
   }
@@ -323,7 +322,7 @@ class ChatSocketService {
         try {
           listener(data);
         } catch (e) {
-          debugPrint('Error in chat:new_message listener: $e');
+          // Silent in production
         }
       }
     });
@@ -333,7 +332,7 @@ class ChatSocketService {
         try {
           listener(data);
         } catch (e) {
-          debugPrint('Error in chat:presence listener: $e');
+          // Silent in production
         }
       }
     });
@@ -343,7 +342,7 @@ class ChatSocketService {
         try {
           listener(data);
         } catch (e) {
-          debugPrint('Error in chat:typing listener: $e');
+          // Silent in production
         }
       }
     });
@@ -354,7 +353,7 @@ class ChatSocketService {
         try {
           listener(data);
         } catch (e) {
-          debugPrint('Error in chat:read listener: $e');
+          // Silent in production
         }
       }
     });
@@ -364,7 +363,7 @@ class ChatSocketService {
         try {
           listener(data);
         } catch (e) {
-          debugPrint('Error in chat:message_deleted listener: $e');
+          // Silent in production
         }
       }
     });
@@ -470,19 +469,13 @@ class ChatSocketService {
     }
   }
 
-  void updateKnownChats(List<String> chatIds) {
-    if (_socket == null || !_socket!.connected) {
-      _connectIfNeeded();
-    }
-    if (_socket == null || !_socket!.connected) return;
-
-    _currentUserId ??= UserService().currentUser?.id;
-    final userId = _currentUserId;
-    if (userId == null || userId.isEmpty) return;
+  void updateKnownChats(List<String> chatIds, {bool forceRejoin = false}) {
+    _connectIfNeeded();
 
     for (final chatId in chatIds) {
       if (chatId == 'support') continue;
-      joinChat(chatId);
+      // joinChat will queue the chat if socket isn't connected yet
+      joinChat(chatId, forceRejoin: forceRejoin);
     }
   }
 
@@ -597,7 +590,7 @@ class ChatSocketService {
     if (_messageQueue.any((m) => m.tempId == tempId)) return;
 
     _messageQueue.add(QueuedMessage(chatId: chatId, tempId: tempId, text: text, queuedAt: DateTime.now()));
-    debugPrint('Queued message for retry: $tempId');
+    // Silent in production
   }
 
   /// Remove a message from the queue
@@ -619,7 +612,7 @@ class ChatSocketService {
     if (!isConnected) return;
 
     _isProcessingQueue = true;
-    debugPrint('Processing ${_messageQueue.length} queued messages...');
+    // Silent in production
 
     final chatService = ChatService();
     final toRemove = <String>[];
@@ -636,10 +629,10 @@ class ChatSocketService {
             try {
               listener(queuedMsg.chatId, queuedMsg.tempId, true, sent.id);
             } catch (e) {
-              debugPrint('Error in retry listener: $e');
+              // Silent in production
             }
           }
-          debugPrint('Successfully sent queued message: ${queuedMsg.tempId}');
+          // Silent in production
         } else {
           queuedMsg.retryCount++;
           if (queuedMsg.retryCount >= _maxRetries) {
@@ -648,13 +641,13 @@ class ChatSocketService {
               try {
                 listener(queuedMsg.chatId, queuedMsg.tempId, false, null);
               } catch (e) {
-                debugPrint('Error in retry listener: $e');
+                // Silent in production
               }
             }
           }
         }
       } catch (e) {
-        debugPrint('Error retrying queued message: $e');
+        // Silent in production
         queuedMsg.retryCount++;
         if (queuedMsg.retryCount >= _maxRetries) {
           toRemove.add(queuedMsg.tempId);
@@ -665,7 +658,7 @@ class ChatSocketService {
     _messageQueue.removeWhere((m) => toRemove.contains(m.tempId));
     _isProcessingQueue = false;
 
-    debugPrint('Queue processing complete. ${_messageQueue.length} messages remaining.');
+    // Silent in production
   }
 
   void dispose() {

@@ -101,8 +101,8 @@ class _ChatsState extends State<Chats> {
   final ChatService _chatService = ChatService();
   final UserService _userService = UserService();
   final OrderServiceWrapper _orderService = OrderServiceWrapper();
-  bool _isLoading = false;
-  String? _error;
+  bool _isLoading = true; // Start with loading until we check cache and API
+  bool _hasAttemptedLoad = false; // Track if we've tried loading data
   Timer? _pollingTimer;
   String? _currentUserId;
 
@@ -184,10 +184,31 @@ class _ChatsState extends State<Chats> {
       _conversations = loaded;
       _filteredConversations = loaded;
       _isLoading = false;
-      _error = null;
     });
 
+    // Join all chat rooms to receive presence updates
+    ChatSocketService().updateKnownChats(loaded.map((c) => c.id).toList(), forceRejoin: true);
+
     _resortAndFilterConversations(applySearch: false);
+  }
+
+  void _cacheConversations() {
+    final chatList = _conversations
+        .map(
+          (c) => {
+            'id': c.id,
+            'senderId': c.senderId,
+            'senderName': c.senderName,
+            'lastMessage': c.lastMessage,
+            'timestamp': c.timestamp.toIso8601String(),
+            'unreadCount': c.unreadCount,
+            'isOnline': c.isOnline,
+            'orderId': c.orderId,
+            'isTyping': c.isTyping,
+          },
+        )
+        .toList();
+    CacheService.saveChatList(chatList);
   }
 
   void _startPolling() {
@@ -230,20 +251,22 @@ class _ChatsState extends State<Chats> {
     if (showLoader) {
       setState(() {
         _isLoading = true;
-        _error = null;
-      });
-    } else {
-      setState(() {
-        _error = null;
       });
     }
 
     try {
       final apiChats = await _chatService.getChats();
 
+      // Build a map of existing online/typing status to preserve
+      final existingStatus = <String, ({bool isOnline, bool isTyping})>{};
+      for (final c in _conversations) {
+        existingStatus[c.id] = (isOnline: c.isOnline, isTyping: c.isTyping);
+      }
+
       final List<_ChatMessage> loaded = apiChats.map((chat) {
         final senderId = chat.otherUserId ?? 'unknown_user';
         final senderName = chat.otherUserName ?? (chat.otherUserRole == 'rider' ? 'Your rider' : 'User');
+        final existing = existingStatus[chat.id];
 
         return _ChatMessage(
           id: chat.id,
@@ -252,21 +275,24 @@ class _ChatsState extends State<Chats> {
           lastMessage: chat.lastMessage,
           timestamp: chat.lastMessageAt,
           unreadCount: chat.unreadCount,
-          isOnline: false,
+          isOnline: existing?.isOnline ?? false,
           orderId: chat.orderNumber,
+          isTyping: existing?.isTyping ?? false,
         );
       }).toList();
 
       // Support chat removed - will be implemented separately
       _conversations = loaded;
       _filteredConversations = _conversations;
-      ChatSocketService().updateKnownChats(_conversations.map((c) => c.id).toList());
+      _cacheConversations(); // Cache for offline access
+      ChatSocketService().updateKnownChats(_conversations.map((c) => c.id).toList(), forceRejoin: true);
     } catch (e) {
-      _error = 'Failed to load chats. Please try again.';
+      // Silent fail - show cached data or empty state
     } finally {
-      if (mounted && showLoader) {
+      if (mounted) {
         setState(() {
-          _isLoading = false;
+          _hasAttemptedLoad = true;
+          _isLoading = false; // Always stop loading when API call completes
         });
       }
     }
@@ -276,9 +302,16 @@ class _ChatsState extends State<Chats> {
     try {
       final apiChats = await _chatService.getChats();
 
+      // Build a map of existing online/typing status to preserve
+      final existingStatus = <String, ({bool isOnline, bool isTyping})>{};
+      for (final c in _conversations) {
+        existingStatus[c.id] = (isOnline: c.isOnline, isTyping: c.isTyping);
+      }
+
       final List<_ChatMessage> loaded = apiChats.map((chat) {
         final senderId = chat.otherUserId ?? 'unknown_user';
         final senderName = chat.otherUserName ?? (chat.otherUserRole == 'rider' ? 'Your rider' : 'User');
+        final existing = existingStatus[chat.id];
 
         return _ChatMessage(
           id: chat.id,
@@ -287,8 +320,9 @@ class _ChatsState extends State<Chats> {
           lastMessage: chat.lastMessage,
           timestamp: chat.lastMessageAt,
           unreadCount: chat.unreadCount,
-          isOnline: false,
+          isOnline: existing?.isOnline ?? false,
           orderId: chat.orderNumber,
+          isTyping: existing?.isTyping ?? false,
         );
       }).toList();
 
@@ -310,11 +344,11 @@ class _ChatsState extends State<Chats> {
               )
               .toList();
         }
-        _error = null;
       });
-      ChatSocketService().updateKnownChats(loaded.map((c) => c.id).toList());
+      _cacheConversations(); // Cache for offline access
+      ChatSocketService().updateKnownChats(loaded.map((c) => c.id).toList(), forceRejoin: true);
     } catch (e) {
-      // Silent fail on polling; keep current UI
+      // Silent fail on polling; keep current cached data
     }
   }
 
@@ -396,8 +430,6 @@ class _ChatsState extends State<Chats> {
 
   void _handlePresenceEvent(dynamic data) {
     if (!mounted) return;
-    final route = ModalRoute.of(context);
-    if (route == null || !route.isCurrent) return;
     if (data is! Map) return;
 
     final map = Map<String, dynamic>.from(data);
@@ -695,8 +727,8 @@ class _ChatsState extends State<Chats> {
                         ),
                       ),
                     )
-                  : _error != null
-                  ? _buildErrorState(colors)
+                  : (_filteredConversations.isEmpty && _pendingOrders.isEmpty && !_hasAttemptedLoad)
+                  ? const SizedBox.shrink() // Still waiting for API response
                   : (_filteredConversations.isEmpty && _pendingOrders.isEmpty)
                   ? _buildEmptyState(colors)
                   : ListView.builder(
@@ -1045,35 +1077,6 @@ class _ChatsState extends State<Chats> {
               "Start a conversation with riders or support",
               textAlign: TextAlign.center,
               style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildErrorState(AppColorsExtension colors) {
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.all(40.w),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Unable to load chats',
-              style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w600),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 8.h),
-            Text(
-              _error ?? 'Please check your connection and try again.',
-              style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 16.h),
-            SizedBox(
-              height: 40.h,
-              child: AppButton(onPressed: _fetchConversations, buttonText: 'Retry'),
             ),
           ],
         ),

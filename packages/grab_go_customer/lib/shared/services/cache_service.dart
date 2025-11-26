@@ -468,8 +468,10 @@ class CacheService {
     try {
       final chatsJson = _instance.getString('chat_list');
       if (chatsJson != null) {
-        final List<dynamic> chatsList = jsonDecode(chatsJson);
-        return chatsList.cast<Map<String, dynamic>>();
+        final decoded = jsonDecode(chatsJson);
+        if (decoded is List) {
+          return decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
       }
       return [];
     } catch (e) {
@@ -528,7 +530,7 @@ class CacheService {
 
       final decoded = jsonDecode(json);
       if (decoded is List) {
-        return decoded.cast<Map<String, dynamic>>();
+        return decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
       }
       return [];
     } catch (e) {

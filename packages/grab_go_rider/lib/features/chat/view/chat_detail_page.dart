@@ -82,6 +82,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   ChatSocketConnectionState _connectionState = ChatSocketConnectionState.disconnected;
   String? _orderId;
   String? _orderNumber;
+  String? _currentOrderStatus;
   int? _firstUnreadIndex;
   bool _showScrollToBottomButton = false;
   int _pendingNewMessages = 0;
@@ -141,7 +142,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     final lastSeen = CacheService.getChatLastSeen(widget.chatId);
     if (lastSeen != null) {
       for (var i = 0; i < messages.length; i++) {
-        if (messages[i].timestamp.isAfter(lastSeen)) {
+        // Only show "new messages" chip for messages from others, not your own
+        if (!messages[i].isSentByMe && messages[i].timestamp.isAfter(lastSeen)) {
           firstUnreadIndex = i;
           break;
         }
@@ -162,7 +164,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           alignment: 0.1,
         );
       } else {
-        _scrollToBottom(force: true);
+        // Jump immediately to bottom, then ensure we're at the actual bottom after layout
+        _scrollToBottom(force: true, immediate: true);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _scrollToBottom(force: true, immediate: true);
+        });
       }
     });
   }
@@ -199,13 +205,14 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     final chatSocket = ChatSocketService();
     chatSocket.addConnectionListener(_handleConnectionStateChanged);
     if (!widget.isSupport) {
-      chatSocket.joinChat(widget.chatId);
       chatSocket.addNewMessageListener(_handleIncomingSocketMessage);
       chatSocket.addPresenceListener(_handlePresenceEvent);
       chatSocket.addTypingListener(_handleTypingEvent);
       chatSocket.addReadListener(_handleReadEvent);
       chatSocket.addRetryListener(_handleQueuedMessageRetry);
       chatSocket.addDeleteListener(_handleMessageDeleted);
+      // Force rejoin to get fresh presence status of the other participant
+      chatSocket.joinChat(widget.chatId, forceRejoin: true);
     }
     final initialDraft = CacheService.getChatDraft(widget.chatId);
     if (initialDraft.isNotEmpty) {
@@ -263,10 +270,14 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       if (!mounted) return;
 
       if (chatDetail == null) {
-        setState(() {
-          _messages = [];
-          _error = 'Unable to load conversation.';
-        });
+        // Only show error if we have no cached messages
+        if (_messages.isEmpty) {
+          setState(() {
+            _error = 'Unable to load conversation.';
+          });
+        }
+        // Otherwise keep showing cached messages
+        return;
       } else {
         final currentUserId = _currentUserId;
 
@@ -310,7 +321,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         int? firstUnreadIndex;
         if (lastSeen != null) {
           for (var i = 0; i < loadedMessages.length; i++) {
-            if (loadedMessages[i].timestamp.isAfter(lastSeen)) {
+            // Only show "new messages" chip for messages from others, not your own
+            if (!loadedMessages[i].isSentByMe && loadedMessages[i].timestamp.isAfter(lastSeen)) {
               firstUnreadIndex = i;
               break;
             }
@@ -336,23 +348,30 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               alignment: 0.1,
             );
           } else {
-            _scrollToBottom(force: true);
+            // Jump immediately to bottom, then ensure we're at the actual bottom after layout
+            _scrollToBottom(force: true, immediate: true);
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _scrollToBottom(force: true, immediate: true);
+            });
           }
         });
 
         if (!widget.isSupport) {
-          unawaited(_syncOrderStatusSystemMessage());
+          unawaited(_syncOrderStatus());
           _orderStatusTimer ??= Timer.periodic(const Duration(seconds: 30), (_) {
-            _syncOrderStatusSystemMessage();
+            _syncOrderStatus();
           });
         }
       }
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _error = 'Failed to load messages. Please try again.';
-        _messages = [];
-      });
+      // Only show error if we have no cached messages
+      if (_messages.isEmpty) {
+        setState(() {
+          _error = 'Failed to load messages. Please try again.';
+        });
+      }
+      // Otherwise keep showing cached messages silently
     } finally {}
   }
 
@@ -361,10 +380,19 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
     return GestureDetector(
       onTap: () {
-        _scrollToBottom(force: true);
+        // Jump immediately, then ensure we're at the actual bottom after layout
+        _scrollToBottom(force: true, immediate: true);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _scrollToBottom(force: true, immediate: true);
+        });
+        // Mark messages as read when user taps to scroll to bottom
+        if (_pendingNewMessages > 0 && !widget.isSupport) {
+          ChatSocketService().markAsRead(widget.chatId);
+        }
         setState(() {
           _showScrollToBottomButton = false;
           _pendingNewMessages = 0;
+          // Don't clear _firstUnreadIndex here - keep the chip visible until user replies or leaves
         });
       },
       child: Container(
@@ -529,12 +557,16 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     });
 
     _cacheMessages();
-    if (isNearBottom) {
-      _scrollToBottom();
-    }
 
-    // Mark message as read since we're viewing the chat
-    ChatSocketService().markAsRead(widget.chatId);
+    // Only auto-scroll if user is near bottom, otherwise show the button
+    if (isNearBottom) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _scrollToBottom(force: true);
+      });
+      // Only mark as read if user is near bottom (actually seeing the message)
+      ChatSocketService().markAsRead(widget.chatId);
+    }
+    // If user is scrolled up, don't mark as read - they haven't seen it yet
   }
 
   void _handlePresenceEvent(dynamic data) {
@@ -696,10 +728,14 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
     setState(() {
       _messages.add(optimisticMessage);
+      _firstUnreadIndex = null; // Clear "new messages" chip when user sends a reply
     });
 
     _cacheMessages();
-    _scrollToBottom();
+    // Force scroll to show the sent message even when keyboard is up
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _scrollToBottom(force: true);
+    });
 
     _hasPendingSend = true;
     try {
@@ -841,7 +877,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     }
   }
 
-  void _scrollToBottom({bool force = false}) {
+  void _scrollToBottom({bool force = false, bool immediate = false}) {
     if (!_scrollController.hasClients) return;
 
     final position = _scrollController.position;
@@ -849,11 +885,15 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
     if (!force && !isNearBottom) return;
 
-    _scrollController.animateTo(
-      _scrollController.position.maxScrollExtent,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
-    );
+    if (immediate) {
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    } else {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   void _handleScrollPositionChanged() {
@@ -870,9 +910,14 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
     if (isNearBottom) {
       if (_showScrollToBottomButton || _pendingNewMessages != 0) {
+        // User scrolled to bottom - mark messages as read now
+        if (_pendingNewMessages > 0 && !widget.isSupport) {
+          ChatSocketService().markAsRead(widget.chatId);
+        }
         setState(() {
           _showScrollToBottomButton = false;
           _pendingNewMessages = 0;
+          // Don't clear _firstUnreadIndex here - keep the chip visible until user replies or leaves
         });
       }
     } else {
@@ -967,26 +1012,6 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     }
   }
 
-  String _formatReadTime(DateTime readAt) {
-    final now = DateTime.now();
-    final timePart = DateFormat('h:mm a').format(readAt);
-
-    if (now.difference(readAt).inMinutes < 1) {
-      return 'just now';
-    }
-
-    if (DateUtils.isSameDay(now, readAt)) {
-      return 'at $timePart';
-    }
-
-    final yesterday = now.subtract(const Duration(days: 1));
-    if (DateUtils.isSameDay(yesterday, readAt)) {
-      return 'yesterday at $timePart';
-    }
-
-    return 'on ${DateFormat('MMM d').format(readAt)} at $timePart';
-  }
-
   String _formatLastSeenText(DateTime timestamp) {
     final now = DateTime.now();
     final timePart = DateFormat('hh:mm a').format(timestamp);
@@ -1014,7 +1039,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     return !DateUtils.isSameDay(currentDate, previousDate);
   }
 
-  Future<void> _syncOrderStatusSystemMessage() async {
+  Future<void> _syncOrderStatus() async {
     final id = _orderId ?? widget.orderId;
     if (id == null || id.isEmpty) return;
 
@@ -1040,61 +1065,66 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
       final status = data['status']?.toString();
       if (status == null || status.isEmpty) return;
-      final text = _buildOrderStatusSystemText(status);
-      if (text == null || text.isEmpty) return;
-
-      // Avoid spamming: if we already have a system message with this text
-      // and the cached status matches, skip creating another chip.
-      final lastStatus = CacheService.getOrderLastStatus(id);
-      final hasExistingForStatus = _messages.any((m) => m.isSystem && m.text == text);
-      if (lastStatus == status && hasExistingForStatus) {
-        return;
-      }
-
-      await CacheService.saveOrderLastStatus(id, status);
-
-      final systemMessage = ChatMessage(
-        id: 'system_${id}_${status}_${DateTime.now().millisecondsSinceEpoch}',
-        text: text,
-        timestamp: DateTime.now(),
-        isSentByMe: false,
-        isRead: true,
-        isPending: false,
-        isFailed: false,
-        isSystem: true,
-      );
 
       if (!mounted) return;
-      setState(() {
-        _messages.add(systemMessage);
-      });
-
-      _cacheMessages();
-      _scrollToBottom(force: true);
+      if (_currentOrderStatus != status) {
+        setState(() {
+          _currentOrderStatus = status;
+        });
+      }
     } catch (_) {}
   }
 
-  String? _buildOrderStatusSystemText(String status) {
+  ({String text, Color color})? _getOrderStatusInfo(String status, AppColorsExtension colors) {
     switch (status) {
       case 'pending':
-        return 'New order created. Awaiting restaurant confirmation.';
+        return (text: 'Awaiting confirmation', color: colors.textSecondary);
       case 'confirmed':
-        return 'Restaurant confirmed the order.';
+        return (text: 'Order confirmed', color: colors.accentGreen);
       case 'preparing':
-        return 'Restaurant is preparing the order.';
+        return (text: 'Preparing order', color: colors.accentGreen);
       case 'ready':
-        return 'Order is ready for pickup.';
+        return (text: 'Ready for pickup', color: colors.accentGreen);
       case 'picked_up':
-        return 'You picked up the order.';
+        return (text: 'Picked up', color: colors.accentGreen);
       case 'on_the_way':
-        return 'You are on the way to the customer.';
+        return (text: 'On the way', color: colors.accentGreen);
       case 'delivered':
-        return 'Order has been delivered.';
+        return (text: 'Delivered', color: colors.accentGreen);
       case 'cancelled':
-        return 'Order was cancelled.';
+        return (text: 'Cancelled', color: colors.error);
       default:
         return null;
     }
+  }
+
+  Widget _buildOrderStatusBanner(AppColorsExtension colors) {
+    final status = _currentOrderStatus;
+    if (status == null) return const SizedBox.shrink();
+
+    final info = _getOrderStatusInfo(status, colors);
+    if (info == null) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+      color: info.color.withValues(alpha: 0.1),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 8.w,
+            height: 8.w,
+            decoration: BoxDecoration(color: info.color, shape: BoxShape.circle),
+          ),
+          SizedBox(width: 8.w),
+          Text(
+            info.text,
+            style: TextStyle(color: info.color, fontSize: 13.sp, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -1152,19 +1182,20 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                       ),
                     ),
                   ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      width: 12.w,
-                      height: 12.w,
-                      decoration: BoxDecoration(
-                        color: colors.accentGreen,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: colors.backgroundPrimary, width: 2),
+                  if (_isPeerOnline)
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        width: 12.w,
+                        height: 12.w,
+                        decoration: BoxDecoration(
+                          color: colors.accentGreen,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: colors.backgroundPrimary, width: 2),
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
               SizedBox(width: 12.w),
@@ -1230,14 +1261,13 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         ),
         body: Column(
           children: [
+            if (!widget.isSupport) _buildOrderStatusBanner(colors),
             if (!widget.isSupport)
               if (_connectionState == ChatSocketConnectionState.reconnecting ||
                   _connectionState == ChatSocketConnectionState.connecting)
                 _buildConnectionBanner('Reconnecting to chat…', colors, isWarning: false)
               else if (_connectionState == ChatSocketConnectionState.disconnected)
                 _buildConnectionBanner('Offline. Messages may be delayed.', colors, isWarning: true),
-
-            if (!widget.isSupport && (_orderId ?? widget.orderId) != null) _buildOrderSummary(colors),
 
             Expanded(
               child: Stack(
@@ -1520,88 +1550,6 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     );
   }
 
-  Widget _buildOrderSummary(AppColorsExtension colors) {
-    final id = _orderId ?? widget.orderId;
-    if (id == null || id.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    final display = (_orderNumber != null && _orderNumber!.isNotEmpty)
-        ? _orderNumber!
-        : (id.length > 8 ? id.substring(0, 8) : id);
-
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
-      padding: EdgeInsets.all(12.w),
-      decoration: BoxDecoration(
-        color: colors.backgroundPrimary,
-        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        border: Border.all(color: colors.border, width: 1),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.all(8.r),
-            decoration: BoxDecoration(
-              color: colors.accentGreen.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-            ),
-            child: SvgPicture.asset(
-              Assets.icons.deliveryTruck,
-              package: 'grab_go_shared',
-              width: 20.w,
-              height: 20.w,
-              colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
-            ),
-          ),
-          SizedBox(width: 12.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Order $display',
-                  style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
-                ),
-                SizedBox(height: 2.h),
-                Text(
-                  'Linked to this chat',
-                  style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
-                ),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: _openDeliveryTracking,
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-              decoration: BoxDecoration(
-                color: colors.accentGreen.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(KBorderSize.borderRadius20),
-              ),
-              child: Row(
-                children: [
-                  SvgPicture.asset(
-                    Assets.icons.mapPin,
-                    package: 'grab_go_shared',
-                    width: 16.w,
-                    height: 16.w,
-                    colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
-                  ),
-                  SizedBox(width: 4.w),
-                  Text(
-                    'Track',
-                    style: TextStyle(color: colors.accentGreen, fontSize: 12.sp, fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildReplyPreview(AppColorsExtension colors) {
     final replyTo = _replyingTo;
     if (replyTo == null) return const SizedBox.shrink();
@@ -1748,20 +1696,28 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     final radiusBig = Radius.circular(KBorderSize.borderRadius12);
     const radiusSmall = Radius.circular(4);
 
-    final topLeft = isSent ? (isFirstInGroup ? radiusSmall : radiusBig) : (isFirstInGroup ? radiusBig : radiusSmall);
-    final topRight = isSent ? (isFirstInGroup ? radiusBig : radiusBig) : (isFirstInGroup ? radiusSmall : radiusBig);
-    final bottomLeft = isSent ? (isLastInGroup ? radiusBig : radiusBig) : (isLastInGroup ? radiusSmall : radiusBig);
-    final bottomRight = isSent ? (isLastInGroup ? radiusSmall : radiusBig) : (isLastInGroup ? radiusBig : radiusSmall);
+    // Sent messages (right side): right edge gets small radius for consecutive messages
+    // Received messages (left side): left edge gets small radius for consecutive messages
+    final Radius topLeft;
+    final Radius topRight;
+    final Radius bottomLeft;
+    final Radius bottomRight;
 
-    final statusText = isSent
-        ? (message.isPending
-              ? 'Sending…'
-              : message.isFailed
-              ? 'Failed. Tap to retry.'
-              : message.isRead
-              ? (message.readAt != null ? 'Seen ${_formatReadTime(message.readAt!)}' : 'Seen')
-              : 'Sent')
-        : null;
+    if (isSent) {
+      // Sent: left side always big, right side small for consecutive
+      topLeft = radiusBig;
+      topRight = isFirstInGroup ? radiusBig : radiusSmall;
+      bottomLeft = radiusBig;
+      bottomRight = isLastInGroup ? radiusBig : radiusSmall;
+    } else {
+      // Received: right side always big, left side small for consecutive
+      topLeft = isFirstInGroup ? radiusBig : radiusSmall;
+      topRight = radiusBig;
+      bottomLeft = isLastInGroup ? radiusBig : radiusSmall;
+      bottomRight = radiusBig;
+    }
+
+    final statusText = isSent && message.isFailed ? 'Tap to retry' : null;
 
     final bubble = Align(
       alignment: isSent ? Alignment.centerRight : Alignment.centerLeft,
@@ -1788,6 +1744,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                   // Reply preview in bubble
                   if (message.replyToId != null && message.replyToText != null)
                     Container(
+                      width: double.maxFinite,
                       margin: EdgeInsets.only(bottom: 8.h),
                       padding: EdgeInsets.all(8.w),
                       decoration: BoxDecoration(
@@ -1843,41 +1800,45 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    _formatMessageTime(message.timestamp),
-                    style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w400),
-                  ),
-                  if (isSent) ...[
-                    SizedBox(width: 4.w),
-                    if (message.isPending)
-                      SizedBox(
-                        width: 12.w,
-                        height: 12.w,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(isSent ? Colors.white : colors.textSecondary),
-                        ),
-                      )
-                    else if (message.isFailed)
-                      SvgPicture.asset(
-                        Assets.icons.warningCircle,
-                        package: "grab_go_shared",
-                        height: 14.h,
-                        width: 14.w,
-                        colorFilter: ColorFilter.mode(colors.error, BlendMode.srcIn),
-                      )
-                    else
-                      Icon(
-                        message.isRead ? Icons.done_all : Icons.done,
-                        size: 14.w,
-                        color: message.isRead ? colors.accentGreen : colors.textSecondary,
+                  // Show spinner only while pending, no time
+                  if (isSent && message.isPending)
+                    SizedBox(
+                      width: 12.w,
+                      height: 12.w,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(colors.textSecondary),
                       ),
-                    if (statusText != null) ...[
+                    )
+                  else ...[
+                    // Show time after message is sent
+                    Text(
+                      _formatMessageTime(message.timestamp),
+                      style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w400),
+                    ),
+                    if (isSent) ...[
                       SizedBox(width: 4.w),
-                      Text(
-                        statusText,
-                        style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w400),
-                      ),
+                      if (message.isFailed)
+                        SvgPicture.asset(
+                          Assets.icons.warningCircle,
+                          package: "grab_go_shared",
+                          height: 14.h,
+                          width: 14.w,
+                          colorFilter: ColorFilter.mode(colors.error, BlendMode.srcIn),
+                        )
+                      else
+                        Icon(
+                          message.isRead ? Icons.done_all : Icons.done,
+                          size: 14.w,
+                          color: message.isRead ? colors.accentGreen : colors.textSecondary,
+                        ),
+                      if (statusText != null) ...[
+                        SizedBox(width: 4.w),
+                        Text(
+                          statusText,
+                          style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w400),
+                        ),
+                      ],
                     ],
                   ],
                 ],
@@ -2024,9 +1985,13 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   }
 
   Future<void> _deleteMessageForEveryone(ChatMessage message) async {
+    // Store message index for potential restoration
+    final messageIndex = _messages.indexWhere((m) => m.id == message.id);
+    if (messageIndex == -1) return;
+
     // Optimistically remove from UI
     setState(() {
-      _messages.removeWhere((m) => m.id == message.id);
+      _messages.removeAt(messageIndex);
     });
     _cacheMessages();
 
@@ -2037,6 +2002,12 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     final success = await _chatService.deleteMessage(widget.chatId, message.id);
 
     if (!success && mounted) {
+      // Restore the message if delete failed
+      setState(() {
+        _messages.insert(messageIndex.clamp(0, _messages.length), message);
+      });
+      _cacheMessages();
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Failed to delete message'),
