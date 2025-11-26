@@ -114,6 +114,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           final isSentByMe = m['isSentByMe'] == true;
           final isRead = m['isRead'] == true;
           final isSystem = m['isSystem'] == true;
+          final replyToId = m['replyToId']?.toString();
+          final replyToText = m['replyToText']?.toString();
+          final replyToIsSentByMe = m['replyToIsSentByMe'] == true
+              ? true
+              : (m['replyToIsSentByMe'] == false ? false : null);
 
           return ChatMessage(
             id: id,
@@ -122,6 +127,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             isSentByMe: isSentByMe,
             isRead: isRead,
             isSystem: isSystem,
+            replyToId: replyToId,
+            replyToText: replyToText,
+            replyToIsSentByMe: replyToIsSentByMe,
           );
         })
         .whereType<ChatMessage>()
@@ -173,6 +181,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             'isSentByMe': m.isSentByMe,
             'isRead': m.isRead,
             'isSystem': m.isSystem,
+            if (m.replyToId != null) 'replyToId': m.replyToId,
+            if (m.replyToText != null) 'replyToText': m.replyToText,
+            if (m.replyToIsSentByMe != null) 'replyToIsSentByMe': m.replyToIsSentByMe,
           },
         )
         .toList();
@@ -276,6 +287,12 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             isReadByOther = m.readBy.contains(otherUserId);
           }
 
+          // Determine if the replied message was sent by current user
+          bool? replyToIsSentByMe;
+          if (m.replyToSenderId != null && currentUserId != null) {
+            replyToIsSentByMe = m.replyToSenderId == currentUserId;
+          }
+
           return ChatMessage(
             id: m.id,
             text: m.text,
@@ -283,6 +300,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             isSentByMe: isSentByMe,
             isRead: isReadByOther,
             isSystem: false,
+            replyToId: m.replyToId,
+            replyToText: m.replyToText,
+            replyToIsSentByMe: replyToIsSentByMe,
           );
         }).toList();
 
@@ -420,6 +440,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           isPending: false,
           isFailed: false,
           isSystem: false,
+          replyToId: existing.replyToId,
+          replyToText: existing.replyToText,
+          replyToIsSentByMe: existing.replyToIsSentByMe,
         );
         HapticFeedback.lightImpact();
       } else {
@@ -433,6 +456,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           isPending: false,
           isFailed: true,
           isSystem: existing.isSystem,
+          replyToId: existing.replyToId,
+          replyToText: existing.replyToText,
+          replyToIsSentByMe: existing.replyToIsSentByMe,
         );
       }
     });
@@ -575,6 +601,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                     isPending: m.isPending,
                     isFailed: m.isFailed,
                     isSystem: m.isSystem,
+                    replyToId: m.replyToId,
+                    replyToText: m.replyToText,
+                    replyToIsSentByMe: m.replyToIsSentByMe,
                   )
                 : m,
           )
@@ -654,11 +683,12 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
     _hasPendingSend = true;
     try {
-      final sent = await _chatService.sendMessage(widget.chatId, trimmed);
+      final sent = await _chatService.sendMessage(widget.chatId, trimmed, replyToId: replyTo?.id);
       if (!mounted || sent == null) return;
 
       final index = _messages.indexWhere((m) => m.id == tempId);
       if (index != -1) {
+        final existing = _messages[index];
         final updated = ChatMessage(
           id: sent.id,
           text: sent.text,
@@ -668,6 +698,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           isPending: false,
           isFailed: false,
           isSystem: false,
+          replyToId: existing.replyToId,
+          replyToText: existing.replyToText,
+          replyToIsSentByMe: existing.replyToIsSentByMe,
         );
 
         setState(() {
@@ -692,6 +725,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             isPending: false,
             isFailed: true,
             isSystem: existing.isSystem,
+            replyToId: existing.replyToId,
+            replyToText: existing.replyToText,
+            replyToIsSentByMe: existing.replyToIsSentByMe,
           );
           // Queue for automatic retry when connection is restored
           if (!widget.isSupport) {
@@ -725,6 +761,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         isPending: true,
         isFailed: false,
         isSystem: message.isSystem,
+        replyToId: message.replyToId,
+        replyToText: message.replyToText,
+        replyToIsSentByMe: message.replyToIsSentByMe,
       );
     });
 
@@ -736,6 +775,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
       final newIndex = _messages.indexWhere((m) => m.id == message.id);
       if (newIndex != -1) {
+        final existing = _messages[newIndex];
         final updated = ChatMessage(
           id: sent.id,
           text: sent.text,
@@ -745,6 +785,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           isPending: false,
           isFailed: false,
           isSystem: false,
+          replyToId: existing.replyToId,
+          replyToText: existing.replyToText,
+          replyToIsSentByMe: existing.replyToIsSentByMe,
         );
 
         setState(() {
@@ -768,6 +811,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             isPending: false,
             isFailed: true,
             isSystem: existing.isSystem,
+            replyToId: existing.replyToId,
+            replyToText: existing.replyToText,
+            replyToIsSentByMe: existing.replyToIsSentByMe,
           );
         });
       }

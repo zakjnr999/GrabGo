@@ -170,6 +170,11 @@ router.get("/:chatId", protect, async (req, res) => {
         msg.sender && msg.sender.username ? msg.sender.username : undefined,
       sentAt: msg.createdAt,
       readBy: msg.readBy.map((id) => id.toString()),
+      replyTo: msg.replyTo && msg.replyTo.id ? {
+        id: msg.replyTo.id.toString(),
+        text: msg.replyTo.text,
+        senderId: msg.replyTo.senderId?.toString(),
+      } : null,
     }));
 
     res.json({
@@ -255,6 +260,19 @@ router.post("/:chatId/messages", protect, async (req, res) => {
       readBy: [req.user._id],
     };
 
+    // Handle reply
+    const { replyToId } = req.body;
+    if (replyToId) {
+      const replyMessage = chat.messages.id(replyToId);
+      if (replyMessage) {
+        message.replyTo = {
+          id: replyMessage._id,
+          text: replyMessage.text,
+          senderId: replyMessage.sender,
+        };
+      }
+    }
+
     chat.messages.push(message);
     await chat.save();
 
@@ -268,6 +286,11 @@ router.post("/:chatId/messages", protect, async (req, res) => {
         senderId: savedMessage.sender.toString(),
         sentAt: savedMessage.createdAt,
         readBy: savedMessage.readBy.map((id) => id.toString()),
+        replyTo: savedMessage.replyTo ? {
+          id: savedMessage.replyTo.id?.toString(),
+          text: savedMessage.replyTo.text,
+          senderId: savedMessage.replyTo.senderId?.toString(),
+        } : null,
       },
     };
 

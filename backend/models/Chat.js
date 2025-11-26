@@ -22,6 +22,11 @@ const messageSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+    replyTo: {
+      id: { type: mongoose.Schema.Types.ObjectId },
+      text: { type: String },
+      senderId: { type: mongoose.Schema.Types.ObjectId },
+    },
   },
   { _id: true }
 );

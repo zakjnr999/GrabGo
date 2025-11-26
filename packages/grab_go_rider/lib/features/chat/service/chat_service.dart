@@ -50,6 +50,9 @@ class ChatMessageDto {
   final String? senderName;
   final DateTime sentAt;
   final List<String> readBy;
+  final String? replyToId;
+  final String? replyToText;
+  final String? replyToSenderId;
 
   ChatMessageDto({
     required this.id,
@@ -58,9 +61,13 @@ class ChatMessageDto {
     required this.senderName,
     required this.sentAt,
     required this.readBy,
+    this.replyToId,
+    this.replyToText,
+    this.replyToSenderId,
   });
 
   factory ChatMessageDto.fromJson(Map<String, dynamic> json) {
+    final replyTo = json['replyTo'] as Map<String, dynamic>?;
     return ChatMessageDto(
       id: json['id'] as String,
       text: json['text'] as String? ?? '',
@@ -68,6 +75,9 @@ class ChatMessageDto {
       senderName: json['senderName'] as String?,
       sentAt: DateTime.tryParse(json['sentAt']?.toString() ?? '') ?? DateTime.now(),
       readBy: (json['readBy'] as List<dynamic>? ?? []).map((e) => e.toString()).toList(),
+      replyToId: replyTo?['id'] as String?,
+      replyToText: replyTo?['text'] as String?,
+      replyToSenderId: replyTo?['senderId'] as String?,
     );
   }
 }
@@ -207,11 +217,15 @@ class ChatService {
     }
   }
 
-  Future<ChatMessageDto?> sendMessage(String chatId, String text) async {
+  Future<ChatMessageDto?> sendMessage(String chatId, String text, {String? replyToId}) async {
     final uri = Uri.parse('$_baseUrl/chats/$chatId/messages');
 
     try {
-      final response = await _client.post(uri, headers: _buildHeaders(), body: jsonEncode({'text': text}));
+      final body = <String, dynamic>{'text': text};
+      if (replyToId != null) {
+        body['replyToId'] = replyToId;
+      }
+      final response = await _client.post(uri, headers: _buildHeaders(), body: jsonEncode(body));
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final decoded = jsonDecode(response.body) as Map<String, dynamic>;

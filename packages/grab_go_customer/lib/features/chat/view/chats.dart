@@ -148,7 +148,8 @@ class _ChatsState extends State<Chats> {
     final List<_ChatMessage> loaded = cached
         .map((chat) {
           final id = chat['id']?.toString() ?? '';
-          if (id.isEmpty) {
+          // Skip empty or support chat
+          if (id.isEmpty || id == 'support') {
             return null;
           }
           final senderId = chat['senderId']?.toString() ?? 'unknown_user';
@@ -517,12 +518,14 @@ class _ChatsState extends State<Chats> {
       }
     });
 
-    // Update global unread badge for Chats tab
-    final nav = Provider.of<NavigationProvider>(context, listen: false);
+    // Update global unread badge for Chats tab (deferred to avoid build-phase conflicts)
     final totalUnread = _conversations
         .where((c) => c.id != 'support')
         .fold<int>(0, (sum, c) => sum + (c.unreadCount > 0 ? c.unreadCount : 0));
-    nav.setChatUnreadCount(totalUnread);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Provider.of<NavigationProvider>(context, listen: false).setChatUnreadCount(totalUnread);
+    });
 
     final serialized = _conversations
         .map(

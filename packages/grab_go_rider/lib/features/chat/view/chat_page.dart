@@ -97,7 +97,8 @@ class _ChatPageState extends State<ChatPage> {
     final List<_ChatMessage> loaded = cached
         .map((chat) {
           final id = chat['id']?.toString() ?? '';
-          if (id.isEmpty) {
+          // Skip empty or support chat
+          if (id.isEmpty || id == 'support') {
             return null;
           }
           final senderId = chat['senderId']?.toString() ?? 'unknown_user';
