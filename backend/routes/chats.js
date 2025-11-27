@@ -193,6 +193,7 @@ router.get("/:chatId", protect, async (req, res) => {
         id: msg.replyTo.id.toString(),
         text: msg.replyTo.text,
         senderId: msg.replyTo.senderId?.toString(),
+        messageType: msg.replyTo.messageType || 'text',
       } : null,
     }));
 
@@ -289,6 +290,7 @@ router.post("/:chatId/messages", protect, async (req, res) => {
           id: replyMessage._id,
           text: replyMessage.text,
           senderId: replyMessage.sender,
+          messageType: replyMessage.messageType || 'text',
         };
       }
     }
@@ -313,6 +315,7 @@ router.post("/:chatId/messages", protect, async (req, res) => {
           id: savedMessage.replyTo.id?.toString(),
           text: savedMessage.replyTo.text,
           senderId: savedMessage.replyTo.senderId?.toString(),
+          messageType: savedMessage.replyTo.messageType || 'text',
         } : null,
       },
     };

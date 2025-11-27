@@ -44,6 +44,7 @@ const messageSchema = new mongoose.Schema(
       id: { type: mongoose.Schema.Types.ObjectId },
       text: { type: String },
       senderId: { type: mongoose.Schema.Types.ObjectId },
+      messageType: { type: String, enum: ["text", "voice", "image"], default: "text" },
     },
   },
   { _id: true }
