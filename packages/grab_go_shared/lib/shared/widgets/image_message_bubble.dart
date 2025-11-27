@@ -2,12 +2,14 @@ import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_blurhash/flutter_blurhash.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
 
 /// Widget for displaying image messages in chat
 class ImageMessageBubble extends StatelessWidget {
   final List<String> imageUrls;
+  final List<String> blurHashes; // BlurHash for instant previews
   final bool isSent;
   final bool isPending;
   final bool isFailed;
@@ -17,6 +19,7 @@ class ImageMessageBubble extends StatelessWidget {
   const ImageMessageBubble({
     super.key,
     required this.imageUrls,
+    this.blurHashes = const [],
     required this.isSent,
     this.isPending = false,
     this.isFailed = false,
@@ -41,6 +44,14 @@ class ImageMessageBubble extends StatelessWidget {
     return _buildImageGrid(context, colors);
   }
 
+  /// Get blurHash for a specific index, or null if not available
+  String? _getBlurHash(int index) {
+    if (index < blurHashes.length && blurHashes[index].isNotEmpty) {
+      return blurHashes[index];
+    }
+    return null;
+  }
+
   Widget _buildSingleImage(BuildContext context, AppColorsExtension colors, String url, int index) {
     return GestureDetector(
       onTap: () => onImageTap?.call(index),
@@ -50,7 +61,7 @@ class ImageMessageBubble extends StatelessWidget {
           constraints: BoxConstraints(maxWidth: 220.w, maxHeight: 280.h),
           child: Stack(
             children: [
-              _buildImage(url, colors),
+              _buildImage(url, colors, _getBlurHash(index)),
               if (isPending)
                 Positioned.fill(
                   child: Container(
@@ -215,10 +226,10 @@ class ImageMessageBubble extends StatelessWidget {
   }
 
   Widget _buildGridImage(AppColorsExtension colors, String url, int index) {
-    return GestureDetector(onTap: () => onImageTap?.call(index), child: _buildImage(url, colors));
+    return GestureDetector(onTap: () => onImageTap?.call(index), child: _buildImage(url, colors, _getBlurHash(index)));
   }
 
-  Widget _buildImage(String url, AppColorsExtension colors) {
+  Widget _buildImage(String url, AppColorsExtension colors, String? blurHash) {
     // Check if it's a local file path
     if (url.startsWith('/') || url.startsWith('file://')) {
       final filePath = url.startsWith('file://') ? url.substring(7) : url;
@@ -231,11 +242,13 @@ class ImageMessageBubble extends StatelessWidget {
       );
     }
 
-    // Network image - use subtle placeholder (no spinner to avoid confusion with pending state)
+    // Network image - use BlurHash as placeholder for instant preview
     return CachedNetworkImage(
       imageUrl: url,
       fit: BoxFit.cover,
-      placeholder: (context, url) => Container(color: colors.backgroundSecondary),
+      placeholder: (context, url) => blurHash != null
+          ? BlurHash(hash: blurHash, imageFit: BoxFit.cover, decodingWidth: 32, decodingHeight: 32)
+          : Container(color: colors.backgroundSecondary),
       errorWidget: (context, url, error) => _buildErrorPlaceholder(colors),
     );
   }

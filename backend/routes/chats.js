@@ -182,6 +182,7 @@ router.get("/:chatId", protect, async (req, res) => {
       audioUrl: msg.audioUrl || null,
       audioDuration: msg.audioDuration || 0,
       imageUrls: msg.imageUrls || [],
+      blurHashes: msg.blurHashes || [],
       senderId:
         msg.sender && msg.sender._id
           ? msg.sender._id.toString()
@@ -479,6 +480,7 @@ router.post(
         sender: req.user._id,
         messageType: "image",
         imageUrls: req.uploadedImageUrls,
+        blurHashes: req.blurHashes || [],
         createdAt: new Date(),
         readBy: [req.user._id],
       };
@@ -511,6 +513,7 @@ router.post(
           audioUrl: null,
           audioDuration: 0,
           imageUrls: savedMessage.imageUrls,
+          blurHashes: savedMessage.blurHashes || [],
           senderId: savedMessage.sender.toString(),
           sentAt: savedMessage.createdAt,
           readBy: savedMessage.readBy.map((id) => id.toString()),

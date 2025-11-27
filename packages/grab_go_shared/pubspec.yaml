@@ -47,6 +47,7 @@ dependencies:
   audioplayers: ^6.1.0
   permission_handler: ^11.3.1
   emoji_picker_flutter: ^4.4.0
+  flutter_blurhash: ^0.8.2
 
 dev_dependencies:
   flutter_test:

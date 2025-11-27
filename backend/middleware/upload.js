@@ -2,6 +2,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { uploadMulterFile, uploadAudioFile } = require('../config/cloudinary');
+const { encode } = require('blurhash');
+const sharp = require('sharp');
 
 const storage = multer.memoryStorage();
 
@@ -212,8 +214,10 @@ exports.uploadChatImagesToCloudinary = async (req, res, next) => {
     }
 
     const uploadedUrls = [];
+    const blurHashes = [];
 
     for (const file of req.files) {
+      // Upload to Cloudinary
       const cloudinaryResult = await uploadMulterFile(file, {
         folder: 'grabgo',
         subfolder: 'chat_images',
@@ -222,9 +226,31 @@ exports.uploadChatImagesToCloudinary = async (req, res, next) => {
       file.cloudinaryUrl = cloudinaryResult.url;
       file.cloudinaryPublicId = cloudinaryResult.public_id;
       uploadedUrls.push(cloudinaryResult.url);
+
+      // Generate BlurHash from the image buffer
+      try {
+        const { data, info } = await sharp(file.buffer)
+          .raw()
+          .ensureAlpha()
+          .resize(32, 32, { fit: 'inside' }) // Small size for fast encoding
+          .toBuffer({ resolveWithObject: true });
+
+        const blurHash = encode(
+          new Uint8ClampedArray(data),
+          info.width,
+          info.height,
+          4, // componentX
+          3  // componentY
+        );
+        blurHashes.push(blurHash);
+      } catch (blurError) {
+        console.error('BlurHash generation error:', blurError);
+        blurHashes.push(''); // Empty string if BlurHash fails
+      }
     }
 
     req.uploadedImageUrls = uploadedUrls;
+    req.blurHashes = blurHashes;
 
     next();
   } catch (error) {

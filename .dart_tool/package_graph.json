@@ -167,6 +167,7 @@
         "firebase_auth",
         "firebase_core",
         "flutter",
+        "flutter_blurhash",
         "flutter_gen",
         "flutter_image_compress",
         "flutter_image_slideshow",
@@ -652,6 +653,13 @@
         "image_picker_macos",
         "image_picker_platform_interface",
         "image_picker_windows"
+      ]
+    },
+    {
+      "name": "flutter_blurhash",
+      "version": "0.8.2",
+      "dependencies": [
+        "flutter"
       ]
     },
     {

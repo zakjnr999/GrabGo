@@ -68,6 +68,7 @@ class ChatMessageDto {
   final String? audioUrl;
   final double audioDuration; // Duration in seconds
   final List<String> imageUrls; // URLs for image messages
+  final List<String> blurHashes; // BlurHash for instant image previews
   final String senderId;
   final String? senderName;
   final DateTime sentAt;
@@ -83,6 +84,7 @@ class ChatMessageDto {
     this.audioUrl,
     this.audioDuration = 0,
     this.imageUrls = const [],
+    this.blurHashes = const [],
     required this.senderId,
     required this.senderName,
     required this.sentAt,
@@ -110,6 +112,7 @@ class ChatMessageDto {
       audioUrl: json['audioUrl'] as String?,
       audioDuration: (json['audioDuration'] as num?)?.toDouble() ?? 0,
       imageUrls: (json['imageUrls'] as List<dynamic>? ?? []).map((e) => e.toString()).toList(),
+      blurHashes: (json['blurHashes'] as List<dynamic>? ?? []).map((e) => e.toString()).toList(),
       senderId: json['senderId'] as String? ?? '',
       senderName: json['senderName'] as String?,
       sentAt: DateTime.tryParse(json['sentAt']?.toString() ?? '') ?? DateTime.now(),

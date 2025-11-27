@@ -24,6 +24,7 @@ class ChatMessage {
   final String? audioUrl;
   final double audioDuration;
   final List<String> imageUrls; // URLs or local paths for image messages
+  final List<String> blurHashes; // BlurHash for instant image previews
   final DateTime timestamp;
   final bool isSentByMe;
   final bool isRead;
@@ -43,6 +44,7 @@ class ChatMessage {
     this.audioUrl,
     this.audioDuration = 0,
     this.imageUrls = const [],
+    this.blurHashes = const [],
     required this.timestamp,
     required this.isSentByMe,
     this.isRead = false,
@@ -171,8 +173,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             }
           }
 
-          // Parse imageUrls
+          // Parse imageUrls and blurHashes
           final imageUrls = (m['imageUrls'] as List?)?.map((e) => e.toString()).toList() ?? [];
+          final blurHashes = (m['blurHashes'] as List?)?.map((e) => e.toString()).toList() ?? [];
 
           return ChatMessage(
             id: id,
@@ -181,6 +184,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             audioUrl: audioUrl,
             audioDuration: audioDuration,
             imageUrls: imageUrls,
+            blurHashes: blurHashes,
             timestamp: timestamp,
             isSentByMe: isSentByMe,
             isRead: isRead,
@@ -245,6 +249,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             if (m.audioUrl != null) 'audioUrl': m.audioUrl,
             'audioDuration': m.audioDuration,
             if (m.imageUrls.isNotEmpty) 'imageUrls': m.imageUrls,
+            if (m.blurHashes.isNotEmpty) 'blurHashes': m.blurHashes,
             'timestamp': m.timestamp.toIso8601String(),
             'isSentByMe': m.isSentByMe,
             'isRead': m.isRead,
@@ -378,6 +383,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             audioUrl: m.audioUrl,
             audioDuration: m.audioDuration,
             imageUrls: m.imageUrls,
+            blurHashes: m.blurHashes,
             timestamp: m.sentAt,
             isSentByMe: isSentByMe,
             isRead: isReadByOther,
@@ -622,9 +628,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       }
     }
 
-    // Parse imageUrls from socket message
+    // Parse imageUrls and blurHashes from socket message
     final imageUrlsList = messageMap['imageUrls'] as List<dynamic>?;
     final imageUrls = imageUrlsList?.map((e) => e.toString()).toList() ?? [];
+    final blurHashesList = messageMap['blurHashes'] as List<dynamic>?;
+    final blurHashes = blurHashesList?.map((e) => e.toString()).toList() ?? [];
 
     final msg = ChatMessage(
       id: id,
@@ -633,6 +641,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       audioUrl: messageMap['audioUrl']?.toString(),
       audioDuration: (messageMap['audioDuration'] as num?)?.toDouble() ?? 0,
       imageUrls: imageUrls,
+      blurHashes: blurHashes,
       timestamp: DateTime.tryParse(messageMap['sentAt']?.toString() ?? '') ?? DateTime.now(),
       isSentByMe: _currentUserId != null && senderId == _currentUserId,
       isRead: _currentUserId != null && senderId == _currentUserId,
@@ -2455,6 +2464,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                       else if (message.isImageMessage && message.hasImages)
                         ImageMessageBubble(
                           imageUrls: message.imageUrls,
+                          blurHashes: message.blurHashes,
                           isSent: isSent,
                           isPending: message.isPending,
                           isFailed: message.isFailed,

@@ -35,6 +35,11 @@ const messageSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    // BlurHash for instant image previews (one per image)
+    blurHashes: {
+      type: [String],
+      default: [],
+    },
     createdAt: {
       type: Date,
       default: Date.now,

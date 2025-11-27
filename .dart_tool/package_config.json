@@ -440,6 +440,12 @@
       "languageVersion": "3.8"
     },
     {
+      "name": "flutter_blurhash",
+      "rootUri": "file:///C:/Users/USER/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_blurhash-0.8.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
+    },
+    {
       "name": "flutter_cache_manager",
       "rootUri": "file:///C:/Users/USER/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_cache_manager-3.4.1",
       "packageUri": "lib/",
