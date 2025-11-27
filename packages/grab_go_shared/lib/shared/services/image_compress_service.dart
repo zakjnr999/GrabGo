@@ -15,6 +15,9 @@ class ImageCompressService {
   /// [quality] - Compression quality (0-100), default 70
   /// [maxWidth] - Maximum width in pixels, default 1080
   /// [maxHeight] - Maximum height in pixels, default 1920
+  // Skip compression if file is already small (under 100KB)
+  static const int _skipCompressionThreshold = 100 * 1024; // 100KB
+
   Future<String?> compressImage(String imagePath, {int quality = 70, int maxWidth = 1080, int maxHeight = 1920}) async {
     try {
       final file = File(imagePath);
@@ -23,8 +26,31 @@ class ImageCompressService {
         return null;
       }
 
-      final tempDir = await getTemporaryDirectory();
-      final targetPath = '${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final originalSize = await file.length();
+
+      // Skip compression for already small/optimized images
+      if (originalSize <= _skipCompressionThreshold) {
+        debugPrint(
+          'ImageCompressService: Skipping compression for small file (${_formatBytes(originalSize)}): $imagePath',
+        );
+        // Copy to cache directory to ensure consistent path handling
+        final cacheDir = await getApplicationCacheDirectory();
+        final compressedDir = Directory('${cacheDir.path}/compressed_images');
+        if (!await compressedDir.exists()) {
+          await compressedDir.create(recursive: true);
+        }
+        final targetPath = '${compressedDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        await file.copy(targetPath);
+        return targetPath;
+      }
+
+      // Use app's cache directory for more persistent storage during upload
+      final cacheDir = await getApplicationCacheDirectory();
+      final compressedDir = Directory('${cacheDir.path}/compressed_images');
+      if (!await compressedDir.exists()) {
+        await compressedDir.create(recursive: true);
+      }
+      final targetPath = '${compressedDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
       final result = await FlutterImageCompress.compressAndGetFile(
         imagePath,
@@ -36,8 +62,18 @@ class ImageCompressService {
       );
 
       if (result != null) {
-        final originalSize = await file.length();
         final compressedSize = await result.length();
+
+        // If compression made it larger, use original instead
+        if (compressedSize >= originalSize) {
+          debugPrint(
+            'ImageCompressService: Compression ineffective, using original (${_formatBytes(originalSize)} -> ${_formatBytes(compressedSize)}): $imagePath',
+          );
+          await File(result.path).delete(); // Clean up larger compressed file
+          await file.copy(targetPath);
+          return targetPath;
+        }
+
         final savings = ((originalSize - compressedSize) / originalSize * 100).toStringAsFixed(1);
         debugPrint(
           'ImageCompressService: Compressed $imagePath - Original: ${_formatBytes(originalSize)}, Compressed: ${_formatBytes(compressedSize)} (saved $savings%)',
@@ -90,12 +126,15 @@ class ImageCompressService {
     }
   }
 
-  /// Clean up old compressed images from temp directory
+  /// Clean up old compressed images from cache directory
   /// Call this periodically to free up storage
   Future<void> cleanupOldCompressedImages({Duration maxAge = const Duration(hours: 24)}) async {
     try {
-      final tempDir = await getTemporaryDirectory();
-      final files = tempDir.listSync();
+      final cacheDir = await getApplicationCacheDirectory();
+      final compressedDir = Directory('${cacheDir.path}/compressed_images');
+      if (!await compressedDir.exists()) return;
+
+      final files = compressedDir.listSync();
       final cutoff = DateTime.now().subtract(maxAge);
 
       for (final file in files) {

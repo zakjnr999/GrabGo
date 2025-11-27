@@ -58,8 +58,9 @@ class ImageMessageBubble extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12.w),
         child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: 220.w, maxHeight: 280.h),
+          constraints: BoxConstraints(maxWidth: 220.w, maxHeight: 280.h, minWidth: 150.w, minHeight: 150.h),
           child: Stack(
+            fit: StackFit.passthrough,
             children: [
               _buildImage(url, colors, _getBlurHash(index)),
               if (isPending)
@@ -233,11 +234,29 @@ class ImageMessageBubble extends StatelessWidget {
     // Check if it's a local file path
     if (url.startsWith('/') || url.startsWith('file://')) {
       final filePath = url.startsWith('file://') ? url.substring(7) : url;
-      return Image.file(
-        File(filePath),
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return _buildErrorPlaceholder(colors);
+      final file = File(filePath);
+      return FutureBuilder<bool>(
+        future: file.exists(),
+        builder: (context, snapshot) {
+          if (snapshot.data == true) {
+            return Image.file(
+              file,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stackTrace) {
+                debugPrint('Image.file error: $error for path: $filePath');
+                return _buildErrorPlaceholder(colors);
+              },
+            );
+          }
+          // File doesn't exist yet or still checking - show placeholder
+          return Container(
+            color: colors.backgroundSecondary,
+            child: Center(
+              child: Icon(Icons.image, color: colors.textSecondary, size: 32.w),
+            ),
+          );
         },
       );
     }
@@ -246,6 +265,8 @@ class ImageMessageBubble extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: url,
       fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
       placeholder: (context, url) => blurHash != null
           ? BlurHash(hash: blurHash, imageFit: BoxFit.cover, decodingWidth: 32, decodingHeight: 32)
           : Container(color: colors.backgroundSecondary),

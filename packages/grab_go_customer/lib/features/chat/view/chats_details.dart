@@ -708,7 +708,12 @@ class _ChatDetailState extends State<ChatDetail> {
             (m) => m.isSentByMe && !m.isRead
                 ? ChatMessage(
                     id: m.id,
+                    messageType: m.messageType,
                     text: m.text,
+                    audioUrl: m.audioUrl,
+                    audioDuration: m.audioDuration,
+                    imageUrls: m.imageUrls,
+                    blurHashes: m.blurHashes,
                     timestamp: m.timestamp,
                     isSentByMe: m.isSentByMe,
                     isRead: true,
@@ -719,6 +724,7 @@ class _ChatDetailState extends State<ChatDetail> {
                     replyToId: m.replyToId,
                     replyToText: m.replyToText,
                     replyToIsSentByMe: m.replyToIsSentByMe,
+                    reactions: m.reactions,
                   )
                 : m,
           )
@@ -1149,7 +1155,10 @@ class _ChatDetailState extends State<ChatDetail> {
     });
 
     _cacheMessages();
-    _scrollToBottom(force: true);
+    // Force scroll to show the sent message even when keyboard is up
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _scrollToBottom(force: true);
+    });
 
     try {
       final sent = await _chatService.sendVoiceMessage(widget.chatId, audioPath, duration: duration);
@@ -1270,7 +1279,10 @@ class _ChatDetailState extends State<ChatDetail> {
     });
 
     _cacheMessages();
-    _scrollToBottom(force: true);
+    // Force scroll to show the sent message even when keyboard is up
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _scrollToBottom(force: true);
+    });
 
     try {
       final sent = await _chatService.sendImageMessage(widget.chatId, compressedPaths, replyToId: replyTo?.id);
@@ -2247,7 +2259,11 @@ class _ChatDetailState extends State<ChatDetail> {
                 ),
                 SizedBox(height: 2.h),
                 Text(
-                  replyTo.isVoiceMessage ? '🎤 Voice message' : replyTo.text,
+                  replyTo.isVoiceMessage
+                      ? '🎤 Voice message'
+                      : replyTo.isImageMessage
+                      ? '📷 Image'
+                      : replyTo.text,
                   style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w400),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -2481,6 +2497,7 @@ class _ChatDetailState extends State<ChatDetail> {
                       // Message content based on type
                       if (message.isVoiceMessage && message.audioUrl != null)
                         VoiceMessageBubble(
+                          key: ValueKey('voice_${message.id}_${message.audioUrl}'),
                           audioUrl: message.audioUrl!,
                           duration: message.audioDuration,
                           isSentByMe: isSent,
@@ -2494,6 +2511,7 @@ class _ChatDetailState extends State<ChatDetail> {
                         )
                       else if (message.isImageMessage && message.hasImages)
                         ImageMessageBubble(
+                          key: ValueKey('image_${message.id}_${message.imageUrls.join("_")}'),
                           imageUrls: message.imageUrls,
                           blurHashes: message.blurHashes,
                           isSent: isSent,
@@ -2759,6 +2777,9 @@ class _ChatDetailState extends State<ChatDetail> {
     final userId = _userService.getUserId() ?? '';
     if (userId.isEmpty) return;
 
+    // Prevent keyboard from popping up after reaction
+    _messageFocusNode.unfocus();
+
     setState(() {
       final messageIndex = _messages.indexWhere((m) => m.id == messageId);
       if (messageIndex == -1) return;
@@ -2788,6 +2809,8 @@ class _ChatDetailState extends State<ChatDetail> {
         text: message.text,
         audioUrl: message.audioUrl,
         audioDuration: message.audioDuration,
+        imageUrls: message.imageUrls,
+        blurHashes: message.blurHashes,
         timestamp: message.timestamp,
         isSentByMe: message.isSentByMe,
         isRead: message.isRead,
@@ -2812,6 +2835,29 @@ class _ChatDetailState extends State<ChatDetail> {
 
   void _showMessageActions(ChatMessage message, AppColorsExtension colors) {
     HapticFeedback.selectionClick();
+
+    // Determine message preview text based on type
+    final String previewLabel;
+    final String previewText;
+    final bool canCopy;
+
+    if (message.isImageMessage) {
+      previewLabel = "Photo:";
+      final imageCount = message.imageUrls.length;
+      previewText = imageCount == 1 ? "1 photo" : "$imageCount photos";
+      canCopy = false;
+    } else if (message.isVoiceMessage) {
+      previewLabel = "Voice message:";
+      final duration = Duration(seconds: message.audioDuration.toInt());
+      final minutes = duration.inMinutes;
+      final seconds = duration.inSeconds % 60;
+      previewText = "${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}";
+      canCopy = false;
+    } else {
+      previewLabel = "Message:";
+      previewText = message.text;
+      canCopy = message.text.isNotEmpty;
+    }
 
     showModalBottomSheet<void>(
       context: context,
@@ -2841,31 +2887,48 @@ class _ChatDetailState extends State<ChatDetail> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Message:",
+                      previewLabel,
                       style: TextStyle(fontSize: 12.sp, color: colors.accentOrange, fontWeight: FontWeight.w900),
                     ),
-                    Text(
-                      message.text,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 14.sp, color: colors.textPrimary, fontWeight: FontWeight.w500),
+                    Row(
+                      children: [
+                        if (message.isImageMessage)
+                          Padding(
+                            padding: EdgeInsets.only(right: 6.w),
+                            child: Icon(Icons.image, size: 16.w, color: colors.textPrimary),
+                          ),
+                        if (message.isVoiceMessage)
+                          Padding(
+                            padding: EdgeInsets.only(right: 6.w),
+                            child: Icon(Icons.mic, size: 16.w, color: colors.textPrimary),
+                          ),
+                        Expanded(
+                          child: Text(
+                            previewText,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 14.sp, color: colors.textPrimary, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              ListTile(
-                title: Center(
-                  child: Text(
-                    'Copy',
-                    style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+              if (canCopy)
+                ListTile(
+                  title: Center(
+                    child: Text(
+                      'Copy',
+                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                    ),
                   ),
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: message.text));
+                    Navigator.of(context).pop();
+                  },
                 ),
-                onTap: () {
-                  Clipboard.setData(ClipboardData(text: message.text));
-                  Navigator.of(context).pop();
-                },
-              ),
-              if (message.isSentByMe && message.isFailed)
+              if (message.isSentByMe && message.isFailed && message.isTextMessage)
                 ListTile(
                   title: Center(
                     child: Text(
@@ -2876,6 +2939,19 @@ class _ChatDetailState extends State<ChatDetail> {
                   onTap: () {
                     Navigator.of(context).pop();
                     _retrySendMessage(message);
+                  },
+                ),
+              if (message.isSentByMe && message.isFailed && message.isImageMessage)
+                ListTile(
+                  title: Center(
+                    child: Text(
+                      'Retry',
+                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _retryImageMessage(message);
                   },
                 ),
               if (message.isSentByMe && !message.isPending && !widget.isSupport)
