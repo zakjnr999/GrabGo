@@ -32,6 +32,7 @@
         "dio",
         "dotted_line",
         "easy_stepper",
+        "emoji_picker_flutter",
         "flutter",
         "flutter_credit_card",
         "flutter_gen",
@@ -98,6 +99,7 @@
         "dio",
         "dotted_line",
         "easy_stepper",
+        "emoji_picker_flutter",
         "firebase_app_check",
         "firebase_auth",
         "firebase_core",
@@ -160,6 +162,7 @@
         "chopper",
         "crypto",
         "dio",
+        "emoji_picker_flutter",
         "firebase_app_check",
         "firebase_auth",
         "firebase_core",
@@ -646,6 +649,17 @@
         "image_picker_macos",
         "image_picker_platform_interface",
         "image_picker_windows"
+      ]
+    },
+    {
+      "name": "emoji_picker_flutter",
+      "version": "4.4.0",
+      "dependencies": [
+        "flutter",
+        "flutter_web_plugins",
+        "plugin_platform_interface",
+        "shared_preferences",
+        "web"
       ]
     },
     {

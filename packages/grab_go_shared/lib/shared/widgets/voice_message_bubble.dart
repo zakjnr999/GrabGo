@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
+import 'package:grab_go_shared/shared/services/audio_cache_service.dart';
 import 'package:grab_go_shared/shared/services/voice_player_service.dart';
+import 'package:grab_go_shared/shared/services/waveform_extractor.dart';
+import 'package:grab_go_shared/shared/widgets/waveform_painter.dart';
 
 /// Voice message content widget - displays inside the message bubble
 /// Matches the app's message bubble style with custom waveform visualization
@@ -40,15 +43,21 @@ class VoiceMessageBubble extends StatefulWidget {
 
 class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
   final VoicePlayerService _playerService = VoicePlayerService();
+  final AudioCacheService _cacheService = AudioCacheService();
+  final WaveformExtractor _waveformExtractor = WaveformExtractor();
+
   bool _isPlaying = false;
+  bool _isLoading = false;
   double _progress = 0;
   Duration _currentPosition = Duration.zero;
+  double _waveformWidth = 0;
+  double _playbackSpeed = 1.0;
 
   StreamSubscription<PositionUpdate>? _positionSubscription;
   StreamSubscription<PlaybackState>? _stateSubscription;
 
-  // Generate consistent waveform bars based on audio URL hash
-  late List<double> _waveformBars;
+  // Waveform bars - initially placeholder, then real data
+  List<double> _waveformBars = [];
   static const int _barCount = 28;
 
   @override
@@ -56,12 +65,20 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
     super.initState();
     _generateWaveform();
     _setupPlayerListeners();
+    // Pre-cache audio for offline playback (only for remote URLs)
+    if (widget.audioUrl.startsWith('http')) {
+      _playerService.preCacheAudio(widget.audioUrl);
+    }
   }
 
   @override
   void dispose() {
     _positionSubscription?.cancel();
     _stateSubscription?.cancel();
+    // Stop playback if this widget's audio is currently playing
+    if (_playerService.currentlyPlayingUrl == widget.audioUrl && _playerService.isPlaying) {
+      _playerService.stop();
+    }
     super.dispose();
   }
 
@@ -91,13 +108,22 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
       if (state.url != widget.audioUrl || !mounted) return;
       setState(() {
         switch (state.state) {
+          case PlaybackStatus.loading:
+            _isLoading = true;
+            _isPlaying = false;
+            break;
           case PlaybackStatus.playing:
+            _isLoading = false;
             _isPlaying = true;
+            // Sync playback speed from service
+            _playbackSpeed = _playerService.playbackSpeed;
             break;
           case PlaybackStatus.paused:
+            _isLoading = false;
             _isPlaying = false;
             break;
           case PlaybackStatus.completed:
+            _isLoading = false;
             _isPlaying = false;
             _progress = 0;
             _currentPosition = Duration.zero;
@@ -108,19 +134,92 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
   }
 
   void _generateWaveform() {
+    // Start with placeholder waveform based on hash
+    _waveformBars = _generatePlaceholderWaveform();
+
+    // Try to extract real waveform from cached audio
+    _extractRealWaveform();
+  }
+
+  List<double> _generatePlaceholderWaveform() {
     // Generate deterministic waveform based on audio URL hash
     final random = math.Random(widget.audioUrl.hashCode);
-    _waveformBars = List.generate(_barCount, (index) {
-      // Create a more natural waveform pattern
+    return List.generate(_barCount, (index) {
       final base = 0.3 + random.nextDouble() * 0.7;
-      // Add some variation to make it look more organic
       final variation = math.sin(index * 0.5) * 0.2;
       return (base + variation).clamp(0.2, 1.0);
     });
   }
 
+  Future<void> _extractRealWaveform() async {
+    try {
+      String? filePath;
+
+      // Check if it's a local file or remote URL
+      if (widget.audioUrl.startsWith('http')) {
+        // Try to get cached file path
+        filePath = await _cacheService.getCachedFilePath(widget.audioUrl);
+
+        // If not cached yet, wait for cache and try again
+        if (filePath == null) {
+          // Wait a bit for pre-caching to complete
+          await Future.delayed(const Duration(milliseconds: 500));
+          filePath = await _cacheService.getCachedFilePath(widget.audioUrl);
+        }
+      } else {
+        // Local file
+        filePath = widget.audioUrl;
+      }
+
+      if (filePath != null && mounted) {
+        final waveform = await _waveformExtractor.extractWaveform(filePath, barCount: _barCount);
+
+        if (mounted && waveform.isNotEmpty) {
+          setState(() {
+            _waveformBars = waveform;
+          });
+        }
+      }
+    } catch (e) {
+      // Keep placeholder waveform on error
+      debugPrint('VoiceMessageBubble: Error extracting waveform: $e');
+    }
+  }
+
   Future<void> _togglePlayback() async {
     await _playerService.toggle(widget.audioUrl);
+  }
+
+  void _seekToPosition(double tapX) {
+    if (_waveformWidth <= 0) return;
+
+    // Only seek if this audio is currently loaded
+    if (_playerService.currentlyPlayingUrl != widget.audioUrl) return;
+
+    final seekProgress = (tapX / _waveformWidth).clamp(0.0, 1.0);
+    final totalMs = widget.duration * 1000;
+    final seekPosition = Duration(milliseconds: (seekProgress * totalMs).round());
+
+    _playerService.seek(seekPosition);
+  }
+
+  Future<void> _cycleSpeed() async {
+    // Only allow speed change if this audio is currently playing
+    if (_playerService.currentlyPlayingUrl != widget.audioUrl) return;
+
+    final newSpeed = await _playerService.cyclePlaybackSpeed();
+    if (mounted) {
+      setState(() {
+        _playbackSpeed = newSpeed;
+      });
+    }
+  }
+
+  String _formatSpeed(double speed) {
+    if (speed == 1.0) return '1x';
+    if (speed == 1.5) return '1.5x';
+    if (speed == 2.0) return '2x';
+    return '${speed}x';
   }
 
   String _formatDuration(double seconds) {
@@ -145,19 +244,25 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Play/Pause button
+        // Play/Pause button or loading spinner
         GestureDetector(
-          onTap: _togglePlayback,
+          onTap: _isLoading ? null : _togglePlayback,
           child: Container(
             width: 36.w,
             height: 36.w,
             padding: EdgeInsets.all(5.r),
             decoration: BoxDecoration(color: widget.accentColor ?? Colors.white, shape: BoxShape.circle),
-            child: SvgPicture.asset(
-              _isPlaying ? Assets.icons.pause : Assets.icons.play,
-              package: "grab_go_shared",
-              colorFilter: ColorFilter.mode(playIconColor, BlendMode.srcIn),
-            ),
+            child: _isLoading
+                ? SizedBox(
+                    width: 20.w,
+                    height: 20.w,
+                    child: CircularProgressIndicator(strokeWidth: 2.5, color: playIconColor),
+                  )
+                : SvgPicture.asset(
+                    _isPlaying ? Assets.icons.pause : Assets.icons.play,
+                    package: "grab_go_shared",
+                    colorFilter: ColorFilter.mode(playIconColor, BlendMode.srcIn),
+                  ),
           ),
         ),
         SizedBox(width: 10.w),
@@ -167,28 +272,66 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Custom waveform
-              SizedBox(
-                height: 24.h,
-                child: CustomPaint(
-                  size: Size(double.infinity, 24.h),
-                  painter: _WaveformPainter(
-                    bars: _waveformBars,
-                    progress: _progress,
-                    activeColor:
-                        widget.waveActiveColor ??
-                        (widget.isSentByMe ? Colors.white : (widget.accentColor ?? Colors.grey)),
-                    inactiveColor:
-                        widget.waveInactiveColor ??
-                        (widget.isSentByMe ? Colors.white38 : Colors.grey.withValues(alpha: 0.3)),
+              // Custom waveform (tappable to seek)
+              GestureDetector(
+                onTapDown: (details) => _seekToPosition(details.localPosition.dx),
+                onHorizontalDragUpdate: (details) => _seekToPosition(details.localPosition.dx),
+                child: SizedBox(
+                  height: 24.h,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      _waveformWidth = constraints.maxWidth;
+                      return CustomPaint(
+                        size: Size(double.infinity, 24.h),
+                        painter: WaveformPainter(
+                          bars: _waveformBars,
+                          progress: _progress,
+                          activeColor:
+                              widget.waveActiveColor ??
+                              (widget.isSentByMe ? Colors.white : (widget.accentColor ?? Colors.grey)),
+                          inactiveColor:
+                              widget.waveInactiveColor ??
+                              (widget.isSentByMe ? Colors.white38 : Colors.grey.withValues(alpha: 0.3)),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
               SizedBox(height: 4.h),
-              // Duration
-              Text(
-                _formatCurrentPosition(),
-                style: TextStyle(fontSize: 11.sp, color: widget.textColor ?? Colors.grey, fontWeight: FontWeight.w400),
+              // Duration and speed control
+              Row(
+                children: [
+                  Text(
+                    _formatCurrentPosition(),
+                    style: TextStyle(
+                      fontSize: 11.sp,
+                      color: widget.textColor ?? Colors.grey,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  const Spacer(),
+                  // Speed control (only show when this audio is active)
+                  if (_isPlaying || _playerService.currentlyPlayingUrl == widget.audioUrl)
+                    GestureDetector(
+                      onTap: _cycleSpeed,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                        decoration: BoxDecoration(
+                          color: (widget.accentColor ?? Colors.grey).withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4.r),
+                        ),
+                        child: Text(
+                          _formatSpeed(_playbackSpeed),
+                          style: TextStyle(
+                            fontSize: 10.sp,
+                            color: widget.textColor ?? Colors.grey,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ],
           ),
@@ -199,44 +342,3 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
 }
 
 /// Custom painter for waveform visualization
-class _WaveformPainter extends CustomPainter {
-  _WaveformPainter({
-    required this.bars,
-    required this.progress,
-    required this.activeColor,
-    required this.inactiveColor,
-  });
-
-  final List<double> bars;
-  final double progress;
-  final Color activeColor;
-  final Color inactiveColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final barWidth = 3.0;
-    final spacing = (size.width - (bars.length * barWidth)) / (bars.length - 1);
-    final maxHeight = size.height;
-    final progressIndex = (progress * bars.length).floor();
-
-    for (int i = 0; i < bars.length; i++) {
-      final x = i * (barWidth + spacing);
-      final barHeight = bars[i] * maxHeight;
-      final y = (maxHeight - barHeight) / 2;
-
-      final paint = Paint()
-        ..color = i <= progressIndex ? activeColor : inactiveColor
-        ..strokeCap = StrokeCap.round;
-
-      final rect = RRect.fromRectAndRadius(Rect.fromLTWH(x, y, barWidth, barHeight), const Radius.circular(2));
-      canvas.drawRRect(rect, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _WaveformPainter oldDelegate) {
-    return oldDelegate.progress != progress ||
-        oldDelegate.activeColor != activeColor ||
-        oldDelegate.inactiveColor != inactiveColor;
-  }
-}

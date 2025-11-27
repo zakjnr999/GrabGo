@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -12,6 +12,8 @@ import 'package:grab_go_rider/shared/service/chat_socket_service.dart';
 import 'package:grab_go_rider/shared/service/cache_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_shared/shared/widgets/pulsing_dot.dart';
+import 'package:grab_go_shared/shared/widgets/swipe_to_reply.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
@@ -31,6 +33,7 @@ class ChatMessage {
   final String? replyToId;
   final String? replyToText;
   final bool? replyToIsSentByMe;
+  final Map<String, List<String>> reactions; // emoji -> list of user IDs
 
   ChatMessage({
     required this.id,
@@ -48,11 +51,13 @@ class ChatMessage {
     this.replyToId,
     this.replyToText,
     this.replyToIsSentByMe,
+    this.reactions = const {},
   });
 
   bool get isVoiceMessage => messageType == MessageType.voice;
   bool get isImageMessage => messageType == MessageType.image;
   bool get isTextMessage => messageType == MessageType.text;
+  bool get hasReactions => reactions.isNotEmpty;
 }
 
 class ChatDetailPage extends StatefulWidget {
@@ -115,6 +120,16 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   bool _isRecording = false;
   Duration _recordingDuration = Duration.zero;
 
+  // Message keys for scroll-to-reply
+  final Map<String, GlobalKey> _messageKeys = {};
+  String? _highlightedMessageId;
+
+  // Emoji picker state
+  bool _showEmojiPicker = false;
+
+  // Quick reaction emojis
+  static const List<String> _quickReactions = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+
   void _loadCachedMessages() {
     final cached = CacheService.getChatMessages(widget.chatId);
     if (cached.isEmpty) return;
@@ -140,6 +155,19 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               ? true
               : (m['replyToIsSentByMe'] == false ? false : null);
 
+          // Parse reactions map
+          Map<String, List<String>> reactions = {};
+          if (m['reactions'] != null && m['reactions'] is Map) {
+            final reactionsMap = m['reactions'] as Map;
+            for (final entry in reactionsMap.entries) {
+              final emoji = entry.key.toString();
+              final users = (entry.value as List?)?.map((e) => e.toString()).toList() ?? [];
+              if (users.isNotEmpty) {
+                reactions[emoji] = users;
+              }
+            }
+          }
+
           return ChatMessage(
             id: id,
             messageType: messageType,
@@ -153,6 +181,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             replyToId: replyToId,
             replyToText: replyToText,
             replyToIsSentByMe: replyToIsSentByMe,
+            reactions: reactions,
           );
         })
         .whereType<ChatMessage>()
@@ -215,6 +244,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             if (m.replyToId != null) 'replyToId': m.replyToId,
             if (m.replyToText != null) 'replyToText': m.replyToText,
             if (m.replyToIsSentByMe != null) 'replyToIsSentByMe': m.replyToIsSentByMe,
+            if (m.reactions.isNotEmpty) 'reactions': m.reactions,
           },
         )
         .toList();
@@ -246,6 +276,10 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     _scrollController.addListener(_handleScrollPositionChanged);
     _messageFocusNode.addListener(() {
       if (_messageFocusNode.hasFocus) {
+        // Close emoji picker when keyboard opens
+        if (_showEmojiPicker) {
+          setState(() => _showEmojiPicker = false);
+        }
         Future.delayed(const Duration(milliseconds: 300), () {
           _scrollToBottom(force: true);
         });
@@ -357,12 +391,25 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           }
         }
 
+        // Initialize lastSeen from the last message sent by the peer (if not online)
+        DateTime? peerLastMessage;
+        for (var i = loadedMessages.length - 1; i >= 0; i--) {
+          if (!loadedMessages[i].isSentByMe) {
+            peerLastMessage = loadedMessages[i].timestamp;
+            break;
+          }
+        }
+
         setState(() {
           _messages = loadedMessages;
           _orderId = chatDetail.orderId ?? widget.orderId;
           _orderNumber = chatDetail.orderNumber;
           _firstUnreadIndex = firstUnreadIndex;
           _hasMoreMessages = chatDetail.pagination?.hasMore ?? false;
+          // Set initial lastSeen from peer's last message if we don't have one yet
+          if (_peerLastSeenAt == null && peerLastMessage != null && !_isPeerOnline) {
+            _peerLastSeenAt = peerLastMessage;
+          }
         });
 
         _cacheMessages();
@@ -621,11 +668,19 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
     final online = map['online'] == true;
 
+    // Parse lastSeenAt from server if available
+    DateTime? lastSeenAt;
+    final lastSeenStr = map['lastSeenAt']?.toString();
+    if (lastSeenStr != null) {
+      lastSeenAt = DateTime.tryParse(lastSeenStr);
+    }
+
     setState(() {
       _isPeerOnline = online;
       if (!online) {
         _isPeerTyping = false;
-        _peerLastSeenAt = DateTime.now();
+        // Use server-provided lastSeenAt, or fallback to now
+        _peerLastSeenAt = lastSeenAt ?? DateTime.now();
       }
     });
   }
@@ -702,6 +757,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   }
 
   void _handleMessageChanged(String value) {
+    // Trigger rebuild to switch between mic/send button
+    setState(() {});
+
     CacheService.saveChatDraft(widget.chatId, value);
     if (widget.isSupport) return;
 
@@ -719,6 +777,47 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       _isTyping = false;
       ChatSocketService().setTyping(widget.chatId, false);
     });
+  }
+
+  void _toggleEmojiPicker() {
+    if (_showEmojiPicker) {
+      // Hide emoji picker and show keyboard
+      setState(() => _showEmojiPicker = false);
+      _messageFocusNode.requestFocus();
+    } else {
+      // Hide keyboard and show emoji picker
+      _messageFocusNode.unfocus();
+      setState(() => _showEmojiPicker = true);
+    }
+  }
+
+  void _onEmojiSelected(Category? category, Emoji emoji) {
+    final text = _messageController.text;
+    final selection = _messageController.selection;
+
+    // Handle invalid selection (cursor not in text field)
+    final start = selection.start >= 0 ? selection.start : text.length;
+    final end = selection.end >= 0 ? selection.end : text.length;
+
+    final newText = text.replaceRange(start, end, emoji.emoji);
+    _messageController.text = newText;
+    _messageController.selection = TextSelection.collapsed(offset: start + emoji.emoji.length);
+    _handleMessageChanged(newText);
+  }
+
+  void _onBackspacePressed() {
+    final text = _messageController.text;
+    final selection = _messageController.selection;
+
+    // Handle invalid selection - default to end of text
+    final cursorPos = selection.start >= 0 ? selection.start : text.length;
+
+    if (text.isNotEmpty && cursorPos > 0) {
+      final newText = text.replaceRange(cursorPos - 1, cursorPos, '');
+      _messageController.text = newText;
+      _messageController.selection = TextSelection.collapsed(offset: cursorPos - 1);
+      _handleMessageChanged(newText);
+    }
   }
 
   Future<void> _sendMessage() async {
@@ -992,7 +1091,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       return;
     }
 
-    await _sendVoiceMessage(filePath, duration.inSeconds.toDouble());
+    await _sendVoiceMessage(filePath, duration.inMilliseconds / 1000.0);
   }
 
   void _cancelRecording() {
@@ -1397,24 +1496,48 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                   children: [
                     Text(
                       widget.senderName,
-                      style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontFamily: "Lato",
+                        package: "grab_go_shared",
+                        color: colors.textPrimary,
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (_isPeerTyping)
                       Text(
                         'Typing...',
-                        style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+                        style: TextStyle(
+                          fontFamily: "Lato",
+                          package: "grab_go_shared",
+                          color: colors.textSecondary,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w400,
+                        ),
                       )
                     else if (_isPeerOnline)
                       Text(
                         'Online',
-                        style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+                        style: TextStyle(
+                          fontFamily: "Lato",
+                          package: "grab_go_shared",
+                          color: colors.textSecondary,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w400,
+                        ),
                       )
                     else if (_peerLastSeenAt != null)
                       Text(
                         _formatLastSeenText(_peerLastSeenAt!),
-                        style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+                        style: TextStyle(
+                          fontFamily: "Lato",
+                          package: "grab_go_shared",
+                          color: colors.textSecondary,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w400,
+                        ),
                       ),
                   ],
                 ),
@@ -1668,28 +1791,74 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   Widget _buildInputArea(AppColorsExtension colors) {
     final hasText = _messageController.text.trim().isNotEmpty;
 
-    return Container(
-      padding: EdgeInsets.only(
-        left: 20.w,
-        right: 20.w,
-        top: 12.h,
-        bottom: MediaQuery.of(context).padding.bottom + 12.h,
-      ),
-      decoration: BoxDecoration(
-        color: colors.backgroundPrimary,
-        border: Border(top: BorderSide(color: colors.border, width: 1)),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(KBorderSize.borderRadius4),
-          topRight: Radius.circular(KBorderSize.borderRadius4),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: EdgeInsets.only(
+            left: 20.w,
+            right: 20.w,
+            top: 12.h,
+            bottom: _showEmojiPicker ? 12.h : MediaQuery.of(context).padding.bottom + 12.h,
+          ),
+          decoration: BoxDecoration(
+            color: colors.backgroundPrimary,
+            border: Border(top: BorderSide(color: colors.border, width: 1)),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(KBorderSize.borderRadius4),
+              topRight: Radius.circular(KBorderSize.borderRadius4),
+            ),
+          ),
+          child: _isRecording ? _buildRecordingUI(colors) : _buildTextInputUI(colors, hasText),
         ),
-      ),
-      child: _isRecording ? _buildRecordingUI(colors) : _buildTextInputUI(colors, hasText),
+        // Emoji picker
+        if (_showEmojiPicker)
+          SizedBox(
+            height: 250.h,
+            child: EmojiPicker(
+              onEmojiSelected: _onEmojiSelected,
+              onBackspacePressed: _onBackspacePressed,
+              config: Config(
+                height: 250.h,
+                checkPlatformCompatibility: false,
+                emojiViewConfig: EmojiViewConfig(
+                  emojiSizeMax: 28,
+                  backgroundColor: colors.backgroundPrimary,
+                  columns: 8,
+                  noRecents: const Text('No Recents', style: TextStyle(fontSize: 16, color: Colors.grey)),
+                ),
+                categoryViewConfig: CategoryViewConfig(
+                  backgroundColor: colors.backgroundPrimary,
+                  indicatorColor: colors.accentGreen,
+                  iconColorSelected: colors.accentGreen,
+                  iconColor: colors.textSecondary,
+                ),
+                bottomActionBarConfig: const BottomActionBarConfig(enabled: false),
+                searchViewConfig: SearchViewConfig(
+                  backgroundColor: colors.backgroundPrimary,
+                  buttonIconColor: colors.textSecondary,
+                  hintText: 'Search emoji...',
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
   Widget _buildTextInputUI(AppColorsExtension colors, bool hasText) {
     return Row(
       children: [
+        // Emoji button
+        GestureDetector(
+          onTap: _toggleEmojiPicker,
+          child: Icon(
+            _showEmojiPicker ? Icons.keyboard : Icons.emoji_emotions_outlined,
+            color: colors.textSecondary,
+            size: 24.w,
+          ),
+        ),
+        SizedBox(width: 10.w),
         Expanded(
           child: Container(
             constraints: BoxConstraints(maxHeight: 120.h),
@@ -1712,6 +1881,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               style: TextStyle(color: colors.textPrimary, fontSize: 14.sp),
               onChanged: _handleMessageChanged,
               onSubmitted: (_) => _sendMessage(),
+              onTap: () {
+                if (_showEmojiPicker) {
+                  setState(() => _showEmojiPicker = false);
+                }
+              },
             ),
           ),
         ),
@@ -1807,7 +1981,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             ),
             child: Row(
               children: [
-                _PulsingDot(color: colors.error),
+                PulsingDot(color: colors.error),
                 SizedBox(width: 12.w),
                 Text(
                   VoiceRecorderService.formatDuration(_recordingDuration),
@@ -2026,96 +2200,125 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
     final statusText = isSent && message.isFailed ? 'Tap to retry' : null;
 
+    // Get or create a GlobalKey for this message
+    _messageKeys.putIfAbsent(message.id, () => GlobalKey());
+    final isHighlighted = _highlightedMessageId == message.id;
+
     final bubble = Align(
+      key: _messageKeys[message.id],
       alignment: isSent ? Alignment.centerRight : Alignment.centerLeft,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: size.width * 0.75),
         child: Column(
           crossAxisAlignment: isSent ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-              decoration: BoxDecoration(
-                color: isSent ? colors.accentGreen : colors.backgroundPrimary,
-                borderRadius: BorderRadius.only(
-                  topLeft: topLeft,
-                  topRight: topRight,
-                  bottomLeft: bottomLeft,
-                  bottomRight: bottomRight,
-                ),
-                border: isSent ? null : Border.all(color: colors.border, width: 1),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Reply preview in bubble
-                  if (message.replyToId != null && message.replyToText != null)
-                    Container(
-                      width: double.maxFinite,
-                      margin: EdgeInsets.only(bottom: 8.h),
-                      padding: EdgeInsets.all(8.w),
-                      decoration: BoxDecoration(
-                        color: isSent
-                            ? Colors.white.withValues(alpha: 0.15)
-                            : colors.accentGreen.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8.w),
-                        border: Border(
-                          left: BorderSide(
-                            color: isSent ? Colors.white.withValues(alpha: 0.5) : colors.accentGreen,
-                            width: 3.w,
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                  margin: message.hasReactions ? EdgeInsets.only(bottom: 16.h) : EdgeInsets.zero,
+                  decoration: BoxDecoration(
+                    color: isHighlighted
+                        ? (isSent
+                              ? colors.accentGreen.withValues(alpha: 0.7)
+                              : colors.accentGreen.withValues(alpha: 0.15))
+                        : (isSent ? colors.accentGreen : colors.backgroundPrimary),
+                    borderRadius: BorderRadius.only(
+                      topLeft: topLeft,
+                      topRight: topRight,
+                      bottomLeft: bottomLeft,
+                      bottomRight: bottomRight,
+                    ),
+                    border: isSent
+                        ? null
+                        : Border.all(color: isHighlighted ? colors.accentGreen : colors.border, width: 1),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Reply preview in bubble (tappable to scroll to original message)
+                      if (message.replyToId != null && message.replyToText != null)
+                        GestureDetector(
+                          onTap: () => _scrollToMessage(message.replyToId!),
+                          child: Container(
+                            width: double.maxFinite,
+                            margin: EdgeInsets.only(bottom: 8.h),
+                            padding: EdgeInsets.all(8.w),
+                            decoration: BoxDecoration(
+                              color: isSent
+                                  ? Colors.white.withValues(alpha: 0.15)
+                                  : colors.accentGreen.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8.w),
+                              border: Border(
+                                left: BorderSide(
+                                  color: isSent ? Colors.white.withValues(alpha: 0.5) : colors.accentGreen,
+                                  width: 3.w,
+                                ),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  message.replyToIsSentByMe == true ? 'You' : widget.senderName,
+                                  style: TextStyle(
+                                    color: isSent ? Colors.white.withValues(alpha: 0.9) : colors.accentGreen,
+                                    fontSize: 11.sp,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                SizedBox(height: 2.h),
+                                Text(
+                                  message.replyToText!,
+                                  style: TextStyle(
+                                    color: isSent ? Colors.white.withValues(alpha: 0.7) : colors.textSecondary,
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            message.replyToIsSentByMe == true ? 'You' : widget.senderName,
-                            style: TextStyle(
-                              color: isSent ? Colors.white.withValues(alpha: 0.9) : colors.accentGreen,
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.w600,
-                            ),
+                      // Message content based on type
+                      if (message.isVoiceMessage && message.audioUrl != null)
+                        VoiceMessageBubble(
+                          audioUrl: message.audioUrl!,
+                          duration: message.audioDuration,
+                          isSentByMe: isSent,
+                          isRead: message.isRead,
+                          timestamp: message.timestamp,
+                          accentColor: isSent ? Colors.white : colors.accentGreen,
+                          playButtonIconColor: isSent ? colors.accentGreen : Colors.white,
+                          textColor: isSent ? Colors.white70 : colors.textSecondary,
+                          waveActiveColor: isSent ? Colors.white : colors.accentGreen,
+                          waveInactiveColor: isSent ? Colors.white38 : colors.border,
+                        )
+                      else
+                        Text(
+                          message.text,
+                          style: TextStyle(
+                            color: isSent ? Colors.white : colors.textPrimary,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w400,
                           ),
-                          SizedBox(height: 2.h),
-                          Text(
-                            message.replyToText!,
-                            style: TextStyle(
-                              color: isSent ? Colors.white.withValues(alpha: 0.7) : colors.textSecondary,
-                              fontSize: 12.sp,
-                              fontWeight: FontWeight.w400,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  // Message content based on type
-                  if (message.isVoiceMessage && message.audioUrl != null)
-                    VoiceMessageBubble(
-                      audioUrl: message.audioUrl!,
-                      duration: message.audioDuration,
-                      isSentByMe: isSent,
-                      isRead: message.isRead,
-                      timestamp: message.timestamp,
-                      accentColor: isSent ? Colors.white : colors.accentGreen,
-                      playButtonIconColor: isSent ? colors.accentGreen : Colors.white,
-                      textColor: isSent ? Colors.white70 : colors.textSecondary,
-                      waveActiveColor: isSent ? Colors.white : colors.accentGreen,
-                      waveInactiveColor: isSent ? Colors.white38 : colors.border,
-                    )
-                  else
-                    Text(
-                      message.text,
-                      style: TextStyle(
-                        color: isSent ? Colors.white : colors.textPrimary,
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                ],
-              ),
+                        ),
+                    ],
+                  ),
+                ),
+                // Reactions display (positioned at bottom of bubble)
+                if (message.hasReactions)
+                  Positioned(
+                    bottom: -8.h,
+                    right: isSent ? 8.w : null,
+                    left: isSent ? null : 8.w,
+                    child: _buildReactionsDisplay(message, colors),
+                  ),
+              ],
             ),
             if (isLastInGroup) ...[
               SizedBox(height: 4.h),
@@ -2172,13 +2375,16 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     );
 
     final canSwipeToReply = !message.isSystem && !widget.isSupport && !message.isPending;
+    final canReact = !message.isSystem && !message.isPending && !message.isFailed;
 
     if (canSwipeToReply) {
-      return _SwipeToReply(
+      return SwipeToReply(
         onSwipe: () => _setReplyingTo(message),
         isSentByMe: isSent,
+        kColor: colors.accentGreen,
         child: GestureDetector(
           onTap: canRetry ? () => _retrySendMessage(message) : null,
+          onDoubleTap: canReact ? () => _showQuickReactions(message, colors) : null,
           onLongPress: () => _showMessageActions(message, colors),
           behavior: HitTestBehavior.translucent,
           child: bubble,
@@ -2188,6 +2394,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
     return GestureDetector(
       onTap: canRetry ? () => _retrySendMessage(message) : null,
+      onDoubleTap: canReact ? () => _showQuickReactions(message, colors) : null,
       onLongPress: () => _showMessageActions(message, colors),
       behavior: HitTestBehavior.translucent,
       child: bubble,
@@ -2197,7 +2404,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   void _setReplyingTo(ChatMessage message) {
     setState(() {
       _replyingTo = message;
+      _showEmojiPicker = false; // Close emoji picker when replying
     });
+    // Show keyboard
     _messageFocusNode.requestFocus();
     HapticFeedback.selectionClick();
   }
@@ -2208,31 +2417,226 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     });
   }
 
+  void _scrollToMessage(String messageId) {
+    final key = _messageKeys[messageId];
+    if (key == null || key.currentContext == null) {
+      // Message might not be loaded yet (pagination)
+      return;
+    }
+
+    // Scroll to the message
+    Scrollable.ensureVisible(
+      key.currentContext!,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      alignment: 0.5, // Center the message in the viewport
+    );
+
+    // Highlight the message briefly
+    setState(() {
+      _highlightedMessageId = messageId;
+    });
+
+    // Remove highlight after animation
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted) {
+        setState(() {
+          _highlightedMessageId = null;
+        });
+      }
+    });
+
+    HapticFeedback.selectionClick();
+  }
+
+  Widget _buildReactionsDisplay(ChatMessage message, AppColorsExtension colors) {
+    final reactions = message.reactions;
+    if (reactions.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+      decoration: BoxDecoration(
+        color: colors.backgroundPrimary,
+        borderRadius: BorderRadius.circular(12.w),
+        border: Border.all(color: colors.border, width: 1),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4, offset: const Offset(0, 2))],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: reactions.entries.map((entry) {
+          final emoji = entry.key;
+          final count = entry.value.length;
+          return Padding(
+            padding: EdgeInsets.symmetric(horizontal: 2.w),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(emoji, style: TextStyle(fontSize: 14.sp)),
+                if (count > 1) ...[
+                  SizedBox(width: 2.w),
+                  Text(
+                    count.toString(),
+                    style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  void _showQuickReactions(ChatMessage message, AppColorsExtension colors) {
+    HapticFeedback.selectionClick();
+    final messageId = message.id; // Capture ID to find fresh message later
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.3),
+      builder: (context) {
+        return Center(
+          child: Container(
+            margin: EdgeInsets.all(16.w),
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+            decoration: BoxDecoration(
+              color: colors.backgroundPrimary,
+              borderRadius: BorderRadius.circular(24.w),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 10, offset: const Offset(0, 4)),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: _quickReactions.map((emoji) {
+                final hasReacted = message.reactions[emoji]?.contains(_userService.currentUser?.id ?? '') ?? false;
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    _toggleReactionById(messageId, emoji);
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(8.w),
+                    decoration: BoxDecoration(
+                      color: hasReacted ? colors.accentGreen.withValues(alpha: 0.2) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12.w),
+                    ),
+                    child: Text(emoji, style: TextStyle(fontSize: 28.sp)),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _toggleReactionById(String messageId, String emoji) {
+    final userId = _userService.currentUser?.id ?? '';
+    if (userId.isEmpty) return;
+
+    setState(() {
+      final messageIndex = _messages.indexWhere((m) => m.id == messageId);
+      if (messageIndex == -1) return;
+
+      final message = _messages[messageIndex];
+
+      final currentReactions = Map<String, List<String>>.from(message.reactions);
+      final emojiReactions = List<String>.from(currentReactions[emoji] ?? []);
+
+      if (emojiReactions.contains(userId)) {
+        // Remove reaction
+        emojiReactions.remove(userId);
+        if (emojiReactions.isEmpty) {
+          currentReactions.remove(emoji);
+        } else {
+          currentReactions[emoji] = emojiReactions;
+        }
+      } else {
+        // Add reaction
+        emojiReactions.add(userId);
+        currentReactions[emoji] = emojiReactions;
+      }
+
+      _messages[messageIndex] = ChatMessage(
+        id: message.id,
+        messageType: message.messageType,
+        text: message.text,
+        audioUrl: message.audioUrl,
+        audioDuration: message.audioDuration,
+        timestamp: message.timestamp,
+        isSentByMe: message.isSentByMe,
+        isRead: message.isRead,
+        readAt: message.readAt,
+        isPending: message.isPending,
+        isFailed: message.isFailed,
+        isSystem: message.isSystem,
+        replyToId: message.replyToId,
+        replyToText: message.replyToText,
+        replyToIsSentByMe: message.replyToIsSentByMe,
+        reactions: currentReactions,
+      );
+    });
+
+    _cacheMessages();
+
+    // TODO: Send reaction to backend via socket
+    // ChatSocketService().sendReaction(widget.chatId, message.id, emoji);
+
+    HapticFeedback.lightImpact();
+  }
+
   void _showMessageActions(ChatMessage message, AppColorsExtension colors) {
     HapticFeedback.selectionClick();
 
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: colors.backgroundPrimary,
+      constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.96),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(KBorderSize.borderRadius12)),
       ),
       builder: (context) {
         return SafeArea(
+          minimum: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 20),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              ListTile(
-                leading: SvgPicture.asset(
-                  Assets.icons.copy,
-                  package: "grab_go_shared",
-                  height: 20.h,
-                  width: 20.w,
-                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(20.r),
+                decoration: BoxDecoration(
+                  color: colors.accentGreen.withValues(alpha: 0.2),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(KBorderSize.borderRadius12),
+                    topRight: Radius.circular(KBorderSize.borderRadius12),
+                  ),
                 ),
-                title: Text(
-                  'Copy',
-                  style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Message:",
+                      style: TextStyle(fontSize: 12.sp, color: colors.accentGreen, fontWeight: FontWeight.w900),
+                    ),
+                    Text(
+                      message.text,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 14.sp, color: colors.textPrimary, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+              ListTile(
+                title: Center(
+                  child: Text(
+                    'Copy',
+                    style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                  ),
                 ),
                 onTap: () {
                   Clipboard.setData(ClipboardData(text: message.text));
@@ -2241,16 +2645,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               ),
               if (message.isSentByMe && message.isFailed)
                 ListTile(
-                  leading: SvgPicture.asset(
-                    Assets.icons.refresh,
-                    package: "grab_go_shared",
-                    height: 20.h,
-                    width: 20.w,
-                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                  ),
-                  title: Text(
-                    'Resend',
-                    style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                  title: Center(
+                    child: Text(
+                      'Resend',
+                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                    ),
                   ),
                   onTap: () {
                     Navigator.of(context).pop();
@@ -2259,16 +2658,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                 ),
               if (message.isSentByMe && !message.isPending && !widget.isSupport)
                 ListTile(
-                  leading: SvgPicture.asset(
-                    Assets.icons.bin,
-                    package: "grab_go_shared",
-                    height: 20.h,
-                    width: 20.w,
-                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                  ),
-                  title: Text(
-                    'Delete for everyone',
-                    style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                  title: Center(
+                    child: Text(
+                      'Delete for everyone',
+                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                    ),
                   ),
                   onTap: () {
                     Navigator.of(context).pop();
@@ -2276,16 +2670,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                   },
                 ),
               ListTile(
-                leading: SvgPicture.asset(
-                  Assets.icons.bin,
-                  package: "grab_go_shared",
-                  height: 20.h,
-                  width: 20.w,
-                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                ),
-                title: Text(
-                  'Delete for me',
-                  style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                title: Center(
+                  child: Text(
+                    'Delete for me',
+                    style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                  ),
                 ),
                 onTap: () {
                   Navigator.of(context).pop();
@@ -2401,127 +2790,3 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 }
 
 /// Swipe-to-reply widget for message bubbles
-class _SwipeToReply extends StatefulWidget {
-  final Widget child;
-  final VoidCallback onSwipe;
-  final bool isSentByMe;
-
-  const _SwipeToReply({required this.child, required this.onSwipe, required this.isSentByMe});
-
-  @override
-  State<_SwipeToReply> createState() => _SwipeToReplyState();
-}
-
-class _SwipeToReplyState extends State<_SwipeToReply> {
-  double _dragExtent = 0;
-  static const double _swipeThreshold = 60.0;
-  bool _hasTriggered = false;
-
-  void _handleDragUpdate(DragUpdateDetails details) {
-    final delta = details.primaryDelta ?? 0;
-
-    if (widget.isSentByMe) {
-      _dragExtent = (_dragExtent + delta).clamp(-_swipeThreshold * 1.5, 0);
-    } else {
-      _dragExtent = (_dragExtent + delta).clamp(0, _swipeThreshold * 1.5);
-    }
-
-    setState(() {});
-
-    if (_dragExtent.abs() >= _swipeThreshold && !_hasTriggered) {
-      _hasTriggered = true;
-      HapticFeedback.mediumImpact();
-    } else if (_dragExtent.abs() < _swipeThreshold) {
-      _hasTriggered = false;
-    }
-  }
-
-  void _handleDragEnd(DragEndDetails details) {
-    if (_dragExtent.abs() >= _swipeThreshold) {
-      widget.onSwipe();
-    }
-
-    _dragExtent = 0;
-    _hasTriggered = false;
-    setState(() {});
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AppColorsExtension>()!;
-    final progress = (_dragExtent.abs() / _swipeThreshold).clamp(0.0, 1.0);
-
-    return GestureDetector(
-      onHorizontalDragUpdate: _handleDragUpdate,
-      onHorizontalDragEnd: _handleDragEnd,
-      child: Stack(
-        alignment: widget.isSentByMe ? Alignment.centerRight : Alignment.centerLeft,
-        children: [
-          Positioned(
-            left: widget.isSentByMe ? null : 8.w,
-            right: widget.isSentByMe ? 8.w : null,
-            child: Opacity(
-              opacity: progress,
-              child: Transform.scale(
-                scale: 0.5 + (progress * 0.5),
-                child: Container(
-                  padding: EdgeInsets.all(8.w),
-                  decoration: BoxDecoration(color: colors.accentGreen.withValues(alpha: 0.2), shape: BoxShape.circle),
-                  child: Icon(Icons.reply, size: 20.w, color: colors.accentGreen),
-                ),
-              ),
-            ),
-          ),
-          Transform.translate(offset: Offset(_dragExtent, 0), child: widget.child),
-        ],
-      ),
-    );
-  }
-}
-
-/// Pulsing dot animation for recording indicator
-class _PulsingDot extends StatefulWidget {
-  const _PulsingDot({required this.color});
-  final Color color;
-
-  @override
-  State<_PulsingDot> createState() => _PulsingDotState();
-}
-
-class _PulsingDotState extends State<_PulsingDot> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 800), vsync: this)..repeat(reverse: true);
-    _animation = Tween<double>(
-      begin: 0.4,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) {
-        return Container(
-          width: 10.w,
-          height: 10.w,
-          decoration: BoxDecoration(
-            color: widget.color.withValues(alpha: _animation.value),
-            shape: BoxShape.circle,
-          ),
-        );
-      },
-    );
-  }
-}
