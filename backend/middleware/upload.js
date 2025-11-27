@@ -191,3 +191,49 @@ exports.uploadAudioToCloudinary = async (req, res, next) => {
   }
 };
 
+// Chat image upload configuration
+const chatImageUpload = multer({
+  storage: storage,
+  limits: {
+    fileSize: parseInt(process.env.MAX_FILE_SIZE) || 5242880 // 5MB default
+  },
+  fileFilter: imageFileFilter,
+  preservePath: false
+});
+
+exports.uploadChatImages = (fieldName, maxCount = 10) => {
+  return chatImageUpload.array(fieldName, maxCount);
+};
+
+exports.uploadChatImagesToCloudinary = async (req, res, next) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return next();
+    }
+
+    const uploadedUrls = [];
+
+    for (const file of req.files) {
+      const cloudinaryResult = await uploadMulterFile(file, {
+        folder: 'grabgo',
+        subfolder: 'chat_images',
+      });
+
+      file.cloudinaryUrl = cloudinaryResult.url;
+      file.cloudinaryPublicId = cloudinaryResult.public_id;
+      uploadedUrls.push(cloudinaryResult.url);
+    }
+
+    req.uploadedImageUrls = uploadedUrls;
+
+    next();
+  } catch (error) {
+    console.error('Cloudinary chat images upload middleware error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to upload images to Cloudinary',
+      error: error.message
+    });
+  }
+};
+

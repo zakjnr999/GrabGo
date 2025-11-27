@@ -67,6 +67,7 @@ class ChatMessageDto {
   final String? text;
   final String? audioUrl;
   final double audioDuration; // Duration in seconds
+  final List<String> imageUrls; // URLs for image messages
   final String senderId;
   final String? senderName;
   final DateTime sentAt;
@@ -81,6 +82,7 @@ class ChatMessageDto {
     this.text,
     this.audioUrl,
     this.audioDuration = 0,
+    this.imageUrls = const [],
     required this.senderId,
     required this.senderName,
     required this.sentAt,
@@ -93,6 +95,7 @@ class ChatMessageDto {
   bool get isVoiceMessage => messageType == MessageType.voice;
   bool get isImageMessage => messageType == MessageType.image;
   bool get isTextMessage => messageType == MessageType.text;
+  bool get hasImages => imageUrls.isNotEmpty;
 
   factory ChatMessageDto.fromJson(Map<String, dynamic> json) {
     final replyTo = json['replyTo'] as Map<String, dynamic>?;
@@ -106,6 +109,7 @@ class ChatMessageDto {
       text: json['text'] as String?,
       audioUrl: json['audioUrl'] as String?,
       audioDuration: (json['audioDuration'] as num?)?.toDouble() ?? 0,
+      imageUrls: (json['imageUrls'] as List<dynamic>? ?? []).map((e) => e.toString()).toList(),
       senderId: json['senderId'] as String? ?? '',
       senderName: json['senderName'] as String?,
       sentAt: DateTime.tryParse(json['sentAt']?.toString() ?? '') ?? DateTime.now(),
@@ -321,6 +325,53 @@ class ChatService {
       }
     } catch (e) {
       debugPrint('ChatService.sendVoiceMessage error: $e');
+      return null;
+    }
+  }
+
+  /// Send image message(s) by uploading image files
+  /// [imagePaths] - List of paths to local image files (already compressed)
+  Future<ChatMessageDto?> sendImageMessage(String chatId, List<String> imagePaths, {String? replyToId}) async {
+    if (imagePaths.isEmpty) return null;
+
+    final uri = Uri.parse('$_baseUrl/chats/$chatId/image-message');
+
+    try {
+      final request = http.MultipartRequest('POST', uri);
+
+      // Add auth header
+      final token = CacheService.getAuthToken();
+      if (token != null && token.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+
+      // Add image files
+      for (var i = 0; i < imagePaths.length; i++) {
+        request.files.add(await http.MultipartFile.fromPath('images', imagePaths[i]));
+      }
+
+      // Add reply ID if provided
+      if (replyToId != null) {
+        request.fields['replyToId'] = replyToId;
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+        final data = decoded['data'];
+        if (data is Map<String, dynamic> && data['message'] is Map<String, dynamic>) {
+          final messageJson = data['message'] as Map<String, dynamic>;
+          return ChatMessageDto.fromJson(messageJson);
+        }
+        return null;
+      } else {
+        debugPrint('ChatService.sendImageMessage failed: ${response.statusCode} ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('ChatService.sendImageMessage error: $e');
       return null;
     }
   }

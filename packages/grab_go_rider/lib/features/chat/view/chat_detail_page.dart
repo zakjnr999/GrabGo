@@ -23,6 +23,7 @@ class ChatMessage {
   final String text;
   final String? audioUrl;
   final double audioDuration;
+  final List<String> imageUrls; // URLs or local paths for image messages
   final DateTime timestamp;
   final bool isSentByMe;
   final bool isRead;
@@ -41,6 +42,7 @@ class ChatMessage {
     required this.text,
     this.audioUrl,
     this.audioDuration = 0,
+    this.imageUrls = const [],
     required this.timestamp,
     required this.isSentByMe,
     this.isRead = false,
@@ -58,6 +60,7 @@ class ChatMessage {
   bool get isImageMessage => messageType == MessageType.image;
   bool get isTextMessage => messageType == MessageType.text;
   bool get hasReactions => reactions.isNotEmpty;
+  bool get hasImages => imageUrls.isNotEmpty;
 }
 
 class ChatDetailPage extends StatefulWidget {
@@ -168,12 +171,16 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             }
           }
 
+          // Parse imageUrls
+          final imageUrls = (m['imageUrls'] as List?)?.map((e) => e.toString()).toList() ?? [];
+
           return ChatMessage(
             id: id,
             messageType: messageType,
             text: text,
             audioUrl: audioUrl,
             audioDuration: audioDuration,
+            imageUrls: imageUrls,
             timestamp: timestamp,
             isSentByMe: isSentByMe,
             isRead: isRead,
@@ -237,6 +244,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             'text': m.text,
             if (m.audioUrl != null) 'audioUrl': m.audioUrl,
             'audioDuration': m.audioDuration,
+            if (m.imageUrls.isNotEmpty) 'imageUrls': m.imageUrls,
             'timestamp': m.timestamp.toIso8601String(),
             'isSentByMe': m.isSentByMe,
             'isRead': m.isRead,
@@ -369,6 +377,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             text: m.text ?? '',
             audioUrl: m.audioUrl,
             audioDuration: m.audioDuration,
+            imageUrls: m.imageUrls,
             timestamp: m.sentAt,
             isSentByMe: isSentByMe,
             isRead: isReadByOther,
@@ -613,12 +622,17 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       }
     }
 
+    // Parse imageUrls from socket message
+    final imageUrlsList = messageMap['imageUrls'] as List<dynamic>?;
+    final imageUrls = imageUrlsList?.map((e) => e.toString()).toList() ?? [];
+
     final msg = ChatMessage(
       id: id,
       messageType: MessageType.fromString(messageMap['messageType']?.toString()),
       text: messageMap['text']?.toString() ?? '',
       audioUrl: messageMap['audioUrl']?.toString(),
       audioDuration: (messageMap['audioDuration'] as num?)?.toDouble() ?? 0,
+      imageUrls: imageUrls,
       timestamp: DateTime.tryParse(messageMap['sentAt']?.toString() ?? '') ?? DateTime.now(),
       isSentByMe: _currentUserId != null && senderId == _currentUserId,
       isRead: _currentUserId != null && senderId == _currentUserId,
@@ -1185,6 +1199,132 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       _cacheMessages();
       HapticFeedback.mediumImpact();
     }
+  }
+
+  void _showImagePicker(AppColorsExtension colors) {
+    HapticFeedback.selectionClick();
+    ImagePickerSheet.show(
+      context,
+      maxImages: 10,
+      onImagesSelected: (imagePaths) {
+        if (imagePaths.isNotEmpty) {
+          _sendImageMessage(imagePaths);
+        }
+      },
+    );
+  }
+
+  Future<void> _sendImageMessage(List<String> imagePaths) async {
+    if (imagePaths.isEmpty) return;
+
+    final tempId = DateTime.now().millisecondsSinceEpoch.toString();
+
+    // Compress images before upload
+    final compressedPaths = await ImageCompressService.instance.compressImages(
+      imagePaths,
+      quality: 70,
+      maxWidth: 1080,
+      maxHeight: 1920,
+    );
+
+    if (compressedPaths.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to process images')));
+      }
+      return;
+    }
+
+    // Capture reply before clearing
+    final replyTo = _replyingTo;
+    _cancelReply();
+
+    // Add optimistic message with local paths
+    final optimisticMessage = ChatMessage(
+      id: tempId,
+      messageType: MessageType.image,
+      text: '',
+      imageUrls: compressedPaths,
+      timestamp: DateTime.now(),
+      isSentByMe: true,
+      isRead: false,
+      isPending: true,
+      isFailed: false,
+      isSystem: false,
+      replyToId: replyTo?.id,
+      replyToText: replyTo?.isVoiceMessage == true ? '🎤 Voice message' : replyTo?.text,
+      replyToIsSentByMe: replyTo?.isSentByMe,
+    );
+
+    setState(() {
+      _messages.add(optimisticMessage);
+      _firstUnreadIndex = null;
+    });
+
+    _cacheMessages();
+    _scrollToBottom(force: true);
+
+    try {
+      final sent = await _chatService.sendImageMessage(widget.chatId, compressedPaths, replyToId: replyTo?.id);
+
+      if (sent != null && mounted) {
+        final index = _messages.indexWhere((m) => m.id == tempId);
+        if (index != -1) {
+          setState(() {
+            _messages[index] = ChatMessage(
+              id: sent.id,
+              messageType: sent.messageType,
+              text: sent.text ?? '',
+              imageUrls: sent.imageUrls,
+              timestamp: sent.sentAt,
+              isSentByMe: true,
+              isRead: false,
+              isPending: false,
+              isFailed: false,
+              isSystem: false,
+              replyToId: replyTo?.id,
+              replyToText: replyTo?.isVoiceMessage == true ? '🎤 Voice message' : replyTo?.text,
+              replyToIsSentByMe: replyTo?.isSentByMe,
+            );
+          });
+          _cacheMessages();
+          HapticFeedback.lightImpact();
+        }
+      }
+    } catch (e) {
+      debugPrint('Error sending image message: $e');
+      final index = _messages.indexWhere((m) => m.id == tempId);
+      if (index != -1 && mounted) {
+        final existing = _messages[index];
+        setState(() {
+          _messages[index] = ChatMessage(
+            id: existing.id,
+            messageType: existing.messageType,
+            text: existing.text,
+            imageUrls: existing.imageUrls,
+            timestamp: existing.timestamp,
+            isSentByMe: existing.isSentByMe,
+            isRead: existing.isRead,
+            isPending: false,
+            isFailed: true,
+          );
+        });
+        _cacheMessages();
+        HapticFeedback.mediumImpact();
+      }
+    }
+  }
+
+  Future<void> _retryImageMessage(ChatMessage message) async {
+    if (!message.isFailed || !message.hasImages) return;
+
+    // Re-send the image message
+    _sendImageMessage(message.imageUrls);
+
+    // Remove the failed message
+    setState(() {
+      _messages.removeWhere((m) => m.id == message.id);
+    });
+    _cacheMessages();
   }
 
   void _handleScrollPositionChanged() {
@@ -1858,6 +1998,18 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             size: 24.w,
           ),
         ),
+        SizedBox(width: 8.w),
+        // Image attachment button
+        GestureDetector(
+          onTap: () => _showImagePicker(colors),
+          child: SvgPicture.asset(
+            Assets.icons.mediaImage,
+            package: 'grab_go_shared',
+            width: 24.w,
+            height: 24.w,
+            colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+          ),
+        ),
         SizedBox(width: 10.w),
         Expanded(
           child: Container(
@@ -2217,7 +2369,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               children: [
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
-                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                  padding: message.isImageMessage && message.hasImages
+                      ? EdgeInsets.all(4.w) // Thin padding for image messages
+                      : EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                   margin: message.hasReactions ? EdgeInsets.only(bottom: 16.h) : EdgeInsets.zero,
                   decoration: BoxDecoration(
                     color: isHighlighted
@@ -2298,6 +2452,33 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                           waveActiveColor: isSent ? Colors.white : colors.accentGreen,
                           waveInactiveColor: isSent ? Colors.white38 : colors.border,
                         )
+                      else if (message.isImageMessage && message.hasImages)
+                        ImageMessageBubble(
+                          imageUrls: message.imageUrls,
+                          isSent: isSent,
+                          isPending: message.isPending,
+                          isFailed: message.isFailed,
+                          onRetry: canRetry ? () => _retryImageMessage(message) : null,
+                          onImageTap: (index) =>
+                              ImageViewerScreen.show(context, message.imageUrls, initialIndex: index),
+                        )
+                      else if (message.isImageMessage && !message.hasImages)
+                        // Fallback for image messages without URLs (backend didn't return them)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.image, size: 16.w, color: isSent ? Colors.white70 : colors.textSecondary),
+                            SizedBox(width: 6.w),
+                            Text(
+                              'Photo',
+                              style: TextStyle(
+                                color: isSent ? Colors.white70 : colors.textSecondary,
+                                fontSize: 14.sp,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
+                        )
                       else
                         Text(
                           message.text,
@@ -2325,8 +2506,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Show spinner only while pending, no time
-                  if (isSent && message.isPending)
+                  // Show spinner only while pending, no time (skip for image messages - they have their own spinner)
+                  if (isSent && message.isPending && !message.isImageMessage)
                     SizedBox(
                       width: 12.w,
                       height: 12.w,
@@ -2335,7 +2516,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                         valueColor: AlwaysStoppedAnimation<Color>(colors.textSecondary),
                       ),
                     )
-                  else ...[
+                  else if (!message.isPending || message.isImageMessage) ...[
                     // Show time after message is sent
                     Text(
                       _formatMessageTime(message.timestamp),

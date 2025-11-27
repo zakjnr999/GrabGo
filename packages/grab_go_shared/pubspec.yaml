@@ -37,6 +37,9 @@ dependencies:
   fluttertoast: ^9.0.0
   flutter_image_slideshow: ^0.1.6
   image_picker: ^1.2.0
+  flutter_image_compress: ^2.3.0
+  photo_manager: ^3.6.0
+  photo_manager_image_provider: ^2.1.1
   google_fonts: ^6.3.2
   google_sign_in: ^7.2.0
   json_annotation: ^4.9.0

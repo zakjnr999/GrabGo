@@ -30,6 +30,11 @@ const messageSchema = new mongoose.Schema(
       type: Number, // Duration in seconds
       default: 0,
     },
+    // Image message fields
+    imageUrls: {
+      type: [String],
+      default: [],
+    },
     createdAt: {
       type: Date,
       default: Date.now,

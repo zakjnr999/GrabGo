@@ -168,6 +168,7 @@
         "firebase_core",
         "flutter",
         "flutter_gen",
+        "flutter_image_compress",
         "flutter_image_slideshow",
         "flutter_screenutil",
         "flutter_spinkit",
@@ -185,6 +186,8 @@
         "json_annotation",
         "path_provider",
         "permission_handler",
+        "photo_manager",
+        "photo_manager_image_provider",
         "provider",
         "record",
         "shared_preferences",
@@ -717,6 +720,34 @@
         "google_sign_in_ios",
         "google_sign_in_platform_interface",
         "google_sign_in_web"
+      ]
+    },
+    {
+      "name": "photo_manager_image_provider",
+      "version": "2.2.0",
+      "dependencies": [
+        "flutter",
+        "photo_manager"
+      ]
+    },
+    {
+      "name": "photo_manager",
+      "version": "3.8.2",
+      "dependencies": [
+        "flutter",
+        "path"
+      ]
+    },
+    {
+      "name": "flutter_image_compress",
+      "version": "2.4.0",
+      "dependencies": [
+        "flutter",
+        "flutter_image_compress_common",
+        "flutter_image_compress_macos",
+        "flutter_image_compress_ohos",
+        "flutter_image_compress_platform_interface",
+        "flutter_image_compress_web"
       ]
     },
     {
@@ -1936,6 +1967,49 @@
       "dependencies": [
         "flutter",
         "google_sign_in_platform_interface"
+      ]
+    },
+    {
+      "name": "flutter_image_compress_ohos",
+      "version": "0.0.3",
+      "dependencies": [
+        "flutter",
+        "flutter_image_compress_platform_interface"
+      ]
+    },
+    {
+      "name": "flutter_image_compress_macos",
+      "version": "1.0.3",
+      "dependencies": [
+        "flutter",
+        "flutter_image_compress_platform_interface"
+      ]
+    },
+    {
+      "name": "flutter_image_compress_web",
+      "version": "0.1.5",
+      "dependencies": [
+        "flutter",
+        "flutter_image_compress_platform_interface",
+        "flutter_web_plugins",
+        "web"
+      ]
+    },
+    {
+      "name": "flutter_image_compress_common",
+      "version": "1.0.6",
+      "dependencies": [
+        "flutter",
+        "flutter_image_compress_platform_interface"
+      ]
+    },
+    {
+      "name": "flutter_image_compress_platform_interface",
+      "version": "1.0.5",
+      "dependencies": [
+        "cross_file",
+        "flutter",
+        "plugin_platform_interface"
       ]
     },
     {

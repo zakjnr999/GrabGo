@@ -2,7 +2,7 @@ const express = require("express");
 const Chat = require("../models/Chat");
 const { protect } = require("../middleware/auth");
 const { io } = require("../server");
-const { uploadAudioSingle, uploadAudioToCloudinary } = require("../middleware/upload");
+const { uploadAudioSingle, uploadAudioToCloudinary, uploadChatImages, uploadChatImagesToCloudinary } = require("../middleware/upload");
 
 const router = express.Router();
 
@@ -181,6 +181,7 @@ router.get("/:chatId", protect, async (req, res) => {
       text: msg.text,
       audioUrl: msg.audioUrl || null,
       audioDuration: msg.audioDuration || 0,
+      imageUrls: msg.imageUrls || [],
       senderId:
         msg.sender && msg.sender._id
           ? msg.sender._id.toString()
@@ -424,6 +425,115 @@ router.post(
       });
     } catch (error) {
       console.error("Send voice message error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message,
+      });
+    }
+  }
+);
+
+// Send image message(s) in an existing chat
+router.post(
+  "/:chatId/image-message",
+  protect,
+  uploadChatImages("images", 10),
+  uploadChatImagesToCloudinary,
+  async (req, res) => {
+    try {
+      const { chatId } = req.params;
+
+      if (!req.uploadedImageUrls || req.uploadedImageUrls.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "At least one image is required",
+        });
+      }
+
+      const chat = await Chat.findById(chatId)
+        .populate("customer", "username email role")
+        .populate("rider", "username email role");
+
+      if (!chat) {
+        return res.status(404).json({
+          success: false,
+          message: "Chat not found",
+        });
+      }
+
+      const userIdStr = req.user._id.toString();
+      const isParticipant =
+        (chat.customer && chat.customer._id.toString() === userIdStr) ||
+        (chat.rider && chat.rider._id.toString() === userIdStr) ||
+        req.user.role === "admin";
+
+      if (!isParticipant) {
+        return res.status(403).json({
+          success: false,
+          message: "Not authorized to send messages in this chat",
+        });
+      }
+
+      const message = {
+        sender: req.user._id,
+        messageType: "image",
+        imageUrls: req.uploadedImageUrls,
+        createdAt: new Date(),
+        readBy: [req.user._id],
+      };
+
+      // Handle reply
+      const { replyToId } = req.body;
+      if (replyToId) {
+        const replyMessage = chat.messages.id(replyToId);
+        if (replyMessage) {
+          message.replyTo = {
+            id: replyMessage._id,
+            text: replyMessage.messageType === 'image' ? '📷 Photo' : replyMessage.text,
+            senderId: replyMessage.sender,
+            messageType: replyMessage.messageType || 'text',
+          };
+        }
+      }
+
+      chat.messages.push(message);
+      await chat.save();
+
+      const savedMessage = chat.messages[chat.messages.length - 1];
+
+      const payload = {
+        chatId: chat._id.toString(),
+        message: {
+          id: savedMessage._id.toString(),
+          messageType: "image",
+          text: null,
+          audioUrl: null,
+          audioDuration: 0,
+          imageUrls: savedMessage.imageUrls,
+          senderId: savedMessage.sender.toString(),
+          sentAt: savedMessage.createdAt,
+          readBy: savedMessage.readBy.map((id) => id.toString()),
+          replyTo: savedMessage.replyTo ? {
+            id: savedMessage.replyTo.id?.toString(),
+            text: savedMessage.replyTo.text,
+            senderId: savedMessage.replyTo.senderId?.toString(),
+            messageType: savedMessage.replyTo.messageType || 'text',
+          } : null,
+        },
+      };
+
+      if (io) {
+        io.to(`chat:${chat._id.toString()}`).emit("chat:new_message", payload);
+      }
+
+      res.status(201).json({
+        success: true,
+        message: "Image message sent successfully",
+        data: payload,
+      });
+    } catch (error) {
+      console.error("Send image message error:", error);
       res.status(500).json({
         success: false,
         message: "Server error",
