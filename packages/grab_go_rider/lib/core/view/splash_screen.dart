@@ -31,7 +31,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   }
 
   Future<void> _initialize() async {
-    // Initialize UserService to load cached user data
     await UserService().initialize();
     await ChatSocketService().initialize();
 
@@ -68,7 +67,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.dark,
-        systemNavigationBarColor: Colors.white,
+        systemNavigationBarColor: Colors.transparent,
         systemNavigationBarDividerColor: Colors.transparent,
         systemNavigationBarIconBrightness: Brightness.dark,
       ),

@@ -16,17 +16,21 @@ class VoicePlayerService {
   bool _isPlaying = false;
   Duration _currentPosition = Duration.zero;
   Duration _totalDuration = Duration.zero;
+  bool _isInitialized = false;
 
   StreamSubscription<Duration>? _positionSubscription;
   StreamSubscription<Duration>? _durationSubscription;
   StreamSubscription<PlayerState>? _stateSubscription;
 
-  // Callbacks
-  void Function(String url)? onPlayStarted;
-  void Function(String url)? onPlayPaused;
-  void Function(String url)? onPlayCompleted;
-  void Function(String url, Duration position, Duration total)? onPositionChanged;
-  void Function(String error)? onError;
+  // Stream controllers for broadcasting events to multiple listeners
+  final _positionController = StreamController<PositionUpdate>.broadcast();
+  final _stateController = StreamController<PlaybackState>.broadcast();
+
+  /// Stream of position updates
+  Stream<PositionUpdate> get positionStream => _positionController.stream;
+
+  /// Stream of playback state changes
+  Stream<PlaybackState> get stateStream => _stateController.stream;
 
   bool get isPlaying => _isPlaying;
   String? get currentlyPlayingUrl => _currentlyPlayingUrl;
@@ -38,12 +42,15 @@ class VoicePlayerService {
     return _currentPosition.inMilliseconds / _totalDuration.inMilliseconds;
   }
 
-  /// Initialize the player and set up listeners
+  /// Initialize the player and set up listeners (idempotent)
   void initialize() {
+    if (_isInitialized) return;
+    _isInitialized = true;
+
     _positionSubscription = _player.onPositionChanged.listen((position) {
       _currentPosition = position;
       if (_currentlyPlayingUrl != null) {
-        onPositionChanged?.call(_currentlyPlayingUrl!, position, _totalDuration);
+        _positionController.add(PositionUpdate(url: _currentlyPlayingUrl!, position: position, total: _totalDuration));
       }
     });
 
@@ -56,20 +63,20 @@ class VoicePlayerService {
         case PlayerState.playing:
           _isPlaying = true;
           if (_currentlyPlayingUrl != null) {
-            onPlayStarted?.call(_currentlyPlayingUrl!);
+            _stateController.add(PlaybackState(url: _currentlyPlayingUrl!, state: PlaybackStatus.playing));
           }
           break;
         case PlayerState.paused:
           _isPlaying = false;
           if (_currentlyPlayingUrl != null) {
-            onPlayPaused?.call(_currentlyPlayingUrl!);
+            _stateController.add(PlaybackState(url: _currentlyPlayingUrl!, state: PlaybackStatus.paused));
           }
           break;
         case PlayerState.stopped:
         case PlayerState.completed:
           _isPlaying = false;
           if (_currentlyPlayingUrl != null) {
-            onPlayCompleted?.call(_currentlyPlayingUrl!);
+            _stateController.add(PlaybackState(url: _currentlyPlayingUrl!, state: PlaybackStatus.completed));
           }
           _currentPosition = Duration.zero;
           break;
@@ -82,6 +89,7 @@ class VoicePlayerService {
 
   /// Play a voice message from URL
   Future<void> play(String url) async {
+    initialize(); // Ensure initialized
     try {
       // If playing the same URL, just resume
       if (_currentlyPlayingUrl == url && !_isPlaying) {
@@ -100,12 +108,12 @@ class VoicePlayerService {
       await _player.play(UrlSource(url));
     } catch (e) {
       debugPrint('VoicePlayerService: Error playing audio: $e');
-      onError?.call('Failed to play voice message');
     }
   }
 
   /// Play a voice message from local file path
   Future<void> playFile(String path) async {
+    initialize(); // Ensure initialized
     try {
       // If playing the same file, just resume
       if (_currentlyPlayingUrl == path && !_isPlaying) {
@@ -124,7 +132,6 @@ class VoicePlayerService {
       await _player.play(DeviceFileSource(path));
     } catch (e) {
       debugPrint('VoicePlayerService: Error playing audio file: $e');
-      onError?.call('Failed to play voice message');
     }
   }
 
@@ -167,12 +174,20 @@ class VoicePlayerService {
     }
   }
 
-  /// Toggle play/pause for a specific URL
-  Future<void> toggle(String url) async {
-    if (_currentlyPlayingUrl == url && _isPlaying) {
+  /// Toggle play/pause for a specific URL or file path
+  Future<void> toggle(String urlOrPath) async {
+    initialize(); // Ensure initialized before any operation
+    if (_currentlyPlayingUrl == urlOrPath && _isPlaying) {
       await pause();
+    } else if (_currentlyPlayingUrl == urlOrPath && !_isPlaying) {
+      await resume();
     } else {
-      await play(url);
+      // Determine if it's a local file or remote URL
+      if (urlOrPath.startsWith('http')) {
+        await play(urlOrPath);
+      } else {
+        await playFile(urlOrPath);
+      }
     }
   }
 
@@ -193,6 +208,28 @@ class VoicePlayerService {
     _positionSubscription?.cancel();
     _durationSubscription?.cancel();
     _stateSubscription?.cancel();
+    _positionController.close();
+    _stateController.close();
     _player.dispose();
   }
+}
+
+/// Data class for position updates
+class PositionUpdate {
+  final String url;
+  final Duration position;
+  final Duration total;
+
+  PositionUpdate({required this.url, required this.position, required this.total});
+}
+
+/// Playback status enum
+enum PlaybackStatus { playing, paused, completed }
+
+/// Data class for playback state changes
+class PlaybackState {
+  final String url;
+  final PlaybackStatus state;
+
+  PlaybackState({required this.url, required this.state});
 }

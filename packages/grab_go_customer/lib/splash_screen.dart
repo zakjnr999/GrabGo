@@ -1,8 +1,5 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
@@ -84,10 +81,10 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
+      value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
-        systemNavigationBarColor: colors.accentOrange,
+        systemNavigationBarColor: Colors.transparent,
         systemNavigationBarDividerColor: Colors.transparent,
         systemNavigationBarIconBrightness: Brightness.light,
       ),
@@ -110,8 +107,8 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                         end: Alignment.bottomRight,
                         colors: [
                           colors.accentOrange,
-                          colors.accentOrange.withOpacity(0.8),
-                          colors.accentViolet.withOpacity(0.3),
+                          colors.accentOrange.withValues(alpha: 0.8),
+                          colors.accentViolet.withValues(alpha: 0.3),
                         ],
                       ),
                     ),
@@ -252,9 +249,13 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                               padding: EdgeInsets.all(20.r),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.white.withOpacity(0.2),
+                                color: Colors.white.withValues(alpha: 0.2),
                                 boxShadow: [
-                                  BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 30, spreadRadius: 5),
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.2),
+                                    blurRadius: 30,
+                                    spreadRadius: 5,
+                                  ),
                                 ],
                               ),
                               child: Image(
@@ -283,7 +284,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                                   fontSize: 38.sp,
                                   shadows: [
                                     Shadow(
-                                      color: Colors.black.withOpacity(0.3),
+                                      color: Colors.black.withValues(alpha: 0.3),
                                       blurRadius: 10,
                                       offset: const Offset(0, 4),
                                     ),
@@ -295,14 +296,14 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                                 "Your Food, Delivered Fast",
                                 style: TextStyle(
                                   letterSpacing: 1.5,
-                                  color: Colors.white.withOpacity(0.9),
+                                  color: Colors.white.withValues(alpha: 0.9),
                                   fontFamily: "Lato",
                                   package: "grab_go_shared",
                                   fontWeight: FontWeight.w500,
                                   fontSize: 14.sp,
                                   shadows: [
                                     Shadow(
-                                      color: Colors.black.withOpacity(0.2),
+                                      color: Colors.black.withValues(alpha: 0.2),
                                       blurRadius: 5,
                                       offset: const Offset(0, 2),
                                     ),

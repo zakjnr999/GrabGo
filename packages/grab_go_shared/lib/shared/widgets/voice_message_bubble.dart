@@ -1,9 +1,13 @@
+import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/svg.dart';
+import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/shared/services/voice_player_service.dart';
 
-/// A widget that displays a voice message with playback controls
-/// Styled similar to WhatsApp voice messages
+/// Voice message content widget - displays inside the message bubble
+/// Matches the app's message bubble style with custom waveform visualization
 class VoiceMessageBubble extends StatefulWidget {
   const VoiceMessageBubble({
     super.key,
@@ -12,11 +16,11 @@ class VoiceMessageBubble extends StatefulWidget {
     required this.isSentByMe,
     this.isRead = false,
     this.timestamp,
-    this.bubbleColor,
-    this.iconColor,
+    this.accentColor,
     this.textColor,
-    this.progressColor,
-    this.progressBackgroundColor,
+    this.waveActiveColor,
+    this.waveInactiveColor,
+    this.playButtonIconColor,
   });
 
   final String audioUrl;
@@ -24,11 +28,11 @@ class VoiceMessageBubble extends StatefulWidget {
   final bool isSentByMe;
   final bool isRead;
   final DateTime? timestamp;
-  final Color? bubbleColor;
-  final Color? iconColor;
+  final Color? accentColor;
   final Color? textColor;
-  final Color? progressColor;
-  final Color? progressBackgroundColor;
+  final Color? waveActiveColor;
+  final Color? waveInactiveColor;
+  final Color? playButtonIconColor;
 
   @override
   State<VoiceMessageBubble> createState() => _VoiceMessageBubbleState();
@@ -40,51 +44,83 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
   double _progress = 0;
   Duration _currentPosition = Duration.zero;
 
+  StreamSubscription<PositionUpdate>? _positionSubscription;
+  StreamSubscription<PlaybackState>? _stateSubscription;
+
+  // Generate consistent waveform bars based on audio URL hash
+  late List<double> _waveformBars;
+  static const int _barCount = 28;
+
   @override
   void initState() {
     super.initState();
+    _generateWaveform();
+    _setupPlayerListeners();
+  }
+
+  @override
+  void dispose() {
+    _positionSubscription?.cancel();
+    _stateSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _setupPlayerListeners() {
     _playerService.initialize();
-    _playerService.onPositionChanged = _handlePositionChanged;
-    _playerService.onPlayCompleted = _handlePlayCompleted;
-    _playerService.onPlayStarted = _handlePlayStarted;
-    _playerService.onPlayPaused = _handlePlayPaused;
-  }
 
-  void _handlePositionChanged(String url, Duration position, Duration total) {
-    if (url != widget.audioUrl || !mounted) return;
-    setState(() {
-      _currentPosition = position;
-      if (total.inMilliseconds > 0) {
-        _progress = position.inMilliseconds / total.inMilliseconds;
-      }
+    // Subscribe to position updates
+    _positionSubscription = _playerService.positionStream.listen((update) {
+      if (update.url != widget.audioUrl || !mounted) return;
+
+      setState(() {
+        _currentPosition = update.position;
+
+        // Use the player's total duration if available, otherwise use widget.duration
+        final totalMs = update.total.inMilliseconds > 0
+            ? update.total.inMilliseconds
+            : (widget.duration * 1000).round();
+
+        if (totalMs > 0) {
+          _progress = (update.position.inMilliseconds / totalMs).clamp(0.0, 1.0);
+        }
+      });
+    });
+
+    // Subscribe to playback state changes
+    _stateSubscription = _playerService.stateStream.listen((state) {
+      if (state.url != widget.audioUrl || !mounted) return;
+      setState(() {
+        switch (state.state) {
+          case PlaybackStatus.playing:
+            _isPlaying = true;
+            break;
+          case PlaybackStatus.paused:
+            _isPlaying = false;
+            break;
+          case PlaybackStatus.completed:
+            _isPlaying = false;
+            _progress = 0;
+            _currentPosition = Duration.zero;
+            break;
+        }
+      });
     });
   }
 
-  void _handlePlayCompleted(String url) {
-    if (url != widget.audioUrl || !mounted) return;
-    setState(() {
-      _isPlaying = false;
-      _progress = 0;
-      _currentPosition = Duration.zero;
+  void _generateWaveform() {
+    // Generate deterministic waveform based on audio URL hash
+    final random = math.Random(widget.audioUrl.hashCode);
+    _waveformBars = List.generate(_barCount, (index) {
+      // Create a more natural waveform pattern
+      final base = 0.3 + random.nextDouble() * 0.7;
+      // Add some variation to make it look more organic
+      final variation = math.sin(index * 0.5) * 0.2;
+      return (base + variation).clamp(0.2, 1.0);
     });
   }
 
-  void _handlePlayStarted(String url) {
-    if (url != widget.audioUrl || !mounted) return;
-    setState(() {
-      _isPlaying = true;
-    });
-  }
-
-  void _handlePlayPaused(String url) {
-    if (url != widget.audioUrl || !mounted) return;
-    setState(() {
-      _isPlaying = false;
-    });
-  }
-
-  void _togglePlayback() {
-    _playerService.toggle(widget.audioUrl);
+  Future<void> _togglePlayback() async {
+    await _playerService.toggle(widget.audioUrl);
   }
 
   String _formatDuration(double seconds) {
@@ -103,183 +139,104 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    // Determine play button icon color
+    final playIconColor = widget.playButtonIconColor ?? (widget.isSentByMe ? Colors.black87 : Colors.white);
 
-    // Default colors based on sender and theme
-    final defaultBubbleColor = widget.isSentByMe
-        ? (isDark ? const Color(0xFF005C4B) : const Color(0xFFDCF8C6))
-        : (isDark ? const Color(0xFF1F2C34) : Colors.white);
-
-    final defaultIconColor = widget.isSentByMe
-        ? (isDark ? Colors.white : const Color(0xFF075E54))
-        : (isDark ? Colors.white70 : const Color(0xFF075E54));
-
-    final defaultTextColor = isDark ? Colors.white70 : Colors.black54;
-
-    final defaultProgressColor = widget.isSentByMe
-        ? (isDark ? const Color(0xFF25D366) : const Color(0xFF075E54))
-        : (isDark ? const Color(0xFF25D366) : const Color(0xFF075E54));
-
-    final defaultProgressBgColor = isDark ? Colors.white24 : Colors.black12;
-
-    final bubbleColor = widget.bubbleColor ?? defaultBubbleColor;
-    final iconColor = widget.iconColor ?? defaultIconColor;
-    final textColor = widget.textColor ?? defaultTextColor;
-    final progressColor = widget.progressColor ?? defaultProgressColor;
-    final progressBgColor = widget.progressBackgroundColor ?? defaultProgressBgColor;
-
-    return Container(
-      constraints: BoxConstraints(maxWidth: 260.w, minWidth: 200.w),
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-      decoration: BoxDecoration(color: bubbleColor, borderRadius: BorderRadius.circular(16.r)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Play/Pause button
-          GestureDetector(
-            onTap: _togglePlayback,
-            child: Container(
-              width: 44.w,
-              height: 44.w,
-              decoration: BoxDecoration(color: iconColor, shape: BoxShape.circle),
-              child: Icon(_isPlaying ? Icons.pause : Icons.play_arrow, color: bubbleColor, size: 28.sp),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Play/Pause button
+        GestureDetector(
+          onTap: _togglePlayback,
+          child: Container(
+            width: 36.w,
+            height: 36.w,
+            padding: EdgeInsets.all(5.r),
+            decoration: BoxDecoration(color: widget.accentColor ?? Colors.white, shape: BoxShape.circle),
+            child: SvgPicture.asset(
+              _isPlaying ? Assets.icons.pause : Assets.icons.play,
+              package: "grab_go_shared",
+              colorFilter: ColorFilter.mode(playIconColor, BlendMode.srcIn),
             ),
           ),
-          SizedBox(width: 10.w),
-          // Progress and duration
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Progress bar
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4.r),
-                  child: LinearProgressIndicator(
-                    value: _progress,
-                    backgroundColor: progressBgColor,
-                    valueColor: AlwaysStoppedAnimation<Color>(progressColor),
-                    minHeight: 4.h,
+        ),
+        SizedBox(width: 10.w),
+        // Waveform and duration
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Custom waveform
+              SizedBox(
+                height: 24.h,
+                child: CustomPaint(
+                  size: Size(double.infinity, 24.h),
+                  painter: _WaveformPainter(
+                    bars: _waveformBars,
+                    progress: _progress,
+                    activeColor:
+                        widget.waveActiveColor ??
+                        (widget.isSentByMe ? Colors.white : (widget.accentColor ?? Colors.grey)),
+                    inactiveColor:
+                        widget.waveInactiveColor ??
+                        (widget.isSentByMe ? Colors.white38 : Colors.grey.withValues(alpha: 0.3)),
                   ),
                 ),
-                SizedBox(height: 6.h),
-                // Duration and timestamp
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _formatCurrentPosition(),
-                      style: TextStyle(fontSize: 12.sp, color: textColor),
-                    ),
-                    if (widget.timestamp != null)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _formatTime(widget.timestamp!),
-                            style: TextStyle(fontSize: 11.sp, color: textColor),
-                          ),
-                          if (widget.isSentByMe) ...[
-                            SizedBox(width: 4.w),
-                            Icon(
-                              widget.isRead ? Icons.done_all : Icons.done,
-                              size: 14.sp,
-                              color: widget.isRead ? const Color(0xFF34B7F1) : textColor,
-                            ),
-                          ],
-                        ],
-                      ),
-                  ],
-                ),
-              ],
-            ),
+              ),
+              SizedBox(height: 4.h),
+              // Duration
+              Text(
+                _formatCurrentPosition(),
+                style: TextStyle(fontSize: 11.sp, color: widget.textColor ?? Colors.grey, fontWeight: FontWeight.w400),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
-  }
-
-  String _formatTime(DateTime time) {
-    final hour = time.hour.toString().padLeft(2, '0');
-    final minute = time.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
   }
 }
 
-/// A compact recording indicator widget
-/// Shows during voice recording with duration and cancel option
-class VoiceRecordingIndicator extends StatelessWidget {
-  const VoiceRecordingIndicator({
-    super.key,
-    required this.duration,
-    required this.onCancel,
-    this.isLocked = false,
-    this.onSend,
+/// Custom painter for waveform visualization
+class _WaveformPainter extends CustomPainter {
+  _WaveformPainter({
+    required this.bars,
+    required this.progress,
+    required this.activeColor,
+    required this.inactiveColor,
   });
 
-  final Duration duration;
-  final VoidCallback onCancel;
-  final bool isLocked;
-  final VoidCallback? onSend;
+  final List<double> bars;
+  final double progress;
+  final Color activeColor;
+  final Color inactiveColor;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+  void paint(Canvas canvas, Size size) {
+    final barWidth = 3.0;
+    final spacing = (size.width - (bars.length * barWidth)) / (bars.length - 1);
+    final maxHeight = size.height;
+    final progressIndex = (progress * bars.length).floor();
 
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1F2C34) : Colors.white,
-        borderRadius: BorderRadius.circular(24.r),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2))],
-      ),
-      child: Row(
-        children: [
-          // Recording indicator
-          Container(
-            width: 12.w,
-            height: 12.w,
-            decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-          ),
-          SizedBox(width: 12.w),
-          // Duration
-          Text(
-            _formatDuration(duration),
-            style: TextStyle(
-              fontSize: 16.sp,
-              fontWeight: FontWeight.w500,
-              color: isDark ? Colors.white : Colors.black87,
-            ),
-          ),
-          const Spacer(),
-          if (!isLocked) ...[
-            // Slide to cancel hint
-            Text(
-              '< Slide to cancel',
-              style: TextStyle(fontSize: 14.sp, color: Colors.grey),
-            ),
-          ] else ...[
-            // Cancel button
-            IconButton(
-              onPressed: onCancel,
-              icon: Icon(Icons.delete_outline, color: Colors.red, size: 24.sp),
-            ),
-            // Send button
-            IconButton(
-              onPressed: onSend,
-              icon: Icon(Icons.send, color: theme.primaryColor, size: 24.sp),
-            ),
-          ],
-        ],
-      ),
-    );
+    for (int i = 0; i < bars.length; i++) {
+      final x = i * (barWidth + spacing);
+      final barHeight = bars[i] * maxHeight;
+      final y = (maxHeight - barHeight) / 2;
+
+      final paint = Paint()
+        ..color = i <= progressIndex ? activeColor : inactiveColor
+        ..strokeCap = StrokeCap.round;
+
+      final rect = RRect.fromRectAndRadius(Rect.fromLTWH(x, y, barWidth, barHeight), const Radius.circular(2));
+      canvas.drawRRect(rect, paint);
+    }
   }
 
-  String _formatDuration(Duration duration) {
-    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$minutes:$seconds';
+  @override
+  bool shouldRepaint(covariant _WaveformPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.activeColor != activeColor ||
+        oldDelegate.inactiveColor != inactiveColor;
   }
 }

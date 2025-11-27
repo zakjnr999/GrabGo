@@ -553,7 +553,13 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     bool? replyToIsSentByMe;
     if (replyTo != null) {
       replyToId = replyTo['id']?.toString();
-      replyToText = replyTo['text']?.toString();
+      final replyToMessageType = replyTo['messageType']?.toString();
+      // Show "🎤 Voice message" for voice message replies
+      if (replyToMessageType == 'voice') {
+        replyToText = '🎤 Voice message';
+      } else {
+        replyToText = replyTo['text']?.toString();
+      }
       final replyToSenderId = replyTo['senderId']?.toString();
       if (replyToSenderId != null && _currentUserId != null) {
         replyToIsSentByMe = replyToSenderId == _currentUserId;
@@ -753,7 +759,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       isFailed: false,
       isSystem: false,
       replyToId: replyTo?.id,
-      replyToText: replyTo?.text,
+      replyToText: replyTo?.isVoiceMessage == true ? '🎤 Voice message' : replyTo?.text,
       replyToIsSentByMe: replyTo?.isSentByMe,
     );
 
@@ -1398,12 +1404,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                     if (_isPeerTyping)
                       Text(
                         'Typing...',
-                        style: TextStyle(
-                          color: colors.textSecondary,
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w400,
-                          fontStyle: FontStyle.italic,
-                        ),
+                        style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
                       )
                     else if (_isPeerOnline)
                       Text(
@@ -1517,7 +1518,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                                     ),
                                   if (isFirstUnreadMessage)
                                     Padding(
-                                      padding: EdgeInsets.only(bottom: 8.h),
+                                      padding: EdgeInsets.symmetric(vertical: 16.h),
                                       child: Center(
                                         child: Container(
                                           padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
@@ -1763,7 +1764,13 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                 ],
               ),
               child: Center(
-                child: Icon(Icons.mic, color: Colors.white, size: 24.w),
+                child: SvgPicture.asset(
+                  Assets.icons.microphone,
+                  package: "grab_go_shared",
+                  colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                  height: 24.h,
+                  width: 24.w,
+                ),
               ),
             ),
           ),
@@ -1780,7 +1787,13 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             width: 40.w,
             height: 40.w,
             decoration: BoxDecoration(color: colors.error.withValues(alpha: 0.1), shape: BoxShape.circle),
-            child: Icon(Icons.delete_outline, color: colors.error, size: 22.w),
+            child: SvgPicture.asset(
+              Assets.icons.bin,
+              package: "grab_go_shared",
+              colorFilter: ColorFilter.mode(colors.error, BlendMode.srcIn),
+              height: 24.h,
+              width: 24.w,
+            ),
           ),
         ),
         SizedBox(width: 12.w),
@@ -1794,20 +1807,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             ),
             child: Row(
               children: [
-                TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0.5, end: 1.0),
-                  duration: const Duration(milliseconds: 500),
-                  builder: (context, value, child) {
-                    return Container(
-                      width: 10.w,
-                      height: 10.w,
-                      decoration: BoxDecoration(
-                        color: colors.error.withValues(alpha: value),
-                        shape: BoxShape.circle,
-                      ),
-                    );
-                  },
-                ),
+                _PulsingDot(color: colors.error),
                 SizedBox(width: 12.w),
                 Text(
                   VoiceRecorderService.formatDuration(_recordingDuration),
@@ -1880,7 +1880,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                 ),
                 SizedBox(height: 2.h),
                 Text(
-                  replyTo.text,
+                  replyTo.isVoiceMessage ? '🎤 Voice message' : replyTo.text,
                   style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w400),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -1893,7 +1893,14 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             onTap: _cancelReply,
             child: Container(
               padding: EdgeInsets.all(4.w),
-              child: Icon(Icons.close, size: 20.w, color: colors.textSecondary),
+              child: SvgPicture.asset(
+                Assets.icons.xmark,
+                package: "grab_go_shared",
+                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                height: 20.h,
+                width: 20.w,
+              ),
+              // child: Icon(Icons.close, size: 20.w, color: colors.textSecondary),
             ),
           ),
         ],
@@ -2092,11 +2099,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                       isSentByMe: isSent,
                       isRead: message.isRead,
                       timestamp: message.timestamp,
-                      bubbleColor: Colors.transparent,
-                      iconColor: isSent ? Colors.white : colors.accentGreen,
+                      accentColor: isSent ? Colors.white : colors.accentGreen,
+                      playButtonIconColor: isSent ? colors.accentGreen : Colors.white,
                       textColor: isSent ? Colors.white70 : colors.textSecondary,
-                      progressColor: isSent ? Colors.white : colors.accentGreen,
-                      progressBackgroundColor: isSent ? Colors.white24 : colors.border,
+                      waveActiveColor: isSent ? Colors.white : colors.accentGreen,
+                      waveInactiveColor: isSent ? Colors.white38 : colors.border,
                     )
                   else
                     Text(
@@ -2217,7 +2224,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             children: [
               ListTile(
                 leading: SvgPicture.asset(
-                  Assets.icons.edit,
+                  Assets.icons.copy,
                   package: "grab_go_shared",
                   height: 20.h,
                   width: 20.w,
@@ -2253,7 +2260,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               if (message.isSentByMe && !message.isPending && !widget.isSupport)
                 ListTile(
                   leading: SvgPicture.asset(
-                    Assets.icons.binMinusIn,
+                    Assets.icons.bin,
                     package: "grab_go_shared",
                     height: 20.h,
                     width: 20.w,
@@ -2270,7 +2277,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                 ),
               ListTile(
                 leading: SvgPicture.asset(
-                  Assets.icons.binMinusIn,
+                  Assets.icons.bin,
                   package: "grab_go_shared",
                   height: 20.h,
                   width: 20.w,
@@ -2468,6 +2475,53 @@ class _SwipeToReplyState extends State<_SwipeToReply> {
           Transform.translate(offset: Offset(_dragExtent, 0), child: widget.child),
         ],
       ),
+    );
+  }
+}
+
+/// Pulsing dot animation for recording indicator
+class _PulsingDot extends StatefulWidget {
+  const _PulsingDot({required this.color});
+  final Color color;
+
+  @override
+  State<_PulsingDot> createState() => _PulsingDotState();
+}
+
+class _PulsingDotState extends State<_PulsingDot> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(duration: const Duration(milliseconds: 800), vsync: this)..repeat(reverse: true);
+    _animation = Tween<double>(
+      begin: 0.4,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Container(
+          width: 10.w,
+          height: 10.w,
+          decoration: BoxDecoration(
+            color: widget.color.withValues(alpha: _animation.value),
+            shape: BoxShape.circle,
+          ),
+        );
+      },
     );
   }
 }

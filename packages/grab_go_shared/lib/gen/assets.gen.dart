@@ -109,6 +109,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/bin-minus-in.svg
   String get binMinusIn => 'lib/assets/icons/bin-minus-in.svg';
 
+  /// File path: lib/assets/icons/bin.svg
+  String get bin => 'lib/assets/icons/bin.svg';
+
   /// File path: lib/assets/icons/box-iso.svg
   String get boxIso => 'lib/assets/icons/box-iso.svg';
 
@@ -151,6 +154,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/cooking.png
   AssetGenImage get cooking =>
       const AssetGenImage('lib/assets/icons/cooking.png');
+
+  /// File path: lib/assets/icons/copy.svg
+  String get copy => 'lib/assets/icons/copy.svg';
 
   /// File path: lib/assets/icons/credit-card.svg
   String get creditCard => 'lib/assets/icons/credit-card.svg';
@@ -236,6 +242,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/home.svg
   String get home => 'lib/assets/icons/home.svg';
 
+  /// File path: lib/assets/icons/hourglass.svg
+  String get hourglass => 'lib/assets/icons/hourglass.svg';
+
   /// File path: lib/assets/icons/id-card.svg
   String get idCard => 'lib/assets/icons/id-card.svg';
 
@@ -275,6 +284,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/menu.svg
   String get menu => 'lib/assets/icons/menu.svg';
 
+  /// File path: lib/assets/icons/microphone.svg
+  String get microphone => 'lib/assets/icons/microphone.svg';
+
   /// File path: lib/assets/icons/mom.jpeg
   AssetGenImage get mom => const AssetGenImage('lib/assets/icons/mom.jpeg');
 
@@ -308,6 +320,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/package-delivered.png
   AssetGenImage get packageDelivered =>
       const AssetGenImage('lib/assets/icons/package-delivered.png');
+
+  /// File path: lib/assets/icons/pause.svg
+  String get pause => 'lib/assets/icons/pause.svg';
 
   /// File path: lib/assets/icons/percentage-circle.svg
   String get percentageCircle => 'lib/assets/icons/percentage-circle.svg';
@@ -430,6 +445,7 @@ class $LibAssetsIconsGen {
     bellNotification,
     bell,
     binMinusIn,
+    bin,
     boxIso,
     calendar,
     camera,
@@ -444,6 +460,7 @@ class $LibAssetsIconsGen {
     clock,
     cookingPot,
     cooking,
+    copy,
     creditCard,
     deliveryTruck,
     deliveryGuyIcon,
@@ -470,6 +487,7 @@ class $LibAssetsIconsGen {
     heartSolid,
     heart,
     home,
+    hourglass,
     idCard,
     infoCircle,
     instagram,
@@ -483,6 +501,7 @@ class $LibAssetsIconsGen {
     mediaImage,
     mediaVideo,
     menu,
+    microphone,
     mom,
     moreVert,
     navArrowDown,
@@ -493,6 +512,7 @@ class $LibAssetsIconsGen {
     orderFood,
     orderTrackSample,
     packageDelivered,
+    pause,
     percentageCircle,
     phoneSolid,
     phone,
@@ -632,9 +652,10 @@ class Assets {
 
   static const $LibGen lib = $LibGen();
 
-  static $LibAssetsIconsGen get icons => const $LibAssetsIconsGen();
-  static $LibAssetsImagesGen get images => const $LibAssetsImagesGen();
-  static $LibAssetsFontsGen get fonts => const $LibAssetsFontsGen();
+  // Direct access shortcuts for backwards compatibility
+  static const $LibAssetsIconsGen icons = $LibAssetsIconsGen();
+  static const $LibAssetsImagesGen images = $LibAssetsImagesGen();
+  static const $LibAssetsFontsGen fonts = $LibAssetsFontsGen();
 }
 
 class AssetGenImage {

@@ -48,7 +48,6 @@ class _ChatMessage {
   });
 }
 
-/// Represents an order that is waiting for a rider to accept
 class _PendingOrder {
   final String orderId;
   final String orderNumber;
@@ -148,7 +147,6 @@ class _ChatsState extends State<Chats> {
     final List<_ChatMessage> loaded = cached
         .map((chat) {
           final id = chat['id']?.toString() ?? '';
-          // Skip empty or support chat
           if (id.isEmpty || id == 'support') {
             return null;
           }
@@ -876,13 +874,12 @@ class _ChatsState extends State<Chats> {
                           conversation.isTyping ? 'Typing...' : conversation.lastMessage,
                           style: TextStyle(
                             color: conversation.isTyping
-                                ? colors.textSecondary
+                                ? colors.accentOrange
                                 : (hasUnread ? colors.textPrimary : colors.textSecondary),
                             fontSize: 14.sp,
                             fontWeight: conversation.isTyping
-                                ? FontWeight.w400
+                                ? FontWeight.w500
                                 : (hasUnread ? FontWeight.w500 : FontWeight.w400),
-                            fontStyle: conversation.isTyping ? FontStyle.italic : FontStyle.normal,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

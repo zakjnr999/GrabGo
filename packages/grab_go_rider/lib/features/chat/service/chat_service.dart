@@ -96,6 +96,10 @@ class ChatMessageDto {
 
   factory ChatMessageDto.fromJson(Map<String, dynamic> json) {
     final replyTo = json['replyTo'] as Map<String, dynamic>?;
+    // Check if reply is to a voice message
+    final replyToMessageType = replyTo?['messageType'] as String?;
+    final replyToText = replyToMessageType == 'voice' ? '🎤 Voice message' : replyTo?['text'] as String?;
+
     return ChatMessageDto(
       id: json['id'] as String,
       messageType: MessageType.fromString(json['messageType'] as String?),
@@ -107,7 +111,7 @@ class ChatMessageDto {
       sentAt: DateTime.tryParse(json['sentAt']?.toString() ?? '') ?? DateTime.now(),
       readBy: (json['readBy'] as List<dynamic>? ?? []).map((e) => e.toString()).toList(),
       replyToId: replyTo?['id'] as String?,
-      replyToText: replyTo?['text'] as String?,
+      replyToText: replyToText,
       replyToSenderId: replyTo?['senderId'] as String?,
     );
   }

@@ -34,6 +34,8 @@
 		<string>Pick an image from gallery</string>
 		<key>NSCameraUsageDescription</key>
 		<string>Pick image from Camera</string>
+		<key>NSMicrophoneUsageDescription</key>
+		<string>We need microphone access to record voice messages</string>
 
 		<key>UISupportedInterfaceOrientations</key>
 		<array>
