@@ -52,5 +52,15 @@ abstract class AuthService extends ChopperService {
   @POST(path: '/users/resend-phone-otp')
   Future<Response<Map<String, dynamic>>> resendPhoneOTP(@Body() Map<String, dynamic> body);
 
+  // FCM token endpoints
+  @POST(path: '/users/fcm-token')
+  Future<Response<Map<String, dynamic>>> registerFcmToken(@Body() Map<String, dynamic> request);
+
+  @DELETE(path: '/users/fcm-token')
+  Future<Response<Map<String, dynamic>>> removeFcmToken(@Body() Map<String, dynamic> request);
+
+  @PUT(path: '/users/notification-settings')
+  Future<Response<Map<String, dynamic>>> updateNotificationSettings(@Body() Map<String, dynamic> request);
+
   static AuthService create([ChopperClient? client]) => _$AuthService(client);
 }

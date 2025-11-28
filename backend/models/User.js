@@ -88,6 +88,18 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  fcmTokens: [{
+    token: { type: String, required: true },
+    deviceId: { type: String, default: null },
+    platform: { type: String, enum: ['android', 'ios', 'web'], default: 'android' },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+  }],
+  notificationSettings: {
+    chatMessages: { type: Boolean, default: true },
+    orderUpdates: { type: Boolean, default: true },
+    promotions: { type: Boolean, default: true }
+  },
   permissions: {
     canManageUsers: { type: Boolean, default: false },
     canManageProducts: { type: Boolean, default: false },

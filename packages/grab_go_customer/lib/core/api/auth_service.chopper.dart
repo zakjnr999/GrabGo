@@ -173,4 +173,39 @@ final class _$AuthService extends AuthService {
     final Request $request = Request('POST', $url, client.baseUrl, body: $body);
     return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
   }
+
+  @override
+  Future<Response<Map<String, dynamic>>> registerFcmToken(
+    Map<String, dynamic> request,
+  ) {
+    final Uri $url = Uri.parse('/users/fcm-token');
+    final $body = request;
+    final Request $request = Request('POST', $url, client.baseUrl, body: $body);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
+
+  @override
+  Future<Response<Map<String, dynamic>>> removeFcmToken(
+    Map<String, dynamic> request,
+  ) {
+    final Uri $url = Uri.parse('/users/fcm-token');
+    final $body = request;
+    final Request $request = Request(
+      'DELETE',
+      $url,
+      client.baseUrl,
+      body: $body,
+    );
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
+
+  @override
+  Future<Response<Map<String, dynamic>>> updateNotificationSettings(
+    Map<String, dynamic> request,
+  ) {
+    final Uri $url = Uri.parse('/users/notification-settings');
+    final $body = request;
+    final Request $request = Request('PUT', $url, client.baseUrl, body: $body);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
 }

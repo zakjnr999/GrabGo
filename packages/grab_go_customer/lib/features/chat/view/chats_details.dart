@@ -2487,15 +2487,15 @@ class _ChatDetailState extends State<ChatDetail> {
       case 'confirmed':
       case 'preparing':
         return [
-          'Where is my order right now? ',
-          'Can you give me an updated ETA? ',
+          'Where is my order right now?',
+          'Can you give me an updated ETA?',
           'I want to update my delivery instructions.',
         ];
       case 'ready':
         return [
-          'Is my order still ready for pickup? ',
-          'Can you call me when you arrive? ',
-          'Can you come to the main gate? ',
+          'Is my order still ready for pickup?',
+          'Can you call me when you arrive?',
+          'Can you come to the main gate?',
         ];
       case 'picked_up':
       case 'on_the_way':
@@ -2513,7 +2513,7 @@ class _ChatDetailState extends State<ChatDetail> {
     final id = _orderId ?? widget.orderId;
     if (id == null || id.isEmpty) return;
 
-    context.push('/orderTracking');
+    context.push('/orderTracking', extra: {'orderId': id});
   }
 
   Widget _buildMessageBubble(

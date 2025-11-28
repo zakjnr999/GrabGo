@@ -184,6 +184,12 @@ class UserService {
     try {
       debugPrint('🔄 5️⃣ Logout: Clearing stored user data...');
 
+      // Remove FCM token before logout
+      final token = await PushNotificationService().getToken();
+      if (token != null) {
+        await removeFcmToken(token);
+      }
+
       _currentUser = null;
       await _clearCachedUserData();
       await CacheService.clearUserSpecificData();
@@ -240,5 +246,45 @@ class UserService {
 
   Future<User?> refreshUserData() async {
     return await getCurrentUser(forceRefresh: true);
+  }
+
+  /// Register FCM token with backend for push notifications
+  Future<bool> registerFcmToken(String token, {String platform = 'android', String? deviceId}) async {
+    try {
+      final response = await authService.registerFcmToken({
+        'token': token,
+        'platform': platform,
+        if (deviceId != null) 'deviceId': deviceId,
+      });
+
+      if (response.isSuccessful) {
+        debugPrint('✅ FCM token registered successfully');
+        return true;
+      } else {
+        debugPrint('❌ Failed to register FCM token: ${response.error}');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ Error registering FCM token: $e');
+      return false;
+    }
+  }
+
+  /// Remove FCM token from backend (on logout)
+  Future<bool> removeFcmToken(String token) async {
+    try {
+      final response = await authService.removeFcmToken({'token': token});
+
+      if (response.isSuccessful) {
+        debugPrint('✅ FCM token removed successfully');
+        return true;
+      } else {
+        debugPrint('❌ Failed to remove FCM token: ${response.error}');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ Error removing FCM token: $e');
+      return false;
+    }
   }
 }

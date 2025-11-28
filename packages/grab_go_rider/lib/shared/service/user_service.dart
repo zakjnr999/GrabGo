@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_rider/shared/service/chat_socket_service.dart';
+import 'package:grab_go_rider/core/api/api_client.dart';
 import 'cache_service.dart';
 
 class UserService {
@@ -63,6 +64,12 @@ class UserService {
 
   Future<void> logout() async {
     try {
+      // Remove FCM token before logout
+      final token = await PushNotificationService().getToken();
+      if (token != null) {
+        await removeFcmToken(token);
+      }
+
       _currentUser = null;
       await CacheService.clearUserData();
       await CacheService.clearAuthToken();
@@ -70,6 +77,46 @@ class UserService {
       debugPrint('✅ User logged out successfully');
     } catch (e) {
       debugPrint('❌ Error logging out: $e');
+    }
+  }
+
+  /// Register FCM token with backend for push notifications
+  Future<bool> registerFcmToken(String token, {String platform = 'android', String? deviceId}) async {
+    try {
+      final response = await authService.registerFcmToken({
+        'token': token,
+        'platform': platform,
+        if (deviceId != null) 'deviceId': deviceId,
+      });
+
+      if (response.isSuccessful) {
+        debugPrint('✅ FCM token registered successfully');
+        return true;
+      } else {
+        debugPrint('❌ Failed to register FCM token: ${response.error}');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ Error registering FCM token: $e');
+      return false;
+    }
+  }
+
+  /// Remove FCM token from backend (on logout)
+  Future<bool> removeFcmToken(String token) async {
+    try {
+      final response = await authService.removeFcmToken({'token': token});
+
+      if (response.isSuccessful) {
+        debugPrint('✅ FCM token removed successfully');
+        return true;
+      } else {
+        debugPrint('❌ Failed to remove FCM token: ${response.error}');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ Error removing FCM token: $e');
+      return false;
     }
   }
 }

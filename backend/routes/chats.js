@@ -1,10 +1,49 @@
 const express = require("express");
 const Chat = require("../models/Chat");
+const User = require("../models/User");
 const { protect } = require("../middleware/auth");
 const { io } = require("../server");
 const { uploadAudioSingle, uploadAudioToCloudinary, uploadChatImages, uploadChatImagesToCloudinary } = require("../middleware/upload");
+const { sendChatNotification } = require("../services/fcm_service");
 
 const router = express.Router();
+
+/**
+ * Helper function to send push notification to the other chat participant
+ * Only sends if the recipient is not currently connected to the chat room
+ */
+const notifyOfflineUser = async (chat, senderId, senderName, messagePreview, messageType = 'text') => {
+  try {
+    const senderIdStr = senderId.toString();
+
+    // Determine recipient
+    const recipientId = chat.customer?.toString() === senderIdStr
+      ? chat.rider?.toString()
+      : chat.customer?.toString();
+
+    if (!recipientId) return;
+
+    // Check if recipient is currently connected to this chat room
+    const room = `chat:${chat._id.toString()}`;
+    const socketsInRoom = await io.in(room).fetchSockets();
+    const recipientConnected = socketsInRoom.some(
+      s => s.data.userId?.toString() === recipientId
+    );
+
+    // Only send push notification if recipient is NOT connected
+    if (!recipientConnected) {
+      await sendChatNotification(
+        recipientId,
+        senderName,
+        messagePreview,
+        chat._id.toString(),
+        messageType
+      );
+    }
+  } catch (error) {
+    console.error('Error sending offline notification:', error.message);
+  }
+};
 
 // Get chat conversations for current user
 router.get("/", protect, async (req, res) => {
@@ -326,6 +365,9 @@ router.post("/:chatId/messages", protect, async (req, res) => {
       io.to(`chat:${chat._id.toString()}`).emit("chat:new_message", payload);
     }
 
+    // Send push notification to offline user
+    notifyOfflineUser(chat, req.user._id, req.user.username, text.trim(), 'text');
+
     res.status(201).json({
       success: true,
       message: "Message sent successfully",
@@ -418,6 +460,9 @@ router.post(
       if (io) {
         io.to(`chat:${chat._id.toString()}`).emit("chat:new_message", payload);
       }
+
+      // Send push notification to offline user
+      notifyOfflineUser(chat, req.user._id, req.user.username, null, 'voice');
 
       res.status(201).json({
         success: true,
@@ -529,6 +574,9 @@ router.post(
       if (io) {
         io.to(`chat:${chat._id.toString()}`).emit("chat:new_message", payload);
       }
+
+      // Send push notification to offline user
+      notifyOfflineUser(chat, req.user._id, req.user.username, null, 'image');
 
       res.status(201).json({
         success: true,

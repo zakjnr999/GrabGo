@@ -14,6 +14,7 @@ const {
   sendVerificationEmail,
   sendSMS,
 } = require("../utils/emailService");
+const { registerToken, removeToken } = require("../services/fcm_service");
 
 const router = express.Router();
 
@@ -803,20 +804,20 @@ router.post("/send-phone-otp", async (req, res) => {
 
     if (!smsResult.success) {
       console.error(`❌ Failed to send SMS:`, smsResult.error || smsResult.message);
-      
+
       const isGhanaNumber = phoneNumber.includes('233') || phoneNumber.includes('+233');
-      const isTwilioNotConfigured = smsResult.error?.includes('Twilio not configured') || 
-                                     smsResult.error?.includes('TWILIO_ACCOUNT_SID') ||
-                                     smsResult.error?.includes('TWILIO_PHONE_NUMBER');
-      
+      const isTwilioNotConfigured = smsResult.error?.includes('Twilio not configured') ||
+        smsResult.error?.includes('TWILIO_ACCOUNT_SID') ||
+        smsResult.error?.includes('TWILIO_PHONE_NUMBER');
+
       // In development, still return success but log the error (for testing)
       if (process.env.NODE_ENV === 'development' && !isTwilioNotConfigured) {
-        const message = isGhanaNumber 
+        const message = isGhanaNumber
           ? `OTP generated successfully. Twilio SMS failed - check server logs. OTP: ${phoneVerificationOTP}`
           : `OTP generated successfully (SMS sending failed - check server logs for OTP)`;
-        
+
         console.log(`⚠️  Development mode: OTP is ${phoneVerificationOTP} (SMS sending failed)`);
-        
+
         return res.json({
           success: true,
           message: message,
@@ -824,7 +825,7 @@ router.post("/send-phone-otp", async (req, res) => {
           otp: phoneVerificationOTP,
         });
       }
-      
+
       // If Twilio is not configured for Ghana numbers, return clear error
       if (isGhanaNumber && isTwilioNotConfigured) {
         return res.status(500).json({
@@ -833,7 +834,7 @@ router.post("/send-phone-otp", async (req, res) => {
           error: process.env.NODE_ENV === 'development' ? smsResult.error : undefined,
         });
       }
-      
+
       return res.status(500).json({
         success: false,
         message: "Failed to send OTP. Please try again or contact support.",
@@ -984,20 +985,20 @@ router.post("/resend-phone-otp", async (req, res) => {
 
     if (!smsResult.success) {
       console.error(`❌ Failed to resend SMS:`, smsResult.error || smsResult.message);
-      
+
       const isGhanaNumber = phoneNumber.includes('233') || phoneNumber.includes('+233');
-      const isTwilioNotConfigured = smsResult.error?.includes('Twilio not configured') || 
-                                     smsResult.error?.includes('TWILIO_ACCOUNT_SID') ||
-                                     smsResult.error?.includes('TWILIO_PHONE_NUMBER');
-      
+      const isTwilioNotConfigured = smsResult.error?.includes('Twilio not configured') ||
+        smsResult.error?.includes('TWILIO_ACCOUNT_SID') ||
+        smsResult.error?.includes('TWILIO_PHONE_NUMBER');
+
       // In development, still return success but log the error (for testing)
       if (process.env.NODE_ENV === 'development' && !isTwilioNotConfigured) {
-        const message = isGhanaNumber 
+        const message = isGhanaNumber
           ? `OTP generated successfully. Twilio SMS failed - check server logs. OTP: ${phoneVerificationOTP}`
           : `OTP generated successfully (SMS sending failed - check server logs for OTP)`;
-        
+
         console.log(`⚠️  Development mode: OTP is ${phoneVerificationOTP} (SMS sending failed)`);
-        
+
         return res.json({
           success: true,
           message: message,
@@ -1005,7 +1006,7 @@ router.post("/resend-phone-otp", async (req, res) => {
           otp: phoneVerificationOTP,
         });
       }
-      
+
       // If Twilio is not configured for Ghana numbers, return clear error
       if (isGhanaNumber && isTwilioNotConfigured) {
         return res.status(500).json({
@@ -1014,7 +1015,7 @@ router.post("/resend-phone-otp", async (req, res) => {
           error: process.env.NODE_ENV === 'development' ? smsResult.error : undefined,
         });
       }
-      
+
       return res.status(500).json({
         success: false,
         message: "Failed to resend OTP. Please try again or contact support.",
@@ -1030,6 +1031,117 @@ router.post("/resend-phone-otp", async (req, res) => {
     });
   } catch (error) {
     console.error("Resend phone OTP error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
+// @route   POST /api/users/fcm-token
+// @desc    Register or update FCM token for push notifications
+// @access  Private
+router.post("/fcm-token", protect, async (req, res) => {
+  try {
+    const { token, deviceId, platform } = req.body;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "FCM token is required",
+      });
+    }
+
+    const result = await registerToken(
+      req.user._id,
+      token,
+      deviceId || null,
+      platform || 'android'
+    );
+
+    if (result) {
+      res.json({
+        success: true,
+        message: "FCM token registered successfully",
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Failed to register FCM token",
+      });
+    }
+  } catch (error) {
+    console.error("FCM token registration error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
+// @route   DELETE /api/users/fcm-token
+// @desc    Remove FCM token (on logout)
+// @access  Private
+router.delete("/fcm-token", protect, async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "FCM token is required",
+      });
+    }
+
+    await removeToken(req.user._id, token);
+
+    res.json({
+      success: true,
+      message: "FCM token removed successfully",
+    });
+  } catch (error) {
+    console.error("FCM token removal error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
+// @route   PUT /api/users/notification-settings
+// @desc    Update notification preferences
+// @access  Private
+router.put("/notification-settings", protect, async (req, res) => {
+  try {
+    const { chatMessages, orderUpdates, promotions } = req.body;
+
+    const updateFields = {};
+    if (typeof chatMessages === 'boolean') {
+      updateFields['notificationSettings.chatMessages'] = chatMessages;
+    }
+    if (typeof orderUpdates === 'boolean') {
+      updateFields['notificationSettings.orderUpdates'] = orderUpdates;
+    }
+    if (typeof promotions === 'boolean') {
+      updateFields['notificationSettings.promotions'] = promotions;
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: updateFields },
+      { new: true }
+    ).select('notificationSettings');
+
+    res.json({
+      success: true,
+      message: "Notification settings updated",
+      data: user.notificationSettings,
+    });
+  } catch (error) {
+    console.error("Update notification settings error:", error);
     res.status(500).json({
       success: false,
       message: "Server error",
