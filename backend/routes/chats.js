@@ -10,7 +10,8 @@ const router = express.Router();
 
 /**
  * Helper function to send push notification to the other chat participant
- * Only sends if the recipient is not currently connected to the chat room
+ * Always sends push notification - the app will handle deduplication if user is viewing the chat
+ * This ensures users get notified even when app is minimized/backgrounded
  */
 const notifyOfflineUser = async (chat, senderId, senderName, messagePreview, messageType = 'text') => {
   try {
@@ -30,38 +31,18 @@ const notifyOfflineUser = async (chat, senderId, senderName, messagePreview, mes
       return;
     }
 
-    console.log(`📤 Recipient for notification: ${recipientId}`);
+    console.log(`📤 Sending push notification to ${recipientId}...`);
 
-    // Check if recipient is currently connected to this chat room
-    const room = `chat:${chat._id.toString()}`;
-    let recipientConnected = false;
-
-    if (io) {
-      try {
-        const socketsInRoom = await io.in(room).fetchSockets();
-        recipientConnected = socketsInRoom.some(
-          s => s.data.userId?.toString() === recipientId
-        );
-        console.log(`📤 Recipient connected to room: ${recipientConnected} (${socketsInRoom.length} sockets in room)`);
-      } catch (socketError) {
-        console.error('Error checking socket room:', socketError.message);
-      }
-    }
-
-    // Only send push notification if recipient is NOT connected
-    if (!recipientConnected) {
-      console.log(`📤 Sending push notification to ${recipientId}...`);
-      const result = await sendChatNotification(
-        recipientId,
-        senderName,
-        messagePreview,
-        chat._id.toString(),
-        messageType
-      );
-      console.log(`📤 Push notification result:`, result);
-    } else {
-      console.log(`📤 Recipient is online in chat room, skipping push notification`);
-    }
+    // Always send push notification - FCM/app will handle showing it appropriately
+    // The app's foreground handler will decide whether to show it based on current screen
+    const result = await sendChatNotification(
+      recipientId,
+      senderName,
+      messagePreview,
+      chat._id.toString(),
+      messageType
+    );
+    console.log(`📤 Push notification result:`, result);
   } catch (error) {
     console.error('Error sending offline notification:', error.message);
   }
