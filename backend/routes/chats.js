@@ -16,29 +16,51 @@ const notifyOfflineUser = async (chat, senderId, senderName, messagePreview, mes
   try {
     const senderIdStr = senderId.toString();
 
-    // Determine recipient
-    const recipientId = chat.customer?.toString() === senderIdStr
-      ? chat.rider?.toString()
-      : chat.customer?.toString();
+    // Get customer and rider IDs (handle both populated and non-populated cases)
+    const customerId = chat.customer?._id?.toString() || chat.customer?.toString();
+    const riderId = chat.rider?._id?.toString() || chat.rider?.toString();
 
-    if (!recipientId) return;
+    console.log(`📤 notifyOfflineUser: sender=${senderIdStr}, customer=${customerId}, rider=${riderId}`);
+
+    // Determine recipient
+    const recipientId = customerId === senderIdStr ? riderId : customerId;
+
+    if (!recipientId) {
+      console.log('⚠️ No recipient found for notification');
+      return;
+    }
+
+    console.log(`📤 Recipient for notification: ${recipientId}`);
 
     // Check if recipient is currently connected to this chat room
     const room = `chat:${chat._id.toString()}`;
-    const socketsInRoom = await io.in(room).fetchSockets();
-    const recipientConnected = socketsInRoom.some(
-      s => s.data.userId?.toString() === recipientId
-    );
+    let recipientConnected = false;
+
+    if (io) {
+      try {
+        const socketsInRoom = await io.in(room).fetchSockets();
+        recipientConnected = socketsInRoom.some(
+          s => s.data.userId?.toString() === recipientId
+        );
+        console.log(`📤 Recipient connected to room: ${recipientConnected} (${socketsInRoom.length} sockets in room)`);
+      } catch (socketError) {
+        console.error('Error checking socket room:', socketError.message);
+      }
+    }
 
     // Only send push notification if recipient is NOT connected
     if (!recipientConnected) {
-      await sendChatNotification(
+      console.log(`📤 Sending push notification to ${recipientId}...`);
+      const result = await sendChatNotification(
         recipientId,
         senderName,
         messagePreview,
         chat._id.toString(),
         messageType
       );
+      console.log(`📤 Push notification result:`, result);
+    } else {
+      console.log(`📤 Recipient is online in chat room, skipping push notification`);
     }
   } catch (error) {
     console.error('Error sending offline notification:', error.message);

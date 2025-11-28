@@ -1150,4 +1150,78 @@ router.put("/notification-settings", protect, async (req, res) => {
   }
 });
 
+// @route   POST /api/users/test-notification
+// @desc    Send a test push notification to the current user
+// @access  Private
+router.post("/test-notification", protect, async (req, res) => {
+  try {
+    const { sendToUser } = require("../services/fcm_service");
+
+    const user = await User.findById(req.user._id).select('fcmTokens username');
+
+    if (!user.fcmTokens || user.fcmTokens.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No FCM tokens registered for this user. Please ensure the app has notification permissions and is properly initialized.",
+        tokens: [],
+      });
+    }
+
+    const result = await sendToUser(
+      req.user._id,
+      {
+        title: "Test Notification 🔔",
+        body: `Hello ${user.username}! This is a test notification from GrabGo.`,
+      },
+      {
+        type: "test",
+        timestamp: new Date().toISOString(),
+      }
+    );
+
+    res.json({
+      success: result.success,
+      message: result.success
+        ? "Test notification sent successfully!"
+        : `Failed to send: ${result.reason}`,
+      tokensCount: user.fcmTokens.length,
+      result,
+    });
+  } catch (error) {
+    console.error("Test notification error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
+// @route   GET /api/users/fcm-tokens
+// @desc    Get FCM tokens for current user (for debugging)
+// @access  Private
+router.get("/fcm-tokens", protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('fcmTokens');
+
+    res.json({
+      success: true,
+      tokensCount: user.fcmTokens?.length || 0,
+      tokens: user.fcmTokens?.map(t => ({
+        platform: t.platform,
+        deviceId: t.deviceId,
+        createdAt: t.createdAt,
+        tokenPreview: t.token ? `${t.token.substring(0, 20)}...` : null,
+      })) || [],
+    });
+  } catch (error) {
+    console.error("Get FCM tokens error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
 module.exports = router;

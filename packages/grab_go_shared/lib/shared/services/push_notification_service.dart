@@ -87,9 +87,13 @@ class PushNotificationService {
         // Initialize local notifications
         await _initializeLocalNotifications();
 
-        // Get FCM token
-        _fcmToken = await _messaging.getToken();
-        debugPrint('🔑 FCM Token: $_fcmToken');
+        // Get FCM token with retry
+        _fcmToken = await _getTokenWithRetry();
+        if (_fcmToken != null) {
+          debugPrint('🔑 FCM Token: $_fcmToken');
+        } else {
+          debugPrint('⚠️ Could not get FCM token - notifications may not work');
+        }
 
         // Listen for token refresh
         _messaging.onTokenRefresh.listen((token) {
@@ -118,6 +122,22 @@ class PushNotificationService {
     } catch (e) {
       debugPrint('❌ Failed to initialize push notifications: $e');
     }
+  }
+
+  /// Get FCM token with retry logic
+  Future<String?> _getTokenWithRetry({int maxRetries = 3}) async {
+    for (int i = 0; i < maxRetries; i++) {
+      try {
+        final token = await _messaging.getToken();
+        if (token != null) return token;
+      } catch (e) {
+        debugPrint('⚠️ FCM token attempt ${i + 1}/$maxRetries failed: $e');
+        if (i < maxRetries - 1) {
+          await Future.delayed(Duration(seconds: 2 * (i + 1)));
+        }
+      }
+    }
+    return null;
   }
 
   /// Initialize local notifications for foreground display

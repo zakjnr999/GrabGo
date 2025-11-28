@@ -562,29 +562,29 @@ packages:
     source: hosted
     version: "2.24.1"
   firebase_messaging:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       name: firebase_messaging
-      sha256: "60be38574f8b5658e2f22b7e311ff2064bea835c248424a383783464e8e02fcc"
+      sha256: "4d0968ecb860d7baa15a6e2af3469ec5b0d959e51c59ce84a52b0f7632a4aa5a"
       url: "https://pub.dev"
     source: hosted
-    version: "15.2.10"
+    version: "15.1.5"
   firebase_messaging_platform_interface:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       name: firebase_messaging_platform_interface
-      sha256: a59920cbf2eb7c83d34a5f354331210ffec116b216dc72d864d8b8eb983ca398
+      sha256: "69671a0f1a40c7b7c46ad0283e6f34ca2a59a0362ca14a240a4ea01c46e8a521"
       url: "https://pub.dev"
     source: hosted
-    version: "4.7.4"
+    version: "4.5.45"
   firebase_messaging_web:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
       name: firebase_messaging_web
-      sha256: "0d1be17bc89ed3ff5001789c92df678b2e963a51b6fa2bdb467532cc9dbed390"
+      sha256: efaf3fdc54cd77e0eedb8e75f7f01c808828c64d052ddbf94d3009974e47d30f
       url: "https://pub.dev"
     source: hosted
-    version: "3.10.10"
+    version: "3.9.5"
   fixnum:
     dependency: transitive
     description:

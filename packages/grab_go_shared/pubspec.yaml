@@ -49,7 +49,7 @@ dependencies:
   emoji_picker_flutter: ^4.4.0
   flutter_blurhash: ^0.8.2
   file_picker: ^10.3.3
-  firebase_messaging: ^15.2.5
+  firebase_messaging: any
   flutter_local_notifications: ^18.0.1
 
 dev_dependencies:
