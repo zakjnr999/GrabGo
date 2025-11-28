@@ -679,7 +679,8 @@ router.delete("/:chatId/messages/:messageId", protect, async (req, res) => {
 });
 
 // Delete specific images from a multi-image message
-router.delete("/:chatId/messages/:messageId/images", protect, async (req, res) => {
+// Using POST instead of DELETE because DELETE with body is not universally supported
+router.post("/:chatId/messages/:messageId/delete-images", protect, async (req, res) => {
   try {
     const { chatId, messageId } = req.params;
     const { imageIndices } = req.body;

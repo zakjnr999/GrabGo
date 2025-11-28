@@ -374,6 +374,14 @@ class _ChatDetailState extends State<ChatDetail> {
             }
           }
 
+          // Build a map of existing reactions by message ID to preserve them
+          final existingReactions = <String, Map<String, List<String>>>{};
+          for (final msg in _messages) {
+            if (msg.reactions.isNotEmpty) {
+              existingReactions[msg.id] = msg.reactions;
+            }
+          }
+
           final loadedMessages = chatDetail.messages.map((m) {
             final isSentByMe = currentUserId != null && m.senderId == currentUserId;
 
@@ -387,6 +395,9 @@ class _ChatDetailState extends State<ChatDetail> {
             if (m.replyToSenderId != null && currentUserId != null) {
               replyToIsSentByMe = m.replyToSenderId == currentUserId;
             }
+
+            // Preserve existing reactions for this message
+            final reactions = existingReactions[m.id] ?? {};
 
             return ChatMessage(
               id: m.id,
@@ -402,6 +413,7 @@ class _ChatDetailState extends State<ChatDetail> {
               replyToId: m.replyToId,
               replyToText: m.replyToText,
               replyToIsSentByMe: replyToIsSentByMe,
+              reactions: reactions,
             );
           }).toList();
 
@@ -2162,10 +2174,12 @@ class _ChatDetailState extends State<ChatDetail> {
         // Emoji button
         GestureDetector(
           onTap: _toggleEmojiPicker,
-          child: Icon(
-            _showEmojiPicker ? Icons.keyboard : Icons.emoji_emotions_outlined,
-            color: colors.textSecondary,
-            size: 24.w,
+          child: SvgPicture.asset(
+            _showEmojiPicker ? Assets.icons.keyboard : Assets.icons.emoji,
+            package: 'grab_go_shared',
+            width: 24.w,
+            height: 24.w,
+            colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
           ),
         ),
         SizedBox(width: 8.w),

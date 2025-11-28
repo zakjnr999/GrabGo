@@ -376,6 +376,14 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           }
         }
 
+        // Build a map of existing reactions by message ID to preserve them
+        final existingReactions = <String, Map<String, List<String>>>{};
+        for (final msg in _messages) {
+          if (msg.reactions.isNotEmpty) {
+            existingReactions[msg.id] = msg.reactions;
+          }
+        }
+
         final loadedMessages = chatDetail.messages.map((m) {
           final isSentByMe = currentUserId != null && m.senderId == currentUserId;
 
@@ -389,6 +397,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           if (m.replyToSenderId != null && currentUserId != null) {
             replyToIsSentByMe = m.replyToSenderId == currentUserId;
           }
+
+          // Preserve existing reactions for this message
+          final reactions = existingReactions[m.id] ?? {};
 
           return ChatMessage(
             id: m.id,
@@ -405,6 +416,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             replyToId: m.replyToId,
             replyToText: m.replyToText,
             replyToIsSentByMe: replyToIsSentByMe,
+            reactions: reactions,
           );
         }).toList();
 

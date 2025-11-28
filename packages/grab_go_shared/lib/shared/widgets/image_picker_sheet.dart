@@ -2,6 +2,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/svg.dart';
+import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -248,7 +250,7 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
               children: [
                 Expanded(
                   child: _buildQuickAction(
-                    icon: Icons.camera_alt_rounded,
+                    icon: Assets.icons.camera,
                     label: 'Camera',
                     onTap: _openCamera,
                     colors: colors,
@@ -257,7 +259,7 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
                 SizedBox(width: 8.w),
                 Expanded(
                   child: _buildQuickAction(
-                    icon: Icons.photo_library_rounded,
+                    icon: Assets.icons.mediaImage,
                     label: 'Gallery',
                     onTap: _openGalleryPicker,
                     colors: colors,
@@ -266,7 +268,7 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
                 SizedBox(width: 8.w),
                 Expanded(
                   child: _buildQuickAction(
-                    icon: Icons.folder_open_rounded,
+                    icon: Assets.icons.folder,
                     label: 'Browse',
                     onTap: _openFileBrowser,
                     colors: colors,
@@ -291,7 +293,7 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
   }
 
   Widget _buildQuickAction({
-    required IconData icon,
+    required String icon,
     required String label,
     required VoidCallback onTap,
     required AppColorsExtension colors,
@@ -309,7 +311,13 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 18.w, color: colors.textPrimary),
+            SvgPicture.asset(
+              icon,
+              package: "grab_go_shared",
+              height: 18.h,
+              width: 18.w,
+              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+            ),
             SizedBox(width: 6.w),
             Flexible(
               child: Text(
@@ -367,8 +375,14 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.image_not_supported_outlined, size: 48.w, color: colors.textSecondary),
-            SizedBox(height: 16.h),
+            SvgPicture.asset(
+              Assets.icons.mediaImageXmark,
+              package: "grab_go_shared",
+              height: 48.h,
+              width: 48.w,
+              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+            ),
+            SizedBox(height: 10.h),
             Text(
               'No images found',
               style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),

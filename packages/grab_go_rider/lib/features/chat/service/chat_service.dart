@@ -421,10 +421,10 @@ class ChatService {
   /// Delete specific images from a multi-image message
   /// [imageIndices] - List of 0-based indices of images to delete
   Future<bool> deleteMessageImages(String chatId, String messageId, List<int> imageIndices) async {
-    final uri = Uri.parse('$_baseUrl/chats/$chatId/messages/$messageId/images');
+    final uri = Uri.parse('$_baseUrl/chats/$chatId/messages/$messageId/delete-images');
 
     try {
-      final response = await _client.delete(
+      final response = await _client.post(
         uri,
         headers: {..._buildHeaders(), 'Content-Type': 'application/json'},
         body: jsonEncode({'imageIndices': imageIndices}),
