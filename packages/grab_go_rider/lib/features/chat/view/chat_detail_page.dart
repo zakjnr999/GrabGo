@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
@@ -69,6 +70,7 @@ class ChatMessage {
 class ChatDetailPage extends StatefulWidget {
   final String chatId;
   final String senderName;
+  final String? profilePicture;
   final String? orderId;
   final bool isSupport;
 
@@ -76,6 +78,7 @@ class ChatDetailPage extends StatefulWidget {
     super.key,
     required this.chatId,
     required this.senderName,
+    this.profilePicture,
     this.orderId,
     this.isSupport = false,
   });
@@ -1731,17 +1734,44 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                           : colors.accentGreen.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: Center(
-                      child: SvgPicture.asset(
-                        widget.isSupport ? Assets.icons.headsetHelp : Assets.icons.user,
-                        package: 'grab_go_shared',
-                        width: 20.w,
-                        height: 20.w,
-                        colorFilter: ColorFilter.mode(
-                          widget.isSupport ? colors.accentViolet : colors.accentGreen,
-                          BlendMode.srcIn,
-                        ),
-                      ),
+                    child: ClipOval(
+                      child: widget.profilePicture != null && widget.profilePicture!.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: widget.profilePicture!,
+                              width: 40.w,
+                              height: 40.w,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => Center(
+                                child: SvgPicture.asset(
+                                  Assets.icons.user,
+                                  package: 'grab_go_shared',
+                                  width: 20.w,
+                                  height: 20.w,
+                                  colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                                ),
+                              ),
+                              errorWidget: (context, url, error) => Center(
+                                child: SvgPicture.asset(
+                                  Assets.icons.user,
+                                  package: 'grab_go_shared',
+                                  width: 20.w,
+                                  height: 20.w,
+                                  colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                                ),
+                              ),
+                            )
+                          : Center(
+                              child: SvgPicture.asset(
+                                widget.isSupport ? Assets.icons.headsetHelp : Assets.icons.user,
+                                package: 'grab_go_shared',
+                                width: 20.w,
+                                height: 20.w,
+                                colorFilter: ColorFilter.mode(
+                                  widget.isSupport ? colors.accentViolet : colors.accentGreen,
+                                  BlendMode.srcIn,
+                                ),
+                              ),
+                            ),
                     ),
                   ),
                   if (_isPeerOnline)
@@ -1800,15 +1830,11 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                         ),
                       )
                     else if (_peerLastSeenAt != null)
-                      Text(
-                        _formatLastSeenText(_peerLastSeenAt!),
-                        style: TextStyle(
-                          fontFamily: "Lato",
-                          package: "grab_go_shared",
-                          color: colors.textSecondary,
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w400,
-                        ),
+                      AnimatedLastSeenText(
+                        timestamp: _peerLastSeenAt!,
+                        textColor: colors.textSecondary,
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w400,
                       ),
                   ],
                 ),

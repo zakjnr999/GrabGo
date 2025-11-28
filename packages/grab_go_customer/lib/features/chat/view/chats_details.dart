@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
@@ -69,10 +70,18 @@ class ChatMessage {
 class ChatDetail extends StatefulWidget {
   final String chatId;
   final String senderName;
+  final String? profilePicture;
   final String? orderId;
   final bool isSupport;
 
-  const ChatDetail({super.key, required this.chatId, required this.senderName, this.orderId, this.isSupport = false});
+  const ChatDetail({
+    super.key,
+    required this.chatId,
+    required this.senderName,
+    this.profilePicture,
+    this.orderId,
+    this.isSupport = false,
+  });
 
   @override
   State<ChatDetail> createState() => _ChatDetailState();
@@ -1717,17 +1726,44 @@ class _ChatDetailState extends State<ChatDetail> {
                           : colors.accentOrange.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: Center(
-                      child: SvgPicture.asset(
-                        widget.isSupport ? Assets.icons.headsetHelp : Assets.icons.user,
-                        package: 'grab_go_shared',
-                        width: 20.w,
-                        height: 20.w,
-                        colorFilter: ColorFilter.mode(
-                          widget.isSupport ? colors.accentViolet : colors.accentOrange,
-                          BlendMode.srcIn,
-                        ),
-                      ),
+                    child: ClipOval(
+                      child: widget.profilePicture != null && widget.profilePicture!.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: widget.profilePicture!,
+                              width: 40.w,
+                              height: 40.w,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => Center(
+                                child: SvgPicture.asset(
+                                  Assets.icons.user,
+                                  package: 'grab_go_shared',
+                                  width: 20.w,
+                                  height: 20.w,
+                                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                ),
+                              ),
+                              errorWidget: (context, url, error) => Center(
+                                child: SvgPicture.asset(
+                                  Assets.icons.user,
+                                  package: 'grab_go_shared',
+                                  width: 20.w,
+                                  height: 20.w,
+                                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                ),
+                              ),
+                            )
+                          : Center(
+                              child: SvgPicture.asset(
+                                widget.isSupport ? Assets.icons.headsetHelp : Assets.icons.user,
+                                package: 'grab_go_shared',
+                                width: 20.w,
+                                height: 20.w,
+                                colorFilter: ColorFilter.mode(
+                                  widget.isSupport ? colors.accentViolet : colors.accentOrange,
+                                  BlendMode.srcIn,
+                                ),
+                              ),
+                            ),
                     ),
                   ),
                   if (_isPeerOnline)
@@ -1786,15 +1822,11 @@ class _ChatDetailState extends State<ChatDetail> {
                         ),
                       )
                     else if (_peerLastSeenAt != null)
-                      Text(
-                        _formatLastSeenText(_peerLastSeenAt!),
-                        style: TextStyle(
-                          fontFamily: "Lato",
-                          package: "grab_go_shared",
-                          color: colors.textSecondary,
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w400,
-                        ),
+                      AnimatedLastSeenText(
+                        timestamp: _peerLastSeenAt!,
+                        textColor: colors.textSecondary,
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w400,
                       ),
                   ],
                 ),

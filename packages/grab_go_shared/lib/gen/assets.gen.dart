@@ -209,6 +209,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/flame.svg
   String get flame => 'lib/assets/icons/flame.svg';
 
+  /// File path: lib/assets/icons/folder.svg
+  String get folder => 'lib/assets/icons/folder.svg';
+
   /// File path: lib/assets/icons/foreground_icon_customer.png
   AssetGenImage get foregroundIconCustomer =>
       const AssetGenImage('lib/assets/icons/foreground_icon_customer.png');
@@ -253,6 +256,9 @@ class $LibAssetsIconsGen {
 
   /// File path: lib/assets/icons/instagram.svg
   String get instagram => 'lib/assets/icons/instagram.svg';
+
+  /// File path: lib/assets/icons/keyboard.svg
+  String get keyboard => 'lib/assets/icons/keyboard.svg';
 
   /// File path: lib/assets/icons/lock.svg
   String get lock => 'lib/assets/icons/lock.svg';
@@ -421,6 +427,12 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/weight.svg
   String get weight => 'lib/assets/icons/weight.svg';
 
+  /// File path: lib/assets/icons/wifi-off.svg
+  String get wifiOff => 'lib/assets/icons/wifi-off.svg';
+
+  /// File path: lib/assets/icons/wifi.svg
+  String get wifi => 'lib/assets/icons/wifi.svg';
+
   /// File path: lib/assets/icons/x.svg
   String get x => 'lib/assets/icons/x.svg';
 
@@ -477,6 +489,7 @@ class $LibAssetsIconsGen {
     fastDelivery,
     fireFlame,
     flame,
+    folder,
     foregroundIconCustomer,
     foregroundIconRider,
     gift,
@@ -491,6 +504,7 @@ class $LibAssetsIconsGen {
     idCard,
     infoCircle,
     instagram,
+    keyboard,
     lock,
     logIn,
     logOut,
@@ -544,6 +558,8 @@ class $LibAssetsIconsGen {
     vodafoneCash,
     warningCircle,
     weight,
+    wifiOff,
+    wifi,
     x,
     xmark,
   ];

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -28,6 +29,7 @@ class _ChatMessage {
   final String id;
   final String senderId;
   final String senderName;
+  final String? profilePicture;
   final String lastMessage;
   final DateTime timestamp;
   final int unreadCount;
@@ -39,6 +41,7 @@ class _ChatMessage {
     required this.id,
     required this.senderId,
     required this.senderName,
+    this.profilePicture,
     required this.lastMessage,
     required this.timestamp,
     this.unreadCount = 0,
@@ -104,6 +107,7 @@ class _ChatsState extends State<Chats> {
   bool _hasAttemptedLoad = false; // Track if we've tried loading data
   Timer? _pollingTimer;
   String? _currentUserId;
+  ChatSocketConnectionState _connectionState = ChatSocketConnectionState.disconnected;
 
   @override
   void initState() {
@@ -141,62 +145,72 @@ class _ChatsState extends State<Chats> {
   }
 
   void _loadCachedConversations() {
-    final cached = CacheService.getChatList();
-    if (cached.isEmpty) return;
+    try {
+      final cached = CacheService.getChatList();
+      if (cached.isEmpty) return;
 
-    final List<_ChatMessage> loaded = cached
-        .map((chat) {
-          final id = chat['id']?.toString() ?? '';
-          if (id.isEmpty || id == 'support') {
-            return null;
-          }
-          final senderId = chat['senderId']?.toString() ?? 'unknown_user';
-          final senderName = chat['senderName']?.toString() ?? 'User';
-          final lastMessage = chat['lastMessage']?.toString() ?? '';
-          final tsStr = chat['timestamp']?.toString();
-          final timestamp = DateTime.tryParse(tsStr ?? '') ?? DateTime.now();
-          final unreadRaw = chat['unreadCount'];
-          final unreadCount = unreadRaw is int ? unreadRaw : int.tryParse(unreadRaw?.toString() ?? '0') ?? 0;
-          final isOnline = chat['isOnline'] == true;
-          final orderId = chat['orderId']?.toString();
-          final isTyping = chat['isTyping'] == true;
+      final List<_ChatMessage> loaded = [];
+      for (final chat in cached) {
+        final id = chat['id']?.toString() ?? '';
+        if (id.isEmpty) continue;
+        // Skip support chat
+        if (id == 'support') continue;
+        final senderId = chat['senderId']?.toString() ?? 'unknown_user';
+        // Skip support chat by senderId
+        if (senderId == 'support') continue;
+        final senderName = chat['senderName']?.toString() ?? 'User';
+        final profilePicture = chat['profilePicture']?.toString();
+        final lastMessage = chat['lastMessage']?.toString() ?? '';
+        final tsStr = chat['timestamp']?.toString();
+        final timestamp = DateTime.tryParse(tsStr ?? '') ?? DateTime.now();
+        final unreadRaw = chat['unreadCount'];
+        final unreadCount = unreadRaw is int ? unreadRaw : int.tryParse(unreadRaw?.toString() ?? '0') ?? 0;
+        final isOnline = chat['isOnline'] == true;
+        final orderId = chat['orderId']?.toString();
+        final isTyping = chat['isTyping'] == true;
 
-          return _ChatMessage(
+        loaded.add(
+          _ChatMessage(
             id: id,
             senderId: senderId,
             senderName: senderName,
+            profilePicture: profilePicture,
             lastMessage: lastMessage,
             timestamp: timestamp,
             unreadCount: unreadCount,
             isOnline: isOnline,
             orderId: orderId,
             isTyping: isTyping,
-          );
-        })
-        .whereType<_ChatMessage>()
-        .toList();
+          ),
+        );
+      }
 
-    if (loaded.isEmpty) return;
+      if (loaded.isEmpty) return;
 
-    setState(() {
       _conversations = loaded;
       _filteredConversations = loaded;
       _isLoading = false;
-    });
 
-    // Join all chat rooms to receive presence updates
-    ChatSocketService().updateKnownChats(loaded.map((c) => c.id).toList(), forceRejoin: true);
+      setState(() {});
 
-    _resortAndFilterConversations(applySearch: false);
+      // Join all chat rooms to receive presence updates
+      ChatSocketService().updateKnownChats(loaded.map((c) => c.id).toList(), forceRejoin: true);
+
+      _resortAndFilterConversations(applySearch: false);
+    } catch (e) {
+      // Silent fail - cache loading is optional
+    }
   }
 
   void _cacheConversations() {
     final chatList = _conversations
+        .where((c) => c.id.isNotEmpty)
         .map(
           (c) => {
             'id': c.id,
             'senderId': c.senderId,
             'senderName': c.senderName,
+            'profilePicture': c.profilePicture,
             'lastMessage': c.lastMessage,
             'timestamp': c.timestamp.toIso8601String(),
             'unreadCount': c.unreadCount,
@@ -270,6 +284,7 @@ class _ChatsState extends State<Chats> {
           id: chat.id,
           senderId: senderId,
           senderName: senderName,
+          profilePicture: chat.otherUserProfilePicture,
           lastMessage: chat.lastMessage,
           timestamp: chat.lastMessageAt,
           unreadCount: chat.unreadCount,
@@ -290,7 +305,7 @@ class _ChatsState extends State<Chats> {
       if (mounted) {
         setState(() {
           _hasAttemptedLoad = true;
-          _isLoading = false; // Always stop loading when API call completes
+          _isLoading = false;
         });
       }
     }
@@ -315,6 +330,7 @@ class _ChatsState extends State<Chats> {
           id: chat.id,
           senderId: senderId,
           senderName: senderName,
+          profilePicture: chat.otherUserProfilePicture,
           lastMessage: chat.lastMessage,
           timestamp: chat.lastMessageAt,
           unreadCount: chat.unreadCount,
@@ -351,8 +367,10 @@ class _ChatsState extends State<Chats> {
   }
 
   void _handleConnectionStateChanged(ChatSocketConnectionState state) {
-    // Connection state changes can be used for UI feedback if needed
     if (!mounted) return;
+    setState(() {
+      _connectionState = state;
+    });
   }
 
   void _markChatAsRead(String chatId) {
@@ -367,6 +385,7 @@ class _ChatsState extends State<Chats> {
         id: c.id,
         senderId: c.senderId,
         senderName: c.senderName,
+        profilePicture: c.profilePicture,
         lastMessage: c.lastMessage,
         timestamp: c.timestamp,
         unreadCount: 0,
@@ -415,6 +434,7 @@ class _ChatsState extends State<Chats> {
       id: convo.id,
       senderId: convo.senderId,
       senderName: convo.senderName,
+      profilePicture: convo.profilePicture,
       lastMessage: text,
       timestamp: sentAt,
       unreadCount: newUnread,
@@ -447,6 +467,7 @@ class _ChatsState extends State<Chats> {
       id: convo.id,
       senderId: convo.senderId,
       senderName: convo.senderName,
+      profilePicture: convo.profilePicture,
       lastMessage: convo.lastMessage,
       timestamp: convo.timestamp,
       unreadCount: convo.unreadCount,
@@ -480,6 +501,7 @@ class _ChatsState extends State<Chats> {
       id: convo.id,
       senderId: convo.senderId,
       senderName: convo.senderName,
+      profilePicture: convo.profilePicture,
       lastMessage: convo.lastMessage,
       timestamp: convo.timestamp,
       unreadCount: 0,
@@ -514,6 +536,7 @@ class _ChatsState extends State<Chats> {
       id: convo.id,
       senderId: convo.senderId,
       senderName: convo.senderName,
+      profilePicture: convo.profilePicture,
       lastMessage: convo.lastMessage,
       timestamp: convo.timestamp,
       unreadCount: convo.unreadCount,
@@ -529,8 +552,6 @@ class _ChatsState extends State<Chats> {
     if (_conversations.isEmpty) return;
 
     _conversations.sort((a, b) {
-      if (a.id == 'support') return -1;
-      if (b.id == 'support') return 1;
       return b.timestamp.compareTo(a.timestamp);
     });
 
@@ -549,9 +570,7 @@ class _ChatsState extends State<Chats> {
     });
 
     // Update global unread badge for Chats tab (deferred to avoid build-phase conflicts)
-    final totalUnread = _conversations
-        .where((c) => c.id != 'support')
-        .fold<int>(0, (sum, c) => sum + (c.unreadCount > 0 ? c.unreadCount : 0));
+    final totalUnread = _conversations.fold<int>(0, (sum, c) => sum + (c.unreadCount > 0 ? c.unreadCount : 0));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       Provider.of<NavigationProvider>(context, listen: false).setChatUnreadCount(totalUnread);
@@ -712,6 +731,12 @@ class _ChatsState extends State<Chats> {
               ),
             ),
 
+            if (_connectionState == ChatSocketConnectionState.reconnecting ||
+                _connectionState == ChatSocketConnectionState.connecting)
+              _buildConnectionBanner('Reconnecting to chat…', colors, isWarning: false)
+            else if (_connectionState == ChatSocketConnectionState.disconnected)
+              _buildConnectionBanner('Offline. Messages may be delayed.', colors, isWarning: true),
+
             // Conversations List
             Expanded(
               child: _isLoading
@@ -758,6 +783,36 @@ class _ChatsState extends State<Chats> {
     );
   }
 
+  Widget _buildConnectionBanner(String text, AppColorsExtension colors, {required bool isWarning}) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
+      color: colors.backgroundPrimary,
+      child: Row(
+        children: [
+          if (!isWarning)
+            SizedBox(
+              width: 14.w,
+              height: 14.w,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(colors.accentOrange),
+              ),
+            )
+          else
+            Icon(Icons.wifi_off, size: 16.w, color: colors.textSecondary),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildConversationItem(_ChatMessage conversation, AppColorsExtension colors) {
     final isSupport = conversation.senderId == 'support';
     final hasUnread = conversation.unreadCount > 0;
@@ -771,6 +826,7 @@ class _ChatsState extends State<Chats> {
             builder: (context) => ChatDetail(
               chatId: conversation.id,
               senderName: conversation.senderName,
+              profilePicture: conversation.profilePicture,
               orderId: conversation.orderId,
               isSupport: conversation.senderId == 'support',
             ),
@@ -798,17 +854,44 @@ class _ChatsState extends State<Chats> {
                         : colors.accentOrange.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: Center(
-                    child: SvgPicture.asset(
-                      isSupport ? Assets.icons.headsetHelp : Assets.icons.user,
-                      package: 'grab_go_shared',
-                      width: 28.w,
-                      height: 28.w,
-                      colorFilter: ColorFilter.mode(
-                        isSupport ? colors.accentViolet : colors.accentOrange,
-                        BlendMode.srcIn,
-                      ),
-                    ),
+                  child: ClipOval(
+                    child: conversation.profilePicture != null && conversation.profilePicture!.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: conversation.profilePicture!,
+                            width: 56.w,
+                            height: 56.w,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Center(
+                              child: SvgPicture.asset(
+                                Assets.icons.user,
+                                package: 'grab_go_shared',
+                                width: 28.w,
+                                height: 28.w,
+                                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                              ),
+                            ),
+                            errorWidget: (context, url, error) => Center(
+                              child: SvgPicture.asset(
+                                Assets.icons.user,
+                                package: 'grab_go_shared',
+                                width: 28.w,
+                                height: 28.w,
+                                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                              ),
+                            ),
+                          )
+                        : Center(
+                            child: SvgPicture.asset(
+                              isSupport ? Assets.icons.headsetHelp : Assets.icons.user,
+                              package: 'grab_go_shared',
+                              width: 28.w,
+                              height: 28.w,
+                              colorFilter: ColorFilter.mode(
+                                isSupport ? colors.accentViolet : colors.accentOrange,
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                          ),
                   ),
                 ),
                 if (conversation.isOnline)

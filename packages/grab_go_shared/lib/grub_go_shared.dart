@@ -5,6 +5,7 @@ export 'shared/utils/constants.dart';
 export 'shared/utils/strings.dart';
 export 'shared/utils/theme.dart';
 export 'shared/utils/theme_helper.dart';
+export 'shared/widgets/animated_last_seen_text.dart';
 export 'shared/widgets/animated_tab_bar.dart';
 export 'shared/widgets/app_button.dart';
 export 'shared/widgets/app_dialog.dart';

@@ -58,6 +58,7 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
 
   // Waveform bars - initially placeholder, then real data
   List<double> _waveformBars = [];
+  bool _hasRealWaveform = false;
   static const int _barCount = 28;
 
   @override
@@ -68,6 +69,16 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
     // Pre-cache audio for offline playback (only for remote URLs)
     if (widget.audioUrl.startsWith('http')) {
       _playerService.preCacheAudio(widget.audioUrl);
+    }
+  }
+
+  @override
+  void didUpdateWidget(VoiceMessageBubble oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only regenerate waveform if URL changed
+    if (oldWidget.audioUrl != widget.audioUrl) {
+      _hasRealWaveform = false;
+      _generateWaveform();
     }
   }
 
@@ -134,6 +145,14 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
   }
 
   void _generateWaveform() {
+    // Check if we already have cached waveform for this URL
+    final cachedWaveform = _waveformExtractor.getCachedWaveform(widget.audioUrl);
+    if (cachedWaveform != null) {
+      _waveformBars = cachedWaveform;
+      _hasRealWaveform = true;
+      return;
+    }
+
     // Start with placeholder waveform based on hash
     _waveformBars = _generatePlaceholderWaveform();
 
@@ -152,6 +171,9 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
   }
 
   Future<void> _extractRealWaveform() async {
+    // Don't re-extract if we already have real waveform
+    if (_hasRealWaveform) return;
+
     try {
       String? filePath;
 
@@ -163,7 +185,15 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
         // If not cached yet, wait for cache and try again
         if (filePath == null) {
           // Wait a bit for pre-caching to complete
-          await Future.delayed(const Duration(milliseconds: 500));
+          await Future.delayed(const Duration(milliseconds: 1000));
+          if (!mounted) return;
+          filePath = await _cacheService.getCachedFilePath(widget.audioUrl);
+        }
+
+        // If still not cached, try one more time after longer delay
+        if (filePath == null) {
+          await Future.delayed(const Duration(milliseconds: 2000));
+          if (!mounted) return;
           filePath = await _cacheService.getCachedFilePath(widget.audioUrl);
         }
       } else {
@@ -172,11 +202,16 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
       }
 
       if (filePath != null && mounted) {
-        final waveform = await _waveformExtractor.extractWaveform(filePath, barCount: _barCount);
+        final waveform = await _waveformExtractor.extractWaveform(
+          filePath,
+          barCount: _barCount,
+          cacheKey: widget.audioUrl, // Cache by URL, not file path
+        );
 
         if (mounted && waveform.isNotEmpty) {
           setState(() {
             _waveformBars = waveform;
+            _hasRealWaveform = true;
           });
         }
       }

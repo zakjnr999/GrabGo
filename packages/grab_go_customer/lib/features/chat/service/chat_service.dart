@@ -13,6 +13,7 @@ class ChatConversationDto {
   final String? otherUserId;
   final String? otherUserName;
   final String? otherUserRole;
+  final String? otherUserProfilePicture;
   final String lastMessage;
   final DateTime lastMessageAt;
   final int unreadCount;
@@ -24,6 +25,7 @@ class ChatConversationDto {
     required this.otherUserId,
     required this.otherUserName,
     required this.otherUserRole,
+    required this.otherUserProfilePicture,
     required this.lastMessage,
     required this.lastMessageAt,
     required this.unreadCount,
@@ -37,6 +39,7 @@ class ChatConversationDto {
       otherUserId: json['otherUser'] != null ? json['otherUser']['id'] as String? : null,
       otherUserName: json['otherUser'] != null ? json['otherUser']['username'] as String? : null,
       otherUserRole: json['otherUser'] != null ? json['otherUser']['role'] as String? : null,
+      otherUserProfilePicture: json['otherUser'] != null ? json['otherUser']['profilePicture'] as String? : null,
       lastMessage: (json['lastMessage'] as String?) ?? '',
       lastMessageAt: DateTime.tryParse(json['lastMessageAt']?.toString() ?? '') ?? DateTime.now(),
       unreadCount: (json['unreadCount'] as num?)?.toInt() ?? 0,
@@ -210,22 +213,16 @@ class ChatService {
   Future<List<ChatConversationDto>> getChats() async {
     final uri = Uri.parse('$_baseUrl/chats');
 
-    try {
-      final response = await _client.get(uri, headers: _buildHeaders());
-      if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-        final data = decoded['data'];
-        if (data is List) {
-          return data.map((e) => ChatConversationDto.fromJson(e as Map<String, dynamic>)).toList();
-        }
-        return [];
-      } else {
-        debugPrint('ChatService.getChats failed: ${response.statusCode} ${response.body}');
-        return [];
+    final response = await _client.get(uri, headers: _buildHeaders());
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      final data = decoded['data'];
+      if (data is List) {
+        return data.map((e) => ChatConversationDto.fromJson(e as Map<String, dynamic>)).toList();
       }
-    } catch (e) {
-      debugPrint('ChatService.getChats error: $e');
       return [];
+    } else {
+      throw Exception('Failed to fetch chats: ${response.statusCode}');
     }
   }
 

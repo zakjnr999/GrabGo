@@ -10,17 +10,38 @@ class WaveformExtractor {
   static final WaveformExtractor _instance = WaveformExtractor._();
   factory WaveformExtractor() => _instance;
 
-  // Cache for extracted waveforms (URL -> waveform data)
+  // Cache for extracted waveforms (URL/path -> waveform data)
   final Map<String, List<double>> _waveformCache = {};
-  static const int _maxCacheEntries = 50; // Limit cache size
+  static const int _maxCacheEntries = 100; // Limit cache size
+
+  /// Check if waveform is cached for a URL
+  bool hasCachedWaveform(String urlOrPath) {
+    return _waveformCache.containsKey(urlOrPath);
+  }
+
+  /// Get cached waveform if available
+  List<double>? getCachedWaveform(String urlOrPath) {
+    return _waveformCache[urlOrPath];
+  }
+
+  /// Cache waveform for a URL (useful when extracting from file but want to cache by URL)
+  void cacheWaveform(String urlOrPath, List<double> waveform) {
+    if (_waveformCache.length >= _maxCacheEntries) {
+      _waveformCache.remove(_waveformCache.keys.first);
+    }
+    _waveformCache[urlOrPath] = waveform;
+  }
 
   /// Extract waveform from an audio file
   /// Returns a list of normalized amplitude values (0.0 to 1.0)
   /// [barCount] - Number of bars to generate for the waveform
-  Future<List<double>> extractWaveform(String filePath, {int barCount = 28}) async {
+  /// [cacheKey] - Optional key to cache the result (e.g., original URL)
+  Future<List<double>> extractWaveform(String filePath, {int barCount = 28, String? cacheKey}) async {
+    final key = cacheKey ?? filePath;
+
     // Check cache first
-    if (_waveformCache.containsKey(filePath)) {
-      return _waveformCache[filePath]!;
+    if (_waveformCache.containsKey(key)) {
+      return _waveformCache[key]!;
     }
 
     try {
@@ -38,7 +59,7 @@ class WaveformExtractor {
         // Remove oldest entry (first key)
         _waveformCache.remove(_waveformCache.keys.first);
       }
-      _waveformCache[filePath] = waveform;
+      _waveformCache[key] = waveform;
 
       return waveform;
     } catch (e) {
