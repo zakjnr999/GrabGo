@@ -743,7 +743,7 @@ router.post("/:chatId/messages/:messageId/delete-images", protect, async (req, r
     }
 
     // Check if message has images
-    if (!message.images || message.images.length === 0) {
+    if (!message.imageUrls || message.imageUrls.length === 0) {
       return res.status(400).json({
         success: false,
         message: "Message has no images to delete",
@@ -753,42 +753,50 @@ router.post("/:chatId/messages/:messageId/delete-images", protect, async (req, r
     // Sort indices in descending order to remove from end first
     const sortedIndices = [...imageIndices].sort((a, b) => b - a);
 
-    // Remove images at specified indices
+    // Remove images and blurHashes at specified indices
     for (const index of sortedIndices) {
-      if (index >= 0 && index < message.images.length) {
-        message.images.splice(index, 1);
+      if (index >= 0 && index < message.imageUrls.length) {
+        message.imageUrls.splice(index, 1);
+        // Also remove corresponding blurHash if it exists
+        if (message.blurHashes && index < message.blurHashes.length) {
+          message.blurHashes.splice(index, 1);
+        }
       }
     }
 
     // If all images are removed, delete the entire message
-    if (message.images.length === 0) {
+    if (message.imageUrls.length === 0) {
       chat.messages.splice(messageIndex, 1);
     }
 
     await chat.save();
 
     // Emit socket event for real-time sync
+    const messageDeleted = message.imageUrls.length === 0;
+
     if (io) {
       io.to(`chat:${chat._id.toString()}`).emit("chat:message_images_deleted", {
         chatId: chat._id.toString(),
         messageId: messageId,
         deletedIndices: imageIndices,
-        remainingImages: message.images,
-        messageDeleted: message.images.length === 0,
+        remainingImages: message.imageUrls,
+        remainingBlurHashes: message.blurHashes,
+        messageDeleted: messageDeleted,
         deletedBy: userIdStr,
       });
     }
 
     res.json({
       success: true,
-      message: message.images.length === 0
+      message: messageDeleted
         ? "All images deleted, message removed"
         : `${imageIndices.length} image(s) deleted successfully`,
       data: {
         chatId: chat._id.toString(),
         messageId: messageId,
-        remainingImages: message.images,
-        messageDeleted: message.images.length === 0,
+        remainingImages: message.imageUrls,
+        remainingBlurHashes: message.blurHashes,
+        messageDeleted: messageDeleted,
       },
     });
   } catch (error) {
