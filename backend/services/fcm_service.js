@@ -202,7 +202,7 @@ const sendToUser = async (userId, notification, data = {}) => {
  * @param {string} chatId - Chat ID for navigation
  * @param {string} messageType - 'text', 'voice', or 'image'
  */
-const sendChatNotification = async (recipientId, senderName, messagePreview, chatId, messageType = 'text') => {
+const sendChatNotification = async (recipientId, senderName, messagePreview, chatId, messageType = 'text', senderId = null) => {
     let body = messagePreview;
     if (messageType === 'voice') {
         body = '🎤 Voice message';
@@ -221,7 +221,7 @@ const sendChatNotification = async (recipientId, senderName, messagePreview, cha
         {
             type: 'chat_message',
             chatId,
-            senderId: recipientId,
+            senderId: senderId || '', // Actual sender ID for navigation
             messageType,
         }
     );

@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_app_badger/flutter_app_badger.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 /// Background message handler - must be top-level function
@@ -31,6 +32,8 @@ class PushNotificationService {
 
   String? _fcmToken;
   bool _isInitialized = false;
+  String? _currentChatId; // Track which chat user is currently viewing
+  int _badgeCount = 0; // Track unread notification count
 
   // Callbacks
   NotificationTapCallback? _onNotificationTap;
@@ -166,6 +169,16 @@ class PushNotificationService {
     }
   }
 
+  /// Set the current chat ID when user opens a chat
+  /// This prevents notifications from showing for the chat user is viewing
+  void setCurrentChatId(String? chatId) {
+    _currentChatId = chatId;
+    debugPrint('📱 Current chat set to: $chatId');
+  }
+
+  /// Get the current chat ID
+  String? get currentChatId => _currentChatId;
+
   /// Handle foreground messages - show local notification
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
     debugPrint('📩 Foreground message: ${message.messageId}');
@@ -173,7 +186,16 @@ class PushNotificationService {
     final notification = message.notification;
     final data = message.data;
 
+    // Skip notification if user is currently viewing this chat
+    if (data['type'] == 'chat_message' && data['chatId'] == _currentChatId) {
+      debugPrint('📩 Skipping notification - user is viewing this chat');
+      return;
+    }
+
     if (notification != null) {
+      // Increment badge count
+      await incrementBadge();
+
       // Determine which channel to use
       final channelId = data['type'] == 'chat_message' ? 'chat_messages' : 'order_updates';
 
@@ -189,8 +211,14 @@ class PushNotificationService {
             priority: Priority.high,
             showWhen: true,
             icon: '@mipmap/ic_launcher',
+            number: _badgeCount,
           ),
-          iOS: const DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true),
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+            badgeNumber: _badgeCount,
+          ),
         ),
         payload: jsonEncode(data),
       );
@@ -199,6 +227,9 @@ class PushNotificationService {
 
   /// Handle notification tap from local notification
   void _onLocalNotificationTap(NotificationResponse response) {
+    // Clear badge when notification is tapped
+    clearBadge();
+
     if (response.payload != null) {
       try {
         final data = jsonDecode(response.payload!) as Map<String, dynamic>;
@@ -212,6 +243,8 @@ class PushNotificationService {
   /// Handle notification tap from FCM
   void _handleNotificationTap(RemoteMessage message) {
     debugPrint('📲 Notification tapped: ${message.messageId}');
+    // Clear badge when notification is tapped
+    clearBadge();
     _onNotificationTap?.call(message.data);
   }
 
@@ -255,5 +288,43 @@ class PushNotificationService {
   /// Set the token refresh callback
   void setOnTokenRefresh(Function(String token) callback) {
     _onTokenRefresh = callback;
+  }
+
+  /// Get current badge count
+  int get badgeCount => _badgeCount;
+
+  /// Update the app icon badge count
+  Future<void> updateBadgeCount(int count) async {
+    try {
+      _badgeCount = count;
+      if (count > 0) {
+        await FlutterAppBadger.updateBadgeCount(count);
+        debugPrint('🔔 Badge count updated to: $count');
+      } else {
+        await FlutterAppBadger.removeBadge();
+        debugPrint('🔔 Badge removed');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error updating badge: $e');
+    }
+  }
+
+  /// Increment badge count by 1
+  Future<void> incrementBadge() async {
+    await updateBadgeCount(_badgeCount + 1);
+  }
+
+  /// Clear the badge count (call when user opens app or reads notifications)
+  Future<void> clearBadge() async {
+    await updateBadgeCount(0);
+  }
+
+  /// Check if badge is supported on this device
+  Future<bool> isBadgeSupported() async {
+    try {
+      return await FlutterAppBadger.isAppBadgeSupported();
+    } catch (e) {
+      return false;
+    }
   }
 }

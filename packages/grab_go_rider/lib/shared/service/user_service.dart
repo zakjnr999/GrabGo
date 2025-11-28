@@ -57,8 +57,23 @@ class UserService {
       _currentUser = user;
       await _saveUserDataToCache(user);
       debugPrint('✅ User data saved successfully!');
+
+      // Register FCM token after login
+      _registerFcmTokenAfterLogin();
     } catch (e) {
       debugPrint('❌ Error saving user data: $e');
+    }
+  }
+
+  /// Register FCM token after user logs in
+  Future<void> _registerFcmTokenAfterLogin() async {
+    try {
+      final token = await PushNotificationService().getToken();
+      if (token != null) {
+        await registerFcmToken(token, platform: 'android');
+      }
+    } catch (e) {
+      debugPrint('❌ Error registering FCM token after login: $e');
     }
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_customer/features/chat/view/chats_details.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/features/order/viewmodel/order_provider.dart';
@@ -17,6 +18,9 @@ import 'package:grab_go_customer/shared/viewmodels/location_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/theme_provider.dart';
 import 'package:provider/provider.dart';
+
+/// Global navigator key for navigation from outside widget tree
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 /// Background message handler - must be top-level
 @pragma('vm:entry-point')
@@ -80,12 +84,30 @@ Future<void> _initializeBackgroundServices() async {
 void _handleNotificationTap(Map<String, dynamic> data) {
   final type = data['type'];
   final chatId = data['chatId'];
+  final orderId = data['orderId'];
 
-  if (type == 'chat_message' && chatId != null) {
-    // Navigate to chat detail - this will be handled by the app's navigation
-    debugPrint('Navigate to chat: $chatId');
-    // The actual navigation will be handled in the app widget
-  }
+  debugPrint('📲 Notification tapped: type=$type, chatId=$chatId, orderId=$orderId');
+
+  // Delay navigation slightly to ensure app is ready
+  Future.delayed(const Duration(milliseconds: 500), () {
+    final context = navigatorKey.currentContext;
+    if (context == null) {
+      debugPrint('⚠️ Navigator context not available');
+      return;
+    }
+
+    if (type == 'chat_message' && chatId != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => ChatDetail(chatId: chatId, senderName: data['senderName'] ?? 'Chat'),
+        ),
+      );
+    } else if (type == 'order_update' && orderId != null) {
+      // Navigate to order details - you can customize this route
+      debugPrint('Navigate to order: $orderId');
+      // TODO: Add order detail navigation when route is available
+    }
+  });
 }
 
 /// Handle FCM token refresh
@@ -116,7 +138,29 @@ class GrabGoCustomerApp extends StatefulWidget {
   State<GrabGoCustomerApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<GrabGoCustomerApp> {
+class _MyAppState extends State<GrabGoCustomerApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Clear badge when app starts
+    PushNotificationService().clearBadge();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Clear badge when app comes to foreground
+      PushNotificationService().clearBadge();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<ThemeProvider>(
@@ -127,6 +171,7 @@ class _MyAppState extends State<GrabGoCustomerApp> {
           splitScreenMode: true,
           builder: (context, child) {
             return MaterialApp.router(
+              key: navigatorKey,
               debugShowCheckedModeBanner: false,
               theme: AppTheme.lightTheme,
               darkTheme: AppTheme.darkTheme,

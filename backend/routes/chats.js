@@ -40,7 +40,8 @@ const notifyOfflineUser = async (chat, senderId, senderName, messagePreview, mes
       senderName,
       messagePreview,
       chat._id.toString(),
-      messageType
+      messageType,
+      senderIdStr // Pass actual sender ID
     );
     console.log(`📤 Push notification result:`, result);
   } catch (error) {

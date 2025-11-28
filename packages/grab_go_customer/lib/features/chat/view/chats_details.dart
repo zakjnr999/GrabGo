@@ -278,6 +278,8 @@ class _ChatDetailState extends State<ChatDetail> {
   @override
   void initState() {
     super.initState();
+    // Set current chat to suppress notifications while viewing this chat
+    PushNotificationService().setCurrentChatId(widget.chatId);
     _loadCachedMessages();
     _initAndLoadMessages();
     if (!widget.isSupport) {
@@ -303,6 +305,8 @@ class _ChatDetailState extends State<ChatDetail> {
 
   @override
   void dispose() {
+    // Clear current chat so notifications can show again
+    PushNotificationService().setCurrentChatId(null);
     _orderStatusTimer?.cancel();
     _typingTimer?.cancel();
 

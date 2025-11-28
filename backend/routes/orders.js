@@ -4,8 +4,54 @@ const Order = require("../models/Order");
 const Food = require("../models/Food");
 const Restaurant = require("../models/Restaurant");
 const { protect, authorize } = require("../middleware/auth");
+const { sendOrderNotification } = require("../services/fcm_service");
 
 const router = express.Router();
+
+/**
+ * Helper to send order status notification to customer
+ */
+const notifyOrderStatusChange = async (order, status, customMessage = null) => {
+  try {
+    if (!order.customer) return;
+
+    const customerId = order.customer._id?.toString() || order.customer.toString();
+
+    await sendOrderNotification(
+      customerId,
+      order._id.toString(),
+      order.orderNumber,
+      status,
+      customMessage
+    );
+  } catch (error) {
+    console.error('Error sending order notification:', error.message);
+  }
+};
+
+/**
+ * Helper to send notification to rider when assigned
+ */
+const notifyRiderAssignment = async (riderId, order) => {
+  try {
+    const { sendToUser } = require("../services/fcm_service");
+
+    await sendToUser(
+      riderId,
+      {
+        title: '🚴 New Delivery Assignment',
+        body: `Order #${order.orderNumber} has been assigned to you. Tap to view details.`,
+      },
+      {
+        type: 'rider_assignment',
+        orderId: order._id.toString(),
+        orderNumber: order.orderNumber,
+      }
+    );
+  } catch (error) {
+    console.error('Error sending rider assignment notification:', error.message);
+  }
+};
 
 router.post(
   "/",
@@ -300,6 +346,9 @@ router.put(
       await order.populate("restaurant", "restaurant_name logo");
       await order.populate("rider", "username email phone");
 
+      // Send push notification to customer about order status change
+      notifyOrderStatusChange(order, status);
+
       res.json({
         success: true,
         message: "Order status updated successfully",
@@ -349,6 +398,13 @@ router.put(
       await order.save();
 
       await order.populate("rider", "username email phone");
+      await order.populate("customer", "username email phone");
+
+      // Notify rider about new assignment
+      notifyRiderAssignment(riderId, order);
+
+      // Notify customer that a rider has been assigned
+      notifyOrderStatusChange(order, 'picked_up', `${rider.username} is picking up your order!`);
 
       res.json({
         success: true,
