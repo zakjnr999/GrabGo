@@ -424,12 +424,19 @@ class ChatService {
   Future<bool> deleteMessageImages(String chatId, String messageId, List<int> imageIndices) async {
     final uri = Uri.parse('$_baseUrl/chats/$chatId/messages/$messageId/delete-images');
 
+    debugPrint('ChatService.deleteMessageImages: chatId=$chatId, messageId=$messageId, indices=$imageIndices');
+    debugPrint('ChatService.deleteMessageImages: uri=$uri');
+
     try {
-      final response = await _client.post(
-        uri,
-        headers: {..._buildHeaders(), 'Content-Type': 'application/json'},
-        body: jsonEncode({'imageIndices': imageIndices}),
-      );
+      final headers = {..._buildHeaders(), 'Content-Type': 'application/json'};
+      final body = jsonEncode({'imageIndices': imageIndices});
+      debugPrint('ChatService.deleteMessageImages: headers=$headers');
+      debugPrint('ChatService.deleteMessageImages: body=$body');
+
+      final response = await _client.post(uri, headers: headers, body: body);
+
+      debugPrint('ChatService.deleteMessageImages: statusCode=${response.statusCode}');
+      debugPrint('ChatService.deleteMessageImages: response=${response.body}');
 
       if (response.statusCode == 200) {
         return true;

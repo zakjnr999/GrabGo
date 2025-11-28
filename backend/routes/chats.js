@@ -683,7 +683,13 @@ router.delete("/:chatId/messages/:messageId", protect, async (req, res) => {
 router.post("/:chatId/messages/:messageId/delete-images", protect, async (req, res) => {
   try {
     const { chatId, messageId } = req.params;
-    const { imageIndices } = req.body;
+    // Support both body and query params for imageIndices
+    let { imageIndices } = req.body;
+    if (!imageIndices && req.query.indices) {
+      imageIndices = req.query.indices.split(',').map(Number);
+    }
+
+    console.log('Delete images request:', { chatId, messageId, imageIndices, body: req.body, query: req.query });
 
     if (!imageIndices || !Array.isArray(imageIndices) || imageIndices.length === 0) {
       return res.status(400).json({
