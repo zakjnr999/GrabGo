@@ -147,12 +147,14 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
   void _generateWaveform() {
     // Check if we already have cached waveform for this URL
     final cachedWaveform = _waveformExtractor.getCachedWaveform(widget.audioUrl);
-    if (cachedWaveform != null) {
+    if (cachedWaveform != null && cachedWaveform.isNotEmpty) {
+      debugPrint('VoiceMessageBubble: Using cached waveform for ${widget.audioUrl}');
       _waveformBars = cachedWaveform;
       _hasRealWaveform = true;
       return;
     }
 
+    debugPrint('VoiceMessageBubble: No cached waveform, generating placeholder for ${widget.audioUrl}');
     // Start with placeholder waveform based on hash
     _waveformBars = _generatePlaceholderWaveform();
 
@@ -172,48 +174,66 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
 
   Future<void> _extractRealWaveform() async {
     // Don't re-extract if we already have real waveform
-    if (_hasRealWaveform) return;
+    if (_hasRealWaveform) {
+      debugPrint('VoiceMessageBubble: Already have real waveform, skipping extraction');
+      return;
+    }
+
+    // Capture the URL before any async operations
+    final audioUrl = widget.audioUrl;
 
     try {
       String? filePath;
 
       // Check if it's a local file or remote URL
-      if (widget.audioUrl.startsWith('http')) {
+      if (audioUrl.startsWith('http')) {
         // Try to get cached file path
-        filePath = await _cacheService.getCachedFilePath(widget.audioUrl);
+        filePath = await _cacheService.getCachedFilePath(audioUrl);
+        debugPrint('VoiceMessageBubble: Cached file path (attempt 1): $filePath');
 
         // If not cached yet, wait for cache and try again
         if (filePath == null) {
           // Wait a bit for pre-caching to complete
           await Future.delayed(const Duration(milliseconds: 1000));
-          if (!mounted) return;
-          filePath = await _cacheService.getCachedFilePath(widget.audioUrl);
+          filePath = await _cacheService.getCachedFilePath(audioUrl);
+          debugPrint('VoiceMessageBubble: Cached file path (attempt 2): $filePath');
         }
 
         // If still not cached, try one more time after longer delay
         if (filePath == null) {
           await Future.delayed(const Duration(milliseconds: 2000));
-          if (!mounted) return;
-          filePath = await _cacheService.getCachedFilePath(widget.audioUrl);
+          filePath = await _cacheService.getCachedFilePath(audioUrl);
+          debugPrint('VoiceMessageBubble: Cached file path (attempt 3): $filePath');
         }
       } else {
         // Local file
-        filePath = widget.audioUrl;
+        filePath = audioUrl;
       }
 
-      if (filePath != null && mounted) {
+      if (filePath != null) {
+        debugPrint('VoiceMessageBubble: Extracting waveform from $filePath');
+        // Extract and cache waveform even if widget is unmounted
+        // This ensures the waveform is cached for next time
         final waveform = await _waveformExtractor.extractWaveform(
           filePath,
           barCount: _barCount,
-          cacheKey: widget.audioUrl, // Cache by URL, not file path
+          cacheKey: audioUrl, // Cache by URL, not file path
         );
 
+        debugPrint('VoiceMessageBubble: Extracted waveform with ${waveform.length} bars');
+
+        // Only update UI if still mounted
         if (mounted && waveform.isNotEmpty) {
           setState(() {
             _waveformBars = waveform;
             _hasRealWaveform = true;
           });
+          debugPrint('VoiceMessageBubble: Real waveform set successfully');
+        } else {
+          debugPrint('VoiceMessageBubble: Widget unmounted, but waveform is cached for next time');
         }
+      } else {
+        debugPrint('VoiceMessageBubble: No file path available for waveform extraction');
       }
     } catch (e) {
       // Keep placeholder waveform on error

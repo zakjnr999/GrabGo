@@ -678,6 +678,99 @@ router.delete("/:chatId/messages/:messageId", protect, async (req, res) => {
   }
 });
 
+// Edit a text message
+router.put("/:chatId/messages/:messageId", protect, async (req, res) => {
+  try {
+    const { chatId, messageId } = req.params;
+    const { text } = req.body;
+    const userIdStr = req.user._id.toString();
+
+    if (!text || typeof text !== 'string' || text.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Text is required",
+      });
+    }
+
+    const chat = await Chat.findById(chatId);
+
+    if (!chat) {
+      return res.status(404).json({
+        success: false,
+        message: "Chat not found",
+      });
+    }
+
+    // Find the message
+    const messageIndex = chat.messages.findIndex(
+      (m) => m._id.toString() === messageId
+    );
+
+    if (messageIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: "Message not found",
+      });
+    }
+
+    const message = chat.messages[messageIndex];
+
+    // Only allow sender to edit their own messages
+    if (message.sender.toString() !== userIdStr) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only edit your own messages",
+      });
+    }
+
+    // Only allow editing text messages
+    if (message.messageType !== 'text') {
+      return res.status(400).json({
+        success: false,
+        message: "Only text messages can be edited",
+      });
+    }
+
+    // Update the message text
+    const oldText = message.text;
+    message.text = text.trim();
+    message.isEdited = true;
+    message.editedAt = new Date();
+
+    await chat.save();
+
+    // Emit socket event for real-time sync
+    if (io) {
+      io.to(`chat:${chat._id.toString()}`).emit("chat:message_edited", {
+        chatId: chat._id.toString(),
+        messageId: messageId,
+        newText: message.text,
+        editedAt: message.editedAt,
+        editedBy: userIdStr,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Message edited successfully",
+      data: {
+        chatId: chat._id.toString(),
+        messageId: messageId,
+        text: message.text,
+        isEdited: true,
+        editedAt: message.editedAt,
+      },
+    });
+  } catch (error) {
+    console.error("Edit message error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
 // Delete specific images from a multi-image message
 // Using POST instead of DELETE because DELETE with body is not universally supported
 router.post("/:chatId/messages/:messageId/delete-images", protect, async (req, res) => {

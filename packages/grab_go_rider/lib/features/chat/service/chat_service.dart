@@ -418,6 +418,29 @@ class ChatService {
     }
   }
 
+  /// Edit a text message
+  Future<bool> editMessage(String chatId, String messageId, String newText) async {
+    final uri = Uri.parse('$_baseUrl/chats/$chatId/messages/$messageId');
+
+    try {
+      final response = await _client.put(
+        uri,
+        headers: {..._buildHeaders(), 'Content-Type': 'application/json'},
+        body: jsonEncode({'text': newText}),
+      );
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        debugPrint('ChatService.editMessage failed: ${response.statusCode} ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('ChatService.editMessage error: $e');
+      return false;
+    }
+  }
+
   /// Delete specific images from a multi-image message
   /// [imageIndices] - List of 0-based indices of images to delete
   Future<bool> deleteMessageImages(String chatId, String messageId, List<int> imageIndices) async {

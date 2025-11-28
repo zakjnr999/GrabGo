@@ -119,6 +119,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   ];
   DateTime? _peerLastSeenAt;
   ChatMessage? _replyingTo;
+  ChatMessage? _editingMessage;
 
   // Pagination state
   bool _hasMoreMessages = false;
@@ -904,6 +905,16 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     final text = _messageController.text.trim();
     _messageController.clear();
     unawaited(CacheService.saveChatDraft(widget.chatId, ''));
+
+    // Check if we're editing a message
+    if (_editingMessage != null) {
+      final messageToEdit = _editingMessage!;
+      _cancelEdit();
+      if (text.isNotEmpty && text != messageToEdit.text) {
+        await _editMessage(messageToEdit, text);
+      }
+      return;
+    }
 
     // Capture reply before clearing
     final replyTo = _replyingTo;
@@ -2074,6 +2085,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             // Reply preview
             if (_replyingTo != null) _buildReplyPreview(colors),
 
+            // Edit preview
+            if (_editingMessage != null) _buildEditPreview(colors),
+
             _buildInputArea(colors),
           ],
         ),
@@ -2390,6 +2404,63 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     );
   }
 
+  Widget _buildEditPreview(AppColorsExtension colors) {
+    final editMsg = _editingMessage;
+    if (editMsg == null) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+      decoration: BoxDecoration(
+        color: colors.backgroundPrimary,
+        border: Border(top: BorderSide(color: colors.border, width: 1)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 4.w,
+            height: 40.h,
+            decoration: BoxDecoration(color: colors.accentBlue, borderRadius: BorderRadius.circular(2.w)),
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Editing message',
+                  style: TextStyle(color: colors.accentBlue, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  editMsg.text,
+                  style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w400),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 8.w),
+          GestureDetector(
+            onTap: _cancelEdit,
+            child: Container(
+              padding: EdgeInsets.all(4.w),
+              child: SvgPicture.asset(
+                Assets.icons.xmark,
+                package: "grab_go_shared",
+                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                height: 20.h,
+                width: 20.w,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildQuickIssueChips(AppColorsExtension colors) {
     final templates = _getQuickIssueTemplates();
     if (templates.isEmpty) {
@@ -2664,7 +2735,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                 // Reactions display (positioned at bottom of bubble)
                 if (message.hasReactions)
                   Positioned(
-                    bottom: -8.h,
+                    bottom: -4.h,
                     right: isSent ? 8.w : null,
                     left: isSent ? null : 8.w,
                     child: _buildReactionsDisplay(message, colors),
@@ -2767,6 +2838,27 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     setState(() {
       _replyingTo = null;
     });
+  }
+
+  void _startEditingMessage(ChatMessage message) {
+    setState(() {
+      _editingMessage = message;
+      _replyingTo = null; // Cancel any reply when editing
+      _showEmojiPicker = false;
+    });
+    // Set the text field to the message text
+    _messageController.text = message.text;
+    _messageController.selection = TextSelection.fromPosition(TextPosition(offset: message.text.length));
+    // Show keyboard
+    _messageFocusNode.requestFocus();
+    HapticFeedback.selectionClick();
+  }
+
+  void _cancelEdit() {
+    setState(() {
+      _editingMessage = null;
+    });
+    _messageController.clear();
   }
 
   void _scrollToMessage(String messageId) {
@@ -3052,6 +3144,24 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                     Navigator.of(context).pop();
                   },
                 ),
+              // Edit option for text messages sent by me
+              if (message.isSentByMe &&
+                  message.isTextMessage &&
+                  !message.isPending &&
+                  !message.isFailed &&
+                  !widget.isSupport)
+                ListTile(
+                  title: Center(
+                    child: Text(
+                      'Edit',
+                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _startEditingMessage(message);
+                  },
+                ),
               if (message.isSentByMe && message.isFailed && message.isTextMessage)
                 ListTile(
                   title: Center(
@@ -3162,6 +3272,58 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Failed to delete message'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  /// Edit a text message
+  Future<void> _editMessage(ChatMessage message, String newText) async {
+    final messageIndex = _messages.indexWhere((m) => m.id == message.id);
+    if (messageIndex == -1) return;
+
+    // Create updated message
+    final updatedMessage = ChatMessage(
+      id: message.id,
+      messageType: message.messageType,
+      text: newText,
+      audioUrl: message.audioUrl,
+      audioDuration: message.audioDuration,
+      imageUrls: message.imageUrls,
+      blurHashes: message.blurHashes,
+      timestamp: message.timestamp,
+      isSentByMe: message.isSentByMe,
+      isRead: message.isRead,
+      isPending: message.isPending,
+      isFailed: message.isFailed,
+      isSystem: message.isSystem,
+      replyToId: message.replyToId,
+      replyToText: message.replyToText,
+      replyToIsSentByMe: message.replyToIsSentByMe,
+      reactions: message.reactions,
+    );
+
+    // Optimistically update UI
+    setState(() {
+      _messages[messageIndex] = updatedMessage;
+    });
+    _cacheMessages();
+
+    // Call backend to update message
+    final success = await _chatService.editMessage(widget.chatId, message.id, newText);
+
+    if (!success && mounted) {
+      // Restore original message if update failed
+      setState(() {
+        _messages[messageIndex] = message;
+      });
+      _cacheMessages();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Failed to edit message'),
           backgroundColor: Colors.redAccent,
           behavior: SnackBarBehavior.floating,
         ),
