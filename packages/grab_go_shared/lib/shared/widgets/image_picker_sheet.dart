@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -131,6 +132,33 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
     }
   }
 
+  Future<void> _openFileBrowser() async {
+    // Close bottom sheet first
+    Navigator.pop(context);
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif'],
+        allowMultiple: true,
+      );
+
+      debugPrint('FilePicker result: $result');
+
+      if (result != null && result.files.isNotEmpty) {
+        final paths = result.files.where((f) => f.path != null).map((f) => f.path!).toList();
+        debugPrint('FilePicker paths: $paths');
+        if (paths.isNotEmpty) {
+          // Limit to maxImages
+          final limitedPaths = paths.take(widget.maxImages).toList();
+          widget.onImagesSelected(limitedPaths);
+        }
+      }
+    } catch (e) {
+      debugPrint('FilePicker error: $e');
+    }
+  }
+
   Future<void> _confirmSelection() async {
     if (_selectedImages.isEmpty || _isProcessing) return;
 
@@ -218,13 +246,31 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
             padding: EdgeInsets.symmetric(horizontal: 16.w),
             child: Row(
               children: [
-                _buildQuickAction(icon: Icons.camera_alt_rounded, label: 'Camera', onTap: _openCamera, colors: colors),
-                SizedBox(width: 12.w),
-                _buildQuickAction(
-                  icon: Icons.photo_library_rounded,
-                  label: 'Gallery',
-                  onTap: _openGalleryPicker,
-                  colors: colors,
+                Expanded(
+                  child: _buildQuickAction(
+                    icon: Icons.camera_alt_rounded,
+                    label: 'Camera',
+                    onTap: _openCamera,
+                    colors: colors,
+                  ),
+                ),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: _buildQuickAction(
+                    icon: Icons.photo_library_rounded,
+                    label: 'Gallery',
+                    onTap: _openGalleryPicker,
+                    colors: colors,
+                  ),
+                ),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: _buildQuickAction(
+                    icon: Icons.folder_open_rounded,
+                    label: 'Browse',
+                    onTap: _openFileBrowser,
+                    colors: colors,
+                  ),
                 ),
               ],
             ),
@@ -253,20 +299,24 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
         decoration: BoxDecoration(
           color: colors.backgroundSecondary,
           borderRadius: BorderRadius.circular(12.w),
           border: Border.all(color: colors.border),
         ),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 20.w, color: colors.textPrimary),
-            SizedBox(width: 8.w),
-            Text(
-              label,
-              style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500, color: colors.textPrimary),
+            Icon(icon, size: 18.w, color: colors.textPrimary),
+            SizedBox(width: 6.w),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: colors.textPrimary),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),

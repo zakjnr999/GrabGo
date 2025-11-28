@@ -338,6 +338,7 @@ class ChatSocketService {
     });
 
     _socket!.on('chat:presence', (data) {
+      debugPrint('Socket received chat:presence: $data');
       for (final listener in List.from(_presenceListeners)) {
         try {
           listener(data);

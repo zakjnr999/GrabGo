@@ -163,6 +163,7 @@
         "crypto",
         "dio",
         "emoji_picker_flutter",
+        "file_picker",
         "firebase_app_check",
         "firebase_auth",
         "firebase_core",

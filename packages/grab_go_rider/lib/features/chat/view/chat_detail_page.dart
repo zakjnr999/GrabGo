@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -119,6 +120,12 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   // Pagination state
   bool _hasMoreMessages = false;
   bool _isLoadingMore = false;
+
+  // Upload progress tracking (messageId -> progress 0.0-1.0)
+  final Map<String, double> _uploadProgress = {};
+
+  // Upload cancel tokens (messageId -> CancelToken)
+  final Map<String, CancelToken> _uploadCancelTokens = {};
 
   // Voice recording state
   final VoiceRecorderService _voiceRecorder = VoiceRecorderService();
@@ -551,7 +558,12 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         final existing = _messages[index];
         _messages[index] = ChatMessage(
           id: newId,
+          messageType: existing.messageType,
           text: existing.text,
+          audioUrl: existing.audioUrl,
+          audioDuration: existing.audioDuration,
+          imageUrls: existing.imageUrls,
+          blurHashes: existing.blurHashes,
           timestamp: existing.timestamp,
           isSentByMe: true,
           isRead: false,
@@ -561,13 +573,19 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           replyToId: existing.replyToId,
           replyToText: existing.replyToText,
           replyToIsSentByMe: existing.replyToIsSentByMe,
+          reactions: existing.reactions,
         );
         HapticFeedback.lightImpact();
       } else {
         final existing = _messages[index];
         _messages[index] = ChatMessage(
           id: existing.id,
+          messageType: existing.messageType,
           text: existing.text,
+          audioUrl: existing.audioUrl,
+          audioDuration: existing.audioDuration,
+          imageUrls: existing.imageUrls,
+          blurHashes: existing.blurHashes,
           timestamp: existing.timestamp,
           isSentByMe: existing.isSentByMe,
           isRead: existing.isRead,
@@ -577,6 +595,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           replyToId: existing.replyToId,
           replyToText: existing.replyToText,
           replyToIsSentByMe: existing.replyToIsSentByMe,
+          reactions: existing.reactions,
         );
       }
     });
@@ -697,6 +716,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     if (lastSeenStr != null) {
       lastSeenAt = DateTime.tryParse(lastSeenStr);
     }
+
+    debugPrint('Presence event: online=$online, lastSeenAt=$lastSeenAt, raw=$map');
 
     setState(() {
       _isPeerOnline = online;
@@ -942,7 +963,12 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           final existing = _messages[index];
           _messages[index] = ChatMessage(
             id: existing.id,
+            messageType: existing.messageType,
             text: existing.text,
+            audioUrl: existing.audioUrl,
+            audioDuration: existing.audioDuration,
+            imageUrls: existing.imageUrls,
+            blurHashes: existing.blurHashes,
             timestamp: existing.timestamp,
             isSentByMe: existing.isSentByMe,
             isRead: existing.isRead,
@@ -952,6 +978,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             replyToId: existing.replyToId,
             replyToText: existing.replyToText,
             replyToIsSentByMe: existing.replyToIsSentByMe,
+            reactions: existing.reactions,
           );
           // Queue for automatic retry when connection is restored
           if (!widget.isSupport) {
@@ -978,7 +1005,12 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     setState(() {
       _messages[index] = ChatMessage(
         id: message.id,
+        messageType: message.messageType,
         text: message.text,
+        audioUrl: message.audioUrl,
+        audioDuration: message.audioDuration,
+        imageUrls: message.imageUrls,
+        blurHashes: message.blurHashes,
         timestamp: message.timestamp,
         isSentByMe: message.isSentByMe,
         isRead: message.isRead,
@@ -988,6 +1020,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         replyToId: message.replyToId,
         replyToText: message.replyToText,
         replyToIsSentByMe: message.replyToIsSentByMe,
+        reactions: message.reactions,
       );
     });
 
@@ -1031,7 +1064,12 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         setState(() {
           _messages[newIndex] = ChatMessage(
             id: existing.id,
+            messageType: existing.messageType,
             text: existing.text,
+            audioUrl: existing.audioUrl,
+            audioDuration: existing.audioDuration,
+            imageUrls: existing.imageUrls,
+            blurHashes: existing.blurHashes,
             timestamp: existing.timestamp,
             isSentByMe: existing.isSentByMe,
             isRead: existing.isRead,
@@ -1041,6 +1079,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             replyToId: existing.replyToId,
             replyToText: existing.replyToText,
             replyToIsSentByMe: existing.replyToIsSentByMe,
+            reactions: existing.reactions,
           );
         });
       }
@@ -1284,8 +1323,34 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       if (mounted) _scrollToBottom(force: true);
     });
 
+    // Create cancel token for this upload
+    final cancelToken = CancelToken();
+    _uploadCancelTokens[tempId] = cancelToken;
+
     try {
-      final sent = await _chatService.sendImageMessage(widget.chatId, compressedPaths, replyToId: replyTo?.id);
+      final sent = await _chatService.sendImageMessage(
+        widget.chatId,
+        compressedPaths,
+        replyToId: replyTo?.id,
+        cancelToken: cancelToken,
+        onProgress: (progress) {
+          if (mounted) {
+            setState(() {
+              _uploadProgress[tempId] = progress;
+            });
+          }
+        },
+      );
+
+      // Check if cancelled before processing result
+      final wasCancelled = cancelToken.isCancelled;
+
+      // Clean up progress and cancel token tracking
+      _uploadProgress.remove(tempId);
+      _uploadCancelTokens.remove(tempId);
+
+      // If cancelled, the message was already removed by _cancelImageUpload
+      if (wasCancelled) return;
 
       if (sent != null && mounted) {
         final index = _messages.indexWhere((m) => m.id == tempId);
@@ -1310,9 +1375,35 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
           _cacheMessages();
           HapticFeedback.lightImpact();
         }
+      } else if (mounted) {
+        // Upload failed (not cancelled) - mark as failed
+        final index = _messages.indexWhere((m) => m.id == tempId);
+        if (index != -1) {
+          final existing = _messages[index];
+          setState(() {
+            _messages[index] = ChatMessage(
+              id: existing.id,
+              messageType: existing.messageType,
+              text: existing.text,
+              imageUrls: existing.imageUrls,
+              timestamp: existing.timestamp,
+              isSentByMe: existing.isSentByMe,
+              isRead: existing.isRead,
+              isPending: false,
+              isFailed: true,
+            );
+          });
+          _cacheMessages();
+          HapticFeedback.mediumImpact();
+        }
       }
     } catch (e) {
       debugPrint('Error sending image message: $e');
+
+      // Clean up on error
+      _uploadProgress.remove(tempId);
+      _uploadCancelTokens.remove(tempId);
+
       final index = _messages.indexWhere((m) => m.id == tempId);
       if (index != -1 && mounted) {
         final existing = _messages[index];
@@ -1346,6 +1437,25 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       _messages.removeWhere((m) => m.id == message.id);
     });
     _cacheMessages();
+  }
+
+  void _cancelImageUpload(String messageId) {
+    // Cancel the upload
+    final cancelToken = _uploadCancelTokens[messageId];
+    if (cancelToken != null && !cancelToken.isCancelled) {
+      cancelToken.cancel('User cancelled upload');
+    }
+
+    // Clean up tracking
+    _uploadProgress.remove(messageId);
+    _uploadCancelTokens.remove(messageId);
+
+    // Remove the message from the list
+    setState(() {
+      _messages.removeWhere((m) => m.id == messageId);
+    });
+    _cacheMessages();
+    HapticFeedback.mediumImpact();
   }
 
   void _handleScrollPositionChanged() {
@@ -2486,7 +2596,9 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                           isSent: isSent,
                           isPending: message.isPending,
                           isFailed: message.isFailed,
+                          uploadProgress: _uploadProgress[message.id],
                           onRetry: canRetry ? () => _retryImageMessage(message) : null,
+                          onCancelUpload: message.isPending ? () => _cancelImageUpload(message.id) : null,
                           onImageTap: (index) =>
                               ImageViewerScreen.show(context, message.imageUrls, initialIndex: index),
                         )
@@ -2534,8 +2646,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Show spinner only while pending, no time (skip for image messages - they have their own spinner)
-                  if (isSent && message.isPending && !message.isImageMessage)
+                  // Show spinner only while pending, no time (skip for image/voice messages - they have their own spinner)
+                  if (isSent && message.isPending && !message.isImageMessage && !message.isVoiceMessage)
                     SizedBox(
                       width: 12.w,
                       height: 12.w,
@@ -2544,7 +2656,8 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                         valueColor: AlwaysStoppedAnimation<Color>(colors.textSecondary),
                       ),
                     )
-                  else if (!message.isPending || message.isImageMessage) ...[
+                  // Hide timestamp/status for pending image/voice messages
+                  else if (!message.isPending) ...[
                     // Show time after message is sent
                     Text(
                       _formatMessageTime(message.timestamp),

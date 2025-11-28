@@ -13,7 +13,9 @@ class ImageMessageBubble extends StatelessWidget {
   final bool isSent;
   final bool isPending;
   final bool isFailed;
+  final double? uploadProgress; // 0.0 to 1.0, null for indeterminate
   final VoidCallback? onRetry;
+  final VoidCallback? onCancelUpload;
   final Function(int index)? onImageTap;
 
   const ImageMessageBubble({
@@ -23,7 +25,9 @@ class ImageMessageBubble extends StatelessWidget {
     required this.isSent,
     this.isPending = false,
     this.isFailed = false,
+    this.uploadProgress,
     this.onRetry,
+    this.onCancelUpload,
     this.onImageTap,
   });
 
@@ -68,10 +72,49 @@ class ImageMessageBubble extends StatelessWidget {
                   child: Container(
                     color: Colors.black.withValues(alpha: 0.3),
                     child: Center(
-                      child: SizedBox(
-                        width: 24.w,
-                        height: 24.w,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          GestureDetector(
+                            onTap: onCancelUpload,
+                            child: SizedBox(
+                              width: 44.w,
+                              height: 44.w,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  SizedBox(
+                                    width: 44.w,
+                                    height: 44.w,
+                                    child: uploadProgress != null
+                                        ? CircularProgressIndicator(
+                                            strokeWidth: 3,
+                                            color: Colors.white,
+                                            value: uploadProgress,
+                                          )
+                                        : CircularProgressIndicator(strokeWidth: 3, color: Colors.white),
+                                  ),
+                                  Container(
+                                    width: 28.w,
+                                    height: 28.w,
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(alpha: 0.5),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(Icons.close, color: Colors.white, size: 18.w),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          if (uploadProgress != null) ...[
+                            SizedBox(height: 6.h),
+                            Text(
+                              '${(uploadProgress! * 100).toInt()}%',
+                              style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ),
@@ -186,10 +229,49 @@ class ImageMessageBubble extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12.w),
                   ),
                   child: Center(
-                    child: SizedBox(
-                      width: 32.w,
-                      height: 32.w,
-                      child: const CircularProgressIndicator(strokeWidth: 3, color: Colors.white),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GestureDetector(
+                          onTap: onCancelUpload,
+                          child: SizedBox(
+                            width: 44.w,
+                            height: 44.w,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 44.w,
+                                  height: 44.w,
+                                  child: uploadProgress != null
+                                      ? CircularProgressIndicator(
+                                          strokeWidth: 3,
+                                          color: Colors.white,
+                                          value: uploadProgress,
+                                        )
+                                      : CircularProgressIndicator(strokeWidth: 3, color: Colors.white),
+                                ),
+                                Container(
+                                  width: 28.w,
+                                  height: 28.w,
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.5),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(Icons.close, color: Colors.white, size: 18.w),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (uploadProgress != null) ...[
+                          SizedBox(height: 6.h),
+                          Text(
+                            '${(uploadProgress! * 100).toInt()}%',
+                            style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ),

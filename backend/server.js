@@ -113,9 +113,33 @@ io.on("connection", (socket) => {
       if (otherUserId) {
         const otherPresenceKey = `${chatId}:${otherUserId}`;
         const otherCount = chatPresence.get(otherPresenceKey) || 0;
-        if (otherCount > 0) {
+
+        // Also verify the user actually has connected sockets in this room
+        const socketsInRoom = await io.in(room).fetchSockets();
+        const otherUserHasSocket = socketsInRoom.some(
+          (s) => s.data.userId?.toString() === otherUserId && s.id !== socket.id
+        );
+
+        const isOnline = otherCount > 0 && otherUserHasSocket;
+
+        // Clean up stale presence data if count is positive but no socket exists
+        if (otherCount > 0 && !otherUserHasSocket) {
+          chatPresence.delete(otherPresenceKey);
+          console.log(`Cleaned up stale presence for ${otherPresenceKey}`);
+        }
+
+        if (isOnline) {
           // The other user is online, notify the joining user
           socket.emit("chat:presence", { chatId, userId: otherUserId, online: true });
+        } else {
+          // The other user is offline, send their last seen time
+          const otherUser = await User.findById(otherUserId).select("lastSeenAt");
+          socket.emit("chat:presence", {
+            chatId,
+            userId: otherUserId,
+            online: false,
+            lastSeenAt: otherUser?.lastSeenAt || null
+          });
         }
       }
     } catch (error) {
@@ -173,12 +197,21 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("disconnect", () => {
+  socket.on("disconnect", async () => {
     const userId = socket.data.userId;
     const chats = socket.data.chats;
+    const lastSeenAt = new Date();
 
     if (userId && chats && typeof chats.forEach === "function") {
       const userIdStr = userId.toString();
+
+      // Update user's lastSeenAt timestamp
+      try {
+        await User.findByIdAndUpdate(userId, { lastSeenAt });
+      } catch (err) {
+        console.error("Failed to update lastSeenAt:", err.message);
+      }
+
       chats.forEach((room) => {
         const chatId = room.replace("chat:", "");
         const presenceKey = `${chatId}:${userIdStr}`;
@@ -189,7 +222,7 @@ io.on("connection", (socket) => {
           chatPresence.delete(presenceKey);
           socket
             .to(room)
-            .emit("chat:presence", { chatId, userId: userIdStr, online: false });
+            .emit("chat:presence", { chatId, userId: userIdStr, online: false, lastSeenAt });
         } else {
           chatPresence.set(presenceKey, nextCount);
         }
