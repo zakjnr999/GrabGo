@@ -678,4 +678,120 @@ router.delete("/:chatId/messages/:messageId", protect, async (req, res) => {
   }
 });
 
+// Delete specific images from a multi-image message
+router.delete("/:chatId/messages/:messageId/images", protect, async (req, res) => {
+  try {
+    const { chatId, messageId } = req.params;
+    const { imageIndices } = req.body;
+
+    if (!imageIndices || !Array.isArray(imageIndices) || imageIndices.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "imageIndices array is required",
+      });
+    }
+
+    const chat = await Chat.findById(chatId);
+
+    if (!chat) {
+      return res.status(404).json({
+        success: false,
+        message: "Chat not found",
+      });
+    }
+
+    const userIdStr = req.user._id.toString();
+    const isParticipant =
+      (chat.customer && chat.customer.toString() === userIdStr) ||
+      (chat.rider && chat.rider.toString() === userIdStr) ||
+      req.user.role === "admin";
+
+    if (!isParticipant) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to modify messages in this chat",
+      });
+    }
+
+    // Find the message
+    const messageIndex = chat.messages.findIndex(
+      (msg) => msg._id.toString() === messageId
+    );
+
+    if (messageIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: "Message not found",
+      });
+    }
+
+    const message = chat.messages[messageIndex];
+
+    // Only allow sender or admin to modify
+    if (message.sender.toString() !== userIdStr && req.user.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "You can only modify your own messages",
+      });
+    }
+
+    // Check if message has images
+    if (!message.images || message.images.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Message has no images to delete",
+      });
+    }
+
+    // Sort indices in descending order to remove from end first
+    const sortedIndices = [...imageIndices].sort((a, b) => b - a);
+
+    // Remove images at specified indices
+    for (const index of sortedIndices) {
+      if (index >= 0 && index < message.images.length) {
+        message.images.splice(index, 1);
+      }
+    }
+
+    // If all images are removed, delete the entire message
+    if (message.images.length === 0) {
+      chat.messages.splice(messageIndex, 1);
+    }
+
+    await chat.save();
+
+    // Emit socket event for real-time sync
+    if (io) {
+      io.to(`chat:${chat._id.toString()}`).emit("chat:message_images_deleted", {
+        chatId: chat._id.toString(),
+        messageId: messageId,
+        deletedIndices: imageIndices,
+        remainingImages: message.images,
+        messageDeleted: message.images.length === 0,
+        deletedBy: userIdStr,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: message.images.length === 0
+        ? "All images deleted, message removed"
+        : `${imageIndices.length} image(s) deleted successfully`,
+      data: {
+        chatId: chat._id.toString(),
+        messageId: messageId,
+        remainingImages: message.images,
+        messageDeleted: message.images.length === 0,
+      },
+    });
+  } catch (error) {
+    console.error("Delete message images error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
 module.exports = router;

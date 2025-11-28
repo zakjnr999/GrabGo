@@ -3066,6 +3066,24 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                     _retryImageMessage(message);
                   },
                 ),
+              // Show "Select photos to delete" for multi-image messages sent by me
+              if (message.isSentByMe &&
+                  message.isImageMessage &&
+                  message.imageUrls.length > 1 &&
+                  !message.isPending &&
+                  !widget.isSupport)
+                ListTile(
+                  title: Center(
+                    child: Text(
+                      'Select photos to delete',
+                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _showSelectPhotosToDelete(message, colors);
+                  },
+                ),
               if (message.isSentByMe && !message.isPending && !widget.isSupport)
                 ListTile(
                   title: Center(
@@ -3133,6 +3151,235 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         SnackBar(
           content: const Text('Failed to delete message'),
           backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  /// Show a bottom sheet to select which photos to delete from a multi-image message
+  void _showSelectPhotosToDelete(ChatMessage message, AppColorsExtension colors) {
+    final selectedIndices = <int>{};
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: colors.backgroundPrimary,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20.w))),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return SafeArea(
+              child: Container(
+                constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Handle bar
+                    Container(
+                      margin: EdgeInsets.symmetric(vertical: 12.h),
+                      width: 40.w,
+                      height: 4.h,
+                      decoration: BoxDecoration(color: colors.border, borderRadius: BorderRadius.circular(2.w)),
+                    ),
+                    // Header
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Select photos to delete',
+                            style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                          ),
+                          if (selectedIndices.isNotEmpty)
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.pop(context);
+                                _deleteSelectedPhotos(message, selectedIndices.toList());
+                              },
+                              child: Container(
+                                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                                decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(20.w)),
+                                child: Text(
+                                  'Delete (${selectedIndices.length})',
+                                  style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.white),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 8.h),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      child: Text(
+                        'Tap photos to select them for deletion',
+                        style: TextStyle(fontSize: 13.sp, color: colors.textSecondary),
+                      ),
+                    ),
+                    SizedBox(height: 16.h),
+                    // Image grid
+                    Flexible(
+                      child: GridView.builder(
+                        shrinkWrap: true,
+                        padding: EdgeInsets.all(8.w),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 8.w,
+                          mainAxisSpacing: 8.w,
+                        ),
+                        itemCount: message.imageUrls.length,
+                        itemBuilder: (context, index) {
+                          final imageUrl = message.imageUrls[index];
+                          final isSelected = selectedIndices.contains(index);
+
+                          return GestureDetector(
+                            onTap: () {
+                              setModalState(() {
+                                if (isSelected) {
+                                  selectedIndices.remove(index);
+                                } else {
+                                  selectedIndices.add(index);
+                                }
+                              });
+                              HapticFeedback.selectionClick();
+                            },
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                // Image
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8.w),
+                                  child: Image.network(
+                                    imageUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        color: colors.backgroundSecondary,
+                                        child: Icon(Icons.broken_image, color: colors.textSecondary),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                // Selection overlay
+                                if (isSelected)
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withValues(alpha: 0.4),
+                                      borderRadius: BorderRadius.circular(8.w),
+                                    ),
+                                  ),
+                                // Selection indicator
+                                Positioned(
+                                  top: 6.w,
+                                  right: 6.w,
+                                  child: Container(
+                                    width: 24.w,
+                                    height: 24.w,
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? Colors.red : Colors.black.withValues(alpha: 0.5),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white, width: 2),
+                                    ),
+                                    child: isSelected ? Icon(Icons.check, size: 16.w, color: Colors.white) : null,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    SizedBox(height: 16.h),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Delete selected photos from a multi-image message
+  Future<void> _deleteSelectedPhotos(ChatMessage message, List<int> indicesToDelete) async {
+    if (indicesToDelete.isEmpty) return;
+
+    // Sort indices in descending order to remove from end first
+    indicesToDelete.sort((a, b) => b.compareTo(a));
+
+    // Get remaining image URLs
+    final remainingUrls = List<String>.from(message.imageUrls);
+    final remainingBlurHashes = List<String>.from(message.blurHashes);
+
+    for (final index in indicesToDelete) {
+      if (index < remainingUrls.length) {
+        remainingUrls.removeAt(index);
+      }
+      if (index < remainingBlurHashes.length) {
+        remainingBlurHashes.removeAt(index);
+      }
+    }
+
+    // If all images are deleted, delete the entire message
+    if (remainingUrls.isEmpty) {
+      _deleteMessageForEveryone(message);
+      return;
+    }
+
+    // Find message index
+    final messageIndex = _messages.indexWhere((m) => m.id == message.id);
+    if (messageIndex == -1) return;
+
+    // Create updated message with remaining images
+    final updatedMessage = ChatMessage(
+      id: message.id,
+      messageType: message.messageType,
+      text: message.text,
+      audioUrl: message.audioUrl,
+      audioDuration: message.audioDuration,
+      imageUrls: remainingUrls,
+      blurHashes: remainingBlurHashes,
+      timestamp: message.timestamp,
+      isSentByMe: message.isSentByMe,
+      isRead: message.isRead,
+      isPending: message.isPending,
+      isFailed: message.isFailed,
+      isSystem: message.isSystem,
+      replyToId: message.replyToId,
+      replyToText: message.replyToText,
+      replyToIsSentByMe: message.replyToIsSentByMe,
+    );
+
+    // Optimistically update UI
+    setState(() {
+      _messages[messageIndex] = updatedMessage;
+    });
+    _cacheMessages();
+
+    // Call backend to update message images
+    final success = await _chatService.deleteMessageImages(widget.chatId, message.id, indicesToDelete);
+
+    if (!success && mounted) {
+      // Restore original message if update failed
+      setState(() {
+        _messages[messageIndex] = message;
+      });
+      _cacheMessages();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Failed to delete photos'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${indicesToDelete.length} photo(s) deleted'),
+          backgroundColor: colors.accentGreen,
           behavior: SnackBarBehavior.floating,
         ),
       );

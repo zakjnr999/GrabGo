@@ -417,4 +417,28 @@ class ChatService {
       return false;
     }
   }
+
+  /// Delete specific images from a multi-image message
+  /// [imageIndices] - List of 0-based indices of images to delete
+  Future<bool> deleteMessageImages(String chatId, String messageId, List<int> imageIndices) async {
+    final uri = Uri.parse('$_baseUrl/chats/$chatId/messages/$messageId/images');
+
+    try {
+      final response = await _client.delete(
+        uri,
+        headers: {..._buildHeaders(), 'Content-Type': 'application/json'},
+        body: jsonEncode({'imageIndices': imageIndices}),
+      );
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        debugPrint('ChatService.deleteMessageImages failed: ${response.statusCode} ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('ChatService.deleteMessageImages error: $e');
+      return false;
+    }
+  }
 }
