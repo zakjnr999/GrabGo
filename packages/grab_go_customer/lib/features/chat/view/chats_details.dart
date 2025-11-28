@@ -98,14 +98,15 @@ class _ChatDetailState extends State<ChatDetail> {
   static const int _maxCachedMessages = 200;
   String? _error;
   String? _currentUserId;
-  bool _hasPendingSend = false;
+  bool hasPendingSend = false;
   bool _isPeerOnline = false;
   bool _isPeerTyping = false;
   bool _isTyping = false;
   Timer? _typingTimer;
+  ChatSocketConnectionState _connectionState = ChatSocketConnectionState.disconnected;
   Timer? _orderStatusTimer;
   String? _orderId;
-  String? _orderNumber;
+  String? orderNumber;
   String? _currentOrderStatus;
   DateTime? _peerLastSeenAt;
   final List<String> _quickIssueTemplates = const [
@@ -282,6 +283,8 @@ class _ChatDetailState extends State<ChatDetail> {
     PushNotificationService().setCurrentChatId(widget.chatId);
     _loadCachedMessages();
     _initAndLoadMessages();
+    final chatSocket = ChatSocketService();
+    chatSocket.addConnectionListener(_handleConnectionStateChanged);
     if (!widget.isSupport) {
       _setupSocketListeners();
     }
@@ -426,7 +429,7 @@ class _ChatDetailState extends State<ChatDetail> {
           setState(() {
             _messages = loadedMessages;
             _orderId = chatDetail.orderId ?? widget.orderId;
-            _orderNumber = chatDetail.orderNumber;
+            orderNumber = chatDetail.orderNumber;
             _firstUnreadIndex = firstUnreadIndex;
             _hasMoreMessages = chatDetail.pagination?.hasMore ?? false;
             // Set initial lastSeen from peer's last message if we don't have one yet
@@ -937,7 +940,7 @@ class _ChatDetailState extends State<ChatDetail> {
       if (mounted) _scrollToBottom(force: true);
     });
 
-    _hasPendingSend = true;
+    hasPendingSend = true;
     try {
       final sent = await _chatService.sendMessage(widget.chatId, trimmed, replyToId: replyTo?.id);
       if (!mounted || sent == null) return;
@@ -1003,7 +1006,7 @@ class _ChatDetailState extends State<ChatDetail> {
       _cacheMessages();
       HapticFeedback.mediumImpact();
     } finally {
-      _hasPendingSend = false;
+      hasPendingSend = false;
     }
   }
 
@@ -1441,6 +1444,42 @@ class _ChatDetailState extends State<ChatDetail> {
     }
   }
 
+  Widget _buildConnectionBanner(String text, AppColorsExtension colors, {required bool isWarning}) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
+      color: colors.backgroundPrimary,
+      child: Row(
+        children: [
+          if (!isWarning)
+            SizedBox(
+              width: 14.w,
+              height: 14.w,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(colors.accentOrange),
+              ),
+            )
+          else
+            SvgPicture.asset(
+              Assets.icons.wifiOff,
+              package: 'grab_go_shared',
+              width: 16.w,
+              height: 16.w,
+              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+            ),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _retryImageMessage(ChatMessage message) async {
     if (!message.isFailed || !message.hasImages) return;
 
@@ -1587,26 +1626,6 @@ class _ChatDetailState extends State<ChatDetail> {
     } else {
       return DateFormat('MMM dd, hh:mm a').format(timestamp);
     }
-  }
-
-  String _formatLastSeenText(DateTime timestamp) {
-    final now = DateTime.now();
-    final timePart = DateFormat('hh:mm a').format(timestamp);
-
-    if (now.difference(timestamp).inMinutes < 1) {
-      return 'Last seen just now';
-    }
-
-    if (DateUtils.isSameDay(now, timestamp)) {
-      return 'Last seen today at $timePart';
-    }
-
-    if (DateUtils.isSameDay(now.subtract(const Duration(days: 1)), timestamp)) {
-      return 'Last seen yesterday at $timePart';
-    }
-
-    final dayPart = DateFormat('MMM dd').format(timestamp);
-    return 'Last seen $dayPart at $timePart';
   }
 
   bool _shouldShowDateDivider(int index) {
@@ -1865,6 +1884,12 @@ class _ChatDetailState extends State<ChatDetail> {
         body: Column(
           children: [
             if (!widget.isSupport) _buildOrderStatusBanner(colors),
+            if (!widget.isSupport)
+              if (_connectionState == ChatSocketConnectionState.reconnecting ||
+                  _connectionState == ChatSocketConnectionState.connecting)
+                _buildConnectionBanner('Reconnecting to chat…', colors, isWarning: false)
+              else if (_connectionState == ChatSocketConnectionState.disconnected)
+                _buildConnectionBanner('Offline. Messages may be delayed.', colors, isWarning: true),
             Expanded(
               child: Stack(
                 children: [
@@ -2018,7 +2043,7 @@ class _ChatDetailState extends State<ChatDetail> {
                                   ),
                                 if (isFirstUnreadMessage)
                                   Padding(
-                                    padding: EdgeInsets.only(bottom: 8.h),
+                                    padding: EdgeInsets.symmetric(vertical: 16.h),
                                     child: Center(
                                       child: Container(
                                         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
@@ -2148,7 +2173,7 @@ class _ChatDetailState extends State<ChatDetail> {
         GestureDetector(
           onTap: () => _showImagePicker(colors),
           child: SvgPicture.asset(
-            Assets.icons.mediaImage,
+            Assets.icons.camera,
             package: 'grab_go_shared',
             width: 24.w,
             height: 24.w,
@@ -2374,6 +2399,13 @@ class _ChatDetailState extends State<ChatDetail> {
         ),
       ),
     );
+  }
+
+  void _handleConnectionStateChanged(ChatSocketConnectionState state) {
+    if (!mounted) return;
+    setState(() {
+      _connectionState = state;
+    });
   }
 
   Widget _buildReplyPreview(AppColorsExtension colors) {
@@ -2675,7 +2707,16 @@ class _ChatDetailState extends State<ChatDetail> {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.image, size: 16.w, color: isSent ? Colors.white70 : colors.textSecondary),
+                            SvgPicture.asset(
+                              Assets.icons.camera,
+                              package: 'grab_go_shared',
+                              width: 16.w,
+                              height: 16.w,
+                              colorFilter: ColorFilter.mode(
+                                isSent ? Colors.white70 : colors.textSecondary,
+                                BlendMode.srcIn,
+                              ),
+                            ),
                             SizedBox(width: 6.w),
                             Text(
                               'Photo',
@@ -3045,12 +3086,24 @@ class _ChatDetailState extends State<ChatDetail> {
                         if (message.isImageMessage)
                           Padding(
                             padding: EdgeInsets.only(right: 6.w),
-                            child: Icon(Icons.image, size: 16.w, color: colors.textPrimary),
+                            child: SvgPicture.asset(
+                              Assets.icons.mediaImage,
+                              package: 'grab_go_shared',
+                              width: 16.w,
+                              height: 16.w,
+                              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                            ),
                           ),
                         if (message.isVoiceMessage)
                           Padding(
                             padding: EdgeInsets.only(right: 6.w),
-                            child: Icon(Icons.mic, size: 16.w, color: colors.textPrimary),
+                            child: SvgPicture.asset(
+                              Assets.icons.microphone,
+                              package: 'grab_go_shared',
+                              width: 16.w,
+                              height: 16.w,
+                              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                            ),
                           ),
                         Expanded(
                           child: Text(
@@ -3289,7 +3342,13 @@ class _ChatDetailState extends State<ChatDetail> {
                                     errorBuilder: (context, error, stackTrace) {
                                       return Container(
                                         color: colors.backgroundSecondary,
-                                        child: Icon(Icons.broken_image, color: colors.textSecondary),
+                                        child: SvgPicture.asset(
+                                          Assets.icons.mediaImage,
+                                          package: 'grab_go_shared',
+                                          width: 16.w,
+                                          height: 16.w,
+                                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                        ),
                                       );
                                     },
                                   ),
@@ -3314,7 +3373,15 @@ class _ChatDetailState extends State<ChatDetail> {
                                       shape: BoxShape.circle,
                                       border: Border.all(color: Colors.white, width: 2),
                                     ),
-                                    child: isSelected ? Icon(Icons.check, size: 16.w, color: Colors.white) : null,
+                                    child: isSelected
+                                        ? SvgPicture.asset(
+                                            Assets.icons.check,
+                                            package: 'grab_go_shared',
+                                            width: 16.w,
+                                            height: 16.w,
+                                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                          )
+                                        : null,
                                   ),
                                 ),
                               ],
@@ -3401,12 +3468,6 @@ class _ChatDetailState extends State<ChatDetail> {
       _cacheMessages();
 
       AppToastMessage.show(context: context, icon: Icons.error_outline, message: "Failed to delete photos");
-    } else if (mounted) {
-      AppToastMessage.show(
-        context: context,
-        icon: Icons.check_circle_outline,
-        message: "${indicesToDelete.length} photo(s) deleted",
-      );
     }
   }
 
@@ -3430,7 +3491,7 @@ class _ChatDetailState extends State<ChatDetail> {
             ),
             SizedBox(height: 16.h),
             SizedBox(
-              height: 40.h,
+              height: 46.h,
               child: AppButton(onPressed: _initAndLoadMessages, buttonText: 'Retry'),
             ),
           ],

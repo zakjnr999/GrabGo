@@ -97,7 +97,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   static const int _maxCachedMessages = 200;
   String? _error;
   String? _currentUserId;
-  bool _hasPendingSend = false;
+  bool hasPendingSend = false;
   bool _isPeerOnline = false;
   bool _isPeerTyping = false;
   bool _isTyping = false;
@@ -105,7 +105,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
   Timer? _orderStatusTimer;
   ChatSocketConnectionState _connectionState = ChatSocketConnectionState.disconnected;
   String? _orderId;
-  String? _orderNumber;
+  String? orderNumber;
   String? _currentOrderStatus;
   int? _firstUnreadIndex;
   bool _showScrollToBottomButton = false;
@@ -432,7 +432,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         setState(() {
           _messages = loadedMessages;
           _orderId = chatDetail.orderId ?? widget.orderId;
-          _orderNumber = chatDetail.orderNumber;
+          orderNumber = chatDetail.orderNumber;
           _firstUnreadIndex = firstUnreadIndex;
           _hasMoreMessages = chatDetail.pagination?.hasMore ?? false;
           // Set initial lastSeen from peer's last message if we don't have one yet
@@ -930,7 +930,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       if (mounted) _scrollToBottom(force: true);
     });
 
-    _hasPendingSend = true;
+    hasPendingSend = true;
     try {
       final sent = await _chatService.sendMessage(widget.chatId, trimmed, replyToId: replyTo?.id);
       if (!mounted || sent == null) return;
@@ -996,7 +996,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       _cacheMessages();
       HapticFeedback.mediumImpact();
     } finally {
-      _hasPendingSend = false;
+      hasPendingSend = false;
     }
   }
 
@@ -1581,26 +1581,6 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     }
   }
 
-  String _formatLastSeenText(DateTime timestamp) {
-    final now = DateTime.now();
-    final timePart = DateFormat('hh:mm a').format(timestamp);
-
-    if (now.difference(timestamp).inMinutes < 1) {
-      return 'Last seen just now';
-    }
-
-    if (DateUtils.isSameDay(now, timestamp)) {
-      return 'Last seen today at $timePart';
-    }
-
-    if (DateUtils.isSameDay(now.subtract(const Duration(days: 1)), timestamp)) {
-      return 'Last seen yesterday at $timePart';
-    }
-
-    final dayPart = DateFormat('MMM dd').format(timestamp);
-    return 'Last seen $dayPart at $timePart';
-  }
-
   bool _shouldShowDateDivider(int index) {
     if (index == 0) return true;
     final currentDate = _messages[index].timestamp;
@@ -2034,7 +2014,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                                   ),
                                 if (isFirstUnreadMessage)
                                   Padding(
-                                    padding: EdgeInsets.only(bottom: 8.h),
+                                    padding: EdgeInsets.symmetric(vertical: 16.h),
                                     child: Center(
                                       child: Container(
                                         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
@@ -2164,7 +2144,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         GestureDetector(
           onTap: () => _showImagePicker(colors),
           child: SvgPicture.asset(
-            Assets.icons.mediaImage,
+            Assets.icons.camera,
             package: 'grab_go_shared',
             width: 24.w,
             height: 24.w,
@@ -2636,7 +2616,16 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.image, size: 16.w, color: isSent ? Colors.white70 : colors.textSecondary),
+                            SvgPicture.asset(
+                              Assets.icons.camera,
+                              package: 'grab_go_shared',
+                              width: 16.w,
+                              height: 16.w,
+                              colorFilter: ColorFilter.mode(
+                                isSent ? Colors.white70 : colors.textSecondary,
+                                BlendMode.srcIn,
+                              ),
+                            ),
                             SizedBox(width: 6.w),
                             Text(
                               'Photo',
@@ -3006,12 +2995,24 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                         if (message.isImageMessage)
                           Padding(
                             padding: EdgeInsets.only(right: 6.w),
-                            child: Icon(Icons.image, size: 16.w, color: colors.textPrimary),
+                            child: SvgPicture.asset(
+                              Assets.icons.mediaImage,
+                              package: 'grab_go_shared',
+                              width: 16.w,
+                              height: 16.w,
+                              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                            ),
                           ),
                         if (message.isVoiceMessage)
                           Padding(
                             padding: EdgeInsets.only(right: 6.w),
-                            child: Icon(Icons.mic, size: 16.w, color: colors.textPrimary),
+                            child: SvgPicture.asset(
+                              Assets.icons.microphone,
+                              package: 'grab_go_shared',
+                              width: 16.w,
+                              height: 16.w,
+                              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                            ),
                           ),
                         Expanded(
                           child: Text(
@@ -3256,7 +3257,13 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                                     errorBuilder: (context, error, stackTrace) {
                                       return Container(
                                         color: colors.backgroundSecondary,
-                                        child: Icon(Icons.broken_image, color: colors.textSecondary),
+                                        child: SvgPicture.asset(
+                                          Assets.icons.mediaImage,
+                                          package: 'grab_go_shared',
+                                          width: 16.w,
+                                          height: 16.w,
+                                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                        ),
                                       );
                                     },
                                   ),
@@ -3281,7 +3288,15 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                                       shape: BoxShape.circle,
                                       border: Border.all(color: Colors.white, width: 2),
                                     ),
-                                    child: isSelected ? Icon(Icons.check, size: 16.w, color: Colors.white) : null,
+                                    child: isSelected
+                                        ? SvgPicture.asset(
+                                            Assets.icons.check,
+                                            package: 'grab_go_shared',
+                                            width: 16.w,
+                                            height: 16.w,
+                                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                          )
+                                        : null,
                                   ),
                                 ),
                               ],
@@ -3359,8 +3374,6 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
 
     // Call backend to update message images
     final success = await _chatService.deleteMessageImages(widget.chatId, message.id, indicesToDelete);
-    final colors = context.appColors;
-
     if (!success && mounted) {
       // Restore original message if update failed
       setState(() {
@@ -3368,21 +3381,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       });
       _cacheMessages();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Failed to delete photos'),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${indicesToDelete.length} photo(s) deleted'),
-          backgroundColor: colors.accentGreen,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      AppToastMessage.show(context: context, icon: Icons.error_outline, message: "Failed to delete photos");
     }
   }
 
@@ -3403,7 +3402,13 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               ),
             )
           else
-            Icon(Icons.wifi_off, size: 16.w, color: colors.textSecondary),
+            SvgPicture.asset(
+              Assets.icons.wifiOff,
+              package: 'grab_go_shared',
+              width: 16.w,
+              height: 16.w,
+              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+            ),
           SizedBox(width: 8.w),
           Expanded(
             child: Text(
@@ -3436,7 +3441,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
             ),
             SizedBox(height: 16.h),
             SizedBox(
-              height: 40.h,
+              height: 46.h,
               child: AppButton(onPressed: _initAndLoadMessages, buttonText: 'Retry'),
             ),
           ],
@@ -3445,5 +3450,3 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     );
   }
 }
-
-/// Swipe-to-reply widget for message bubbles
