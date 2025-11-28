@@ -458,10 +458,10 @@
       "languageVersion": "3.8"
     },
     {
-      "name": "flutter_app_badger",
-      "rootUri": "file:///C:/Users/USER/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_app_badger-1.5.0",
+      "name": "flutter_app_badge_control",
+      "rootUri": "file:///C:/Users/USER/AppData/Local/Pub/Cache/hosted/pub.dev/flutter_app_badge_control-0.0.2",
       "packageUri": "lib/",
-      "languageVersion": "2.12"
+      "languageVersion": "2.19"
     },
     {
       "name": "flutter_blurhash",

@@ -2259,13 +2259,12 @@ class _ChatDetailState extends State<ChatDetail> {
           child: Container(
             width: 40.w,
             height: 40.w,
+            padding: EdgeInsets.all(8.r),
             decoration: BoxDecoration(color: colors.error.withValues(alpha: 0.1), shape: BoxShape.circle),
             child: SvgPicture.asset(
               Assets.icons.bin,
               package: "grab_go_shared",
               colorFilter: ColorFilter.mode(colors.error, BlendMode.srcIn),
-              height: 24.h,
-              width: 24.w,
             ),
           ),
         ),

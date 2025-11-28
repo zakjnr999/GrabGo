@@ -174,7 +174,7 @@
         "firebase_core",
         "firebase_messaging",
         "flutter",
-        "flutter_app_badger",
+        "flutter_app_badge_control",
         "flutter_blurhash",
         "flutter_gen",
         "flutter_image_compress",
@@ -702,10 +702,11 @@
       ]
     },
     {
-      "name": "flutter_app_badger",
-      "version": "1.5.0",
+      "name": "flutter_app_badge_control",
+      "version": "0.0.2",
       "dependencies": [
-        "flutter"
+        "flutter",
+        "plugin_platform_interface"
       ]
     },
     {
