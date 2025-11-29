@@ -258,6 +258,7 @@ app.use("/api/categories", require("./routes/categories"));
 app.use("/api/foods", require("./routes/foods"));
 app.use("/api/riders", require("./routes/riders"));
 app.use("/api/chats", require("./routes/chats"));
+app.use("/api/statuses", require("./routes/statuses"));
 
 // Health check
 app.get("/api/health", (req, res) => {
@@ -279,11 +280,24 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Import cron jobs
+const { scheduleCleanup } = require("./jobs/statusCleanup");
+
+// Import cache utility
+const cache = require("./utils/cache");
+
 // Connect to MongoDB
 mongoose
   .connect(process.env.MONGODB_URI || "mongodb://localhost:27017/grabgo")
   .then(() => {
     console.log("✅ Connected to MongoDB");
+
+    // Initialize Redis cache (optional - falls back to memory cache)
+    cache.initRedis();
+
+    // Schedule status cleanup cron job (runs every hour)
+    scheduleCleanup();
+
     const PORT = process.env.PORT || 5000;
     server.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
@@ -297,3 +311,16 @@ mongoose
     console.error(" MongoDB connection error:", error);
     process.exit(1);
   });
+
+// Graceful shutdown
+process.on("SIGTERM", async () => {
+  console.log("SIGTERM received, shutting down gracefully...");
+  await cache.close();
+  process.exit(0);
+});
+
+process.on("SIGINT", async () => {
+  console.log("SIGINT received, shutting down gracefully...");
+  await cache.close();
+  process.exit(0);
+});

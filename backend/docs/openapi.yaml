@@ -44,6 +44,8 @@ tags:
     description: Rider operations and wallet
   - name: Chats
     description: Real-time chat between customers and riders
+  - name: Statuses
+    description: Restaurant stories and status updates (daily specials, discounts, new items, videos)
 
 components:
   securitySchemes:
@@ -328,6 +330,104 @@ components:
           type: number
         pendingWithdrawals:
           type: number
+
+    Status:
+      type: object
+      properties:
+        _id:
+          type: string
+        restaurant:
+          $ref: '#/components/schemas/Restaurant'
+        category:
+          type: string
+          enum: [daily_special, discount, new_item, video]
+          description: |
+            - daily_special: Today's special dishes
+            - discount: Promotional discounts
+            - new_item: New menu items
+            - video: Video stories
+        title:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        mediaType:
+          type: string
+          enum: [image, video]
+        mediaUrl:
+          type: string
+          format: uri
+        thumbnailUrl:
+          type: string
+          format: uri
+        blurHash:
+          type: string
+        discountPercentage:
+          type: number
+          minimum: 0
+          maximum: 100
+        promoCode:
+          type: string
+        linkedFood:
+          $ref: '#/components/schemas/Food'
+        viewCount:
+          type: integer
+        likeCount:
+          type: integer
+        totalViewDuration:
+          type: integer
+          description: Total view duration in milliseconds
+        avgViewDuration:
+          type: integer
+          description: Average view duration in milliseconds
+        engagementScore:
+          type: number
+          description: Calculated engagement score (views + likes*2 + duration factor)
+        isActive:
+          type: boolean
+        isRecommended:
+          type: boolean
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    Story:
+      type: object
+      description: Aggregated story data for a restaurant (for story ring display)
+      properties:
+        restaurantId:
+          type: string
+        restaurantName:
+          type: string
+        logo:
+          type: string
+          format: uri
+        statusCount:
+          type: integer
+          description: Number of active statuses
+        categories:
+          type: array
+          items:
+            type: string
+            enum: [daily_special, discount, new_item, video]
+        totalViews:
+          type: integer
+          description: Total views across all statuses
+        totalLikes:
+          type: integer
+          description: Total likes across all statuses
+        totalEngagement:
+          type: number
+          description: Total engagement score
+        latestStatusAt:
+          type: string
+          format: date-time
+        latestCategory:
+          type: string
 
     Error:
       type: object
@@ -1650,6 +1750,493 @@ paths:
           description: Can only delete own messages
         '404':
           description: Message not found
+
+  # ============ STATUSES ============
+  /statuses:
+    get:
+      tags: [Statuses]
+      summary: Get all active statuses
+      description: Retrieve active statuses with optional filtering by category, restaurant, or recommended
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [daily_special, discount, new_item, video]
+          description: Filter by status category
+        - name: restaurant
+          in: query
+          schema:
+            type: string
+          description: Filter by restaurant ID
+        - name: recommended
+          in: query
+          schema:
+            type: boolean
+          description: Filter recommended statuses only
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        '200':
+          description: Statuses retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Status'
+                  pagination:
+                    type: object
+                    properties:
+                      currentPage:
+                        type: integer
+                      totalPages:
+                        type: integer
+                      totalItems:
+                        type: integer
+
+    post:
+      tags: [Statuses]
+      summary: Create a new status
+      description: Create a new status/story (restaurant or admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [restaurant, category, media]
+              properties:
+                restaurant:
+                  type: string
+                  description: Restaurant ID
+                category:
+                  type: string
+                  enum: [daily_special, discount, new_item, video]
+                title:
+                  type: string
+                  maxLength: 100
+                description:
+                  type: string
+                  maxLength: 500
+                media:
+                  type: string
+                  format: binary
+                  description: Image or video file
+                mediaType:
+                  type: string
+                  enum: [image, video]
+                  default: image
+                discountPercentage:
+                  type: number
+                  minimum: 0
+                  maximum: 100
+                promoCode:
+                  type: string
+                linkedFood:
+                  type: string
+                  description: Food item ID to link
+                isRecommended:
+                  type: boolean
+                durationHours:
+                  type: integer
+                  minimum: 1
+                  maximum: 168
+                  default: 24
+                  description: How long the status stays active (1-168 hours)
+      responses:
+        '201':
+          description: Status created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Status'
+        '400':
+          description: Validation error
+        '404':
+          description: Restaurant or linked food not found
+
+  /statuses/stories:
+    get:
+      tags: [Statuses]
+      summary: Get restaurant stories
+      description: Get statuses grouped by restaurant for story ring display. Results are cached for 60 seconds.
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 50
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [recent, engagement]
+            default: recent
+          description: Sort by most recent or highest engagement
+      responses:
+        '200':
+          description: Stories retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Story'
+                  cached:
+                    type: boolean
+                    description: Whether the response was served from cache
+
+  /statuses/stories/{restaurantId}:
+    get:
+      tags: [Statuses]
+      summary: Get all statuses for a restaurant
+      description: Get all active statuses for viewing a restaurant's stories
+      parameters:
+        - name: restaurantId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Restaurant statuses retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Status'
+        '404':
+          description: No active statuses found
+
+  /statuses/{statusId}:
+    get:
+      tags: [Statuses]
+      summary: Get a single status
+      parameters:
+        - name: statusId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Status retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Status'
+        '404':
+          description: Status not found
+
+    put:
+      tags: [Statuses]
+      summary: Update a status
+      description: Update status details (restaurant or admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: statusId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                media:
+                  type: string
+                  format: binary
+                discountPercentage:
+                  type: number
+                promoCode:
+                  type: string
+                linkedFood:
+                  type: string
+                isRecommended:
+                  type: boolean
+                isActive:
+                  type: boolean
+      responses:
+        '200':
+          description: Status updated successfully
+        '404':
+          description: Status not found
+
+    delete:
+      tags: [Statuses]
+      summary: Delete a status
+      description: Soft delete a status (restaurant or admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: statusId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Status deleted successfully
+        '404':
+          description: Status not found
+
+  /statuses/views/batch:
+    post:
+      tags: [Statuses]
+      summary: Record multiple views at once
+      description: Record views for multiple statuses in one request (for story swipe-through). Max 20 views per request.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [views]
+              properties:
+                views:
+                  type: array
+                  maxItems: 20
+                  items:
+                    type: object
+                    required: [statusId]
+                    properties:
+                      statusId:
+                        type: string
+                      duration:
+                        type: integer
+                        description: View duration in milliseconds
+      responses:
+        '200':
+          description: Batch views recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      processed:
+                        type: integer
+                      results:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            statusId:
+                              type: string
+                            success:
+                              type: boolean
+                            viewCount:
+                              type: integer
+                            reason:
+                              type: string
+
+  /statuses/{statusId}/view:
+    post:
+      tags: [Statuses]
+      summary: Record a view on a status
+      description: Track that the current user viewed this status with optional duration
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: statusId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                duration:
+                  type: integer
+                  description: View duration in milliseconds (max 300000 = 5 minutes)
+      responses:
+        '200':
+          description: View recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      viewCount:
+                        type: integer
+                      avgViewDuration:
+                        type: integer
+                        description: Average view duration in milliseconds
+        '400':
+          description: Status has expired
+        '404':
+          description: Status not found
+
+  /statuses/{statusId}/like:
+    post:
+      tags: [Statuses]
+      summary: Like or unlike a status
+      description: Toggle like on a status
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: statusId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Like toggled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: Status liked
+                  data:
+                    type: object
+                    properties:
+                      isLiked:
+                        type: boolean
+                      likeCount:
+                        type: integer
+        '400':
+          description: Status has expired
+        '404':
+          description: Status not found
+
+  /statuses/restaurant/{restaurantId}/all:
+    get:
+      tags: [Statuses]
+      summary: Get all statuses for restaurant dashboard
+      description: Get all statuses including inactive (restaurant or admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: restaurantId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: includeExpired
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Restaurant statuses retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Status'
+
+  /statuses/user/viewed:
+    get:
+      tags: [Statuses]
+      summary: Get statuses viewed by current user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Viewed statuses retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Status'
+
+  /statuses/cleanup:
+    post:
+      tags: [Statuses]
+      summary: Clean up expired statuses
+      description: Deactivate expired statuses (admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cleanup completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
 
   # ============ HEALTH ============
   /health:

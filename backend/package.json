@@ -8,10 +8,16 @@
     "dev": "nodemon server.js",
     "init-db": "node scripts/init-db.js",
     "add-foods": "node scripts/add-sample-foods.js",
+    "add-statuses": "node scripts/add-sample-statuses.js",
     "setup-restaurants": "node scripts/setup-restaurants-and-foods.js",
     "create-dummy-data": "node scripts/tmp_rovodev_create_dummy_food_data.js",
     "test-mtn-momo": "node scripts/test-mtn-momo.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:status": "jest tests/status.test.js",
+    "test:cache": "jest tests/cache.test.js",
+    "test:routes": "jest tests/status.routes.test.js",
     "docs:build": "npx @redocly/cli build-docs docs/openapi.yaml -o docs/index.html",
     "docs:lint": "npx @redocly/cli lint docs/openapi.yaml",
     "docs:serve": "npx serve docs -l 8080"
@@ -34,14 +40,18 @@
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
+    "express-rate-limit": "^8.2.1",
     "express-validator": "^7.0.1",
     "firebase-admin": "^12.0.0",
     "helmet": "^7.1.0",
+    "ioredis": "^5.8.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.0.3",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "multer-storage-cloudinary": "^4.0.0",
+    "node-cache": "^5.1.2",
+    "node-cron": "^4.2.1",
     "nodemailer": "^7.0.10",
     "sharp": "^0.33.5",
     "socket.io": "^4.7.5",
@@ -50,6 +60,8 @@
     "twilio": "^5.10.4"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2",
+    "supertest": "^6.3.3"
   }
 }

@@ -249,7 +249,7 @@ class _HomePageState extends State<HomePage> {
                             child: Builder(
                               builder: (context) => InkWell(
                                 onTap: () {
-                                  context.push("/statusMain");
+                                  context.push("/status");
                                 },
                                 customBorder: const CircleBorder(),
                                 child: Padding(

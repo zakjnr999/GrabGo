@@ -8,6 +8,7 @@ import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/features/order/viewmodel/order_provider.dart';
 import 'package:grab_go_customer/features/restaurant/viewmodel/restaurant_provider.dart';
+import 'package:grab_go_customer/features/status/viewmodel/status_provider.dart';
 import 'package:grab_go_customer/shared/services/cache_service.dart';
 import 'package:grab_go_customer/shared/services/chat_socket_service.dart';
 import 'package:grab_go_customer/shared/services/image_cache_service.dart';
@@ -55,6 +56,7 @@ void main() async {
         ChangeNotifierProvider(create: (context) => OrderProvider()),
         ChangeNotifierProvider(create: (context) => NavigationProvider()),
         ChangeNotifierProvider(create: (context) => FavoritesProvider()),
+        ChangeNotifierProvider(create: (context) => StatusProvider()..init()),
       ],
       child: const GrabGoCustomerApp(),
     ),
