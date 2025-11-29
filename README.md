@@ -114,7 +114,7 @@ flutter test             # Unit tests
 - View restaurant stories/promotions
 - Save favorites
 
-### Restaurant App
+### Restaurant Panel
 - Manage restaurant profile
 - Add/edit menu items
 - Process incoming orders
@@ -128,7 +128,7 @@ flutter test             # Unit tests
 - Chat with customers
 - Track earnings
 
-### Admin Dashboard
+### Admin Panel
 - User management
 - Restaurant approvals
 - Order monitoring
