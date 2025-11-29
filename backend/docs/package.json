@@ -1,0 +1,15 @@
+{
+    "name": "grabgo-api-docs",
+    "version": "1.0.0",
+    "description": "GrabGo API Documentation",
+    "scripts": {
+        "build": "npx @redocly/cli build-docs openapi.yaml -o index.html",
+        "start": "npx serve . -l $PORT"
+    },
+    "dependencies": {
+        "serve": "^14.2.0"
+    },
+    "devDependencies": {
+        "@redocly/cli": "^1.25.0"
+    }
+}

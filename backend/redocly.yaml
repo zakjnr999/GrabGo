@@ -1,0 +1,10 @@
+apis:
+  main:
+    root: docs/openapi.yaml
+
+extends:
+  - recommended
+
+rules:
+  no-unused-components: warn
+  operation-operationId: off

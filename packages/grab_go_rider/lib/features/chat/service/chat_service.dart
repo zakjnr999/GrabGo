@@ -80,6 +80,7 @@ class ChatMessageDto {
   final String? replyToId;
   final String? replyToText;
   final String? replyToSenderId;
+  final bool isEdited;
 
   ChatMessageDto({
     required this.id,
@@ -96,6 +97,7 @@ class ChatMessageDto {
     this.replyToId,
     this.replyToText,
     this.replyToSenderId,
+    this.isEdited = false,
   });
 
   bool get isVoiceMessage => messageType == MessageType.voice;
@@ -124,6 +126,7 @@ class ChatMessageDto {
       replyToId: replyTo?['id'] as String?,
       replyToText: replyToText,
       replyToSenderId: replyTo?['senderId'] as String?,
+      isEdited: json['isEdited'] as bool? ?? false,
     );
   }
 }

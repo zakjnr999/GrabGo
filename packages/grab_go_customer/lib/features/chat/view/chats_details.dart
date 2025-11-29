@@ -38,6 +38,7 @@ class ChatMessage {
   final String? replyToText;
   final bool? replyToIsSentByMe;
   final Map<String, List<String>> reactions; // emoji -> list of user IDs
+  final bool isEdited;
 
   ChatMessage({
     required this.id,
@@ -58,6 +59,7 @@ class ChatMessage {
     this.replyToText,
     this.replyToIsSentByMe,
     this.reactions = const {},
+    this.isEdited = false,
   });
 
   bool get isVoiceMessage => messageType == MessageType.voice;
@@ -166,6 +168,7 @@ class _ChatDetailState extends State<ChatDetail> {
           final isSentByMe = m['isSentByMe'] == true;
           final isRead = m['isRead'] == true;
           final isSystem = m['isSystem'] == true;
+          final isEdited = m['isEdited'] == true;
           final replyToId = m['replyToId']?.toString();
           final replyToText = m['replyToText']?.toString();
           final replyToIsSentByMe = m['replyToIsSentByMe'] == true
@@ -205,6 +208,7 @@ class _ChatDetailState extends State<ChatDetail> {
             replyToText: replyToText,
             replyToIsSentByMe: replyToIsSentByMe,
             reactions: reactions,
+            isEdited: isEdited,
           );
         })
         .whereType<ChatMessage>()
@@ -270,6 +274,7 @@ class _ChatDetailState extends State<ChatDetail> {
             if (m.replyToText != null) 'replyToText': m.replyToText,
             if (m.replyToIsSentByMe != null) 'replyToIsSentByMe': m.replyToIsSentByMe,
             if (m.reactions.isNotEmpty) 'reactions': m.reactions,
+            if (m.isEdited) 'isEdited': m.isEdited,
           },
         )
         .toList();
@@ -415,6 +420,7 @@ class _ChatDetailState extends State<ChatDetail> {
               replyToText: m.replyToText,
               replyToIsSentByMe: replyToIsSentByMe,
               reactions: reactions,
+              isEdited: m.isEdited,
             );
           }).toList();
 
@@ -1301,6 +1307,7 @@ class _ChatDetailState extends State<ChatDetail> {
 
   void _showImagePicker(AppColorsExtension colors) {
     HapticFeedback.selectionClick();
+    _messageFocusNode.unfocus();
     ImagePickerSheet.show(
       context,
       maxImages: 10,
@@ -2583,7 +2590,9 @@ class _ChatDetailState extends State<ChatDetail> {
                     ),
                     onPressed: () {
                       HapticFeedback.selectionClick();
-                      _sendQuickMessage(text);
+                      final replyTo = _replyingTo;
+                      _cancelReply();
+                      _sendQuickMessage(text, replyTo: replyTo);
                     },
                   ),
                 ),
@@ -2852,6 +2861,14 @@ class _ChatDetailState extends State<ChatDetail> {
                     )
                   // Hide timestamp/status for pending image/voice messages
                   else if (!message.isPending) ...[
+                    // Show "Edited" indicator if message was edited
+                    if (message.isEdited) ...[
+                      Text(
+                        'Edited',
+                        style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w400),
+                      ),
+                      SizedBox(width: 4.w),
+                    ],
                     // Show time after message is sent
                     Text(
                       _formatMessageTime(message.timestamp),
@@ -3026,6 +3043,7 @@ class _ChatDetailState extends State<ChatDetail> {
 
   void _showQuickReactions(ChatMessage message, AppColorsExtension colors) {
     HapticFeedback.selectionClick();
+    _messageFocusNode.unfocus();
     final messageId = message.id; // Capture ID to find fresh message later
 
     showModalBottomSheet<void>(
@@ -3132,6 +3150,7 @@ class _ChatDetailState extends State<ChatDetail> {
 
   void _showMessageActions(ChatMessage message, AppColorsExtension colors) {
     HapticFeedback.selectionClick();
+    _messageFocusNode.unfocus();
 
     // Determine message preview text based on type
     final String previewLabel;
@@ -3390,6 +3409,7 @@ class _ChatDetailState extends State<ChatDetail> {
       replyToText: message.replyToText,
       replyToIsSentByMe: message.replyToIsSentByMe,
       reactions: message.reactions,
+      isEdited: true,
     );
 
     // Optimistically update UI

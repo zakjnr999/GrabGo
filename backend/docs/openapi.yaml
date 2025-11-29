@@ -1,0 +1,1672 @@
+openapi: 3.0.3
+info:
+  title: GrabGo API
+  description: |
+    Backend API for GrabGo food delivery platform.
+    
+    ## Authentication
+    Most endpoints require JWT authentication. Include the token in the Authorization header:
+    ```
+    Authorization: Bearer <your_jwt_token>
+    ```
+    
+    ## User Roles
+    - **customer**: Regular users who order food
+    - **restaurant**: Restaurant owners/managers
+    - **rider**: Delivery riders
+    - **admin**: Platform administrators
+  version: 1.0.0
+  contact:
+    name: GrabGo Support
+  license:
+    name: ISC
+
+servers:
+  - url: http://localhost:5000/api
+    description: Development server
+  - url: https://api.grabgo.com/api
+    description: Production server
+
+tags:
+  - name: Users
+    description: User authentication and profile management
+  - name: Restaurants
+    description: Restaurant registration and management
+  - name: Foods
+    description: Food items management
+  - name: Categories
+    description: Food categories
+  - name: Orders
+    description: Order management
+  - name: Payments
+    description: Payment processing (MTN MOMO)
+  - name: Riders
+    description: Rider operations and wallet
+  - name: Chats
+    description: Real-time chat between customers and riders
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from login/register endpoints
+
+  schemas:
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        username:
+          type: string
+          example: "johndoe"
+        email:
+          type: string
+          format: email
+          example: "john@example.com"
+        phone:
+          type: string
+          example: "+233201234567"
+        isPhoneVerified:
+          type: boolean
+        isEmailVerified:
+          type: boolean
+        DateOfBirth:
+          type: string
+          format: date
+        profilePicture:
+          type: string
+          format: uri
+        isAdmin:
+          type: boolean
+        role:
+          type: string
+          enum: [customer, restaurant, rider, admin]
+        isActive:
+          type: boolean
+        permissions:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    Restaurant:
+      type: object
+      properties:
+        _id:
+          type: string
+        restaurant_name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        logo:
+          type: string
+          format: uri
+        food_type:
+          type: string
+        description:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        average_delivery_time:
+          type: string
+        delivery_fee:
+          type: number
+        min_order:
+          type: number
+        status:
+          type: string
+          enum: [pending, approved, rejected, suspended]
+        rating:
+          type: number
+        is_open:
+          type: boolean
+        total_reviews:
+          type: integer
+
+    Food:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        category:
+          $ref: '#/components/schemas/Category'
+        restaurant:
+          $ref: '#/components/schemas/Restaurant'
+        food_image:
+          type: string
+          format: uri
+        isAvailable:
+          type: boolean
+        ingredients:
+          type: array
+          items:
+            type: string
+        rating:
+          type: number
+        totalReviews:
+          type: integer
+
+    Category:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        emoji:
+          type: string
+        isActive:
+          type: boolean
+
+    Order:
+      type: object
+      properties:
+        _id:
+          type: string
+        orderNumber:
+          type: string
+        customer:
+          $ref: '#/components/schemas/User'
+        restaurant:
+          $ref: '#/components/schemas/Restaurant'
+        rider:
+          $ref: '#/components/schemas/User'
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              food:
+                type: string
+              name:
+                type: string
+              quantity:
+                type: integer
+              price:
+                type: number
+              image:
+                type: string
+        subtotal:
+          type: number
+        deliveryFee:
+          type: number
+        tax:
+          type: number
+        totalAmount:
+          type: number
+        deliveryAddress:
+          type: string
+        paymentMethod:
+          type: string
+          enum: [cash, card, mobile_money, mtn_momo, online]
+        paymentStatus:
+          type: string
+          enum: [pending, paid, failed]
+        status:
+          type: string
+          enum: [pending, confirmed, preparing, ready, picked_up, on_the_way, delivered, cancelled]
+        notes:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    Payment:
+      type: object
+      properties:
+        _id:
+          type: string
+        referenceId:
+          type: string
+        order:
+          type: string
+        customer:
+          type: string
+        paymentMethod:
+          type: string
+        provider:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        phoneNumber:
+          type: string
+        status:
+          type: string
+          enum: [pending, processing, successful, failed, cancelled]
+
+    Chat:
+      type: object
+      properties:
+        id:
+          type: string
+        orderId:
+          type: string
+        orderNumber:
+          type: string
+        otherUser:
+          type: object
+          properties:
+            id:
+              type: string
+            username:
+              type: string
+            role:
+              type: string
+        lastMessage:
+          type: string
+        lastMessageType:
+          type: string
+        lastMessageAt:
+          type: string
+          format: date-time
+        unreadCount:
+          type: integer
+
+    Message:
+      type: object
+      properties:
+        _id:
+          type: string
+        sender:
+          type: string
+        text:
+          type: string
+        messageType:
+          type: string
+          enum: [text, voice, image]
+        audioUrl:
+          type: string
+        audioDuration:
+          type: number
+        imageUrls:
+          type: array
+          items:
+            type: string
+        readBy:
+          type: array
+          items:
+            type: string
+        isEdited:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    RiderWallet:
+      type: object
+      properties:
+        balance:
+          type: number
+        totalEarnings:
+          type: number
+        totalWithdrawals:
+          type: number
+        pendingWithdrawals:
+          type: number
+
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+        error:
+          type: string
+
+    Success:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+
+paths:
+  # ============ USERS ============
+  /users:
+    post:
+      tags: [Users]
+      summary: Register a new user
+      description: Register a new user (regular or Google sign-up)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - title: Regular Registration
+                  type: object
+                  required: [username, email, password]
+                  properties:
+                    username:
+                      type: string
+                    email:
+                      type: string
+                      format: email
+                    password:
+                      type: string
+                      minLength: 6
+                    DateOfBirth:
+                      type: string
+                      format: date
+                    phone:
+                      type: string
+                    profilePicture:
+                      type: string
+                    role:
+                      type: string
+                      enum: [customer, restaurant, rider, admin]
+                - title: Google Registration
+                  type: object
+                  required: [googleId, email, displayName]
+                  properties:
+                    googleId:
+                      type: string
+                    email:
+                      type: string
+                      format: email
+                    displayName:
+                      type: string
+                    photoUrl:
+                      type: string
+                    role:
+                      type: string
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+                  token:
+                    type: string
+        '400':
+          description: Validation error or user already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/login:
+    post:
+      tags: [Users]
+      summary: Login user
+      description: Login with email/password or Google credentials
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - title: Regular Login
+                  type: object
+                  required: [email, password]
+                  properties:
+                    email:
+                      type: string
+                      format: email
+                    password:
+                      type: string
+                - title: Google Login
+                  type: object
+                  required: [googleId, email]
+                  properties:
+                    googleId:
+                      type: string
+                    email:
+                      type: string
+                    displayName:
+                      type: string
+                    photoUrl:
+                      type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+                  token:
+                    type: string
+        '401':
+          description: Invalid credentials
+        '403':
+          description: Account deactivated
+
+  /users/{userId}:
+    get:
+      tags: [Users]
+      summary: Get user by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+
+    put:
+      tags: [Users]
+      summary: Update user
+      description: Update user profile (phone, profile picture, etc.)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                profilePicture:
+                  type: string
+                  format: binary
+                phoneNumber:
+                  type: string
+                isPhoneVerified:
+                  type: boolean
+          application/json:
+            schema:
+              type: object
+              properties:
+                phoneNumber:
+                  type: string
+                isPhoneVerified:
+                  type: boolean
+                profilePicture:
+                  type: string
+      responses:
+        '200':
+          description: User updated successfully
+        '403':
+          description: Not authorized
+        '404':
+          description: User not found
+
+  /users/verify-email:
+    post:
+      tags: [Users]
+      summary: Verify email with OTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, otp]
+              properties:
+                email:
+                  type: string
+                  format: email
+                otp:
+                  type: string
+                  minLength: 6
+                  maxLength: 6
+      responses:
+        '200':
+          description: Email verified successfully
+        '400':
+          description: Invalid or expired OTP
+
+  /users/resend-verification:
+    post:
+      tags: [Users]
+      summary: Resend email verification OTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Verification email sent
+
+  /users/send-verification:
+    post:
+      tags: [Users]
+      summary: Send verification email (authenticated)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Verification email sent
+        '400':
+          description: Email already verified
+
+  /users/send-phone-otp:
+    post:
+      tags: [Users]
+      summary: Send OTP to phone number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phoneNumber, userId]
+              properties:
+                phoneNumber:
+                  type: string
+                userId:
+                  type: string
+      responses:
+        '200':
+          description: OTP sent successfully
+        '400':
+          description: Phone already verified
+        '404':
+          description: User not found
+
+  /users/verify-phone-otp:
+    post:
+      tags: [Users]
+      summary: Verify phone OTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phoneNumber, otp, userId]
+              properties:
+                phoneNumber:
+                  type: string
+                otp:
+                  type: string
+                userId:
+                  type: string
+      responses:
+        '200':
+          description: Phone verified successfully
+        '400':
+          description: Invalid or expired OTP
+
+  /users/fcm-token:
+    post:
+      tags: [Users]
+      summary: Register FCM token for push notifications
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: Token registered successfully
+
+  # ============ RESTAURANTS ============
+  /restaurants:
+    get:
+      tags: [Restaurants]
+      summary: Get all restaurants
+      description: Returns approved restaurants (or all for admins)
+      responses:
+        '200':
+          description: Restaurants retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Restaurant'
+
+  /restaurants/register:
+    post:
+      tags: [Restaurants]
+      summary: Register a new restaurant
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [name, email, phone, address, city, owner_full_name, owner_contact_number, business_id_number, password]
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                phone:
+                  type: string
+                address:
+                  type: string
+                city:
+                  type: string
+                owner_full_name:
+                  type: string
+                owner_contact_number:
+                  type: string
+                business_id_number:
+                  type: string
+                password:
+                  type: string
+                  minLength: 6
+                logo:
+                  type: string
+                  format: binary
+                business_id_photo:
+                  type: string
+                  format: binary
+                owner_photo:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Restaurant registered, pending approval
+        '400':
+          description: Validation error or restaurant exists
+
+  /restaurants/{restaurantId}:
+    get:
+      tags: [Restaurants]
+      summary: Get restaurant by ID
+      parameters:
+        - name: restaurantId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Restaurant retrieved successfully
+        '404':
+          description: Restaurant not found
+
+    put:
+      tags: [Restaurants]
+      summary: Update restaurant status (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: restaurantId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [pending, approved, rejected, suspended]
+      responses:
+        '200':
+          description: Status updated successfully
+        '400':
+          description: Invalid status
+        '404':
+          description: Restaurant not found
+
+  # ============ FOODS ============
+  /foods:
+    get:
+      tags: [Foods]
+      summary: Get all foods
+      parameters:
+        - name: restaurant
+          in: query
+          schema:
+            type: string
+          description: Filter by restaurant ID
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Filter by category ID
+        - name: isAvailable
+          in: query
+          schema:
+            type: boolean
+          description: Filter by availability
+      responses:
+        '200':
+          description: Foods retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Food'
+
+    post:
+      tags: [Foods]
+      summary: Create a new food item
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [name, price, category, restaurant]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                price:
+                  type: number
+                category:
+                  type: string
+                restaurant:
+                  type: string
+                food_image:
+                  type: string
+                  format: binary
+                isAvailable:
+                  type: boolean
+                ingredients:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Food created successfully
+        '404':
+          description: Category or restaurant not found
+
+  /foods/{foodId}:
+    get:
+      tags: [Foods]
+      summary: Get food by ID
+      parameters:
+        - name: foodId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Food retrieved successfully
+        '404':
+          description: Food not found
+
+    put:
+      tags: [Foods]
+      summary: Update food item
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: foodId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                price:
+                  type: number
+                category:
+                  type: string
+                food_image:
+                  type: string
+                  format: binary
+                isAvailable:
+                  type: boolean
+                ingredients:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Food updated successfully
+        '404':
+          description: Food not found
+
+  # ============ CATEGORIES ============
+  /categories:
+    get:
+      tags: [Categories]
+      summary: Get all active categories
+      responses:
+        '200':
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+
+    post:
+      tags: [Categories]
+      summary: Create a new category (Admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, emoji]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                emoji:
+                  type: string
+      responses:
+        '201':
+          description: Category created successfully
+
+  /categories/{categoryId}:
+    get:
+      tags: [Categories]
+      summary: Get category by ID
+      parameters:
+        - name: categoryId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Category retrieved successfully
+        '404':
+          description: Category not found
+
+  # ============ ORDERS ============
+  /orders:
+    get:
+      tags: [Orders]
+      summary: Get orders for current user
+      description: Returns orders based on user role (customer, restaurant, or rider)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Orders retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+
+    post:
+      tags: [Orders]
+      summary: Create a new order
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [restaurant, items, deliveryAddress, paymentMethod]
+              properties:
+                restaurant:
+                  type: string
+                  description: Restaurant ID
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [food, quantity]
+                    properties:
+                      food:
+                        type: string
+                        description: Food ID
+                      quantity:
+                        type: integer
+                        minimum: 1
+                deliveryAddress:
+                  type: string
+                paymentMethod:
+                  type: string
+                  enum: [cash, card, mobile_money, mtn_momo, online]
+                notes:
+                  type: string
+                orderNumber:
+                  type: string
+      responses:
+        '201':
+          description: Order created successfully
+        '400':
+          description: Validation error
+        '404':
+          description: Restaurant or food not found
+
+  /orders/{orderId}:
+    get:
+      tags: [Orders]
+      summary: Get order by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Order retrieved successfully
+        '403':
+          description: Not authorized
+        '404':
+          description: Order not found
+
+  /orders/{orderId}/status:
+    put:
+      tags: [Orders]
+      summary: Update order status
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [pending, confirmed, preparing, ready, picked_up, on_the_way, delivered, cancelled]
+                cancellationReason:
+                  type: string
+      responses:
+        '200':
+          description: Status updated successfully
+        '403':
+          description: Customers can only cancel orders
+        '404':
+          description: Order not found
+
+  /orders/{orderId}/assign-rider:
+    put:
+      tags: [Orders]
+      summary: Assign rider to order (Admin/Rider only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [riderId]
+              properties:
+                riderId:
+                  type: string
+      responses:
+        '200':
+          description: Rider assigned successfully
+        '400':
+          description: Invalid rider
+        '404':
+          description: Order not found
+
+  # ============ PAYMENTS ============
+  /payments/mtn-momo/initiate:
+    post:
+      tags: [Payments]
+      summary: Initiate MTN MOMO payment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orderId, phoneNumber]
+              properties:
+                orderId:
+                  type: string
+                phoneNumber:
+                  type: string
+                  description: Ghana phone number
+      responses:
+        '200':
+          description: Payment initiated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      paymentId:
+                        type: string
+                      referenceId:
+                        type: string
+                      status:
+                        type: string
+                      amount:
+                        type: number
+        '400':
+          description: Payment already in progress or validation error
+        '403':
+          description: Not authorized
+        '404':
+          description: Order not found
+
+  /payments/mtn-momo/status/{paymentId}:
+    get:
+      tags: [Payments]
+      summary: Check MTN MOMO payment status
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payment status retrieved
+        '403':
+          description: Not authorized
+        '404':
+          description: Payment not found
+
+  /payments/my-payments:
+    get:
+      tags: [Payments]
+      summary: Get all payments for current user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Payments retrieved successfully
+
+  /payments/{paymentId}/cancel:
+    put:
+      tags: [Payments]
+      summary: Cancel a pending payment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payment cancelled successfully
+        '400':
+          description: Payment cannot be cancelled
+        '403':
+          description: Not authorized
+        '404':
+          description: Payment not found
+
+  /payments/mtn-momo/webhook:
+    post:
+      tags: [Payments]
+      summary: MTN MOMO webhook for payment notifications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                referenceId:
+                  type: string
+                status:
+                  type: string
+                financialTransactionId:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Webhook processed
+
+  # ============ RIDERS ============
+  /riders/available-orders:
+    get:
+      tags: [Riders]
+      summary: Get available orders for pickup
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Available orders retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+
+  /riders/accept-order/{orderId}:
+    post:
+      tags: [Riders]
+      summary: Accept an order for delivery
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Order accepted successfully
+        '400':
+          description: Order already assigned or not available
+        '404':
+          description: Order not found
+
+  /riders/wallet:
+    get:
+      tags: [Riders]
+      summary: Get rider wallet balance
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Wallet retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/RiderWallet'
+
+  /riders/earnings:
+    get:
+      tags: [Riders]
+      summary: Get rider earnings
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [today, thisWeek, thisMonth, allTime]
+            default: allTime
+      responses:
+        '200':
+          description: Earnings retrieved successfully
+
+  /riders/verification:
+    get:
+      tags: [Riders]
+      summary: Get rider verification status
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Verification status retrieved
+
+    put:
+      tags: [Riders]
+      summary: Update rider verification data
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                vehicleType:
+                  type: string
+                  enum: [motorcycle, bicycle, car]
+                licensePlateNumber:
+                  type: string
+                vehicleBrand:
+                  type: string
+                vehicleModel:
+                  type: string
+                nationalIdType:
+                  type: string
+                nationalIdNumber:
+                  type: string
+                paymentMethod:
+                  type: string
+                  enum: [bank_transfer, mobile_money]
+                bankName:
+                  type: string
+                accountNumber:
+                  type: string
+                mobileMoneyProvider:
+                  type: string
+                mobileMoneyNumber:
+                  type: string
+                vehicleImage:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Verification data updated
+
+  /riders/verification/upload-id:
+    post:
+      tags: [Riders]
+      summary: Upload ID images
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [imageType, idImage]
+              properties:
+                imageType:
+                  type: string
+                  enum: [front, back, selfie]
+                idImage:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Image uploaded successfully
+        '400':
+          description: Invalid image type or no image
+
+  /riders/verification/status/{riderId}:
+    put:
+      tags: [Riders]
+      summary: Update verification status (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: riderId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [pending, under_review, approved, rejected]
+                rejectionReason:
+                  type: string
+      responses:
+        '200':
+          description: Status updated successfully
+        '404':
+          description: Rider not found
+
+  # ============ CHATS ============
+  /chats:
+    get:
+      tags: [Chats]
+      summary: Get chat conversations for current user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Chats retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Chat'
+
+  /chats/{chatId}:
+    get:
+      tags: [Chats]
+      summary: Get chat with messages
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+        - name: before
+          in: query
+          schema:
+            type: string
+          description: Message ID for pagination
+      responses:
+        '200':
+          description: Chat retrieved successfully
+        '403':
+          description: Not authorized
+        '404':
+          description: Chat not found
+
+  /chats/{chatId}/messages:
+    post:
+      tags: [Chats]
+      summary: Send a text message
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  maxLength: 2000
+      responses:
+        '201':
+          description: Message sent successfully
+        '403':
+          description: Not authorized
+        '404':
+          description: Chat not found
+
+  /chats/{chatId}/messages/voice:
+    post:
+      tags: [Chats]
+      summary: Send a voice message
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [audio]
+              properties:
+                audio:
+                  type: string
+                  format: binary
+                duration:
+                  type: number
+      responses:
+        '201':
+          description: Voice message sent
+        '400':
+          description: No audio file
+
+  /chats/{chatId}/messages/images:
+    post:
+      tags: [Chats]
+      summary: Send image messages (up to 10)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [images]
+              properties:
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  maxItems: 10
+      responses:
+        '201':
+          description: Images sent successfully
+        '400':
+          description: No images or too many images
+
+  /chats/{chatId}/messages/{messageId}:
+    put:
+      tags: [Chats]
+      summary: Edit a text message
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+      responses:
+        '200':
+          description: Message edited successfully
+        '400':
+          description: Only text messages can be edited
+        '403':
+          description: Can only edit own messages
+        '404':
+          description: Message not found
+
+    delete:
+      tags: [Chats]
+      summary: Delete a message
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Message deleted successfully
+        '403':
+          description: Can only delete own messages
+        '404':
+          description: Message not found
+
+  # ============ HEALTH ============
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check endpoint
+      responses:
+        '200':
+          description: API is running
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  message:
+                    type: string
+                    example: GrabGo API is running

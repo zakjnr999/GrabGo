@@ -11,7 +11,10 @@
     "setup-restaurants": "node scripts/setup-restaurants-and-foods.js",
     "create-dummy-data": "node scripts/tmp_rovodev_create_dummy_food_data.js",
     "test-mtn-momo": "node scripts/test-mtn-momo.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "docs:build": "npx @redocly/cli build-docs docs/openapi.yaml -o docs/index.html",
+    "docs:lint": "npx @redocly/cli lint docs/openapi.yaml",
+    "docs:serve": "npx serve docs -l 8080"
   },
   "keywords": [
     "food-delivery",
@@ -25,6 +28,7 @@
     "@sendgrid/mail": "^8.1.6",
     "axios": "^1.6.0",
     "bcryptjs": "^2.4.3",
+    "blurhash": "^2.0.5",
     "cloudinary": "^1.41.0",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
@@ -39,10 +43,11 @@
     "multer": "^1.4.5-lts.1",
     "multer-storage-cloudinary": "^4.0.0",
     "nodemailer": "^7.0.10",
-    "twilio": "^5.10.4",
+    "sharp": "^0.33.5",
     "socket.io": "^4.7.5",
-    "blurhash": "^2.0.5",
-    "sharp": "^0.33.5"
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "twilio": "^5.10.4"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
