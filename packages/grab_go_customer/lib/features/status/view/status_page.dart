@@ -315,6 +315,7 @@ class _StatusPageState extends State<StatusPage> {
     final ringColor = story.isViewed ? colors.accentOrange.withAlpha(80) : colors.accentOrange;
 
     return GestureDetector(
+      key: ValueKey(story.restaurantId),
       onTap: () => _openStoryViewer(story, provider),
       child: Column(
         mainAxisSize: MainAxisSize.min,

@@ -16,9 +16,9 @@ class StatusProvider with ChangeNotifier {
   // State
   // ============================================================
 
-  // Stories (for story ring)
+  // Stories (for story ring) - sorted with unviewed first, then viewed
   List<StoryModel> _stories = [];
-  List<StoryModel> get stories => _stories;
+  List<StoryModel> get stories => _getSortedStories();
 
   // All statuses
   List<StatusModel> _statuses = [];
@@ -95,6 +95,13 @@ class StatusProvider with ChangeNotifier {
   // ============================================================
   // Stories Methods
   // ============================================================
+
+  /// Get stories sorted like WhatsApp: unviewed first, then viewed at the end
+  List<StoryModel> _getSortedStories() {
+    final unviewed = _stories.where((s) => !s.isViewed).toList();
+    final viewed = _stories.where((s) => s.isViewed).toList();
+    return [...unviewed, ...viewed];
+  }
 
   /// Fetch stories for the story ring
   Future<void> fetchStories({int limit = 20, String sortBy = 'recent', bool forceRefresh = false}) async {
@@ -267,6 +274,25 @@ class StatusProvider with ChangeNotifier {
   void clearCurrentRestaurantStatuses() {
     _currentRestaurantStatuses = [];
     notifyListeners();
+  }
+
+  /// Mark a story as viewed and move it to the end of the list (WhatsApp-style)
+  Future<void> markStoryAsViewed(String restaurantId) async {
+    final storyIndex = _stories.indexWhere((s) => s.restaurantId == restaurantId);
+    if (storyIndex >= 0 && !_stories[storyIndex].isViewed) {
+      // Mark as viewed
+      _stories[storyIndex] = _stories[storyIndex].copyWith(isViewed: true);
+
+      // Persist the viewed state
+      await _saveViewedRestaurant(restaurantId);
+
+      // Notify to trigger UI reorder
+      notifyListeners();
+
+      if (kDebugMode) {
+        print('✅ Marked story as viewed: $restaurantId');
+      }
+    }
   }
 
   // ============================================================

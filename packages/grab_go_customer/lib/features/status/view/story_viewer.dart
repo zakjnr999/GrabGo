@@ -52,6 +52,8 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
   void dispose() {
     _recordCurrentView();
     _sendBatchViews();
+    // Mark story as viewed when closing (moves to end of list like WhatsApp)
+    context.read<StatusProvider>().markStoryAsViewed(widget.restaurantId);
     _progressController.dispose();
     super.dispose();
   }

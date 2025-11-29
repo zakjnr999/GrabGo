@@ -35,11 +35,6 @@ GrabGo/
 │   ├── grab_go_admin/       # Admin dashboard
 │   └── grab_go_shared/      # Shared code library
 │
-├── docs/                    # Project documentation
-│   ├── PROJECT_DOCUMENTATION.md
-│   ├── FEATURES_SUMMARY.md
-│   └── QUICK_REFERENCE.md
-│
 ├── melos.yaml               # Monorepo configuration
 └── pubspec.yaml             # Workspace configuration
 ```
@@ -92,15 +87,6 @@ flutter run
 melos bootstrap
 melos run build_runner  # Generate code
 ```
-
-## 📖 Documentation
-
-| Document | Description |
-|----------|-------------|
-| [Project Documentation](docs/PROJECT_DOCUMENTATION.md) | Complete technical documentation |
-| [Features Summary](docs/FEATURES_SUMMARY.md) | Feature matrix and details |
-| [Quick Reference](docs/QUICK_REFERENCE.md) | Quick start and commands |
-| [Status Feature](backend/docs/STATUS_FEATURE.md) | Status/Stories feature details |
 
 ## 🧪 Testing
 
@@ -158,7 +144,7 @@ flutter test             # Unit tests
 
 ## 📝 API Endpoints
 
-See [Quick Reference](docs/QUICK_REFERENCE.md) for endpoint summary or check individual route files in `backend/routes/`.
+See [Quick Reference](docs/QUICK_REFERENCE.pdf) for endpoint summary or check individual route files in `backend/routes/`.
 
 ## 🤝 Contributing
 
