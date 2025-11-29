@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:grab_go_customer/features/status/model/status_model.dart';
 import 'package:grab_go_customer/features/status/viewmodel/status_provider.dart';
 import 'package:grab_go_customer/features/status/view/story_viewer.dart';
@@ -255,10 +256,7 @@ class _StatusPageState extends State<StatusPage> {
 
   Widget _buildStoriesRow(AppColorsExtension colors, StatusProvider provider) {
     if (provider.isLoadingStories) {
-      return SizedBox(
-        height: 110.h,
-        child: Center(child: CircularProgressIndicator(color: colors.accentOrange, strokeWidth: 2)),
-      );
+      return _buildStoriesShimmer(colors);
     }
 
     if (provider.error != null && provider.stories.isEmpty) {
@@ -391,10 +389,7 @@ class _StatusPageState extends State<StatusPage> {
 
   Widget _buildStatusesList(AppColorsExtension colors, StatusProvider provider, bool isDark) {
     if (provider.isLoadingStatuses) {
-      return SizedBox(
-        height: 350.h,
-        child: Center(child: CircularProgressIndicator(color: colors.accentOrange, strokeWidth: 2)),
-      );
+      return _buildStatusesShimmer(colors);
     }
 
     final filteredStatuses = provider.getFilteredStatuses(_filters[_selectedFilterIndex].category);
@@ -560,6 +555,139 @@ class _StatusPageState extends State<StatusPage> {
     final category = _filters[_selectedFilterIndex].category;
     if (category == null) return colors.accentViolet;
     return category.getColor(context);
+  }
+
+  /// Shimmer loading for stories row
+  Widget _buildStoriesShimmer(AppColorsExtension colors) {
+    return SizedBox(
+      height: 110.h,
+      child: ListView.separated(
+        padding: EdgeInsets.symmetric(horizontal: 20.w),
+        scrollDirection: Axis.horizontal,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 5,
+        itemBuilder: (context, index) {
+          return Shimmer.fromColors(
+            baseColor: colors.inputBorder.withAlpha(50),
+            highlightColor: colors.inputBorder.withAlpha(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 80.r,
+                  height: 80.r,
+                  decoration: BoxDecoration(color: colors.backgroundPrimary, shape: BoxShape.circle),
+                ),
+                SizedBox(height: 6.h),
+                Container(
+                  width: 60.w,
+                  height: 12.h,
+                  decoration: BoxDecoration(color: colors.backgroundPrimary, borderRadius: BorderRadius.circular(4.r)),
+                ),
+              ],
+            ),
+          );
+        },
+        separatorBuilder: (_, __) => SizedBox(width: 12.w),
+      ),
+    );
+  }
+
+  /// Shimmer loading for statuses list
+  Widget _buildStatusesShimmer(AppColorsExtension colors) {
+    return SizedBox(
+      height: 350.h,
+      child: ListView.builder(
+        padding: EdgeInsets.only(left: 10.r),
+        scrollDirection: Axis.horizontal,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 3,
+        itemBuilder: (context, index) {
+          return Shimmer.fromColors(
+            baseColor: colors.inputBorder.withAlpha(50),
+            highlightColor: colors.inputBorder.withAlpha(20),
+            child: Container(
+              width: 260.w,
+              margin: EdgeInsets.only(right: 16.w),
+              decoration: BoxDecoration(color: colors.backgroundPrimary, borderRadius: BorderRadius.circular(20.r)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Image placeholder
+                  Container(
+                    height: 200.h,
+                    decoration: BoxDecoration(
+                      color: colors.inputBorder.withAlpha(80),
+                      borderRadius: BorderRadius.only(topLeft: Radius.circular(20.r), topRight: Radius.circular(20.r)),
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.all(16.r),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Category badge placeholder
+                        Container(
+                          width: 80.w,
+                          height: 24.h,
+                          decoration: BoxDecoration(
+                            color: colors.inputBorder.withAlpha(80),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                        ),
+                        SizedBox(height: 12.h),
+                        // Title placeholder
+                        Container(
+                          width: 180.w,
+                          height: 16.h,
+                          decoration: BoxDecoration(
+                            color: colors.inputBorder.withAlpha(80),
+                            borderRadius: BorderRadius.circular(4.r),
+                          ),
+                        ),
+                        SizedBox(height: 8.h),
+                        // Subtitle placeholder
+                        Container(
+                          width: 120.w,
+                          height: 12.h,
+                          decoration: BoxDecoration(
+                            color: colors.inputBorder.withAlpha(80),
+                            borderRadius: BorderRadius.circular(4.r),
+                          ),
+                        ),
+                        SizedBox(height: 16.h),
+                        // Bottom row placeholder
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              width: 60.w,
+                              height: 12.h,
+                              decoration: BoxDecoration(
+                                color: colors.inputBorder.withAlpha(80),
+                                borderRadius: BorderRadius.circular(4.r),
+                              ),
+                            ),
+                            Container(
+                              width: 40.w,
+                              height: 24.h,
+                              decoration: BoxDecoration(
+                                color: colors.inputBorder.withAlpha(80),
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 }
 

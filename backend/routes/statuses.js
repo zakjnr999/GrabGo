@@ -1,6 +1,7 @@
 const express = require('express');
 const { body, query, validationResult } = require('express-validator');
 const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = require('express-rate-limit');
 const Status = require('../models/Status');
 const Restaurant = require('../models/Restaurant');
 const Food = require('../models/Food');
@@ -32,7 +33,7 @@ const invalidateStoriesCache = async () => {
 const viewRateLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
     max: 60, // 60 requests per window
-    keyGenerator: (req) => req.user?._id?.toString() || req.ip,
+    keyGenerator: (req) => req.user?._id?.toString() || ipKeyGenerator(req),
     message: {
         success: false,
         message: 'Too many view requests. Please slow down.',
@@ -47,7 +48,7 @@ const viewRateLimiter = rateLimit({
 const likeRateLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
     max: 30, // 30 requests per window
-    keyGenerator: (req) => req.user?._id?.toString() || req.ip,
+    keyGenerator: (req) => req.user?._id?.toString() || ipKeyGenerator(req),
     message: {
         success: false,
         message: 'Too many like requests. Please slow down.',
@@ -62,7 +63,7 @@ const likeRateLimiter = rateLimit({
 const createStatusRateLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
     max: 10, // 10 statuses per hour
-    keyGenerator: (req) => req.body?.restaurant || req.user?._id?.toString() || req.ip,
+    keyGenerator: (req) => req.body?.restaurant || req.user?._id?.toString() || ipKeyGenerator(req),
     message: {
         success: false,
         message: 'Too many statuses created. Please wait before creating more.',

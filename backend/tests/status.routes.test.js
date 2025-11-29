@@ -12,6 +12,7 @@
 
 const request = require('supertest');
 const mongoose = require('mongoose');
+const { MongoMemoryServer } = require('mongodb-memory-server');
 const jwt = require('jsonwebtoken');
 const express = require('express');
 
@@ -24,7 +25,6 @@ const Restaurant = require('../models/Restaurant');
 const statusRoutes = require('../routes/statuses');
 
 // Test configuration
-const TEST_DB_URI = process.env.TEST_MONGODB_URI || 'mongodb://localhost:27017/grabgo_test';
 const JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
 
 // Create test app
@@ -33,6 +33,7 @@ app.use(express.json());
 app.use('/api/statuses', statusRoutes);
 
 // Mock data
+let mongoServer;
 let testUser;
 let testRestaurant;
 let testToken;
@@ -40,11 +41,13 @@ let adminToken;
 
 describe('Status API Routes', () => {
     beforeAll(async () => {
-        await mongoose.connect(TEST_DB_URI);
+        mongoServer = await MongoMemoryServer.create();
+        const mongoUri = mongoServer.getUri();
+        await mongoose.connect(mongoUri);
 
         // Create test user
         testUser = await User.create({
-            name: 'Test User',
+            username: 'Test User',
             email: 'test@example.com',
             password: 'hashedpassword',
             role: 'customer',
@@ -52,7 +55,7 @@ describe('Status API Routes', () => {
 
         // Create admin user
         const adminUser = await User.create({
-            name: 'Admin User',
+            username: 'Admin User',
             email: 'admin@example.com',
             password: 'hashedpassword',
             role: 'admin',
@@ -64,19 +67,25 @@ describe('Status API Routes', () => {
             email: 'restaurant@example.com',
             phone: '1234567890',
             address: '123 Test St',
+            city: 'Test City',
+            owner_full_name: 'Test Owner',
+            owner_contact_number: '0987654321',
+            business_id_number: 'BIZ123456',
+            password: 'hashedpassword',
             status: 'approved',
         });
 
         // Generate tokens
         testToken = jwt.sign({ id: testUser._id, role: 'customer' }, JWT_SECRET);
         adminToken = jwt.sign({ id: adminUser._id, role: 'admin' }, JWT_SECRET);
-    });
+    }, 60000);
 
     afterAll(async () => {
         await User.deleteMany({});
         await Restaurant.deleteMany({});
         await Status.deleteMany({});
         await mongoose.connection.close();
+        await mongoServer.stop();
     });
 
     beforeEach(async () => {

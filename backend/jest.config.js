@@ -39,8 +39,8 @@ module.exports = {
     // Setup files
     setupFilesAfterEnv: ['./tests/setup.js'],
 
-    // Timeout for tests
-    testTimeout: 30000,
+    // Timeout for tests (increased for MongoDB Memory Server startup)
+    testTimeout: 60000,
 
     // Verbose output
     verbose: true,

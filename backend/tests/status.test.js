@@ -11,6 +11,7 @@
  */
 
 const mongoose = require('mongoose');
+const { MongoMemoryServer } = require('mongodb-memory-server');
 const Status = require('../models/Status');
 
 // Mock data
@@ -18,17 +19,19 @@ const mockUserId = new mongoose.Types.ObjectId();
 const mockRestaurantId = new mongoose.Types.ObjectId();
 const mockFoodId = new mongoose.Types.ObjectId();
 
-// Test configuration
-const TEST_DB_URI = process.env.TEST_MONGODB_URI || 'mongodb://localhost:27017/grabgo_test';
+let mongoServer;
 
 describe('Status Model', () => {
     beforeAll(async () => {
-        await mongoose.connect(TEST_DB_URI);
-    });
+        mongoServer = await MongoMemoryServer.create();
+        const mongoUri = mongoServer.getUri();
+        await mongoose.connect(mongoUri);
+    }, 60000);
 
     afterAll(async () => {
         await mongoose.connection.dropDatabase();
         await mongoose.connection.close();
+        await mongoServer.stop();
     });
 
     beforeEach(async () => {
