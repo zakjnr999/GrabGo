@@ -17,8 +17,8 @@ const Food = require('../models/Food');
  */
 async function generateBlurHash(imageUrl) {
     try {
-        // Fetch image
-        const response = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 10000 });
+        // Fetch image (30 second timeout for slow connections)
+        const response = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 30000 });
         const buffer = Buffer.from(response.data);
 
         // Process with sharp
