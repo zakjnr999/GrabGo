@@ -5,9 +5,44 @@
 
 require('dotenv').config();
 const mongoose = require('mongoose');
+const axios = require('axios');
+const sharp = require('sharp');
+const { encode } = require('blurhash');
 const Status = require('../models/Status');
 const Restaurant = require('../models/Restaurant');
 const Food = require('../models/Food');
+
+/**
+ * Generate blur hash from image URL
+ */
+async function generateBlurHash(imageUrl) {
+    try {
+        // Fetch image
+        const response = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 10000 });
+        const buffer = Buffer.from(response.data);
+
+        // Process with sharp
+        const { data, info } = await sharp(buffer)
+            .raw()
+            .ensureAlpha()
+            .resize(32, 32, { fit: 'inside' })
+            .toBuffer({ resolveWithObject: true });
+
+        // Encode blur hash
+        const blurHash = encode(
+            new Uint8ClampedArray(data),
+            info.width,
+            info.height,
+            4, // componentX
+            3  // componentY
+        );
+
+        return blurHash;
+    } catch (error) {
+        console.log(`  ⚠️  Could not generate blur hash: ${error.message}`);
+        return null;
+    }
+}
 
 // Sample media URLs (using placeholder images)
 const sampleImages = [
@@ -173,6 +208,10 @@ async function addSampleStatuses() {
                     linkedFood = foods[Math.floor(Math.random() * foods.length)]._id;
                 }
 
+                // Generate blur hash for the image
+                console.log(`  🔄 Generating blur hash for: ${template.title}...`);
+                const blurHash = await generateBlurHash(mediaUrl);
+
                 // Create the status
                 const statusData = {
                     restaurant: restaurant._id,
@@ -182,6 +221,7 @@ async function addSampleStatuses() {
                     mediaType: category === 'video' ? 'video' : 'image',
                     mediaUrl,
                     thumbnailUrl: category === 'video' ? mediaUrl : null,
+                    blurHash,
                     discountPercentage: template.discountPercentage || null,
                     promoCode: template.promoCode || null,
                     linkedFood,
@@ -194,7 +234,7 @@ async function addSampleStatuses() {
 
                 const status = await Status.create(statusData);
                 createdStatuses.push(status);
-                console.log(`  ✅ Created: ${template.title} (${category})`);
+                console.log(`  ✅ Created: ${template.title} (${category}) ${blurHash ? '+ blur hash' : ''}`);
             }
         }
 

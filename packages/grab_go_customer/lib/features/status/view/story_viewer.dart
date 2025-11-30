@@ -16,8 +16,15 @@ class StoryViewer extends StatefulWidget {
   final String restaurantId;
   final String restaurantName;
   final String? restaurantLogo;
+  final String? initialBlurHash; // Show while loading
 
-  const StoryViewer({super.key, required this.restaurantId, required this.restaurantName, this.restaurantLogo});
+  const StoryViewer({
+    super.key,
+    required this.restaurantId,
+    required this.restaurantName,
+    this.restaurantLogo,
+    this.initialBlurHash,
+  });
 
   @override
   State<StoryViewer> createState() => _StoryViewerState();
@@ -176,6 +183,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
         statusBarColor: Colors.black,
         statusBarIconBrightness: Brightness.light,
         systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.transparent,
       ),
       child: Scaffold(
         backgroundColor: Colors.black,
@@ -184,7 +192,15 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
             final statuses = provider.currentRestaurantStatuses;
 
             if (statuses.isEmpty) {
-              return Center(child: CircularProgressIndicator(color: colors.accentOrange));
+              // Show blur hash placeholder while loading statuses
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  _buildBlurHashPlaceholder(widget.initialBlurHash),
+                  // Loading indicator overlay
+                  Center(child: CircularProgressIndicator(color: Colors.white.withValues(alpha: 0.7), strokeWidth: 2)),
+                ],
+              );
             }
 
             if (!_isInitialized && statuses.isNotEmpty) {

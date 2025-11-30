@@ -300,6 +300,7 @@ class StoryModel {
   final double totalEngagement;
   final DateTime latestStatusAt;
   final StatusCategory latestCategory;
+  final String? latestBlurHash; // Blur hash of latest status for loading placeholder
   final bool isViewed; // Tracked locally
 
   StoryModel({
@@ -313,6 +314,7 @@ class StoryModel {
     required this.totalEngagement,
     required this.latestStatusAt,
     required this.latestCategory,
+    this.latestBlurHash,
     this.isViewed = false,
   });
 
@@ -330,6 +332,7 @@ class StoryModel {
       totalEngagement: (json['totalEngagement'] ?? 0).toDouble(),
       latestStatusAt: DateTime.tryParse(json['latestStatusAt'] ?? '') ?? DateTime.now(),
       latestCategory: StatusCategory.fromString(json['latestCategory'] ?? 'daily_special'),
+      latestBlurHash: json['latestBlurHash'],
     );
   }
 
@@ -346,6 +349,7 @@ class StoryModel {
       totalEngagement: totalEngagement,
       latestStatusAt: latestStatusAt,
       latestCategory: latestCategory,
+      latestBlurHash: latestBlurHash,
       isViewed: isViewed ?? this.isViewed,
     );
   }
@@ -362,6 +366,7 @@ class StoryModel {
     'totalEngagement': totalEngagement,
     'latestStatusAt': latestStatusAt.toIso8601String(),
     'latestCategory': latestCategory.toApiString(),
+    'latestBlurHash': latestBlurHash,
   };
 }
 

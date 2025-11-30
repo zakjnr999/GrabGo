@@ -43,10 +43,12 @@ class StatusProvider with ChangeNotifier {
 
   // Loading states
   bool _isLoadingStories = false;
-  bool get isLoadingStories => _isLoadingStories;
+  bool _hasLoadedStories = false; // Track if initial fetch was done
+  bool get isLoadingStories => _isLoadingStories || (!_hasLoadedStories && _stories.isEmpty);
 
   bool _isLoadingStatuses = false;
-  bool get isLoadingStatuses => _isLoadingStatuses;
+  bool _hasLoadedStatuses = false; // Track if initial fetch was done
+  bool get isLoadingStatuses => _isLoadingStatuses || (!_hasLoadedStatuses && _statuses.isEmpty);
 
   bool _isLoadingMore = false;
   bool get isLoadingMore => _isLoadingMore;
@@ -130,6 +132,7 @@ class StatusProvider with ChangeNotifier {
       }
     } finally {
       _isLoadingStories = false;
+      _hasLoadedStories = true;
       notifyListeners();
     }
   }
@@ -181,6 +184,7 @@ class StatusProvider with ChangeNotifier {
       }
     } finally {
       _isLoadingStatuses = false;
+      _hasLoadedStatuses = true;
       notifyListeners();
     }
   }
@@ -276,7 +280,7 @@ class StatusProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Mark a story as viewed and move it to the end of the list (WhatsApp-style)
+  /// Mark a story as viewed and move it to the end of the list
   Future<void> markStoryAsViewed(String restaurantId) async {
     final storyIndex = _stories.indexWhere((s) => s.restaurantId == restaurantId);
     if (storyIndex >= 0 && !_stories[storyIndex].isViewed) {

@@ -70,6 +70,9 @@ class StatusRepository {
 
       // Check if cache is still valid
       if (DateTime.now().difference(cachedTime) > _cacheValidDuration) {
+        // Clear stale cache
+        await prefs.remove(key);
+        await prefs.remove('${key}_timestamp');
         return null;
       }
 
@@ -83,6 +86,18 @@ class StatusRepository {
       }
     }
     return null;
+  }
+
+  /// Filter out expired statuses from a list
+  List<StatusModel> _filterExpiredStatuses(List<StatusModel> statuses) {
+    final now = DateTime.now();
+    return statuses.where((status) => status.expiresAt.isAfter(now)).toList();
+  }
+
+  /// Filter out expired stories from a list
+  List<StoryModel> _filterExpiredStories(List<StoryModel> stories) {
+    final now = DateTime.now();
+    return stories.where((story) => story.latestStatusAt.isAfter(now.subtract(const Duration(hours: 24)))).toList();
   }
 
   Future<void> clearCache() async {
@@ -119,13 +134,26 @@ class StatusRepository {
         (data) => (data as List).map((json) => StatusModel.fromJson(json as Map<String, dynamic>)).toList(),
       );
       if (cached != null) {
-        if (kDebugMode) {
-          print('📦 Using cached statuses');
+        // Filter out expired statuses from cache
+        final validStatuses = _filterExpiredStatuses(cached);
+        if (validStatuses.isNotEmpty) {
+          if (kDebugMode) {
+            print(
+              '📦 Using cached statuses (${validStatuses.length} valid, ${cached.length - validStatuses.length} expired)',
+            );
+          }
+          return (
+            statuses: validStatuses,
+            pagination: StatusPagination(
+              currentPage: 1,
+              totalPages: 1,
+              totalItems: validStatuses.length,
+              itemsPerPage: limit,
+            ),
+          );
         }
-        return (
-          statuses: cached,
-          pagination: StatusPagination(currentPage: 1, totalPages: 1, totalItems: cached.length, itemsPerPage: limit),
-        );
+        // All cached statuses expired, clear cache and fetch fresh
+        await clearCache();
       }
     }
 
@@ -168,10 +196,18 @@ class StatusRepository {
         (data) => (data as List).map((json) => StoryModel.fromJson(json as Map<String, dynamic>)).toList(),
       );
       if (cached != null) {
-        if (kDebugMode) {
-          print('📦 Using cached stories');
+        // Filter out expired stories from cache
+        final validStories = _filterExpiredStories(cached);
+        if (validStories.isNotEmpty) {
+          if (kDebugMode) {
+            print(
+              '📦 Using cached stories (${validStories.length} valid, ${cached.length - validStories.length} expired)',
+            );
+          }
+          return validStories;
         }
-        return cached;
+        // All cached stories expired, clear cache and fetch fresh
+        await clearCache();
       }
     }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
@@ -52,41 +53,49 @@ class _StatusPageState extends State<StatusPage> {
     return Scaffold(
       backgroundColor: colors.backgroundSecondary,
       appBar: _buildAppBar(colors),
-      body: Consumer<StatusProvider>(
-        builder: (context, provider, child) {
-          return RefreshIndicator(
-            onRefresh: () async {
-              await provider.refreshStories();
-              await provider.refreshStatuses();
-            },
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.only(bottom: 24.h),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(colors),
-                  SizedBox(height: KSpacing.lg.h),
-                  _buildSectionHeader(colors, "New From Restaurants", Assets.icons.flame, colors.accentViolet),
-                  SizedBox(height: KSpacing.lg.h),
-                  _buildStoriesRow(colors, provider),
-                  SizedBox(height: KSpacing.lg.h),
-                  _buildCategoryTabs(colors),
-                  SizedBox(height: KSpacing.lg.h),
-                  _buildSectionHeader(colors, _getSectionTitle(), _getSectionIcon(), _getSectionColor(colors)),
-                  SizedBox(height: 12.h),
-                  _buildStatusesList(colors, provider, isDark),
-                  if (provider.recommendedStatuses.isNotEmpty) ...[
-                    SizedBox(height: 24.h),
-                    _buildSectionHeader(colors, "Recommended For You", Assets.icons.flame, colors.accentViolet),
+      body: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+          systemNavigationBarColor: colors.backgroundPrimary,
+          systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        ),
+        child: Consumer<StatusProvider>(
+          builder: (context, provider, child) {
+            return RefreshIndicator(
+              onRefresh: () async {
+                await provider.refreshStories();
+                await provider.refreshStatuses();
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.only(bottom: 24.h),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(colors),
+                    SizedBox(height: KSpacing.lg.h),
+                    _buildSectionHeader(colors, "New From Restaurants", Assets.icons.flame, colors.accentViolet),
+                    SizedBox(height: KSpacing.lg.h),
+                    _buildStoriesRow(colors, provider),
+                    SizedBox(height: KSpacing.lg.h),
+                    _buildCategoryTabs(colors),
+                    SizedBox(height: KSpacing.lg.h),
+                    _buildSectionHeader(colors, _getSectionTitle(), _getSectionIcon(), _getSectionColor(colors)),
                     SizedBox(height: 12.h),
-                    _buildRecommendedRow(colors, provider.recommendedStatuses, isDark),
+                    _buildStatusesList(colors, provider, isDark),
+                    if (provider.recommendedStatuses.isNotEmpty) ...[
+                      SizedBox(height: 24.h),
+                      _buildSectionHeader(colors, "Recommended For You", Assets.icons.flame, colors.accentViolet),
+                      SizedBox(height: 12.h),
+                      _buildRecommendedRow(colors, provider.recommendedStatuses, isDark),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
@@ -369,6 +378,7 @@ class _StatusPageState extends State<StatusPage> {
             restaurantId: story.restaurantId,
             restaurantName: story.restaurantName,
             restaurantLogo: story.logo,
+            initialBlurHash: story.latestBlurHash,
           );
         },
         transitionsBuilder: (context, animation, secondaryAnimation, child) {

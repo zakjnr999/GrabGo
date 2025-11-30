@@ -240,7 +240,8 @@ router.get('/stories', async (req, res) => {
                     totalLikes: 1,
                     totalEngagement: 1,
                     latestStatusAt: '$latestStatus.createdAt',
-                    latestCategory: '$latestStatus.category'
+                    latestCategory: '$latestStatus.category',
+                    latestBlurHash: '$latestStatus.blurHash'
                 }
             },
             {
