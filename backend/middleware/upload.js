@@ -88,6 +88,8 @@ exports.uploadToCloudinary = async (req, res, next) => {
       subfolder = 'foods';
     } else if (req.file.fieldname === 'business_id_photo' || req.file.fieldname === 'owner_photo') {
       subfolder = 'documents';
+    } else if (req.file.fieldname === 'media') {
+      subfolder = 'statuses';
     }
 
     const cloudinaryResult = await uploadMulterFile(req.file, {
@@ -97,6 +99,29 @@ exports.uploadToCloudinary = async (req, res, next) => {
 
     req.file.cloudinaryUrl = cloudinaryResult.url;
     req.file.cloudinaryPublicId = cloudinaryResult.public_id;
+
+    // Generate BlurHash for images (used for status placeholders)
+    if (req.file.mimetype && req.file.mimetype.startsWith('image/') && req.file.buffer) {
+      try {
+        const { data, info } = await sharp(req.file.buffer)
+          .raw()
+          .ensureAlpha()
+          .resize(32, 32, { fit: 'inside' })
+          .toBuffer({ resolveWithObject: true });
+
+        const blurHash = encode(
+          new Uint8ClampedArray(data),
+          info.width,
+          info.height,
+          4, // componentX
+          3  // componentY
+        );
+        req.file.blurHash = blurHash;
+      } catch (blurError) {
+        console.error('BlurHash generation error:', blurError);
+        req.file.blurHash = null;
+      }
+    }
 
     next();
   } catch (error) {

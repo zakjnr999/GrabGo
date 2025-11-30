@@ -8,11 +8,10 @@ import 'package:shimmer/shimmer.dart';
 import 'package:grab_go_customer/features/status/model/status_model.dart';
 import 'package:grab_go_customer/features/status/viewmodel/status_provider.dart';
 import 'package:grab_go_customer/features/status/view/story_viewer.dart';
-import 'package:grab_go_customer/shared/widgets/status_card_new.dart';
+import 'package:grab_go_customer/shared/widgets/status_card.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
-/// Main Status Page - displays stories and status posts from restaurants
 class StatusPage extends StatefulWidget {
   const StatusPage({super.key});
 
@@ -330,7 +329,16 @@ class _StatusPageState extends State<StatusPage> {
                     imageUrl: story.logo!,
                     fit: BoxFit.cover,
                     placeholder: (_, __) => Container(color: colors.inputBorder.withAlpha(50)),
-                    errorWidget: (_, __, ___) => Icon(Icons.restaurant, color: colors.textSecondary),
+                    errorWidget: (_, __, ___) => Container(
+                      height: 20.h,
+                      width: 20.w,
+                      padding: EdgeInsets.all(20.r),
+                      child: SvgPicture.asset(
+                        Assets.icons.utensilsCrossed,
+                        package: "grab_go_shared",
+                        colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                      ),
+                    ),
                   )
                 : Icon(Icons.restaurant, color: colors.textSecondary, size: 32.r),
           ),
@@ -558,7 +566,6 @@ class _StatusPageState extends State<StatusPage> {
     return category.getColor(context);
   }
 
-  /// Shimmer loading for stories row
   Widget _buildStoriesShimmer(AppColorsExtension colors) {
     return SizedBox(
       height: 110.h,

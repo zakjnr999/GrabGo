@@ -3,7 +3,6 @@ import 'package:flutter/material.dart' hide Notification;
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/auth/view/location_permission.dart';
 import 'package:grab_go_customer/features/home/navigation/bottom_navigator.dart';
-import 'package:grab_go_customer/features/status/view/status_main.dart';
 import 'package:grab_go_customer/features/status/view/status_page.dart';
 import 'package:grab_go_customer/shared/widgets/deep_link_error_screen.dart';
 import 'package:grab_go_customer/shared/widgets/food_from_link_handler.dart';
@@ -257,25 +256,6 @@ final GoRouter appRouter = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: const RestaurantRegistration(),
-          transitionDuration: const Duration(milliseconds: 800),
-          reverseTransitionDuration: const Duration(milliseconds: 800),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return SharedAxisTransition(
-              animation: animation,
-              secondaryAnimation: secondaryAnimation,
-              transitionType: SharedAxisTransitionType.vertical,
-              child: child,
-            );
-          },
-        );
-      },
-    ),
-    GoRoute(
-      path: "/statusMain",
-      pageBuilder: (context, state) {
-        return CustomTransitionPage(
-          key: state.pageKey,
-          child: const StatusMain(),
           transitionDuration: const Duration(milliseconds: 800),
           reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {

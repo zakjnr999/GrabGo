@@ -2,6 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/svg.dart';
+import 'package:flutter_blurhash/flutter_blurhash.dart';
+import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:share_plus/share_plus.dart';
@@ -9,7 +12,6 @@ import 'package:grab_go_customer/features/status/model/status_model.dart';
 import 'package:grab_go_customer/features/status/viewmodel/status_provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
-/// Full-screen story viewer for viewing restaurant statuses
 class StoryViewer extends StatefulWidget {
   final String restaurantId;
   final String restaurantName;
@@ -145,6 +147,15 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     Navigator.of(context).pop();
   }
 
+  /// Build blur hash placeholder for image loading
+  Widget _buildBlurHashPlaceholder(String? blurHash) {
+    if (blurHash != null && blurHash.isNotEmpty) {
+      return BlurHash(hash: blurHash, imageFit: BoxFit.cover, decodingWidth: 32, decodingHeight: 32);
+    }
+    // Fallback to black container if no blur hash
+    return Container(color: Colors.black);
+  }
+
   void _onTapUp(TapUpDetails details) {
     final screenWidth = MediaQuery.of(context).size.width;
     final tapX = details.globalPosition.dx;
@@ -160,73 +171,80 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
   Widget build(BuildContext context) {
     final colors = context.appColors;
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Consumer<StatusProvider>(
-        builder: (context, provider, child) {
-          final statuses = provider.currentRestaurantStatuses;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.black,
+        statusBarIconBrightness: Brightness.light,
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Consumer<StatusProvider>(
+          builder: (context, provider, child) {
+            final statuses = provider.currentRestaurantStatuses;
 
-          if (statuses.isEmpty) {
-            return Center(child: CircularProgressIndicator(color: colors.accentOrange));
-          }
+            if (statuses.isEmpty) {
+              return Center(child: CircularProgressIndicator(color: colors.accentOrange));
+            }
 
-          if (!_isInitialized && statuses.isNotEmpty) {
-            _isInitialized = true;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                _startProgress(statuses[_currentIndex]);
-                // Preload upcoming images
-                _preloadNextImages(statuses);
-              }
-            });
-          }
+            if (!_isInitialized && statuses.isNotEmpty) {
+              _isInitialized = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  _startProgress(statuses[_currentIndex]);
+                  // Preload upcoming images
+                  _preloadNextImages(statuses);
+                }
+              });
+            }
 
-          final currentStatus = statuses[_currentIndex];
+            final currentStatus = statuses[_currentIndex];
 
-          return GestureDetector(
-            onTapUp: _onTapUp,
-            onLongPressStart: (_) => _progressController.stop(),
-            onLongPressEnd: (_) => _progressController.forward(),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                CachedNetworkImage(
-                  imageUrl: currentStatus.mediaUrl,
-                  fit: BoxFit.cover,
-                  placeholder: (_, __) => Container(color: Colors.black),
-                  errorWidget: (_, __, ___) => Container(color: Colors.grey[900]),
-                ),
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.black.withOpacity(0.6),
-                        Colors.transparent,
-                        Colors.transparent,
-                        Colors.black.withOpacity(0.8),
-                      ],
-                      stops: const [0.0, 0.2, 0.7, 1.0],
+            return GestureDetector(
+              onTapUp: _onTapUp,
+              onLongPressStart: (_) => _progressController.stop(),
+              onLongPressEnd: (_) => _progressController.forward(),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  CachedNetworkImage(
+                    imageUrl: currentStatus.mediaUrl,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => _buildBlurHashPlaceholder(currentStatus.blurHash),
+                    errorWidget: (_, __, ___) => Container(color: Colors.grey[900]),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withOpacity(0.6),
+                          Colors.transparent,
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.8),
+                        ],
+                        stops: const [0.0, 0.2, 0.7, 1.0],
+                      ),
                     ),
                   ),
-                ),
-                SafeArea(
-                  child: Column(
-                    children: [
-                      _buildProgressBars(statuses.length),
-                      SizedBox(height: 12.h),
-                      _buildHeader(colors, currentStatus),
-                      const Spacer(),
-                      _buildBottomContent(colors, currentStatus, provider),
-                      SizedBox(height: 20.h),
-                    ],
+                  SafeArea(
+                    child: Column(
+                      children: [
+                        _buildProgressBars(statuses.length),
+                        SizedBox(height: 12.h),
+                        _buildHeader(colors, currentStatus),
+                        const Spacer(),
+                        _buildBottomContent(colors, currentStatus, provider),
+                        SizedBox(height: 20.h),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          );
-        },
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -351,14 +369,20 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
                     child: Container(
                       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8.r),
-                        border: Border.all(color: Colors.white.withOpacity(0.5)),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.copy, color: Colors.white, size: 16.r),
+                          SvgPicture.asset(
+                            Assets.icons.copy,
+                            package: "grab_go_shared",
+                            height: 16.h,
+                            width: 16.w,
+                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                          ),
                           SizedBox(width: 6.w),
                           Text(
                             status.promoCode!,
@@ -376,25 +400,14 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
           Row(
             children: [
               _buildActionButton(
-                icon: provider.isLiked(status.id) ? Icons.favorite : Icons.favorite_border,
+                icon: provider.isLiked(status.id) ? Assets.icons.heartSolid : Assets.icons.heart,
                 label: '${status.likeCount}',
-                color: provider.isLiked(status.id) ? Colors.red : Colors.white,
                 onTap: () => provider.toggleLike(status.id),
               ),
               SizedBox(width: 24.w),
-              _buildActionButton(
-                icon: Icons.visibility,
-                label: '${status.viewCount}',
-                color: Colors.white,
-                onTap: null,
-              ),
+              _buildActionButton(icon: Assets.icons.eye, label: '${status.viewCount}', onTap: null),
               SizedBox(width: 24.w),
-              _buildActionButton(
-                icon: Icons.share,
-                label: 'Share',
-                color: Colors.white,
-                onTap: () => _shareStatus(status),
-              ),
+              _buildActionButton(icon: Assets.icons.shareAndroid, label: 'Share', onTap: () => _shareStatus(status)),
               const Spacer(),
               if (status.linkedFood != null)
                 ElevatedButton(
@@ -417,17 +430,18 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     );
   }
 
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    VoidCallback? onTap,
-  }) {
+  Widget _buildActionButton({required String icon, required String label, VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Row(
         children: [
-          Icon(icon, color: color, size: 24.r),
+          SvgPicture.asset(
+            icon,
+            package: "grab_go_shared",
+            height: 20.h,
+            width: 20.w,
+            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+          ),
           SizedBox(width: 6.w),
           Text(
             label,

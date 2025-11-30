@@ -36,6 +36,7 @@
         "firebase_core",
         "firebase_messaging",
         "flutter",
+        "flutter_blurhash",
         "flutter_credit_card",
         "flutter_gen",
         "flutter_image_slideshow",

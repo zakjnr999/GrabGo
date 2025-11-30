@@ -4,10 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 
-/// An animated "last seen" text widget that mimics WhatsApp's behavior.
-///
-/// First displays "Last seen today" (or yesterday/date), then slides left
-/// to reveal just the time like "10:30 AM".
 class AnimatedLastSeenText extends StatefulWidget {
   const AnimatedLastSeenText({
     super.key,
@@ -31,7 +27,7 @@ class _AnimatedLastSeenTextState extends State<AnimatedLastSeenText> with Single
   late Animation<double> _animation;
   Timer? _delayTimer;
   Timer? _reverseTimer;
-  bool _showingTime = false;
+  bool showingTime = false;
 
   @override
   void initState() {
@@ -50,7 +46,7 @@ class _AnimatedLastSeenTextState extends State<AnimatedLastSeenText> with Single
     // Show date first, then after delay slide to time
     _delayTimer = Timer(const Duration(milliseconds: 2000), () {
       if (mounted) {
-        setState(() => _showingTime = true);
+        setState(() => showingTime = true);
         _controller.forward();
       }
     });
@@ -63,7 +59,7 @@ class _AnimatedLastSeenTextState extends State<AnimatedLastSeenText> with Single
     final diff = (oldWidget.timestamp.millisecondsSinceEpoch - widget.timestamp.millisecondsSinceEpoch).abs();
     if (diff > 60000) {
       _controller.reset();
-      setState(() => _showingTime = false);
+      setState(() => showingTime = false);
       _startCycle();
     }
   }
