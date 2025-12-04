@@ -4,12 +4,12 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
+import 'package:grab_go_shared/shared/services/cache_service.dart';
 import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
 import 'package:grab_go_shared/shared/utils/constants.dart';
 import 'package:chopper/chopper.dart';
 import 'package:grab_go_shared/core/auth/user_model.dart';
 import 'package:grab_go_shared/core/auth/rider_model.dart';
-import 'package:grab_go_rider/shared/service/cache_service.dart';
 import 'package:grab_go_rider/core/api/api_client.dart' show riderService;
 
 class HomeSliverAppbar extends StatefulWidget {

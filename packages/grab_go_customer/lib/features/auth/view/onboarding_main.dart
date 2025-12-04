@@ -74,29 +74,17 @@ class _OnboardingMain extends State<OnboardingMain> {
                   ],
                 ),
                 Positioned(
-                  bottom: 120.h,
+                  bottom: MediaQuery.of(context).padding.bottom + 90.h,
                   left: 0,
                   right: 0,
                   child: Center(
                     child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 16.w,
-                        vertical: 8.h,
-                      ),
+                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(20.r),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.3),
-                          width: 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 10,
-                            spreadRadius: 2,
-                          ),
-                        ],
+                        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, spreadRadius: 2)],
                       ),
                       child: SmoothPageIndicator(
                         controller: _controller,
@@ -121,5 +109,3 @@ class _OnboardingMain extends State<OnboardingMain> {
     );
   }
 }
-
-

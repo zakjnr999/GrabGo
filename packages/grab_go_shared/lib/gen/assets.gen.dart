@@ -174,6 +174,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/dollar.svg
   String get dollar => 'lib/assets/icons/dollar.svg';
 
+  /// File path: lib/assets/icons/double-check.svg
+  String get doubleCheck => 'lib/assets/icons/double-check.svg';
+
   /// File path: lib/assets/icons/edit-pencil.svg
   String get editPencil => 'lib/assets/icons/edit-pencil.svg';
 
@@ -478,6 +481,7 @@ class $LibAssetsIconsGen {
     deliveryGuyIcon,
     discount,
     dollar,
+    doubleCheck,
     editPencil,
     edit,
     emoji,

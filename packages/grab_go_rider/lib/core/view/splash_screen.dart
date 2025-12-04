@@ -8,7 +8,6 @@ import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_rider/shared/service/storage_service.dart';
 import 'package:grab_go_rider/shared/service/auth_guard.dart';
 import 'package:grab_go_rider/shared/service/user_service.dart';
-import 'package:grab_go_rider/shared/service/chat_socket_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});

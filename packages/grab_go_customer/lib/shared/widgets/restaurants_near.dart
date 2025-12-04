@@ -26,36 +26,160 @@ class _RestaurantListState extends State<RestaurantsNear> {
     Size size = MediaQuery.sizeOf(context);
 
     if (widget.isLoading) {
-      return Shimmer.fromColors(
-        baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-        highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
-        child: ListView.builder(
-          physics: const NeverScrollableScrollPhysics(),
-          shrinkWrap: true,
-          itemCount: 3,
-          padding: EdgeInsets.symmetric(horizontal: 20.w),
-          itemBuilder: (context, index) {
-            return Container(
-              height: 120.h,
-              margin: EdgeInsets.only(bottom: 16.h),
-              decoration: BoxDecoration(
-                color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-              ),
-            );
-          },
+      return SizedBox(
+        height: 120.h,
+        child: Shimmer.fromColors(
+          baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+          highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: Column(
+              children: List.generate(4, (index) {
+                return Container(
+                  margin: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 12.h),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade300, width: 0.5),
+                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                  ),
+                  child: Row(
+                    children: [
+                      // Image placeholder
+                      Container(
+                        height: size.height * 0.14,
+                        width: size.width * 0.32,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(KBorderSize.borderRadius15),
+                            bottomLeft: Radius.circular(KBorderSize.borderRadius15),
+                          ),
+                        ),
+                      ),
+
+                      // Itemname placeholder
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12.r, vertical: 8.h),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 140.w,
+                                height: 16.h,
+                                decoration: BoxDecoration(
+                                  color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                  borderRadius: BorderRadius.circular(4.r),
+                                ),
+                              ),
+                              SizedBox(height: 6.h),
+                              // Rating and delivery time placeholder
+                              Container(
+                                width: 120.w,
+                                height: 16.h,
+                                decoration: BoxDecoration(
+                                  color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                  borderRadius: BorderRadius.circular(4.r),
+                                ),
+                              ),
+                              SizedBox(height: 10.h),
+                              // Price placeholder
+                              Container(
+                                width: 100.w,
+                                height: 16.h,
+                                decoration: BoxDecoration(
+                                  color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                  borderRadius: BorderRadius.circular(4.r),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ),
+          ),
         ),
       );
     }
 
     if (widget.restaurants.isEmpty) {
-      return Container(
+      return SizedBox(
         height: 120.h,
-        margin: EdgeInsets.symmetric(horizontal: 20.w),
-        child: Center(
-          child: Text(
-            'No restaurants found nearby',
-            style: TextStyle(color: colors.textSecondary, fontSize: 14.sp),
+        child: Shimmer.fromColors(
+          baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+          highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: Column(
+              children: List.generate(4, (index) {
+                return Container(
+                  margin: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 12.h),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade300, width: 0.5),
+                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                  ),
+                  child: Row(
+                    children: [
+                      // Image placeholder
+                      Container(
+                        height: size.height * 0.14,
+                        width: size.width * 0.32,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(KBorderSize.borderRadius15),
+                            bottomLeft: Radius.circular(KBorderSize.borderRadius15),
+                          ),
+                        ),
+                      ),
+
+                      // Itemname placeholder
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12.r, vertical: 8.h),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 140.w,
+                                height: 16.h,
+                                decoration: BoxDecoration(
+                                  color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                  borderRadius: BorderRadius.circular(4.r),
+                                ),
+                              ),
+                              SizedBox(height: 6.h),
+                              // Rating and delivery time placeholder
+                              Container(
+                                width: 120.w,
+                                height: 16.h,
+                                decoration: BoxDecoration(
+                                  color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                  borderRadius: BorderRadius.circular(4.r),
+                                ),
+                              ),
+                              SizedBox(height: 10.h),
+                              // Price placeholder
+                              Container(
+                                width: 100.w,
+                                height: 16.h,
+                                decoration: BoxDecoration(
+                                  color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                  borderRadius: BorderRadius.circular(4.r),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ),
           ),
         ),
       );

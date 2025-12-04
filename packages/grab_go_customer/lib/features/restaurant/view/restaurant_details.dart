@@ -785,97 +785,99 @@ class _RestaurantDetailsState extends State<RestaurantDetails> with TickerProvid
             },
           ),
 
-          bottomNavigationBar: Container(
-            height: size.height * 0.12,
-            decoration: BoxDecoration(
-              color: colors.backgroundPrimary,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(KBorderSize.border),
-                topRight: Radius.circular(KBorderSize.border),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(10),
-                  spreadRadius: 1,
-                  blurRadius: 20,
-                  offset: const Offset(0, -3),
+          bottomNavigationBar: SafeArea(
+            child: Container(
+              height: size.height * 0.12,
+              decoration: BoxDecoration(
+                color: colors.backgroundPrimary,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(KBorderSize.border),
+                  topRight: Radius.circular(KBorderSize.border),
                 ),
-              ],
-            ),
-            padding: EdgeInsets.all(14.r),
-            child: Consumer<CartProvider>(
-              builder: (context, provider, _) {
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                      child: Row(
-                        children: [
-                          SvgPicture.asset(
-                            Assets.icons.cart,
-                            package: 'grab_go_shared',
-                            height: 20.h,
-                            width: 20.w,
-                            colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                          ),
-                          SizedBox(width: 5.w),
-                          Text(
-                            provider.totalQuantity == 0
-                                ? "Empty cart"
-                                : provider.totalQuantity > 1
-                                ? "${provider.totalQuantity} items"
-                                : "${provider.totalQuantity} item",
-                            style: TextStyle(fontSize: 14.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
-                          ),
-                        ],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(10),
+                    spreadRadius: 1,
+                    blurRadius: 20,
+                    offset: const Offset(0, -3),
+                  ),
+                ],
+              ),
+              padding: EdgeInsets.all(14.r),
+              child: Consumer<CartProvider>(
+                builder: (context, provider, _) {
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                        child: Row(
+                          children: [
+                            SvgPicture.asset(
+                              Assets.icons.cart,
+                              package: 'grab_go_shared',
+                              height: 20.h,
+                              width: 20.w,
+                              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                            ),
+                            SizedBox(width: 5.w),
+                            Text(
+                              provider.totalQuantity == 0
+                                  ? "Empty cart"
+                                  : provider.totalQuantity > 1
+                                  ? "${provider.totalQuantity} items"
+                                  : "${provider.totalQuantity} item",
+                              style: TextStyle(fontSize: 14.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    Text(
-                      "GHC ${provider.totalPrice.toStringAsFixed(2)}",
-                      style: TextStyle(fontSize: 14.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
-                    ),
+                      Text(
+                        "GHC ${provider.totalPrice.toStringAsFixed(2)}",
+                        style: TextStyle(fontSize: 14.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
+                      ),
 
-                    Row(
-                      children: [
-                        Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () {
-                              context.push("/cart");
-                            },
-                            borderRadius: BorderRadius.circular(KBorderSize.border),
-                            splashColor: colors.accentOrange.withValues(alpha: 0.05),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                              child: Row(
-                                children: [
-                                  Text(
-                                    "View Cart",
-                                    style: TextStyle(
-                                      fontSize: 14.sp,
-                                      color: colors.textPrimary,
-                                      fontWeight: FontWeight.w600,
+                      Row(
+                        children: [
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                context.push("/cart");
+                              },
+                              borderRadius: BorderRadius.circular(KBorderSize.border),
+                              splashColor: colors.accentOrange.withValues(alpha: 0.05),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      "View Cart",
+                                      style: TextStyle(
+                                        fontSize: 14.sp,
+                                        color: colors.textPrimary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
-                                  ),
-                                  SizedBox(width: 5.w),
-                                  SvgPicture.asset(
-                                    Assets.icons.navArrowRight,
-                                    package: 'grab_go_shared',
-                                    height: 20.h,
-                                    width: 20.w,
-                                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                                  ),
-                                ],
+                                    SizedBox(width: 5.w),
+                                    SvgPicture.asset(
+                                      Assets.icons.navArrowRight,
+                                      package: 'grab_go_shared',
+                                      height: 20.h,
+                                      width: 20.w,
+                                      colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
-                );
-              },
+                        ],
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
           ),
         ),

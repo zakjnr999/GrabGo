@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_customer/features/order/service/order_service_wrapper.dart';
-import 'package:grab_go_customer/shared/services/cache_service.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
+import 'package:grab_go_shared/shared/services/cache_service.dart';
 
 class OrderProvider extends ChangeNotifier {
   List<Map<String, dynamic>> _orders = [];
@@ -13,7 +13,6 @@ class OrderProvider extends ChangeNotifier {
   String? get error => _error;
 
   Future<void> fetchOrders({bool forceRefresh = false}) async {
-
     // Check authentication first
     final userService = UserService();
     final token = CacheService.getAuthToken();

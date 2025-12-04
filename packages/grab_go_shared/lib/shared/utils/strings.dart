@@ -1,12 +1,12 @@
 class AppStrings {
   static const String appName = "GrabGo";
-  static const String onboardingOneMain = "Taste the vibrant flavours of Ghana in every bite. 🍽️";
+  static const String onboardingOneMain = "Taste the vibrant flavours of Ghana in every bite.";
   static const String onboardingOneSub =
       "From spicy plantains to hearty stews, GrabGo delivers the soul-of-home meals that make your day memorable.";
   static const String onboardingTwoMain = "Fresh meals, perfectly cooked for you.";
   static const String onboardingTwoSub =
       "We partner with trusted delivery riders to bring your favorite dishes hot and fresh in record time. Sit back, relax, and let us handle the journey from kitchen to doorstep with care.";
-  static const String onboardingThreeMain = "Track, order, and enjoy with ease. 📱";
+  static const String onboardingThreeMain = "Track, order, and enjoy with ease.";
   static const String onboardingThreeSub =
       "Get real-time updates from checkout to delivery. Reorder your favorite meals, explore new restaurants, and manage everything effortlessly—all from one simple, beautiful app experience.";
   static const String skip = "Skip";
@@ -156,8 +156,13 @@ class AppStrings {
   static const String riderRegisterPasswordLabel = "Set Password";
 
   static const String locationPermissionTitle = "Enable Location to Discover Nearby Restaurants";
+  static const String notificationPermissionTitle = "Faster Updates, Better Experience";
   static const String locationPermissionDescription =
       "To provide you with the fastest delivery and the best food options near you, we need access to your location. You can always change this later in your device settings.";
+  static const String notificationPermissionDescription =
+      "Enable notifications to stay updated on your orders, exclusive deals, and new restaurant arrivals. We promise to only send you the good stuff!";
   static const String locationPermissionAllow = "Allow Location";
   static const String locationPermissionSkip = "Skip for Now";
+  static const String notificationPermissionAllow = "Allow Notifications";
+  static const String notificationPermissionSkip = "Skip for Now";
 }

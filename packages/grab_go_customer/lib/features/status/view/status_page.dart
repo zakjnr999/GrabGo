@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:grab_go_customer/features/status/model/status_model.dart';
 import 'package:grab_go_customer/features/status/viewmodel/status_provider.dart';
@@ -45,6 +45,10 @@ class _StatusPageState extends State<StatusPage> {
     provider.fetchStatuses();
   }
 
+  void _navigateToAllStatuses(StatusCategory? category) {
+    context.push('/allStatuses', extra: category);
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
@@ -60,41 +64,95 @@ class _StatusPageState extends State<StatusPage> {
           systemNavigationBarColor: colors.backgroundPrimary,
           systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         ),
-        child: Consumer<StatusProvider>(
-          builder: (context, provider, child) {
-            return RefreshIndicator(
-              onRefresh: () async {
-                await provider.refreshStories();
-                await provider.refreshStatuses();
-              },
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.only(bottom: 24.h),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(colors),
-                    SizedBox(height: KSpacing.lg.h),
-                    _buildSectionHeader(colors, "New From Restaurants", Assets.icons.flame, colors.accentViolet),
-                    SizedBox(height: KSpacing.lg.h),
-                    _buildStoriesRow(colors, provider),
-                    SizedBox(height: KSpacing.lg.h),
-                    _buildCategoryTabs(colors),
-                    SizedBox(height: KSpacing.lg.h),
-                    _buildSectionHeader(colors, _getSectionTitle(), _getSectionIcon(), _getSectionColor(colors)),
-                    SizedBox(height: 12.h),
-                    _buildStatusesList(colors, provider, isDark),
-                    if (provider.recommendedStatuses.isNotEmpty) ...[
-                      SizedBox(height: 24.h),
-                      _buildSectionHeader(colors, "Recommended For You", Assets.icons.flame, colors.accentViolet),
+        child: SafeArea(
+          child: Consumer<StatusProvider>(
+            builder: (context, provider, child) {
+              return RefreshIndicator(
+                onRefresh: () async {
+                  await provider.refreshConnectivity();
+                  await provider.refreshStories();
+                  await provider.refreshStatuses();
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.only(bottom: 24.h),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Offline banner
+                      if (provider.isOffline)
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 16.w),
+                          color: colors.accentOrange.withValues(alpha: 0.15),
+                          child: Row(
+                            children: [
+                              SvgPicture.asset(
+                                Assets.icons.wifiOff,
+                                package: "grab_go_shared",
+                                height: 18.h,
+                                width: 18.w,
+                                colorFilter: const ColorFilter.mode(AppColors.accentOrange, BlendMode.srcIn),
+                              ),
+                              SizedBox(width: 8.w),
+                              Expanded(
+                                child: Text(
+                                  'You\'re offline. Please check your connection.',
+                                  style: TextStyle(
+                                    color: colors.accentOrange,
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => provider.refreshConnectivity(),
+                                child: SvgPicture.asset(
+                                  Assets.icons.refresh,
+                                  package: "grab_go_shared",
+                                  height: 16.h,
+                                  width: 16.w,
+                                  colorFilter: const ColorFilter.mode(AppColors.accentOrange, BlendMode.srcIn),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      _buildHeader(colors),
+                      SizedBox(height: KSpacing.lg.h),
+                      _buildSectionHeader(
+                        colors,
+                        "New From Restaurants",
+                        Assets.icons.flame,
+                        colors.accentViolet,
+                        onSeeAll: () {},
+                      ),
+                      SizedBox(height: KSpacing.lg.h),
+                      _buildStoriesRow(colors, provider),
+                      SizedBox(height: KSpacing.lg.h),
+                      _buildCategoryTabs(colors),
+                      SizedBox(height: KSpacing.lg.h),
+                      _buildSectionHeader(
+                        colors,
+                        _getSectionTitle(),
+                        _getSectionIcon(),
+                        _getSectionColor(colors),
+                        onSeeAll: () => _navigateToAllStatuses(_filters[_selectedFilterIndex].category),
+                      ),
                       SizedBox(height: 12.h),
-                      _buildRecommendedRow(colors, provider.recommendedStatuses, isDark),
+                      _buildStatusesList(colors, provider, isDark),
+                      if (provider.recommendedStatuses.isNotEmpty) ...[
+                        SizedBox(height: 24.h),
+                        _buildSectionHeader(colors, "Recommended For You", Assets.icons.flame, colors.accentViolet),
+                        SizedBox(height: 12.h),
+                        _buildRecommendedRow(colors, provider.recommendedStatuses, isDark),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -118,7 +176,7 @@ class _StatusPageState extends State<StatusPage> {
             customBorder: const CircleBorder(),
             splashColor: colors.iconSecondary.withAlpha(50),
             child: Padding(
-              padding: EdgeInsets.all(KSpacing.md12.r),
+              padding: EdgeInsets.all(16.r),
               child: SvgPicture.asset(
                 Assets.icons.navArrowLeft,
                 package: 'grab_go_shared',
@@ -194,7 +252,13 @@ class _StatusPageState extends State<StatusPage> {
     );
   }
 
-  Widget _buildSectionHeader(AppColorsExtension colors, String title, String icon, Color iconColor) {
+  Widget _buildSectionHeader(
+    AppColorsExtension colors,
+    String title,
+    String icon,
+    Color iconColor, {
+    VoidCallback? onSeeAll,
+  }) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 20.w),
       child: Row(
@@ -223,24 +287,21 @@ class _StatusPageState extends State<StatusPage> {
               ),
             ],
           ),
-          _buildSeeAllButton(colors),
+          if (onSeeAll != null) _buildSeeAllButton(colors, onSeeAll),
         ],
       ),
     );
   }
 
-  Widget _buildSeeAllButton(AppColorsExtension colors) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-      decoration: BoxDecoration(
-        color: colors.accentOrange.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20.r),
-      ),
-      child: InkWell(
-        onTap: () {
-          // Navigate to see all
-        },
-        borderRadius: BorderRadius.circular(20.r),
+  Widget _buildSeeAllButton(AppColorsExtension colors, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+        decoration: BoxDecoration(
+          color: colors.accentOrange.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(20.r),
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -268,39 +329,11 @@ class _StatusPageState extends State<StatusPage> {
     }
 
     if (provider.error != null && provider.stories.isEmpty) {
-      return SizedBox(
-        height: 110.h,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, color: colors.textSecondary, size: 32.r),
-              SizedBox(height: 8.h),
-              Text(
-                "Failed to load stories",
-                style: TextStyle(fontSize: 14.sp, color: colors.textSecondary),
-              ),
-              SizedBox(height: 8.h),
-              TextButton(
-                onPressed: () => provider.refreshStories(),
-                child: Text("Retry", style: TextStyle(color: colors.accentOrange)),
-              ),
-            ],
-          ),
-        ),
-      );
+      return _buildStoriesShimmer(colors);
     }
 
     if (provider.stories.isEmpty) {
-      return SizedBox(
-        height: 110.h,
-        child: Center(
-          child: Text(
-            "No stories available",
-            style: TextStyle(fontSize: 14.sp, color: colors.textSecondary),
-          ),
-        ),
-      );
+      return _buildStoriesShimmer(colors);
     }
 
     return SizedBox(
@@ -312,19 +345,19 @@ class _StatusPageState extends State<StatusPage> {
         itemCount: provider.stories.length,
         itemBuilder: (context, index) {
           final story = provider.stories[index];
-          return _buildStoryItem(colors, story, provider);
+          return _buildStoryItem(colors, story, provider, index);
         },
-        separatorBuilder: (_, __) => SizedBox(width: 12.w),
+        separatorBuilder: (_, _) => SizedBox(width: 12.w),
       ),
     );
   }
 
-  Widget _buildStoryItem(AppColorsExtension colors, StoryModel story, StatusProvider provider) {
+  Widget _buildStoryItem(AppColorsExtension colors, StoryModel story, StatusProvider provider, int index) {
     final ringColor = story.isViewed ? colors.accentOrange.withAlpha(80) : colors.accentOrange;
 
     return GestureDetector(
       key: ValueKey(story.restaurantId),
-      onTap: () => _openStoryViewer(story, provider),
+      onTap: () => _openStoryViewer(story, provider, index),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -334,11 +367,20 @@ class _StatusPageState extends State<StatusPage> {
             color: ringColor,
             backgroundColor: colors.backgroundPrimary,
             child: story.logo != null
-                ? CachedNetworkImage(
+                ? CachedImageWidget(
                     imageUrl: story.logo!,
                     fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(color: colors.inputBorder.withAlpha(50)),
-                    errorWidget: (_, __, ___) => Container(
+                    placeholder: Container(
+                      height: 20.h,
+                      width: 20.w,
+                      padding: EdgeInsets.all(20.r),
+                      child: SvgPicture.asset(
+                        Assets.icons.utensilsCrossed,
+                        package: "grab_go_shared",
+                        colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                      ),
+                    ),
+                    errorWidget: Container(
                       height: 20.h,
                       width: 20.w,
                       padding: EdgeInsets.all(20.r),
@@ -367,19 +409,14 @@ class _StatusPageState extends State<StatusPage> {
     );
   }
 
-  void _openStoryViewer(StoryModel story, StatusProvider provider) {
-    provider.fetchRestaurantStatuses(story.restaurantId);
+  void _openStoryViewer(StoryModel story, StatusProvider provider, int storyIndex) {
+    provider.fetchRestaurantStatuses(story.restaurantId, context: context);
 
     Navigator.of(context).push(
       PageRouteBuilder(
         opaque: false,
         pageBuilder: (context, animation, secondaryAnimation) {
-          return StoryViewer(
-            restaurantId: story.restaurantId,
-            restaurantName: story.restaurantName,
-            restaurantLogo: story.logo,
-            initialBlurHash: story.latestBlurHash,
-          );
+          return _StoryViewerPageView(initialIndex: storyIndex, stories: provider.stories, provider: provider);
         },
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
@@ -414,22 +451,7 @@ class _StatusPageState extends State<StatusPage> {
     final filteredStatuses = provider.getFilteredStatuses(_filters[_selectedFilterIndex].category);
 
     if (filteredStatuses.isEmpty) {
-      return SizedBox(
-        height: 200.h,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.inbox_outlined, size: 48.r, color: colors.textSecondary),
-              SizedBox(height: 12.h),
-              Text(
-                "No statuses available",
-                style: TextStyle(fontSize: 14.sp, color: colors.textSecondary),
-              ),
-            ],
-          ),
-        ),
-      );
+      return _buildStatusesShimmer(colors);
     }
 
     return SizedBox(
@@ -465,7 +487,7 @@ class _StatusPageState extends State<StatusPage> {
           final status = statuses[index];
           return _buildRecommendedCard(colors, status);
         },
-        separatorBuilder: (_, __) => SizedBox(width: 12.w),
+        separatorBuilder: (_, _) => SizedBox(width: 12.w),
       ),
     );
   }
@@ -477,6 +499,7 @@ class _StatusPageState extends State<StatusPage> {
       onTap: () => _openStatusDetail(status),
       child: Container(
         width: 220.w,
+        padding: EdgeInsets.all(1.r),
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
@@ -491,18 +514,40 @@ class _StatusPageState extends State<StatusPage> {
                 topLeft: Radius.circular(KBorderSize.borderRadius15),
                 topRight: Radius.circular(KBorderSize.borderRadius15),
               ),
-              child: CachedNetworkImage(
+              child: CachedImageWidget(
                 imageUrl: status.mediaUrl,
                 height: 90.h,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                placeholder: (_, __) => Container(color: colors.inputBorder.withAlpha(50)),
-                errorWidget: (_, __, ___) => Container(
-                  color: colors.inputBorder.withAlpha(50),
-                  child: Icon(Icons.image, color: colors.textSecondary),
+                placeholder: Container(
+                  height: 90.h,
+                  width: double.infinity,
+                  color: colors.inputBorder,
+                  padding: EdgeInsets.all(20.r),
+                  child: SvgPicture.asset(
+                    Assets.icons.chefHat,
+                    package: "grab_go_shared",
+                    height: 20.h,
+                    width: 20.w,
+                    colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                  ),
+                ),
+                errorWidget: Container(
+                  height: 90.h,
+                  width: double.infinity,
+                  color: colors.inputBorder,
+                  padding: EdgeInsets.all(20.r),
+                  child: SvgPicture.asset(
+                    Assets.icons.chefHat,
+                    package: "grab_go_shared",
+                    height: 20.h,
+                    width: 20.w,
+                    colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                  ),
                 ),
               ),
             ),
+
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
               child: Column(
@@ -550,7 +595,7 @@ class _StatusPageState extends State<StatusPage> {
 
   String _getSectionTitle() {
     final category = _filters[_selectedFilterIndex].category;
-    if (category == null) return "All Statuses";
+    if (category == null) return "Latest From Restaurants";
     return category.label;
   }
 
@@ -566,7 +611,7 @@ class _StatusPageState extends State<StatusPage> {
       case StatusCategory.video:
         return Assets.icons.play;
       default:
-        return Assets.icons.flame;
+        return Assets.icons.utensilsCrossed;
     }
   }
 
@@ -577,6 +622,7 @@ class _StatusPageState extends State<StatusPage> {
   }
 
   Widget _buildStoriesShimmer(AppColorsExtension colors) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SizedBox(
       height: 110.h,
       child: ListView.separated(
@@ -586,8 +632,8 @@ class _StatusPageState extends State<StatusPage> {
         itemCount: 5,
         itemBuilder: (context, index) {
           return Shimmer.fromColors(
-            baseColor: colors.inputBorder.withAlpha(50),
-            highlightColor: colors.inputBorder.withAlpha(20),
+            baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+            highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -606,28 +652,32 @@ class _StatusPageState extends State<StatusPage> {
             ),
           );
         },
-        separatorBuilder: (_, __) => SizedBox(width: 12.w),
+        separatorBuilder: (_, _) => SizedBox(width: 12.w),
       ),
     );
   }
 
   /// Shimmer loading for statuses list
   Widget _buildStatusesShimmer(AppColorsExtension colors) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SizedBox(
       height: 350.h,
       child: ListView.builder(
-        padding: EdgeInsets.only(left: 10.r),
+        padding: EdgeInsets.only(left: 20.r),
         scrollDirection: Axis.horizontal,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: 3,
         itemBuilder: (context, index) {
           return Shimmer.fromColors(
-            baseColor: colors.inputBorder.withAlpha(50),
-            highlightColor: colors.inputBorder.withAlpha(20),
+            baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+            highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
             child: Container(
               width: 260.w,
               margin: EdgeInsets.only(right: 16.w),
-              decoration: BoxDecoration(color: colors.backgroundPrimary, borderRadius: BorderRadius.circular(20.r)),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade300, width: 0.5),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -635,7 +685,7 @@ class _StatusPageState extends State<StatusPage> {
                   Container(
                     height: 200.h,
                     decoration: BoxDecoration(
-                      color: colors.inputBorder.withAlpha(80),
+                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
                       borderRadius: BorderRadius.only(topLeft: Radius.circular(20.r), topRight: Radius.circular(20.r)),
                     ),
                   ),
@@ -649,7 +699,7 @@ class _StatusPageState extends State<StatusPage> {
                           width: 80.w,
                           height: 24.h,
                           decoration: BoxDecoration(
-                            color: colors.inputBorder.withAlpha(80),
+                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
                             borderRadius: BorderRadius.circular(12.r),
                           ),
                         ),
@@ -659,7 +709,7 @@ class _StatusPageState extends State<StatusPage> {
                           width: 180.w,
                           height: 16.h,
                           decoration: BoxDecoration(
-                            color: colors.inputBorder.withAlpha(80),
+                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
                             borderRadius: BorderRadius.circular(4.r),
                           ),
                         ),
@@ -669,7 +719,7 @@ class _StatusPageState extends State<StatusPage> {
                           width: 120.w,
                           height: 12.h,
                           decoration: BoxDecoration(
-                            color: colors.inputBorder.withAlpha(80),
+                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
                             borderRadius: BorderRadius.circular(4.r),
                           ),
                         ),
@@ -682,7 +732,7 @@ class _StatusPageState extends State<StatusPage> {
                               width: 60.w,
                               height: 12.h,
                               decoration: BoxDecoration(
-                                color: colors.inputBorder.withAlpha(80),
+                                color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
                                 borderRadius: BorderRadius.circular(4.r),
                               ),
                             ),
@@ -690,7 +740,7 @@ class _StatusPageState extends State<StatusPage> {
                               width: 40.w,
                               height: 24.h,
                               decoration: BoxDecoration(
-                                color: colors.inputBorder.withAlpha(80),
+                                color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
                                 borderRadius: BorderRadius.circular(12.r),
                               ),
                             ),
@@ -800,4 +850,80 @@ class _SegmentedCirclePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// PageView wrapper for smooth horizontal swiping between restaurant stories
+class _StoryViewerPageView extends StatefulWidget {
+  final int initialIndex;
+  final List<StoryModel> stories;
+  final StatusProvider provider;
+
+  const _StoryViewerPageView({required this.initialIndex, required this.stories, required this.provider});
+
+  @override
+  State<_StoryViewerPageView> createState() => _StoryViewerPageViewState();
+}
+
+class _StoryViewerPageViewState extends State<_StoryViewerPageView> {
+  late PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _onPageChanged(int index) {
+    if (index != _currentIndex) {
+      setState(() {
+        _currentIndex = index;
+      });
+      // Fetch statuses for the new restaurant
+      widget.provider.fetchRestaurantStatuses(widget.stories[index].restaurantId, context: context);
+    }
+  }
+
+  void _goToNextRestaurant() {
+    if (_currentIndex < widget.stories.length - 1) {
+      _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
+
+  void _goToPreviousRestaurant() {
+    if (_currentIndex > 0) {
+      _pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PageView.builder(
+      controller: _pageController,
+      onPageChanged: _onPageChanged,
+      itemCount: widget.stories.length,
+      physics: const ClampingScrollPhysics(),
+      itemBuilder: (context, index) {
+        final story = widget.stories[index];
+        return StoryViewer(
+          key: ValueKey(story.restaurantId),
+          restaurantId: story.restaurantId,
+          restaurantName: story.restaurantName,
+          restaurantLogo: story.logo,
+          initialBlurHash: story.latestBlurHash,
+          onNextRestaurant: index < widget.stories.length - 1 ? _goToNextRestaurant : null,
+          onPreviousRestaurant: index > 0 ? _goToPreviousRestaurant : null,
+        );
+      },
+    );
+  }
 }

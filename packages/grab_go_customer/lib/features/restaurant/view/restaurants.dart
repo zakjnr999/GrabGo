@@ -235,25 +235,106 @@ class _RestaurantsState extends State<Restaurants> {
 
                     if (provider.isLoading && provider.restaurants.isEmpty) {
                       return SizedBox(
-                        height: size.height * 0.35,
+                        height: 360.h,
                         child: Shimmer.fromColors(
                           baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
                           highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
-                          child: ListView.builder(
+                          child: SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
-                            physics: const BouncingScrollPhysics(),
-                            itemCount: 3,
-                            padding: EdgeInsets.symmetric(horizontal: 20.w),
-                            itemBuilder: (context, index) {
-                              return Container(
-                                width: size.width * 0.8,
-                                margin: EdgeInsets.only(right: 16.w),
-                                decoration: BoxDecoration(
-                                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-                                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                            padding: EdgeInsets.only(left: 20.w),
+                            child: Row(
+                              children: [
+                                Row(
+                                  children: List.generate(4, (index) {
+                                    return Container(
+                                      width: size.width * 0.8,
+                                      margin: EdgeInsets.only(right: 16.w),
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                                        border: Border.all(
+                                          color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                                          width: 0.5,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          // Restuarant banner placeholder
+                                          Container(
+                                            height: size.height * 0.18,
+                                            decoration: BoxDecoration(
+                                              color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                              borderRadius: const BorderRadius.only(
+                                                topLeft: Radius.circular(KBorderSize.borderMedium),
+                                                topRight: Radius.circular(KBorderSize.borderMedium),
+                                              ),
+                                            ),
+                                          ),
+                                          Padding(
+                                            padding: EdgeInsets.all(16.r),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                // Restaurant name placeholder
+                                                Container(
+                                                  width: 80.w,
+                                                  height: 16.h,
+                                                  decoration: BoxDecoration(
+                                                    color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                                    borderRadius: BorderRadius.circular(4.r),
+                                                  ),
+                                                ),
+                                                SizedBox(height: KSpacing.sm.h),
+                                                // Info badges placeholder
+                                                Row(
+                                                  children: List.generate(3, (index) {
+                                                    return Wrap(
+                                                      spacing: 4.w,
+                                                      runSpacing: 4.h,
+                                                      children: [
+                                                        Container(
+                                                          width: 60.w,
+                                                          height: 28.h,
+                                                          margin: EdgeInsets.only(right: 8.w),
+                                                          decoration: BoxDecoration(
+                                                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                                            borderRadius: BorderRadius.circular(4.r),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    );
+                                                  }),
+                                                ),
+                                                SizedBox(height: KSpacing.sm.h),
+                                                // Restaurant foodtype placeholder
+                                                Container(
+                                                  width: 120.w,
+                                                  height: 12.h,
+                                                  decoration: BoxDecoration(
+                                                    color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                                    borderRadius: BorderRadius.circular(4.r),
+                                                  ),
+                                                ),
+                                                SizedBox(height: 4.h),
+                                                // Restaurant description placeholder
+                                                Container(
+                                                  width: double.infinity,
+                                                  height: 100.h,
+                                                  decoration: BoxDecoration(
+                                                    color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                                    borderRadius: BorderRadius.circular(4.r),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }),
                                 ),
-                              );
-                            },
+                              ],
+                            ),
                           ),
                         ),
                       );
@@ -261,25 +342,116 @@ class _RestaurantsState extends State<Restaurants> {
 
                     if (provider.error != null && provider.restaurants.isEmpty) {
                       return SizedBox(
-                        height: size.height * 0.35,
+                        height: 360.h,
                         child: Shimmer.fromColors(
                           baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
                           highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
-                          child: ListView.builder(
+                          child: SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
-                            physics: const BouncingScrollPhysics(),
-                            itemCount: 3,
-                            padding: EdgeInsets.symmetric(horizontal: 20.w),
-                            itemBuilder: (context, index) {
-                              return Container(
-                                width: size.width * 0.8,
-                                margin: EdgeInsets.only(right: 16.w),
-                                decoration: BoxDecoration(
-                                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-                                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                            padding: EdgeInsets.only(left: 20.w),
+                            child: Row(
+                              children: [
+                                Row(
+                                  children: List.generate(4, (index) {
+                                    return Container(
+                                      width: size.width * 0.8,
+                                      margin: EdgeInsets.only(right: 16.w),
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                                        border: Border.all(
+                                          color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                                          width: 0.5,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          // Restuarant banner placeholder
+                                          Container(
+                                            height: size.height * 0.18,
+                                            decoration: BoxDecoration(
+                                              color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                              borderRadius: const BorderRadius.only(
+                                                topLeft: Radius.circular(KBorderSize.borderMedium),
+                                                topRight: Radius.circular(KBorderSize.borderMedium),
+                                              ),
+                                            ),
+                                          ),
+                                          Padding(
+                                            padding: EdgeInsets.all(16.r),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                // Restaurant name placeholder
+                                                Container(
+                                                  width: 80.w,
+                                                  height: 16.h,
+                                                  decoration: BoxDecoration(
+                                                    color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                                    borderRadius: BorderRadius.circular(4.r),
+                                                  ),
+                                                ),
+                                                SizedBox(height: KSpacing.sm.h),
+                                                // Info badges placeholder
+                                                Row(
+                                                  children: List.generate(3, (index) {
+                                                    return Wrap(
+                                                      spacing: 4.w,
+                                                      runSpacing: 4.h,
+                                                      children: [
+                                                        Container(
+                                                          width: 60.w,
+                                                          height: 28.h,
+                                                          margin: EdgeInsets.only(right: 8.w),
+                                                          decoration: BoxDecoration(
+                                                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                                            borderRadius: BorderRadius.circular(4.r),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    );
+                                                  }),
+                                                ),
+                                                SizedBox(height: KSpacing.sm.h),
+                                                // Restaurant foodtype placeholder
+                                                Container(
+                                                  width: 120.w,
+                                                  height: 16.h,
+                                                  decoration: BoxDecoration(
+                                                    color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                                    borderRadius: BorderRadius.circular(4.r),
+                                                  ),
+                                                ),
+                                                SizedBox(height: KSpacing.sm.h),
+                                                // Restaurant description placeholder
+                                                Container(
+                                                  width: double.infinity,
+                                                  height: 40.h,
+                                                  decoration: BoxDecoration(
+                                                    color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                                    borderRadius: BorderRadius.circular(4.r),
+                                                  ),
+                                                ),
+                                                SizedBox(height: 20.h),
+                                                // Restaurant delivery info placeholder
+                                                Container(
+                                                  width: double.infinity,
+                                                  height: 30.h,
+                                                  decoration: BoxDecoration(
+                                                    color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                                    borderRadius: BorderRadius.circular(4.r),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }),
                                 ),
-                              );
-                            },
+                              ],
+                            ),
                           ),
                         ),
                       );

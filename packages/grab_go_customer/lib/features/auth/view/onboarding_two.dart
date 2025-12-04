@@ -165,7 +165,7 @@ class _OnboardingTwoState extends State<OnboardingTwo> with SingleTickerProvider
                                         boxShadow: [
                                           BoxShadow(
                                             color: colors.accentOrange.withOpacity(0.4),
-                                            blurRadius: 15,
+                                            blurRadius: 12,
                                             spreadRadius: 0,
                                             offset: const Offset(0, 6),
                                           ),

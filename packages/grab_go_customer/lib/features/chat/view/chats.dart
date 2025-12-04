@@ -5,13 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:grab_go_customer/features/chat/service/chat_service.dart';
 import 'package:grab_go_customer/features/chat/view/chats_details.dart';
 import 'package:grab_go_customer/features/chat/view/waiting_for_rider_screen.dart';
 import 'package:grab_go_customer/features/order/service/order_service_wrapper.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
-import 'package:grab_go_customer/shared/services/cache_service.dart';
-import 'package:grab_go_customer/shared/services/chat_socket_service.dart';
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -693,7 +690,7 @@ class _ChatsState extends State<Chats> {
         body: Column(
           children: [
             Container(
-              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
               child: Container(
                 decoration: BoxDecoration(
                   color: colors.backgroundPrimary,
@@ -787,7 +784,12 @@ class _ChatsState extends State<Chats> {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
-      color: colors.backgroundPrimary,
+      margin: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 6.h),
+      decoration: BoxDecoration(
+        color: colors.backgroundPrimary,
+        borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+        border: Border.all(color: colors.border, width: 1),
+      ),
       child: Row(
         children: [
           if (!isWarning)
@@ -800,7 +802,13 @@ class _ChatsState extends State<Chats> {
               ),
             )
           else
-            Icon(Icons.wifi_off, size: 16.w, color: colors.textSecondary),
+            SvgPicture.asset(
+              Assets.icons.wifiOff,
+              package: "grab_go_shared",
+              height: 16.h,
+              width: 16.w,
+              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+            ),
           SizedBox(width: 8.w),
           Expanded(
             child: Text(
@@ -838,7 +846,7 @@ class _ChatsState extends State<Chats> {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-          border: Border.all(color: hasUnread ? colors.accentOrange.withValues(alpha: 0.3) : colors.border, width: 1),
+          border: Border.all(color: colors.border, width: 1),
         ),
         child: Row(
           children: [
@@ -1018,7 +1026,7 @@ class _ChatsState extends State<Chats> {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-          border: Border.all(color: colors.accentViolet.withValues(alpha: 0.3), width: 1),
+          border: Border.all(color: colors.border, width: 1),
         ),
         child: Row(
           children: [
@@ -1044,15 +1052,21 @@ class _ChatsState extends State<Chats> {
                   bottom: 0,
                   right: 0,
                   child: Container(
-                    width: 14.w,
-                    height: 14.w,
+                    width: 16.w,
+                    height: 16.w,
                     decoration: BoxDecoration(
                       color: colors.accentViolet,
                       shape: BoxShape.circle,
                       border: Border.all(color: colors.backgroundPrimary, width: 2),
                     ),
                     child: Center(
-                      child: Icon(Icons.hourglass_empty, size: 8.w, color: Colors.white),
+                      child: SvgPicture.asset(
+                        Assets.icons.hourglass,
+                        package: 'grab_go_shared',
+                        width: 8.w,
+                        height: 8.w,
+                        colorFilter: ColorFilter.mode(colors.backgroundPrimary, BlendMode.srcIn),
+                      ),
                     ),
                   ),
                 ),
@@ -1098,12 +1112,7 @@ class _ChatsState extends State<Chats> {
                       Expanded(
                         child: Text(
                           'Waiting for rider to accept...',
-                          style: TextStyle(
-                            color: colors.accentViolet,
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w500,
-                            fontStyle: FontStyle.italic,
-                          ),
+                          style: TextStyle(color: colors.accentViolet, fontSize: 14.sp, fontWeight: FontWeight.w500),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:chopper/chopper.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:grab_go_rider/shared/service/cache_service.dart';
 
 class JsonSerializableConverter extends JsonConverter {
   const JsonSerializableConverter();

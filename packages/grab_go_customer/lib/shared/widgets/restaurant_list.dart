@@ -40,6 +40,7 @@ class _RestaurantListState extends State<RestaurantList> {
             child: Container(
               width: size.width * 0.8,
               margin: EdgeInsets.only(right: 16.w),
+              padding: EdgeInsets.all(1.r),
               decoration: BoxDecoration(
                 color: colors.backgroundPrimary,
                 borderRadius: BorderRadius.circular(KBorderSize.borderMedium),

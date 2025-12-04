@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'cache_service.dart';
+import 'package:grab_go_shared/shared/services/cache_service.dart';
 
 /// Cache management utility for handling cache operations
 class CacheManager {
@@ -40,7 +40,7 @@ class CacheManager {
 
       // Clear expired food categories cache
       if (!CacheService.isFoodCategoriesCacheValid()) {
-        // Note: Food categories cache doesn't have a clear method, 
+        // Note: Food categories cache doesn't have a clear method,
         // but it will be refreshed on next fetch
         if (kDebugMode) {
           print('Food categories cache expired, will refresh on next fetch');
@@ -67,7 +67,7 @@ class CacheManager {
     try {
       final cacheSize = await CacheService.getCacheSize();
       final isCacheAvailable = CacheService.isCacheAvailable();
-      
+
       return {
         'cacheSize': cacheSize,
         'isCacheAvailable': isCacheAvailable,
@@ -114,7 +114,7 @@ class CacheManager {
 
       // Clear expired cache
       await clearExpiredCache();
-      
+
       if (kDebugMode) {
         print('Cache optimization completed');
       }
@@ -198,31 +198,31 @@ class CacheManager {
       if (backupData['userData'] != null) {
         await CacheService.saveUserData(backupData['userData']);
       }
-      
+
       if (backupData['cartItems'] != null) {
         await CacheService.saveCartItems(backupData['cartItems']);
       }
-      
+
       if (backupData['restaurants'] != null) {
         await CacheService.saveRestaurants(backupData['restaurants']);
       }
-      
+
       if (backupData['foodCategories'] != null) {
         await CacheService.saveFoodCategories(backupData['foodCategories']);
       }
-      
+
       if (backupData['orderHistory'] != null) {
         await CacheService.saveOrderHistory(backupData['orderHistory']);
       }
-      
+
       if (backupData['searchHistory'] != null) {
         await CacheService.saveSearchHistory(backupData['searchHistory']);
       }
-      
+
       if (backupData['favoriteRestaurants'] != null) {
         await CacheService.saveFavoriteRestaurants(backupData['favoriteRestaurants']);
       }
-      
+
       if (backupData['userLocation'] != null) {
         final location = backupData['userLocation'];
         await CacheService.saveUserLocation(
@@ -231,19 +231,19 @@ class CacheManager {
           address: location['address'],
         );
       }
-      
+
       if (backupData['themeMode'] != null) {
         await CacheService.saveThemeMode(backupData['themeMode']);
       }
-      
+
       if (backupData['language'] != null) {
         await CacheService.saveLanguage(backupData['language']);
       }
-      
+
       if (backupData['notificationSettings'] != null) {
         await CacheService.saveNotificationSettings(backupData['notificationSettings']);
       }
-      
+
       if (backupData['credentials'] != null) {
         final credentials = backupData['credentials'];
         await CacheService.saveCredentials(
@@ -252,21 +252,21 @@ class CacheManager {
           rememberMe: credentials['rememberMe'],
         );
       }
-      
+
       if (backupData['restaurantApplicationStatus'] != null) {
         await CacheService.saveRestaurantApplicationStatus(backupData['restaurantApplicationStatus']);
       }
-      
+
       if (backupData['isFirstLaunch'] != null) {
         if (!backupData['isFirstLaunch']) {
           await CacheService.setFirstLaunchComplete();
         }
       }
-      
+
       if (backupData['lastAppVersion'] != null) {
         await CacheService.saveLastAppVersion(backupData['lastAppVersion']);
       }
-      
+
       if (kDebugMode) {
         print('Cache data restored successfully');
       }
@@ -279,5 +279,3 @@ class CacheManager {
     }
   }
 }
-
-

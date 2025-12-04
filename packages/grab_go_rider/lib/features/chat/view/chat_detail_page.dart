@@ -8,10 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:grab_go_rider/features/chat/service/chat_service.dart';
 import 'package:grab_go_rider/shared/service/user_service.dart';
-import 'package:grab_go_rider/shared/service/chat_socket_service.dart';
-import 'package:grab_go_rider/shared/service/cache_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/shared/widgets/pulsing_dot.dart';
@@ -1911,7 +1908,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                                     height: 24.w,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(colors.accentOrange),
+                                      valueColor: AlwaysStoppedAnimation<Color>(colors.accentGreen),
                                     ),
                                   ),
                                 ),

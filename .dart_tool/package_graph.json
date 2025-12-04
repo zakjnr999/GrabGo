@@ -46,6 +46,7 @@
         "flutter_screenutil",
         "flutter_slidable",
         "flutter_spinkit",
+        "flutter_staggered_grid_view",
         "flutter_svg",
         "flutter_swipe_action_cell",
         "fluttertoast",
@@ -202,7 +203,8 @@
         "provider",
         "record",
         "shared_preferences",
-        "shimmer"
+        "shimmer",
+        "socket_io_client"
       ],
       "devDependencies": [
         "build_runner",
@@ -703,6 +705,15 @@
       ]
     },
     {
+      "name": "socket_io_client",
+      "version": "2.0.3+1",
+      "dependencies": [
+        "js",
+        "logging",
+        "socket_io_common"
+      ]
+    },
+    {
       "name": "flutter_app_badge_control",
       "version": "0.0.2",
       "dependencies": [
@@ -995,15 +1006,6 @@
       ]
     },
     {
-      "name": "socket_io_client",
-      "version": "2.0.3+1",
-      "dependencies": [
-        "js",
-        "logging",
-        "socket_io_common"
-      ]
-    },
-    {
       "name": "change_app_package_name",
       "version": "1.5.0",
       "dependencies": []
@@ -1149,6 +1151,13 @@
     {
       "name": "smooth_page_indicator",
       "version": "1.2.1",
+      "dependencies": [
+        "flutter"
+      ]
+    },
+    {
+      "name": "flutter_staggered_grid_view",
+      "version": "0.7.0",
       "dependencies": [
         "flutter"
       ]
@@ -1874,6 +1883,13 @@
       ]
     },
     {
+      "name": "socket_io_common",
+      "version": "2.0.3",
+      "dependencies": [
+        "logging"
+      ]
+    },
+    {
       "name": "timezone",
       "version": "0.10.1",
       "dependencies": [
@@ -2325,13 +2341,6 @@
         "meta",
         "plugin_platform_interface",
         "vector_math"
-      ]
-    },
-    {
-      "name": "socket_io_common",
-      "version": "2.0.3",
-      "dependencies": [
-        "logging"
       ]
     },
     {

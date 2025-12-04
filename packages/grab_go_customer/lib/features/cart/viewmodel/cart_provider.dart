@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
-import 'package:grab_go_customer/shared/services/cache_service.dart';
+import 'package:grab_go_shared/shared/services/cache_service.dart';
 
 class CartProvider extends ChangeNotifier {
   final Map<FoodItem, int> _cartItems = {};
@@ -33,9 +33,7 @@ class CartProvider extends ChangeNotifier {
 
   Future<void> _saveCart() async {
     try {
-      final List<Map<String, dynamic>> cartList = _cartItems.entries.map((
-        entry,
-      ) {
+      final List<Map<String, dynamic>> cartList = _cartItems.entries.map((entry) {
         return {'item': entry.key.toJson(), 'quantity': entry.value};
       }).toList();
 
@@ -95,4 +93,3 @@ class CartProvider extends ChangeNotifier {
 
   int get uniqueItemCount => _cartItems.length;
 }
-

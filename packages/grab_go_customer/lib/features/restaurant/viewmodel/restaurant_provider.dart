@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_customer/features/restaurant/repository/restaurant_repository.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurants_model.dart';
-import 'package:grab_go_customer/shared/services/cache_service.dart';
+import 'package:grab_go_shared/shared/services/cache_service.dart';
 
 class RestaurantProvider extends ChangeNotifier {
   List<RestaurantModel> _restaurants = [];

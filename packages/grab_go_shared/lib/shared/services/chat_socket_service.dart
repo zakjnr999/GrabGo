@@ -1,10 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
-import 'package:grab_go_rider/features/chat/service/chat_service.dart';
-import 'package:grab_go_rider/shared/service/cache_service.dart';
-import 'package:grab_go_rider/shared/service/user_service.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_shared/shared/services/user_service.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 enum ChatSocketConnectionState { disconnected, connecting, connected, reconnecting }
@@ -24,6 +22,22 @@ class QueuedMessage {
     required this.queuedAt,
     this.retryCount = 0,
   });
+
+  Map<String, dynamic> toJson() => {
+    'chatId': chatId,
+    'tempId': tempId,
+    'text': text,
+    'queuedAt': queuedAt.toIso8601String(),
+    'retryCount': retryCount,
+  };
+
+  factory QueuedMessage.fromJson(Map<String, dynamic> json) => QueuedMessage(
+    chatId: json['chatId'] as String,
+    tempId: json['tempId'] as String,
+    text: json['text'] as String,
+    queuedAt: DateTime.parse(json['queuedAt'] as String),
+    retryCount: (json['retryCount'] as int?) ?? 0,
+  );
 }
 
 class ChatSocketService {
@@ -81,7 +95,7 @@ class ChatSocketService {
       await _bootstrapChats();
       _connectIfNeeded();
     } catch (e) {
-      debugPrint('Error initializing ChatSocketService (rider): $e');
+      debugPrint('Error initializing ChatSocketService: $e');
     }
   }
 
@@ -166,7 +180,6 @@ class ChatSocketService {
   void markChatAsReadLocally(String chatId, int cleared) {
     if (cleared <= 0) return;
 
-    // Use the tracked per-chat value to avoid double-subtracting
     final previous = _unreadByChatId[chatId] ?? 0;
     if (previous <= 0) return;
 
@@ -438,7 +451,7 @@ class ChatSocketService {
       _notifyUnreadChanged();
       unawaited(CacheService.saveChatList(serialized));
     } catch (e) {
-      debugPrint('Error bootstrapping chats for ChatSocketService (rider): $e');
+      debugPrint('Error bootstrapping chats for ChatSocketService: $e');
     }
   }
 
@@ -456,7 +469,7 @@ class ChatSocketService {
         joinChat(id);
       }
     } catch (e) {
-      debugPrint('Error joining cached chats (rider): $e');
+      debugPrint('Error joining cached chats: $e');
     }
   }
 
@@ -582,8 +595,6 @@ class ChatSocketService {
     _notifyUnreadChanged();
     _updateCachedChatUnread(chatId, 0);
   }
-
-  // ============ Offline Message Queue ============
 
   /// Queue a failed message for retry when connection is restored
   void queueFailedMessage(String chatId, String tempId, String text) {

@@ -81,7 +81,6 @@ class _OnboardingThreeState extends State<OnboardingThree> with SingleTickerProv
                   ),
                 ),
 
-                // Content with animations
                 Align(
                   alignment: Alignment.bottomCenter,
                   child: ClipPath(
@@ -134,7 +133,6 @@ class _OnboardingThreeState extends State<OnboardingThree> with SingleTickerProv
 
                               const Spacer(),
 
-                              // Large "Get Started" button with scale animation
                               ScaleTransition(
                                 scale: _scaleAnimation,
                                 child: Container(
@@ -147,7 +145,7 @@ class _OnboardingThreeState extends State<OnboardingThree> with SingleTickerProv
                                     boxShadow: [
                                       BoxShadow(
                                         color: colors.accentOrange.withValues(alpha: 0.5),
-                                        blurRadius: 20,
+                                        blurRadius: 12,
                                         spreadRadius: 0,
                                         offset: const Offset(0, 8),
                                       ),

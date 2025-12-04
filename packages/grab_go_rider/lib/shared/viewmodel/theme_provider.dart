@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:grab_go_rider/shared/service/cache_service.dart';
+import 'package:grab_go_shared/shared/services/cache_service.dart';
 
 class ThemeProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;

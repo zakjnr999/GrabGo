@@ -1,8 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:grab_go_rider/shared/service/chat_socket_service.dart';
 import 'package:grab_go_rider/core/api/api_client.dart';
-import 'cache_service.dart';
 
 class UserService {
   static final UserService _instance = UserService._internal();
@@ -10,7 +8,7 @@ class UserService {
   UserService._internal();
 
   User? _currentUser;
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
@@ -51,6 +49,8 @@ class UserService {
       debugPrint('❌ Error saving user data to cache: $e');
     }
   }
+
+  ///
 
   Future<void> setCurrentUser(User user) async {
     try {

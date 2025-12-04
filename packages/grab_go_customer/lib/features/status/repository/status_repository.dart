@@ -12,7 +12,11 @@ class StatusRepository {
   // Cache keys
   static const String _storiesCacheKey = 'status_stories_cache';
   static const String _statusesCacheKey = 'status_statuses_cache';
+  static const String _viewedStatusesCacheKey = 'status_viewed_cache';
+  static const String _restaurantStatusesCachePrefix = 'status_restaurant_';
   static const Duration _cacheValidDuration = Duration(minutes: 5);
+  static const Duration _offlineCacheValidDuration = Duration(hours: 24); // Longer cache for offline
+  static const int _maxViewedStatusesCache = 50; // Limit cached viewed statuses
 
   StatusRepository(this._statusService);
 
@@ -62,17 +66,22 @@ class StatusRepository {
     }
   }
 
-  Future<T?> _getCachedData<T>(String key, T Function(dynamic) parser) async {
+  Future<T?> _getCachedData<T>(String key, T Function(dynamic) parser, {bool forOffline = false}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final timestamp = prefs.getInt('${key}_timestamp') ?? 0;
       final cachedTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
 
+      // Use longer duration for offline mode
+      final validDuration = forOffline ? _offlineCacheValidDuration : _cacheValidDuration;
+
       // Check if cache is still valid
-      if (DateTime.now().difference(cachedTime) > _cacheValidDuration) {
-        // Clear stale cache
-        await prefs.remove(key);
-        await prefs.remove('${key}_timestamp');
+      if (DateTime.now().difference(cachedTime) > validDuration) {
+        if (!forOffline) {
+          // Only clear stale cache if not in offline mode
+          await prefs.remove(key);
+          await prefs.remove('${key}_timestamp');
+        }
         return null;
       }
 
@@ -110,6 +119,156 @@ class StatusRepository {
     } catch (e) {
       if (kDebugMode) {
         print('⚠️ Failed to clear cache: $e');
+      }
+    }
+  }
+
+  // ============================================================
+  // Offline Cache Methods
+  // ============================================================
+
+  /// Cache a viewed status for offline viewing
+  Future<void> cacheViewedStatus(StatusModel status) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Get existing cached statuses
+      final cachedJson = prefs.getString(_viewedStatusesCacheKey);
+      List<Map<String, dynamic>> cachedList = [];
+
+      if (cachedJson != null) {
+        cachedList = (jsonDecode(cachedJson) as List).cast<Map<String, dynamic>>();
+      }
+
+      // Remove if already exists (to update position)
+      cachedList.removeWhere((item) => item['_id'] == status.id);
+
+      // Add to front (most recent)
+      cachedList.insert(0, status.toJson());
+
+      // Limit cache size
+      if (cachedList.length > _maxViewedStatusesCache) {
+        cachedList = cachedList.sublist(0, _maxViewedStatusesCache);
+      }
+
+      await prefs.setString(_viewedStatusesCacheKey, jsonEncode(cachedList));
+      await prefs.setInt('${_viewedStatusesCacheKey}_timestamp', DateTime.now().millisecondsSinceEpoch);
+
+      if (kDebugMode) {
+        print('📦 Cached viewed status: ${status.id} (total: ${cachedList.length})');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ Failed to cache viewed status: $e');
+      }
+    }
+  }
+
+  /// Cache multiple statuses for a restaurant (for offline story viewing)
+  Future<void> cacheRestaurantStatuses(String restaurantId, List<StatusModel> statuses) async {
+    try {
+      final key = '$_restaurantStatusesCachePrefix$restaurantId';
+      final statusesJson = statuses.map((s) => s.toJson()).toList();
+      await _cacheData(key, statusesJson);
+
+      // Also cache each status individually for offline viewing
+      for (final status in statuses) {
+        await cacheViewedStatus(status);
+      }
+
+      if (kDebugMode) {
+        print('📦 Cached ${statuses.length} statuses for restaurant: $restaurantId');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ Failed to cache restaurant statuses: $e');
+      }
+    }
+  }
+
+  /// Get cached statuses for a restaurant (for offline viewing)
+  Future<List<StatusModel>?> getCachedRestaurantStatuses(String restaurantId) async {
+    final key = '$_restaurantStatusesCachePrefix$restaurantId';
+    return _getCachedData<List<StatusModel>>(
+      key,
+      (data) => (data as List).map((json) => StatusModel.fromJson(json as Map<String, dynamic>)).toList(),
+      forOffline: true,
+    );
+  }
+
+  /// Get all cached viewed statuses for offline viewing
+  /// When offline, we return all cached statuses even if expired (better than nothing)
+  Future<List<StatusModel>> getCachedViewedStatuses({bool filterExpired = false}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedJson = prefs.getString(_viewedStatusesCacheKey);
+
+      if (kDebugMode) {
+        print(
+          '🔍 Cache key: $_viewedStatusesCacheKey, has data: ${cachedJson != null}, length: ${cachedJson?.length ?? 0}',
+        );
+      }
+
+      if (cachedJson != null && cachedJson.isNotEmpty) {
+        final cachedList = (jsonDecode(cachedJson) as List)
+            .map((json) => StatusModel.fromJson(json as Map<String, dynamic>))
+            .toList();
+
+        // Optionally filter expired statuses
+        final statuses = filterExpired ? _filterExpiredStatuses(cachedList) : cachedList;
+
+        if (kDebugMode) {
+          print('📦 Retrieved ${statuses.length} cached viewed statuses');
+        }
+        return statuses;
+      } else {
+        if (kDebugMode) {
+          print('⚠️ No cached data found for key: $_viewedStatusesCacheKey');
+        }
+      }
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('⚠️ Failed to get cached viewed statuses: $e');
+        print('Stack trace: $stackTrace');
+      }
+    }
+    return [];
+  }
+
+  /// Clear offline cache for a specific restaurant
+  Future<void> clearRestaurantCache(String restaurantId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = '$_restaurantStatusesCachePrefix$restaurantId';
+      await prefs.remove(key);
+      await prefs.remove('${key}_timestamp');
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ Failed to clear restaurant cache: $e');
+      }
+    }
+  }
+
+  /// Clear all offline caches
+  Future<void> clearAllOfflineCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys();
+
+      for (final key in keys) {
+        if (key.startsWith(_restaurantStatusesCachePrefix) ||
+            key == _viewedStatusesCacheKey ||
+            key == '${_viewedStatusesCacheKey}_timestamp') {
+          await prefs.remove(key);
+        }
+      }
+
+      if (kDebugMode) {
+        print('🗑️ Cleared all offline caches');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ Failed to clear offline caches: $e');
       }
     }
   }

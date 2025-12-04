@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
-import 'package:grab_go_customer/shared/services/cache_service.dart';
+import 'package:grab_go_shared/shared/services/cache_service.dart';
 
 class FavoritesProvider extends ChangeNotifier {
   final Set<FoodItem> _favoriteItems = {};
@@ -18,7 +18,7 @@ class FavoritesProvider extends ChangeNotifier {
     try {
       final cachedFavorites = CacheService.getFavoriteFoods();
       _favoriteItems.clear();
-      
+
       for (final favoriteJson in cachedFavorites) {
         try {
           final foodItem = FoodItem.fromJson(favoriteJson);
@@ -29,7 +29,7 @@ class FavoritesProvider extends ChangeNotifier {
           }
         }
       }
-      
+
       notifyListeners();
     } catch (e) {
       if (kDebugMode) {
@@ -41,9 +41,7 @@ class FavoritesProvider extends ChangeNotifier {
   /// Save favorites to cache
   Future<void> _saveFavorites() async {
     try {
-      final favoritesJson = _favoriteItems
-          .map((item) => item.toJson())
-          .toList();
+      final favoritesJson = _favoriteItems.map((item) => item.toJson()).toList();
       await CacheService.saveFavoriteFoods(favoritesJson);
     } catch (e) {
       if (kDebugMode) {
@@ -55,7 +53,7 @@ class FavoritesProvider extends ChangeNotifier {
   /// Add item to favorites
   Future<void> addToFavorites(FoodItem item) async {
     if (_favoriteItems.contains(item)) return;
-    
+
     _favoriteItems.add(item);
     await _saveFavorites();
     notifyListeners();
@@ -64,7 +62,7 @@ class FavoritesProvider extends ChangeNotifier {
   /// Remove item from favorites
   Future<void> removeFromFavorites(FoodItem item) async {
     if (!_favoriteItems.contains(item)) return;
-    
+
     _favoriteItems.remove(item);
     await _saveFavorites();
     notifyListeners();
@@ -93,22 +91,18 @@ class FavoritesProvider extends ChangeNotifier {
 
   /// Get favorites by category
   List<FoodItem> getFavoritesByCategory(String category) {
-    return _favoriteItems
-        .where((item) => item.name.toLowerCase().contains(category.toLowerCase()))
-        .toList();
+    return _favoriteItems.where((item) => item.name.toLowerCase().contains(category.toLowerCase())).toList();
   }
 
   /// Search favorites
   List<FoodItem> searchFavorites(String query) {
     if (query.isEmpty) return _favoriteItems.toList();
-    
+
     final lowercaseQuery = query.toLowerCase();
     return _favoriteItems.where((item) {
       return item.name.toLowerCase().contains(lowercaseQuery) ||
-             item.description.toLowerCase().contains(lowercaseQuery) ||
-             item.sellerName.toLowerCase().contains(lowercaseQuery);
+          item.description.toLowerCase().contains(lowercaseQuery) ||
+          item.sellerName.toLowerCase().contains(lowercaseQuery);
     }).toList();
   }
 }
-
-

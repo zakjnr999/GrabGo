@@ -7,9 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:grab_go_rider/shared/service/cache_service.dart';
 import 'package:grab_go_rider/shared/service/user_service.dart';
-import 'package:grab_go_rider/shared/service/chat_socket_service.dart';
 import 'package:grab_go_rider/core/api/api_client.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 

@@ -1,4 +1,4 @@
-import 'cache_service.dart';
+import 'package:grab_go_shared/shared/services/cache_service.dart';
 
 class StorageService {
   static Future<void> saveCredentials({
@@ -55,6 +55,10 @@ class StorageService {
   }
 
   static Future<void> setLocationPermissionScreenShown() async {
+    await CacheService.setLocationPermissionScreenShown();
+  }
+
+  static Future<void> setNotificationPermissionScreenShown() async {
     await CacheService.setLocationPermissionScreenShown();
   }
 

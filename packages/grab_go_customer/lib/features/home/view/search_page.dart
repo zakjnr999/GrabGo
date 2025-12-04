@@ -8,7 +8,6 @@ import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
-import 'package:grab_go_customer/shared/services/cache_service.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';

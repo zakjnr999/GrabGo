@@ -3,14 +3,11 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:grab_go_customer/features/chat/view/chats_details.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/features/order/viewmodel/order_provider.dart';
 import 'package:grab_go_customer/features/restaurant/viewmodel/restaurant_provider.dart';
 import 'package:grab_go_customer/features/status/viewmodel/status_provider.dart';
-import 'package:grab_go_customer/shared/services/cache_service.dart';
-import 'package:grab_go_customer/shared/services/chat_socket_service.dart';
 import 'package:grab_go_customer/shared/services/image_cache_service.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_customer/shared/utils/routes.dart';
@@ -69,67 +66,10 @@ Future<void> _initializeBackgroundServices() async {
     await UserService().initialize();
     await ChatSocketService().initialize();
 
-    // Initialize push notifications
-    await PushNotificationService().initialize(
-      onNotificationTap: _handleNotificationTap,
-      onTokenRefresh: _handleTokenRefresh,
-    );
-
-    // Register FCM token with backend if user is logged in
-    await _registerFcmToken();
+    // Push notifications will be initialized after user grants permission
+    // on the notification permission screen
   } catch (e) {
     debugPrint('Error initializing background services: $e');
-  }
-}
-
-/// Handle notification tap - navigate to appropriate screen
-void _handleNotificationTap(Map<String, dynamic> data) {
-  final type = data['type'];
-  final chatId = data['chatId'];
-  final orderId = data['orderId'];
-
-  debugPrint('📲 Notification tapped: type=$type, chatId=$chatId, orderId=$orderId');
-
-  // Delay navigation slightly to ensure app is ready
-  Future.delayed(const Duration(milliseconds: 500), () {
-    final context = navigatorKey.currentContext;
-    if (context == null) {
-      debugPrint('⚠️ Navigator context not available');
-      return;
-    }
-
-    if (type == 'chat_message' && chatId != null) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => ChatDetail(chatId: chatId, senderName: data['senderName'] ?? 'Chat'),
-        ),
-      );
-    } else if (type == 'order_update' && orderId != null) {
-      // Navigate to order details - you can customize this route
-      debugPrint('Navigate to order: $orderId');
-      // TODO: Add order detail navigation when route is available
-    }
-  });
-}
-
-/// Handle FCM token refresh
-Future<void> _handleTokenRefresh(String token) async {
-  await _registerFcmToken();
-}
-
-/// Register FCM token with backend
-Future<void> _registerFcmToken() async {
-  try {
-    final userService = UserService();
-    if (!userService.isLoggedIn) return;
-
-    final token = await PushNotificationService().getToken();
-    if (token == null) return;
-
-    await userService.registerFcmToken(token, platform: 'android');
-    debugPrint('✅ FCM token registered with backend');
-  } catch (e) {
-    debugPrint('Failed to register FCM token: $e');
   }
 }
 

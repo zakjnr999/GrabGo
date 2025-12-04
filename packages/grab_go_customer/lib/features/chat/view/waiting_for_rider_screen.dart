@@ -10,8 +10,6 @@ import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:intl/intl.dart';
 
-/// Screen shown when an order is waiting for a rider to accept.
-/// Displays order info and a professional waiting state.
 class WaitingForRiderScreen extends StatefulWidget {
   final String orderId;
   final String orderNumber;
@@ -80,15 +78,13 @@ class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with Sing
       if (!['pending', 'confirmed'].contains(status)) {
         if (mounted) {
           widget.onRiderAccepted?.call();
-          // Pop back to chat list - the chat should now be available
           context.pop();
-          // Show a snackbar
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('A rider has accepted your order! You can now chat with them.'),
-              backgroundColor: Theme.of(context).extension<AppColorsExtension>()?.accentGreen,
-              behavior: SnackBarBehavior.floating,
-            ),
+          AppToastMessage.show(
+            context: context,
+            icon: Icons.check,
+            message: "A rider has accepted your order! You can now chat with them.",
+            maxLines: 2,
+            backgroundColor: AppColors.accentGreen,
           );
         }
       }
@@ -137,6 +133,7 @@ class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with Sing
           elevation: 0,
           scrolledUnderElevation: 0,
           backgroundColor: colors.backgroundSecondary,
+          leadingWidth: 72,
           leading: Padding(
             padding: EdgeInsets.only(left: 16.w),
             child: Container(
@@ -153,7 +150,7 @@ class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with Sing
                   onTap: () => context.pop(),
                   customBorder: const CircleBorder(),
                   child: Padding(
-                    padding: EdgeInsets.all(10.r),
+                    padding: EdgeInsets.all(8.r),
                     child: SvgPicture.asset(
                       Assets.icons.navArrowLeft,
                       package: 'grab_go_shared',
@@ -312,7 +309,6 @@ class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with Sing
                   ),
                 ),
 
-                // Order info card at bottom
                 Container(
                   padding: EdgeInsets.all(20.w),
                   decoration: BoxDecoration(

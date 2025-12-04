@@ -41,10 +41,105 @@ class _HomeBannerState extends State<HomeBanner> {
         highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
         child: Container(
           height: widget.size.height * 0.28,
+          padding: EdgeInsets.all(8.r),
           margin: EdgeInsets.symmetric(horizontal: 20.w),
           decoration: BoxDecoration(
-            color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
             borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+            border: BoxBorder.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade300, width: 0.5),
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Food name placeholder
+                  Expanded(
+                    child: Container(
+                      height: 40.h,
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  // Heart icon placeholder
+                  Container(
+                    height: 40.h,
+                    width: 40.w,
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+
+              Container(
+                padding: EdgeInsets.all(10.r),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Price placeholder
+                          Container(
+                            height: 18.h,
+                            width: 80.w,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(4.r),
+                            ),
+                          ),
+                          SizedBox(height: 6.h),
+                          // Rating placeholder
+                          Row(
+                            children: [
+                              Container(
+                                height: 14.h,
+                                width: 14.w,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(2.r),
+                                ),
+                              ),
+                              SizedBox(width: 4.w),
+                              Container(
+                                height: 13.h,
+                                width: 30.w,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(2.r),
+                                ),
+                              ),
+                              SizedBox(width: 4.w),
+                              Container(
+                                height: 12.h,
+                                width: 40.w,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(2.r),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -56,10 +151,105 @@ class _HomeBannerState extends State<HomeBanner> {
         highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
         child: Container(
           height: widget.size.height * 0.28,
+          padding: EdgeInsets.all(8.r),
           margin: EdgeInsets.symmetric(horizontal: 20.w),
           decoration: BoxDecoration(
-            color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
             borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+            border: BoxBorder.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade300, width: 0.5),
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Food name placeholder
+                  Expanded(
+                    child: Container(
+                      height: 40.h,
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  // Heart icon placeholder
+                  Container(
+                    height: 40.h,
+                    width: 40.w,
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+
+              Container(
+                padding: EdgeInsets.all(10.r),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Price placeholder
+                          Container(
+                            height: 18.h,
+                            width: 80.w,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(4.r),
+                            ),
+                          ),
+                          SizedBox(height: 6.h),
+                          // Rating placeholder
+                          Row(
+                            children: [
+                              Container(
+                                height: 14.h,
+                                width: 14.w,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(2.r),
+                                ),
+                              ),
+                              SizedBox(width: 4.w),
+                              Container(
+                                height: 13.h,
+                                width: 30.w,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(2.r),
+                                ),
+                              ),
+                              SizedBox(width: 4.w),
+                              Container(
+                                height: 12.h,
+                                width: 40.w,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(2.r),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -68,18 +258,110 @@ class _HomeBannerState extends State<HomeBanner> {
     final allFoods = itemsProvider.categories.expand((cat) => cat.items).toList();
 
     if (allFoods.isEmpty) {
-      return Container(
-        margin: EdgeInsets.symmetric(horizontal: 20.w),
-        height: widget.size.height * 0.28,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: colors.backgroundPrimary,
-          borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-        ),
-        child: Center(
-          child: Text(
-            "Banner is empty...",
-            style: TextStyle(color: colors.textSecondary, fontSize: 16.sp, fontWeight: FontWeight.w500),
+      return Shimmer.fromColors(
+        baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+        highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
+        child: Container(
+          height: widget.size.height * 0.28,
+          padding: EdgeInsets.all(8.r),
+          margin: EdgeInsets.symmetric(horizontal: 20.w),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+            border: BoxBorder.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade300, width: 0.5),
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Food name placeholder
+                  Expanded(
+                    child: Container(
+                      height: 40.h,
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  // Heart icon placeholder
+                  Container(
+                    height: 40.h,
+                    width: 40.w,
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+
+              Container(
+                padding: EdgeInsets.all(10.r),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Price placeholder
+                          Container(
+                            height: 18.h,
+                            width: 80.w,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(4.r),
+                            ),
+                          ),
+                          SizedBox(height: 6.h),
+                          // Rating placeholder
+                          Row(
+                            children: [
+                              Container(
+                                height: 14.h,
+                                width: 14.w,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(2.r),
+                                ),
+                              ),
+                              SizedBox(width: 4.w),
+                              Container(
+                                height: 13.h,
+                                width: 30.w,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(2.r),
+                                ),
+                              ),
+                              SizedBox(width: 4.w),
+                              Container(
+                                height: 12.h,
+                                width: 40.w,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(2.r),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -346,53 +628,6 @@ class _HomeBannerState extends State<HomeBanner> {
                                     ),
                                   ),
                                 );
-                                // return Container(
-                                //   decoration: BoxDecoration(
-                                //     gradient: LinearGradient(
-                                //       colors: isInCart
-                                //           ? [colors.error.withValues(alpha: 0.8), colors.error]
-                                //           : [colors.accentOrange, colors.accentOrange.withOpacity(0.8)],
-                                //     ),
-                                //     borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                                //   ),
-                                //   child: Material(
-                                //     color: Colors.transparent,
-                                //     child: InkWell(
-                                //       onTap: () {
-                                //         if (isInCart) {
-                                //           cartProvider.removeFromCart(bannerFoods[currentIndex]);
-                                //         } else {
-                                //           cartProvider.addToCart(bannerFoods[currentIndex]);
-                                //         }
-                                //       },
-                                //       borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                                //       child: Padding(
-                                //         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
-                                //         child: Row(
-                                //           mainAxisSize: MainAxisSize.min,
-                                //           children: [
-                                //             SvgPicture.asset(
-                                //               Assets.icons.cart,
-                                //               package: 'grab_go_shared',
-                                //               height: 16.h,
-                                //               width: 16.w,
-                                //               colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                                //             ),
-                                //             SizedBox(width: 6.w),
-                                //             Text(
-                                //               isInCart ? "Remove" : "Add",
-                                //               style: TextStyle(
-                                //                 color: Colors.white,
-                                //                 fontSize: 13.sp,
-                                //                 fontWeight: FontWeight.w700,
-                                //               ),
-                                //             ),
-                                //           ],
-                                //         ),
-                                //       ),
-                                //     ),
-                                //   ),
-                                // );
                               },
                             ),
                           ],

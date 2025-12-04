@@ -3,19 +3,21 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:grab_go_customer/shared/services/location_service.dart';
 import 'package:grab_go_customer/shared/services/storage_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:grab_go_customer/shared/services/user_service.dart';
+import 'package:grab_go_customer/shared/services/notification_handler.dart';
 
-class LocationPermission extends StatefulWidget {
-  const LocationPermission({super.key});
+class NotificationPermission extends StatefulWidget {
+  const NotificationPermission({super.key});
 
   @override
-  State<LocationPermission> createState() => _LocationPermissionState();
+  State<NotificationPermission> createState() => _NotificationPermissionState();
 }
 
-class _LocationPermissionState extends State<LocationPermission> with SingleTickerProviderStateMixin {
+class _NotificationPermissionState extends State<NotificationPermission> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -24,6 +26,7 @@ class _LocationPermissionState extends State<LocationPermission> with SingleTick
   @override
   void initState() {
     super.initState();
+
     _animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -53,55 +56,81 @@ class _LocationPermissionState extends State<LocationPermission> with SingleTick
     });
   }
 
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
+  Future<void> _initializePushNotifications() async {
+    try {
+      await PushNotificationService().initialize(
+        onNotificationTap: handleNotificationTap,
+        onTokenRefresh: (token) async {
+          try {
+            if (UserService().isLoggedIn) {
+              await UserService().registerFcmToken(token);
+            }
+          } catch (_) {}
+        },
+      );
+
+      final initialized = PushNotificationService().isInitialized;
+
+      if (initialized) {
+        final token = await PushNotificationService().getToken();
+        if (token != null && UserService().isLoggedIn) {
+          await UserService().registerFcmToken(token);
+        }
+      }
+
+      if (!mounted) return;
+      await StorageService.setNotificationPermissionScreenShown();
+      context.go("/homepage");
+    } catch (e) {
+      debugPrint('❌ Error initializing push notifications: $e');
+      if (mounted) {
+        await StorageService.setNotificationPermissionScreenShown();
+        context.go("/homepage");
+      }
+    }
   }
 
-  Future<void> _handleAllowLocation() async {
-    if (!mounted) return;
-
-    final colors = context.appColors;
-
+  Future<void> _requestPermission() async {
     try {
-      final isServiceEnabled = await LocationService.isServiceEnabled();
-      if (!isServiceEnabled) {
-        await LocationService.openLocationSettings();
+      // First check current permission status
+      final currentStatus = await Permission.notification.status;
+
+      debugPrint('🔔 Current notification permission status: $currentStatus');
+
+      if (currentStatus.isGranted) {
+        // Permission already granted, proceed with initialization
+        debugPrint('✅ Permission already granted, initializing push notifications');
+        await _initializePushNotifications();
         return;
-      }
-
-      final hasPermission = await LocationService.hasPermission();
-      if (hasPermission) {
-        await StorageService.setLocationPermissionScreenShown();
-        if (mounted) {
-          context.go("/notificationPermission");
-        }
+      } else if (currentStatus.isPermanentlyDenied) {
+        // Permission permanently denied, open app settings
+        debugPrint('🚫 Permission permanently denied, opening app settings');
+        if (!mounted) return;
+        await openAppSettings();
         return;
-      }
+      } else {
+        // Permission is not granted and not permanently denied, so request it
+        // This should show the native dialog on first request
+        debugPrint('📱 Requesting notification permission (should show dialog)');
+        debugPrint('📱 Current status: $currentStatus - requesting permission now...');
+        final permissionStatus = await Permission.notification.request();
+        debugPrint('📱 Permission request result: $permissionStatus');
 
-      final isDeniedForever = await LocationService.isPermissionDeniedForever();
-      if (isDeniedForever) {
-        await LocationService.openAppSettings();
-        return;
-      }
-
-      final permissionResult = await LocationService.requestPermissionAndCheck();
-
-      if (permissionResult == true) {
-        // Mark location permission screen as shown
-        await StorageService.setLocationPermissionScreenShown();
-        if (mounted) {
-          await Future.delayed(const Duration(milliseconds: 500));
-          if (mounted) {
-            context.go("/notificationPermission");
-          }
-        }
-      } else if (permissionResult == false) {
-        if (mounted) {}
-      } else if (permissionResult == null) {
-        if (mounted) {
-          await LocationService.openAppSettings();
+        if (permissionStatus.isGranted) {
+          debugPrint('✅ Permission granted, initializing push notifications');
+          await _initializePushNotifications();
+          return;
+        } else if (permissionStatus.isPermanentlyDenied) {
+          debugPrint('🚫 Permission permanently denied, opening app settings');
+          if (!mounted) return;
+          await openAppSettings();
+          return;
+        } else {
+          debugPrint('❌ Permission denied, proceeding to homepage');
+          if (!mounted) return;
+          await StorageService.setNotificationPermissionScreenShown();
+          context.go("/homepage");
+          return;
         }
       }
     } catch (e) {
@@ -109,20 +138,25 @@ class _LocationPermissionState extends State<LocationPermission> with SingleTick
         AppToastMessage.show(
           context: context,
           icon: Icons.error_outline,
-          message: "An error occurred while requesting location permission. Please try again.",
-          backgroundColor: colors.error,
+          message: "An error occurred while requesting notication permission. Please try again.",
+          backgroundColor: AppColors.errorRed,
           duration: const Duration(seconds: 3),
         );
       }
     }
   }
 
-  void _handleSkip() async {
-    // Mark location permission screen as shown (even if skipped)
-    await StorageService.setLocationPermissionScreenShown();
+  void _skip() async {
+    await StorageService.setNotificationPermissionScreenShown();
     if (mounted) {
-      context.go("/notificationPermission");
+      context.go("/homepage");
     }
+  }
+
+  @override
+  dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   @override
@@ -181,7 +215,7 @@ class _LocationPermissionState extends State<LocationPermission> with SingleTick
                                 ),
                                 child: Center(
                                   child: SvgPicture.asset(
-                                    Assets.icons.mapPin,
+                                    Assets.icons.bell,
                                     height: 60.h,
                                     width: 60.h,
                                     colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
@@ -198,7 +232,7 @@ class _LocationPermissionState extends State<LocationPermission> with SingleTick
                             child: SlideTransition(
                               position: _slideAnimation,
                               child: Text(
-                                AppStrings.locationPermissionTitle,
+                                AppStrings.notificationPermissionTitle,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 32.sp,
@@ -217,7 +251,7 @@ class _LocationPermissionState extends State<LocationPermission> with SingleTick
                             child: SlideTransition(
                               position: _slideAnimation,
                               child: Text(
-                                AppStrings.locationPermissionDescription,
+                                AppStrings.notificationPermissionDescription,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 15.sp,
@@ -235,7 +269,7 @@ class _LocationPermissionState extends State<LocationPermission> with SingleTick
                             child: SlideTransition(
                               position: _slideAnimation,
                               child: GestureDetector(
-                                onTap: _handleAllowLocation,
+                                onTap: _requestPermission,
                                 child: Container(
                                   height: 56.h,
                                   decoration: BoxDecoration(
@@ -255,7 +289,7 @@ class _LocationPermissionState extends State<LocationPermission> with SingleTick
                                   ),
                                   child: Center(
                                     child: Text(
-                                      AppStrings.locationPermissionAllow,
+                                      AppStrings.notificationPermissionAllow,
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontSize: 16.sp,
@@ -276,7 +310,7 @@ class _LocationPermissionState extends State<LocationPermission> with SingleTick
                             child: SlideTransition(
                               position: _slideAnimation,
                               child: GestureDetector(
-                                onTap: _handleSkip,
+                                onTap: _skip,
                                 child: Container(
                                   height: 56.h,
                                   decoration: BoxDecoration(
@@ -286,7 +320,7 @@ class _LocationPermissionState extends State<LocationPermission> with SingleTick
                                   ),
                                   child: Center(
                                     child: Text(
-                                      AppStrings.locationPermissionSkip,
+                                      AppStrings.notificationPermissionSkip,
                                       style: TextStyle(
                                         color: colors.textPrimary,
                                         fontSize: 16.sp,

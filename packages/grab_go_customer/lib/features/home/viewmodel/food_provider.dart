@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_customer/features/home/repository/food_repository.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
-import 'package:grab_go_customer/shared/services/cache_service.dart';
 import 'package:grab_go_customer/shared/services/restaurant_detail_service.dart';
+import 'package:grab_go_shared/shared/services/cache_service.dart';
 
 class FoodProvider with ChangeNotifier {
   List<FoodCategoryModel> _categories = [];
@@ -31,7 +31,7 @@ class FoodProvider with ChangeNotifier {
 
     try {
       _categories = await FoodRepository().fetchCategoriesWithFoods();
-      
+
       // Enhance food items with restaurant details
       await _enhanceFoodItemsWithRestaurantDetails();
 
@@ -145,14 +145,13 @@ class FoodProvider with ChangeNotifier {
         for (final foodItem in category.items) {
           // Check if food item needs restaurant details
           if (foodItem.sellerName == 'Loading Restaurant...' && foodItem.restaurantId.isNotEmpty) {
-            
             if (kDebugMode) {
               print('🔍 Food item "${foodItem.name}" needs restaurant details for ID: ${foodItem.restaurantId}');
             }
-            
+
             // Fetch restaurant details
             final restaurantDetails = await RestaurantDetailService.getRestaurantDetails(foodItem.restaurantId);
-            
+
             if (restaurantDetails != null) {
               // Create updated food item with restaurant details
               final enhancedItem = FoodItem(
@@ -174,7 +173,7 @@ class FoodProvider with ChangeNotifier {
                 discountPercentage: foodItem.discountPercentage,
               );
               enhancedItems.add(enhancedItem);
-              
+
               if (kDebugMode) {
                 print('✅ Enhanced ${foodItem.name} with restaurant: ${restaurantDetails['restaurant_name']}');
               }
@@ -198,7 +197,7 @@ class FoodProvider with ChangeNotifier {
       }
 
       notifyListeners();
-      
+
       if (kDebugMode) {
         print('✅ Completed enhancing food items with restaurant details');
       }

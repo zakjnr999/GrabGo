@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'package:chopper/chopper.dart';
-import 'package:flutter/foundation.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurant_response.dart';
-import 'package:grab_go_customer/shared/services/cache_service.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class JsonSerializableConverter extends JsonConverter {
@@ -64,7 +62,7 @@ class JsonSerializableConverter extends JsonConverter {
     if (!isLoginEndpoint && !isRegisterEndpoint) {
       try {
         final token = CacheService.getAuthToken();
-        
+
         if (token != null && token.isNotEmpty) {
           headers['Authorization'] = 'Bearer $token';
         } else {

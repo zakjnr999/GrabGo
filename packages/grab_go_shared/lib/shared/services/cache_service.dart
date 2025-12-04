@@ -6,10 +6,12 @@ class CacheService {
   static SharedPreferences? _prefs;
   static const Duration _defaultCacheExpiry = Duration(hours: 24);
 
+  /// Initialize the cache service
   static Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();
   }
 
+  /// Get SharedPreferences instance
   static SharedPreferences get _instance {
     if (_prefs == null) {
       throw Exception('CacheService not initialized. Call initialize() first.');
@@ -17,6 +19,7 @@ class CacheService {
     return _prefs!;
   }
 
+  /// Save user authentication token
   static Future<bool> saveAuthToken(String token) async {
     try {
       return await _instance.setString('auth_token', token);
@@ -26,6 +29,7 @@ class CacheService {
     }
   }
 
+  /// Get user authentication token
   static String? getAuthToken() {
     try {
       return _instance.getString('auth_token');
@@ -35,6 +39,7 @@ class CacheService {
     }
   }
 
+  /// Clear authentication token
   static Future<bool> clearAuthToken() async {
     try {
       return await _instance.remove('auth_token');
@@ -44,6 +49,7 @@ class CacheService {
     }
   }
 
+  /// Save user data
   static Future<bool> saveUserData(Map<String, dynamic> userData) async {
     try {
       final userJson = jsonEncode(userData);
@@ -127,8 +133,6 @@ class CacheService {
     }
   }
 
-  // ==================== CART CACHING ====================
-
   /// Save cart items
   static Future<bool> saveCartItems(List<Map<String, dynamic>> cartItems) async {
     try {
@@ -164,8 +168,6 @@ class CacheService {
       return false;
     }
   }
-
-  // ==================== RESTAURANT CACHING ====================
 
   /// Save restaurants data
   static Future<bool> saveRestaurants(List<Map<String, dynamic>> restaurants) async {
@@ -221,8 +223,6 @@ class CacheService {
     }
   }
 
-  // ==================== FOOD/MENU CACHING ====================
-
   /// Save food categories
   static Future<bool> saveFoodCategories(List<Map<String, dynamic>> categories) async {
     try {
@@ -265,8 +265,6 @@ class CacheService {
     }
   }
 
-  // ==================== ORDER CACHING ====================
-
   /// Save order history
   static Future<bool> saveOrderHistory(List<Map<String, dynamic>> orders) async {
     try {
@@ -297,7 +295,7 @@ class CacheService {
   static Future<bool> addOrderToHistory(Map<String, dynamic> order) async {
     try {
       final currentOrders = getOrderHistory();
-      currentOrders.insert(0, order); // Add to beginning
+      currentOrders.insert(0, order);
 
       // Keep only last 50 orders
       if (currentOrders.length > 50) {
@@ -311,6 +309,21 @@ class CacheService {
     }
   }
 
+  /// Clear food categories cache
+  static Future<void> clearFoodCategoriesCache() async {
+    try {
+      await _instance.remove('food_categories');
+      await _instance.remove('food_categories_cache_timestamp');
+      if (kDebugMode) {
+        print('✅ Food categories cache cleared');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error clearing food categories cache: $e');
+      }
+    }
+  }
+
   /// Clear order history
   static Future<bool> clearOrderHistory() async {
     try {
@@ -318,101 +331,6 @@ class CacheService {
     } catch (e) {
       debugPrint('Error clearing order history: $e');
       return false;
-    }
-  }
-
-  // ==================== CHAT CACHING ====================
-
-  /// Save chat list
-  static Future<bool> saveChatList(List<Map<String, dynamic>> chats) async {
-    try {
-      final chatsJson = jsonEncode(chats);
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      await _instance.setString('chat_list', chatsJson);
-      await _instance.setInt('chat_list_cache_timestamp', timestamp);
-      return true;
-    } catch (e) {
-      debugPrint('Error saving chat list: $e');
-      return false;
-    }
-  }
-
-  /// Get chat list
-  static List<Map<String, dynamic>> getChatList() {
-    try {
-      final chatsJson = _instance.getString('chat_list');
-      if (chatsJson != null) {
-        final decoded = jsonDecode(chatsJson);
-        if (decoded is List) {
-          return decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-        }
-      }
-      return [];
-    } catch (e) {
-      debugPrint('Error getting chat list: $e');
-      return [];
-    }
-  }
-
-  /// Clear chat list
-  static Future<bool> clearChatList() async {
-    try {
-      await _instance.remove('chat_list');
-      await _instance.remove('chat_list_cache_timestamp');
-      return true;
-    } catch (e) {
-      debugPrint('Error clearing chat list: $e');
-      return false;
-    }
-  }
-
-  /// Save chat unread count
-  static Future<bool> saveChatUnreadCount(int count) async {
-    try {
-      return await _instance.setInt('chat_unread_count', count);
-    } catch (e) {
-      debugPrint('Error saving chat unread count: $e');
-      return false;
-    }
-  }
-
-  /// Get chat unread count
-  static int getChatUnreadCount() {
-    try {
-      return _instance.getInt('chat_unread_count') ?? 0;
-    } catch (e) {
-      debugPrint('Error getting chat unread count: $e');
-      return 0;
-    }
-  }
-
-  /// Save messages for a specific chat so the detail view can load instantly
-  static Future<bool> saveChatMessages(String chatId, List<Map<String, dynamic>> messages) async {
-    try {
-      final key = 'chat_messages_$chatId';
-      final json = jsonEncode(messages);
-      return await _instance.setString(key, json);
-    } catch (e) {
-      debugPrint('Error saving chat messages: $e');
-      return false;
-    }
-  }
-
-  /// Get cached messages for a specific chat
-  static List<Map<String, dynamic>> getChatMessages(String chatId) {
-    try {
-      final key = 'chat_messages_$chatId';
-      final json = _instance.getString(key);
-      if (json == null) return [];
-
-      final decoded = jsonDecode(json);
-      if (decoded is List) {
-        return decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-      }
-      return [];
-    } catch (e) {
-      debugPrint('Error getting chat messages: $e');
-      return [];
     }
   }
 
@@ -520,7 +438,93 @@ class CacheService {
     }
   }
 
-  // ==================== APP SETTINGS CACHING ====================
+  static Future<bool> saveChatList(List<Map<String, dynamic>> chats) async {
+    try {
+      final chatsJson = jsonEncode(chats);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      await _instance.setString('chat_list', chatsJson);
+      await _instance.setInt('chat_list_cache_timestamp', timestamp);
+      return true;
+    } catch (e) {
+      debugPrint('Error saving chat list: $e');
+      return false;
+    }
+  }
+
+  static List<Map<String, dynamic>> getChatList() {
+    try {
+      final chatsJson = _instance.getString('chat_list');
+      if (chatsJson != null) {
+        final decoded = jsonDecode(chatsJson);
+        if (decoded is List) {
+          return decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting chat list: $e');
+      return [];
+    }
+  }
+
+  static Future<bool> clearChatList() async {
+    try {
+      await _instance.remove('chat_list');
+      await _instance.remove('chat_list_cache_timestamp');
+      return true;
+    } catch (e) {
+      debugPrint('Error clearing chat list: $e');
+      return false;
+    }
+  }
+
+  static Future<bool> saveChatUnreadCount(int count) async {
+    try {
+      return await _instance.setInt('chat_unread_count', count);
+    } catch (e) {
+      debugPrint('Error saving chat unread count: $e');
+      return false;
+    }
+  }
+
+  static int getChatUnreadCount() {
+    try {
+      return _instance.getInt('chat_unread_count') ?? 0;
+    } catch (e) {
+      debugPrint('Error getting chat unread count: $e');
+      return 0;
+    }
+  }
+
+  /// Save messages for a specific chat so the detail view can load instantly
+  static Future<bool> saveChatMessages(String chatId, List<Map<String, dynamic>> messages) async {
+    try {
+      final key = 'chat_messages_$chatId';
+      final json = jsonEncode(messages);
+      return await _instance.setString(key, json);
+    } catch (e) {
+      debugPrint('Error saving chat messages: $e');
+      return false;
+    }
+  }
+
+  /// Get cached messages for a specific chat
+  static List<Map<String, dynamic>> getChatMessages(String chatId) {
+    try {
+      final key = 'chat_messages_$chatId';
+      final json = _instance.getString(key);
+      if (json == null) return [];
+
+      final decoded = jsonDecode(json);
+      if (decoded is List) {
+        return decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting chat messages: $e');
+      return [];
+    }
+  }
 
   /// Save theme mode
   static Future<bool> saveThemeMode(int themeModeIndex) async {
@@ -588,8 +592,6 @@ class CacheService {
     }
   }
 
-  // ==================== LOCATION CACHING ====================
-
   /// Save user location
   static Future<bool> saveUserLocation({
     required double latitude,
@@ -640,8 +642,6 @@ class CacheService {
       return false;
     }
   }
-
-  // ==================== RESTAURANT APPLICATION CACHING ====================
 
   /// Save restaurant application status
   static Future<bool> saveRestaurantApplicationStatus(String status) async {
@@ -694,8 +694,6 @@ class CacheService {
     }
   }
 
-  // ==================== RIDER DATA CACHING ====================
-
   /// Save vehicle type
   static Future<bool> saveVehicleType(String vehicleType) async {
     try {
@@ -726,8 +724,6 @@ class CacheService {
     }
   }
 
-  // ==================== APP STATE CACHING ====================
-
   /// Save first launch status
   static Future<bool> setFirstLaunchComplete() async {
     try {
@@ -745,6 +741,26 @@ class CacheService {
     } catch (e) {
       debugPrint('Error checking first launch: $e');
       return true;
+    }
+  }
+
+  /// Save location permission screen shown status
+  static Future<bool> setLocationPermissionScreenShown() async {
+    try {
+      return await _instance.setBool('location_permission_screen_shown', true);
+    } catch (e) {
+      debugPrint('Error setting location permission screen shown: $e');
+      return false;
+    }
+  }
+
+  /// Check if location permission screen has been shown
+  static bool hasLocationPermissionScreenShown() {
+    try {
+      return _instance.getBool('location_permission_screen_shown') ?? false;
+    } catch (e) {
+      debugPrint('Error checking location permission screen shown: $e');
+      return false;
     }
   }
 
@@ -767,8 +783,6 @@ class CacheService {
       return null;
     }
   }
-
-  // ==================== SEARCH HISTORY CACHING ====================
 
   /// Save search history
   static Future<bool> saveSearchHistory(List<String> searchTerms) async {
@@ -800,8 +814,8 @@ class CacheService {
   static Future<bool> addSearchTerm(String term) async {
     try {
       final currentHistory = getSearchHistory();
-      currentHistory.remove(term); // Remove if exists
-      currentHistory.insert(0, term); // Add to beginning
+      currentHistory.remove(term);
+      currentHistory.insert(0, term);
 
       // Keep only last 20 search terms
       if (currentHistory.length > 20) {
@@ -824,8 +838,6 @@ class CacheService {
       return false;
     }
   }
-
-  // ==================== FAVORITES CACHING ====================
 
   /// Save favorite restaurants
   static Future<bool> saveFavoriteRestaurants(List<String> restaurantIds) async {
@@ -891,8 +903,6 @@ class CacheService {
     }
   }
 
-  // ==================== FAVORITE FOODS CACHING ====================
-
   /// Save favorite foods
   static Future<bool> saveFavoriteFoods(List<Map<String, dynamic>> favoriteFoods) async {
     try {
@@ -932,7 +942,7 @@ class CacheService {
         currentFavorites.add(foodItem);
         return await saveFavoriteFoods(currentFavorites);
       }
-      return true; // Already exists
+      return true;
     } catch (e) {
       debugPrint('Error adding favorite food: $e');
       return false;
@@ -973,8 +983,6 @@ class CacheService {
       return false;
     }
   }
-
-  // ==================== UTILITY METHODS ====================
 
   /// Clear all cache data
   static Future<bool> clearAllCache() async {

@@ -13,6 +13,7 @@ import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
+import 'package:shimmer/shimmer.dart';
 
 class Menu extends StatefulWidget {
   const Menu({super.key});
@@ -476,6 +477,7 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    final size = MediaQuery.sizeOf(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -580,22 +582,15 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
                                 onTabChanged: (index) => _onCategorySelected(index, provider.categories),
                                 padding: EdgeInsets.symmetric(horizontal: 12.w),
                               )
-                            : Container(
-                                height: 50.h,
-                                margin: EdgeInsets.symmetric(horizontal: 20.w),
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                  color: colors.backgroundPrimary,
-                                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    "No categories found...",
-                                    style: TextStyle(
-                                      color: colors.textSecondary,
-                                      fontSize: 16.sp,
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                            : Shimmer.fromColors(
+                                baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                                highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
+                                child: Container(
+                                  height: 50.h,
+                                  margin: EdgeInsets.symmetric(horizontal: 20.w),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                                    borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                                   ),
                                 ),
                               ),
@@ -682,7 +677,7 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
                                             _searchQuery = '';
                                             _selectedPriceFilter = 'all';
                                             _searchController.clear();
-                                            _itemsToShow = _itemsPerPage; // Reset items to show when clearing filters
+                                            _itemsToShow = _itemsPerPage;
                                           });
                                         },
                                         backgroundColor: Colors.transparent,
@@ -699,22 +694,96 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
                                 ),
                               );
                             } else if (filteredItems.isEmpty) {
-                              return Container(
-                                height: MediaQuery.of(context).size.height * 0.5,
-                                margin: EdgeInsets.symmetric(horizontal: 20.w),
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                  color: colors.backgroundPrimary,
-                                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    "No items found...",
-                                    style: TextStyle(
-                                      color: colors.textSecondary,
-                                      fontSize: 16.sp,
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                              return Shimmer.fromColors(
+                                baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                                highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.vertical,
+                                  child: Column(
+                                    children: List.generate(4, (index) {
+                                      return Container(
+                                        margin: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 12.h),
+                                        decoration: BoxDecoration(
+                                          border: Border.all(
+                                            color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                                            width: 0.5,
+                                          ),
+                                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            // Image placeholder
+                                            Container(
+                                              height: size.height * 0.14,
+                                              width: size.width * 0.32,
+                                              decoration: BoxDecoration(
+                                                color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                                borderRadius: const BorderRadius.only(
+                                                  topLeft: Radius.circular(KBorderSize.borderRadius15),
+                                                  bottomLeft: Radius.circular(KBorderSize.borderRadius15),
+                                                ),
+                                              ),
+                                            ),
+
+                                            // Itemname placeholder
+                                            Expanded(
+                                              child: Padding(
+                                                padding: EdgeInsets.symmetric(horizontal: 12.r, vertical: 8.h),
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Container(
+                                                      width: 140.w,
+                                                      height: 16.h,
+                                                      decoration: BoxDecoration(
+                                                        color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                                        borderRadius: BorderRadius.circular(4.r),
+                                                      ),
+                                                    ),
+                                                    SizedBox(height: 6.h),
+                                                    // Rating and delivery time placeholder
+                                                    Container(
+                                                      width: 120.w,
+                                                      height: 16.h,
+                                                      decoration: BoxDecoration(
+                                                        color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                                        borderRadius: BorderRadius.circular(4.r),
+                                                      ),
+                                                    ),
+                                                    SizedBox(height: 10.h),
+                                                    // Price and cart placeholder
+                                                    Row(
+                                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                      children: [
+                                                        //Price placeholder
+                                                        Container(
+                                                          width: 100.w,
+                                                          height: 16.h,
+                                                          decoration: BoxDecoration(
+                                                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                                            borderRadius: BorderRadius.circular(4.r),
+                                                          ),
+                                                        ),
+
+                                                        // Cart icon placeholder
+                                                        Container(
+                                                          height: 32.h,
+                                                          width: 32.w,
+                                                          decoration: BoxDecoration(
+                                                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                                            shape: BoxShape.circle,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }),
                                   ),
                                 ),
                               );

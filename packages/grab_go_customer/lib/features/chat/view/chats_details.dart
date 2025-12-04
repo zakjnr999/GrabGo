@@ -8,11 +8,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:grab_go_customer/features/chat/service/chat_service.dart';
 import 'package:grab_go_customer/features/order/service/order_service_wrapper.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
-import 'package:grab_go_customer/shared/services/cache_service.dart';
-import 'package:grab_go_customer/shared/services/chat_socket_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/shared/widgets/pulsing_dot.dart';
@@ -2885,10 +2882,15 @@ class _ChatDetailState extends State<ChatDetail> {
                           colorFilter: ColorFilter.mode(colors.error, BlendMode.srcIn),
                         )
                       else
-                        Icon(
-                          message.isRead ? Icons.done_all : Icons.done,
-                          size: 14.w,
-                          color: message.isRead ? colors.accentOrange : colors.textSecondary,
+                        SvgPicture.asset(
+                          message.isRead ? Assets.icons.doubleCheck : Assets.icons.check,
+                          package: "grab_go_shared",
+                          height: 14.h,
+                          width: 14.w,
+                          colorFilter: ColorFilter.mode(
+                            message.isRead ? colors.accentOrange : colors.textSecondary,
+                            BlendMode.srcIn,
+                          ),
                         ),
                       if (statusText != null) ...[
                         SizedBox(width: 4.w),

@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:grab_go_customer/shared/services/cache_service.dart';
+import 'package:grab_go_shared/shared/services/cache_service.dart';
 
 class NavigationProvider extends ChangeNotifier {
   int _selectedIndex = 0;

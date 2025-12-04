@@ -4,7 +4,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:http/http.dart' as http;
-import 'package:grab_go_customer/shared/services/cache_service.dart';
 
 class ChatConversationDto {
   final String id;
@@ -47,7 +46,6 @@ class ChatConversationDto {
   }
 }
 
-/// Message types supported in chat
 enum MessageType {
   text,
   voice,
@@ -70,9 +68,9 @@ class ChatMessageDto {
   final MessageType messageType;
   final String? text;
   final String? audioUrl;
-  final double audioDuration; // Duration in seconds
-  final List<String> imageUrls; // URLs for image messages
-  final List<String> blurHashes; // BlurHash for instant image previews
+  final double audioDuration;
+  final List<String> imageUrls;
+  final List<String> blurHashes;
   final String senderId;
   final String? senderName;
   final DateTime sentAt;
@@ -196,7 +194,7 @@ class ChatService {
 
   final http.Client _client;
 
-  String get _baseUrl => AppConfig.apiBaseUrl; // e.g. https://grabgo.onrender.com/api
+  String get _baseUrl => AppConfig.apiBaseUrl;
 
   Map<String, String> _buildHeaders() {
     final headers = <String, String>{'Content-Type': 'application/json'};
@@ -229,9 +227,6 @@ class ChatService {
     }
   }
 
-  /// Fetches chat details with messages.
-  /// [limit] - Maximum number of messages to fetch (default 50, max 100)
-  /// [beforeMessageId] - Fetch messages before this message ID (for pagination)
   Future<ChatDetailDto?> getChat(String chatId, {int? limit, String? beforeMessageId}) async {
     final queryParams = <String, String>{};
     if (limit != null) queryParams['limit'] = limit.toString();
@@ -275,7 +270,6 @@ class ChatService {
         final data = decoded['data'];
         if (data is Map<String, dynamic> && data['message'] is Map<String, dynamic>) {
           final messageJson = data['message'] as Map<String, dynamic>;
-          // Backend uses `sentAt` in response
           return ChatMessageDto.fromJson(messageJson);
         }
         return null;
@@ -289,25 +283,19 @@ class ChatService {
     }
   }
 
-  /// Send a voice message by uploading audio file
-  /// [audioFilePath] - Path to the local audio file
-  /// [duration] - Duration of the audio in seconds
   Future<ChatMessageDto?> sendVoiceMessage(String chatId, String audioFilePath, {double? duration}) async {
     final uri = Uri.parse('$_baseUrl/chats/$chatId/voice-message');
 
     try {
       final request = http.MultipartRequest('POST', uri);
 
-      // Add auth header
       final token = CacheService.getAuthToken();
       if (token != null && token.isNotEmpty) {
         request.headers['Authorization'] = 'Bearer $token';
       }
 
-      // Add audio file
       request.files.add(await http.MultipartFile.fromPath('audio', audioFilePath));
 
-      // Add duration if provided
       if (duration != null) {
         request.fields['duration'] = duration.toString();
       }
@@ -333,10 +321,6 @@ class ChatService {
     }
   }
 
-  /// Send image message(s) by uploading image files
-  /// [imagePaths] - List of paths to local image files (already compressed)
-  /// [onProgress] - Optional callback for upload progress (0.0 to 1.0)
-  /// [cancelToken] - Optional token to cancel the upload
   Future<ChatMessageDto?> sendImageMessage(
     String chatId,
     List<String> imagePaths, {
@@ -351,19 +335,16 @@ class ChatService {
     try {
       final dio = Dio();
 
-      // Add auth header
       final token = CacheService.getAuthToken();
       if (token != null && token.isNotEmpty) {
         dio.options.headers['Authorization'] = 'Bearer $token';
       }
 
-      // Build form data with image files
       final formData = FormData();
       for (var i = 0; i < imagePaths.length; i++) {
         formData.files.add(MapEntry('images', await MultipartFile.fromFile(imagePaths[i])));
       }
 
-      // Add reply ID if provided
       if (replyToId != null) {
         formData.fields.add(MapEntry('replyToId', replyToId));
       }
@@ -403,7 +384,6 @@ class ChatService {
     }
   }
 
-  /// Delete a message from a chat
   Future<bool> deleteMessage(String chatId, String messageId) async {
     final uri = Uri.parse('$_baseUrl/chats/$chatId/messages/$messageId');
 
@@ -422,7 +402,6 @@ class ChatService {
     }
   }
 
-  /// Edit a text message
   Future<bool> editMessage(String chatId, String messageId, String newText) async {
     final uri = Uri.parse('$_baseUrl/chats/$chatId/messages/$messageId');
 
@@ -445,20 +424,12 @@ class ChatService {
     }
   }
 
-  /// Delete specific images from a multi-image message
-  /// [imageIndices] - List of 0-based indices of images to delete
   Future<bool> deleteMessageImages(String chatId, String messageId, List<int> imageIndices) async {
     final uri = Uri.parse('$_baseUrl/chats/$chatId/messages/$messageId/delete-images');
-
-    debugPrint('ChatService.deleteMessageImages: chatId=$chatId, messageId=$messageId, indices=$imageIndices');
-    debugPrint('ChatService.deleteMessageImages: uri=$uri');
 
     try {
       final headers = {..._buildHeaders(), 'Content-Type': 'application/json'};
       final body = jsonEncode({'imageIndices': imageIndices});
-      debugPrint('ChatService.deleteMessageImages: headers=$headers');
-      debugPrint('ChatService.deleteMessageImages: body=$body');
-
       final response = await _client.post(uri, headers: headers, body: body);
 
       debugPrint('ChatService.deleteMessageImages: statusCode=${response.statusCode}');

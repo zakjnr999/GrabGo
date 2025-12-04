@@ -1,13 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:grab_go_customer/shared/services/cache_service.dart';
 import 'package:grab_go_customer/shared/services/location_service.dart';
+import 'package:grab_go_shared/shared/services/cache_service.dart';
 
 class LocationProvider with ChangeNotifier {
   String _address = "";
   double? _latitude;
   double? _longitude;
-  
+
   String get address => _address;
   double? get latitude => _latitude;
   double? get longitude => _longitude;
@@ -55,19 +55,15 @@ class LocationProvider with ChangeNotifier {
 
     try {
       _address = await LocationService.getCurrentAddress();
-      
+
       // Get coordinates if available
       final position = await LocationService.getCurrentPosition();
       if (position != null) {
         _latitude = position.latitude;
         _longitude = position.longitude;
-        
+
         // Save to cache
-        await CacheService.saveUserLocation(
-          latitude: _latitude!,
-          longitude: _longitude!,
-          address: _address,
-        );
+        await CacheService.saveUserLocation(latitude: _latitude!, longitude: _longitude!, address: _address);
       }
     } catch (e) {
       if (kDebugMode) {
@@ -80,22 +76,14 @@ class LocationProvider with ChangeNotifier {
   }
 
   /// Update location manually
-  Future<void> updateLocation({
-    required double latitude,
-    required double longitude,
-    required String address,
-  }) async {
+  Future<void> updateLocation({required double latitude, required double longitude, required String address}) async {
     _latitude = latitude;
     _longitude = longitude;
     _address = address;
-    
+
     // Save to cache
-    await CacheService.saveUserLocation(
-      latitude: latitude,
-      longitude: longitude,
-      address: address,
-    );
-    
+    await CacheService.saveUserLocation(latitude: latitude, longitude: longitude, address: address);
+
     notifyListeners();
   }
 
@@ -107,4 +95,3 @@ class LocationProvider with ChangeNotifier {
     LocationService.clearCache();
   }
 }
-

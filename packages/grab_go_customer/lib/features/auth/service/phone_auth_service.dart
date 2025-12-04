@@ -1,5 +1,5 @@
 import 'package:grab_go_customer/core/api/api_client.dart';
-import 'package:grab_go_customer/shared/services/cache_service.dart';
+import 'package:grab_go_shared/shared/services/cache_service.dart';
 
 class PhoneAuthService {
   static final PhoneAuthService _instance = PhoneAuthService._internal();

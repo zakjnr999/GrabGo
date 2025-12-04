@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:grab_go_rider/shared/service/chat_socket_service.dart';
+import 'package:grab_go_shared/shared/services/chat_socket_service.dart';
 
 class BottomNavProvider extends ChangeNotifier {
   int _selectedIndex = 0;

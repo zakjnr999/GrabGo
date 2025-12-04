@@ -17,6 +17,8 @@ class StoryViewer extends StatefulWidget {
   final String restaurantName;
   final String? restaurantLogo;
   final String? initialBlurHash; // Show while loading
+  final VoidCallback? onNextRestaurant; // Swipe left to next restaurant
+  final VoidCallback? onPreviousRestaurant; // Swipe right to previous restaurant
 
   const StoryViewer({
     super.key,
@@ -24,21 +26,41 @@ class StoryViewer extends StatefulWidget {
     required this.restaurantName,
     this.restaurantLogo,
     this.initialBlurHash,
+    this.onNextRestaurant,
+    this.onPreviousRestaurant,
   });
 
   @override
   State<StoryViewer> createState() => _StoryViewerState();
 }
 
-class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStateMixin {
+class _StoryViewerState extends State<StoryViewer> with TickerProviderStateMixin {
   int _currentIndex = 0;
   late AnimationController _progressController;
+  late AnimationController _heartAnimationController;
+  late Animation<double> _heartScaleAnimation;
+  late Animation<double> _heartOpacityAnimation;
+  late StatusProvider _statusProvider; // Cache provider reference for dispose
 
   // Use a map to prevent duplicate entries and limit memory usage
   final Map<String, BatchViewItem> _viewedItemsMap = {};
   DateTime? _currentViewStartTime;
   bool _isInitialized = false;
   bool _isPreloading = false;
+  bool _isImageLoading = true; // Track if current image is still loading
+  String? _currentLoadingStatusId; // Track which status we're loading
+  bool _showHeartAnimation = false; // Track heart animation visibility
+  Offset? _doubleTapPosition; // Position of double tap for heart animation
+  bool _isLikeAnimation = true; // True for like (red), false for unlike (white)
+
+  // Vertical swipe gesture tracking (for dismiss)
+  double _dragStartY = 0;
+  double _dragCurrentY = 0;
+  bool _isDraggingVertical = false;
+  static const double _dismissThreshold = 100; // Pixels to drag before dismissing
+
+  // Track if cleanup has been done to avoid double-processing
+  bool _hasCleanedUp = false;
 
   // Maximum items to track (prevents unbounded growth)
   static const int _maxViewedItems = 50;
@@ -49,6 +71,32 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
   void initState() {
     super.initState();
     _progressController = AnimationController(vsync: this, duration: _storyDuration);
+    _statusProvider = context.read<StatusProvider>(); // Cache reference
+
+    // Initialize heart animation controller
+    _heartAnimationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+
+    _heartScaleAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.2), weight: 30),
+      TweenSequenceItem(tween: Tween(begin: 1.2, end: 0.9), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: 0.9, end: 1.0), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.0), weight: 30),
+    ]).animate(CurvedAnimation(parent: _heartAnimationController, curve: Curves.easeOut));
+
+    _heartOpacityAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 20),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.0), weight: 50),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 30),
+    ]).animate(CurvedAnimation(parent: _heartAnimationController, curve: Curves.easeOut));
+
+    _heartAnimationController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        setState(() {
+          _showHeartAnimation = false;
+        });
+        _heartAnimationController.reset();
+      }
+    });
 
     _progressController.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
@@ -59,12 +107,22 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
 
   @override
   void dispose() {
+    // Only cleanup if not already done (e.g., by _close or _goToNextRestaurantOrClose)
+    if (!_hasCleanedUp) {
+      _performCleanup();
+    }
+    _progressController.dispose();
+    _heartAnimationController.dispose();
+    super.dispose();
+  }
+
+  /// Perform cleanup - record views, send batch, mark as viewed
+  void _performCleanup() {
+    if (_hasCleanedUp) return;
+    _hasCleanedUp = true;
     _recordCurrentView();
     _sendBatchViews();
-    // Mark story as viewed when closing (moves to end of list like WhatsApp)
-    context.read<StatusProvider>().markStoryAsViewed(widget.restaurantId);
-    _progressController.dispose();
-    super.dispose();
+    _statusProvider.markStoryAsViewed(widget.restaurantId);
   }
 
   void _startProgress(StatusModel status) {
@@ -73,13 +131,27 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
 
     final duration = status.isVideo ? _videoDuration : _storyDuration;
     _progressController.duration = duration;
-    _progressController.forward(from: 0);
+
+    // Reset loading state - progress will start when image loads
+    _isImageLoading = true;
+    _currentLoadingStatusId = status.id;
+    _progressController.reset();
+  }
+
+  /// Called when image finishes loading - starts the progress bar
+  void _onImageLoaded(String statusId) {
+    // Only start progress if this is still the current status being loaded
+    if (_isImageLoading && mounted && _currentLoadingStatusId == statusId) {
+      setState(() {
+        _isImageLoading = false;
+      });
+      _progressController.forward(from: 0);
+    }
   }
 
   void _recordCurrentView() {
     if (_currentViewStartTime != null) {
-      final provider = context.read<StatusProvider>();
-      final statuses = provider.currentRestaurantStatuses;
+      final statuses = _statusProvider.currentRestaurantStatuses;
 
       if (_currentIndex < statuses.length) {
         final statusId = statuses[_currentIndex].id;
@@ -105,52 +177,64 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
 
   void _sendBatchViews() {
     if (_viewedItemsMap.isNotEmpty) {
-      context.read<StatusProvider>().recordBatchViews(_viewedItemsMap.values.toList());
+      _statusProvider.recordBatchViews(_viewedItemsMap.values.toList());
       _viewedItemsMap.clear(); // Clear after sending
     }
   }
 
   /// Preload next images for smoother UX
-  void _preloadNextImages(List<StatusModel> statuses) {
+  Future<void> _preloadNextImages(List<StatusModel> statuses) async {
     if (_isPreloading) return;
     _isPreloading = true;
 
-    // Preload next 2 images
-    for (int i = _currentIndex + 1; i <= _currentIndex + 2 && i < statuses.length; i++) {
-      final status = statuses[i];
-      if (!status.isVideo) {
-        precacheImage(CachedNetworkImageProvider(status.mediaUrl), context).catchError((_) {});
+    try {
+      // Preload next 2 images
+      final futures = <Future>[];
+      for (int i = _currentIndex + 1; i <= _currentIndex + 2 && i < statuses.length; i++) {
+        final status = statuses[i];
+        if (!status.isVideo) {
+          futures.add(precacheImage(CachedNetworkImageProvider(status.mediaUrl), context).catchError((_) {}));
+        }
       }
+      await Future.wait(futures);
+    } finally {
+      _isPreloading = false;
     }
-
-    _isPreloading = false;
   }
 
   void _nextStory() {
-    final provider = context.read<StatusProvider>();
-    final statuses = provider.currentRestaurantStatuses;
+    final statuses = _statusProvider.currentRestaurantStatuses;
 
     if (_currentIndex < statuses.length - 1) {
       setState(() => _currentIndex++);
       _startProgress(statuses[_currentIndex]);
       _preloadNextImages(statuses);
     } else {
-      _close();
+      // Last status in this restaurant - go to next restaurant or close
+      _goToNextRestaurantOrClose();
     }
   }
 
   void _previousStory() {
-    if (_currentIndex > 0) {
-      final provider = context.read<StatusProvider>();
-      final statuses = provider.currentRestaurantStatuses;
+    final statuses = _statusProvider.currentRestaurantStatuses;
+    if (_currentIndex > 0 && statuses.isNotEmpty) {
       setState(() => _currentIndex--);
       _startProgress(statuses[_currentIndex]);
     }
   }
 
+  void _goToNextRestaurantOrClose() {
+    _performCleanup();
+
+    if (widget.onNextRestaurant != null) {
+      widget.onNextRestaurant!();
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
+
   void _close() {
-    _recordCurrentView();
-    _sendBatchViews();
+    _performCleanup();
     Navigator.of(context).pop();
   }
 
@@ -174,92 +258,267 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     }
   }
 
+  /// Handle double-tap to like/unlike with heart animation
+  void _onDoubleTap(TapDownDetails details, String? statusId) {
+    if (statusId == null) return;
+
+    // Check current like state before toggling
+    final isCurrentlyLiked = _statusProvider.isLiked(statusId);
+
+    // Store tap position and animation type for heart animation
+    setState(() {
+      _doubleTapPosition = details.localPosition;
+      _showHeartAnimation = true;
+      _isLikeAnimation = !isCurrentlyLiked; // Red for like, white for unlike
+    });
+
+    // Toggle like state
+    _statusProvider.toggleLike(statusId);
+
+    // Start heart animation
+    _heartAnimationController.forward(from: 0);
+  }
+
+  // Swipe gesture handlers
+  void _onVerticalDragStart(DragStartDetails details) {
+    _dragStartY = details.globalPosition.dy;
+    _dragCurrentY = _dragStartY;
+    _isDraggingVertical = true;
+    if (!_isImageLoading) _progressController.stop();
+  }
+
+  void _onVerticalDragUpdate(DragUpdateDetails details) {
+    if (!_isDraggingVertical) return;
+    setState(() {
+      _dragCurrentY = details.globalPosition.dy;
+    });
+  }
+
+  void _onVerticalDragEnd(DragEndDetails details) {
+    if (!_isDraggingVertical) return;
+
+    final dragDistance = _dragCurrentY - _dragStartY;
+
+    if (dragDistance > _dismissThreshold) {
+      // Swipe down - close viewer
+      _close();
+    } else {
+      // Reset position and resume
+      setState(() {
+        _dragCurrentY = _dragStartY;
+      });
+      if (!_isImageLoading) _progressController.forward();
+    }
+    _isDraggingVertical = false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    final dragOffset = _isDraggingVertical ? (_dragCurrentY - _dragStartY).clamp(0.0, 200.0) : 0.0;
+    final scale = 1.0 - (dragOffset / 1000); // Subtle scale effect
+    final opacity = 1.0 - (dragOffset / 400); // Fade out as dragging
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
-        statusBarColor: Colors.black,
+        statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
         systemNavigationBarIconBrightness: Brightness.light,
         systemNavigationBarColor: Colors.transparent,
       ),
       child: Scaffold(
-        backgroundColor: Colors.black,
-        body: Consumer<StatusProvider>(
-          builder: (context, provider, child) {
-            final statuses = provider.currentRestaurantStatuses;
+        backgroundColor: Colors.transparent,
+        body: GestureDetector(
+          onVerticalDragStart: _onVerticalDragStart,
+          onVerticalDragUpdate: _onVerticalDragUpdate,
+          onVerticalDragEnd: _onVerticalDragEnd,
+          // Horizontal swiping is handled by parent PageView
+          child: Container(
+            color: Colors.black.withValues(alpha: opacity.clamp(0.0, 1.0)),
+            child: Transform.translate(
+              offset: Offset(0, dragOffset),
+              child: Transform.scale(
+                scale: scale.clamp(0.8, 1.0),
+                child: Consumer<StatusProvider>(
+                  builder: (context, provider, child) {
+                    final statuses = provider.currentRestaurantStatuses;
+                    final isLoading = statuses.isEmpty;
 
-            if (statuses.isEmpty) {
-              // Show blur hash placeholder while loading statuses
-              return Stack(
-                fit: StackFit.expand,
-                children: [
-                  _buildBlurHashPlaceholder(widget.initialBlurHash),
-                  // Loading indicator overlay
-                  Center(child: CircularProgressIndicator(color: Colors.white.withValues(alpha: 0.7), strokeWidth: 2)),
-                ],
-              );
-            }
+                    // Get current status or use placeholder data
+                    // Safety check: ensure _currentIndex is within bounds
+                    final safeIndex = _currentIndex.clamp(0, statuses.isEmpty ? 0 : statuses.length - 1);
+                    final currentStatus = isLoading ? null : statuses[safeIndex];
 
-            if (!_isInitialized && statuses.isNotEmpty) {
-              _isInitialized = true;
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) {
-                  _startProgress(statuses[_currentIndex]);
-                  // Preload upcoming images
-                  _preloadNextImages(statuses);
-                }
-              });
-            }
+                    // Reset index if it was out of bounds
+                    if (!isLoading && _currentIndex != safeIndex) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) setState(() => _currentIndex = safeIndex);
+                      });
+                    }
+                    final currentBlurHash = currentStatus?.blurHash ?? widget.initialBlurHash;
+                    final currentMediaUrl = currentStatus?.mediaUrl;
 
-            final currentStatus = statuses[_currentIndex];
+                    if (!_isInitialized && statuses.isNotEmpty) {
+                      _isInitialized = true;
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          _startProgress(statuses[safeIndex]);
+                          // Preload upcoming images
+                          _preloadNextImages(statuses);
+                        }
+                      });
+                    }
 
-            return GestureDetector(
-              onTapUp: _onTapUp,
-              onLongPressStart: (_) => _progressController.stop(),
-              onLongPressEnd: (_) => _progressController.forward(),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  CachedNetworkImage(
-                    imageUrl: currentStatus.mediaUrl,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => _buildBlurHashPlaceholder(currentStatus.blurHash),
-                    errorWidget: (_, __, ___) => Container(color: Colors.grey[900]),
-                  ),
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withOpacity(0.6),
-                          Colors.transparent,
-                          Colors.transparent,
-                          Colors.black.withOpacity(0.8),
+                    return GestureDetector(
+                      onTapUp: isLoading ? null : _onTapUp,
+                      onDoubleTapDown: isLoading ? null : (details) => _onDoubleTap(details, currentStatus?.id),
+                      onDoubleTap: () {}, // Required for onDoubleTapDown to work
+                      onLongPressStart: (_) {
+                        if (!_isImageLoading) _progressController.stop();
+                      },
+                      onLongPressEnd: (_) {
+                        if (!_isImageLoading) _progressController.forward();
+                      },
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          // Show blur hash or actual image
+                          if (currentMediaUrl != null)
+                            CachedNetworkImage(
+                              key: ValueKey(currentStatus!.id),
+                              imageUrl: currentMediaUrl,
+                              fit: BoxFit.cover,
+                              imageBuilder: (context, imageProvider) {
+                                final statusId = currentStatus.id;
+                                WidgetsBinding.instance.addPostFrameCallback((_) => _onImageLoaded(statusId));
+                                return Image(image: imageProvider, fit: BoxFit.cover);
+                              },
+                              progressIndicatorBuilder: (context, url, progress) => Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  _buildBlurHashPlaceholder(currentStatus.blurHash),
+                                  Center(
+                                    child: SizedBox(
+                                      width: 44.w,
+                                      height: 44.w,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 3,
+                                        color: Colors.white,
+                                        value: progress.progress,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              errorWidget: (context, url, error) => Container(color: Colors.grey[900]),
+                            )
+                          else
+                            // Show initial blur hash while statuses are loading
+                            Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                _buildBlurHashPlaceholder(currentBlurHash),
+                                Center(
+                                  child: SizedBox(
+                                    width: 44.w,
+                                    height: 44.w,
+                                    child: const CircularProgressIndicator(strokeWidth: 3, color: Colors.white),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          // Gradient overlay
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.black.withValues(alpha: 0.6),
+                                  Colors.transparent,
+                                  Colors.transparent,
+                                  Colors.black.withValues(alpha: 0.8),
+                                ],
+                                stops: const [0.0, 0.2, 0.7, 1.0],
+                              ),
+                            ),
+                          ),
+                          SafeArea(
+                            child: Column(
+                              children: [
+                                // Offline indicator
+                                if (provider.isOffline)
+                                  Container(
+                                    width: double.infinity,
+                                    padding: EdgeInsets.symmetric(vertical: 4.h),
+                                    color: Colors.orange.withValues(alpha: 0.9),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        SvgPicture.asset(
+                                          Assets.icons.wifiOff,
+                                          package: "grab_go_shared",
+                                          height: 15.h,
+                                          width: 15.w,
+                                          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                        ),
+                                        SizedBox(width: 6.w),
+                                        Text(
+                                          'No internet connection',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12.sp,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                // Always show progress bar (1 segment when loading)
+                                _buildProgressBars(isLoading ? 1 : statuses.length),
+                                SizedBox(height: 12.h),
+                                _buildHeader(colors, currentStatus),
+                                const Spacer(),
+                                _buildBottomContent(colors, currentStatus, provider),
+                                SizedBox(height: 20.h),
+                              ],
+                            ),
+                          ),
+                          // Heart animation overlay
+                          if (_showHeartAnimation && _doubleTapPosition != null)
+                            Positioned(
+                              left: _doubleTapPosition!.dx - 50,
+                              top: _doubleTapPosition!.dy - 50,
+                              child: AnimatedBuilder(
+                                animation: _heartAnimationController,
+                                builder: (context, child) {
+                                  return Opacity(
+                                    opacity: _heartOpacityAnimation.value,
+                                    child: Transform.scale(
+                                      scale: _heartScaleAnimation.value,
+                                      child: SvgPicture.asset(
+                                        _isLikeAnimation ? Assets.icons.heartSolid : Assets.icons.heart,
+                                        colorFilter: ColorFilter.mode(
+                                          _isLikeAnimation ? AppColors.errorRed : Colors.white,
+                                          BlendMode.srcIn,
+                                        ),
+                                        height: 100.h,
+                                        width: 100.w,
+                                        package: "grab_go_shared",
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
                         ],
-                        stops: const [0.0, 0.2, 0.7, 1.0],
                       ),
-                    ),
-                  ),
-                  SafeArea(
-                    child: Column(
-                      children: [
-                        _buildProgressBars(statuses.length),
-                        SizedBox(height: 12.h),
-                        _buildHeader(colors, currentStatus),
-                        const Spacer(),
-                        _buildBottomContent(colors, currentStatus, provider),
-                        SizedBox(height: 20.h),
-                      ],
-                    ),
-                  ),
-                ],
+                    );
+                  },
+                ),
               ),
-            );
-          },
+            ),
+          ),
         ),
       ),
     );
@@ -285,7 +544,8 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
                   }
                   return LinearProgressIndicator(
                     value: progress,
-                    backgroundColor: Colors.white.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(999),
+                    backgroundColor: Colors.white.withValues(alpha: 0.3),
                     valueColor: const AlwaysStoppedAnimation(Colors.white),
                   );
                 },
@@ -297,7 +557,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     );
   }
 
-  Widget _buildHeader(AppColorsExtension colors, StatusModel status) {
+  Widget _buildHeader(AppColorsExtension colors, StatusModel? status) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Row(
@@ -316,23 +576,72 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
                   widget.restaurantName,
                   style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w600),
                 ),
-                Text(
-                  status.timeAgo,
-                  style: TextStyle(color: Colors.white70, fontSize: 12.sp),
-                ),
+                if (status != null)
+                  Text(
+                    status.timeAgo,
+                    style: TextStyle(color: Colors.white70, fontSize: 12.sp),
+                  ),
               ],
             ),
-          ),
-          IconButton(
-            onPressed: _close,
-            icon: const Icon(Icons.close, color: Colors.white),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBottomContent(AppColorsExtension colors, StatusModel status, StatusProvider provider) {
+  Widget _buildBottomContent(AppColorsExtension colors, StatusModel? status, StatusProvider provider) {
+    // Show placeholder content while loading
+    if (status == null) {
+      return Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Category badge placeholder
+            Container(
+              width: 80.w,
+              height: 28.h,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(20.r),
+              ),
+            ),
+            SizedBox(height: 12.h),
+            // Title placeholder
+            Container(
+              width: 200.w,
+              height: 24.h,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(4.r),
+              ),
+            ),
+            SizedBox(height: 8.h),
+            // Description placeholder
+            Container(
+              width: 280.w,
+              height: 16.h,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(4.r),
+              ),
+            ),
+            SizedBox(height: 16.h),
+            // Action buttons placeholder
+            Row(
+              children: [
+                _buildActionButton(icon: Assets.icons.heart, label: '-', onTap: null),
+                SizedBox(width: 24.w),
+                _buildActionButton(icon: Assets.icons.eye, label: '-', onTap: null),
+                SizedBox(width: 24.w),
+                _buildActionButton(icon: Assets.icons.shareAndroid, label: 'Share', onTap: null),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       child: Column(
@@ -419,6 +728,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
                 icon: provider.isLiked(status.id) ? Assets.icons.heartSolid : Assets.icons.heart,
                 label: '${status.likeCount}',
                 onTap: () => provider.toggleLike(status.id),
+                isLiked: provider.isLiked(status.id),
               ),
               SizedBox(width: 24.w),
               _buildActionButton(icon: Assets.icons.eye, label: '${status.viewCount}', onTap: null),
@@ -446,7 +756,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
     );
   }
 
-  Widget _buildActionButton({required String icon, required String label, VoidCallback? onTap}) {
+  Widget _buildActionButton({required String icon, required String label, VoidCallback? onTap, bool isLiked = false}) {
     return GestureDetector(
       onTap: onTap,
       child: Row(
@@ -456,7 +766,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
             package: "grab_go_shared",
             height: 20.h,
             width: 20.w,
-            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+            colorFilter: ColorFilter.mode(isLiked ? Colors.red : Colors.white, BlendMode.srcIn),
           ),
           SizedBox(width: 6.w),
           Text(
@@ -491,7 +801,7 @@ class _StoryViewerState extends State<StoryViewer> with SingleTickerProviderStat
   void _shareStatus(StatusModel status) {
     _progressController.stop();
 
-    String shareText = '${widget.restaurantName}';
+    String shareText = widget.restaurantName;
     if (status.title != null) {
       shareText += '\n${status.title}';
     }

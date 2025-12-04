@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:grab_go_customer/features/status/model/status_model.dart';
@@ -33,14 +34,15 @@ class StatusCardNew extends StatelessWidget {
       child: Container(
         width: 260.w,
         margin: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+        padding: EdgeInsets.all(1.r),
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
-          borderRadius: BorderRadius.circular(20.r),
+          borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
+              color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
+              blurRadius: 12,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
@@ -52,25 +54,27 @@ class StatusCardNew extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-                  child: CachedNetworkImage(
+                  child: CachedImageWidget(
                     imageUrl: status.mediaUrl,
                     height: 180.h,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    placeholder: (_, _) => Container(
+                    placeholder: Container(
                       height: 180.h,
+                      width: double.infinity,
                       padding: EdgeInsets.all(40.r),
-                      color: colors.inputBorder.withValues(alpha: 0.3),
+                      color: colors.inputBorder,
                       child: SvgPicture.asset(
                         Assets.icons.chefHat,
                         package: "grab_go_shared",
                         colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                       ),
                     ),
-                    errorWidget: (_, _, _) => Container(
+                    errorWidget: Container(
                       height: 180.h,
+                      width: double.infinity,
                       padding: EdgeInsets.all(40.r),
-                      color: colors.inputBorder.withValues(alpha: 0.3),
+                      color: colors.inputBorder,
                       child: SvgPicture.asset(
                         Assets.icons.chefHat,
                         package: "grab_go_shared",
@@ -194,18 +198,18 @@ class StatusCardNew extends StatelessWidget {
                           children: [
                             isLiked
                                 ? SvgPicture.asset(
-                                    Assets.icons.heart,
-                                    package: "grab_go_shared",
-                                    height: 20.h,
-                                    width: 20.w,
-                                    colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                                  )
-                                : SvgPicture.asset(
                                     Assets.icons.heartSolid,
                                     package: "grab_go_shared",
                                     height: 20.h,
                                     width: 20.w,
                                     colorFilter: ColorFilter.mode(colors.error, BlendMode.srcIn),
+                                  )
+                                : SvgPicture.asset(
+                                    Assets.icons.heart,
+                                    package: "grab_go_shared",
+                                    height: 20.h,
+                                    width: 20.w,
+                                    colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                                   ),
                             SizedBox(width: 4.w),
                             Text(

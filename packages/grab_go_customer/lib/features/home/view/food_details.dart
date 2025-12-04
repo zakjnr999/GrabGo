@@ -654,120 +654,122 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
               },
             ),
 
-            bottomNavigationBar: Container(
-              decoration: BoxDecoration(
-                color: colors.backgroundPrimary,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(KBorderSize.border),
-                  topRight: Radius.circular(KBorderSize.border),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withAlpha(20),
-                    blurRadius: 20,
-                    spreadRadius: 0,
-                    offset: const Offset(0, -3),
+            bottomNavigationBar: SafeArea(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: colors.backgroundPrimary,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(KBorderSize.border),
+                    topRight: Radius.circular(KBorderSize.border),
                   ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(KBorderSize.border),
-                  topRight: Radius.circular(KBorderSize.border),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(20),
+                      blurRadius: 20,
+                      spreadRadius: 0,
+                      offset: const Offset(0, -3),
+                    ),
+                  ],
                 ),
-                child: Container(
-                  height: size.height * 0.14,
-                  padding: EdgeInsets.all(14.r),
-                  decoration: BoxDecoration(color: colors.backgroundPrimary),
-                  child: Consumer<CartProvider>(
-                    builder: (context, provider, _) {
-                      final int qty = provider.cartItems[widget.foodItem] ?? 0;
-                      final bool isInCart = qty > 0;
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(KBorderSize.border),
+                    topRight: Radius.circular(KBorderSize.border),
+                  ),
+                  child: Container(
+                    height: size.height * 0.14,
+                    padding: EdgeInsets.all(14.r),
+                    decoration: BoxDecoration(color: colors.backgroundPrimary),
+                    child: Consumer<CartProvider>(
+                      builder: (context, provider, _) {
+                        final int qty = provider.cartItems[widget.foodItem] ?? 0;
+                        final bool isInCart = qty > 0;
 
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Container(
-                              height: size.height * 0.06,
-                              padding: EdgeInsets.symmetric(horizontal: 10.w),
-                              decoration: BoxDecoration(
-                                color: colors.backgroundSecondary,
-                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                                border: Border.all(color: colors.inputBorder, width: 1.5),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  InkWell(
-                                    onTap: () {
-                                      if (isInCart) {
-                                        provider.removeFromCart(widget.foodItem);
-                                      }
-                                    },
-                                    child: Icon(Icons.remove, color: colors.textSecondary, size: 20),
-                                  ),
-                                  Text(
-                                    qty.toString(),
-                                    style: TextStyle(
-                                      fontSize: 12.sp,
-                                      fontWeight: FontWeight.w400,
-                                      color: colors.textPrimary,
-                                    ),
-                                  ),
-                                  GestureDetector(
-                                    onTap: () {
-                                      provider.addToCart(widget.foodItem);
-                                    },
-                                    child: Container(
-                                      padding: EdgeInsets.all(2.r),
-                                      decoration: BoxDecoration(color: colors.accentOrange, shape: BoxShape.circle),
-                                      child: const Icon(Icons.add, color: Colors.white, size: 20),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          SizedBox(width: KSpacing.md.w),
-
-                          Expanded(
-                            flex: 2,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [colors.accentOrange, colors.accentOrange.withOpacity(0.8)],
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: Container(
+                                height: size.height * 0.06,
+                                padding: EdgeInsets.symmetric(horizontal: 10.w),
+                                decoration: BoxDecoration(
+                                  color: colors.backgroundSecondary,
+                                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                                  border: Border.all(color: colors.inputBorder, width: 1.5),
                                 ),
-                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: colors.accentOrange.withOpacity(0.4),
-                                    blurRadius: 15,
-                                    spreadRadius: 0,
-                                    offset: const Offset(0, 6),
-                                  ),
-                                ],
-                              ),
-                              child: AppButton(
-                                onPressed: () {
-                                  if (isInCart) {
-                                    provider.removeItemCompletely(widget.foodItem);
-                                  } else {
-                                    provider.addToCart(widget.foodItem);
-                                  }
-                                },
-                                backgroundColor: Colors.transparent,
-                                borderRadius: KBorderSize.borderRadius50,
-                                buttonText: isInCart ? "Remove from Cart" : "Add to Cart",
-                                textStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    InkWell(
+                                      onTap: () {
+                                        if (isInCart) {
+                                          provider.removeFromCart(widget.foodItem);
+                                        }
+                                      },
+                                      child: Icon(Icons.remove, color: colors.textSecondary, size: 20),
+                                    ),
+                                    Text(
+                                      qty.toString(),
+                                      style: TextStyle(
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w400,
+                                        color: colors.textPrimary,
+                                      ),
+                                    ),
+                                    GestureDetector(
+                                      onTap: () {
+                                        provider.addToCart(widget.foodItem);
+                                      },
+                                      child: Container(
+                                        padding: EdgeInsets.all(2.r),
+                                        decoration: BoxDecoration(color: colors.accentOrange, shape: BoxShape.circle),
+                                        child: const Icon(Icons.add, color: Colors.white, size: 20),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      );
-                    },
+
+                            SizedBox(width: KSpacing.md.w),
+
+                            Expanded(
+                              flex: 2,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [colors.accentOrange, colors.accentOrange.withOpacity(0.8)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: colors.accentOrange.withOpacity(0.4),
+                                      blurRadius: 15,
+                                      spreadRadius: 0,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: AppButton(
+                                  onPressed: () {
+                                    if (isInCart) {
+                                      provider.removeItemCompletely(widget.foodItem);
+                                    } else {
+                                      provider.addToCart(widget.foodItem);
+                                    }
+                                  },
+                                  backgroundColor: Colors.transparent,
+                                  borderRadius: KBorderSize.borderRadius50,
+                                  buttonText: isInCart ? "Remove from Cart" : "Add to Cart",
+                                  textStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
