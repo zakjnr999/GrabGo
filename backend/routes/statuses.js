@@ -132,7 +132,7 @@ router.get('/', async (req, res) => {
 
         const filter = {
             isActive: true,
-            expiresAt: { $gt: new Date() }
+            // expiresAt: { $gt: new Date() }  // Disabled for development
         };
 
         if (category) {
@@ -462,7 +462,8 @@ router.post(
                 });
             }
 
-            if (!status.isActive || status.expiresAt < new Date()) {
+            // if (!status.isActive || status.expiresAt < new Date()) {  // Disabled for development
+            if (!status.isActive) {
                 return res.status(400).json({
                     success: false,
                     message: 'Cannot comment on expired status'
@@ -844,7 +845,8 @@ router.post('/:statusId/view', protect, viewRateLimiter, async (req, res) => {
             });
         }
 
-        if (!status.isActive || status.expiresAt < new Date()) {
+        // if (!status.isActive || status.expiresAt < new Date()) {  // Disabled for development
+        if (!status.isActive) {
             return res.status(400).json({
                 success: false,
                 message: 'Status has expired'
@@ -896,7 +898,8 @@ router.post('/:statusId/like', protect, likeRateLimiter, async (req, res) => {
             });
         }
 
-        if (!status.isActive || status.expiresAt < new Date()) {
+        // if (!status.isActive || status.expiresAt < new Date()) {  // Disabled for development
+        if (!status.isActive) {
             return res.status(400).json({
                 success: false,
                 message: 'Status has expired'
@@ -1129,7 +1132,7 @@ router.get(
             const filter = { restaurant: restaurantId };
 
             if (includeExpired !== 'true') {
-                filter.expiresAt = { $gt: new Date() };
+                // filter.expiresAt = { $gt: new Date() };  // Disabled for development
             }
 
             const statuses = await Status.find(filter)
@@ -1298,7 +1301,8 @@ router.post(
                 });
             }
 
-            if (status.expiresAt < new Date()) {
+            // if (status.expiresAt < new Date()) {  // Disabled for development
+            if (false) {  // Always false for development
                 return res.status(400).json({
                     success: false,
                     message: 'Cannot comment on expired status'

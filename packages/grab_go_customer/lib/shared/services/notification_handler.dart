@@ -36,7 +36,8 @@ void handleNotificationTap(Map<String, dynamic> data) {
             builder: (context) => StoryViewer(
               restaurantId: restaurantId,
               restaurantName: restaurantName ?? 'Restaurant',
-              // The status viewer will load the status and user can view comments
+              targetCommentId: data['commentId'],
+              highlightComment: true,
             ),
           ),
         );
