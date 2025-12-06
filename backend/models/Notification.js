@@ -28,6 +28,8 @@ const notificationSchema = new mongoose.Schema({
     data: {
         statusId: String,
         commentId: String,
+        parentCommentId: String,  // For reply deep linking
+        isReply: Boolean,         // Flag to indicate if it's a reply
         replyId: String,
         chatId: String,
         orderId: String,

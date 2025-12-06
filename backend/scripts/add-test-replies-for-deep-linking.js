@@ -94,20 +94,26 @@ async function addTestRepliesForDeepLinking() {
                     const restaurant = await Restaurant.findById(status.restaurant).select('name');
 
                     // Create in-app notification
+                    const notificationData = {
+                        statusId: comment.status.toString(),
+                        commentId: reply._id.toString(),  // Use reply ID, not parent comment ID
+                        parentCommentId: comment._id.toString(),  // Add parent comment ID
+                        isReply: true,  // Add isReply flag
+                        restaurantId: status.restaurant.toString(),
+                        restaurantName: restaurant?.name || 'Restaurant',
+                        actorId: randomUser._id,
+                        actorName: randomUser.name,
+                        actorAvatar: randomUser.profileImage
+                    };
+
+                    console.log('📝 Creating notification with data:', JSON.stringify(notificationData, null, 2));
+
                     await Notification.create({
                         user: yourUser._id,
                         type: 'comment_reply',
                         title: `${randomUser.name} replied to your comment`,
                         message: `💬 ${randomText.length > 100 ? randomText.substring(0, 100) + '...' : randomText}`,
-                        data: {
-                            statusId: comment.status.toString(),
-                            commentId: comment._id.toString(),
-                            restaurantId: status.restaurant.toString(),
-                            restaurantName: restaurant?.name || 'Restaurant',
-                            actorId: randomUser._id,
-                            actorName: randomUser.name,
-                            actorAvatar: randomUser.profileImage
-                        }
+                        data: notificationData
                     });
 
                     notificationsCreated++;
