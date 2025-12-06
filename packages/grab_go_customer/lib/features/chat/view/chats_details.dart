@@ -22,8 +22,8 @@ class ChatMessage {
   final String text;
   final String? audioUrl;
   final double audioDuration;
-  final List<String> imageUrls; // URLs or local paths for image messages
-  final List<String> blurHashes; // BlurHash for instant image previews
+  final List<String> imageUrls;
+  final List<String> blurHashes;
   final DateTime timestamp;
   final bool isSentByMe;
   final bool isRead;
@@ -34,7 +34,7 @@ class ChatMessage {
   final String? replyToId;
   final String? replyToText;
   final bool? replyToIsSentByMe;
-  final Map<String, List<String>> reactions; // emoji -> list of user IDs
+  final Map<String, List<String>> reactions;
   final bool isEdited;
 
   ChatMessage({

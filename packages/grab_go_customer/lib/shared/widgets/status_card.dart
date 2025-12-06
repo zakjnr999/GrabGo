@@ -53,7 +53,7 @@ class StatusCardNew extends StatelessWidget {
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(KBorderSize.borderMedium)),
                   child: CachedImageWidget(
                     imageUrl: status.mediaUrl,
                     height: 180.h,

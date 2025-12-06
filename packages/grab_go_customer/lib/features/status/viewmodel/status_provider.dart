@@ -282,9 +282,11 @@ class StatusProvider with ChangeNotifier {
         print('✅ Fetched ${_stories.length} fresh stories from API');
       }
     } catch (e) {
-      // On error, keep using cached data if available
+      // Always set error message for user feedback
       if (_stories.isEmpty) {
         _error = 'No stories available. Please check your connection.';
+      } else {
+        _error = 'Failed to refresh stories. Showing cached data.';
       }
       if (kDebugMode) {
         print('❌ Error fetching stories: $e');
@@ -377,9 +379,11 @@ class StatusProvider with ChangeNotifier {
         print('✅ Fetched ${_statuses.length} fresh statuses from API');
       }
     } catch (e) {
-      // On error, keep using cached data if available
+      // Always set error message for user feedback
       if (_statuses.isEmpty) {
         _error = 'No statuses available. Please check your connection.';
+      } else {
+        _error = 'Failed to refresh statuses. Showing cached data.';
       }
       if (kDebugMode) {
         print('❌ Error fetching statuses: $e');
@@ -446,7 +450,34 @@ class StatusProvider with ChangeNotifier {
 
   /// Fetch all statuses for a specific restaurant (for story viewer)
   /// Supports offline mode by using cached data without re-fetching
-  Future<void> fetchRestaurantStatuses(String restaurantId, {BuildContext? context}) async {
+  Future<void> fetchRestaurantStatuses(String restaurantId, {BuildContext? context, bool forceRefresh = false}) async {
+    // Cache-first: if we have cached data and not forcing refresh, use it immediately
+    if (!forceRefresh) {
+      final cachedStatuses = await _repository.getCachedRestaurantStatuses(restaurantId);
+      if (cachedStatuses != null && cachedStatuses.isNotEmpty) {
+        _currentRestaurantStatuses = cachedStatuses;
+        _isLoadingRestaurantStatuses = false;
+
+        // Mark restaurant as viewed and persist
+        await _saveViewedRestaurant(restaurantId);
+        final storyIndex = _stories.indexWhere((s) => s.restaurantId == restaurantId);
+        if (storyIndex >= 0) {
+          _stories[storyIndex] = _stories[storyIndex].copyWith(isViewed: true);
+        }
+
+        // Preload images if possible
+        if (context != null && context.mounted) {
+          preloadStatusImages(context, _currentRestaurantStatuses);
+        }
+
+        if (kDebugMode) {
+          print('📦 Using ${cachedStatuses.length} cached statuses for restaurant $restaurantId (cache-first)');
+        }
+        notifyListeners();
+        return;
+      }
+    }
+
     // Check connectivity first
     final hasInternet = await _checkConnectivity();
 

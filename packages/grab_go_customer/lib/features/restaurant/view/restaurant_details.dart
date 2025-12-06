@@ -192,7 +192,7 @@ class _RestaurantDetailsState extends State<RestaurantDetails> with TickerProvid
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
         systemNavigationBarColor: colors.backgroundPrimary,
-        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarIconBrightness: Brightness.dark,
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.dark,
       ),
@@ -787,7 +787,7 @@ class _RestaurantDetailsState extends State<RestaurantDetails> with TickerProvid
 
           bottomNavigationBar: SafeArea(
             child: Container(
-              height: size.height * 0.12,
+              height: size.height * 0.08,
               decoration: BoxDecoration(
                 color: colors.backgroundPrimary,
                 borderRadius: const BorderRadius.only(

@@ -55,5 +55,24 @@ abstract class StatusService extends ChopperService {
   @POST(path: '/{statusId}/like')
   Future<Response> toggleLike(@Path('statusId') String statusId);
 
+  /// Get comments for a status
+  /// GET /api/statuses/:statusId/comments
+  @GET(path: '/{statusId}/comments')
+  Future<Response> getComments(
+    @Path('statusId') String statusId, {
+    @Query('page') int? page,
+    @Query('limit') int? limit,
+  });
+
+  /// Add a comment to a status
+  /// POST /api/statuses/:statusId/comments
+  @POST(path: '/{statusId}/comments')
+  Future<Response> addComment(@Path('statusId') String statusId, @Body() Map<String, dynamic> body);
+
+  /// Delete a comment
+  /// DELETE /api/statuses/comments/:commentId
+  @DELETE(path: '/comments/{commentId}')
+  Future<Response> deleteComment(@Path('commentId') String commentId);
+
   static StatusService create([ChopperClient? client]) => _$StatusService(client);
 }

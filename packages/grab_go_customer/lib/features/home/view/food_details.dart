@@ -677,7 +677,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                     topRight: Radius.circular(KBorderSize.border),
                   ),
                   child: Container(
-                    height: size.height * 0.14,
+                    height: size.height * 0.10,
                     padding: EdgeInsets.all(14.r),
                     decoration: BoxDecoration(color: colors.backgroundPrimary),
                     child: Consumer<CartProvider>(
@@ -745,9 +745,9 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                   boxShadow: [
                                     BoxShadow(
                                       color: colors.accentOrange.withOpacity(0.4),
-                                      blurRadius: 15,
+                                      blurRadius: 12,
                                       spreadRadius: 0,
-                                      offset: const Offset(0, 6),
+                                      offset: const Offset(0, 4),
                                     ),
                                   ],
                                 ),

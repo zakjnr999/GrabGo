@@ -241,29 +241,6 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
     return items.take(3).toList();
   }
 
-  Future<void> _onRefresh() async {
-    final provider = Provider.of<FoodProvider>(context, listen: false);
-    await provider.refreshCategories();
-
-    if (provider.categories.isNotEmpty) {
-      setState(() {
-        if (_selectedCategory == null) {
-          _selectedCategory = provider.categories.first;
-          _selectedCategoryIndex = 0;
-        } else {
-          final index = provider.categories.indexWhere((c) => c.id == _selectedCategory!.id);
-          if (index >= 0) {
-            _selectedCategoryIndex = index;
-            _selectedCategory = provider.categories[index];
-          } else {
-            _selectedCategory = provider.categories.first;
-            _selectedCategoryIndex = 0;
-          }
-        }
-      });
-    }
-  }
-
   Widget _buildPriceFilterBar(AppColorsExtension colors) {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
@@ -483,380 +460,372 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
     return Scaffold(
       backgroundColor: colors.backgroundSecondary,
       body: SafeArea(
-        child: RefreshIndicator(
-          color: colors.accentOrange,
-          onRefresh: _onRefresh,
-          child: SingleChildScrollView(
-            controller: _scrollController,
-            physics: const ClampingScrollPhysics(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                  child: Row(
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          physics: const ClampingScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(10.r),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: colors.accentOrange.withValues(alpha: 0.3),
+                            spreadRadius: 0,
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: SvgPicture.asset(
+                        Assets.icons.squareMenu,
+                        package: 'grab_go_shared',
+                        height: 24.h,
+                        width: 24.w,
+                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                      ),
+                    ),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "${_getGreeting()}!",
+                            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                          ),
+                          SizedBox(height: 2.h),
+                          Text(
+                            "Browse Our Menu",
+                            style: TextStyle(color: colors.textPrimary, fontSize: 20.sp, fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              _buildMenuSearchBar(colors),
+
+              AnimatedBuilder(
+                animation: _filterSlideAnimation,
+                builder: (context, child) {
+                  return FadeTransition(
+                    opacity: _filterSlideAnimation,
+                    child: _showFilterChips ? _buildPriceFilterBar(colors) : const SizedBox.shrink(),
+                  );
+                },
+              ),
+
+              SizedBox(height: 16.h),
+
+              Consumer<FoodProvider>(
+                builder: (context, provider, _) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: EdgeInsets.all(10.r),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: colors.accentOrange.withValues(alpha: 0.3),
-                              spreadRadius: 0,
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: SvgPicture.asset(
-                          Assets.icons.squareMenu,
-                          package: 'grab_go_shared',
-                          height: 24.h,
-                          width: 24.w,
-                          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20.w),
+                        child: Text(
+                          "Categories",
+                          style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
                         ),
                       ),
-                      SizedBox(width: 12.w),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "${_getGreeting()}!",
-                              style: TextStyle(
-                                fontSize: 13.sp,
-                                fontWeight: FontWeight.w500,
-                                color: colors.textSecondary,
-                              ),
-                            ),
-                            SizedBox(height: 2.h),
-                            Text(
-                              "Browse Our Menu",
-                              style: TextStyle(color: colors.textPrimary, fontSize: 20.sp, fontWeight: FontWeight.w800),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                      SizedBox(height: 12.h),
 
-                _buildMenuSearchBar(colors),
-
-                AnimatedBuilder(
-                  animation: _filterSlideAnimation,
-                  builder: (context, child) {
-                    return FadeTransition(
-                      opacity: _filterSlideAnimation,
-                      child: _showFilterChips ? _buildPriceFilterBar(colors) : const SizedBox.shrink(),
-                    );
-                  },
-                ),
-
-                SizedBox(height: 16.h),
-
-                Consumer<FoodProvider>(
-                  builder: (context, provider, _) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20.w),
-                          child: Text(
-                            "Categories",
-                            style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
-                          ),
-                        ),
-                        SizedBox(height: 12.h),
-
-                        provider.categories.isNotEmpty
-                            ? AnimatedTabBar(
-                                tabs: provider.categories.map((category) => category.name).toList(),
-                                selectedIndex: _selectedCategoryIndex,
-                                onTabChanged: (index) => _onCategorySelected(index, provider.categories),
-                                padding: EdgeInsets.symmetric(horizontal: 12.w),
-                              )
-                            : Shimmer.fromColors(
-                                baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-                                highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
-                                child: Container(
-                                  height: 50.h,
-                                  margin: EdgeInsets.symmetric(horizontal: 20.w),
-                                  decoration: BoxDecoration(
-                                    color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-                                    borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                                  ),
-                                ),
-                              ),
-
-                        SizedBox(height: 20.h),
-
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20.w),
-                          child: Text(
-                            _selectedCategory?.description ?? "Menu Items",
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                            style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
-                          ),
-                        ),
-                        SizedBox(height: 12.h),
-
-                        Builder(
-                          builder: (context) {
-                            final filteredItems = _getFilteredItems();
-
-                            if (filteredItems.isEmpty && (_searchQuery.isNotEmpty || _selectedPriceFilter != 'all')) {
-                              return Container(
-                                width: double.infinity,
+                      provider.categories.isNotEmpty
+                          ? AnimatedTabBar(
+                              tabs: provider.categories.map((category) => category.name).toList(),
+                              selectedIndex: _selectedCategoryIndex,
+                              onTabChanged: (index) => _onCategorySelected(index, provider.categories),
+                              padding: EdgeInsets.symmetric(horizontal: 12.w),
+                            )
+                          : Shimmer.fromColors(
+                              baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                              highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
+                              child: Container(
+                                height: 50.h,
                                 margin: EdgeInsets.symmetric(horizontal: 20.w),
-                                padding: EdgeInsets.all(40.r),
                                 decoration: BoxDecoration(
-                                  color: colors.backgroundPrimary,
-                                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                                  border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3)),
+                                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                                 ),
-                                child: Column(
-                                  children: [
-                                    Container(
-                                      padding: EdgeInsets.all(20.r),
-                                      decoration: BoxDecoration(
-                                        color: colors.accentOrange.withValues(alpha: 0.1),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: SvgPicture.asset(
-                                        Assets.icons.utensilsCrossed,
-                                        package: 'grab_go_shared',
-                                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                                        width: 40.w,
-                                        height: 40.h,
-                                      ),
-                                    ),
-                                    SizedBox(height: 20.h),
-                                    Text(
-                                      "No items found",
-                                      style: TextStyle(
-                                        color: colors.textSecondary,
-                                        fontSize: 16.sp,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    SizedBox(height: 8.h),
-                                    Text(
-                                      _searchQuery.isNotEmpty
-                                          ? "Try adjusting your search terms"
-                                          : "Try adjusting your price filter",
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(fontSize: 14.sp, color: colors.textSecondary, height: 1.4),
-                                    ),
-                                    SizedBox(height: 20.h),
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
-                                        ),
-                                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: colors.accentOrange.withValues(alpha: 0.4),
-                                            blurRadius: 15,
-                                            spreadRadius: 0,
-                                            offset: const Offset(0, 6),
-                                          ),
-                                        ],
-                                      ),
-                                      child: AppButton(
-                                        onPressed: () {
-                                          setState(() {
-                                            _searchQuery = '';
-                                            _selectedPriceFilter = 'all';
-                                            _searchController.clear();
-                                            _itemsToShow = _itemsPerPage;
-                                          });
-                                        },
-                                        backgroundColor: Colors.transparent,
-                                        borderRadius: KBorderSize.borderRadius15,
-                                        buttonText: "Clear Filters",
-                                        textStyle: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 15.sp,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            } else if (filteredItems.isEmpty) {
-                              return Shimmer.fromColors(
-                                baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-                                highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
-                                child: SingleChildScrollView(
-                                  scrollDirection: Axis.vertical,
-                                  child: Column(
-                                    children: List.generate(4, (index) {
-                                      return Container(
-                                        margin: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 12.h),
-                                        decoration: BoxDecoration(
-                                          border: Border.all(
-                                            color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-                                            width: 0.5,
-                                          ),
-                                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            // Image placeholder
-                                            Container(
-                                              height: size.height * 0.14,
-                                              width: size.width * 0.32,
-                                              decoration: BoxDecoration(
-                                                color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                                                borderRadius: const BorderRadius.only(
-                                                  topLeft: Radius.circular(KBorderSize.borderRadius15),
-                                                  bottomLeft: Radius.circular(KBorderSize.borderRadius15),
-                                                ),
-                                              ),
-                                            ),
+                              ),
+                            ),
 
-                                            // Itemname placeholder
-                                            Expanded(
-                                              child: Padding(
-                                                padding: EdgeInsets.symmetric(horizontal: 12.r, vertical: 8.h),
-                                                child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Container(
-                                                      width: 140.w,
-                                                      height: 16.h,
-                                                      decoration: BoxDecoration(
-                                                        color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                                                        borderRadius: BorderRadius.circular(4.r),
-                                                      ),
-                                                    ),
-                                                    SizedBox(height: 6.h),
-                                                    // Rating and delivery time placeholder
-                                                    Container(
-                                                      width: 120.w,
-                                                      height: 16.h,
-                                                      decoration: BoxDecoration(
-                                                        color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                                                        borderRadius: BorderRadius.circular(4.r),
-                                                      ),
-                                                    ),
-                                                    SizedBox(height: 10.h),
-                                                    // Price and cart placeholder
-                                                    Row(
-                                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                      children: [
-                                                        //Price placeholder
-                                                        Container(
-                                                          width: 100.w,
-                                                          height: 16.h,
-                                                          decoration: BoxDecoration(
-                                                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                                                            borderRadius: BorderRadius.circular(4.r),
-                                                          ),
-                                                        ),
+                      SizedBox(height: 20.h),
 
-                                                        // Cart icon placeholder
-                                                        Container(
-                                                          height: 32.h,
-                                                          width: 32.w,
-                                                          decoration: BoxDecoration(
-                                                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                                                            shape: BoxShape.circle,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    }),
-                                  ),
-                                ),
-                              );
-                            }
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20.w),
+                        child: Text(
+                          _selectedCategory?.description ?? "Menu Items",
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                          style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                        ),
+                      ),
+                      SizedBox(height: 12.h),
 
-                            final displayedItems = filteredItems.take(_itemsToShow).toList();
-                            final hasMoreItems = filteredItems.length > _itemsToShow;
+                      Builder(
+                        builder: (context) {
+                          final filteredItems = _getFilteredItems();
 
-                            return FadeTransition(
-                              opacity: _fadeAnimation,
+                          if (filteredItems.isEmpty && (_searchQuery.isNotEmpty || _selectedPriceFilter != 'all')) {
+                            return Container(
+                              width: double.infinity,
+                              margin: EdgeInsets.symmetric(horizontal: 20.w),
+                              padding: EdgeInsets.all(40.r),
+                              decoration: BoxDecoration(
+                                color: colors.backgroundPrimary,
+                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                                border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3)),
+                              ),
                               child: Column(
                                 children: [
-                                  ListView.builder(
-                                    shrinkWrap: true,
-                                    physics: const NeverScrollableScrollPhysics(),
-                                    itemCount: displayedItems.length + (hasMoreItems && _isLoadingMore ? 1 : 0),
-                                    itemBuilder: (context, index) {
-                                      if (index >= displayedItems.length) {
-                                        return Padding(
-                                          padding: EdgeInsets.symmetric(vertical: 16.h),
-                                          child: Center(
-                                            child: Container(
-                                              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
-                                              decoration: BoxDecoration(
-                                                color: colors.backgroundPrimary,
-                                                borderRadius: BorderRadius.circular(20.r),
-                                                border: Border.all(
-                                                  color: colors.accentGreen.withValues(alpha: 0.3),
-                                                  width: 1,
-                                                ),
+                                  Container(
+                                    padding: EdgeInsets.all(20.r),
+                                    decoration: BoxDecoration(
+                                      color: colors.accentOrange.withValues(alpha: 0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: SvgPicture.asset(
+                                      Assets.icons.utensilsCrossed,
+                                      package: 'grab_go_shared',
+                                      colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                      width: 40.w,
+                                      height: 40.h,
+                                    ),
+                                  ),
+                                  SizedBox(height: 20.h),
+                                  Text(
+                                    "No items found",
+                                    style: TextStyle(
+                                      color: colors.textSecondary,
+                                      fontSize: 16.sp,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  SizedBox(height: 8.h),
+                                  Text(
+                                    _searchQuery.isNotEmpty
+                                        ? "Try adjusting your search terms"
+                                        : "Try adjusting your price filter",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(fontSize: 14.sp, color: colors.textSecondary, height: 1.4),
+                                  ),
+                                  SizedBox(height: 20.h),
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
+                                      ),
+                                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: colors.accentOrange.withValues(alpha: 0.4),
+                                          blurRadius: 15,
+                                          spreadRadius: 0,
+                                          offset: const Offset(0, 6),
+                                        ),
+                                      ],
+                                    ),
+                                    child: AppButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          _searchQuery = '';
+                                          _selectedPriceFilter = 'all';
+                                          _searchController.clear();
+                                          _itemsToShow = _itemsPerPage;
+                                        });
+                                      },
+                                      backgroundColor: Colors.transparent,
+                                      borderRadius: KBorderSize.borderRadius15,
+                                      buttonText: "Clear Filters",
+                                      textStyle: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 15.sp,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          } else if (filteredItems.isEmpty) {
+                            return Shimmer.fromColors(
+                              baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                              highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.vertical,
+                                child: Column(
+                                  children: List.generate(4, (index) {
+                                    return Container(
+                                      margin: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 12.h),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                                          width: 0.5,
+                                        ),
+                                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          // Image placeholder
+                                          Container(
+                                            height: size.height * 0.14,
+                                            width: size.width * 0.32,
+                                            decoration: BoxDecoration(
+                                              color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                              borderRadius: const BorderRadius.only(
+                                                topLeft: Radius.circular(KBorderSize.borderRadius15),
+                                                bottomLeft: Radius.circular(KBorderSize.borderRadius15),
                                               ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
+                                            ),
+                                          ),
+
+                                          // Itemname placeholder
+                                          Expanded(
+                                            child: Padding(
+                                              padding: EdgeInsets.symmetric(horizontal: 12.r, vertical: 8.h),
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: [
-                                                  SizedBox(
-                                                    width: 18.w,
-                                                    height: 18.h,
-                                                    child: CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                      valueColor: AlwaysStoppedAnimation<Color>(colors.accentOrange),
+                                                  Container(
+                                                    width: 140.w,
+                                                    height: 16.h,
+                                                    decoration: BoxDecoration(
+                                                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                                      borderRadius: BorderRadius.circular(4.r),
                                                     ),
                                                   ),
-                                                  SizedBox(width: 12.w),
-                                                  Text(
-                                                    "Loading more...",
-                                                    style: TextStyle(
-                                                      fontSize: 13.sp,
-                                                      fontWeight: FontWeight.w600,
-                                                      color: colors.textSecondary,
+                                                  SizedBox(height: 6.h),
+                                                  // Rating and delivery time placeholder
+                                                  Container(
+                                                    width: 120.w,
+                                                    height: 16.h,
+                                                    decoration: BoxDecoration(
+                                                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                                      borderRadius: BorderRadius.circular(4.r),
                                                     ),
+                                                  ),
+                                                  SizedBox(height: 10.h),
+                                                  // Price and cart placeholder
+                                                  Row(
+                                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                    children: [
+                                                      //Price placeholder
+                                                      Container(
+                                                        width: 100.w,
+                                                        height: 16.h,
+                                                        decoration: BoxDecoration(
+                                                          color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                                          borderRadius: BorderRadius.circular(4.r),
+                                                        ),
+                                                      ),
+
+                                                      // Cart icon placeholder
+                                                      Container(
+                                                        height: 32.h,
+                                                        width: 32.w,
+                                                        decoration: BoxDecoration(
+                                                          color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                                                          shape: BoxShape.circle,
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
                                                 ],
                                               ),
                                             ),
                                           ),
-                                        );
-                                      }
-                                      return _buildFoodItemCard(displayedItems[index], colors, isDark);
-                                    },
-                                  ),
-                                ],
+                                        ],
+                                      ),
+                                    );
+                                  }),
+                                ),
                               ),
                             );
-                          },
-                        ),
+                          }
 
-                        SizedBox(height: 20.h),
-                      ],
-                    );
-                  },
-                ),
-              ],
-            ),
+                          final displayedItems = filteredItems.take(_itemsToShow).toList();
+                          final hasMoreItems = filteredItems.length > _itemsToShow;
+
+                          return FadeTransition(
+                            opacity: _fadeAnimation,
+                            child: Column(
+                              children: [
+                                ListView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: displayedItems.length + (hasMoreItems && _isLoadingMore ? 1 : 0),
+                                  itemBuilder: (context, index) {
+                                    if (index >= displayedItems.length) {
+                                      return Padding(
+                                        padding: EdgeInsets.symmetric(vertical: 16.h),
+                                        child: Center(
+                                          child: Container(
+                                            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+                                            decoration: BoxDecoration(
+                                              color: colors.backgroundPrimary,
+                                              borderRadius: BorderRadius.circular(20.r),
+                                              border: Border.all(
+                                                color: colors.accentGreen.withValues(alpha: 0.3),
+                                                width: 1,
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                SizedBox(
+                                                  width: 18.w,
+                                                  height: 18.h,
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    valueColor: AlwaysStoppedAnimation<Color>(colors.accentOrange),
+                                                  ),
+                                                ),
+                                                SizedBox(width: 12.w),
+                                                Text(
+                                                  "Loading more...",
+                                                  style: TextStyle(
+                                                    fontSize: 13.sp,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: colors.textSecondary,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    return _buildFoodItemCard(displayedItems[index], colors, isDark);
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+
+                      SizedBox(height: 20.h),
+                    ],
+                  );
+                },
+              ),
+            ],
           ),
         ),
       ),

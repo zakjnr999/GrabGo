@@ -24,6 +24,7 @@ class AllStatusesPage extends StatefulWidget {
 
 class _AllStatusesPageState extends State<AllStatusesPage> {
   late ScrollController _scrollController;
+  late StatusProvider _provider;
   int _selectedTabIndex = 0;
 
   // Category mapping for tabs
@@ -37,10 +38,16 @@ class _AllStatusesPageState extends State<AllStatusesPage> {
 
   final List<String> _tabLabels = ['All', 'Special', 'Discount', 'New', 'Video'];
 
+  // Cache for filtered statuses to avoid rebuilding on every build
+  List<StatusModel>? _cachedFilteredStatuses;
+  StatusCategory? _lastFilterCategory;
+  int _lastStatusesLength = 0;
+
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController();
+    _provider = context.read<StatusProvider>();
 
     // Set initial tab based on passed category
     if (widget.initialCategory != null) {
@@ -56,16 +63,17 @@ class _AllStatusesPageState extends State<AllStatusesPage> {
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _cachedFilteredStatuses = null; // Clear cache
     super.dispose();
   }
 
   void _onScroll() {
-    final provider = context.read<StatusProvider>();
-
+    // Use cached provider reference instead of context.read on every scroll
     // Load more when near bottom
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
-      if (!provider.isLoadingMore && provider.hasMore) {
-        provider.loadMoreStatuses();
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - KStatusConstants.paginationThreshold) {
+      if (!_provider.isLoadingMore && _provider.hasMore) {
+        _provider.loadMoreStatuses();
       }
     }
   }
@@ -73,10 +81,24 @@ class _AllStatusesPageState extends State<AllStatusesPage> {
   StatusCategory? get _selectedCategory => _categories[_selectedTabIndex];
 
   List<StatusModel> _getFilteredStatuses(StatusProvider provider) {
-    if (_selectedCategory == null) {
-      return provider.statuses;
+    // Check if we can use cached results
+    final currentStatusesLength = provider.statuses.length;
+    final hasStatusesChanged = currentStatusesLength != _lastStatusesLength;
+    final hasCategoryChanged = _selectedCategory != _lastFilterCategory;
+
+    // Rebuild cache if category changed or statuses list changed
+    if (_cachedFilteredStatuses == null || hasCategoryChanged || hasStatusesChanged) {
+      _lastFilterCategory = _selectedCategory;
+      _lastStatusesLength = currentStatusesLength;
+
+      if (_selectedCategory == null) {
+        _cachedFilteredStatuses = provider.statuses;
+      } else {
+        _cachedFilteredStatuses = provider.statuses.where((s) => s.category == _selectedCategory).toList();
+      }
     }
-    return provider.statuses.where((s) => s.category == _selectedCategory).toList();
+
+    return _cachedFilteredStatuses!;
   }
 
   void _openStatus(StatusModel status) {
@@ -216,6 +238,11 @@ class _AllStatusesPageState extends State<AllStatusesPage> {
       itemCount: itemCount,
       itemBuilder: (context, index) {
         // Show loading indicators at the end
+        if (index >= statuses.length) {
+          return _buildLoadingCard(colors);
+        }
+
+        // Safety check to prevent crashes from race conditions
         if (index >= statuses.length) {
           return _buildLoadingCard(colors);
         }

@@ -9,13 +9,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 
-/// Bottom sheet for picking images from gallery with grid view
-/// Supports multiple selection
 class ImagePickerSheet extends StatefulWidget {
   final int maxImages;
   final Function(List<String> imagePaths) onImagesSelected;
+  final ScrollController sc;
 
-  const ImagePickerSheet({super.key, this.maxImages = 10, required this.onImagesSelected});
+  const ImagePickerSheet({super.key, this.maxImages = 10, required this.onImagesSelected, required this.sc});
 
   /// Show the image picker bottom sheet
   static Future<void> show(
@@ -27,7 +26,17 @@ class ImagePickerSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => ImagePickerSheet(maxImages: maxImages, onImagesSelected: onImagesSelected),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) {
+            return ImagePickerSheet(maxImages: maxImages, onImagesSelected: onImagesSelected, sc: scrollController);
+          },
+        );
+      },
     );
   }
 
@@ -393,6 +402,7 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
     }
 
     return GridView.builder(
+      controller: widget.sc,
       padding: EdgeInsets.all(2.w),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,

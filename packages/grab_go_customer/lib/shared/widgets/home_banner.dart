@@ -8,12 +8,14 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 import 'cached_image_widget.dart';
 
@@ -28,6 +30,26 @@ class HomeBanner extends StatefulWidget {
 
 class _HomeBannerState extends State<HomeBanner> {
   int currentIndex = 0;
+  bool _autoPlayEnabled = true;
+
+  // Stabilized banner foods and signature of categories
+  List<dynamic> _bannerFoods = [];
+  String _lastCategoriesSignature = '';
+
+  final Set<String> _preloadedImageUrls = <String>{};
+
+  Future<void> _precacheBannerImages(BuildContext context, List<dynamic> foods) async {
+    for (final food in foods) {
+      final String url = food.image;
+      if (url.isEmpty || _preloadedImageUrls.contains(url)) continue;
+      try {
+        await precacheImage(CachedNetworkImageProvider(url), context);
+        _preloadedImageUrls.add(url);
+      } catch (_) {
+        // Ignore
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -367,12 +389,34 @@ class _HomeBannerState extends State<HomeBanner> {
       );
     }
 
-    final random = Random();
-    final Set<int> selectedIndexes = {};
-    while (selectedIndexes.length < 3 && selectedIndexes.length < allFoods.length) {
-      selectedIndexes.add(random.nextInt(allFoods.length));
+    // Stabilize banner foods across rebuilds using a categories signature
+    final String imagesSig = allFoods.map((f) => f.image).join('|');
+    if (_lastCategoriesSignature != imagesSig) {
+      final random = Random();
+      final Set<int> selectedIndexes = {};
+      final int target = allFoods.length < 3 ? allFoods.length : 3;
+      while (selectedIndexes.length < target) {
+        selectedIndexes.add(random.nextInt(allFoods.length));
+      }
+      final newFoods = selectedIndexes.map((i) => allFoods[i]).toList();
+      final clampedIndex = newFoods.isEmpty ? 0 : currentIndex.clamp(0, newFoods.length - 1);
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _lastCategoriesSignature = imagesSig;
+          _bannerFoods = newFoods;
+          currentIndex = clampedIndex;
+        });
+        _precacheBannerImages(context, newFoods);
+      });
     }
-    final bannerFoods = selectedIndexes.map((i) => allFoods[i]).toList();
+
+    // Effective foods and safe index for rendering
+    final List<dynamic> effectiveFoods = _bannerFoods.isNotEmpty
+        ? _bannerFoods
+        : (allFoods.length <= 3 ? allFoods : allFoods.take(3).toList());
+    final int safeIndex = effectiveFoods.isEmpty ? 0 : currentIndex.clamp(0, effectiveFoods.length - 1);
 
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 20.w),
@@ -398,74 +442,83 @@ class _HomeBannerState extends State<HomeBanner> {
         borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
         child: Stack(
           children: [
-            ImageSlideshow(
-              height: widget.size.height * 0.28,
-              width: widget.size.width,
-              initialPage: 0,
-              indicatorColor: Colors.transparent,
-              indicatorBackgroundColor: Colors.transparent,
-              disableUserScrolling: false,
-              autoPlayInterval: 5000,
-              isLoop: true,
-              onPageChanged: (value) {
-                setState(() {
-                  currentIndex = value;
-                });
+            VisibilityDetector(
+              key: const Key('home_banner_visibility'),
+              onVisibilityChanged: (info) {
+                final shouldEnable = info.visibleFraction > 0.2;
+                if (shouldEnable != _autoPlayEnabled) {
+                  setState(() => _autoPlayEnabled = shouldEnable);
+                }
               },
-              children: bannerFoods
-                  .map(
-                    (food) => GestureDetector(
-                      onTap: () => context.push("/foodDetails", extra: food),
-                      child: Stack(
-                        children: [
-                          CachedImageWidget(
-                            imageUrl: food.image,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            placeholder: Container(
+              child: ImageSlideshow(
+                height: widget.size.height * 0.28,
+                width: widget.size.width,
+                initialPage: 0,
+                indicatorColor: Colors.transparent,
+                indicatorBackgroundColor: Colors.transparent,
+                disableUserScrolling: false,
+                autoPlayInterval: _autoPlayEnabled ? 5000 : 0,
+                isLoop: true,
+                onPageChanged: (value) {
+                  setState(() {
+                    currentIndex = value;
+                  });
+                },
+                children: effectiveFoods
+                    .map(
+                      (food) => GestureDetector(
+                        onTap: () => context.push("/foodDetails", extra: food),
+                        child: Stack(
+                          children: [
+                            CachedImageWidget(
+                              imageUrl: food.image,
+                              fit: BoxFit.cover,
                               width: double.infinity,
-                              height: widget.size.height * 0.28,
-                              decoration: BoxDecoration(
-                                color: colors.backgroundPrimary,
-                                borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                              placeholder: Container(
+                                width: double.infinity,
+                                height: widget.size.height * 0.28,
+                                decoration: BoxDecoration(
+                                  color: colors.backgroundPrimary,
+                                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                                ),
+                                child: Center(
+                                  child: SizedBox(
+                                    height: 40.h,
+                                    width: 40.w,
+                                    child: SvgPicture.asset(
+                                      Assets.icons.utensilsCrossed,
+                                      package: 'grab_go_shared',
+                                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                    ),
+                                  ),
+                                ),
                               ),
-                              child: Center(
-                                child: SizedBox(
-                                  height: 40.h,
-                                  width: 40.w,
-                                  child: SvgPicture.asset(
-                                    Assets.icons.utensilsCrossed,
-                                    package: 'grab_go_shared',
-                                    colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                              errorWidget: Container(
+                                width: double.infinity,
+                                height: widget.size.height * 0.28,
+                                decoration: BoxDecoration(
+                                  color: colors.backgroundPrimary,
+                                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                                ),
+                                child: Center(
+                                  child: SizedBox(
+                                    height: 40.h,
+                                    width: 40.w,
+                                    child: SvgPicture.asset(
+                                      Assets.icons.utensilsCrossed,
+                                      package: 'grab_go_shared',
+                                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                            errorWidget: Container(
-                              width: double.infinity,
-                              height: widget.size.height * 0.28,
-                              decoration: BoxDecoration(
-                                color: colors.backgroundPrimary,
-                                borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                              ),
-                              child: Center(
-                                child: SizedBox(
-                                  height: 40.h,
-                                  width: 40.w,
-                                  child: SvgPicture.asset(
-                                    Assets.icons.utensilsCrossed,
-                                    package: 'grab_go_shared',
-                                    colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  )
-                  .toList(),
+                    )
+                    .toList(),
+              ),
             ),
 
             Container(
@@ -490,7 +543,7 @@ class _HomeBannerState extends State<HomeBanner> {
                                 borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                               ),
                               child: Text(
-                                bannerFoods[currentIndex].name,
+                                effectiveFoods[safeIndex].name,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: Colors.white),
@@ -502,13 +555,13 @@ class _HomeBannerState extends State<HomeBanner> {
                       SizedBox(width: 8.w),
                       Consumer<FavoritesProvider>(
                         builder: (context, favoriteProvider, child) {
-                          final bool isFavorite = favoriteProvider.isFavorite(bannerFoods[currentIndex]);
+                          final bool isFavorite = favoriteProvider.isFavorite(effectiveFoods[safeIndex]);
                           return GestureDetector(
                             onTap: () {
                               if (isFavorite) {
-                                favoriteProvider.removeFromFavorites(bannerFoods[currentIndex]);
+                                favoriteProvider.removeFromFavorites(effectiveFoods[safeIndex]);
                               } else {
-                                favoriteProvider.addToFavorites(bannerFoods[currentIndex]);
+                                favoriteProvider.addToFavorites(effectiveFoods[safeIndex]);
                               }
                             },
                             child: ClipRRect(
@@ -558,7 +611,7 @@ class _HomeBannerState extends State<HomeBanner> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    "GHS ${bannerFoods[currentIndex].price.toStringAsFixed(2)}",
+                                    "GHS ${effectiveFoods[safeIndex].price.toStringAsFixed(2)}",
                                     style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w800),
                                   ),
                                   SizedBox(height: 6.h),
@@ -573,7 +626,7 @@ class _HomeBannerState extends State<HomeBanner> {
                                       ),
                                       SizedBox(width: 4.w),
                                       Text(
-                                        bannerFoods[currentIndex].rating.toStringAsFixed(1),
+                                        effectiveFoods[safeIndex].rating.toStringAsFixed(1),
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontSize: 13.sp,
@@ -597,13 +650,13 @@ class _HomeBannerState extends State<HomeBanner> {
                             SizedBox(width: 12.w),
                             Consumer<CartProvider>(
                               builder: (context, cartProvider, child) {
-                                final bool isInCart = cartProvider.cartItems.containsKey(bannerFoods[currentIndex]);
+                                final bool isInCart = cartProvider.cartItems.containsKey(effectiveFoods[safeIndex]);
                                 return GestureDetector(
                                   onTap: () {
                                     if (isInCart) {
-                                      cartProvider.removeItemCompletely(bannerFoods[currentIndex]);
+                                      cartProvider.removeItemCompletely(effectiveFoods[safeIndex]);
                                     } else {
-                                      cartProvider.addToCart(bannerFoods[currentIndex]);
+                                      cartProvider.addToCart(effectiveFoods[safeIndex]);
                                     }
                                   },
                                   child: Container(

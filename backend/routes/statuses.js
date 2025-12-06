@@ -3,6 +3,7 @@ const { body, query, validationResult } = require('express-validator');
 const rateLimit = require('express-rate-limit');
 const { ipKeyGenerator } = require('express-rate-limit');
 const Status = require('../models/Status');
+const Comment = require('../models/Comment');
 const Restaurant = require('../models/Restaurant');
 const Food = require('../models/Food');
 const { protect, authorize } = require('../middleware/auth');
@@ -73,6 +74,22 @@ const createStatusRateLimiter = rateLimit({
     legacyHeaders: false,
     skipFailedRequests: true
 });
+
+// Rate limiter for comment posting: 20 comments per hour per user
+const commentRateLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 20, // 20 comments per hour
+    keyGenerator: (req) => req.user?._id?.toString() || ipKeyGenerator(req),
+    message: {
+        success: false,
+        message: 'Too many comments. Please wait before posting more.',
+        retryAfter: 3600
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    skipFailedRequests: true
+});
+
 
 // ============================================================
 // IMPORTANT: Route order matters in Express!
@@ -344,6 +361,180 @@ router.get('/user/viewed', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Get viewed statuses error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * @route   GET /api/statuses/:statusId/comments
+ * @desc    Get comments for a status (paginated)
+ * @access  Public
+ */
+router.get('/:statusId/comments', async (req, res) => {
+    try {
+        // Validate statusId
+        if (!isValidObjectId(req.params.statusId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid status ID format'
+            });
+        }
+
+        const { page = 1, limit = 20 } = req.query;
+        const pageNum = Math.max(1, parseInt(page));
+        const limitNum = Math.min(Math.max(1, parseInt(limit)), 50); // Max 50 per page
+
+        // Verify status exists
+        const status = await Status.findById(req.params.statusId);
+        if (!status) {
+            return res.status(404).json({
+                success: false,
+                message: 'Status not found'
+            });
+        }
+
+        const result = await Comment.getCommentsForStatus(req.params.statusId, pageNum, limitNum);
+
+        res.json({
+            success: true,
+            message: 'Comments retrieved successfully',
+            comments: result.comments,
+            pagination: result.pagination
+        });
+    } catch (error) {
+        console.error('Get comments error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * @route   POST /api/statuses/:statusId/comments
+ * @desc    Add a comment to a status
+ * @access  Private
+ * @rateLimit 20 comments per hour per user
+ */
+router.post(
+    '/:statusId/comments',
+    protect,
+    commentRateLimiter,
+    [
+        body('text')
+            .trim()
+            .notEmpty()
+            .withMessage('Comment text is required')
+            .isLength({ min: 1, max: 500 })
+            .withMessage('Comment must be between 1 and 500 characters')
+    ],
+    async (req, res) => {
+        try {
+            const errors = validationResult(req);
+            if (!errors.isEmpty()) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Validation failed',
+                    errors: errors.array()
+                });
+            }
+
+            // Validate statusId
+            if (!isValidObjectId(req.params.statusId)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid status ID format'
+                });
+            }
+
+            // Verify status exists and is active
+            const status = await Status.findById(req.params.statusId);
+            if (!status) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Status not found'
+                });
+            }
+
+            if (!status.isActive || status.expiresAt < new Date()) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Cannot comment on expired status'
+                });
+            }
+
+            const { text } = req.body;
+
+            const comment = await Comment.create({
+                status: req.params.statusId,
+                user: req.user._id,
+                text
+            });
+
+            // Populate user details
+            await comment.populate('user', 'name email profileImage');
+
+            res.status(201).json({
+                success: true,
+                message: 'Comment added successfully',
+                comment
+            });
+        } catch (error) {
+            console.error('Add comment error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Server error',
+                error: error.message
+            });
+        }
+    }
+);
+
+/**
+ * @route   DELETE /api/statuses/comments/:commentId
+ * @desc    Delete a comment (own comments only)
+ * @access  Private
+ */
+router.delete('/comments/:commentId', protect, async (req, res) => {
+    try {
+        // Validate commentId
+        if (!isValidObjectId(req.params.commentId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid comment ID format'
+            });
+        }
+
+        const comment = await Comment.findById(req.params.commentId);
+
+        if (!comment) {
+            return res.status(404).json({
+                success: false,
+                message: 'Comment not found'
+            });
+        }
+
+        // Check ownership (only comment owner or admin can delete)
+        if (!comment.isOwnedBy(req.user._id) && req.user.role !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'You can only delete your own comments'
+            });
+        }
+
+        await comment.deleteOne();
+
+        res.json({
+            success: true,
+            message: 'Comment deleted successfully'
+        });
+    } catch (error) {
+        console.error('Delete comment error:', error);
         res.status(500).json({
             success: false,
             message: 'Server error',

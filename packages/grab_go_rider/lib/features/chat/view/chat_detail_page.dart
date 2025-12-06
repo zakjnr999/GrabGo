@@ -2163,10 +2163,12 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         // Emoji button
         GestureDetector(
           onTap: _toggleEmojiPicker,
-          child: Icon(
-            _showEmojiPicker ? Icons.keyboard : Icons.emoji_emotions_outlined,
-            color: colors.textSecondary,
-            size: 24.w,
+          child: SvgPicture.asset(
+            _showEmojiPicker ? Assets.icons.keyboard : Assets.icons.emoji,
+            package: 'grab_go_shared',
+            width: 24.w,
+            height: 24.w,
+            colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
           ),
         ),
         SizedBox(width: 8.w),

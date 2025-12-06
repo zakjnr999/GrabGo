@@ -12,6 +12,7 @@ import 'package:grab_go_customer/features/status/view/story_viewer.dart';
 import 'package:grab_go_customer/shared/widgets/status_card.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'dart:math' as math;
 
 class StatusPage extends StatefulWidget {
   const StatusPage({super.key});
@@ -67,88 +68,81 @@ class _StatusPageState extends State<StatusPage> {
         child: SafeArea(
           child: Consumer<StatusProvider>(
             builder: (context, provider, child) {
-              return RefreshIndicator(
-                onRefresh: () async {
-                  await provider.refreshConnectivity();
-                  await provider.refreshStories();
-                  await provider.refreshStatuses();
-                },
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.only(bottom: 24.h),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Offline banner
-                      if (provider.isOffline)
-                        Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 16.w),
-                          color: colors.accentOrange.withValues(alpha: 0.15),
-                          child: Row(
-                            children: [
-                              SvgPicture.asset(
-                                Assets.icons.wifiOff,
+              return SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.only(bottom: 24.h),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Offline banner
+                    if (provider.isOffline)
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 16.w),
+                        color: colors.accentOrange.withValues(alpha: 0.15),
+                        child: Row(
+                          children: [
+                            SvgPicture.asset(
+                              Assets.icons.wifiOff,
+                              package: "grab_go_shared",
+                              height: 18.h,
+                              width: 18.w,
+                              colorFilter: const ColorFilter.mode(AppColors.accentOrange, BlendMode.srcIn),
+                            ),
+                            SizedBox(width: 8.w),
+                            Expanded(
+                              child: Text(
+                                'You\'re offline. Please check your connection.',
+                                style: TextStyle(
+                                  color: colors.accentOrange,
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () => provider.refreshConnectivity(),
+                              child: SvgPicture.asset(
+                                Assets.icons.refresh,
                                 package: "grab_go_shared",
-                                height: 18.h,
-                                width: 18.w,
+                                height: 16.h,
+                                width: 16.w,
                                 colorFilter: const ColorFilter.mode(AppColors.accentOrange, BlendMode.srcIn),
                               ),
-                              SizedBox(width: 8.w),
-                              Expanded(
-                                child: Text(
-                                  'You\'re offline. Please check your connection.',
-                                  style: TextStyle(
-                                    color: colors.accentOrange,
-                                    fontSize: 13.sp,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () => provider.refreshConnectivity(),
-                                child: SvgPicture.asset(
-                                  Assets.icons.refresh,
-                                  package: "grab_go_shared",
-                                  height: 16.h,
-                                  width: 16.w,
-                                  colorFilter: const ColorFilter.mode(AppColors.accentOrange, BlendMode.srcIn),
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      _buildHeader(colors),
-                      SizedBox(height: KSpacing.lg.h),
-                      _buildSectionHeader(
-                        colors,
-                        "New From Restaurants",
-                        Assets.icons.flame,
-                        colors.accentViolet,
-                        onSeeAll: () {},
                       ),
-                      SizedBox(height: KSpacing.lg.h),
-                      _buildStoriesRow(colors, provider),
-                      SizedBox(height: KSpacing.lg.h),
-                      _buildCategoryTabs(colors),
-                      SizedBox(height: KSpacing.lg.h),
-                      _buildSectionHeader(
-                        colors,
-                        _getSectionTitle(),
-                        _getSectionIcon(),
-                        _getSectionColor(colors),
-                        onSeeAll: () => _navigateToAllStatuses(_filters[_selectedFilterIndex].category),
-                      ),
+                    _buildHeader(colors),
+                    SizedBox(height: KSpacing.lg.h),
+                    _buildSectionHeader(
+                      colors,
+                      "New From Restaurants",
+                      Assets.icons.flame,
+                      colors.accentViolet,
+                      onSeeAll: () {},
+                    ),
+                    SizedBox(height: KSpacing.lg.h),
+                    _buildStoriesRow(colors, provider),
+                    SizedBox(height: KSpacing.lg.h),
+                    _buildCategoryTabs(colors),
+                    SizedBox(height: KSpacing.lg.h),
+                    _buildSectionHeader(
+                      colors,
+                      _getSectionTitle(),
+                      _getSectionIcon(),
+                      _getSectionColor(colors),
+                      onSeeAll: () => _navigateToAllStatuses(_filters[_selectedFilterIndex].category),
+                    ),
+                    SizedBox(height: 12.h),
+                    _buildStatusesList(colors, provider, isDark),
+                    if (provider.recommendedStatuses.isNotEmpty) ...[
+                      SizedBox(height: 24.h),
+                      _buildSectionHeader(colors, "Recommended For You", Assets.icons.flame, colors.accentViolet),
                       SizedBox(height: 12.h),
-                      _buildStatusesList(colors, provider, isDark),
-                      if (provider.recommendedStatuses.isNotEmpty) ...[
-                        SizedBox(height: 24.h),
-                        _buildSectionHeader(colors, "Recommended For You", Assets.icons.flame, colors.accentViolet),
-                        SizedBox(height: 12.h),
-                        _buildRecommendedRow(colors, provider.recommendedStatuses, isDark),
-                      ],
+                      _buildRecommendedRow(colors, provider.recommendedStatuses, isDark),
                     ],
-                  ),
+                  ],
                 ),
               );
             },
@@ -176,7 +170,7 @@ class _StatusPageState extends State<StatusPage> {
             customBorder: const CircleBorder(),
             splashColor: colors.iconSecondary.withAlpha(50),
             child: Padding(
-              padding: EdgeInsets.all(16.r),
+              padding: EdgeInsets.all(14.r),
               child: SvgPicture.asset(
                 Assets.icons.navArrowLeft,
                 package: 'grab_go_shared',
@@ -410,7 +404,7 @@ class _StatusPageState extends State<StatusPage> {
   }
 
   void _openStoryViewer(StoryModel story, StatusProvider provider, int storyIndex) {
-    provider.fetchRestaurantStatuses(story.restaurantId, context: context);
+    provider.fetchRestaurantStatuses(story.restaurantId, context: context, forceRefresh: false);
 
     Navigator.of(context).push(
       PageRouteBuilder(
@@ -457,7 +451,7 @@ class _StatusPageState extends State<StatusPage> {
     return SizedBox(
       height: 350.h,
       child: ListView.builder(
-        padding: EdgeInsets.only(left: 10.r),
+        padding: EdgeInsets.only(left: 10.w),
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         itemCount: filteredStatuses.length,
@@ -663,7 +657,7 @@ class _StatusPageState extends State<StatusPage> {
     return SizedBox(
       height: 350.h,
       child: ListView.builder(
-        padding: EdgeInsets.only(left: 20.r),
+        padding: EdgeInsets.only(left: 20.w),
         scrollDirection: Axis.horizontal,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: 3,
@@ -835,12 +829,12 @@ class _SegmentedCirclePainter extends CustomPainter {
       return;
     }
 
-    final gapRadians = gapDegrees * (3.14159 / 180);
+    final gapRadians = gapDegrees * (math.pi / 180);
     final totalGap = gapRadians * segments;
-    final availableAngle = (2 * 3.14159) - totalGap;
+    final availableAngle = (2 * math.pi) - totalGap;
     final segmentAngle = availableAngle / segments;
 
-    double startAngle = -3.14159 / 2; // Start from top
+    double startAngle = -math.pi / 2; // Start from top
 
     for (int i = 0; i < segments; i++) {
       canvas.drawArc(Rect.fromCircle(center: center, radius: radius), startAngle, segmentAngle, false, paint);
@@ -887,7 +881,11 @@ class _StoryViewerPageViewState extends State<_StoryViewerPageView> {
         _currentIndex = index;
       });
       // Fetch statuses for the new restaurant
-      widget.provider.fetchRestaurantStatuses(widget.stories[index].restaurantId, context: context);
+      widget.provider.fetchRestaurantStatuses(
+        widget.stories[index].restaurantId,
+        context: context,
+        forceRefresh: false,
+      );
     }
   }
 

@@ -1,4 +1,5 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
+// dart format width=80
 
 part of 'status_service.dart';
 
@@ -33,15 +34,28 @@ final class _$StatusService extends StatusService {
       'limit': limit,
       'page': page,
     };
-    final Request $request = Request('GET', $url, client.baseUrl, parameters: $params);
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+      parameters: $params,
+    );
     return client.send<dynamic, dynamic>($request);
   }
 
   @override
   Future<Response<dynamic>> getStories({int? limit, String? sortBy}) {
     final Uri $url = Uri.parse('/statuses/stories');
-    final Map<String, dynamic> $params = <String, dynamic>{'limit': limit, 'sortBy': sortBy};
-    final Request $request = Request('GET', $url, client.baseUrl, parameters: $params);
+    final Map<String, dynamic> $params = <String, dynamic>{
+      'limit': limit,
+      'sortBy': sortBy,
+    };
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+      parameters: $params,
+    );
     return client.send<dynamic, dynamic>($request);
   }
 
@@ -67,7 +81,10 @@ final class _$StatusService extends StatusService {
   }
 
   @override
-  Future<Response<dynamic>> recordView(String statusId, Map<String, dynamic> body) {
+  Future<Response<dynamic>> recordView(
+    String statusId,
+    Map<String, dynamic> body,
+  ) {
     final Uri $url = Uri.parse('/statuses/${statusId}/view');
     final $body = body;
     final Request $request = Request('POST', $url, client.baseUrl, body: $body);
@@ -86,6 +103,44 @@ final class _$StatusService extends StatusService {
   Future<Response<dynamic>> toggleLike(String statusId) {
     final Uri $url = Uri.parse('/statuses/${statusId}/like');
     final Request $request = Request('POST', $url, client.baseUrl);
+    return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
+  Future<Response<dynamic>> getComments(
+    String statusId, {
+    int? page,
+    int? limit,
+  }) {
+    final Uri $url = Uri.parse('/statuses/${statusId}/comments');
+    final Map<String, dynamic> $params = <String, dynamic>{
+      'page': page,
+      'limit': limit,
+    };
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+      parameters: $params,
+    );
+    return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
+  Future<Response<dynamic>> addComment(
+    String statusId,
+    Map<String, dynamic> body,
+  ) {
+    final Uri $url = Uri.parse('/statuses/${statusId}/comments');
+    final $body = body;
+    final Request $request = Request('POST', $url, client.baseUrl, body: $body);
+    return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
+  Future<Response<dynamic>> deleteComment(String commentId) {
+    final Uri $url = Uri.parse('/statuses/comments/${commentId}');
+    final Request $request = Request('DELETE', $url, client.baseUrl);
     return client.send<dynamic, dynamic>($request);
   }
 }

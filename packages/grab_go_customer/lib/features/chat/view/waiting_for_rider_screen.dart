@@ -133,7 +133,7 @@ class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with Sing
           elevation: 0,
           scrolledUnderElevation: 0,
           backgroundColor: colors.backgroundSecondary,
-          leadingWidth: 72,
+          leadingWidth: 60,
           leading: Padding(
             padding: EdgeInsets.only(left: 16.w),
             child: Container(

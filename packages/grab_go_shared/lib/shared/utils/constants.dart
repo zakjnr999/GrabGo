@@ -100,6 +100,22 @@ class KElevation {
   static const double xl = 8;
 }
 
+/// Status/Story feature constants
+class KStatusConstants {
+  // Pagination
+  static const double paginationThreshold = 200.0;
+
+  // Story durations
+  static const Duration imageDuration = Duration(seconds: 5);
+  static const Duration videoDuration = Duration(seconds: 15);
+
+  // Gestures
+  static const double swipeDismissThreshold = 100.0;
+
+  // Limits
+  static const int maxViewedItems = 50;
+}
+
 bool isValidEmail(String email) {
   final regex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
   return regex.hasMatch(email);
