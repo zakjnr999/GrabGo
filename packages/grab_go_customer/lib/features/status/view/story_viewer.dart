@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:grab_go_customer/features/status/model/status_model.dart';
+import 'package:grab_go_customer/features/status/model/comment_model.dart';
 import 'package:grab_go_customer/features/status/viewmodel/status_provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
@@ -65,6 +66,9 @@ class _StoryViewerState extends State<StoryViewer> with TickerProviderStateMixin
 
   bool _hasCleanedUp = false;
 
+  // Comment input controller
+  final TextEditingController _commentController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -109,6 +113,7 @@ class _StoryViewerState extends State<StoryViewer> with TickerProviderStateMixin
     }
     _progressController.dispose();
     _heartAnimationController.dispose();
+    _commentController.dispose();
     super.dispose();
   }
 
@@ -331,6 +336,14 @@ class _StoryViewerState extends State<StoryViewer> with TickerProviderStateMixin
   Future<void> _showCommentsBottomSheet(StatusModel? status) async {
     if (mounted) _progressController.stop();
 
+    // Load comments when sheet opens
+    if (status != null) {
+      final provider = context.read<StatusProvider>();
+      if (provider.getComments(status.id).isEmpty) {
+        provider.fetchComments(status.id);
+      }
+    }
+
     final colors = context.appColors;
 
     await showModalBottomSheet(
@@ -386,66 +399,39 @@ class _StoryViewerState extends State<StoryViewer> with TickerProviderStateMixin
                   ),
                   SizedBox(height: 8.h),
                   Expanded(
-                    child: ListView.builder(
-                      controller: scrollController,
-                      padding: EdgeInsets.symmetric(horizontal: 16.w),
-                      itemCount: 12, // Placeholder items
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: EdgeInsets.symmetric(vertical: 10.h),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              CircleAvatar(radius: 16.r),
-                              SizedBox(width: 12.w),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Container(
-                                          width: 80.w,
-                                          height: 12.h,
-                                          decoration: BoxDecoration(
-                                            color: colors.inputBorder,
-                                            borderRadius: BorderRadius.circular(4.r),
-                                          ),
-                                        ),
-                                        SizedBox(width: 8.w),
-                                        Container(
-                                          width: 50.w,
-                                          height: 10.h,
-                                          decoration: BoxDecoration(
-                                            color: colors.inputBorder,
-                                            borderRadius: BorderRadius.circular(4.r),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 6.h),
-                                    Container(
-                                      width: double.infinity,
-                                      height: 12.h,
-                                      decoration: BoxDecoration(
-                                        color: colors.inputBorder,
-                                        borderRadius: BorderRadius.circular(4.r),
-                                      ),
-                                    ),
-                                    SizedBox(height: 6.h),
-                                    Container(
-                                      width: 200.w,
-                                      height: 12.h,
-                                      decoration: BoxDecoration(
-                                        color: colors.inputBorder,
-                                        borderRadius: BorderRadius.circular(4.r),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+                    child: Consumer<StatusProvider>(
+                      builder: (context, provider, _) {
+                        if (status == null) return const SizedBox();
+
+                        final comments = provider.getComments(status.id);
+                        final isLoading = provider.isLoadingComments(status.id);
+                        final error = provider.getCommentError(status.id);
+
+                        // Show loading shimmer on first load
+                        if (isLoading && comments.isEmpty) {
+                          return _buildCommentsLoading(colors, scrollController);
+                        }
+
+                        // Show error state
+                        if (error != null && comments.isEmpty) {
+                          return _buildCommentsError(colors, error, () {
+                            provider.fetchComments(status.id);
+                          });
+                        }
+
+                        // Show empty state
+                        if (comments.isEmpty) {
+                          return _buildEmptyComments(colors);
+                        }
+
+                        // Show comments list
+                        return ListView.builder(
+                          controller: scrollController,
+                          padding: EdgeInsets.symmetric(horizontal: 16.w),
+                          itemCount: comments.length,
+                          itemBuilder: (context, index) {
+                            return _buildCommentItem(comments[index], colors, status.id);
+                          },
                         );
                       },
                     ),
@@ -461,6 +447,7 @@ class _StoryViewerState extends State<StoryViewer> with TickerProviderStateMixin
                       children: [
                         Expanded(
                           child: TextField(
+                            controller: _commentController,
                             decoration: InputDecoration(
                               hintText: 'Add a comment...',
                               filled: true,
@@ -476,23 +463,60 @@ class _StoryViewerState extends State<StoryViewer> with TickerProviderStateMixin
                               contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                             ),
                             style: TextStyle(color: colors.textPrimary, fontSize: 14.sp),
-                            onTap: () {},
+                            maxLength: 500,
+                            buildCounter: (context, {required currentLength, required isFocused, maxLength}) {
+                              if (!isFocused) return null;
+                              return Text(
+                                '$currentLength/$maxLength',
+                                style: TextStyle(fontSize: 10.sp, color: colors.textSecondary),
+                              );
+                            },
+                            onChanged: (_) => setState(() {}), // Rebuild to enable/disable button
                           ),
                         ),
                         SizedBox(width: 12.w),
-                        ElevatedButton(
-                          onPressed: () {
-                            // TODO: Wire up to provider to post comment
+                        Consumer<StatusProvider>(
+                          builder: (context, provider, _) {
+                            final isPosting = provider.isLoadingComments(status?.id ?? '');
+                            final canSend = _commentController.text.trim().isNotEmpty && !isPosting;
+
+                            return ElevatedButton(
+                              onPressed: canSend
+                                  ? () async {
+                                      if (status == null) return;
+                                      final text = _commentController.text.trim();
+                                      _commentController.clear();
+                                      final success = await provider.addComment(status.id, text);
+                                      if (!success && mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(SnackBar(content: Text('Failed to post comment')));
+                                      }
+                                    }
+                                  : null,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: canSend ? colors.accentOrange : colors.inputBorder,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+                                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                              ),
+                              child: isPosting
+                                  ? SizedBox(
+                                      width: 16.w,
+                                      height: 16.h,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation(Colors.white),
+                                      ),
+                                    )
+                                  : Text(
+                                      'Send',
+                                      style: TextStyle(
+                                        color: canSend ? Colors.white : colors.textSecondary,
+                                        fontSize: 14.sp,
+                                      ),
+                                    ),
+                            );
                           },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: colors.accentOrange,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
-                            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                          ),
-                          child: Text(
-                            'Send',
-                            style: TextStyle(color: Colors.white, fontSize: 14.sp),
-                          ),
                         ),
                       ],
                     ),
@@ -999,5 +1023,160 @@ class _StoryViewerState extends State<StoryViewer> with TickerProviderStateMixin
         _progressController.forward();
       }
     });
+  }
+
+  // ============================================================
+  // Comment Helper Widgets
+  // ============================================================
+
+  Widget _buildCommentsLoading(AppColorsExtension colors, ScrollController scrollController) {
+    return ListView.builder(
+      controller: scrollController,
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      itemCount: 5,
+      itemBuilder: (context, index) {
+        return Padding(
+          padding: EdgeInsets.symmetric(vertical: 10.h),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(radius: 16.r, backgroundColor: colors.inputBorder),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 100.w,
+                      height: 12.h,
+                      decoration: BoxDecoration(color: colors.inputBorder, borderRadius: BorderRadius.circular(4.r)),
+                    ),
+                    SizedBox(height: 6.h),
+                    Container(
+                      width: double.infinity,
+                      height: 12.h,
+                      decoration: BoxDecoration(color: colors.inputBorder, borderRadius: BorderRadius.circular(4.r)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCommentsError(AppColorsExtension colors, String error, VoidCallback onRetry) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline, size: 48.r, color: colors.textSecondary),
+          SizedBox(height: 16.h),
+          Text(
+            error,
+            style: TextStyle(color: colors.textSecondary, fontSize: 14.sp),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 16.h),
+          ElevatedButton(
+            onPressed: onRetry,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.accentOrange,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+            ),
+            child: Text('Retry', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyComments(AppColorsExtension colors) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.chat_bubble_outline, size: 48.r, color: colors.textSecondary),
+          SizedBox(height: 16.h),
+          Text(
+            'No comments yet',
+            style: TextStyle(color: colors.textSecondary, fontSize: 16.sp, fontWeight: FontWeight.w500),
+          ),
+          SizedBox(height: 8.h),
+          Text(
+            'Be the first to comment!',
+            style: TextStyle(color: colors.textSecondary, fontSize: 14.sp),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCommentItem(CommentModel comment, AppColorsExtension colors, String statusId) {
+    // Check if this is the current user's comment (simplified - you may need actual user ID)
+    final isOwnComment = comment.user.name == 'You';
+
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 10.h),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 16.r,
+            backgroundImage: comment.user.profileImage != null
+                ? CachedNetworkImageProvider(comment.user.profileImage!)
+                : null,
+            backgroundColor: colors.accentOrange.withOpacity(0.2),
+            child: comment.user.profileImage == null
+                ? Text(
+                    comment.user.name[0].toUpperCase(),
+                    style: TextStyle(color: colors.accentOrange, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                  )
+                : null,
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      comment.user.name,
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.sp, color: colors.textPrimary),
+                    ),
+                    SizedBox(width: 8.w),
+                    Text(
+                      comment.timeAgo,
+                      style: TextStyle(color: colors.textSecondary, fontSize: 12.sp),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 4.h),
+                Text(
+                  comment.text,
+                  style: TextStyle(fontSize: 14.sp, color: colors.textPrimary),
+                ),
+              ],
+            ),
+          ),
+          if (isOwnComment)
+            IconButton(
+              icon: Icon(Icons.delete_outline, size: 20.r, color: colors.textSecondary),
+              padding: EdgeInsets.zero,
+              constraints: BoxConstraints(),
+              onPressed: () async {
+                final provider = context.read<StatusProvider>();
+                final success = await provider.deleteComment(statusId, comment.id);
+                if (!success && mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to delete comment')));
+                }
+              },
+            ),
+        ],
+      ),
+    );
   }
 }

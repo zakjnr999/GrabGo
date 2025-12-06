@@ -4,6 +4,7 @@ const rateLimit = require('express-rate-limit');
 const { ipKeyGenerator } = require('express-rate-limit');
 const Status = require('../models/Status');
 const Comment = require('../models/Comment');
+const Reaction = require('../models/Reaction');
 const Restaurant = require('../models/Restaurant');
 const Food = require('../models/Food');
 const { protect, authorize } = require('../middleware/auth');
@@ -1220,6 +1221,340 @@ router.post('/cache/clear', protect, authorize('admin'), async (req, res) => {
         });
     } catch (error) {
         console.error('Cache clear error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error: error.message
+        });
+    }
+});
+
+// ============================================================
+// Comment Routes
+// ============================================================
+
+/**
+ * @route   GET /api/statuses/:statusId/comments
+ * @desc    Get comments for a status (paginated, top-level only)
+ * @access  Public
+ */
+router.get('/:statusId/comments', async (req, res) => {
+    try {
+        const { page = 1, limit = 20 } = req.query;
+        const pageNum = Math.max(1, parseInt(page));
+        const limitNum = Math.min(Math.max(1, parseInt(limit)), 50);
+
+        const result = await Comment.getCommentsForStatus(req.params.statusId, pageNum, limitNum);
+
+        res.json({
+            success: true,
+            message: 'Comments retrieved successfully',
+            comments: result.comments,
+            pagination: result.pagination
+        });
+    } catch (error) {
+        console.error('Get comments error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * @route   POST /api/statuses/:statusId/comments
+ * @desc    Add a comment to a status
+ * @access  Private
+ */
+router.post(
+    '/:statusId/comments',
+    protect,
+    commentRateLimiter,
+    [
+        body('text')
+            .trim()
+            .notEmpty()
+            .withMessage('Comment text is required')
+            .isLength({ min: 1, max: 500 })
+            .withMessage('Comment must be between 1 and 500 characters')
+    ],
+    async (req, res) => {
+        try {
+            const errors = validationResult(req);
+            if (!errors.isEmpty()) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Validation failed',
+                    errors: errors.array()
+                });
+            }
+
+            const status = await Status.findById(req.params.statusId);
+            if (!status) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Status not found'
+                });
+            }
+
+            if (status.expiresAt < new Date()) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Cannot comment on expired status'
+                });
+            }
+
+            const { text } = req.body;
+
+            const comment = await Comment.create({
+                status: req.params.statusId,
+                user: req.user._id,
+                text
+            });
+
+            await comment.populate('user', 'name email profileImage');
+
+            res.status(201).json({
+                success: true,
+                message: 'Comment added successfully',
+                comment
+            });
+        } catch (error) {
+            console.error('Add comment error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Server error',
+                error: error.message
+            });
+        }
+    }
+);
+
+/**
+ * @route   DELETE /api/statuses/comments/:commentId
+ * @desc    Delete a comment
+ * @access  Private
+ */
+router.delete('/comments/:commentId', protect, async (req, res) => {
+    try {
+        const comment = await Comment.findById(req.params.commentId);
+
+        if (!comment) {
+            return res.status(404).json({
+                success: false,
+                message: 'Comment not found'
+            });
+        }
+
+        if (comment.user._id.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Not authorized to delete this comment'
+            });
+        }
+
+        // Delete all replies if this is a parent comment
+        if (!comment.parentComment) {
+            await Comment.deleteMany({ parentComment: comment._id });
+        }
+
+        await comment.deleteOne();
+
+        res.json({
+            success: true,
+            message: 'Comment deleted successfully'
+        });
+    } catch (error) {
+        console.error('Delete comment error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error: error.message
+        });
+    }
+});
+
+// ============================================================
+// Reply Routes
+// ============================================================
+
+/**
+ * @route   GET /api/statuses/comments/:commentId/replies
+ * @desc    Get replies for a comment (paginated)
+ * @access  Public
+ */
+router.get('/comments/:commentId/replies', async (req, res) => {
+    try {
+        const { page = 1, limit = 10 } = req.query;
+        const pageNum = Math.max(1, parseInt(page));
+        const limitNum = Math.min(Math.max(1, parseInt(limit)), 20);
+
+        const result = await Comment.getReplies(req.params.commentId, pageNum, limitNum);
+
+        res.json({
+            success: true,
+            message: 'Replies retrieved successfully',
+            replies: result.replies,
+            pagination: result.pagination
+        });
+    } catch (error) {
+        console.error('Get replies error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error: error.message
+        });
+    }
+});
+
+/**
+ * @route   POST /api/statuses/comments/:commentId/replies
+ * @desc    Add a reply to a comment
+ * @access  Private
+ */
+router.post(
+    '/comments/:commentId/replies',
+    protect,
+    commentRateLimiter,
+    [
+        body('text')
+            .trim()
+            .notEmpty()
+            .withMessage('Reply text is required')
+            .isLength({ min: 1, max: 500 })
+            .withMessage('Reply must be between 1 and 500 characters')
+    ],
+    async (req, res) => {
+        try {
+            const errors = validationResult(req);
+            if (!errors.isEmpty()) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Validation failed',
+                    errors: errors.array()
+                });
+            }
+
+            const parentComment = await Comment.findById(req.params.commentId);
+            if (!parentComment) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Parent comment not found'
+                });
+            }
+
+            if (parentComment.parentComment) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Cannot reply to a reply. Please reply to the parent comment.'
+                });
+            }
+
+            const { text } = req.body;
+
+            const reply = await Comment.create({
+                status: parentComment.status,
+                user: req.user._id,
+                text,
+                parentComment: req.params.commentId
+            });
+
+            await reply.populate('user', 'name email profileImage');
+
+            res.status(201).json({
+                success: true,
+                message: 'Reply added successfully',
+                reply
+            });
+        } catch (error) {
+            console.error('Add reply error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Server error',
+                error: error.message
+            });
+        }
+    }
+);
+
+// ============================================================
+// Reaction Routes
+// ============================================================
+
+/**
+ * @route   POST /api/statuses/comments/:commentId/react
+ * @desc    Toggle reaction on a comment
+ * @access  Private
+ */
+router.post(
+    '/comments/:commentId/react',
+    protect,
+    [
+        body('type')
+            .isIn(['like', 'love', 'haha', 'wow', 'sad', 'angry'])
+            .withMessage('Invalid reaction type')
+    ],
+    async (req, res) => {
+        try {
+            const errors = validationResult(req);
+            if (!errors.isEmpty()) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Validation failed',
+                    errors: errors.array()
+                });
+            }
+
+            const comment = await Comment.findById(req.params.commentId);
+            if (!comment) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Comment not found'
+                });
+            }
+
+            const { type } = req.body;
+            const result = await Reaction.toggle(req.params.commentId, req.user._id, type);
+            const summary = await Reaction.getSummary(req.params.commentId, req.user._id);
+
+            res.json({
+                success: true,
+                message: `Reaction ${result.action}`,
+                data: {
+                    action: result.action,
+                    type: result.type,
+                    reactions: summary
+                }
+            });
+        } catch (error) {
+            console.error('Toggle reaction error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Server error',
+                error: error.message
+            });
+        }
+    }
+);
+
+/**
+ * @route   GET /api/statuses/comments/:commentId/reactions
+ * @desc    Get reaction summary for a comment
+ * @access  Public
+ */
+router.get('/comments/:commentId/reactions', async (req, res) => {
+    try {
+        const userId = req.user?._id;
+        const summary = await Reaction.getSummary(req.params.commentId, userId);
+
+        res.json({
+            success: true,
+            message: 'Reactions retrieved successfully',
+            reactions: summary
+        });
+    } catch (error) {
+        console.error('Get reactions error:', error);
         res.status(500).json({
             success: false,
             message: 'Server error',

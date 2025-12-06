@@ -7,6 +7,7 @@ import 'package:grab_go_shared/shared/services/chat_socket_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_customer/features/status/model/status_model.dart';
+import 'package:grab_go_customer/features/status/model/comment_model.dart';
 import 'package:grab_go_customer/features/status/repository/status_repository.dart';
 
 /// Provider for Status feature state management
@@ -126,6 +127,28 @@ class StatusProvider with ChangeNotifier {
   // Cached statuses for offline viewing
   List<StatusModel> _cachedViewedStatuses = [];
   List<StatusModel> get cachedViewedStatuses => _cachedViewedStatuses;
+
+  // ============================================================
+  // Comment State
+  // ============================================================
+
+  // Comments cache by status ID
+  final Map<String, List<CommentModel>> _commentsCache = {};
+
+  // Loading states for comments
+  final Map<String, bool> _loadingComments = {};
+
+  // Error states for comments
+  final Map<String, String?> _commentErrors = {};
+
+  // Pagination for comments
+  final Map<String, CommentPagination?> _commentPagination = {};
+
+  // Getters for comment state
+  List<CommentModel> getComments(String statusId) => _commentsCache[statusId] ?? [];
+  bool isLoadingComments(String statusId) => _loadingComments[statusId] ?? false;
+  String? getCommentError(String statusId) => _commentErrors[statusId];
+  bool canLoadMoreComments(String statusId) => _commentPagination[statusId]?.hasMore ?? false;
 
   /// Initialize provider - call this on app start
   Future<void> init() async {
@@ -762,5 +785,162 @@ class StatusProvider with ChangeNotifier {
   Future<({int statusCount, bool hasCache})> getOfflineCacheInfo() async {
     final cachedStatuses = await _repository.getCachedViewedStatuses();
     return (statusCount: cachedStatuses.length, hasCache: cachedStatuses.isNotEmpty);
+  }
+
+  // ============================================================
+  // Comment Methods
+  // ============================================================
+
+  /// Fetch comments for a status
+  Future<void> fetchComments(String statusId, {int page = 1}) async {
+    try {
+      _loadingComments[statusId] = true;
+      _commentErrors[statusId] = null;
+      notifyListeners();
+
+      final response = await statusService.getComments(statusId, page: page, limit: 20);
+
+      if (kDebugMode) {
+        print('📡 Comment API response: ${response.body}');
+      }
+
+      if (response.isSuccessful && response.body != null) {
+        final data = response.body as Map<String, dynamic>;
+
+        final commentsData = data['comments'];
+        final comments = <CommentModel>[];
+
+        if (commentsData is List) {
+          for (var json in commentsData) {
+            try {
+              comments.add(CommentModel.fromJson(json as Map<String, dynamic>));
+            } catch (e) {
+              if (kDebugMode) {
+                print('⚠️ Skipping invalid comment: $e');
+              }
+            }
+          }
+        }
+
+        final pagination = CommentPagination.fromJson(data['pagination'] as Map<String, dynamic>);
+
+        if (page == 1) {
+          _commentsCache[statusId] = comments;
+        } else {
+          _commentsCache[statusId] = [...(_commentsCache[statusId] ?? []), ...comments];
+        }
+
+        _commentPagination[statusId] = pagination;
+
+        if (kDebugMode) {
+          print('✅ Fetched ${comments.length} comments for status $statusId');
+        }
+      } else {
+        _commentErrors[statusId] = 'Failed to load comments';
+      }
+    } catch (e) {
+      _commentErrors[statusId] = 'Error loading comments';
+      if (kDebugMode) {
+        print('❌ Error fetching comments: $e');
+      }
+    } finally {
+      _loadingComments[statusId] = false;
+      notifyListeners();
+    }
+  }
+
+  /// Add a comment to a status
+  Future<bool> addComment(String statusId, String text) async {
+    if (text.trim().isEmpty) return false;
+
+    try {
+      // Optimistic update - add temporary comment
+      final tempComment = CommentModel(
+        id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+        statusId: statusId,
+        user: CommentUser(id: 'current_user', name: 'You', email: null, profileImage: null),
+        text: text.trim(),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      _commentsCache[statusId] = [tempComment, ...(_commentsCache[statusId] ?? [])];
+      notifyListeners();
+
+      final response = await statusService.addComment(statusId, {'text': text.trim()});
+
+      if (response.isSuccessful && response.body != null) {
+        final data = response.body as Map<String, dynamic>;
+        final newComment = CommentModel.fromJson(data['comment'] as Map<String, dynamic>);
+
+        // Replace temp comment with real one
+        final comments = _commentsCache[statusId] ?? [];
+        final index = comments.indexWhere((c) => c.id == tempComment.id);
+        if (index != -1) {
+          comments[index] = newComment;
+          _commentsCache[statusId] = List.from(comments);
+        }
+
+        notifyListeners();
+
+        if (kDebugMode) {
+          print('✅ Comment added successfully');
+        }
+        return true;
+      } else {
+        // Remove temp comment on failure
+        _commentsCache[statusId] = (_commentsCache[statusId] ?? []).where((c) => c.id != tempComment.id).toList();
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error adding comment: $e');
+      }
+      // Remove temp comment on error
+      _commentsCache[statusId] = (_commentsCache[statusId] ?? []).where((c) => !c.id.startsWith('temp_')).toList();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Delete a comment
+  Future<bool> deleteComment(String statusId, String commentId) async {
+    try {
+      // Optimistic update - remove comment immediately
+      final originalComments = List<CommentModel>.from(_commentsCache[statusId] ?? []);
+      _commentsCache[statusId] = originalComments.where((c) => c.id != commentId).toList();
+      notifyListeners();
+
+      final response = await statusService.deleteComment(commentId);
+
+      if (response.isSuccessful) {
+        if (kDebugMode) {
+          print('✅ Comment deleted successfully');
+        }
+        return true;
+      } else {
+        // Restore comment on failure
+        _commentsCache[statusId] = originalComments;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error deleting comment: $e');
+      }
+      // Restore comments on error
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Clear comments cache for a status
+  void clearComments(String statusId) {
+    _commentsCache.remove(statusId);
+    _commentPagination.remove(statusId);
+    _commentErrors.remove(statusId);
+    _loadingComments.remove(statusId);
+    notifyListeners();
   }
 }
