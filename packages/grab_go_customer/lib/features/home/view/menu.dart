@@ -772,43 +772,10 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
                                   itemCount: displayedItems.length + (hasMoreItems && _isLoadingMore ? 1 : 0),
                                   itemBuilder: (context, index) {
                                     if (index >= displayedItems.length) {
-                                      return Padding(
-                                        padding: EdgeInsets.symmetric(vertical: 16.h),
-                                        child: Center(
-                                          child: Container(
-                                            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
-                                            decoration: BoxDecoration(
-                                              color: colors.backgroundPrimary,
-                                              borderRadius: BorderRadius.circular(20.r),
-                                              border: Border.all(
-                                                color: colors.accentGreen.withValues(alpha: 0.3),
-                                                width: 1,
-                                              ),
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                SizedBox(
-                                                  width: 18.w,
-                                                  height: 18.h,
-                                                  child: CircularProgressIndicator(
-                                                    strokeWidth: 2,
-                                                    valueColor: AlwaysStoppedAnimation<Color>(colors.accentOrange),
-                                                  ),
-                                                ),
-                                                SizedBox(width: 12.w),
-                                                Text(
-                                                  "Loading more...",
-                                                  style: TextStyle(
-                                                    fontSize: 13.sp,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: colors.textSecondary,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
+                                      LoadingMore(
+                                        colors: colors,
+                                        spinnerColor: colors.accentOrange,
+                                        borderColor: colors.accentOrange,
                                       );
                                     }
                                     return _buildFoodItemCard(displayedItems[index], colors, isDark);

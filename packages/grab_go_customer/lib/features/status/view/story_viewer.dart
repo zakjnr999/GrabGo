@@ -23,6 +23,9 @@ class StoryViewer extends StatefulWidget {
   final VoidCallback? onPreviousRestaurant;
   final String? targetCommentId;
   final bool highlightComment;
+  final String? parentCommentId;
+  final bool isReply;
+  final String? targetStatusId;
 
   const StoryViewer({
     super.key,
@@ -33,6 +36,9 @@ class StoryViewer extends StatefulWidget {
     this.onNextRestaurant,
     this.onPreviousRestaurant,
     this.targetCommentId,
+    this.parentCommentId,
+    this.targetStatusId,
+    this.isReply = false,
     this.highlightComment = false,
   });
 
@@ -117,11 +123,91 @@ class _StoryViewerState extends State<StoryViewer> with TickerProviderStateMixin
 
     // Auto-scroll to target comment if provided
     if (widget.targetCommentId != null) {
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        if (mounted) {
-          _scrollToComment(widget.targetCommentId!);
-        }
-      });
+      debugPrint('🔗 Deep Link: targetCommentId = ${widget.targetCommentId}');
+      debugPrint('🔗 Deep Link: targetStatusId = ${widget.targetStatusId}');
+      debugPrint('🔗 Deep Link: isReply = ${widget.isReply}');
+      debugPrint('🔗 Deep Link: parentCommentId = ${widget.parentCommentId}');
+
+      // Fetch statuses for this restaurant first
+      debugPrint('🔗 Deep Link: Fetching statuses for restaurant...');
+      _statusProvider
+          .fetchRestaurantStatuses(widget.restaurantId)
+          .then((_) {
+            debugPrint('🔗 Deep Link: Statuses fetched successfully');
+
+            // Wait for status to load, then find the correct status
+            Future.delayed(const Duration(milliseconds: 800), () {
+              if (mounted) {
+                debugPrint('🔗 Deep Link: Checking statuses after delay');
+                final statuses = _statusProvider.currentRestaurantStatuses;
+                debugPrint('🔗 Deep Link: Found ${statuses.length} statuses');
+
+                if (statuses.isNotEmpty && widget.targetStatusId != null) {
+                  // Find the specific status by ID
+                  final statusIndex = statuses.indexWhere((s) => s.id == widget.targetStatusId);
+                  if (statusIndex != -1) {
+                    debugPrint('🔗 Deep Link: Found target status at index $statusIndex');
+                    setState(() {
+                      _currentIndex = statusIndex;
+                    });
+                  } else {
+                    debugPrint('⚠️ Deep Link: Target status not found, using first status');
+                  }
+
+                  final status = statuses[_currentIndex];
+                  debugPrint('🔗 Deep Link: Current status index = $_currentIndex');
+                  debugPrint('🔗 Deep Link: Status ID = ${status.id}');
+
+                  // Check if it's a reply
+                  if (widget.isReply && widget.parentCommentId != null) {
+                    // It's a reply - need to open replies sheet
+                    debugPrint('🔗 Deep Link: Target is a reply, fetching comments...');
+
+                    _statusProvider.fetchComments(status.id).then((_) {
+                      // Find parent comment
+                      final comments = _statusProvider.getComments(status.id);
+                      final parentComment = comments.cast<CommentModel?>().firstWhere(
+                        (c) => c?.id == widget.parentCommentId,
+                        orElse: () => null,
+                      );
+
+                      if (parentComment != null) {
+                        debugPrint('🔗 Deep Link: Found parent comment, opening replies...');
+                        _showRepliesSheet(parentComment);
+
+                        // Then scroll to reply
+                        Future.delayed(const Duration(milliseconds: 1500), () {
+                          if (mounted) {
+                            debugPrint('🔗 Deep Link: Attempting to scroll to reply...');
+                            _scrollToComment(widget.targetCommentId!);
+                          }
+                        });
+                      } else {
+                        debugPrint('❌ Deep Link: Parent comment not found!');
+                      }
+                    });
+                  } else {
+                    // It's a top-level comment
+                    debugPrint('🔗 Deep Link: Opening comments bottom sheet...');
+                    _showCommentsBottomSheet(status);
+
+                    // Then scroll to comment after sheet opens and comments load
+                    Future.delayed(const Duration(milliseconds: 1500), () {
+                      if (mounted) {
+                        debugPrint('🔗 Deep Link: Attempting to scroll to comment...');
+                        _scrollToComment(widget.targetCommentId!);
+                      }
+                    });
+                  }
+                } else {
+                  debugPrint('❌ Deep Link: No statuses found or no targetStatusId!');
+                }
+              }
+            });
+          })
+          .catchError((error) {
+            debugPrint('❌ Deep Link: Error fetching statuses: $error');
+          });
     }
   }
 

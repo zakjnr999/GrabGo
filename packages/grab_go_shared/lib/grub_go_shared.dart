@@ -21,6 +21,7 @@ export 'shared/widgets/loading_dialog.dart';
 export 'shared/widgets/loading_dialog_controller.dart';
 export 'shared/widgets/logo_upload_widget.dart';
 export 'shared/widgets/promo_code_dialog.dart';
+export 'shared/widgets/loading_more.dart';
 export 'core/api/food_service.dart';
 export 'core/api/json_serializable_converter.dart';
 export 'core/config/google_signin_config.dart';

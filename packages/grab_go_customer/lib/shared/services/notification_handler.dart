@@ -31,12 +31,24 @@ void handleNotificationTap(Map<String, dynamic> data) {
         debugPrint('Navigate to order: $orderId');
       } else if ((type == 'comment_reply' || type == 'comment_reaction') && statusId != null && restaurantId != null) {
         // Navigate to status viewer for comment notifications
+        debugPrint('📲 Comment notification data:');
+        debugPrint('   - type: $type');
+        debugPrint('   - restaurantId: $restaurantId');
+        debugPrint('   - restaurantName: $restaurantName');
+        debugPrint('   - statusId: $statusId');
+        debugPrint('   - commentId: ${data['commentId']}');
+        debugPrint('   - parentCommentId: ${data['parentCommentId']}');
+        debugPrint('   - isReply: ${data['isReply']}');
+
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => StoryViewer(
               restaurantId: restaurantId,
               restaurantName: restaurantName ?? 'Restaurant',
               targetCommentId: data['commentId'],
+              targetStatusId: statusId,
+              parentCommentId: data['parentCommentId'],
+              isReply: data['isReply'] ?? false,
               highlightComment: true,
             ),
           ),

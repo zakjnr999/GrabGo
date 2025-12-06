@@ -537,11 +537,23 @@ class _NotificationState extends State<Notification> {
             notification.type == NotificationType.commentReaction) {
           final data = notification.data;
           if (data != null && data['restaurantId'] != null) {
+            final restaurantId = data['restaurantId'] as String;
+            final restaurantName = data['restaurantName'] as String? ?? 'Restaurant';
+            final commentId = data['commentId'] as String?;
+            final statusId = data['statusId'] as String?;
+            final parentCommentId = data['parentCommentId'] as String?;
+            final isReply = data['isReply'] as bool? ?? false;
+
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => StoryViewer(
-                  restaurantId: data['restaurantId'],
-                  restaurantName: data['restaurantName'] ?? 'Restaurant',
+                  restaurantId: restaurantId,
+                  restaurantName: restaurantName,
+                  targetCommentId: commentId,
+                  targetStatusId: statusId,
+                  parentCommentId: parentCommentId,
+                  isReply: isReply,
+                  highlightComment: true,
                 ),
               ),
             );
