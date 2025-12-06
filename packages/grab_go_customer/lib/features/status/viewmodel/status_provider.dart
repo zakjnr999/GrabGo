@@ -132,17 +132,19 @@ class StatusProvider with ChangeNotifier {
   // Comment State
   // ============================================================
 
-  // Comments cache by status ID
+  // Comment state
   final Map<String, List<CommentModel>> _commentsCache = {};
-
-  // Loading states for comments
   final Map<String, bool> _loadingComments = {};
-
-  // Error states for comments
   final Map<String, String?> _commentErrors = {};
-
-  // Pagination for comments
   final Map<String, CommentPagination?> _commentPagination = {};
+
+  // Reply state
+  final Map<String, List<CommentModel>> _repliesCache = {};
+  final Map<String, bool> _loadingReplies = {};
+  final Map<String, String?> _replyErrors = {};
+
+  // Reaction state
+  final Map<String, ReactionSummary> _reactionCache = {};
 
   // Getters for comment state
   List<CommentModel> getComments(String statusId) => _commentsCache[statusId] ?? [];
@@ -829,8 +831,14 @@ class StatusProvider with ChangeNotifier {
         } else {
           _commentsCache[statusId] = [...(_commentsCache[statusId] ?? []), ...comments];
         }
-
         _commentPagination[statusId] = pagination;
+
+        // Fetch reactions for all comments (await to ensure they load)
+        await Future.wait(comments.map((comment) => _fetchReactionsForComment(comment.id)));
+
+        // Fetch first 2 replies for comments with replies (for preview)
+        final commentsWithReplies = comments.where((c) => c.replyCount > 0);
+        await Future.wait(commentsWithReplies.map((comment) => fetchReplies(comment.id, page: 1)));
 
         if (kDebugMode) {
           print('✅ Fetched ${comments.length} comments for status $statusId');
@@ -942,5 +950,274 @@ class StatusProvider with ChangeNotifier {
     _commentErrors.remove(statusId);
     _loadingComments.remove(statusId);
     notifyListeners();
+  }
+
+  // ============================================================
+  // Reply Methods
+  // ============================================================
+
+  /// Get replies for a comment
+  List<CommentModel> getReplies(String commentId) => _repliesCache[commentId] ?? [];
+  bool isLoadingReplies(String commentId) => _loadingReplies[commentId] ?? false;
+
+  /// Fetch replies for a comment
+  Future<void> fetchReplies(String commentId, {int page = 1}) async {
+    try {
+      _loadingReplies[commentId] = true;
+      _replyErrors[commentId] = null;
+      notifyListeners();
+
+      final response = await statusService.getReplies(commentId, page: page, limit: 10);
+
+      if (response.isSuccessful && response.body != null) {
+        final data = response.body as Map<String, dynamic>;
+        final repliesData = data['replies'];
+        final replies = <CommentModel>[];
+
+        if (repliesData is List) {
+          for (var json in repliesData) {
+            try {
+              replies.add(CommentModel.fromJson(json as Map<String, dynamic>));
+            } catch (e) {
+              if (kDebugMode) print('⚠️ Skipping invalid reply: $e');
+            }
+          }
+        }
+
+        _repliesCache[commentId] = replies;
+      } else {
+        _replyErrors[commentId] = 'Failed to load replies';
+      }
+    } catch (e) {
+      _replyErrors[commentId] = 'Error loading replies';
+      if (kDebugMode) print('❌ Error fetching replies: $e');
+    } finally {
+      _loadingReplies[commentId] = false;
+      notifyListeners();
+    }
+  }
+
+  /// Add a reply to a comment
+  Future<bool> addReply(String commentId, String statusId, String text) async {
+    if (text.trim().isEmpty) return false;
+
+    try {
+      // Optimistic update
+      final tempReply = CommentModel(
+        id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+        statusId: statusId,
+        user: CommentUser(id: 'current_user', name: 'You'),
+        text: text.trim(),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        parentCommentId: commentId,
+      );
+
+      _repliesCache[commentId] = [tempReply, ...(_repliesCache[commentId] ?? [])];
+      notifyListeners();
+
+      final response = await statusService.addReply(commentId, {'text': text.trim()});
+
+      if (response.isSuccessful && response.body != null) {
+        final data = response.body as Map<String, dynamic>;
+        if (data['success'] == true && data['reply'] != null) {
+          final realReply = CommentModel.fromJson(data['reply'] as Map<String, dynamic>);
+          _repliesCache[commentId] = _repliesCache[commentId]!
+              .map((r) => r.id == tempReply.id ? realReply : r)
+              .toList();
+
+          // Update parent comment's reply count in comments cache
+          for (var statusId in _commentsCache.keys) {
+            final comments = _commentsCache[statusId];
+            if (comments != null) {
+              final index = comments.indexWhere((c) => c.id == commentId);
+              if (index != -1) {
+                final updatedComment = CommentModel(
+                  id: comments[index].id,
+                  statusId: comments[index].statusId,
+                  user: comments[index].user,
+                  text: comments[index].text,
+                  createdAt: comments[index].createdAt,
+                  updatedAt: comments[index].updatedAt,
+                  parentCommentId: comments[index].parentCommentId,
+                  replyCount: comments[index].replyCount + 1,
+                  replies: comments[index].replies,
+                  reactions: comments[index].reactions,
+                );
+                _commentsCache[statusId]![index] = updatedComment;
+                break;
+              }
+            }
+          }
+
+          notifyListeners();
+          return true;
+        }
+      }
+
+      // Revert on failure
+      _repliesCache[commentId] = _repliesCache[commentId]!.where((r) => r.id != tempReply.id).toList();
+      notifyListeners();
+      return false;
+    } catch (e) {
+      if (kDebugMode) print('❌ Error adding reply: $e');
+      return false;
+    }
+  }
+
+  // ============================================================
+  // Reaction Methods
+  // ============================================================
+
+  /// Get reactions for a comment
+  ReactionSummary getReactions(String commentId) => _reactionCache[commentId] ?? ReactionSummary.empty();
+
+  /// Toggle reaction on a comment
+  Future<bool> toggleReaction(String commentId, ReactionType type) async {
+    // Save current state for rollback
+    final current = _reactionCache[commentId] ?? ReactionSummary.empty();
+
+    try {
+      // Optimistic update
+      final isRemoving = current.userReaction == type;
+
+      // Update cache optimistically
+      if (isRemoving) {
+        // Remove reaction
+        _reactionCache[commentId] = ReactionSummary(
+          like: type == ReactionType.like ? current.like - 1 : current.like,
+          love: type == ReactionType.love ? current.love - 1 : current.love,
+          haha: type == ReactionType.haha ? current.haha - 1 : current.haha,
+          wow: type == ReactionType.wow ? current.wow - 1 : current.wow,
+          sad: type == ReactionType.sad ? current.sad - 1 : current.sad,
+          angry: type == ReactionType.angry ? current.angry - 1 : current.angry,
+          total: current.total - 1,
+          userReaction: null,
+        );
+      } else {
+        // Add or change reaction
+        var newLike = current.like;
+        var newLove = current.love;
+        var newHaha = current.haha;
+        var newWow = current.wow;
+        var newSad = current.sad;
+        var newAngry = current.angry;
+        var newTotal = current.total;
+
+        // Remove old reaction if exists
+        if (current.userReaction != null) {
+          switch (current.userReaction!) {
+            case ReactionType.like:
+              newLike--;
+              break;
+            case ReactionType.love:
+              newLove--;
+              break;
+            case ReactionType.haha:
+              newHaha--;
+              break;
+            case ReactionType.wow:
+              newWow--;
+              break;
+            case ReactionType.sad:
+              newSad--;
+              break;
+            case ReactionType.angry:
+              newAngry--;
+              break;
+          }
+          newTotal--;
+        }
+
+        // Add new reaction
+        switch (type) {
+          case ReactionType.like:
+            newLike++;
+            break;
+          case ReactionType.love:
+            newLove++;
+            break;
+          case ReactionType.haha:
+            newHaha++;
+            break;
+          case ReactionType.wow:
+            newWow++;
+            break;
+          case ReactionType.sad:
+            newSad++;
+            break;
+          case ReactionType.angry:
+            newAngry++;
+            break;
+        }
+        newTotal++;
+
+        _reactionCache[commentId] = ReactionSummary(
+          like: newLike,
+          love: newLove,
+          haha: newHaha,
+          wow: newWow,
+          sad: newSad,
+          angry: newAngry,
+          total: newTotal,
+          userReaction: type,
+        );
+      }
+      notifyListeners();
+
+      final response = await statusService.toggleReaction(commentId, {'type': type.name});
+
+      if (kDebugMode) {
+        print('🔍 Response successful: ${response.isSuccessful}');
+        print('🔍 Response body: ${response.body}');
+        print('🔍 Response status code: ${response.statusCode}');
+      }
+
+      if (response.isSuccessful && response.body != null) {
+        final data = response.body as Map<String, dynamic>;
+        if (kDebugMode) print('🔍 Toggle reaction response: $data');
+
+        if (data['success'] == true && data['data'] != null) {
+          final responseData = data['data'] as Map<String, dynamic>;
+          final reactions = responseData['reactions'] as Map<String, dynamic>;
+          _reactionCache[commentId] = ReactionSummary.fromJson(reactions);
+          if (kDebugMode) print('✅ Reaction cached: ${_reactionCache[commentId]}');
+          notifyListeners();
+          return true;
+        } else {
+          if (kDebugMode) print('❌ Response missing success or data field');
+        }
+      } else {
+        if (kDebugMode) print('❌ Response not successful or body is null');
+      }
+
+      // Revert on failure
+      if (kDebugMode) print('❌ Reaction toggle failed, reverting');
+      _reactionCache[commentId] = current;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      if (kDebugMode) print('❌ Error toggling reaction: $e');
+      // Revert on error
+      _reactionCache[commentId] = current;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Fetch reactions for a comment (internal helper, no UI updates)
+  Future<void> _fetchReactionsForComment(String commentId) async {
+    try {
+      final response = await statusService.getReactions(commentId);
+      if (response.isSuccessful && response.body != null) {
+        final data = response.body as Map<String, dynamic>;
+        if (data['success'] == true && data['reactions'] != null) {
+          _reactionCache[commentId] = ReactionSummary.fromJson(data['reactions'] as Map<String, dynamic>);
+          // Don't call notifyListeners here - parent will call it after all reactions are loaded
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) print('⚠️ Error fetching reactions for $commentId: $e');
+    }
   }
 }

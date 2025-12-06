@@ -31,7 +31,7 @@ reactionSchema.index({ comment: 1, type: 1 });
 // Static method to get reaction summary for a comment
 reactionSchema.statics.getSummary = async function (commentId, userId = null) {
     const reactions = await this.aggregate([
-        { $match: { comment: mongoose.Types.ObjectId(commentId) } },
+        { $match: { comment: new mongoose.Types.ObjectId(commentId) } },
         { $group: { _id: '$type', count: { $sum: 1 } } }
     ]);
 

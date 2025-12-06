@@ -143,4 +143,53 @@ final class _$StatusService extends StatusService {
     final Request $request = Request('DELETE', $url, client.baseUrl);
     return client.send<dynamic, dynamic>($request);
   }
+
+  @override
+  Future<Response<dynamic>> getReplies(
+    String commentId, {
+    int? page,
+    int? limit,
+  }) {
+    final Uri $url = Uri.parse('/statuses/comments/${commentId}/replies');
+    final Map<String, dynamic> $params = <String, dynamic>{
+      'page': page,
+      'limit': limit,
+    };
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+      parameters: $params,
+    );
+    return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
+  Future<Response<dynamic>> addReply(
+    String commentId,
+    Map<String, dynamic> body,
+  ) {
+    final Uri $url = Uri.parse('/statuses/comments/${commentId}/replies');
+    final $body = body;
+    final Request $request = Request('POST', $url, client.baseUrl, body: $body);
+    return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
+  Future<Response<dynamic>> toggleReaction(
+    String commentId,
+    Map<String, dynamic> body,
+  ) {
+    final Uri $url = Uri.parse('/statuses/comments/${commentId}/react');
+    final $body = body;
+    final Request $request = Request('POST', $url, client.baseUrl, body: $body);
+    return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
+  Future<Response<dynamic>> getReactions(String commentId) {
+    final Uri $url = Uri.parse('/statuses/comments/${commentId}/reactions');
+    final Request $request = Request('GET', $url, client.baseUrl);
+    return client.send<dynamic, dynamic>($request);
+  }
 }

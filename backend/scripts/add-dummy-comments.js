@@ -53,6 +53,19 @@ const commentTexts = [
     "I need this in my life right now",
 ];
 
+const replyTexts = [
+    'Thanks for asking!',
+    'Yes, it is!',
+    'No, sorry.',
+    'Great question!',
+    'Let me check and get back to you.',
+    'Absolutely!',
+    'Not at the moment.',
+    'Coming soon!',
+    'Yes, we have that option.',
+    'Please contact us for more details.',
+];
+
 const connectDB = async () => {
     try {
         await mongoose.connect(process.env.MONGODB_URI);
@@ -63,7 +76,7 @@ const connectDB = async () => {
     }
 };
 
-const addDummyComments = async () => {
+(async () => {
     try {
         await connectDB();
 
@@ -90,32 +103,27 @@ const addDummyComments = async () => {
 
         console.log(`👥 Found ${users.length} users`);
 
-        // Delete existing comments (optional - comment out if you want to keep existing)
+        // Delete existing comments
         await Comment.deleteMany({});
-        console.log('🗑️  Cleared existing comments');
+        console.log('🗑️  Cleared existing comments\n');
 
-        let totalComments = 0;
+        let commentsCreated = 0;
 
         // Add comments to each status
         for (const status of statuses) {
-            // Random number of comments per status (5-15)
             const numComments = Math.floor(Math.random() * 11) + 5;
-
             const comments = [];
             const usedTexts = new Set();
 
             for (let i = 0; i < numComments; i++) {
-                // Pick a random user
                 const randomUser = users[Math.floor(Math.random() * users.length)];
 
-                // Pick a unique comment text
                 let commentText;
                 do {
                     commentText = commentTexts[Math.floor(Math.random() * commentTexts.length)];
                 } while (usedTexts.has(commentText) && usedTexts.size < commentTexts.length);
                 usedTexts.add(commentText);
 
-                // Random timestamp within last 24 hours
                 const hoursAgo = Math.random() * 24;
                 const createdAt = new Date(Date.now() - hoursAgo * 60 * 60 * 1000);
 
@@ -128,23 +136,48 @@ const addDummyComments = async () => {
                 });
             }
 
-            // Insert comments for this status
             await Comment.insertMany(comments);
-            totalComments += comments.length;
-
+            commentsCreated += comments.length;
             console.log(`  ✓ Added ${comments.length} comments to status: ${status.title || status.category}`);
         }
 
-        console.log(`\n🎉 Successfully added ${totalComments} dummy comments!`);
-        console.log(`📝 Comments distributed across ${statuses.length} statuses`);
-        console.log(`💬 Average: ${(totalComments / statuses.length).toFixed(1)} comments per status`);
+        console.log(`\n✅ Created ${commentsCreated} comments across ${statuses.length} statuses`);
+
+        // Create replies for some comments
+        console.log('\n📝 Creating replies...');
+
+        let repliesCreated = 0;
+        const allComments = await Comment.find({ parentComment: null }).limit(30);
+
+        for (const comment of allComments) {
+            // 60% chance to have replies
+            if (Math.random() > 0.4) {
+                const numReplies = Math.floor(Math.random() * 3) + 1; // 1-3 replies
+
+                for (let i = 0; i < numReplies; i++) {
+                    const randomUser = users[Math.floor(Math.random() * users.length)];
+                    const randomText = replyTexts[Math.floor(Math.random() * replyTexts.length)];
+
+                    await Comment.create({
+                        status: comment.status,
+                        user: randomUser._id,
+                        text: randomText,
+                        parentComment: comment._id,
+                        createdAt: new Date(Date.now() - Math.random() * 12 * 60 * 60 * 1000),
+                    });
+
+                    repliesCreated++;
+                }
+            }
+        }
+
+        console.log(`✅ Created ${repliesCreated} replies`);
+        console.log('\n🎉 Dummy data creation complete!');
+        console.log(`Total: ${commentsCreated} comments + ${repliesCreated} replies`);
 
         process.exit(0);
     } catch (error) {
-        console.error('❌ Error adding dummy comments:', error);
+        console.error('❌ Error:', error);
         process.exit(1);
     }
-};
-
-// Run the script
-addDummyComments();
+})();

@@ -1159,6 +1159,129 @@ class _StoryViewerState extends State<StoryViewer> with TickerProviderStateMixin
                   comment.text,
                   style: TextStyle(fontSize: 14.sp, color: colors.textPrimary),
                 ),
+                SizedBox(height: 8.h),
+                _buildReactionBar(comment, context.read<StatusProvider>(), colors),
+                // Reply button - always visible
+                TextButton.icon(
+                  onPressed: () => _showRepliesSheet(comment),
+                  icon: Icon(Icons.comment_outlined, size: 16.r, color: colors.textSecondary),
+                  label: Text(
+                    comment.replyCount > 0
+                        ? '${comment.replyCount} ${comment.replyCount == 1 ? 'reply' : 'replies'}'
+                        : 'Reply',
+                    style: TextStyle(color: colors.textSecondary, fontSize: 13.sp),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+                // Reply preview (like TikTok) with animation
+                if (comment.replyCount > 0)
+                  Consumer<StatusProvider>(
+                    builder: (context, provider, _) {
+                      final replies = provider.getReplies(comment.id);
+                      final previewReplies = replies.take(2).toList();
+
+                      return AnimatedSize(
+                        duration: Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                        child: previewReplies.isEmpty
+                            ? SizedBox.shrink()
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SizedBox(height: 8.h),
+                                  ...previewReplies.asMap().entries.map((entry) {
+                                    final index = entry.key;
+                                    final reply = entry.value;
+
+                                    return TweenAnimationBuilder<double>(
+                                      duration: Duration(milliseconds: 300 + (index * 100)),
+                                      tween: Tween(begin: 0.0, end: 1.0),
+                                      curve: Curves.easeOut,
+                                      builder: (context, value, child) {
+                                        return Opacity(
+                                          opacity: value,
+                                          child: Transform.translate(offset: Offset(20 * (1 - value), 0), child: child),
+                                        );
+                                      },
+                                      child: Padding(
+                                        padding: EdgeInsets.only(left: 40.w, bottom: 6.h),
+                                        child: Row(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            CircleAvatar(
+                                              radius: 10.r,
+                                              backgroundColor: colors.accentOrange.withOpacity(0.2),
+                                              child: Text(
+                                                reply.user.name[0].toUpperCase(),
+                                                style: TextStyle(
+                                                  color: colors.accentOrange,
+                                                  fontSize: 10.sp,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                            SizedBox(width: 8.w),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      Text(
+                                                        reply.user.name,
+                                                        style: TextStyle(
+                                                          fontWeight: FontWeight.w600,
+                                                          fontSize: 12.sp,
+                                                          color: colors.textPrimary,
+                                                        ),
+                                                      ),
+                                                      SizedBox(width: 6.w),
+                                                      Text(
+                                                        reply.timeAgo,
+                                                        style: TextStyle(color: colors.textSecondary, fontSize: 11.sp),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  SizedBox(height: 2.h),
+                                                  Text(
+                                                    reply.text,
+                                                    style: TextStyle(fontSize: 12.sp, color: colors.textPrimary),
+                                                    maxLines: 2,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                  // "View all replies" if more than 2
+                                  if (comment.replyCount > 2)
+                                    Padding(
+                                      padding: EdgeInsets.only(left: 40.w, top: 4.h),
+                                      child: GestureDetector(
+                                        onTap: () => _showRepliesSheet(comment),
+                                        child: Text(
+                                          '── View all ${comment.replyCount} replies',
+                                          style: TextStyle(
+                                            color: colors.textSecondary,
+                                            fontSize: 12.sp,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                      );
+                    },
+                  ),
               ],
             ),
           ),
@@ -1176,6 +1299,346 @@ class _StoryViewerState extends State<StoryViewer> with TickerProviderStateMixin
               },
             ),
         ],
+      ),
+    );
+  }
+
+  /// Show reaction picker for a comment
+  void _showReactionPicker(BuildContext context, CommentModel comment, StatusProvider provider) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: EdgeInsets.all(20.w),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'React',
+              style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 20.h),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: ReactionType.values
+                  .map(
+                    (type) => _AnimatedReactionButton(
+                      type: type,
+                      onTap: () {
+                        provider.toggleReaction(comment.id, type);
+                        Navigator.pop(context);
+                      },
+                    ),
+                  )
+                  .toList(),
+            ),
+            SizedBox(height: 20.h),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Build reaction bar for a comment
+  Widget _buildReactionBar(CommentModel comment, StatusProvider provider, AppColorsExtension colors) {
+    final reactions = provider.getReactions(comment.id);
+    final topReactions = reactions.topReactions;
+
+    return Row(
+      children: [
+        // Show top 3 reactions with animation
+        if (topReactions.isNotEmpty)
+          ...topReactions.map(
+            (entry) => TweenAnimationBuilder<double>(
+              duration: Duration(milliseconds: 200),
+              tween: Tween(begin: 0.0, end: 1.0),
+              curve: Curves.elasticOut,
+              builder: (context, value, child) {
+                return Transform.scale(scale: value, child: child);
+              },
+              child: Padding(
+                padding: EdgeInsets.only(right: 4.w),
+                child: Text(entry.key.emoji, style: TextStyle(fontSize: 14.sp)),
+              ),
+            ),
+          ),
+
+        // Total count
+        if (reactions.total > 0)
+          Text(
+            '${reactions.total}',
+            style: TextStyle(fontSize: 12.sp, color: colors.textSecondary),
+          ),
+
+        Spacer(),
+
+        // React button with animation
+        TweenAnimationBuilder<double>(
+          key: ValueKey(reactions.userReaction),
+          duration: Duration(milliseconds: 300),
+          tween: Tween(begin: 0.8, end: 1.0),
+          curve: Curves.elasticOut,
+          builder: (context, value, child) {
+            return Transform.scale(scale: value, child: child);
+          },
+          child: IconButton(
+            icon: Icon(
+              reactions.userReaction != null ? Icons.favorite : Icons.favorite_border,
+              size: 20.r,
+              color: reactions.userReaction != null ? Colors.red : colors.textSecondary,
+            ),
+            onPressed: () => _showReactionPicker(context, comment, provider),
+            padding: EdgeInsets.zero,
+            constraints: BoxConstraints(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Show replies sheet for a comment
+  void _showRepliesSheet(CommentModel comment) {
+    final provider = context.read<StatusProvider>();
+    final colors = context.appColors;
+    final replyController = TextEditingController();
+
+    // Load replies if not loaded
+    if (provider.getReplies(comment.id).isEmpty) {
+      provider.fetchReplies(comment.id);
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20.r))),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) => Column(
+          children: [
+            // Header
+            Container(
+              padding: EdgeInsets.all(16.w),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: colors.inputBorder)),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    'Replies',
+                    style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
+                  ),
+                  Spacer(),
+                  IconButton(icon: Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                ],
+              ),
+            ),
+
+            // Parent comment
+            Container(
+              padding: EdgeInsets.all(16.w),
+              color: colors.inputBorder.withOpacity(0.3),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 16.r,
+                    backgroundColor: colors.accentOrange,
+                    child: Text(
+                      comment.user.name[0].toUpperCase(),
+                      style: TextStyle(color: Colors.white, fontSize: 14.sp),
+                    ),
+                  ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          comment.user.name,
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.sp),
+                        ),
+                        SizedBox(height: 4.h),
+                        Text(comment.text, style: TextStyle(fontSize: 14.sp)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Replies list
+            Expanded(
+              child: Consumer<StatusProvider>(
+                builder: (context, provider, _) {
+                  if (provider.isLoadingReplies(comment.id)) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+
+                  final replies = provider.getReplies(comment.id);
+
+                  if (replies.isEmpty) {
+                    return Center(
+                      child: Text('No replies yet', style: TextStyle(color: colors.textSecondary)),
+                    );
+                  }
+
+                  return ListView.builder(
+                    controller: scrollController,
+                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                    itemCount: replies.length,
+                    itemBuilder: (context, index) {
+                      final reply = replies[index];
+                      return Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(width: 40.w),
+                            CircleAvatar(
+                              radius: 14.r,
+                              backgroundColor: colors.accentOrange,
+                              child: Text(
+                                reply.user.name[0].toUpperCase(),
+                                style: TextStyle(color: Colors.white, fontSize: 12.sp),
+                              ),
+                            ),
+                            SizedBox(width: 12.w),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        reply.user.name,
+                                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.sp),
+                                      ),
+                                      SizedBox(width: 8.w),
+                                      Text(
+                                        reply.timeAgo,
+                                        style: TextStyle(color: colors.textSecondary, fontSize: 11.sp),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 4.h),
+                                  Text(reply.text, style: TextStyle(fontSize: 13.sp)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+
+            // Reply input
+            Container(
+              padding: EdgeInsets.all(12.w),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(top: BorderSide(color: colors.inputBorder)),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: Offset(0, -2))],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: replyController,
+                      decoration: InputDecoration(
+                        hintText: 'Write a reply...',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(20.r)),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+                      ),
+                      maxLength: 500,
+                      buildCounter: (context, {required currentLength, required isFocused, maxLength}) {
+                        return isFocused ? Text('$currentLength/$maxLength', style: TextStyle(fontSize: 11.sp)) : null;
+                      },
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  Consumer<StatusProvider>(
+                    builder: (context, provider, _) => IconButton(
+                      icon: Icon(Icons.send, color: colors.accentOrange),
+                      onPressed: () async {
+                        if (replyController.text.trim().isNotEmpty) {
+                          final success = await provider.addReply(comment.id, comment.statusId, replyController.text);
+                          if (success) {
+                            replyController.clear();
+                            FocusScope.of(context).unfocus();
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to post reply')));
+                          }
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Animated reaction button widget
+class _AnimatedReactionButton extends StatefulWidget {
+  final ReactionType type;
+  final VoidCallback onTap;
+
+  const _AnimatedReactionButton({required this.type, required this.onTap});
+
+  @override
+  State<_AnimatedReactionButton> createState() => _AnimatedReactionButtonState();
+}
+
+class _AnimatedReactionButtonState extends State<_AnimatedReactionButton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(duration: Duration(milliseconds: 150), vsync: this);
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.3,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+        _controller.reverse();
+        widget.onTap();
+      },
+      onTapCancel: () => _controller.reverse(),
+      child: AnimatedBuilder(
+        animation: _scaleAnimation,
+        builder: (context, child) {
+          return Transform.scale(scale: _scaleAnimation.value, child: child);
+        },
+        child: Text(widget.type.emoji, style: TextStyle(fontSize: 40.sp)),
       ),
     );
   }
