@@ -259,6 +259,7 @@ app.use("/api/foods", require("./routes/foods"));
 app.use("/api/riders", require("./routes/riders"));
 app.use("/api/chats", require("./routes/chats"));
 app.use("/api/statuses", require("./routes/statuses"));
+app.use("/api/notifications", require("./routes/notifications"));
 
 // Health check
 app.get("/api/health", (req, res) => {

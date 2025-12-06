@@ -9,6 +9,7 @@ import 'package:grab_go_customer/features/home/service/food_service.dart';
 import 'package:grab_go_customer/features/cart/service/payment_service.dart';
 import 'package:grab_go_customer/features/order/service/order_service_chopper.dart';
 import 'package:grab_go_customer/features/status/service/status_service.dart';
+import 'package:grab_go_customer/shared/services/notification_service_chopper.dart';
 
 final chopperClient = ChopperClient(
   baseUrl: Uri.parse(AppConfig.apiBaseUrl),
@@ -19,6 +20,7 @@ final chopperClient = ChopperClient(
     PaymentService.create(),
     OrderServiceChopper.create(),
     StatusService.create(),
+    NotificationServiceChopper.create(),
   ],
   converter: const local.JsonSerializableConverter(),
   interceptors: [AuthInterceptor(), HttpLoggingInterceptor()],
@@ -31,3 +33,4 @@ RestaurantService get restaurantService => chopperClient.getService<RestaurantSe
 PaymentService get paymentService => chopperClient.getService<PaymentService>();
 OrderServiceChopper get orderServiceChopper => chopperClient.getService<OrderServiceChopper>();
 StatusService get statusService => chopperClient.getService<StatusService>();
+NotificationServiceChopper get notificationServiceChopper => chopperClient.getService<NotificationServiceChopper>();

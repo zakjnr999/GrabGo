@@ -1462,6 +1462,53 @@ router.post(
 
             await reply.populate('user', 'name email profileImage');
 
+            // Send notifications (FCM + in-app) if not replying to own comment
+            if (parentComment.user.toString() !== req.user._id.toString()) {
+                try {
+                    const { sendCommentReplyNotification } = require('../services/fcm_service');
+                    const { createNotification } = require('../services/notification_service');
+
+                    // Get status and restaurant info for navigation
+                    const status = await Status.findById(parentComment.status).select('restaurant');
+                    if (status) {
+                        const restaurant = await Restaurant.findById(status.restaurant).select('name');
+
+                        // FCM push notification
+                        await sendCommentReplyNotification(
+                            parentComment.user,
+                            req.user.name,
+                            text,
+                            parentComment.status,
+                            parentComment._id,
+                            req.user._id,
+                            req.user.profileImage,
+                            status.restaurant,
+                            restaurant?.name || 'Restaurant'
+                        );
+
+                        // In-app notification
+                        await createNotification(
+                            parentComment.user,
+                            'comment_reply',
+                            `${req.user.name} replied to your comment`,
+                            `💬 ${text.length > 100 ? text.substring(0, 100) + '...' : text}`,
+                            {
+                                statusId: parentComment.status.toString(),
+                                commentId: parentComment._id.toString(),
+                                restaurantId: status.restaurant.toString(),
+                                restaurantName: restaurant?.name || 'Restaurant',
+                                actorId: req.user._id,
+                                actorName: req.user.name,
+                                actorAvatar: req.user.profileImage
+                            }
+                        );
+                    }
+                } catch (notificationError) {
+                    console.error('Failed to send reply notification:', notificationError);
+                    // Don't fail the reply if notification fails
+                }
+            }
+
             res.status(201).json({
                 success: true,
                 message: 'Reply added successfully',
@@ -1517,6 +1564,57 @@ router.post(
             const { type } = req.body;
             const result = await Reaction.toggle(req.params.commentId, req.user._id, type);
             const summary = await Reaction.getSummary(req.params.commentId, req.user._id);
+
+            // Send notification only when adding reaction (not removing) and not reacting to own comment
+            if (result.action === 'added' && comment.user.toString() !== req.user._id.toString()) {
+                try {
+                    const { sendCommentReactionNotification } = require('../services/fcm_service');
+                    const { createNotification } = require('../services/notification_service');
+
+                    const reactionEmojis = { like: '👍', love: '❤️', haha: '😂', wow: '😮', sad: '😢', angry: '😠' };
+
+                    // Get status and restaurant info for navigation
+                    const status = await Status.findById(comment.status).select('restaurant');
+                    if (status) {
+                        const restaurant = await Restaurant.findById(status.restaurant).select('name');
+
+                        // FCM push notification
+                        await sendCommentReactionNotification(
+                            comment.user,
+                            req.user.name,
+                            type,
+                            comment.text,
+                            comment.status,
+                            comment._id,
+                            req.user._id,
+                            req.user.profileImage,
+                            status.restaurant,
+                            restaurant?.name || 'Restaurant'
+                        );
+
+                        // In-app notification
+                        await createNotification(
+                            comment.user,
+                            'comment_reaction',
+                            `${req.user.name} reacted to your comment`,
+                            `${reactionEmojis[type]} "${comment.text.length > 50 ? comment.text.substring(0, 50) + '...' : comment.text}"`,
+                            {
+                                statusId: comment.status.toString(),
+                                commentId: comment._id.toString(),
+                                restaurantId: status.restaurant.toString(),
+                                restaurantName: restaurant?.name || 'Restaurant',
+                                actorId: req.user._id,
+                                actorName: req.user.name,
+                                actorAvatar: req.user.profileImage,
+                                reactionType: type
+                            }
+                        );
+                    }
+                } catch (notificationError) {
+                    console.error('Failed to send reaction notification:', notificationError);
+                    // Don't fail the reaction if notification fails
+                }
+            }
 
             res.json({
                 success: true,

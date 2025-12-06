@@ -1069,13 +1069,29 @@ class StatusProvider with ChangeNotifier {
   // Reaction Methods
   // ============================================================
 
-  /// Get reactions for a comment
-  ReactionSummary getReactions(String commentId) => _reactionCache[commentId] ?? ReactionSummary.empty();
+  ///  // Reaction state
+  final Map<String, bool> _togglingReaction = {}; // Track which reactions are being toggled
+
+  ReactionSummary getReactions(String commentId) {
+    return _reactionCache[commentId] ?? ReactionSummary.empty();
+  }
+
+  bool isTogglingReaction(String commentId) => _togglingReaction[commentId] ?? false;
 
   /// Toggle reaction on a comment
   Future<bool> toggleReaction(String commentId, ReactionType type) async {
+    // Prevent double-taps
+    if (_togglingReaction[commentId] == true) {
+      if (kDebugMode) print('⚠️ Already toggling reaction for $commentId');
+      return false;
+    }
+
     // Save current state for rollback
     final current = _reactionCache[commentId] ?? ReactionSummary.empty();
+
+    // Set toggling state
+    _togglingReaction[commentId] = true;
+    notifyListeners();
 
     try {
       // Optimistic update
@@ -1182,6 +1198,7 @@ class StatusProvider with ChangeNotifier {
           final reactions = responseData['reactions'] as Map<String, dynamic>;
           _reactionCache[commentId] = ReactionSummary.fromJson(reactions);
           if (kDebugMode) print('✅ Reaction cached: ${_reactionCache[commentId]}');
+          _togglingReaction[commentId] = false;
           notifyListeners();
           return true;
         } else {
@@ -1194,12 +1211,14 @@ class StatusProvider with ChangeNotifier {
       // Revert on failure
       if (kDebugMode) print('❌ Reaction toggle failed, reverting');
       _reactionCache[commentId] = current;
+      _togglingReaction[commentId] = false;
       notifyListeners();
       return false;
     } catch (e) {
       if (kDebugMode) print('❌ Error toggling reaction: $e');
       // Revert on error
       _reactionCache[commentId] = current;
+      _togglingReaction[commentId] = false;
       notifyListeners();
       return false;
     }
@@ -1217,7 +1236,7 @@ class StatusProvider with ChangeNotifier {
         }
       }
     } catch (e) {
-      if (kDebugMode) print('⚠️ Error fetching reactions for $commentId: $e');
+      if (kDebugMode) print('❌ Error fetching reactions: $e');
     }
   }
 }

@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:grab_go_customer/features/status/view/story_viewer.dart';
+import 'package:grab_go_customer/shared/services/notification_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:intl/intl.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -14,6 +16,7 @@ class NotificationModel {
   final DateTime timestamp;
   final NotificationType type;
   final bool isRead;
+  final Map<String, dynamic>? data;
 
   NotificationModel({
     required this.id,
@@ -22,10 +25,42 @@ class NotificationModel {
     required this.timestamp,
     required this.type,
     this.isRead = false,
+    this.data,
   });
+
+  factory NotificationModel.fromJson(Map<String, dynamic> json) {
+    return NotificationModel(
+      id: json['_id'] ?? json['id'] ?? '',
+      title: json['title'] ?? '',
+      message: json['message'] ?? '',
+      timestamp: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
+      type: _parseNotificationType(json['type']),
+      isRead: json['isRead'] ?? false,
+      data: json['data'],
+    );
+  }
+
+  static NotificationType _parseNotificationType(String? type) {
+    switch (type) {
+      case 'order':
+        return NotificationType.order;
+      case 'promo':
+        return NotificationType.promo;
+      case 'update':
+        return NotificationType.update;
+      case 'system':
+        return NotificationType.system;
+      case 'comment_reply':
+        return NotificationType.commentReply;
+      case 'comment_reaction':
+        return NotificationType.commentReaction;
+      default:
+        return NotificationType.system;
+    }
+  }
 }
 
-enum NotificationType { order, promo, update, system }
+enum NotificationType { order, promo, update, system, commentReply, commentReaction }
 
 class Notification extends StatefulWidget {
   const Notification({super.key});
@@ -36,114 +71,127 @@ class Notification extends StatefulWidget {
 
 class _NotificationState extends State<Notification> {
   List<NotificationModel> _notifications = [];
+  bool _isLoading = false;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  int _currentPage = 1;
+  final int _pageSize = 20;
+  String? _error;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _loadSampleNotifications();
+    _loadNotifications();
+    _scrollController.addListener(_onScroll);
   }
 
-  void _loadSampleNotifications() {
-    final now = DateTime.now();
-    _notifications = [
-      NotificationModel(
-        id: '1',
-        title: 'Order #1234',
-        message: AppStrings.notificationOrderDelivered,
-        timestamp: now.subtract(const Duration(minutes: 5)),
-        type: NotificationType.order,
-      ),
-      NotificationModel(
-        id: '2',
-        title: 'Special Offer',
-        message: AppStrings.notificationPromoCode,
-        timestamp: now.subtract(const Duration(hours: 1)),
-        type: NotificationType.promo,
-      ),
-      NotificationModel(
-        id: '3',
-        title: 'Order #1235',
-        message: AppStrings.notificationOrderOnWay,
-        timestamp: now.subtract(const Duration(hours: 2)),
-        type: NotificationType.order,
-      ),
-      NotificationModel(
-        id: '4',
-        title: 'New Restaurant',
-        message: AppStrings.notificationRestaurantUpdate,
-        timestamp: now.subtract(const Duration(hours: 5)),
-        type: NotificationType.update,
-      ),
-      NotificationModel(
-        id: '5',
-        title: 'Order #1233',
-        message: AppStrings.notificationOrderPlaced,
-        timestamp: now.subtract(const Duration(days: 1)),
-        type: NotificationType.order,
-        isRead: true,
-      ),
-      NotificationModel(
-        id: '6',
-        title: 'System Update',
-        message: 'We\'ve improved the app with new features!',
-        timestamp: now.subtract(const Duration(days: 2)),
-        type: NotificationType.system,
-        isRead: true,
-      ),
-      NotificationModel(
-        id: '7',
-        title: 'Order #1232',
-        message: AppStrings.notificationOrderCancelled,
-        timestamp: now.subtract(const Duration(days: 3)),
-        type: NotificationType.order,
-        isRead: true,
-      ),
-      NotificationModel(
-        id: '8',
-        title: 'Flash Sale',
-        message: 'Limited time offer! Get 30% off on all orders.',
-        timestamp: now.subtract(const Duration(days: 4)),
-        type: NotificationType.promo,
-        isRead: true,
-      ),
-    ];
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
-  void _markAsRead(String id) {
-    setState(() {
-      final index = _notifications.indexWhere((n) => n.id == id);
-      if (index != -1) {
-        _notifications[index] = NotificationModel(
-          id: _notifications[index].id,
-          title: _notifications[index].title,
-          message: _notifications[index].message,
-          timestamp: _notifications[index].timestamp,
-          type: _notifications[index].type,
-          isRead: true,
-        );
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.8) {
+      if (!_isLoadingMore && _hasMore) {
+        _loadMoreNotifications();
       }
-    });
+    }
   }
 
-  void _markAllAsRead() {
+  Future<void> _loadNotifications() async {
     setState(() {
-      _notifications = _notifications.map((notification) {
-        return NotificationModel(
-          id: notification.id,
-          title: notification.title,
-          message: notification.message,
-          timestamp: notification.timestamp,
-          type: notification.type,
-          isRead: true,
-        );
-      }).toList();
+      _isLoading = true;
+      _error = null;
+      _currentPage = 1;
     });
+
+    try {
+      final result = await NotificationService().getNotifications(limit: _pageSize, page: 1);
+      setState(() {
+        _notifications = result['notifications'] as List<NotificationModel>;
+        _hasMore = result['hasMore'] as bool;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Failed to load notifications';
+        _isLoading = false;
+      });
+    }
   }
 
-  void _clearAll() {
+  Future<void> _loadMoreNotifications() async {
+    if (_isLoadingMore || !_hasMore) return;
+
     setState(() {
-      _notifications.clear();
+      _isLoadingMore = true;
     });
+
+    try {
+      final nextPage = _currentPage + 1;
+      final result = await NotificationService().getNotifications(limit: _pageSize, page: nextPage);
+
+      setState(() {
+        _notifications.addAll(result['notifications'] as List<NotificationModel>);
+        _hasMore = result['hasMore'] as bool;
+        _currentPage = nextPage;
+        _isLoadingMore = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingMore = false;
+      });
+    }
+  }
+
+  Future<void> _markAsRead(String id) async {
+    final success = await NotificationService().markAsRead(id);
+    if (success) {
+      setState(() {
+        final index = _notifications.indexWhere((n) => n.id == id);
+        if (index != -1) {
+          _notifications[index] = NotificationModel(
+            id: _notifications[index].id,
+            title: _notifications[index].title,
+            message: _notifications[index].message,
+            timestamp: _notifications[index].timestamp,
+            type: _notifications[index].type,
+            isRead: true,
+            data: _notifications[index].data,
+          );
+        }
+      });
+    }
+  }
+
+  Future<void> _markAllAsRead() async {
+    final success = await NotificationService().markAllAsRead();
+    if (success) {
+      setState(() {
+        _notifications = _notifications.map((notification) {
+          return NotificationModel(
+            id: notification.id,
+            title: notification.title,
+            message: notification.message,
+            timestamp: notification.timestamp,
+            type: notification.type,
+            isRead: true,
+            data: notification.data,
+          );
+        }).toList();
+      });
+    }
+  }
+
+  Future<void> _clearAll() async {
+    final success = await NotificationService().clearAll();
+    if (success) {
+      setState(() {
+        _notifications.clear();
+      });
+    }
   }
 
   String _getTimeAgo(DateTime timestamp) {
@@ -211,6 +259,18 @@ class _NotificationState extends State<Notification> {
             width: 20.w,
             colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
           ),
+        );
+      case NotificationType.commentReply:
+        return Container(
+          padding: EdgeInsets.all(8.r),
+          decoration: BoxDecoration(color: colors.accentBlue.withValues(alpha: 0.15), shape: BoxShape.circle),
+          child: Icon(Icons.reply, size: 20.r, color: colors.accentBlue),
+        );
+      case NotificationType.commentReaction:
+        return Container(
+          padding: EdgeInsets.all(8.r),
+          decoration: BoxDecoration(color: Colors.pink.withValues(alpha: 0.15), shape: BoxShape.circle),
+          child: Icon(Icons.favorite, size: 20.r, color: Colors.pink),
         );
     }
   }
@@ -380,17 +440,52 @@ class _NotificationState extends State<Notification> {
             systemNavigationBarColor: colors.backgroundPrimary,
             systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
           ),
-          child: _notifications.isEmpty
+          child: _isLoading
+              ? Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(colors.accentViolet)))
+              : _error != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 48, color: colors.textSecondary),
+                      SizedBox(height: 16.h),
+                      Text(
+                        _error!,
+                        style: TextStyle(fontSize: 16.sp, color: colors.textSecondary),
+                      ),
+                      SizedBox(height: 16.h),
+                      ElevatedButton(onPressed: _loadNotifications, child: Text('Retry')),
+                    ],
+                  ),
+                )
+              : _notifications.isEmpty
               ? _buildEmptyState(colors)
-              : ListView.separated(
-                  physics: const BouncingScrollPhysics(),
-                  padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                  itemCount: _notifications.length,
-                  separatorBuilder: (context, index) => SizedBox(height: 12.h),
-                  itemBuilder: (context, index) {
-                    final notification = _notifications[index];
-                    return _buildNotificationCard(notification, colors, isDark);
-                  },
+              : RefreshIndicator(
+                  onRefresh: _loadNotifications,
+                  color: colors.accentViolet,
+                  child: ListView.separated(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                    itemCount: _notifications.length + (_isLoadingMore ? 1 : 0),
+                    separatorBuilder: (context, index) => SizedBox(height: 12.h),
+                    itemBuilder: (context, index) {
+                      if (index == _notifications.length) {
+                        // Loading indicator at the bottom
+                        return Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16.h),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(colors.accentViolet),
+                            ),
+                          ),
+                        );
+                      }
+                      final notification = _notifications[index];
+                      return _buildNotificationCard(notification, colors, isDark);
+                    },
+                  ),
                 ),
         ),
       ),
@@ -434,7 +529,25 @@ class _NotificationState extends State<Notification> {
 
   Widget _buildNotificationCard(NotificationModel notification, AppColorsExtension colors, bool isDark) {
     return GestureDetector(
-      onTap: () => _markAsRead(notification.id),
+      onTap: () {
+        _markAsRead(notification.id);
+
+        // Navigate based on notification type
+        if (notification.type == NotificationType.commentReply ||
+            notification.type == NotificationType.commentReaction) {
+          final data = notification.data;
+          if (data != null && data['restaurantId'] != null) {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => StoryViewer(
+                  restaurantId: data['restaurantId'],
+                  restaurantName: data['restaurantName'] ?? 'Restaurant',
+                ),
+              ),
+            );
+          }
+        }
+      },
       child: Container(
         padding: EdgeInsets.all(16.r),
         decoration: BoxDecoration(

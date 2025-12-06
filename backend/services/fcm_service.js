@@ -263,6 +263,107 @@ const sendOrderNotification = async (userId, orderId, orderNumber, status, messa
     );
 };
 
+/**
+ * Send comment reply notification
+ * @param {string} recipientId - User ID to receive notification
+ * @param {string} replierName - Name of the person who replied
+ * @param {string} replyText - Text of the reply
+ * @param {string} statusId - Status ID for navigation
+ * @param {string} commentId - Comment ID for navigation
+ * @param {string} replierId - ID of the person who replied
+ * @param {string} replierAvatar - Avatar URL of the replier
+ * @param {string} restaurantId - Restaurant ID for navigation
+ * @param {string} restaurantName - Restaurant name for navigation
+ */
+const sendCommentReplyNotification = async (
+    recipientId,
+    replierName,
+    replyText,
+    statusId,
+    commentId,
+    replierId,
+    replierAvatar,
+    restaurantId,
+    restaurantName
+) => {
+    const body = replyText.length > 100 ? replyText.substring(0, 100) + '...' : replyText;
+
+    return sendToUser(
+        recipientId,
+        {
+            title: `${replierName} replied to your comment`,
+            body: `💬 ${body}`
+        },
+        {
+            type: 'comment_reply',
+            statusId,
+            commentId,
+            restaurantId,
+            restaurantName,
+            replierId,
+            replierName,
+            replierAvatar
+        }
+    );
+};
+
+/**
+ * Send comment reaction notification
+ * @param {string} recipientId - User ID to receive notification
+ * @param {string} reactorName - Name of the person who reacted
+ * @param {string} reactionType - Type of reaction (like, love, etc.)
+ * @param {string} commentText - Text of the comment that was reacted to
+ * @param {string} statusId - Status ID for navigation
+ * @param {string} commentId - Comment ID for navigation
+ * @param {string} reactorId - ID of the person who reacted
+ * @param {string} reactorAvatar - Avatar URL of the reactor
+ * @param {string} restaurantId - Restaurant ID for navigation
+ * @param {string} restaurantName - Restaurant name for navigation
+ */
+const sendCommentReactionNotification = async (
+    recipientId,
+    reactorName,
+    reactionType,
+    commentText,
+    statusId,
+    commentId,
+    reactorId,
+    reactorAvatar,
+    restaurantId,
+    restaurantName
+) => {
+    const reactionEmojis = {
+        like: '👍',
+        love: '❤️',
+        haha: '😂',
+        wow: '😮',
+        sad: '😢',
+        angry: '😠'
+    };
+
+    const emoji = reactionEmojis[reactionType] || '👍';
+    const preview = commentText.length > 50 ? commentText.substring(0, 50) + '...' : commentText;
+
+    return sendToUser(
+        recipientId,
+        {
+            title: `${reactorName} reacted to your comment`,
+            body: `${emoji} "${preview}"`
+        },
+        {
+            type: 'comment_reaction',
+            statusId,
+            commentId,
+            restaurantId,
+            restaurantName,
+            reactorId,
+            reactorName,
+            reactorAvatar,
+            reactionType
+        }
+    );
+};
+
 module.exports = {
     initializeFirebase,
     registerToken,
@@ -270,4 +371,6 @@ module.exports = {
     sendToUser,
     sendChatNotification,
     sendOrderNotification,
+    sendCommentReplyNotification,
+    sendCommentReactionNotification
 };

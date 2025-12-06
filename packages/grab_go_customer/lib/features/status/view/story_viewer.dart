@@ -11,6 +11,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:grab_go_customer/features/status/model/status_model.dart';
 import 'package:grab_go_customer/features/status/model/comment_model.dart';
 import 'package:grab_go_customer/features/status/viewmodel/status_provider.dart';
+import 'package:grab_go_customer/features/status/view/widgets/skeleton_loaders.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class StoryViewer extends StatefulWidget {
@@ -1391,7 +1392,9 @@ class _StoryViewerState extends State<StoryViewer> with TickerProviderStateMixin
               size: 20.r,
               color: reactions.userReaction != null ? Colors.red : colors.textSecondary,
             ),
-            onPressed: () => _showReactionPicker(context, comment, provider),
+            onPressed: provider.isTogglingReaction(comment.id)
+                ? null
+                : () => _showReactionPicker(context, comment, provider),
             padding: EdgeInsets.zero,
             constraints: BoxConstraints(),
           ),
@@ -1479,17 +1482,33 @@ class _StoryViewerState extends State<StoryViewer> with TickerProviderStateMixin
               child: Consumer<StatusProvider>(
                 builder: (context, provider, _) {
                   if (provider.isLoadingReplies(comment.id)) {
-                    return Center(child: CircularProgressIndicator());
+                    return const RepliesListSkeleton(count: 5);
                   }
 
                   final replies = provider.getReplies(comment.id);
 
                   if (replies.isEmpty) {
                     return Center(
-                      child: Text('No replies yet', style: TextStyle(color: colors.textSecondary)),
+                      child: Padding(
+                        padding: EdgeInsets.all(32.w),
+                        child: Column(
+                          children: [
+                            Icon(Icons.chat_bubble_outline, size: 48.r, color: colors.textSecondary.withOpacity(0.5)),
+                            SizedBox(height: 12.h),
+                            Text(
+                              'No replies yet',
+                              style: TextStyle(color: colors.textSecondary, fontSize: 14.sp),
+                            ),
+                            SizedBox(height: 4.h),
+                            Text(
+                              'Be the first to reply! 💬',
+                              style: TextStyle(color: colors.textSecondary.withOpacity(0.7), fontSize: 12.sp),
+                            ),
+                          ],
+                        ),
+                      ),
                     );
                   }
-
                   return ListView.builder(
                     controller: scrollController,
                     padding: EdgeInsets.symmetric(vertical: 8.h),
