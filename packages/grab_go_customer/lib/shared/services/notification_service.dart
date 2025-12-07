@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_customer/features/home/view/notification.dart';
 import 'package:grab_go_customer/shared/services/notification_service_chopper.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -9,6 +11,37 @@ class NotificationService {
   NotificationService._internal();
 
   final NotificationServiceChopper _service = chopperClient.getService<NotificationServiceChopper>();
+  static const String _cacheKey = 'cached_notifications';
+
+  /// Save notifications to local storage
+  Future<void> saveNotificationsLocally(List<NotificationModel> notifications) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String encodedData = jsonEncode(notifications.map((n) => n.toJson()).toList());
+      await prefs.setString(_cacheKey, encodedData);
+      debugPrint('💾 Saved ${notifications.length} notifications locally');
+    } catch (e) {
+      debugPrint('❌ Error saving local notifications: $e');
+    }
+  }
+
+  /// Get locally cached notifications
+  Future<List<NotificationModel>> getLocalNotifications() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? jsonString = prefs.getString(_cacheKey);
+
+      if (jsonString != null) {
+        final List<dynamic> jsonList = jsonDecode(jsonString);
+        final notifications = jsonList.map((json) => NotificationModel.fromJson(json)).toList();
+        debugPrint('💾 Loaded ${notifications.length} notifications from cache');
+        return notifications;
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading local notifications: $e');
+    }
+    return [];
+  }
 
   /// Fetch notifications for the current user with pagination
   Future<Map<String, dynamic>> getNotifications({int limit = 20, int page = 1}) async {
@@ -22,6 +55,11 @@ class NotificationService {
           final notifications = notificationsList.map((json) => NotificationModel.fromJson(json)).toList();
 
           final pagination = data['pagination'] as Map<String, dynamic>?;
+
+          // Save to local cache if it's the first page
+          if (page == 1) {
+            saveNotificationsLocally(notifications);
+          }
 
           return {
             'notifications': notifications,

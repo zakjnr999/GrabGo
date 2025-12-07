@@ -8,6 +8,7 @@ import 'package:grab_go_customer/shared/services/notification_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:intl/intl.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_customer/features/home/view/widgets/notification_skeleton.dart';
 
 class NotificationModel {
   final String id;
@@ -40,8 +41,23 @@ class NotificationModel {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'message': message,
+      'createdAt': timestamp.toIso8601String(),
+      'type': type.toString().split('.').last, // Convert enum to string: 'order', 'promo', etc.
+      'isRead': isRead,
+      'data': data,
+    };
+  }
+
   static NotificationType _parseNotificationType(String? type) {
-    switch (type) {
+    // Handle both 'NotificationType.order' and 'order' formats
+    final cleanType = type?.replaceAll('NotificationType.', '') ?? 'system';
+
+    switch (cleanType) {
       case 'order':
         return NotificationType.order;
       case 'promo':
@@ -50,8 +66,10 @@ class NotificationModel {
         return NotificationType.update;
       case 'system':
         return NotificationType.system;
+      case 'commentReply': // Handle camelCase from enum toString
       case 'comment_reply':
         return NotificationType.commentReply;
+      case 'commentReaction': // Handle camelCase from enum toString
       case 'comment_reaction':
         return NotificationType.commentReaction;
       default:
@@ -82,8 +100,31 @@ class _NotificationState extends State<Notification> {
   @override
   void initState() {
     super.initState();
-    _loadNotifications();
+    _loadInitialData();
     _scrollController.addListener(_onScroll);
+  }
+
+  Future<void> _loadInitialData() async {
+    // 1. Load from local cache immediately
+    try {
+      final cached = await NotificationService().getLocalNotifications();
+      if (cached.isNotEmpty && mounted) {
+        setState(() {
+          _notifications = cached;
+          // We show cached data, but don't set isLoading=false yet
+          // to allow background sync if needed (optional strategy)
+          // Or we can set it false to show content, then sync quietly.
+          // Let's set it false so Skeleton disappears and content shows.
+          // But actually, we want to fetch fresh data too.
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading cached notifications: $e');
+    }
+
+    // 2. Fetch fresh data from network
+    // If we have cached data, this will just update the list when done.
+    _loadNotifications();
   }
 
   @override
@@ -109,16 +150,38 @@ class _NotificationState extends State<Notification> {
 
     try {
       final result = await NotificationService().getNotifications(limit: _pageSize, page: 1);
-      setState(() {
-        _notifications = result['notifications'] as List<NotificationModel>;
-        _hasMore = result['hasMore'] as bool;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _notifications = (result['notifications'] as List<NotificationModel>)
+            ..sort((a, b) {
+              if (a.isRead != b.isRead) {
+                return a.isRead ? 1 : -1; // Unread first
+              }
+              return b.timestamp.compareTo(a.timestamp); // Sort by date desc
+            });
+          _hasMore = result['hasMore'] as bool;
+          _isLoading = false;
+          _currentPage = 1;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _error = 'Failed to load notifications';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          // Only show full screen error if we have no data
+          _error = _notifications.isEmpty ? 'Failed to load notifications' : null;
+        });
+
+        if (_notifications.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Showing offline data'),
+              backgroundColor: Theme.of(context).colorScheme.secondary,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -133,16 +196,26 @@ class _NotificationState extends State<Notification> {
       final nextPage = _currentPage + 1;
       final result = await NotificationService().getNotifications(limit: _pageSize, page: nextPage);
 
-      setState(() {
-        _notifications.addAll(result['notifications'] as List<NotificationModel>);
-        _hasMore = result['hasMore'] as bool;
-        _currentPage = nextPage;
-        _isLoadingMore = false;
-      });
+      if (mounted) {
+        setState(() {
+          _notifications.addAll(result['notifications'] as List<NotificationModel>);
+          _notifications.sort((a, b) {
+            if (a.isRead != b.isRead) {
+              return a.isRead ? 1 : -1; // Unread first
+            }
+            return b.timestamp.compareTo(a.timestamp); // Sort by date desc
+          });
+          _hasMore = result['hasMore'] as bool;
+          _currentPage = nextPage;
+          _isLoadingMore = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _isLoadingMore = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingMore = false;
+        });
+      }
     }
   }
 
@@ -440,8 +513,13 @@ class _NotificationState extends State<Notification> {
             systemNavigationBarColor: colors.backgroundPrimary,
             systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
           ),
-          child: _isLoading
-              ? Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(colors.accentViolet)))
+          child: _isLoading && _notifications.isEmpty
+              ? ListView.separated(
+                  padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                  itemCount: 8,
+                  separatorBuilder: (context, index) => SizedBox(height: 12.h),
+                  itemBuilder: (context, index) => NotificationSkeleton(colors: colors, isDark: isDark),
+                )
               : _error != null
               ? Center(
                   child: Column(

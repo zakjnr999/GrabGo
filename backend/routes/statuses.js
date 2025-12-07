@@ -1599,23 +1599,71 @@ router.post(
                             restaurant?.name || 'Restaurant'
                         );
 
-                        // In-app notification
-                        await createNotification(
-                            comment.user,
-                            'comment_reaction',
-                            `${req.user.name} reacted to your comment`,
-                            `${reactionEmojis[type]} "${comment.text.length > 50 ? comment.text.substring(0, 50) + '...' : comment.text}"`,
-                            {
-                                statusId: comment.status.toString(),
-                                commentId: comment._id.toString(),
-                                restaurantId: status.restaurant.toString(),
-                                restaurantName: restaurant?.name || 'Restaurant',
-                                actorId: req.user._id,
-                                actorName: req.user.name,
-                                actorAvatar: req.user.profileImage,
-                                reactionType: type
+                        // In-app notification logic with grouping
+                        const Notification = require('../models/Notification'); // Ensure model is imported if not already
+
+                        // Check for existing unread reaction notification for this comment
+                        const existingNotification = await Notification.findOne({
+                            user: comment.user,
+                            type: 'comment_reaction',
+                            'data.commentId': comment._id.toString(),
+                            isRead: false
+                        });
+
+                        if (existingNotification) {
+                            // Update existing notification
+                            const actors = existingNotification.data.actors || [];
+
+                            // Avoid adding duplicate actor if user mashed the button
+                            const existingActorIndex = actors.findIndex(a => a.actorId.toString() === req.user._id.toString());
+                            if (existingActorIndex === -1) {
+                                actors.push({
+                                    actorId: req.user._id,
+                                    actorName: req.user.name,
+                                    actorAvatar: req.user.profileImage
+                                });
+
+                                // Update message based on count
+                                const count = actors.length;
+                                let newMessage = '';
+                                if (count === 2) {
+                                    newMessage = `${actors[0].actorName} and ${actors[1].actorName} reacted to your comment`;
+                                } else {
+                                    // "John and 2 others reacted..."
+                                    newMessage = `${actors[count - 1].actorName} and ${count - 1} others reacted to your comment`;
+                                }
+
+                                existingNotification.data.actors = actors;
+                                existingNotification.message = newMessage;
+                                existingNotification.data.reactionType = type; // Update to latest reaction type
+                                existingNotification.updatedAt = new Date(); // Bump timestamp
+
+                                await existingNotification.save();
                             }
-                        );
+                        } else {
+                            // Create new notification
+                            await createNotification(
+                                comment.user,
+                                'comment_reaction',
+                                `${req.user.name} reacted to your comment`,
+                                `${reactionEmojis[type]} "${comment.text.length > 50 ? comment.text.substring(0, 50) + '...' : comment.text}"`,
+                                {
+                                    statusId: comment.status.toString(),
+                                    commentId: comment._id.toString(),
+                                    restaurantId: status.restaurant.toString(),
+                                    restaurantName: restaurant?.name || 'Restaurant',
+                                    actorId: req.user._id,
+                                    actorName: req.user.name,
+                                    actorAvatar: req.user.profileImage,
+                                    reactionType: type,
+                                    actors: [{
+                                        actorId: req.user._id,
+                                        actorName: req.user.name,
+                                        actorAvatar: req.user.profileImage
+                                    }]
+                                }
+                            );
+                        }
                     }
                 } catch (notificationError) {
                     console.error('Failed to send reaction notification:', notificationError);

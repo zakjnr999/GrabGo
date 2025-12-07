@@ -160,39 +160,41 @@ class _StoryViewerState extends State<StoryViewer> with TickerProviderStateMixin
 
                   // Check if it's a reply
                   if (widget.isReply && widget.parentCommentId != null) {
-                    // It's a reply - need to open replies sheet
-                    debugPrint('🔗 Deep Link: Target is a reply, fetching comments...');
+                    // It's a reply - scroll to parent comment (simpler, more reliable)
+                    debugPrint('🔗 Deep Link: Target is a reply, will scroll to parent comment');
+                    debugPrint('🔗 Deep Link: Opening comments bottom sheet...');
 
-                    _statusProvider.fetchComments(status.id).then((_) {
-                      // Find parent comment
-                      final comments = _statusProvider.getComments(status.id);
-                      final parentComment = comments.cast<CommentModel?>().firstWhere(
-                        (c) => c?.id == widget.parentCommentId,
-                        orElse: () => null,
-                      );
+                    // Open sheet and clear highlight when it closes
+                    final sheetFuture = _showCommentsBottomSheet(status);
+                    sheetFuture.then((_) {
+                      if (mounted) {
+                        setState(() => _highlightedCommentId = null);
+                        _highlightTimer?.cancel();
+                      }
+                    });
 
-                      if (parentComment != null) {
-                        debugPrint('🔗 Deep Link: Found parent comment, opening replies...');
-                        _showRepliesSheet(parentComment);
-
-                        // Then scroll to reply
-                        Future.delayed(const Duration(milliseconds: 1500), () {
-                          if (mounted) {
-                            debugPrint('🔗 Deep Link: Attempting to scroll to reply...');
-                            _scrollToComment(widget.targetCommentId!);
-                          }
-                        });
-                      } else {
-                        debugPrint('❌ Deep Link: Parent comment not found!');
+                    // Schedule scroll for next frame (after sheet starts opening)
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        debugPrint('🔗 Deep Link: Scrolling to parent comment: ${widget.parentCommentId}');
+                        _scrollToComment(widget.parentCommentId!);
                       }
                     });
                   } else {
                     // It's a top-level comment
                     debugPrint('🔗 Deep Link: Opening comments bottom sheet...');
-                    _showCommentsBottomSheet(status);
 
-                    // Then scroll to comment after sheet opens and comments load
-                    Future.delayed(const Duration(milliseconds: 1500), () {
+                    // Open sheet and clear highlight when it closes
+                    final sheetFuture = _showCommentsBottomSheet(status);
+                    sheetFuture.then((_) {
+                      if (mounted) {
+                        setState(() => _highlightedCommentId = null);
+                        _highlightTimer?.cancel();
+                      }
+                    });
+
+                    // Schedule scroll for next frame (after sheet starts opening)
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
                       if (mounted) {
                         debugPrint('🔗 Deep Link: Attempting to scroll to comment...');
                         _scrollToComment(widget.targetCommentId!);
@@ -200,13 +202,38 @@ class _StoryViewerState extends State<StoryViewer> with TickerProviderStateMixin
                     });
                   }
                 } else {
+                  // No statuses found - show error to user
                   debugPrint('❌ Deep Link: No statuses found or no targetStatusId!');
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('This content is no longer available'),
+                        duration: Duration(seconds: 3),
+                      ),
+                    );
+                    // Close the viewer after showing error
+                    Future.delayed(const Duration(seconds: 2), () {
+                      if (mounted) Navigator.of(context).pop();
+                    });
+                  }
                 }
               }
             });
           })
           .catchError((error) {
             debugPrint('❌ Deep Link: Error fetching statuses: $error');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Failed to load content. Please try again.'),
+                  duration: Duration(seconds: 3),
+                ),
+              );
+              // Close the viewer after showing error
+              Future.delayed(const Duration(seconds: 2), () {
+                if (mounted) Navigator.of(context).pop();
+              });
+            }
           });
     }
   }
@@ -1682,8 +1709,20 @@ class _StoryViewerState extends State<StoryViewer> with TickerProviderStateMixin
                     itemCount: replies.length,
                     itemBuilder: (context, index) {
                       final reply = replies[index];
-                      return Padding(
+                      return Container(
+                        // ✅ Change to Container
+                        key: _getCommentKey(reply.id), // ✅ Add GlobalKey
                         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                        decoration: BoxDecoration(
+                          // ✅ Add highlight decoration
+                          color: _highlightedCommentId == reply.id
+                              ? colors.accentViolet.withOpacity(0.1)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8.r),
+                          border: _highlightedCommentId == reply.id
+                              ? Border.all(color: colors.accentViolet.withOpacity(0.3), width: 2)
+                              : null,
+                        ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [

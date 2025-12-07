@@ -38,7 +38,13 @@ const notificationSchema = new mongoose.Schema({
         actorId: mongoose.Schema.Types.ObjectId,
         actorName: String,
         actorAvatar: String,
-        reactionType: String
+        reactionType: String,
+        // Grouping data
+        actors: [{
+            actorId: mongoose.Schema.Types.ObjectId,
+            actorName: String,
+            actorAvatar: String
+        }]
     }
 }, {
     timestamps: true
