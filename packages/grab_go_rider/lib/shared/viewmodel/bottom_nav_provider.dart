@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:grab_go_shared/shared/services/chat_socket_service.dart';
+import 'package:grab_go_shared/shared/services/socket_service.dart';
 
 class BottomNavProvider extends ChangeNotifier {
   int _selectedIndex = 0;
@@ -9,9 +9,9 @@ class BottomNavProvider extends ChangeNotifier {
   int get chatUnreadCount => _chatUnreadCount;
 
   BottomNavProvider() {
-    _chatUnreadCount = ChatSocketService().totalUnread;
+    _chatUnreadCount = SocketService().totalUnread;
 
-    ChatSocketService().registerUnreadListener((count) {
+    SocketService().registerUnreadListener((count) {
       if (count == _chatUnreadCount) return;
       _chatUnreadCount = count;
       notifyListeners();
@@ -24,7 +24,7 @@ class BottomNavProvider extends ChangeNotifier {
   }
 
   void setChatUnreadCount(int count) {
-    ChatSocketService().overrideTotalUnread(count);
+    SocketService().overrideTotalUnread(count);
   }
 
   void navigateToHome() {

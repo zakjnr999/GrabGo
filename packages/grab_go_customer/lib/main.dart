@@ -17,10 +17,8 @@ import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/theme_provider.dart';
 import 'package:provider/provider.dart';
 
-/// Global navigator key for navigation from outside widget tree
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-/// Background message handler - must be top-level
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
@@ -60,7 +58,7 @@ Future<void> _initializeBackgroundServices() async {
   try {
     await GoogleSignInService().initialize();
     await UserService().initialize();
-    await ChatSocketService().initialize();
+    await SocketService().initialize();
   } catch (e) {
     debugPrint('Error initializing background services: $e');
   }

@@ -52,11 +52,11 @@ class _ChatPageState extends State<ChatPage> {
   List<_ChatMessage> _filteredConversations = [];
   final ChatService _chatService = ChatService();
   final UserService _userService = UserService();
-  bool _isLoading = true; // Start with loading until we check cache and API
-  bool _hasAttemptedLoad = false; // Track if we've tried loading data
+  bool _isLoading = true;
+  bool _hasAttemptedLoad = false;
   Timer? _pollingTimer;
   String? _currentUserId;
-  ChatSocketConnectionState _connectionState = ChatSocketConnectionState.disconnected;
+  SocketConnectionState _connectionState = SocketConnectionState.disconnected;
 
   @override
   void initState() {
@@ -66,7 +66,7 @@ class _ChatPageState extends State<ChatPage> {
     _startPolling();
     _searchController.addListener(_filterConversations);
 
-    final chatSocket = ChatSocketService();
+    final chatSocket = SocketService();
     chatSocket.addConnectionListener(_handleConnectionStateChanged);
     chatSocket.addNewMessageListener(_handleNewMessageEvent);
     chatSocket.addPresenceListener(_handlePresenceEvent);
@@ -77,7 +77,7 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void dispose() {
     _pollingTimer?.cancel();
-    final chatSocket = ChatSocketService();
+    final chatSocket = SocketService();
     chatSocket.removeConnectionListener(_handleConnectionStateChanged);
     chatSocket.removeNewMessageListener(_handleNewMessageEvent);
     chatSocket.removePresenceListener(_handlePresenceEvent);
@@ -142,7 +142,7 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {});
 
       // Join all chat rooms to receive presence updates
-      ChatSocketService().updateKnownChats(loaded.map((c) => c.id).toList(), forceRejoin: true);
+      SocketService().updateKnownChats(loaded.map((c) => c.id).toList(), forceRejoin: true);
 
       _resortAndFilterConversations(applySearch: false);
     } catch (e) {
@@ -180,7 +180,7 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
-  void _handleConnectionStateChanged(ChatSocketConnectionState state) {
+  void _handleConnectionStateChanged(SocketConnectionState state) {
     if (!mounted) return;
     setState(() {
       _connectionState = state;
@@ -211,7 +211,7 @@ class _ChatPageState extends State<ChatPage> {
 
     if (!changed) return;
     if (cleared > 0) {
-      ChatSocketService().markChatAsReadLocally(chatId, cleared);
+      SocketService().markChatAsReadLocally(chatId, cleared);
     }
     _resortAndFilterConversations();
   }
@@ -255,7 +255,7 @@ class _ChatPageState extends State<ChatPage> {
       _conversations = loaded;
       _filteredConversations = _conversations;
       _cacheConversations(); // Cache for offline access
-      ChatSocketService().updateKnownChats(_conversations.map((c) => c.id).toList(), forceRejoin: true);
+      SocketService().updateKnownChats(_conversations.map((c) => c.id).toList(), forceRejoin: true);
     } catch (e) {
       // Silent fail - show cached data or empty state
     } finally {
@@ -317,7 +317,7 @@ class _ChatPageState extends State<ChatPage> {
         }
       });
       _cacheConversations(); // Cache for offline access
-      ChatSocketService().updateKnownChats(loaded.map((c) => c.id).toList(), forceRejoin: true);
+      SocketService().updateKnownChats(loaded.map((c) => c.id).toList(), forceRejoin: true);
     } catch (e) {
       // Silent fail on polling; keep current cached data
     }
@@ -619,10 +619,10 @@ class _ChatPageState extends State<ChatPage> {
               ),
             ),
 
-            if (_connectionState == ChatSocketConnectionState.reconnecting ||
-                _connectionState == ChatSocketConnectionState.connecting)
+            if (_connectionState == SocketConnectionState.reconnecting ||
+                _connectionState == SocketConnectionState.connecting)
               _buildConnectionBanner('Reconnecting to chat…', colors, isWarning: false)
-            else if (_connectionState == ChatSocketConnectionState.disconnected)
+            else if (_connectionState == SocketConnectionState.disconnected)
               _buildConnectionBanner('Offline. Messages may be delayed.', colors, isWarning: true),
 
             // Conversations List

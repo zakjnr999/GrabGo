@@ -5,7 +5,7 @@ import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/shared/services/user_service.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
-enum ChatSocketConnectionState { disconnected, connecting, connected, reconnecting }
+enum SocketConnectionState { disconnected, connecting, connected, reconnecting }
 
 /// Represents a message that failed to send and is queued for retry
 class QueuedMessage {
@@ -40,10 +40,10 @@ class QueuedMessage {
   );
 }
 
-class ChatSocketService {
-  ChatSocketService._();
-  static final ChatSocketService _instance = ChatSocketService._();
-  factory ChatSocketService() => _instance;
+class SocketService {
+  SocketService._();
+  static final SocketService _instance = SocketService._();
+  factory SocketService() => _instance;
 
   IO.Socket? _socket;
   String? _currentUserId;
@@ -58,12 +58,13 @@ class ChatSocketService {
   final List<void Function(dynamic)> _typingListeners = [];
   final List<void Function(dynamic)> _readListeners = [];
   final List<void Function(dynamic)> _deleteListeners = [];
+  final List<void Function(dynamic)> _notificationListeners = [];
 
   final Set<String> _joinedChats = <String>{};
   final Set<String> _pendingJoinChats = <String>{};
 
-  ChatSocketConnectionState _connectionState = ChatSocketConnectionState.disconnected;
-  final List<void Function(ChatSocketConnectionState)> _connectionListeners = [];
+  SocketConnectionState _connectionState = SocketConnectionState.disconnected;
+  final List<void Function(SocketConnectionState)> _connectionListeners = [];
 
   // Offline message queue
   final List<QueuedMessage> _messageQueue = [];
@@ -80,7 +81,7 @@ class ChatSocketService {
   static const int _maxReconnectAttempts = 5;
 
   int get totalUnread => _totalUnread;
-  ChatSocketConnectionState get connectionState => _connectionState;
+  SocketConnectionState get connectionState => _connectionState;
 
   Future<void> initialize() async {
     try {
@@ -143,6 +144,14 @@ class ChatSocketService {
     _deleteListeners.remove(listener);
   }
 
+  void addNotificationListener(void Function(dynamic) listener) {
+    _notificationListeners.add(listener);
+  }
+
+  void removeNotificationListener(void Function(dynamic) listener) {
+    _notificationListeners.remove(listener);
+  }
+
   void addRetryListener(void Function(String chatId, String tempId, bool success, String? newId) listener) {
     _retryListeners.add(listener);
   }
@@ -151,16 +160,16 @@ class ChatSocketService {
     _retryListeners.remove(listener);
   }
 
-  void addConnectionListener(void Function(ChatSocketConnectionState) listener) {
+  void addConnectionListener(void Function(SocketConnectionState) listener) {
     _connectionListeners.add(listener);
     try {
       listener(_connectionState);
     } catch (e) {
-      debugPrint('Error in ChatSocketService connection listener (initial): $e');
+      debugPrint('Error in SocketService connection listener (initial): $e');
     }
   }
 
-  void removeConnectionListener(void Function(ChatSocketConnectionState) listener) {
+  void removeConnectionListener(void Function(SocketConnectionState) listener) {
     _connectionListeners.remove(listener);
   }
 
@@ -225,7 +234,7 @@ class ChatSocketService {
     socket.emit('chat:mark_read', {'chatId': chatId});
   }
 
-  void _setConnectionState(ChatSocketConnectionState state) {
+  void _setConnectionState(SocketConnectionState state) {
     if (_connectionState == state) return;
     _connectionState = state;
     for (final listener in _connectionListeners) {
@@ -241,14 +250,14 @@ class ChatSocketService {
     _reconnectTimer?.cancel();
 
     if (_reconnectAttempts >= _maxReconnectAttempts) {
-      _setConnectionState(ChatSocketConnectionState.disconnected);
+      _setConnectionState(SocketConnectionState.disconnected);
       return;
     }
 
     final delaySeconds = 2 * (_reconnectAttempts + 1);
     _reconnectAttempts += 1;
 
-    _setConnectionState(ChatSocketConnectionState.reconnecting);
+    _setConnectionState(SocketConnectionState.reconnecting);
 
     _reconnectTimer = Timer(Duration(seconds: delaySeconds), () {
       _connectIfNeeded();
@@ -285,15 +294,13 @@ class ChatSocketService {
   void _connectIfNeeded() {
     if (_socket != null || _connecting) return;
     _connecting = true;
-    _setConnectionState(
-      _reconnectAttempts > 0 ? ChatSocketConnectionState.reconnecting : ChatSocketConnectionState.connecting,
-    );
+    _setConnectionState(_reconnectAttempts > 0 ? SocketConnectionState.reconnecting : SocketConnectionState.connecting);
 
     final socketUrl = _buildSocketUrl();
     final token = CacheService.getAuthToken();
     if (token == null || token.isEmpty) {
       _connecting = false;
-      _setConnectionState(ChatSocketConnectionState.disconnected);
+      _setConnectionState(SocketConnectionState.disconnected);
       return;
     }
 
@@ -311,7 +318,7 @@ class ChatSocketService {
       _currentUserId ??= UserService().currentUser?.id;
       _connecting = false;
       _reconnectAttempts = 0;
-      _setConnectionState(ChatSocketConnectionState.connected);
+      _setConnectionState(SocketConnectionState.connected);
       _joinedChats.clear();
       _joinAllCachedChats();
       // Join any pending chats that were requested before connection
@@ -373,6 +380,16 @@ class ChatSocketService {
 
     _socket!.on('chat:message_deleted', (data) {
       for (final listener in List.from(_deleteListeners)) {
+        try {
+          listener(data);
+        } catch (e) {
+          // Silent in production
+        }
+      }
+    });
+
+    _socket!.on('newNotification', (data) {
+      for (final listener in List.from(_notificationListeners)) {
         try {
           listener(data);
         } catch (e) {
@@ -684,7 +701,7 @@ class ChatSocketService {
       _messageQueue.clear();
       _totalUnread = 0;
       _notifyUnreadChanged();
-      _setConnectionState(ChatSocketConnectionState.disconnected);
+      _setConnectionState(SocketConnectionState.disconnected);
     } catch (_) {}
   }
 }

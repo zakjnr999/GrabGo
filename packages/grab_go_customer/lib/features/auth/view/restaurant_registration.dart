@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:io';
 import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
@@ -202,7 +200,9 @@ class _RestaurantRegistrationState extends State<RestaurantRegistration> with Si
 
       if (restaurantEmailController.text.trim().isEmpty) {
         restaurantEmailError = "Please enter your restaurant email address";
-      } else if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(restaurantEmailController.text.trim())) {
+      } else if (!RegExp(
+        r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+      ).hasMatch(restaurantEmailController.text.trim())) {
         restaurantEmailError = "Please enter a valid email address";
       }
 
@@ -405,12 +405,19 @@ class _RestaurantRegistrationState extends State<RestaurantRegistration> with Si
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             gradient: LinearGradient(
-                              colors: [colors.accentOrange.withOpacity(0.2), colors.accentViolet.withOpacity(0.2)],
+                              colors: [
+                                colors.accentOrange.withValues(alpha: 0.2),
+                                colors.accentViolet.withValues(alpha: 0.2),
+                              ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
                             boxShadow: [
-                              BoxShadow(color: colors.accentOrange.withOpacity(0.2), blurRadius: 30, spreadRadius: 5),
+                              BoxShadow(
+                                color: colors.accentOrange.withValues(alpha: 0.2),
+                                blurRadius: 30,
+                                spreadRadius: 5,
+                              ),
                             ],
                           ),
                           child: Center(
@@ -806,9 +813,9 @@ class _RestaurantRegistrationState extends State<RestaurantRegistration> with Si
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                       decoration: BoxDecoration(
-                        color: colors.accentOrange.withOpacity(0.1),
+                        color: colors.accentOrange.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8.r),
-                        border: Border.all(color: colors.accentOrange.withOpacity(0.3), width: 1),
+                        border: Border.all(color: colors.accentOrange.withValues(alpha: 0.3), width: 1),
                       ),
                       child: Row(
                         children: [
@@ -1059,7 +1066,7 @@ class _RestaurantRegistrationState extends State<RestaurantRegistration> with Si
                         decoration: BoxDecoration(
                           gradient: isTermsAccepted
                               ? LinearGradient(
-                                  colors: [colors.accentOrange, colors.accentOrange.withOpacity(0.8)],
+                                  colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
                                   begin: Alignment.centerLeft,
                                   end: Alignment.centerRight,
                                 )
@@ -1069,7 +1076,7 @@ class _RestaurantRegistrationState extends State<RestaurantRegistration> with Si
                           boxShadow: isTermsAccepted
                               ? [
                                   BoxShadow(
-                                    color: colors.accentOrange.withOpacity(0.4),
+                                    color: colors.accentOrange.withValues(alpha: 0.4),
                                     blurRadius: 20,
                                     offset: const Offset(0, 8),
                                   ),

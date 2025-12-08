@@ -16,20 +16,33 @@
     "build",
     ".flutter-plugins-dependencies"
   ],
-  "files.watcherExclude": {
-    "**/.dart_tool/**": true,
-    "**/build/**": true,
-    "**/.flutter-plugins-dependencies": true,
-    "**/pubspec.lock": true
+  "cSpell.words": [
+    "Lato",
+    "Momo"
+  ],
+  "files.exclude": {
+    "**/.dart_tool": true,
+    "**/build": true,
+    "**/.gradle": true,
+    "**/android/build": true,
+    "**/ios/Pods": true,
+    "**/ios/build": true
   },
   "search.exclude": {
     "**/.dart_tool": true,
     "**/build": true,
-    "**/.flutter-plugins-dependencies": true,
-    "**/pubspec.lock": true
+    "**/android/build": true,
+    "**/ios/Pods": true
   },
-  "cSpell.words": [
-    "Lato",
-    "Momo"
-  ]
+  "files.watcherExclude": {
+    "**/.dart_tool/**": true,
+    "**/build/**": true,
+    "**/android/build/**": true,
+    "**/ios/Pods/**": true
+  },
+  "dart.analysisMaxFileSize": 1000,
+  "editor.minimap.enabled": false,
+  "git.autorefresh": false,
+  "git.autofetch": false,
+  "editor.minimap.showSlider": "always"
 }

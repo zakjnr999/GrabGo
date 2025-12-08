@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:grab_go_shared/shared/services/chat_socket_service.dart';
+import 'package:grab_go_shared/shared/services/socket_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_customer/features/status/model/status_model.dart';
@@ -13,7 +13,7 @@ import 'package:grab_go_customer/features/status/repository/status_repository.da
 /// Provider for Status feature state management
 class StatusProvider with ChangeNotifier {
   late final StatusRepository _repository;
-  final ChatSocketService _socketService = ChatSocketService();
+  final SocketService _socketService = SocketService();
 
   StatusProvider() {
     _repository = StatusRepository(statusService);
@@ -30,13 +30,13 @@ class StatusProvider with ChangeNotifier {
   }
 
   /// Handle socket connection state changes
-  void _onSocketConnectionChanged(ChatSocketConnectionState state) {
+  void _onSocketConnectionChanged(SocketConnectionState state) {
     if (kDebugMode) {
       print('🔌 Socket state changed: $state (was offline: $_isOffline)');
     }
 
     switch (state) {
-      case ChatSocketConnectionState.connected:
+      case SocketConnectionState.connected:
         if (_isOffline) {
           _isOffline = false;
           if (kDebugMode) {
@@ -45,7 +45,7 @@ class StatusProvider with ChangeNotifier {
           notifyListeners();
         }
         break;
-      case ChatSocketConnectionState.disconnected:
+      case SocketConnectionState.disconnected:
         if (!_isOffline) {
           _isOffline = true;
           if (kDebugMode) {
@@ -54,8 +54,8 @@ class StatusProvider with ChangeNotifier {
           notifyListeners();
         }
         break;
-      case ChatSocketConnectionState.connecting:
-      case ChatSocketConnectionState.reconnecting:
+      case SocketConnectionState.connecting:
+      case SocketConnectionState.reconnecting:
         // Keep current state while connecting/reconnecting
         break;
     }

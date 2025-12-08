@@ -102,7 +102,7 @@ class _ChatDetailState extends State<ChatDetail> {
   bool _isPeerTyping = false;
   bool _isTyping = false;
   Timer? _typingTimer;
-  ChatSocketConnectionState _connectionState = ChatSocketConnectionState.disconnected;
+  SocketConnectionState _connectionState = SocketConnectionState.disconnected;
   Timer? _orderStatusTimer;
   String? _orderId;
   String? orderNumber;
@@ -286,7 +286,7 @@ class _ChatDetailState extends State<ChatDetail> {
     PushNotificationService().setCurrentChatId(widget.chatId);
     _loadCachedMessages();
     _initAndLoadMessages();
-    final chatSocket = ChatSocketService();
+    final chatSocket = SocketService();
     chatSocket.addConnectionListener(_handleConnectionStateChanged);
     if (!widget.isSupport) {
       _setupSocketListeners();
@@ -318,12 +318,12 @@ class _ChatDetailState extends State<ChatDetail> {
 
     // Send typing stopped if we were typing
     if (_isTyping && !widget.isSupport) {
-      ChatSocketService().setTyping(widget.chatId, false);
+      SocketService().setTyping(widget.chatId, false);
     }
 
     // Remove socket listeners
     if (!widget.isSupport) {
-      final chatSocket = ChatSocketService();
+      final chatSocket = SocketService();
       chatSocket.removeNewMessageListener(_handleIncomingSocketMessage);
       chatSocket.removePresenceListener(_handlePresenceEvent);
       chatSocket.removeTypingListener(_handleTypingEvent);
@@ -496,7 +496,7 @@ class _ChatDetailState extends State<ChatDetail> {
   void _setupSocketListeners() {
     if (widget.isSupport) return;
 
-    final chatSocket = ChatSocketService();
+    final chatSocket = SocketService();
     chatSocket.addNewMessageListener(_handleIncomingSocketMessage);
     chatSocket.addPresenceListener(_handlePresenceEvent);
     chatSocket.addTypingListener(_handleTypingEvent);
@@ -672,7 +672,7 @@ class _ChatDetailState extends State<ChatDetail> {
         if (mounted) _scrollToBottom(force: true);
       });
       // Only mark as read if user is near bottom (actually seeing the message)
-      ChatSocketService().markAsRead(widget.chatId);
+      SocketService().markAsRead(widget.chatId);
     }
     // If user is scrolled up, don't mark as read - they haven't seen it yet
   }
@@ -798,7 +798,7 @@ class _ChatDetailState extends State<ChatDetail> {
     final userId = _userService.getUserId();
     if (userId == null || userId.isEmpty) return;
 
-    final chatSocket = ChatSocketService();
+    final chatSocket = SocketService();
     if (!chatSocket.isConnected) return;
 
     if (!_isTyping) {
@@ -810,7 +810,7 @@ class _ChatDetailState extends State<ChatDetail> {
     _typingTimer = Timer(const Duration(seconds: 2), () {
       if (!_isTyping) return;
       _isTyping = false;
-      ChatSocketService().setTyping(widget.chatId, false);
+      SocketService().setTyping(widget.chatId, false);
     });
   }
 
@@ -912,7 +912,7 @@ class _ChatDetailState extends State<ChatDetail> {
     if (_isTyping) {
       final userId = _userService.getUserId();
       if (userId != null && userId.isNotEmpty) {
-        ChatSocketService().setTyping(widget.chatId, false);
+        SocketService().setTyping(widget.chatId, false);
       }
       _isTyping = false;
     }
@@ -1025,7 +1025,7 @@ class _ChatDetailState extends State<ChatDetail> {
           );
           // Queue for automatic retry when connection is restored
           if (!widget.isSupport) {
-            ChatSocketService().queueFailedMessage(widget.chatId, tempId, trimmed);
+            SocketService().queueFailedMessage(widget.chatId, tempId, trimmed);
           }
         }
       });
@@ -1043,7 +1043,7 @@ class _ChatDetailState extends State<ChatDetail> {
     if (index == -1) return;
 
     // Remove from queue since we're manually retrying
-    ChatSocketService().removeFromQueue(message.id);
+    SocketService().removeFromQueue(message.id);
 
     setState(() {
       _messages[index] = ChatMessage(
@@ -1555,7 +1555,7 @@ class _ChatDetailState extends State<ChatDetail> {
       if (_showScrollToBottomButton || _pendingNewMessages != 0) {
         // User scrolled to bottom - mark messages as read now
         if (_pendingNewMessages > 0 && !widget.isSupport) {
-          ChatSocketService().markAsRead(widget.chatId);
+          SocketService().markAsRead(widget.chatId);
         }
         setState(() {
           _showScrollToBottomButton = false;
@@ -1912,10 +1912,10 @@ class _ChatDetailState extends State<ChatDetail> {
           children: [
             if (!widget.isSupport) _buildOrderStatusBanner(colors),
             if (!widget.isSupport)
-              if (_connectionState == ChatSocketConnectionState.reconnecting ||
-                  _connectionState == ChatSocketConnectionState.connecting)
+              if (_connectionState == SocketConnectionState.reconnecting ||
+                  _connectionState == SocketConnectionState.connecting)
                 _buildConnectionBanner('Reconnecting to chat…', colors, isWarning: false)
-              else if (_connectionState == ChatSocketConnectionState.disconnected)
+              else if (_connectionState == SocketConnectionState.disconnected)
                 _buildConnectionBanner('Offline. Messages may be delayed.', colors, isWarning: true),
             Expanded(
               child: Stack(
@@ -2394,7 +2394,7 @@ class _ChatDetailState extends State<ChatDetail> {
         });
         // Mark messages as read when user taps to scroll to bottom
         if (_pendingNewMessages > 0 && !widget.isSupport) {
-          ChatSocketService().markAsRead(widget.chatId);
+          SocketService().markAsRead(widget.chatId);
         }
         setState(() {
           _showScrollToBottomButton = false;
@@ -2433,7 +2433,7 @@ class _ChatDetailState extends State<ChatDetail> {
     );
   }
 
-  void _handleConnectionStateChanged(ChatSocketConnectionState state) {
+  void _handleConnectionStateChanged(SocketConnectionState state) {
     if (!mounted) return;
     setState(() {
       _connectionState = state;
@@ -3371,7 +3371,7 @@ class _ChatDetailState extends State<ChatDetail> {
     _cacheMessages();
 
     // Also remove from queue if it was a failed message
-    ChatSocketService().removeFromQueue(message.id);
+    SocketService().removeFromQueue(message.id);
 
     // Call backend to delete
     final success = await _chatService.deleteMessage(widget.chatId, message.id);

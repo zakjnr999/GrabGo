@@ -10,6 +10,7 @@ const Food = require('../models/Food');
 const { protect, authorize } = require('../middleware/auth');
 const { uploadSingle, uploadToCloudinary } = require('../middleware/upload');
 const cache = require('../utils/cache');
+const { io } = require('../server');
 
 const router = express.Router();
 
@@ -1507,7 +1508,8 @@ router.post(
                                 actorId: req.user._id,
                                 actorName: req.user.name,
                                 actorAvatar: req.user.profileImage
-                            }
+                            },
+                            io  // Real-time Socket.IO emission
                         );
                     }
                 } catch (notificationError) {
@@ -1661,7 +1663,8 @@ router.post(
                                         actorName: req.user.name,
                                         actorAvatar: req.user.profileImage
                                     }]
-                                }
+                                },
+                                io  // Real-time Socket.IO emission
                             );
                         }
                     }

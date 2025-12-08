@@ -31,7 +31,6 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
   bool isPasswordVisible = false;
   bool hasRestaurantApplication = false;
 
-  // Rate limiting for login attempts
   int _loginAttempts = 0;
   DateTime? _lastLoginAttempt;
 
@@ -80,7 +79,6 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
     if (mounted && credentials['rememberMe'] == true) {
       setState(() {
         emailController.text = credentials['email'] ?? '';
-        // ✅ SECURITY: Never load password from storage
         isChecked = credentials['rememberMe'] ?? false;
       });
     }
@@ -211,7 +209,6 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
           }
         }
 
-        // Save token if provided
         if (token != null && token.isNotEmpty) {
           await CacheService.saveAuthToken(token);
         }
@@ -237,7 +234,6 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         }
 
         if (mounted) {
-          // Check if location permission screen should be shown (first time login)
           await _navigateAfterLogin(context);
         }
       } else {
@@ -309,27 +305,21 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
     }
   }
 
-  /// Navigate after successful login - check location permission if first time
   Future<void> _navigateAfterLogin(BuildContext context) async {
-    // Check if location permission screen has been shown before
     final hasShownLocationScreen = StorageService.hasLocationPermissionScreenShown();
 
     if (!hasShownLocationScreen) {
-      // First time login - check location permission
       final hasPermission = await LocationService.hasPermission();
       if (!hasPermission) {
-        // Show location permission screen
         if (context.mounted) {
           context.go("/locationPermission");
         }
         return;
       } else {
-        // Permission already granted, mark screen as shown and go to homepage
         await StorageService.setLocationPermissionScreenShown();
       }
     }
 
-    // Navigate to homepage
     if (context.mounted) {
       context.go("/homepage");
     }
@@ -442,7 +432,6 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         }
         await StorageService.saveCredentials(email: emailController.text.trim(), rememberMe: isChecked);
 
-        // Reset login attempts on successful login
         _loginAttempts = 0;
         _lastLoginAttempt = null;
 

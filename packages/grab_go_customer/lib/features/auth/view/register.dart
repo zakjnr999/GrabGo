@@ -41,11 +41,9 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
   bool isConfirmPasswordVisible = false;
   bool agreedToTerms = false;
 
-  // Rate limiting for registration attempts
   int _registrationAttempts = 0;
   DateTime? _lastRegistrationAttempt;
 
-  // Internet check caching
   DateTime? _lastInternetCheck;
   bool? _lastInternetResult;
 
@@ -99,7 +97,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
   }
 
   Future<bool> _checkInternetConnection() async {
-    // Cache internet check for 5 seconds
     if (_lastInternetCheck != null && DateTime.now().difference(_lastInternetCheck!) < const Duration(seconds: 5)) {
       return _lastInternetResult!;
     }
@@ -186,27 +183,21 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         confirmPasswordError == null;
   }
 
-  /// Navigate after successful registration - check location permission if first time
   Future<void> _navigateAfterRegistration(BuildContext context) async {
-    // Check if location permission screen has been shown before
     final hasShownLocationScreen = StorageService.hasLocationPermissionScreenShown();
 
     if (!hasShownLocationScreen) {
-      // First time registration - check location permission
       final hasPermission = await LocationService.hasPermission();
       if (!hasPermission) {
-        // Show location permission screen
         if (context.mounted) {
           context.go("/locationPermission");
         }
         return;
       } else {
-        // Permission already granted, mark screen as shown and go to homepage
         await StorageService.setLocationPermissionScreenShown();
       }
     }
 
-    // Navigate to homepage
     if (context.mounted) {
       context.go("/homepage");
     }
@@ -217,7 +208,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       return;
     }
 
-    // Check terms acceptance
     if (!agreedToTerms) {
       if (mounted) {
         AppToastMessage.show(
@@ -230,7 +220,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       return;
     }
 
-    // Rate limiting to prevent spam registrations
     if (_registrationAttempts >= 5) {
       final timeSinceLastAttempt = DateTime.now().difference(_lastRegistrationAttempt!);
       if (timeSinceLastAttempt < const Duration(minutes: 5)) {
@@ -328,7 +317,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
           }
         }
 
-        // Reset registration attempts on successful registration
         _registrationAttempts = 0;
         _lastRegistrationAttempt = null;
 
@@ -500,7 +488,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         }
 
         if (mounted) {
-          // Check if location permission screen should be shown (first time registration)
           await _navigateAfterRegistration(context);
         }
       } else {
@@ -862,7 +849,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
 
                           SizedBox(height: KSpacing.lg.h),
 
-                          // Terms & Conditions Checkbox
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -903,8 +889,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                                           ),
                                           recognizer: TapGestureRecognizer()
                                             ..onTap = () {
-                                              // Navigate to terms page
-                                              context.push("/terms");
+                                              // context.push("/terms");
                                             },
                                         ),
                                       ],

@@ -88,7 +88,7 @@ class UserService {
       _currentUser = null;
       await CacheService.clearUserData();
       await CacheService.clearAuthToken();
-      ChatSocketService().dispose();
+      SocketService().dispose();
       debugPrint('✅ User logged out successfully');
     } catch (e) {
       debugPrint('❌ Error logging out: $e');

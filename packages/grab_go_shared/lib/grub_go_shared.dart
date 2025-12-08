@@ -40,4 +40,4 @@ export 'shared/widgets/image_message_bubble.dart';
 export 'shared/services/push_notification_service.dart';
 export 'shared/services/cache_service.dart';
 export 'shared/services/chat_service.dart';
-export 'shared/services/chat_socket_service.dart';
+export 'shared/services/socket_service.dart';

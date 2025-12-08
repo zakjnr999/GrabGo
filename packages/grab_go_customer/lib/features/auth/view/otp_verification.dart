@@ -9,7 +9,6 @@ import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/features/auth/service/phone_auth_service.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
-import 'package:grab_go_shared/core/auth/user_model.dart';
 
 class OtpVerification extends StatefulWidget {
   const OtpVerification({super.key});
@@ -25,6 +24,7 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
   bool isLoading = false;
   int countdown = 60;
   bool canResend = false;
+  Timer? _countdownTimer;
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -35,7 +35,6 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
   void initState() {
     super.initState();
 
-    // Setup animations
     _animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -70,24 +69,32 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
 
   @override
   void dispose() {
+    _countdownTimer?.cancel();
     _animationController.dispose();
     phoneController.dispose();
     super.dispose();
   }
 
   void _startCountdown() {
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) {
-        setState(() {
-          countdown--;
-          if (countdown <= 0) {
-            canResend = true;
-          }
-        });
-        if (countdown > 0) {
-          _startCountdown();
-        }
+    _countdownTimer?.cancel();
+    setState(() {
+      countdown = 60;
+      canResend = false;
+    });
+
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
       }
+
+      setState(() {
+        countdown--;
+        if (countdown <= 0) {
+          canResend = true;
+          timer.cancel();
+        }
+      });
     });
   }
 
@@ -121,7 +128,6 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
       final userData = result['user'];
 
       if (userData != null) {
-        // Update user data
         final user = User.fromJson(userData);
         await UserService().setCurrentUser(user);
 
@@ -136,7 +142,7 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
 
           await Future.delayed(const Duration(milliseconds: 500));
           if (mounted) {
-            context.push("/profileUpload");
+            context.go("/profileUpload");
           }
         }
       } else {
@@ -374,10 +380,16 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
                             });
                           },
                           onSubmit: (String verificationCode) {
-                            _verifyOTP(verificationCode);
-                            setState(() {
-                              verificationCode = verificationCode;
-                            });
+                            if (verificationCode.length == 6 && RegExp(r'^\d{6}$').hasMatch(verificationCode)) {
+                              _verifyOTP(verificationCode);
+                            } else {
+                              AppToastMessage.show(
+                                context: context,
+                                icon: Icons.error_outline,
+                                message: "Please enter a valid 6-digit code",
+                                backgroundColor: context.appColors.error,
+                              );
+                            }
                           },
                         ),
                         SizedBox(height: KSpacing.lg25.h),

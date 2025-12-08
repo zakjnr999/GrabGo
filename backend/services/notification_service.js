@@ -1,15 +1,16 @@
 const Notification = require('../models/Notification');
 
 /**
- * Create in-app notification record
+ * Create in-app notification record and emit via Socket.IO
  * @param {string} userId - User ID to receive notification
  * @param {string} type - Notification type
  * @param {string} title - Notification title
  * @param {string} message - Notification message
  * @param {object} data - Additional navigation data
+ * @param {object} io - Socket.IO instance (optional)
  * @returns {Promise<object|null>} Created notification or null
  */
-const createNotification = async (userId, type, title, message, data = {}) => {
+const createNotification = async (userId, type, title, message, data = {}, io = null) => {
     try {
         const notification = await Notification.create({
             user: userId,
@@ -18,7 +19,26 @@ const createNotification = async (userId, type, title, message, data = {}) => {
             message,
             data
         });
+
         console.log(`📬 In-app notification created for user ${userId}: ${type}`);
+
+        // Emit real-time notification via Socket.IO
+        if (io) {
+            const notificationData = {
+                _id: notification._id,
+                title: notification.title,
+                message: notification.message,
+                type: notification.type,
+                createdAt: notification.createdAt,
+                isRead: notification.isRead,
+                data: notification.data
+            };
+
+            // Emit to specific user's room (not broadcast to all!)
+            io.to(`user:${userId}`).emit('newNotification', notificationData);
+            console.log(`📡 Real-time notification emitted to user ${userId}`);
+        }
+
         return notification;
     } catch (error) {
         console.error('Error creating notification:', error.message);

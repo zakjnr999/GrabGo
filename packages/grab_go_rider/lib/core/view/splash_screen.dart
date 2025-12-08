@@ -31,7 +31,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
   Future<void> _initialize() async {
     await UserService().initialize();
-    await ChatSocketService().initialize();
+    await SocketService().initialize();
 
     await Future.delayed(const Duration(seconds: 3));
     if (!mounted) return;

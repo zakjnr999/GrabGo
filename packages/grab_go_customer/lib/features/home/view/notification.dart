@@ -9,6 +9,8 @@ import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:intl/intl.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/shared/widgets/notification_skeleton.dart';
+import 'package:grab_go_shared/shared/services/socket_service.dart';
+import 'dart:async';
 
 class NotificationModel {
   final String id;
@@ -47,14 +49,13 @@ class NotificationModel {
       'title': title,
       'message': message,
       'createdAt': timestamp.toIso8601String(),
-      'type': type.toString().split('.').last, // Convert enum to string: 'order', 'promo', etc.
+      'type': type.toString().split('.').last,
       'isRead': isRead,
       'data': data,
     };
   }
 
   static NotificationType _parseNotificationType(String? type) {
-    // Handle both 'NotificationType.order' and 'order' formats
     final cleanType = type?.replaceAll('NotificationType.', '') ?? 'system';
 
     switch (cleanType) {
@@ -66,10 +67,10 @@ class NotificationModel {
         return NotificationType.update;
       case 'system':
         return NotificationType.system;
-      case 'commentReply': // Handle camelCase from enum toString
+      case 'commentReply':
       case 'comment_reply':
         return NotificationType.commentReply;
-      case 'commentReaction': // Handle camelCase from enum toString
+      case 'commentReaction':
       case 'comment_reaction':
         return NotificationType.commentReaction;
       default:
@@ -96,12 +97,14 @@ class _NotificationState extends State<Notification> {
   final int _pageSize = 20;
   String? _error;
   final ScrollController _scrollController = ScrollController();
+  bool isSocketConnected = false;
 
   @override
   void initState() {
     super.initState();
     _loadInitialData();
     _scrollController.addListener(_onScroll);
+    _setupSocketListener();
   }
 
   Future<void> _loadInitialData() async {
@@ -121,6 +124,7 @@ class _NotificationState extends State<Notification> {
   @override
   void dispose() {
     _scrollController.dispose();
+    SocketService().removeNotificationListener(_handleNewNotification);
     super.dispose();
   }
 
@@ -129,6 +133,39 @@ class _NotificationState extends State<Notification> {
       if (!_isLoadingMore && _hasMore) {
         _loadMoreNotifications();
       }
+    }
+  }
+
+  void _setupSocketListener() {
+    final socketService = SocketService();
+
+    socketService.addNotificationListener(_handleNewNotification);
+
+    socketService.addConnectionListener((state) {
+      if (!mounted) return;
+      setState(() {
+        isSocketConnected = state == SocketConnectionState.connected;
+      });
+    });
+  }
+
+  void _handleNewNotification(dynamic data) {
+    if (!mounted) return;
+
+    try {
+      if (data is Map) {
+        final notification = NotificationModel.fromJson(Map<String, dynamic>.from(data));
+
+        setState(() {
+          // Check if notification already exists (prevent duplicates)
+          final exists = _notifications.any((n) => n.id == notification.id);
+          if (!exists) {
+            _notifications.insert(0, notification);
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error processing new notification: $e');
     }
   }
 
@@ -146,9 +183,9 @@ class _NotificationState extends State<Notification> {
           _notifications = (result['notifications'] as List<NotificationModel>)
             ..sort((a, b) {
               if (a.isRead != b.isRead) {
-                return a.isRead ? 1 : -1; // Unread first
+                return a.isRead ? 1 : -1;
               }
-              return b.timestamp.compareTo(a.timestamp); // Sort by date desc
+              return b.timestamp.compareTo(a.timestamp);
             });
           _hasMore = result['hasMore'] as bool;
           _isLoading = false;
@@ -159,7 +196,6 @@ class _NotificationState extends State<Notification> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          // Only show full screen error if we have no data
           _error = _notifications.isEmpty ? 'Failed to load notifications' : null;
         });
       }
@@ -182,9 +218,9 @@ class _NotificationState extends State<Notification> {
           _notifications.addAll(result['notifications'] as List<NotificationModel>);
           _notifications.sort((a, b) {
             if (a.isRead != b.isRead) {
-              return a.isRead ? 1 : -1; // Unread first
+              return a.isRead ? 1 : -1;
             }
-            return b.timestamp.compareTo(a.timestamp); // Sort by date desc
+            return b.timestamp.compareTo(a.timestamp);
           });
           _hasMore = result['hasMore'] as bool;
           _currentPage = nextPage;

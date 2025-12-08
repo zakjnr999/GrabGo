@@ -29,7 +29,6 @@ class _OnboardingMain extends State<OnboardingMain> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Preload all onboarding images for smooth transitions
     _preloadImages();
   }
 

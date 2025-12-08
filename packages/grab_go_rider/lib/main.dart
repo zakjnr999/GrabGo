@@ -47,7 +47,7 @@ Future<void> _initializeBackgroundServices() async {
   try {
     await GoogleSignInService().initialize();
     await UserService().initialize();
-    await ChatSocketService().initialize();
+    await SocketService().initialize();
 
     // Initialize push notifications
     await PushNotificationService().initialize(

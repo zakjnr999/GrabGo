@@ -67,6 +67,13 @@ module.exports = { app, io };
 io.on("connection", (socket) => {
   console.log("🔌 New WebSocket connection", socket.id);
 
+  // Join user-specific room for targeted notifications
+  const userId = socket.data.userId;
+  if (userId) {
+    socket.join(`user:${userId}`);
+    console.log(`✅ User ${userId} joined notification room`);
+  }
+
   socket.on("chat:join", async ({ chatId }) => {
     try {
       const userId = socket.data.userId;

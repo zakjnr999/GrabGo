@@ -202,7 +202,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
 
         if (user != null) {
           await UserService().setCurrentUser(user);
-          await ChatSocketService().initialize();
+          await SocketService().initialize();
         }
 
         if (mounted) {
@@ -348,7 +348,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
 
         if (user != null) {
           await UserService().setCurrentUser(user);
-          await ChatSocketService().initialize();
+          await SocketService().initialize();
         }
 
         await CacheService.saveCredentials(

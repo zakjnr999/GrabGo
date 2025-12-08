@@ -67,27 +67,21 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
     super.dispose();
   }
 
-  /// Navigate after profile upload - check location permission if first time
   Future<void> _navigateAfterProfileUpload(BuildContext context) async {
-    // Check if location permission screen has been shown before
     final hasShownLocationScreen = StorageService.hasLocationPermissionScreenShown();
 
     if (!hasShownLocationScreen) {
-      // First time registration - check location permission
       final hasPermission = await LocationService.hasPermission();
       if (!hasPermission) {
-        // Show location permission screen
         if (context.mounted) {
           context.go("/locationPermission");
         }
         return;
       } else {
-        // Permission already granted, mark screen as shown and go to homepage
         await StorageService.setLocationPermissionScreenShown();
       }
     }
 
-    // Navigate to homepage
     if (context.mounted) {
       context.go("/homepage");
     }
@@ -98,7 +92,6 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
 
     final file = File(imagePaths.first);
 
-    // Check file size (max 5MB)
     final fileSize = await file.length();
     if (fileSize > 5 * 1024 * 1024) {
       if (mounted) {
@@ -112,14 +105,13 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
       return;
     }
 
-    // Check file format
     final extension = imagePaths.first.toLowerCase().split('.').last;
     if (!['jpg', 'jpeg', 'png', 'webp'].contains(extension)) {
       if (mounted) {
         AppToastMessage.show(
           context: context,
           icon: Icons.error_outline,
-          message: "Only JPG, PNG, and WebP images are supported",
+          message: "Please select a different image format",
           backgroundColor: context.appColors.error,
         );
       }
@@ -196,21 +188,12 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
       }
 
       if (response.isSuccessful && response.body != null) {
-        // Update user data with new profile picture
         final user = response.body!.userData ?? response.body!.user;
         if (user != null) {
           await UserService().setCurrentUser(user);
         }
 
         if (mounted) {
-          LoadingDialog.instance().hide();
-          AppToastMessage.show(
-            context: context,
-            icon: Icons.check_circle,
-            message: "Profile image uploaded successfully!",
-            backgroundColor: Colors.green,
-          );
-
           context.go("/accountCreated");
         }
       } else {
@@ -442,7 +425,6 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
 
                         GestureDetector(
                           onTap: () async {
-                            // Check if location permission screen should be shown (first time registration)
                             await _navigateAfterProfileUpload(context);
                           },
                           child: Container(
