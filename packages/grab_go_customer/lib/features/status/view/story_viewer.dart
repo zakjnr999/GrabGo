@@ -1549,7 +1549,7 @@ class _StoryViewerState extends State<StoryViewer> with TickerProviderStateMixin
         if (topReactions.isNotEmpty)
           ...topReactions.map(
             (entry) => TweenAnimationBuilder<double>(
-              duration: Duration(milliseconds: 200),
+              duration: const Duration(milliseconds: 200),
               tween: Tween(begin: 0.0, end: 1.0),
               curve: Curves.elasticOut,
               builder: (context, value, child) {
@@ -1569,12 +1569,12 @@ class _StoryViewerState extends State<StoryViewer> with TickerProviderStateMixin
             style: TextStyle(fontSize: 12.sp, color: colors.textSecondary),
           ),
 
-        Spacer(),
+        const Spacer(),
 
         // React button with animation
         TweenAnimationBuilder<double>(
           key: ValueKey(reactions.userReaction),
-          duration: Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 300),
           tween: Tween(begin: 0.8, end: 1.0),
           curve: Curves.elasticOut,
           builder: (context, value, child) {
@@ -1590,7 +1590,7 @@ class _StoryViewerState extends State<StoryViewer> with TickerProviderStateMixin
                 ? null
                 : () => _showReactionPicker(context, comment, provider),
             padding: EdgeInsets.zero,
-            constraints: BoxConstraints(),
+            constraints: const BoxConstraints(),
           ),
         ),
       ],
