@@ -1618,200 +1618,206 @@ class _StoryViewerState extends State<StoryViewer> with TickerProviderStateMixin
         minChildSize: 0.5,
         maxChildSize: 0.95,
         expand: false,
-        builder: (context, scrollController) => Column(
-          children: [
-            // Header
-            Container(
-              padding: EdgeInsets.all(16.w),
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: colors.inputBorder)),
-              ),
-              child: Row(
-                children: [
-                  Text(
-                    'Replies',
-                    style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
-                  ),
-                  Spacer(),
-                  IconButton(icon: Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-                ],
-              ),
-            ),
-
-            // Parent comment
-            Container(
-              padding: EdgeInsets.all(16.w),
-              color: colors.inputBorder.withOpacity(0.3),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CircleAvatar(
-                    radius: 16.r,
-                    backgroundColor: colors.accentOrange,
-                    child: Text(
-                      comment.user.name[0].toUpperCase(),
-                      style: TextStyle(color: Colors.white, fontSize: 14.sp),
+        builder: (context, scrollController) => SafeArea(
+          child: Column(
+            children: [
+              // Header
+              Container(
+                padding: EdgeInsets.all(16.w),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: colors.inputBorder)),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      'Replies',
+                      style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
                     ),
-                  ),
-                  SizedBox(width: 12.w),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          comment.user.name,
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.sp),
-                        ),
-                        SizedBox(height: 4.h),
-                        Text(comment.text, style: TextStyle(fontSize: 14.sp)),
-                      ],
-                    ),
-                  ),
-                ],
+                    const Spacer(),
+                    IconButton(icon: Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                  ],
+                ),
               ),
-            ),
 
-            // Replies list
-            Expanded(
-              child: Consumer<StatusProvider>(
-                builder: (context, provider, _) {
-                  if (provider.isLoadingReplies(comment.id)) {
-                    return const RepliesListSkeleton(count: 5);
-                  }
-
-                  final replies = provider.getReplies(comment.id);
-
-                  if (replies.isEmpty) {
-                    return Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(32.w),
-                        child: Column(
-                          children: [
-                            Icon(Icons.chat_bubble_outline, size: 48.r, color: colors.textSecondary.withOpacity(0.5)),
-                            SizedBox(height: 12.h),
-                            Text(
-                              'No replies yet',
-                              style: TextStyle(color: colors.textSecondary, fontSize: 14.sp),
-                            ),
-                            SizedBox(height: 4.h),
-                            Text(
-                              'Be the first to reply! 💬',
-                              style: TextStyle(color: colors.textSecondary.withOpacity(0.7), fontSize: 12.sp),
-                            ),
-                          ],
-                        ),
+              // Parent comment
+              Container(
+                padding: EdgeInsets.all(16.w),
+                color: colors.inputBorder.withOpacity(0.3),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CircleAvatar(
+                      radius: 16.r,
+                      backgroundColor: colors.accentOrange,
+                      child: Text(
+                        comment.user.name[0].toUpperCase(),
+                        style: TextStyle(color: Colors.white, fontSize: 14.sp),
                       ),
-                    );
-                  }
-                  return ListView.builder(
-                    controller: scrollController,
-                    padding: EdgeInsets.symmetric(vertical: 8.h),
-                    itemCount: replies.length,
-                    itemBuilder: (context, index) {
-                      final reply = replies[index];
-                      return Container(
-                        // ✅ Change to Container
-                        key: _getCommentKey(reply.id), // ✅ Add GlobalKey
-                        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                        decoration: BoxDecoration(
-                          // ✅ Add highlight decoration
-                          color: _highlightedCommentId == reply.id
-                              ? colors.accentViolet.withOpacity(0.1)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(8.r),
-                          border: _highlightedCommentId == reply.id
-                              ? Border.all(color: colors.accentViolet.withOpacity(0.3), width: 2)
-                              : null,
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(width: 40.w),
-                            CircleAvatar(
-                              radius: 14.r,
-                              backgroundColor: colors.accentOrange,
-                              child: Text(
-                                reply.user.name[0].toUpperCase(),
-                                style: TextStyle(color: Colors.white, fontSize: 12.sp),
+                    ),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            comment.user.name,
+                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.sp),
+                          ),
+                          SizedBox(height: 4.h),
+                          Text(comment.text, style: TextStyle(fontSize: 14.sp)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Replies list
+              Expanded(
+                child: Consumer<StatusProvider>(
+                  builder: (context, provider, _) {
+                    if (provider.isLoadingReplies(comment.id)) {
+                      return const RepliesListSkeleton(count: 5);
+                    }
+
+                    final replies = provider.getReplies(comment.id);
+
+                    if (replies.isEmpty) {
+                      return Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(32.w),
+                          child: Column(
+                            children: [
+                              Icon(Icons.chat_bubble_outline, size: 48.r, color: colors.textSecondary.withOpacity(0.5)),
+                              SizedBox(height: 12.h),
+                              Text(
+                                'No replies yet',
+                                style: TextStyle(color: colors.textSecondary, fontSize: 14.sp),
                               ),
-                            ),
-                            SizedBox(width: 12.w),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Text(
-                                        reply.user.name,
-                                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.sp),
-                                      ),
-                                      SizedBox(width: 8.w),
-                                      Text(
-                                        reply.timeAgo,
-                                        style: TextStyle(color: colors.textSecondary, fontSize: 11.sp),
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(height: 4.h),
-                                  Text(reply.text, style: TextStyle(fontSize: 13.sp)),
-                                ],
+                              SizedBox(height: 4.h),
+                              Text(
+                                'Be the first to reply!',
+                                style: TextStyle(color: colors.textSecondary.withOpacity(0.7), fontSize: 12.sp),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       );
-                    },
-                  );
-                },
+                    }
+                    return ListView.builder(
+                      controller: scrollController,
+                      padding: EdgeInsets.symmetric(vertical: 8.h),
+                      itemCount: replies.length,
+                      itemBuilder: (context, index) {
+                        final reply = replies[index];
+                        return Container(
+                          // ✅ Change to Container
+                          key: _getCommentKey(reply.id), // ✅ Add GlobalKey
+                          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                          decoration: BoxDecoration(
+                            // ✅ Add highlight decoration
+                            color: _highlightedCommentId == reply.id
+                                ? colors.accentViolet.withOpacity(0.1)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8.r),
+                            border: _highlightedCommentId == reply.id
+                                ? Border.all(color: colors.accentViolet.withOpacity(0.3), width: 2)
+                                : null,
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(width: 40.w),
+                              CircleAvatar(
+                                radius: 14.r,
+                                backgroundColor: colors.accentOrange,
+                                child: Text(
+                                  reply.user.name[0].toUpperCase(),
+                                  style: TextStyle(color: Colors.white, fontSize: 12.sp),
+                                ),
+                              ),
+                              SizedBox(width: 12.w),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          reply.user.name,
+                                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.sp),
+                                        ),
+                                        SizedBox(width: 8.w),
+                                        Text(
+                                          reply.timeAgo,
+                                          style: TextStyle(color: colors.textSecondary, fontSize: 11.sp),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 4.h),
+                                    Text(reply.text, style: TextStyle(fontSize: 13.sp)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
-            ),
 
-            // Reply input
-            Container(
-              padding: EdgeInsets.all(12.w),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border(top: BorderSide(color: colors.inputBorder)),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: Offset(0, -2))],
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: replyController,
-                      decoration: InputDecoration(
-                        hintText: 'Write a reply...',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(20.r)),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+              // Reply input
+              Container(
+                padding: EdgeInsets.all(12.w),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(top: BorderSide(color: colors.inputBorder)),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: Offset(0, -2))],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: replyController,
+                        decoration: InputDecoration(
+                          hintText: 'Write a reply...',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(20.r)),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+                        ),
+                        maxLength: 500,
+                        buildCounter: (context, {required currentLength, required isFocused, maxLength}) {
+                          return isFocused
+                              ? Text('$currentLength/$maxLength', style: TextStyle(fontSize: 11.sp))
+                              : null;
+                        },
                       ),
-                      maxLength: 500,
-                      buildCounter: (context, {required currentLength, required isFocused, maxLength}) {
-                        return isFocused ? Text('$currentLength/$maxLength', style: TextStyle(fontSize: 11.sp)) : null;
-                      },
                     ),
-                  ),
-                  SizedBox(width: 8.w),
-                  Consumer<StatusProvider>(
-                    builder: (context, provider, _) => IconButton(
-                      icon: Icon(Icons.send, color: colors.accentOrange),
-                      onPressed: () async {
-                        if (replyController.text.trim().isNotEmpty) {
-                          final success = await provider.addReply(comment.id, comment.statusId, replyController.text);
-                          if (success) {
-                            replyController.clear();
-                            FocusScope.of(context).unfocus();
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to post reply')));
+                    SizedBox(width: 8.w),
+                    Consumer<StatusProvider>(
+                      builder: (context, provider, _) => IconButton(
+                        icon: Icon(Icons.send, color: colors.accentOrange),
+                        onPressed: () async {
+                          if (replyController.text.trim().isNotEmpty) {
+                            final success = await provider.addReply(comment.id, comment.statusId, replyController.text);
+                            if (success) {
+                              replyController.clear();
+                              FocusScope.of(context).unfocus();
+                            } else {
+                              ScaffoldMessenger.of(
+                                context,
+                              ).showSnackBar(SnackBar(content: Text('Failed to post reply')));
+                            }
                           }
-                        }
-                      },
+                        },
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1836,7 +1842,7 @@ class _AnimatedReactionButtonState extends State<_AnimatedReactionButton> with S
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: Duration(milliseconds: 150), vsync: this);
+    _controller = AnimationController(duration: const Duration(milliseconds: 150), vsync: this);
     _scaleAnimation = Tween<double>(
       begin: 1.0,
       end: 1.3,

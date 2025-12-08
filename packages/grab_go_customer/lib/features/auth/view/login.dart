@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/gestures.dart';
@@ -32,6 +30,10 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
 
   bool isPasswordVisible = false;
   bool hasRestaurantApplication = false;
+
+  // Rate limiting for login attempts
+  int _loginAttempts = 0;
+  DateTime? _lastLoginAttempt;
 
   late AnimationController animationController;
   late Animation<double> fadeAnimation;
@@ -78,7 +80,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
     if (mounted && credentials['rememberMe'] == true) {
       setState(() {
         emailController.text = credentials['email'] ?? '';
-        passwordController.text = credentials['password'] ?? '';
+        // ✅ SECURITY: Never load password from storage
         isChecked = credentials['rememberMe'] ?? false;
       });
     }
@@ -110,7 +112,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
 
       if (emailController.text.trim().isEmpty) {
         emailError = "Please enter your email address";
-      } else if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(emailController.text.trim())) {
+      } else if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(emailController.text.trim())) {
         emailError = "Please enter a valid email address";
       }
 
@@ -338,6 +340,28 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
       return;
     }
 
+    if (_loginAttempts >= 5) {
+      final timeSinceLastAttempt = DateTime.now().difference(_lastLoginAttempt!);
+      if (timeSinceLastAttempt < const Duration(minutes: 5)) {
+        final remainingSeconds = 300 - timeSinceLastAttempt.inSeconds;
+        final remainingMinutes = (remainingSeconds / 60).ceil();
+        if (mounted) {
+          AppToastMessage.show(
+            context: context,
+            icon: Icons.lock_clock,
+            message: "Too many login attempts. Please wait $remainingMinutes minute(s) before trying again.",
+            backgroundColor: context.appColors.error,
+          );
+        }
+        return;
+      } else {
+        _loginAttempts = 0;
+      }
+    }
+
+    _loginAttempts++;
+    _lastLoginAttempt = DateTime.now();
+
     FocusManager.instance.primaryFocus?.unfocus();
     LoadingDialog.instance().show(context: context, text: "Checking connection...");
 
@@ -416,12 +440,11 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
             await UserService().setCurrentUser(fallbackUser);
           }
         }
+        await StorageService.saveCredentials(email: emailController.text.trim(), rememberMe: isChecked);
 
-        await StorageService.saveCredentials(
-          email: emailController.text.trim(),
-          password: passwordController.text,
-          rememberMe: isChecked,
-        );
+        // Reset login attempts on successful login
+        _loginAttempts = 0;
+        _lastLoginAttempt = null;
 
         if (mounted) {
           await _navigateAfterLogin(context);
@@ -553,12 +576,19 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: LinearGradient(
-                            colors: [colors.accentOrange.withOpacity(0.2), colors.accentViolet.withOpacity(0.2)],
+                            colors: [
+                              colors.accentOrange.withValues(alpha: 0.2),
+                              colors.accentViolet.withValues(alpha: 0.2),
+                            ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           boxShadow: [
-                            BoxShadow(color: colors.accentOrange.withOpacity(0.2), blurRadius: 30, spreadRadius: 5),
+                            BoxShadow(
+                              color: colors.accentOrange.withValues(alpha: 0.2),
+                              blurRadius: 30,
+                              spreadRadius: 5,
+                            ),
                           ],
                         ),
                         child: Center(
@@ -739,14 +769,14 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                           height: 56.h,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [colors.accentOrange, colors.accentOrange.withOpacity(0.8)],
+                              colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
                               begin: Alignment.centerLeft,
                               end: Alignment.centerRight,
                             ),
                             borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
                             boxShadow: [
                               BoxShadow(
-                                color: colors.accentOrange.withOpacity(0.4),
+                                color: colors.accentOrange.withValues(alpha: 0.4),
                                 blurRadius: 20,
                                 offset: const Offset(0, 8),
                               ),
@@ -875,7 +905,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                                 border: Border.all(color: colors.border, width: 1.5),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: colors.shadow.withOpacity(0.05),
+                                    color: colors.shadow.withValues(alpha: 0.05),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
                                   ),
@@ -916,7 +946,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                                 border: Border.all(color: colors.border, width: 1.5),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: colors.shadow.withOpacity(0.05),
+                                    color: colors.shadow.withValues(alpha: 0.05),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
                                   ),

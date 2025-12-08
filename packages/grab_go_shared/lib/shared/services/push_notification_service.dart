@@ -65,6 +65,7 @@ class PushNotificationService {
   );
 
   /// Initialize the push notification service
+  /// IMPORTANT: Permission must be granted before calling this method
   Future<void> initialize({NotificationTapCallback? onNotificationTap, Function(String token)? onTokenRefresh}) async {
     if (_isInitialized) return;
 
@@ -72,56 +73,38 @@ class PushNotificationService {
     _onTokenRefresh = onTokenRefresh;
 
     try {
-      // Request permission
-      final settings = await _messaging.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-        provisional: false,
-        announcement: false,
-        carPlay: false,
-        criticalAlert: false,
-      );
+      // Initialize local notifications
+      await _initializeLocalNotifications();
 
-      debugPrint('🔔 Notification permission: ${settings.authorizationStatus}');
-
-      if (settings.authorizationStatus == AuthorizationStatus.authorized ||
-          settings.authorizationStatus == AuthorizationStatus.provisional) {
-        // Initialize local notifications
-        await _initializeLocalNotifications();
-
-        // Get FCM token with retry
-        _fcmToken = await _getTokenWithRetry();
-        if (_fcmToken != null) {
-          debugPrint('🔑 FCM Token: $_fcmToken');
-        } else {
-          debugPrint('⚠️ Could not get FCM token - notifications may not work');
-        }
-
-        // Listen for token refresh
-        _messaging.onTokenRefresh.listen((token) {
-          _fcmToken = token;
-          debugPrint('🔄 FCM Token refreshed: $token');
-          _onTokenRefresh?.call(token);
-        });
-
-        // Handle foreground messages
-        FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-
-        // Handle notification tap when app is in background
-        FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
-
-        // Check if app was opened from a notification
-        final initialMessage = await _messaging.getInitialMessage();
-        if (initialMessage != null) {
-          _handleNotificationTap(initialMessage);
-        }
-
-        _isInitialized = true;
-        debugPrint('✅ Push notification service initialized');
+      // Get FCM token with retry
+      _fcmToken = await _getTokenWithRetry();
+      if (_fcmToken != null) {
+        debugPrint('🔑 FCM Token: $_fcmToken');
       } else {
-        debugPrint('⚠️ Notification permission denied');
+        debugPrint('⚠️ Could not get FCM token - notifications may not work');
       }
+
+      // Listen for token refresh
+      _messaging.onTokenRefresh.listen((token) {
+        _fcmToken = token;
+        debugPrint('🔄 FCM Token refreshed: $token');
+        _onTokenRefresh?.call(token);
+      });
+
+      // Handle foreground messages
+      FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+
+      // Handle notification tap when app is in background
+      FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+
+      // Check if app was opened from a notification
+      final initialMessage = await _messaging.getInitialMessage();
+      if (initialMessage != null) {
+        _handleNotificationTap(initialMessage);
+      }
+
+      _isInitialized = true;
+      debugPrint('✅ Push notification service initialized');
     } catch (e) {
       debugPrint('❌ Failed to initialize push notifications: $e');
     }

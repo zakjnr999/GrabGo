@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -38,6 +39,15 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
 
   bool isPasswordVisible = false;
   bool isConfirmPasswordVisible = false;
+  bool agreedToTerms = false;
+
+  // Rate limiting for registration attempts
+  int _registrationAttempts = 0;
+  DateTime? _lastRegistrationAttempt;
+
+  // Internet check caching
+  DateTime? _lastInternetCheck;
+  bool? _lastInternetResult;
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -89,15 +99,21 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
   }
 
   Future<bool> _checkInternetConnection() async {
+    // Cache internet check for 5 seconds
+    if (_lastInternetCheck != null && DateTime.now().difference(_lastInternetCheck!) < const Duration(seconds: 5)) {
+      return _lastInternetResult!;
+    }
+
     try {
       final result = await InternetAddress.lookup('google.com');
-      if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-        return true;
-      }
+      _lastInternetResult = result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+      _lastInternetCheck = DateTime.now();
+      return _lastInternetResult!;
     } on SocketException {
+      _lastInternetResult = false;
+      _lastInternetCheck = DateTime.now();
       return false;
     }
-    return false;
   }
 
   Future<bool> _checkServerConnection() async {
@@ -130,18 +146,30 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
 
       if (emailController.text.trim().isEmpty) {
         emailError = "Please enter an email address";
-      } else if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(emailController.text.trim())) {
+      } else if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(emailController.text.trim())) {
         emailError = "Please enter a valid email address";
       }
 
       if (bdayController.text.trim().isEmpty) {
         birthdayError = "Please select your birthday";
+      } else {
+        try {
+          final birthday = DateTime.parse(bdayController.text.trim());
+          final age = DateTime.now().difference(birthday).inDays ~/ 365;
+          if (age < 13) {
+            birthdayError = "You must be at least 13 years old to register";
+          }
+        } catch (e) {
+          birthdayError = "Invalid date format";
+        }
       }
 
       if (passwordController.text.isEmpty) {
         passwordError = "Please enter a password";
       } else if (passwordController.text.length < 8) {
         passwordError = "Password must be at least 8 characters";
+      } else if (!RegExp(r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{8,}$').hasMatch(passwordController.text)) {
+        passwordError = "Password must contain letters and numbers";
       }
 
       if (confirmPasswordController.text.isEmpty) {
@@ -188,6 +216,42 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
     if (!_validateFields()) {
       return;
     }
+
+    // Check terms acceptance
+    if (!agreedToTerms) {
+      if (mounted) {
+        AppToastMessage.show(
+          context: context,
+          icon: Icons.info_outline,
+          message: "Please agree to the Terms & Conditions to continue",
+          backgroundColor: context.appColors.error,
+        );
+      }
+      return;
+    }
+
+    // Rate limiting to prevent spam registrations
+    if (_registrationAttempts >= 5) {
+      final timeSinceLastAttempt = DateTime.now().difference(_lastRegistrationAttempt!);
+      if (timeSinceLastAttempt < const Duration(minutes: 5)) {
+        final remainingSeconds = 300 - timeSinceLastAttempt.inSeconds;
+        final remainingMinutes = (remainingSeconds / 60).ceil();
+        if (mounted) {
+          AppToastMessage.show(
+            context: context,
+            icon: Icons.lock_clock,
+            message: "Too many registration attempts. Please wait $remainingMinutes minute(s) before trying again.",
+            backgroundColor: context.appColors.error,
+          );
+        }
+        return;
+      } else {
+        _registrationAttempts = 0;
+      }
+    }
+
+    _registrationAttempts++;
+    _lastRegistrationAttempt = DateTime.now();
 
     FocusManager.instance.primaryFocus?.unfocus();
     LoadingDialog.instance().show(context: context, text: "Checking connection...");
@@ -264,6 +328,10 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
           }
         }
 
+        // Reset registration attempts on successful registration
+        _registrationAttempts = 0;
+        _lastRegistrationAttempt = null;
+
         if (mounted) {
           AppToastMessage.show(
             context: context,
@@ -272,7 +340,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
             backgroundColor: Colors.green,
           );
 
-          context.push("/verifyPhone");
+          context.go("/verifyPhone");
         }
       } else {
         String errorMessage = "Username already taken.";
@@ -563,12 +631,19 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: LinearGradient(
-                            colors: [colors.accentGreen.withOpacity(0.2), colors.accentOrange.withOpacity(0.2)],
+                            colors: [
+                              colors.accentGreen.withValues(alpha: 0.2),
+                              colors.accentOrange.withValues(alpha: 0.2),
+                            ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           boxShadow: [
-                            BoxShadow(color: colors.accentGreen.withOpacity(0.2), blurRadius: 30, spreadRadius: 5),
+                            BoxShadow(
+                              color: colors.accentGreen.withValues(alpha: 0.2),
+                              blurRadius: 30,
+                              spreadRadius: 5,
+                            ),
                           ],
                         ),
                         child: Center(
@@ -785,6 +860,61 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                             ),
                           ),
 
+                          SizedBox(height: KSpacing.lg.h),
+
+                          // Terms & Conditions Checkbox
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Checkbox(
+                                value: agreedToTerms,
+                                onChanged: (value) {
+                                  setState(() {
+                                    agreedToTerms = value ?? false;
+                                  });
+                                },
+                                activeColor: colors.accentGreen,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                                ),
+                                side: BorderSide(color: colors.border, width: KBorderWidth.thick),
+                              ),
+                              Expanded(
+                                child: Padding(
+                                  padding: EdgeInsets.only(top: 12.h),
+                                  child: RichText(
+                                    text: TextSpan(
+                                      text: "I agree to the ",
+                                      style: TextStyle(
+                                        fontFamily: "Lato",
+                                        package: 'grab_go_shared',
+                                        color: colors.textSecondary,
+                                        fontSize: KTextSize.small.sp,
+                                      ),
+                                      children: [
+                                        TextSpan(
+                                          text: "Terms & Conditions",
+                                          style: TextStyle(
+                                            fontFamily: "Lato",
+                                            package: 'grab_go_shared',
+                                            fontWeight: FontWeight.w600,
+                                            color: colors.accentGreen,
+                                            fontSize: KTextSize.small.sp,
+                                          ),
+                                          recognizer: TapGestureRecognizer()
+                                            ..onTap = () {
+                                              // Navigate to terms page
+                                              context.push("/terms");
+                                            },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+
                           SizedBox(height: KSpacing.lg25.h),
 
                           GestureDetector(
@@ -793,14 +923,14 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                               height: 56.h,
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
-                                  colors: [colors.accentGreen, colors.accentGreen.withOpacity(0.8)],
+                                  colors: [colors.accentGreen, colors.accentGreen.withValues(alpha: 0.8)],
                                   begin: Alignment.centerLeft,
                                   end: Alignment.centerRight,
                                 ),
                                 borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: colors.accentGreen.withOpacity(0.4),
+                                    color: colors.accentGreen.withValues(alpha: 0.4),
                                     blurRadius: 20,
                                     offset: const Offset(0, 8),
                                   ),
@@ -891,7 +1021,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                                 border: Border.all(color: colors.border, width: 1.5),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: colors.shadow.withOpacity(0.05),
+                                    color: colors.shadow.withValues(alpha: 0.05),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
                                   ),
@@ -938,7 +1068,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                                 border: Border.all(color: colors.border, width: 1.5),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: colors.shadow.withOpacity(0.05),
+                                    color: colors.shadow.withValues(alpha: 0.05),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
                                   ),

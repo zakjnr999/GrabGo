@@ -74,45 +74,6 @@ class _StatusPageState extends State<StatusPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Offline banner
-                    if (provider.isOffline)
-                      Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 16.w),
-                        color: colors.accentOrange.withValues(alpha: 0.15),
-                        child: Row(
-                          children: [
-                            SvgPicture.asset(
-                              Assets.icons.wifiOff,
-                              package: "grab_go_shared",
-                              height: 18.h,
-                              width: 18.w,
-                              colorFilter: const ColorFilter.mode(AppColors.accentOrange, BlendMode.srcIn),
-                            ),
-                            SizedBox(width: 8.w),
-                            Expanded(
-                              child: Text(
-                                'You\'re offline. Please check your connection.',
-                                style: TextStyle(
-                                  color: colors.accentOrange,
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () => provider.refreshConnectivity(),
-                              child: SvgPicture.asset(
-                                Assets.icons.refresh,
-                                package: "grab_go_shared",
-                                height: 16.h,
-                                width: 16.w,
-                                colorFilter: const ColorFilter.mode(AppColors.accentOrange, BlendMode.srcIn),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     _buildHeader(colors),
                     SizedBox(height: KSpacing.lg.h),
                     _buildSectionHeader(

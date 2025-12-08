@@ -26,6 +26,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   @override
   void initState() {
     super.initState();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _initializeAnimations();
     _initializeApp();
   }
@@ -48,27 +49,44 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   }
 
   Future<void> _initializeApp() async {
-    await Future.delayed(const Duration(seconds: 3));
-    if (!mounted) return;
+    try {
+      await Future.wait([_performInitialization(), Future.delayed(const Duration(milliseconds: 2000))]);
 
-    final router = GoRouter.of(context);
-    final currentLocation = router.routerDelegate.currentConfiguration.uri.path;
+      if (!mounted) return;
 
-    if (currentLocation != '/' && currentLocation != '') {
-      return;
+      final router = GoRouter.of(context);
+      final currentLocation = router.routerDelegate.currentConfiguration.uri.path;
+
+      if (currentLocation != '/' && currentLocation != '') {
+        return;
+      }
+
+      final isFirst = await StorageService.isFirstLaunch();
+
+      if (isFirst) {
+        context.go("/onboarding");
+      } else {
+        await AuthGuard.checkAuthAndRedirect(context);
+      }
+    } catch (e) {
+      debugPrint('❌ Splash screen initialization error: $e');
+      if (mounted) {
+        context.go("/onboarding");
+      }
     }
+  }
 
-    final isFirst = await StorageService.isFirstLaunch();
-
-    if (isFirst) {
-      context.go("/onboarding");
-    } else {
-      await AuthGuard.checkAuthAndRedirect(context);
+  Future<void> _performInitialization() async {
+    try {
+      await Future.wait([CacheService.initialize()]);
+    } catch (e) {
+      debugPrint('⚠️ Initialization warning: $e');
     }
   }
 
   @override
   void dispose() {
+    _floatingController.stop();
     _fadeController.dispose();
     _scaleController.dispose();
     _floatingController.dispose();
@@ -78,7 +96,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(

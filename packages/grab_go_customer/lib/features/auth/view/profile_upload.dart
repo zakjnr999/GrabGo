@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:chopper/chopper.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_customer/shared/services/location_service.dart';
@@ -14,7 +12,6 @@ import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/features/auth/service/phone_auth_service.dart';
-import 'package:image_picker/image_picker.dart';
 
 class ProfileUpload extends StatefulWidget {
   const ProfileUpload({super.key});
@@ -92,18 +89,46 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
 
     // Navigate to homepage
     if (context.mounted) {
-      context.push("/homepage");
+      context.go("/homepage");
     }
   }
 
-  Future<void> _selectImage(ImageSource source) async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: source);
-    if (image != null) {
-      setState(() {
-        _selectedImage = File(image.path);
-      });
+  Future<void> _handleImageSelection(List<String> imagePaths) async {
+    if (imagePaths.isEmpty) return;
+
+    final file = File(imagePaths.first);
+
+    // Check file size (max 5MB)
+    final fileSize = await file.length();
+    if (fileSize > 5 * 1024 * 1024) {
+      if (mounted) {
+        AppToastMessage.show(
+          context: context,
+          icon: Icons.error_outline,
+          message: "Image size must be less than 5MB",
+          backgroundColor: context.appColors.error,
+        );
+      }
+      return;
     }
+
+    // Check file format
+    final extension = imagePaths.first.toLowerCase().split('.').last;
+    if (!['jpg', 'jpeg', 'png', 'webp'].contains(extension)) {
+      if (mounted) {
+        AppToastMessage.show(
+          context: context,
+          icon: Icons.error_outline,
+          message: "Only JPG, PNG, and WebP images are supported",
+          backgroundColor: context.appColors.error,
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      _selectedImage = file;
+    });
   }
 
   Future<void> _uploadProfileImage() async {
@@ -228,250 +253,6 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
     });
   }
 
-  Future<void> imagePickerModal(BuildContext context) async {
-    final colors = context.appColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    if (Platform.isIOS) {
-      return showCupertinoModalPopup(
-        context: context,
-        builder: (context) => CupertinoActionSheet(
-          actions: [
-            CupertinoActionSheetAction(
-              child: Text(
-                "Camera",
-                style: TextStyle(color: colors.textPrimary, fontSize: KTextSize.medium.sp, fontWeight: FontWeight.w600),
-              ),
-              onPressed: () {
-                _selectImage(ImageSource.camera);
-                context.pop();
-              },
-            ),
-            CupertinoActionSheetAction(
-              child: Text(
-                "Gallery",
-                style: TextStyle(color: colors.textPrimary, fontSize: KTextSize.medium.sp, fontWeight: FontWeight.w600),
-              ),
-              onPressed: () {
-                _selectImage(ImageSource.gallery);
-                context.pop();
-              },
-            ),
-          ],
-        ),
-      );
-    } else {
-      return showModalBottomSheet(
-        backgroundColor: Colors.transparent,
-        useSafeArea: true,
-        elevation: 0,
-        enableDrag: true,
-        isScrollControlled: true,
-        isDismissible: true,
-        context: context,
-        builder: (context) => Container(
-          decoration: BoxDecoration(
-            color: colors.backgroundPrimary,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(KBorderSize.borderRadius20),
-              topRight: Radius.circular(KBorderSize.borderRadius20),
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                margin: EdgeInsets.only(top: 12.h, bottom: 8.h),
-                width: 40.w,
-                height: 4.h,
-                decoration: BoxDecoration(color: colors.inputBorder, borderRadius: BorderRadius.circular(2.r)),
-              ),
-
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w, vertical: KSpacing.md.h),
-                child: Text(
-                  "Choose Photo Source",
-                  style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
-                ),
-              ),
-
-              SizedBox(height: KSpacing.sm.h),
-
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w),
-                child: Column(
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        _selectImage(ImageSource.camera);
-                        context.pop();
-                      },
-                      child: Container(
-                        padding: EdgeInsets.all(KSpacing.lg.r),
-                        decoration: BoxDecoration(
-                          color: colors.backgroundSecondary,
-                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                          border: Border.all(color: colors.inputBorder, width: 1),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              height: 48.h,
-                              width: 48.h,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    colors.accentOrange.withValues(alpha: 0.2),
-                                    colors.accentOrange.withValues(alpha: 0.1),
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius12),
-                              ),
-                              child: Center(
-                                child: SvgPicture.asset(
-                                  Assets.icons.camera,
-                                  package: 'grab_go_shared',
-                                  height: 24.h,
-                                  width: 24.h,
-                                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: KSpacing.lg.w),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Camera",
-                                    style: TextStyle(
-                                      fontSize: 16.sp,
-                                      fontWeight: FontWeight.w600,
-                                      color: colors.textPrimary,
-                                    ),
-                                  ),
-                                  SizedBox(height: 2.h),
-                                  Text(
-                                    "Take a new photo",
-                                    style: TextStyle(
-                                      fontSize: 13.sp,
-                                      fontWeight: FontWeight.w400,
-                                      color: colors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Icon(Icons.arrow_forward_ios, size: 16.h, color: colors.textSecondary),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: KSpacing.md.h),
-
-                    GestureDetector(
-                      onTap: () {
-                        _selectImage(ImageSource.gallery);
-                        context.pop();
-                      },
-                      child: Container(
-                        padding: EdgeInsets.all(KSpacing.lg.r),
-                        decoration: BoxDecoration(
-                          color: colors.backgroundSecondary,
-                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                          border: Border.all(color: colors.inputBorder, width: 1),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              height: 48.h,
-                              width: 48.h,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    colors.accentViolet.withValues(alpha: 0.2),
-                                    colors.accentViolet.withValues(alpha: 0.1),
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius12),
-                              ),
-                              child: Center(
-                                child: SvgPicture.asset(
-                                  Assets.icons.mediaImage,
-                                  package: 'grab_go_shared',
-                                  height: 24.h,
-                                  width: 24.h,
-                                  colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: KSpacing.lg.w),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Gallery",
-                                    style: TextStyle(
-                                      fontSize: 16.sp,
-                                      fontWeight: FontWeight.w600,
-                                      color: colors.textPrimary,
-                                    ),
-                                  ),
-                                  SizedBox(height: 2.h),
-                                  Text(
-                                    "Choose from library",
-                                    style: TextStyle(
-                                      fontSize: 13.sp,
-                                      fontWeight: FontWeight.w400,
-                                      color: colors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Icon(Icons.arrow_forward_ios, size: 16.h, color: colors.textSecondary),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              SizedBox(height: KSpacing.lg.h),
-
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w),
-                child: GestureDetector(
-                  onTap: () => context.pop(),
-                  child: Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.symmetric(vertical: 16.h),
-                    decoration: BoxDecoration(
-                      color: isDark ? colors.backgroundSecondary : colors.backgroundPrimary,
-                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                      border: Border.all(color: colors.inputBorder, width: 1.5),
-                    ),
-                    child: Center(
-                      child: Text(
-                        "Cancel",
-                        style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              SizedBox(height: KSpacing.lg25.h),
-            ],
-          ),
-        ),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
@@ -584,7 +365,8 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
                           bottom: 0,
                           right: 0,
                           child: GestureDetector(
-                            onTap: () => imagePickerModal(context),
+                            onTap: () =>
+                                ImagePickerSheet.show(context, maxImages: 1, onImagesSelected: _handleImageSelection),
                             child: Container(
                               height: 45.h,
                               width: 45.h,

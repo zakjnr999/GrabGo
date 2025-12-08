@@ -3,10 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart' show SizeExtension;
-import 'package:grab_go_customer/features/auth/view/onboarding_one.dart';
-import 'package:grab_go_customer/features/auth/view/onboarding_three.dart';
-import 'package:grab_go_customer/features/auth/view/onboarding_two.dart';
+import 'package:grab_go_customer/features/auth/view/onboarding_page.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class OnboardingMain extends StatefulWidget {
@@ -18,37 +17,49 @@ class OnboardingMain extends StatefulWidget {
 
 class _OnboardingMain extends State<OnboardingMain> {
   final PageController _controller = PageController();
-  int currentPage = 0;
+  final ValueNotifier<int> _currentPage = ValueNotifier(0);
+
+  @override
+  void initState() {
+    super.initState();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    _controller.addListener(_onPageChanged);
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // Preload all onboarding images for smooth transitions
+    _preloadImages();
+  }
+
+  void _preloadImages() {
+    precacheImage(Assets.images.dishOne.provider(package: 'grab_go_shared'), context);
+    precacheImage(Assets.images.dishTwo.provider(package: 'grab_go_shared'), context);
+    precacheImage(Assets.images.dishThree.provider(package: 'grab_go_shared'), context);
+  }
+
+  void _onPageChanged() {
+    final newPage = _controller.page?.round() ?? 0;
+    if (_currentPage.value != newPage) {
+      HapticFeedback.selectionClick();
+      _currentPage.value = newPage;
+    }
   }
 
   @override
   void dispose() {
+    _controller.removeListener(_onPageChanged);
     _controller.dispose();
+    _currentPage.dispose();
     super.dispose();
-  }
-
-  @override
-  void initState() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    _controller.addListener(() {
-      int newPage = _controller.page?.round() ?? 0;
-      if (currentPage != newPage) {
-        setState(() {
-          currentPage = newPage;
-        });
-      }
-    });
-    super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       extendBody: true,
       extendBodyBehindAppBar: true,
@@ -61,49 +72,68 @@ class _OnboardingMain extends State<OnboardingMain> {
           systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
           systemNavigationBarDividerColor: Colors.transparent,
         ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return Stack(
+        child: Stack(
+          children: [
+            PageView(
+              controller: _controller,
               children: [
-                PageView(
+                OnboardingPage(
+                  image: Assets.images.dishOne,
+                  title: AppStrings.onboardingOneMain,
+                  subtitle: AppStrings.onboardingOneSub,
+                  clipper: CurveInClip(),
                   controller: _controller,
-                  children: [
-                    OnboardingOne(controller: _controller),
-                    OnboardingTwo(controller: _controller),
-                    const OnboardingThree(),
-                  ],
                 ),
-                Positioned(
-                  bottom: MediaQuery.of(context).padding.bottom + 90.h,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(20.r),
-                        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
-                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, spreadRadius: 2)],
-                      ),
-                      child: SmoothPageIndicator(
+                OnboardingPage(
+                  image: Assets.images.dishTwo,
+                  title: AppStrings.onboardingTwoMain,
+                  subtitle: AppStrings.onboardingTwoSub,
+                  clipper: CurveOutClip(),
+                  controller: _controller,
+                ),
+                OnboardingPage(
+                  image: Assets.images.dishThree,
+                  title: AppStrings.onboardingThreeMain,
+                  subtitle: AppStrings.onboardingThreeSub,
+                  clipper: CurveInClip(),
+                  isLastPage: true,
+                ),
+              ],
+            ),
+            Positioned(
+              bottom: MediaQuery.of(context).padding.bottom + 90.h,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20.r),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, spreadRadius: 2)],
+                  ),
+                  child: ValueListenableBuilder<int>(
+                    valueListenable: _currentPage,
+                    builder: (context, page, child) {
+                      return SmoothPageIndicator(
                         controller: _controller,
                         count: 3,
                         effect: ExpandingDotsEffect(
-                          dotColor: Colors.white.withOpacity(0.4),
+                          dotColor: Colors.white.withValues(alpha: 0.4),
                           activeDotColor: colors.accentOrange,
                           dotHeight: 10.h,
                           dotWidth: 10.w,
                           expansionFactor: 4,
                           spacing: 8.w,
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
                 ),
-              ],
-            );
-          },
+              ),
+            ),
+          ],
         ),
       ),
     );

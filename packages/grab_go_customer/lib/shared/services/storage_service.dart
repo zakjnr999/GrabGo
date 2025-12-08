@@ -1,12 +1,14 @@
 import 'package:grab_go_shared/shared/services/cache_service.dart';
 
 class StorageService {
-  static Future<void> saveCredentials({
-    required String email,
-    required String password,
-    required bool rememberMe,
-  }) async {
-    await CacheService.saveCredentials(email: email, password: password, rememberMe: rememberMe);
+  /// Save user credentials for "Remember Me" feature
+  /// ✅ SECURITY: Only saves email and rememberMe flag, NOT password
+  static Future<void> saveCredentials({required String email, required bool rememberMe}) async {
+    await CacheService.saveCredentials(
+      email: email,
+      password: '', // Empty password for security
+      rememberMe: rememberMe,
+    );
   }
 
   static Future<Map<String, dynamic>> loadCredentials() async {

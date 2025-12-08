@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/location_provider.dart';
+import 'package:grab_go_customer/shared/widgets/category_skeleton.dart';
+import 'package:grab_go_customer/shared/widgets/food_item_skeleton.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/widgets/food_category.dart';
@@ -14,7 +16,6 @@ import 'package:grab_go_customer/shared/widgets/home_banner.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
 import 'package:grab_go_customer/features/home/model/filter_model.dart';
 import 'package:provider/provider.dart';
-import 'package:shimmer/shimmer.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -250,96 +251,7 @@ class _HomePageState extends State<HomePage> {
         List<FoodItem> allFoods = [];
 
         if (itemsProvider.categories.isEmpty) {
-          return Shimmer.fromColors(
-            baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-            highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              child: Column(
-                children: List.generate(4, (index) {
-                  return Container(
-                    margin: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 12.h),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade300, width: 0.5),
-                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                    ),
-                    child: Row(
-                      children: [
-                        // Image placeholder
-                        Container(
-                          height: size.height * 0.14,
-                          width: size.width * 0.32,
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(KBorderSize.borderRadius15),
-                              bottomLeft: Radius.circular(KBorderSize.borderRadius15),
-                            ),
-                          ),
-                        ),
-
-                        // Itemname placeholder
-                        Expanded(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 12.r, vertical: 8.h),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  width: 140.w,
-                                  height: 16.h,
-                                  decoration: BoxDecoration(
-                                    color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                                    borderRadius: BorderRadius.circular(4.r),
-                                  ),
-                                ),
-                                SizedBox(height: 6.h),
-                                // Rating and delivery time placeholder
-                                Container(
-                                  width: 120.w,
-                                  height: 16.h,
-                                  decoration: BoxDecoration(
-                                    color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                                    borderRadius: BorderRadius.circular(4.r),
-                                  ),
-                                ),
-                                SizedBox(height: 10.h),
-                                // Price and cart placeholder
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    //Price placeholder
-                                    Container(
-                                      width: 100.w,
-                                      height: 25.h,
-                                      decoration: BoxDecoration(
-                                        color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                                        borderRadius: BorderRadius.circular(4.r),
-                                      ),
-                                    ),
-
-                                    // Cart icon placeholder
-                                    Container(
-                                      height: 32.h,
-                                      width: 32.w,
-                                      decoration: BoxDecoration(
-                                        color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-              ),
-            ),
-          );
+          return FoodItemSkeleton(colors: colors, isDark: isDark, size: size);
         }
 
         List<FoodCategoryModel> categoriesToProcess = itemsProvider.categories;
@@ -439,7 +351,7 @@ class _HomePageState extends State<HomePage> {
         }
 
         if (recommendedFoods.isEmpty) {
-          _activeFilter.isActive
+          return _activeFilter.isActive
               ? Container(
                   height: size.height * 0.15,
                   margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
@@ -466,96 +378,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                 )
-              : Shimmer.fromColors(
-                  baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-                  highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.vertical,
-                    child: Column(
-                      children: List.generate(4, (index) {
-                        return Container(
-                          margin: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 12.h),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade300, width: 0.5),
-                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                          ),
-                          child: Row(
-                            children: [
-                              // Image placeholder
-                              Container(
-                                height: size.height * 0.14,
-                                width: size.width * 0.32,
-                                decoration: BoxDecoration(
-                                  color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                                  borderRadius: const BorderRadius.only(
-                                    topLeft: Radius.circular(KBorderSize.borderRadius15),
-                                    bottomLeft: Radius.circular(KBorderSize.borderRadius15),
-                                  ),
-                                ),
-                              ),
-
-                              // Itemname placeholder
-                              Expanded(
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 12.r, vertical: 8.h),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Container(
-                                        width: 140.w,
-                                        height: 16.h,
-                                        decoration: BoxDecoration(
-                                          color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                                          borderRadius: BorderRadius.circular(4.r),
-                                        ),
-                                      ),
-                                      SizedBox(height: 6.h),
-                                      // Rating and delivery time placeholder
-                                      Container(
-                                        width: 120.w,
-                                        height: 16.h,
-                                        decoration: BoxDecoration(
-                                          color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                                          borderRadius: BorderRadius.circular(4.r),
-                                        ),
-                                      ),
-                                      SizedBox(height: 10.h),
-                                      // Price and cart placeholder
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          //Price placeholder
-                                          Container(
-                                            width: 100.w,
-                                            height: 16.h,
-                                            decoration: BoxDecoration(
-                                              color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                                              borderRadius: BorderRadius.circular(4.r),
-                                            ),
-                                          ),
-
-                                          // Cart icon placeholder
-                                          Container(
-                                            height: 32.h,
-                                            width: 32.w,
-                                            decoration: BoxDecoration(
-                                              color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                                              shape: BoxShape.circle,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-                    ),
-                  ),
-                );
+              : FoodItemSkeleton(colors: colors, isDark: isDark, size: size);
         }
 
         return ListView.builder(
@@ -609,147 +432,11 @@ class _HomePageState extends State<HomePage> {
     return Builder(
       builder: (context) {
         if (itemsProvider.isLoading) {
-          return Shimmer.fromColors(
-            baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-            highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.only(left: 10.w),
-              child: Row(
-                children: List.generate(4, (index) {
-                  return Container(
-                    margin: EdgeInsets.symmetric(horizontal: 10.w),
-                    height: 95.h,
-                    width: size.width * 0.22,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade300, width: 0.5),
-                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        //Emoji placeholder
-                        Container(
-                          height: 40.h,
-                          width: 40.w,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                          ),
-                        ),
-                        SizedBox(height: KSpacing.md.h),
-
-                        //Category name placeholder
-                        Container(
-                          height: 16.h,
-                          width: 50.w,
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(4.r),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-              ),
-            ),
-          );
+          return CategorySkeleton(colors: colors, isDark: isDark, size: size);
         } else if (itemsProvider.error != null) {
-          return Shimmer.fromColors(
-            baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-            highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.only(left: 10.w),
-              child: Row(
-                children: List.generate(4, (index) {
-                  return Container(
-                    margin: EdgeInsets.symmetric(horizontal: 10.w),
-                    height: 95.h,
-                    width: size.width * 0.22,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade300, width: 0.5),
-                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        //Emoji placeholder
-                        Container(
-                          height: 40.h,
-                          width: 40.w,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                          ),
-                        ),
-                        SizedBox(height: KSpacing.md.h),
-
-                        //Category name placeholder
-                        Container(
-                          height: 16.h,
-                          width: 50.w,
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(4.r),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-              ),
-            ),
-          );
+          return CategorySkeleton(colors: colors, isDark: isDark, size: size);
         } else if (itemsProvider.categories.isEmpty) {
-          return Shimmer.fromColors(
-            baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-            highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.only(left: 10.w),
-              child: Row(
-                children: List.generate(4, (index) {
-                  return Container(
-                    margin: EdgeInsets.symmetric(horizontal: 10.w),
-                    height: 95.h,
-                    width: size.width * 0.22,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade300, width: 0.5),
-                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        //Emoji placeholder
-                        Container(
-                          height: 40.h,
-                          width: 40.w,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                          ),
-                        ),
-                        SizedBox(height: KSpacing.md.h),
-
-                        //Category name placeholder
-                        Container(
-                          height: 16.h,
-                          width: 50.w,
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(4.r),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-              ),
-            ),
-          );
+          return CategorySkeleton(colors: colors, isDark: isDark, size: size);
         }
 
         List<FoodCategoryModel> categoriesToShow = itemsProvider.categories;

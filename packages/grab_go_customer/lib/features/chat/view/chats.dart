@@ -12,6 +12,7 @@ import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_shared/shared/widgets/chat_skeleton.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -737,15 +738,13 @@ class _ChatsState extends State<Chats> {
             // Conversations List
             Expanded(
               child: _isLoading
-                  ? Center(
-                      child: SizedBox(
-                        width: 24.w,
-                        height: 24.w,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          valueColor: AlwaysStoppedAnimation<Color>(colors.accentOrange),
-                        ),
-                      ),
+                  ? ListView.builder(
+                      padding: EdgeInsets.symmetric(horizontal: 20.w),
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: 8,
+                      itemBuilder: (context, index) {
+                        return ChatSkeleton(colors: colors, isDark: isDark);
+                      },
                     )
                   : (_filteredConversations.isEmpty && _pendingOrders.isEmpty && !_hasAttemptedLoad)
                   ? const SizedBox.shrink() // Still waiting for API response

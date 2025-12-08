@@ -151,9 +151,6 @@ class UserService {
 
       debugPrint('✅ 2️⃣ User data saved successfully!');
       debugPrint('   Ready for 3️⃣ Auto-login on next app launch');
-
-      // Register FCM token after login
-      _registerFcmTokenAfterLogin();
     } catch (e) {
       debugPrint('❌ Error saving user data: $e');
     }

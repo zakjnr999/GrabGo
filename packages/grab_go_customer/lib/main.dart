@@ -30,13 +30,9 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
   await Firebase.initializeApp();
 
-  // Set up background message handler
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-  // Validate environment configuration before proceeding
   AppConfig.validateConfiguration();
   await CacheService.initialize();
   await ImageCacheService.initialize();
@@ -65,9 +61,6 @@ Future<void> _initializeBackgroundServices() async {
     await GoogleSignInService().initialize();
     await UserService().initialize();
     await ChatSocketService().initialize();
-
-    // Push notifications will be initialized after user grants permission
-    // on the notification permission screen
   } catch (e) {
     debugPrint('Error initializing background services: $e');
   }
@@ -85,8 +78,6 @@ class _MyAppState extends State<GrabGoCustomerApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Clear badge when app starts
-    PushNotificationService().clearBadge();
   }
 
   @override
@@ -98,8 +89,9 @@ class _MyAppState extends State<GrabGoCustomerApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // Clear badge when app comes to foreground
-      PushNotificationService().clearBadge();
+      if (PushNotificationService().isInitialized) {
+        PushNotificationService().clearBadge();
+      }
     }
   }
 

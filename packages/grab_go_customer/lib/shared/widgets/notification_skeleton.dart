@@ -17,22 +17,14 @@ class NotificationSkeleton extends StatelessWidget {
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
         border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-        boxShadow: [
-          BoxShadow(
-            color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
-            spreadRadius: 0,
-            blurRadius: 12,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Icon/Avatar Skeleton
           Shimmer.fromColors(
-            baseColor: Colors.grey[300]!,
-            highlightColor: Colors.grey[100]!,
+            baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+            highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
             child: Container(
               height: 36.h,
               width: 36.w,
@@ -47,8 +39,8 @@ class NotificationSkeleton extends StatelessWidget {
               children: [
                 // Title
                 Shimmer.fromColors(
-                  baseColor: Colors.grey[300]!,
-                  highlightColor: Colors.grey[100]!,
+                  baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                  highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
                   child: Container(
                     width: 150.w,
                     height: 14.h,
@@ -58,8 +50,8 @@ class NotificationSkeleton extends StatelessWidget {
                 SizedBox(height: 8.h),
                 // Message Line 1
                 Shimmer.fromColors(
-                  baseColor: Colors.grey[300]!,
-                  highlightColor: Colors.grey[100]!,
+                  baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                  highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
                   child: Container(
                     width: double.infinity,
                     height: 12.h,
@@ -69,8 +61,8 @@ class NotificationSkeleton extends StatelessWidget {
                 SizedBox(height: 6.h),
                 // Message Line 2 (shorter)
                 Shimmer.fromColors(
-                  baseColor: Colors.grey[300]!,
-                  highlightColor: Colors.grey[100]!,
+                  baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                  highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
                   child: Container(
                     width: 200.w,
                     height: 12.h,
@@ -80,8 +72,8 @@ class NotificationSkeleton extends StatelessWidget {
                 SizedBox(height: 12.h),
                 // Timestamp
                 Shimmer.fromColors(
-                  baseColor: Colors.grey[300]!,
-                  highlightColor: Colors.grey[100]!,
+                  baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                  highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
                   child: Container(
                     width: 60.w,
                     height: 10.h,

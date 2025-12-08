@@ -270,7 +270,7 @@ class StatusProvider with ChangeNotifier {
           _stories = cachedStories.map((story) {
             return story.copyWith(isViewed: _viewedRestaurantIds.contains(story.restaurantId));
           }).toList();
-          _isLoadingStories = false;
+          _isLoadingStories = false; // Hide shimmer, sync in background
           _hasLoadedStories = true;
           notifyListeners();
           if (kDebugMode) {
@@ -356,7 +356,7 @@ class StatusProvider with ChangeNotifier {
       await _loadCachedViewedStatuses();
       if (_cachedViewedStatuses.isNotEmpty) {
         _statuses = _cachedViewedStatuses;
-        _isLoadingStatuses = false;
+        _isLoadingStatuses = false; // Hide shimmer, sync in background
         _hasLoadedStatuses = true;
         notifyListeners();
         if (kDebugMode) {
