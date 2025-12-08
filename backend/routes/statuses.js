@@ -1507,7 +1507,9 @@ router.post(
                                 restaurantName: restaurant?.name || 'Restaurant',
                                 actorId: req.user._id,
                                 actorName: req.user.name,
-                                actorAvatar: req.user.profileImage
+                                actorAvatar: req.user.profileImage,
+                                replyText: text,
+                                commentText: parentComment.text
                             },
                             io  // Real-time Socket.IO emission
                         );
@@ -1658,6 +1660,7 @@ router.post(
                                     actorName: req.user.name,
                                     actorAvatar: req.user.profileImage,
                                     reactionType: type,
+                                    commentText: comment.text,
                                     actors: [{
                                         actorId: req.user._id,
                                         actorName: req.user.name,

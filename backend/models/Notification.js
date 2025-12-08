@@ -24,6 +24,17 @@ const notificationSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    // Grouping fields
+    actors: [{
+        actorId: { type: String, required: true },
+        actorName: { type: String, required: true },
+        actorAvatar: String,
+        reactedAt: { type: Date, default: Date.now }
+    }],
+    actorCount: {
+        type: Number,
+        default: 1
+    },
     // Navigation data
     data: {
         statusId: String,
@@ -39,12 +50,8 @@ const notificationSchema = new mongoose.Schema({
         actorName: String,
         actorAvatar: String,
         reactionType: String,
-        // Grouping data
-        actors: [{
-            actorId: mongoose.Schema.Types.ObjectId,
-            actorName: String,
-            actorAvatar: String
-        }]
+        commentText: String,
+        replyText: String
     }
 }, {
     timestamps: true
@@ -54,5 +61,8 @@ const notificationSchema = new mongoose.Schema({
 notificationSchema.index({ user: 1, createdAt: -1 });
 notificationSchema.index({ user: 1, isRead: 1 });
 notificationSchema.index({ user: 1, type: 1 });
+// Index for grouping queries
+notificationSchema.index({ user: 1, type: 1, 'data.commentId': 1, createdAt: -1 });
+notificationSchema.index({ user: 1, type: 1, 'data.parentCommentId': 1, createdAt: -1 });
 
 module.exports = mongoose.model('Notification', notificationSchema);

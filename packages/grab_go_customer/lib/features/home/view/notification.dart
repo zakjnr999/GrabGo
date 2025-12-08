@@ -12,6 +12,33 @@ import 'package:grab_go_customer/shared/widgets/notification_skeleton.dart';
 import 'package:grab_go_shared/shared/services/socket_service.dart';
 import 'dart:async';
 
+class Actor {
+  final String actorId;
+  final String actorName;
+  final String? actorAvatar;
+  final DateTime reactedAt;
+
+  Actor({required this.actorId, required this.actorName, this.actorAvatar, required this.reactedAt});
+
+  factory Actor.fromJson(Map<String, dynamic> json) {
+    return Actor(
+      actorId: json['actorId'] ?? '',
+      actorName: json['actorName'] ?? '',
+      actorAvatar: json['actorAvatar'],
+      reactedAt: json['reactedAt'] != null ? DateTime.parse(json['reactedAt']) : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'actorId': actorId,
+      'actorName': actorName,
+      'actorAvatar': actorAvatar,
+      'reactedAt': reactedAt.toIso8601String(),
+    };
+  }
+}
+
 class NotificationModel {
   final String id;
   final String title;
@@ -20,6 +47,8 @@ class NotificationModel {
   final NotificationType type;
   final bool isRead;
   final Map<String, dynamic>? data;
+  final List<Actor>? actors;
+  final int actorCount;
 
   NotificationModel({
     required this.id,
@@ -29,6 +58,8 @@ class NotificationModel {
     required this.type,
     this.isRead = false,
     this.data,
+    this.actors,
+    this.actorCount = 1,
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
@@ -40,6 +71,8 @@ class NotificationModel {
       type: _parseNotificationType(json['type']),
       isRead: json['isRead'] ?? false,
       data: json['data'],
+      actors: json['actors'] != null ? (json['actors'] as List).map((a) => Actor.fromJson(a)).toList() : null,
+      actorCount: json['actorCount'] ?? 1,
     );
   }
 
@@ -52,6 +85,8 @@ class NotificationModel {
       'type': type.toString().split('.').last,
       'isRead': isRead,
       'data': data,
+      'actors': actors?.map((a) => a.toJson()).toList(),
+      'actorCount': actorCount,
     };
   }
 
@@ -670,6 +705,43 @@ class _NotificationState extends State<Notification> {
                     ],
                   ),
                   SizedBox(height: 6.h),
+                  // Show actor avatars for grouped notifications
+                  if (notification.actorCount > 1 &&
+                      notification.actors != null &&
+                      notification.actors!.isNotEmpty) ...[
+                    Row(
+                      children: [
+                        ...notification.actors!.take(3).map((actor) {
+                          return Padding(
+                            padding: EdgeInsets.only(right: 4.w),
+                            child: CircleAvatar(
+                              radius: 12.r,
+                              backgroundImage: actor.actorAvatar != null && actor.actorAvatar!.isNotEmpty
+                                  ? NetworkImage(actor.actorAvatar!)
+                                  : null,
+                              backgroundColor: colors.accentViolet.withValues(alpha: 0.2),
+                              child: actor.actorAvatar == null || actor.actorAvatar!.isEmpty
+                                  ? Text(
+                                      actor.actorName.isNotEmpty ? actor.actorName[0].toUpperCase() : '?',
+                                      style: TextStyle(
+                                        fontSize: 10.sp,
+                                        fontWeight: FontWeight.w600,
+                                        color: colors.accentViolet,
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                          );
+                        }),
+                        if (notification.actorCount > 3)
+                          Text(
+                            '+${notification.actorCount - 3}',
+                            style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
+                          ),
+                      ],
+                    ),
+                    SizedBox(height: 6.h),
+                  ],
                   Text(
                     notification.message,
                     style: TextStyle(
