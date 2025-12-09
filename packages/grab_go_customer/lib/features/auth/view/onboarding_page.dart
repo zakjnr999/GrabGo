@@ -76,7 +76,6 @@ class _OnboardingPageState extends State<OnboardingPage> with SingleTickerProvid
         context.go("/login");
       }
     } catch (e) {
-      debugPrint('❌ Error saving onboarding state: $e');
       if (mounted) {
         context.go("/login");
       }
@@ -96,7 +95,6 @@ class _OnboardingPageState extends State<OnboardingPage> with SingleTickerProvid
         top: false,
         child: Stack(
           children: [
-            // Image with overlay gradient
             Align(
               alignment: Alignment.topCenter,
               child: Stack(
@@ -121,7 +119,6 @@ class _OnboardingPageState extends State<OnboardingPage> with SingleTickerProvid
               ),
             ),
 
-            // Content with animations
             Align(
               alignment: Alignment.bottomCenter,
               child: ClipPath(

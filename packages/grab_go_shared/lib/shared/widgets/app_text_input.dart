@@ -7,6 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../utils/constants.dart';
 import 'package:intl/intl.dart';
 import '../utils/app_colors_extension.dart';
+import 'custom_date_picker.dart';
 
 class AppTextInput extends StatelessWidget {
   final TextEditingController? controller;
@@ -17,6 +18,7 @@ class AppTextInput extends StatelessWidget {
   final Color? borderColor;
   final Color? fillColor;
   final Color? borderActiveColor;
+  final Color? cursorColor;
   final double borderRadius;
   final EdgeInsetsGeometry? contentPadding;
   final TextStyle? textStyle;
@@ -39,6 +41,7 @@ class AppTextInput extends StatelessWidget {
     this.borderColor,
     this.fillColor,
     this.borderActiveColor,
+    this.cursorColor,
     this.borderRadius = 8.0,
     this.contentPadding,
     this.textStyle,
@@ -108,38 +111,22 @@ class AppTextInput extends StatelessWidget {
           },
         );
       } else {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        final pickedDate = await showDatePicker(
+        // Android - Custom bottom sheet date picker
+        showModalBottomSheet(
           context: context,
-          initialDate: DateTime(2005, 1, 1),
-          firstDate: DateTime(1900),
-          lastDate: DateTime.now(),
-          helpText: 'Select your birth date',
-          builder: (context, child) {
-            return Theme(
-              data: Theme.of(context).copyWith(
-                colorScheme: isDark
-                    ? ColorScheme.dark(
-                        primary: colors.accentOrange,
-                        onPrimary: colors.backgroundPrimary,
-                        onSurface: colors.textPrimary,
-                        surface: colors.backgroundSecondary,
-                      )
-                    : ColorScheme.light(
-                        primary: colors.accentOrange,
-                        onPrimary: Colors.white,
-                        onSurface: colors.textPrimary,
-                        surface: colors.backgroundPrimary,
-                      ),
-              ),
-              child: child!,
+          backgroundColor: Colors.transparent,
+          isScrollControlled: true,
+          builder: (_) {
+            return CustomDatePicker(
+              initialDate: DateTime(2005, 1, 1),
+              firstDate: DateTime(1900),
+              lastDate: DateTime.now(),
+              onDateSelected: (DateTime selectedDate) {
+                controller!.text = dateFormatter.format(selectedDate);
+              },
             );
           },
         );
-
-        if (pickedDate != null) {
-          controller!.text = dateFormatter.format(pickedDate);
-        }
       }
     }
   }
@@ -159,47 +146,60 @@ class AppTextInput extends StatelessWidget {
           ),
           SizedBox(height: KSpacing.sm.h),
         ],
-        TextField(
-          controller: controller,
-          cursorOpacityAnimates: true,
-          keyboardType: keyboardType,
-          obscureText: obscureText,
-          enabled: enabled,
-          readOnly: readOnly,
-          cursorColor: colors.accentOrange,
-          onTap: () => _handleTap(context),
-          style:
-              textStyle ??
-              TextStyle(fontSize: KTextSize.small.sp, color: colors.textPrimary, fontWeight: FontWeight.w500),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: fillColor ?? colors.inputBorder,
-            hintText: hintText,
-            hintStyle: hintStyle ?? TextStyle(fontSize: 13.sp, color: colors.textSecondary.withOpacity(0.7)),
-            prefixIcon: prefixIcon,
-            suffixIcon: suffixIcon,
-            errorText: errorText,
-            errorStyle: TextStyle(fontSize: KTextSize.extraSmall.sp, color: colors.error, fontWeight: FontWeight.w500),
-            errorMaxLines: 2,
-            contentPadding: contentPadding ?? const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(borderRadius),
-              borderSide: BorderSide(color: errorText != null ? colors.error : (borderColor ?? Colors.transparent)),
+        Theme(
+          data: Theme.of(context).copyWith(
+            textSelectionTheme: TextSelectionThemeData(
+              cursorColor: cursorColor ?? colors.accentOrange,
+              selectionColor: cursorColor?.withOpacity(0.3),
+              selectionHandleColor: cursorColor ?? colors.accentOrange,
             ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(borderRadius),
-              borderSide: BorderSide(
-                color: errorText != null ? colors.error : (borderActiveColor ?? colors.accentOrange),
-                width: KBorderWidth.thick,
+          ),
+          child: TextField(
+            controller: controller,
+            cursorOpacityAnimates: true,
+            keyboardType: keyboardType,
+            obscureText: obscureText,
+            enabled: enabled,
+            readOnly: readOnly,
+            cursorColor: cursorColor ?? colors.accentOrange,
+            onTap: () => _handleTap(context),
+            style:
+                textStyle ??
+                TextStyle(fontSize: KTextSize.small.sp, color: colors.textPrimary, fontWeight: FontWeight.w500),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: fillColor ?? colors.inputBorder,
+              hintText: hintText,
+              hintStyle: hintStyle ?? TextStyle(fontSize: 13.sp, color: colors.textSecondary.withOpacity(0.7)),
+              prefixIcon: prefixIcon,
+              suffixIcon: suffixIcon,
+              errorText: errorText,
+              errorStyle: TextStyle(
+                fontSize: KTextSize.extraSmall.sp,
+                color: colors.error,
+                fontWeight: FontWeight.w500,
               ),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(borderRadius),
-              borderSide: BorderSide(color: colors.error),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(borderRadius),
-              borderSide: BorderSide(color: colors.error, width: KBorderWidth.thick),
+              errorMaxLines: 2,
+              contentPadding: contentPadding ?? const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(borderRadius),
+                borderSide: BorderSide(color: errorText != null ? colors.error : (borderColor ?? Colors.transparent)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(borderRadius),
+                borderSide: BorderSide(
+                  color: errorText != null ? colors.error : (borderActiveColor ?? colors.accentOrange),
+                  width: KBorderWidth.thick,
+                ),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(borderRadius),
+                borderSide: BorderSide(color: colors.error),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(borderRadius),
+                borderSide: BorderSide(color: colors.error, width: KBorderWidth.thick),
+              ),
             ),
           ),
         ),

@@ -41,7 +41,7 @@
     "**/ios/Pods/**": true
   },
   "dart.analysisMaxFileSize": 1000,
-  "editor.minimap.enabled": false,
+  "editor.minimap.enabled": true,
   "git.autorefresh": false,
   "git.autofetch": false,
   "editor.minimap.showSlider": "always"

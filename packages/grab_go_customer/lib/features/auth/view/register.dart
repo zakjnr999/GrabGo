@@ -15,6 +15,7 @@ import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/auth/service/phone_auth_service.dart';
+import 'package:intl/intl.dart';
 
 class Register extends StatefulWidget {
   const Register({super.key});
@@ -151,8 +152,14 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         birthdayError = "Please select your birthday";
       } else {
         try {
-          final birthday = DateTime.parse(bdayController.text.trim());
-          final age = DateTime.now().difference(birthday).inDays ~/ 365;
+          final selectedDate = DateFormat('MMM d, yyyy').parse(bdayController.text.trim());
+          final today = DateTime.now();
+          final age =
+              today.year -
+              selectedDate.year -
+              ((today.month < selectedDate.month || (today.month == selectedDate.month && today.day < selectedDate.day))
+                  ? 1
+                  : 0);
           if (age < 13) {
             birthdayError = "You must be at least 13 years old to register";
           }
@@ -697,6 +704,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                             borderColor: colors.inputBorder,
                             fillColor: colors.backgroundSecondary,
                             borderActiveColor: colors.accentGreen,
+                            cursorColor: colors.accentGreen,
                             borderRadius: KBorderSize.borderRadius15,
                             contentPadding: EdgeInsets.all(KSpacing.md15.r),
                             keyboardType: TextInputType.text,
@@ -722,6 +730,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                             borderColor: colors.inputBorder,
                             fillColor: colors.backgroundSecondary,
                             borderActiveColor: colors.accentGreen,
+                            cursorColor: colors.accentGreen,
                             borderRadius: KBorderSize.borderRadius15,
                             contentPadding: EdgeInsets.all(KSpacing.md15.r),
                             keyboardType: TextInputType.emailAddress,
@@ -745,6 +754,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                             hintText: AppStrings.registerBdayHint,
                             fillColor: colors.backgroundSecondary,
                             borderActiveColor: colors.accentGreen,
+                            cursorColor: colors.accentGreen,
                             borderColor: colors.inputBorder,
                             borderRadius: KBorderSize.borderRadius15,
                             contentPadding: EdgeInsets.all(KSpacing.md15.r),
@@ -771,6 +781,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                             hintText: AppStrings.registerPasswordHint,
                             fillColor: colors.backgroundSecondary,
                             borderActiveColor: colors.accentGreen,
+                            cursorColor: colors.accentGreen,
                             borderColor: colors.inputBorder,
                             borderRadius: KBorderSize.borderRadius15,
                             contentPadding: EdgeInsets.all(KSpacing.md15.r),
@@ -814,6 +825,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                             fillColor: colors.backgroundSecondary,
                             borderColor: colors.inputBorder,
                             borderActiveColor: colors.accentGreen,
+                            cursorColor: colors.accentGreen,
                             borderRadius: KBorderSize.borderRadius15,
                             contentPadding: EdgeInsets.all(KSpacing.md15.r),
                             obscureText: !isConfirmPasswordVisible,
