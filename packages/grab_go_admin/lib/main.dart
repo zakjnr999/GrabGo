@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:grab_go_admin/shared/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_shared/shared/services/secure_storage_service.dart';
 import 'features/auth/view/login_screen.dart';
 import 'features/dashboard/view/admin_dashboard.dart';
 import 'features/restaurants/viewmodel/restaurant_provider.dart';
@@ -21,6 +22,10 @@ void main() async {
     rethrow;
   }
 
+  // Initialize secure storage first (for encrypted token storage)
+  await SecureStorageService.initialize();
+
+  // Then initialize token service
   await TokenService.initialize();
   runApp(const GrabGoAdmin());
 }

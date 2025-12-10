@@ -12,8 +12,8 @@ import 'package:grab_go_customer/features/order/service/order_service_wrapper.da
 import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:grab_go_shared/shared/widgets/pulsing_dot.dart';
 import 'package:grab_go_shared/shared/widgets/swipe_to_reply.dart';
+import 'package:grab_go_shared/shared/widgets/recording_lock_button.dart';
 import 'package:intl/intl.dart';
 
 class ChatMessage {
@@ -134,7 +134,14 @@ class _ChatDetailState extends State<ChatDetail> {
   // Voice recording state
   final VoiceRecorderService _voiceRecorder = VoiceRecorderService();
   bool _isRecording = false;
+  bool _isRecordingLocked = false;
   Duration _recordingDuration = Duration.zero;
+
+  // Mic button drag state
+  double _micDragOffsetX = 0;
+  double _micDragOffsetY = 0;
+  int _redDotAnimationKey = 0;
+  int _arrowAnimationKey = 0;
 
   // Message keys for scroll-to-reply
   final Map<String, GlobalKey> _messageKeys = {};
@@ -1190,7 +1197,10 @@ class _ChatDetailState extends State<ChatDetail> {
 
     setState(() {
       _isRecording = false;
+      _isRecordingLocked = false;
       _recordingDuration = Duration.zero;
+      _micDragOffsetX = 0;
+      _micDragOffsetY = 0;
     });
 
     if (filePath == null || filePath.isEmpty) return;
@@ -1211,9 +1221,53 @@ class _ChatDetailState extends State<ChatDetail> {
     _voiceRecorder.cancelRecording();
     setState(() {
       _isRecording = false;
+      _isRecordingLocked = false;
       _recordingDuration = Duration.zero;
+      _micDragOffsetX = 0;
+      _micDragOffsetY = 0;
     });
     HapticFeedback.lightImpact();
+  }
+
+  void _lockRecording() {
+    if (!_isRecording) return;
+
+    setState(() {
+      _isRecordingLocked = true;
+      _micDragOffsetX = 0;
+      _micDragOffsetY = 0;
+    });
+    HapticFeedback.mediumImpact();
+  }
+
+  void _handleMicDragUpdate(DragUpdateDetails details) {
+    if (!_isRecording || _isRecordingLocked) return;
+
+    setState(() {
+      _micDragOffsetX += details.delta.dx;
+      _micDragOffsetY += details.delta.dy;
+
+      // Clamp to prevent dragging right or down
+      if (_micDragOffsetX > 0) _micDragOffsetX = 0;
+      if (_micDragOffsetY > 0) _micDragOffsetY = 0;
+    });
+
+    // Check for lock threshold (slide up -80px)
+    if (_micDragOffsetY < -80) {
+      _lockRecording();
+    }
+
+    // Check for cancel threshold (slide left -120px)
+    if (_micDragOffsetX < -120) {
+      _cancelRecording();
+    }
+  }
+
+  void _handleMicDragEnd(DragEndDetails details) {
+    if (!_isRecording || _isRecordingLocked) return;
+
+    // If not locked and released, send the recording
+    _stopAndSendRecording();
   }
 
   Future<void> _sendVoiceMessage(String audioPath, double duration) async {
@@ -2149,7 +2203,7 @@ class _ChatDetailState extends State<ChatDetail> {
               topRight: Radius.circular(KBorderSize.borderRadius4),
             ),
           ),
-          child: _isRecording ? _buildRecordingUI(colors) : _buildTextInputUI(colors, hasText),
+          child: _buildTextInputUI(colors, hasText),
         ),
         // Emoji picker
         if (_showEmojiPicker)
@@ -2187,197 +2241,281 @@ class _ChatDetailState extends State<ChatDetail> {
   }
 
   Widget _buildTextInputUI(AppColorsExtension colors, bool hasText) {
-    return Row(
+    return Stack(
+      clipBehavior: Clip.none,
       children: [
-        // Emoji button
-        GestureDetector(
-          onTap: _toggleEmojiPicker,
-          child: SvgPicture.asset(
-            _showEmojiPicker ? Assets.icons.keyboard : Assets.icons.emoji,
-            package: 'grab_go_shared',
-            width: 24.w,
-            height: 24.w,
-            colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-          ),
-        ),
-        SizedBox(width: 8.w),
-        // Image attachment button
-        GestureDetector(
-          onTap: () => _showImagePicker(colors),
-          child: SvgPicture.asset(
-            Assets.icons.camera,
-            package: 'grab_go_shared',
-            width: 24.w,
-            height: 24.w,
-            colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-          ),
-        ),
-        SizedBox(width: 10.w),
-        Expanded(
-          child: Container(
-            constraints: BoxConstraints(maxHeight: 120.h),
-            decoration: BoxDecoration(
-              color: colors.backgroundSecondary,
-              borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-              border: Border.all(color: colors.border, width: 1),
-            ),
-            child: TextField(
-              controller: _messageController,
-              focusNode: _messageFocusNode,
-              maxLines: null,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: InputDecoration(
-                hintText: "Type a message...",
-                hintStyle: TextStyle(color: colors.textSecondary.withValues(alpha: 0.6), fontSize: 14.sp),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-              ),
-              style: TextStyle(color: colors.textPrimary, fontSize: 14.sp),
-              onChanged: _handleMessageChanged,
-              onSubmitted: (_) => _sendMessage(),
-              onTap: () {
-                if (_showEmojiPicker) {
-                  setState(() => _showEmojiPicker = false);
-                }
-              },
-            ),
-          ),
-        ),
-        SizedBox(width: 12.w),
-        // Send button (when text) or Voice button (when empty)
-        if (hasText)
-          GestureDetector(
-            onTap: _sendMessage,
-            child: Container(
-              width: 48.w,
-              height: 48.w,
-              decoration: BoxDecoration(
-                color: colors.accentOrange,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: colors.accentOrange.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Center(
+        // Main input row
+        Row(
+          children: [
+            // Hide emoji and camera buttons when recording
+            if (!_isRecording) ...[
+              // Emoji button
+              GestureDetector(
+                onTap: _toggleEmojiPicker,
                 child: SvgPicture.asset(
-                  Assets.icons.sendDiagonal,
+                  _showEmojiPicker ? Assets.icons.keyboard : Assets.icons.emoji,
                   package: 'grab_go_shared',
-                  width: 20.w,
-                  height: 20.w,
-                  colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                ),
-              ),
-            ),
-          )
-        else
-          GestureDetector(
-            onLongPressStart: (_) => _startRecording(),
-            onLongPressEnd: (_) => _stopAndSendRecording(),
-            onLongPressCancel: () => _cancelRecording(),
-            child: Container(
-              width: 48.w,
-              height: 48.w,
-              decoration: BoxDecoration(
-                color: colors.accentOrange,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: colors.accentOrange.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: SvgPicture.asset(
-                  Assets.icons.microphone,
-                  package: "grab_go_shared",
-                  colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                  height: 24.h,
                   width: 24.w,
+                  height: 24.w,
+                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                 ),
+              ),
+              SizedBox(width: 8.w),
+              // Image attachment button
+              GestureDetector(
+                onTap: () => _showImagePicker(colors),
+                child: SvgPicture.asset(
+                  Assets.icons.camera,
+                  package: 'grab_go_shared',
+                  width: 24.w,
+                  height: 24.w,
+                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                ),
+              ),
+              SizedBox(width: 10.w),
+            ],
+            // Show recording UI when recording, otherwise show text input
+            if (_isRecording)
+              // Recording UI (timer, animated dot, slide to cancel)
+              Expanded(
+                child: Row(
+                  children: [
+                    // Animated recording indicator (pulsing red dot)
+                    TweenAnimationBuilder<double>(
+                      key: ValueKey('red_dot_$_redDotAnimationKey'),
+                      tween: Tween(begin: 0.8, end: 1.0),
+                      duration: const Duration(milliseconds: 800),
+                      curve: Curves.easeInOut,
+                      builder: (context, scale, child) {
+                        return Transform.scale(
+                          scale: scale,
+                          child: Container(
+                            width: 12.w,
+                            height: 12.w,
+                            decoration: BoxDecoration(
+                              color: colors.error,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: colors.error.withValues(alpha: 0.5),
+                                  blurRadius: 4,
+                                  spreadRadius: scale * 2,
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                      onEnd: () {
+                        // Restart animation by incrementing counter
+                        if (mounted && _isRecording) {
+                          setState(() {
+                            _redDotAnimationKey++;
+                          });
+                        }
+                      },
+                    ),
+                    SizedBox(width: 12.w),
+                    // Timer
+                    Text(
+                      VoiceRecorderService.formatDuration(_recordingDuration),
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.w600,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                    const Spacer(),
+                    // Slide to cancel OR cancel button when locked
+                    if (!_isRecordingLocked)
+                      // Animated arrow with slide to cancel
+                      TweenAnimationBuilder<double>(
+                        key: ValueKey('arrow_$_arrowAnimationKey'),
+                        tween: Tween(begin: 0.0, end: -8.0),
+                        duration: const Duration(milliseconds: 1000),
+                        curve: Curves.easeInOut,
+                        builder: (context, offset, child) {
+                          return Transform.translate(
+                            offset: Offset(offset, 0),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SvgPicture.asset(
+                                  Assets.icons.navArrowLeft,
+                                  package: "grab_go_shared",
+                                  height: 20.h,
+                                  width: 20.w,
+                                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                ),
+                                SizedBox(width: 4.w),
+                                Text(
+                                  'Slide to cancel',
+                                  style: TextStyle(
+                                    color: colors.textSecondary,
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        onEnd: () {
+                          // Restart animation by incrementing counter
+                          if (mounted && _isRecording && !_isRecordingLocked) {
+                            setState(() {
+                              _arrowAnimationKey++;
+                            });
+                          }
+                        },
+                      )
+                    else
+                      // Cancel button when locked (centered)
+                      GestureDetector(
+                        onTap: _cancelRecording,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
+                          decoration: BoxDecoration(
+                            color: colors.error.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: colors.error.withValues(alpha: 0.3), width: 1.5),
+                          ),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(color: colors.error, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              )
+            else
+              // Text input (when not recording)
+              Expanded(
+                child: Container(
+                  constraints: BoxConstraints(maxHeight: 120.h),
+                  decoration: BoxDecoration(
+                    color: colors.backgroundSecondary,
+                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                    border: Border.all(color: colors.border, width: 1),
+                  ),
+                  child: TextField(
+                    controller: _messageController,
+                    focusNode: _messageFocusNode,
+                    maxLines: null,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: InputDecoration(
+                      hintText: "Type a message...",
+                      hintStyle: TextStyle(color: colors.textSecondary.withValues(alpha: 0.6), fontSize: 14.sp),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                    ),
+                    style: TextStyle(color: colors.textPrimary, fontSize: 14.sp),
+                    onChanged: _handleMessageChanged,
+                    onSubmitted: (_) => _sendMessage(),
+                    onTap: () {
+                      if (_showEmojiPicker) {
+                        setState(() => _showEmojiPicker = false);
+                      }
+                    },
+                  ),
+                ),
+              ),
+            SizedBox(width: 12.w),
+            // Show send button when recording is locked OR when there's text
+            if (_isRecordingLocked || hasText)
+              GestureDetector(
+                onTap: _isRecordingLocked ? _stopAndSendRecording : _sendMessage,
+                child: Container(
+                  width: 48.w,
+                  height: 48.w,
+                  decoration: BoxDecoration(
+                    color: colors.accentOrange,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: colors.accentOrange.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: SvgPicture.asset(
+                      Assets.icons.sendDiagonal,
+                      package: 'grab_go_shared',
+                      width: 20.w,
+                      height: 20.w,
+                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                    ),
+                  ),
+                ),
+              )
+            else
+              // Microphone button (draggable for gestures)
+              GestureDetector(
+                onPanDown: (_) => _startRecording(),
+                onPanUpdate: _handleMicDragUpdate,
+                onPanEnd: _handleMicDragEnd,
+                child: Transform.translate(
+                  offset: Offset(_micDragOffsetX, _micDragOffsetY),
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 150),
+                    opacity: _micDragOffsetX < -60 ? 0.5 : 1.0,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOut,
+                      width: _isRecording ? 56.w : 48.w,
+                      height: _isRecording ? 56.w : 48.w,
+                      decoration: BoxDecoration(
+                        color: colors.accentOrange,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: colors.accentOrange.withValues(alpha: 0.3),
+                            blurRadius: _isRecording ? 12 : 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: SvgPicture.asset(
+                          Assets.icons.microphone,
+                          package: 'grab_go_shared',
+                          width: _isRecording ? 24.w : 20.w,
+                          height: _isRecording ? 24.w : 20.w,
+                          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        // Floating lock button above mic
+        if (_isRecording && !_isRecordingLocked)
+          Positioned(
+            bottom: 70.h,
+            right: 0,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+              builder: (context, value, child) {
+                return Transform.translate(
+                  offset: Offset(0, 30 * (1 - value)),
+                  child: Opacity(opacity: value, child: child),
+                );
+              },
+              child: RecordingLockButton(
+                color: colors.accentOrange,
+                backgroundColor: colors.backgroundSecondary,
+                isLocked: false,
               ),
             ),
           ),
-      ],
-    );
-  }
-
-  Widget _buildRecordingUI(AppColorsExtension colors) {
-    return Row(
-      children: [
-        // Cancel button
-        GestureDetector(
-          onTap: _cancelRecording,
-          child: Container(
-            width: 40.w,
-            height: 40.w,
-            padding: EdgeInsets.all(8.r),
-            decoration: BoxDecoration(color: colors.error.withValues(alpha: 0.1), shape: BoxShape.circle),
-            child: SvgPicture.asset(
-              Assets.icons.bin,
-              package: "grab_go_shared",
-              colorFilter: ColorFilter.mode(colors.error, BlendMode.srcIn),
-            ),
-          ),
-        ),
-        SizedBox(width: 12.w),
-        // Recording indicator and duration
-        Expanded(
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-            decoration: BoxDecoration(
-              color: colors.backgroundSecondary,
-              borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-              border: Border.all(color: colors.error.withValues(alpha: 0.3), width: 1),
-            ),
-            child: Row(
-              children: [
-                // Pulsing red dot
-                PulsingDot(color: colors.error),
-                SizedBox(width: 12.w),
-                Text(
-                  VoiceRecorderService.formatDuration(_recordingDuration),
-                  style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w500),
-                ),
-                const Spacer(),
-                Text(
-                  'Recording...',
-                  style: TextStyle(color: colors.textSecondary, fontSize: 12.sp),
-                ),
-              ],
-            ),
-          ),
-        ),
-        SizedBox(width: 12.w),
-        // Send recording button
-        GestureDetector(
-          onTap: _stopAndSendRecording,
-          child: Container(
-            width: 48.w,
-            height: 48.w,
-            decoration: BoxDecoration(
-              color: colors.accentOrange,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(color: colors.accentOrange.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2)),
-              ],
-            ),
-            child: Center(
-              child: SvgPicture.asset(
-                Assets.icons.sendDiagonal,
-                package: 'grab_go_shared',
-                width: 20.w,
-                height: 20.w,
-                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-              ),
-            ),
-          ),
-        ),
       ],
     );
   }

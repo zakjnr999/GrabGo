@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
+import 'secure_storage_service.dart';
 
 class CacheService {
   static SharedPreferences? _prefs;
@@ -19,30 +20,30 @@ class CacheService {
     return _prefs!;
   }
 
-  /// Save user authentication token
+  /// Save user authentication token (delegates to SecureStorageService)
   static Future<bool> saveAuthToken(String token) async {
     try {
-      return await _instance.setString('auth_token', token);
+      return await SecureStorageService.saveAuthToken(token);
     } catch (e) {
       debugPrint('Error saving auth token: $e');
       return false;
     }
   }
 
-  /// Get user authentication token
-  static String? getAuthToken() {
+  /// Get user authentication token (delegates to SecureStorageService)
+  static Future<String?> getAuthToken() async {
     try {
-      return _instance.getString('auth_token');
+      return await SecureStorageService.getAuthToken();
     } catch (e) {
       debugPrint('Error getting auth token: $e');
       return null;
     }
   }
 
-  /// Clear authentication token
+  /// Clear authentication token (delegates to SecureStorageService)
   static Future<bool> clearAuthToken() async {
     try {
-      return await _instance.remove('auth_token');
+      return await SecureStorageService.clearAuthToken();
     } catch (e) {
       debugPrint('Error clearing auth token: $e');
       return false;
@@ -84,49 +85,34 @@ class CacheService {
     }
   }
 
-  /// Save login credentials
+  /// Save login credentials (delegates to SecureStorageService)
   static Future<bool> saveCredentials({
     required String email,
     required String password,
     required bool rememberMe,
   }) async {
     try {
-      await _instance.setBool('remember_me', rememberMe);
-
-      if (rememberMe) {
-        await _instance.setString('saved_email', email);
-        await _instance.setString('saved_password', password);
-      } else {
-        await clearCredentials();
-      }
-      return true;
+      return await SecureStorageService.saveCredentials(email: email, password: password, rememberMe: rememberMe);
     } catch (e) {
       debugPrint('Error saving credentials: $e');
       return false;
     }
   }
 
-  /// Get saved credentials
-  static Map<String, dynamic> getCredentials() {
+  /// Get saved credentials (delegates to SecureStorageService)
+  static Future<Map<String, dynamic>> getCredentials() async {
     try {
-      final rememberMe = _instance.getBool('remember_me') ?? false;
-      final email = _instance.getString('saved_email') ?? '';
-      final password = _instance.getString('saved_password') ?? '';
-
-      return {'rememberMe': rememberMe, 'email': email, 'password': password};
+      return await SecureStorageService.getCredentials();
     } catch (e) {
       debugPrint('Error getting credentials: $e');
       return {'rememberMe': false, 'email': '', 'password': ''};
     }
   }
 
-  /// Clear saved credentials
+  /// Clear saved credentials (delegates to SecureStorageService)
   static Future<bool> clearCredentials() async {
     try {
-      await _instance.remove('saved_email');
-      await _instance.remove('saved_password');
-      await _instance.setBool('remember_me', false);
-      return true;
+      return await SecureStorageService.clearCredentials();
     } catch (e) {
       debugPrint('Error clearing credentials: $e');
       return false;

@@ -196,11 +196,11 @@ class ChatService {
 
   String get _baseUrl => AppConfig.apiBaseUrl;
 
-  Map<String, String> _buildHeaders() {
+  Future<Map<String, String>> _buildHeaders() async {
     final headers = <String, String>{'Content-Type': 'application/json'};
 
     try {
-      final token = CacheService.getAuthToken();
+      final token = await CacheService.getAuthToken();
       if (token != null && token.isNotEmpty) {
         headers['Authorization'] = 'Bearer $token';
       }
@@ -214,7 +214,7 @@ class ChatService {
   Future<List<ChatConversationDto>> getChats() async {
     final uri = Uri.parse('$_baseUrl/chats');
 
-    final response = await _client.get(uri, headers: _buildHeaders());
+    final response = await _client.get(uri, headers: await _buildHeaders());
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
       final data = decoded['data'];
@@ -237,7 +237,7 @@ class ChatService {
     ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
     try {
-      final response = await _client.get(uri, headers: _buildHeaders());
+      final response = await _client.get(uri, headers: await _buildHeaders());
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body) as Map<String, dynamic>;
         final data = decoded['data'];
@@ -263,7 +263,7 @@ class ChatService {
       if (replyToId != null) {
         body['replyToId'] = replyToId;
       }
-      final response = await _client.post(uri, headers: _buildHeaders(), body: jsonEncode(body));
+      final response = await _client.post(uri, headers: await _buildHeaders(), body: jsonEncode(body));
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final decoded = jsonDecode(response.body) as Map<String, dynamic>;
@@ -289,7 +289,7 @@ class ChatService {
     try {
       final request = http.MultipartRequest('POST', uri);
 
-      final token = CacheService.getAuthToken();
+      final token = await CacheService.getAuthToken();
       if (token != null && token.isNotEmpty) {
         request.headers['Authorization'] = 'Bearer $token';
       }
@@ -335,7 +335,7 @@ class ChatService {
     try {
       final dio = Dio();
 
-      final token = CacheService.getAuthToken();
+      final token = await CacheService.getAuthToken();
       if (token != null && token.isNotEmpty) {
         dio.options.headers['Authorization'] = 'Bearer $token';
       }
@@ -388,7 +388,7 @@ class ChatService {
     final uri = Uri.parse('$_baseUrl/chats/$chatId/messages/$messageId');
 
     try {
-      final response = await _client.delete(uri, headers: _buildHeaders());
+      final response = await _client.delete(uri, headers: await _buildHeaders());
 
       if (response.statusCode == 200) {
         return true;
@@ -408,7 +408,7 @@ class ChatService {
     try {
       final response = await _client.put(
         uri,
-        headers: {..._buildHeaders(), 'Content-Type': 'application/json'},
+        headers: {...await _buildHeaders(), 'Content-Type': 'application/json'},
         body: jsonEncode({'text': newText}),
       );
 
@@ -428,7 +428,7 @@ class ChatService {
     final uri = Uri.parse('$_baseUrl/chats/$chatId/messages/$messageId/delete-images');
 
     try {
-      final headers = {..._buildHeaders(), 'Content-Type': 'application/json'};
+      final headers = {...await _buildHeaders(), 'Content-Type': 'application/json'};
       final body = jsonEncode({'imageIndices': imageIndices});
       final response = await _client.post(uri, headers: headers, body: body);
 

@@ -140,7 +140,7 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
         }
 
         // Check if auth token exists - CRITICAL: Token must be saved during registration
-        final token = CacheService.getAuthToken();
+        final token = await CacheService.getAuthToken();
         debugPrint('🔍 ========== TOKEN CHECK BEFORE PHONE VERIFICATION ==========');
         debugPrint('   Token exists: ${token != null}');
         debugPrint('   Token length: ${token?.length ?? 0}');
@@ -178,7 +178,7 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
         debugPrint('   Request JSON: ${request.toJson()}');
 
         // Log token info for debugging
-        final tokenForLog = CacheService.getAuthToken();
+        final tokenForLog = await CacheService.getAuthToken();
         if (tokenForLog != null) {
           debugPrint(
             '   Token preview: ${tokenForLog.substring(0, tokenForLog.length > 20 ? 20 : tokenForLog.length)}...',

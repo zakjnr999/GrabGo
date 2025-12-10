@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -59,8 +60,11 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
   Future<void> _loadRiderData() async {
     try {
       // Check if auth token exists before making request
-      final token = CacheService.getAuthToken();
+      final token = await CacheService.getAuthToken();
       if (token == null || token.isEmpty) {
+        if (kDebugMode) {
+          print('❌ No auth token found, cannot fetch rider data');
+        }
         if (mounted) {
           setState(() {
             _isLoading = false;
@@ -115,7 +119,7 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
 
   Future<void> _loadWalletData() async {
     try {
-      final token = CacheService.getAuthToken();
+      final token = await CacheService.getAuthToken();
       if (token == null || token.isEmpty) {
         return;
       }

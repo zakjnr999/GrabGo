@@ -3,6 +3,7 @@
 import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_image_slideshow/flutter_image_slideshow.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
@@ -445,6 +446,7 @@ class _HomeBannerState extends State<HomeBanner> {
             VisibilityDetector(
               key: const Key('home_banner_visibility'),
               onVisibilityChanged: (info) {
+                if (!mounted) return;
                 final shouldEnable = info.visibleFraction > 0.2;
                 if (shouldEnable != _autoPlayEnabled) {
                   setState(() => _autoPlayEnabled = shouldEnable);
@@ -460,6 +462,7 @@ class _HomeBannerState extends State<HomeBanner> {
                 autoPlayInterval: _autoPlayEnabled ? 5000 : 0,
                 isLoop: true,
                 onPageChanged: (value) {
+                  if (!mounted) return;
                   setState(() {
                     currentIndex = value;
                   });
@@ -558,6 +561,7 @@ class _HomeBannerState extends State<HomeBanner> {
                           final bool isFavorite = favoriteProvider.isFavorite(effectiveFoods[safeIndex]);
                           return GestureDetector(
                             onTap: () {
+                              HapticFeedback.mediumImpact();
                               if (isFavorite) {
                                 favoriteProvider.removeFromFavorites(effectiveFoods[safeIndex]);
                               } else {
@@ -567,21 +571,33 @@ class _HomeBannerState extends State<HomeBanner> {
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                               child: BackdropFilter(
-                                filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
-                                child: Container(
+                                filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
                                   padding: EdgeInsets.all(10.r),
                                   decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.1),
+                                    color: isFavorite
+                                        ? AppColors.errorRed.withOpacity(0.15)
+                                        : Colors.black.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                                    border: Border.all(
+                                      color: isFavorite ? AppColors.errorRed.withOpacity(0.3) : Colors.transparent,
+                                      width: 1.5,
+                                    ),
                                   ),
-                                  child: SvgPicture.asset(
-                                    isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
-                                    package: 'grab_go_shared',
-                                    height: 20.h,
-                                    width: 20.w,
-                                    colorFilter: ColorFilter.mode(
-                                      isFavorite ? Colors.red : Colors.white,
-                                      BlendMode.srcIn,
+                                  child: AnimatedScale(
+                                    scale: isFavorite ? 1.0 : 0.9,
+                                    duration: const Duration(milliseconds: 200),
+                                    curve: Curves.easeOutBack,
+                                    child: SvgPicture.asset(
+                                      isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
+                                      package: 'grab_go_shared',
+                                      height: 20.h,
+                                      width: 20.w,
+                                      colorFilter: ColorFilter.mode(
+                                        isFavorite ? AppColors.errorRed : Colors.white,
+                                        BlendMode.srcIn,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -653,30 +669,50 @@ class _HomeBannerState extends State<HomeBanner> {
                                 final bool isInCart = cartProvider.cartItems.containsKey(effectiveFoods[safeIndex]);
                                 return GestureDetector(
                                   onTap: () {
+                                    HapticFeedback.mediumImpact();
                                     if (isInCart) {
                                       cartProvider.removeItemCompletely(effectiveFoods[safeIndex]);
                                     } else {
                                       cartProvider.addToCart(effectiveFoods[safeIndex]);
                                     }
                                   },
-                                  child: Container(
-                                    padding: EdgeInsets.all(8.r),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeOut,
+                                    padding: EdgeInsets.all(isInCart ? 10.r : 8.r),
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
                                       border: Border.all(
                                         color: isInCart ? colors.accentOrange : colors.inputBorder,
-                                        width: 1,
+                                        width: isInCart ? 2 : 1,
                                       ),
+                                      boxShadow: isInCart
+                                          ? [
+                                              BoxShadow(
+                                                color: colors.accentOrange.withOpacity(0.4),
+                                                blurRadius: 8,
+                                                spreadRadius: 0,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ]
+                                          : [],
                                     ),
-                                    child: SvgPicture.asset(
-                                      Assets.icons.cart,
-                                      package: 'grab_go_shared',
-                                      height: 16.h,
-                                      width: 16.w,
-                                      colorFilter: ColorFilter.mode(
-                                        isInCart ? Colors.white : colors.textPrimary,
-                                        BlendMode.srcIn,
+                                    child: AnimatedSwitcher(
+                                      duration: const Duration(milliseconds: 200),
+                                      transitionBuilder: (child, animation) {
+                                        return ScaleTransition(scale: animation, child: child);
+                                      },
+                                      child: SvgPicture.asset(
+                                        isInCart ? Assets.icons.check : Assets.icons.cart,
+                                        key: ValueKey(isInCart),
+                                        package: 'grab_go_shared',
+                                        height: 16.h,
+                                        width: 16.w,
+                                        colorFilter: ColorFilter.mode(
+                                          isInCart ? Colors.white : colors.textPrimary,
+                                          BlendMode.srcIn,
+                                        ),
                                       ),
                                     ),
                                   ),

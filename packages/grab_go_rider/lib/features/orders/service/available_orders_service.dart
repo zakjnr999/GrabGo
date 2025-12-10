@@ -78,10 +78,10 @@ class AvailableOrdersService {
 
   String get _baseUrl => AppConfig.apiBaseUrl; // e.g. https://.../api
 
-  Map<String, String> _buildHeaders() {
+  Future<Map<String, String>> _buildHeaders() async {
     final headers = <String, String>{'Content-Type': 'application/json'};
     try {
-      final token = CacheService.getAuthToken();
+      final token = await CacheService.getAuthToken();
       if (token != null && token.isNotEmpty) {
         headers['Authorization'] = 'Bearer $token';
       }
@@ -94,7 +94,7 @@ class AvailableOrdersService {
   Future<List<AvailableOrderDto>> getAvailableOrders() async {
     final uri = Uri.parse('$_baseUrl/riders/available-orders');
     try {
-      final response = await _client.get(uri, headers: _buildHeaders());
+      final response = await _client.get(uri, headers: await _buildHeaders());
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body) as Map<String, dynamic>;
         final data = decoded['data'];
@@ -115,7 +115,7 @@ class AvailableOrdersService {
   Future<AvailableOrderDto?> acceptOrder(String orderId) async {
     final uri = Uri.parse('$_baseUrl/riders/accept-order/$orderId');
     try {
-      final response = await _client.post(uri, headers: _buildHeaders());
+      final response = await _client.post(uri, headers: await _buildHeaders());
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body) as Map<String, dynamic>;
         final data = decoded['data'];

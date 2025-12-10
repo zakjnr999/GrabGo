@@ -1,31 +1,27 @@
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:grab_go_shared/shared/services/secure_storage_service.dart';
 
 class TokenService {
   static final TokenService _instance = TokenService._internal();
   factory TokenService() => _instance;
   TokenService._internal();
 
-  static const String _tokenKey = 'auth_token';
-  static const String _tokenExpiryKey = 'token_expiry';
-
-  /// Save authentication token
+  /// Save authentication token securely
   Future<void> saveToken(String token, {Duration? expiry}) async {
     try {
       debugPrint('🔄 Saving token: ${token.substring(0, 20)}...');
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_tokenKey, token);
-      
+
+      int? expiryMillis;
       if (expiry != null) {
-        final expiryTime = DateTime.now().add(expiry).millisecondsSinceEpoch;
-        await prefs.setInt(_tokenExpiryKey, expiryTime);
-        debugPrint('🔐 Token expiry set: ${DateTime.fromMillisecondsSinceEpoch(expiryTime)}');
+        expiryMillis = DateTime.now().add(expiry).millisecondsSinceEpoch;
+        debugPrint('🔐 Token expiry set: ${DateTime.fromMillisecondsSinceEpoch(expiryMillis)}');
       }
-      
-      debugPrint('🔐 Token saved successfully');
-      
+
+      await SecureStorageService.saveAuthToken(token, expiryMillis: expiryMillis);
+      debugPrint('🔐 Token saved securely');
+
       // Verify token was saved
-      final savedToken = await prefs.getString(_tokenKey);
+      final savedToken = await SecureStorageService.getAuthToken();
       debugPrint('🔍 Token verification: ${savedToken != null ? 'Saved' : 'Not saved'}');
     } catch (e) {
       debugPrint('❌ Error saving token: $e');
@@ -35,21 +31,13 @@ class TokenService {
   /// Get stored authentication token
   Future<String?> getToken() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString(_tokenKey);
-      
+      final token = await SecureStorageService.getAuthToken();
+
       if (token != null) {
-        // Check if token is expired
-        if (await isTokenExpired()) {
-          debugPrint('⚠️ Token has expired');
-          await clearToken();
-          return null;
-        }
-        
         debugPrint('🔐 Token retrieved successfully');
         return token;
       }
-      
+
       debugPrint('ℹ️ No token found');
       return null;
     } catch (e) {
@@ -61,22 +49,7 @@ class TokenService {
   /// Check if token is expired
   Future<bool> isTokenExpired() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final expiryTime = prefs.getInt(_tokenExpiryKey);
-      
-      if (expiryTime == null) {
-        // No expiry set, assume token is valid
-        return false;
-      }
-      
-      final now = DateTime.now().millisecondsSinceEpoch;
-      final isExpired = now >= expiryTime;
-      
-      if (isExpired) {
-        debugPrint('⚠️ Token expired at: ${DateTime.fromMillisecondsSinceEpoch(expiryTime)}');
-      }
-      
-      return isExpired;
+      return await SecureStorageService.isTokenExpired();
     } catch (e) {
       debugPrint('❌ Error checking token expiry: $e');
       return true; // Assume expired if error
@@ -85,16 +58,13 @@ class TokenService {
 
   /// Check if user is authenticated (has valid token)
   Future<bool> isAuthenticated() async {
-    final token = await getToken();
-    return token != null && token.isNotEmpty;
+    return await SecureStorageService.isAuthenticated();
   }
 
   /// Clear stored token
   Future<void> clearToken() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_tokenKey);
-      await prefs.remove(_tokenExpiryKey);
+      await SecureStorageService.clearAuthToken();
       debugPrint('🗑️ Token cleared successfully');
     } catch (e) {
       debugPrint('❌ Error clearing token: $e');
@@ -104,24 +74,10 @@ class TokenService {
   /// Get token info for debugging
   Future<Map<String, dynamic>> getTokenInfo() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString(_tokenKey);
-      final expiryTime = prefs.getInt(_tokenExpiryKey);
-      
-      return {
-        'hasToken': token != null,
-        'tokenLength': token?.length ?? 0,
-        'expiryTime': expiryTime,
-        'isExpired': await isTokenExpired(),
-        'expiryDate': expiryTime != null 
-            ? DateTime.fromMillisecondsSinceEpoch(expiryTime).toString()
-            : null,
-      };
+      return await SecureStorageService.getDebugInfo();
     } catch (e) {
       debugPrint('❌ Error getting token info: $e');
       return {'error': e.toString()};
     }
   }
 }
-
-

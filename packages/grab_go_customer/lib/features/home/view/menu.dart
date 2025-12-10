@@ -30,11 +30,17 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
   late TextEditingController _searchController;
   late AnimationController _animationController;
   late AnimationController _filterAnimationController;
+  late AnimationController _fabAnimationController;
+  late AnimationController _badgePulseController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _filterSlideAnimation;
+  late Animation<Offset> _fabSlideAnimation;
+  late Animation<double> _fabScaleAnimation;
+  late Animation<double> _badgePulseAnimation;
   late ScrollController _scrollController;
   bool _isFabVisible = true;
   double _lastScrollOffset = 0.0;
+  int _previousCartCount = 0;
 
   String _selectedPriceFilter = 'all';
   bool _showFilterChips = false;
@@ -57,6 +63,10 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
     _scrollController.addListener(_onScroll);
     _animationController = AnimationController(duration: const Duration(milliseconds: 400), vsync: this);
     _filterAnimationController = AnimationController(duration: const Duration(milliseconds: 300), vsync: this);
+
+    // Initialize FAB animations
+    _fabAnimationController = AnimationController(duration: const Duration(milliseconds: 300), vsync: this);
+
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -65,6 +75,27 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
       begin: 0.0,
       end: 1.0,
     ).animate(CurvedAnimation(parent: _filterAnimationController, curve: Curves.easeInOut));
+
+    _fabSlideAnimation = Tween<Offset>(
+      begin: const Offset(0, 2),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _fabAnimationController, curve: Curves.easeInOut));
+
+    _fabScaleAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _fabAnimationController, curve: Curves.easeOut));
+
+    // Initialize badge pulse animation
+    _badgePulseController = AnimationController(duration: const Duration(milliseconds: 400), vsync: this);
+
+    _badgePulseAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 1.3).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 50,
+      ),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.3, end: 1.0).chain(CurveTween(curve: Curves.easeIn)), weight: 50),
+    ]).animate(_badgePulseController);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = Provider.of<FoodProvider>(context, listen: false);
@@ -86,6 +117,7 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
         }
       }
       _animationController.forward();
+      _fabAnimationController.forward();
     });
   }
 
@@ -96,6 +128,8 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
     _searchController.dispose();
     _animationController.dispose();
     _filterAnimationController.dispose();
+    _fabAnimationController.dispose();
+    _badgePulseController.dispose();
     super.dispose();
   }
 
@@ -112,29 +146,36 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
       }
     }
 
+    // Always show FAB at top of page
     if (currentOffset <= 0) {
       if (!_isFabVisible) {
         setState(() {
           _isFabVisible = true;
         });
+        _fabAnimationController.forward();
       }
       _lastScrollOffset = currentOffset;
       return;
     }
 
-    if (scrollDelta > 5 && currentOffset > 50) {
-      // Scrolling down significantly
-      if (_isFabVisible) {
-        setState(() {
-          _isFabVisible = false;
-        });
-      }
-    } else if (scrollDelta < -5) {
-      // Scrolling up significantly
-      if (!_isFabVisible) {
-        setState(() {
-          _isFabVisible = true;
-        });
+    // Increased threshold from 5px to 12px for smoother transitions
+    if (scrollDelta.abs() > 12 && currentOffset > 50) {
+      if (scrollDelta > 0) {
+        // Scrolling down - hide FAB
+        if (_isFabVisible) {
+          setState(() {
+            _isFabVisible = false;
+          });
+          _fabAnimationController.reverse();
+        }
+      } else {
+        // Scrolling up - show FAB
+        if (!_isFabVisible) {
+          setState(() {
+            _isFabVisible = true;
+          });
+          _fabAnimationController.forward();
+        }
       }
     }
 
@@ -460,7 +501,7 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
       body: SafeArea(
         child: SingleChildScrollView(
           controller: _scrollController,
-          physics: const ClampingScrollPhysics(),
+          physics: const BouncingScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -704,33 +745,75 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
       ),
 
       floatingActionButton: Provider.of<CartProvider>(context, listen: true).cartItems.isNotEmpty
-          ? AnimatedOpacity(
-              opacity: _isFabVisible ? 1.0 : 0.0,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              child: IgnorePointer(
-                ignoring: !_isFabVisible,
+          ? SlideTransition(
+              position: _fabSlideAnimation,
+              child: ScaleTransition(
+                scale: _fabScaleAnimation,
                 child: Consumer<CartProvider>(
                   builder: (context, cartProvider, child) {
-                    return FloatingActionButton.extended(
-                      onPressed: () => context.push("/cart"),
+                    final currentCount = cartProvider.cartItems.length;
 
-                      extendedPadding: EdgeInsets.all(10.r),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.border)),
-                      backgroundColor: colors.accentOrange,
-                      label: Text(
-                        "${cartProvider.cartItems.length} ${cartProvider.cartItems.length > 1 ? "items in cart" : "item in cart"}",
-                        style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: colors.backgroundPrimary),
-                      ),
-                      icon: Container(
-                        padding: EdgeInsets.all(8.r),
-                        decoration: BoxDecoration(color: colors.backgroundPrimary, shape: BoxShape.circle),
-                        child: SvgPicture.asset(
-                          Assets.icons.cart,
-                          height: 20.h,
-                          width: 20.w,
-                          package: 'grab_go_shared',
-                          colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (!mounted) return;
+
+                      // Trigger pulse animation when cart count changes
+                      if (currentCount != _previousCartCount && _previousCartCount > 0) {
+                        _badgePulseController.forward(from: 0);
+                      }
+
+                      // Auto-show FAB when items are added to cart
+                      // Also handle first item (when _previousCartCount == 0)
+                      if (currentCount > _previousCartCount) {
+                        if (!_isFabVisible || _previousCartCount == 0) {
+                          setState(() {
+                            _isFabVisible = true;
+                          });
+                          _fabAnimationController.forward();
+                        }
+                      }
+
+                      _previousCartCount = currentCount;
+                    });
+
+                    return ScaleTransition(
+                      scale: _badgePulseAnimation,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(KBorderSize.border),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colors.accentOrange.withValues(alpha: 0.4),
+                              blurRadius: 16,
+                              spreadRadius: 0,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: FloatingActionButton.extended(
+                          onPressed: () => context.push("/cart"),
+                          extendedPadding: EdgeInsets.all(10.r),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.border)),
+                          backgroundColor: colors.accentOrange,
+                          elevation: 0,
+                          label: Text(
+                            "${cartProvider.cartItems.length} ${cartProvider.cartItems.length > 1 ? "items in cart" : "item in cart"}",
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w600,
+                              color: colors.backgroundPrimary,
+                            ),
+                          ),
+                          icon: Container(
+                            padding: EdgeInsets.all(8.r),
+                            decoration: BoxDecoration(color: colors.backgroundPrimary, shape: BoxShape.circle),
+                            child: SvgPicture.asset(
+                              Assets.icons.cart,
+                              height: 20.h,
+                              width: 20.w,
+                              package: 'grab_go_shared',
+                              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                            ),
+                          ),
                         ),
                       ),
                     );
@@ -739,6 +822,7 @@ class _MenuState extends State<Menu> with TickerProviderStateMixin {
               ),
             )
           : const SizedBox.shrink(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 

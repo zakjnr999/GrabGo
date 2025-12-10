@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:grab_go_customer/shared/viewmodels/settings_provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_shared/shared/services/secure_storage_service.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/features/order/viewmodel/order_provider.dart';
@@ -32,6 +34,11 @@ void main() async {
 
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   AppConfig.validateConfiguration();
+
+  // Initialize secure storage first (for encrypted token/credential storage)
+  await SecureStorageService.initialize();
+
+  // Then initialize cache service
   await CacheService.initialize();
   await ImageCacheService.initialize();
   await _initializeBackgroundServices();
@@ -48,6 +55,7 @@ void main() async {
         ChangeNotifierProvider(create: (context) => NavigationProvider()),
         ChangeNotifierProvider(create: (context) => FavoritesProvider()),
         ChangeNotifierProvider(create: (context) => StatusProvider()..init()),
+        ChangeNotifierProvider(create: (context) => SettingsProvider()),
       ],
       child: const GrabGoCustomerApp(),
     ),

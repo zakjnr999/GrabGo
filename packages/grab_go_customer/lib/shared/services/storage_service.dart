@@ -20,7 +20,7 @@ class StorageService {
   }
 
   static Future<bool> hasRememberedCredentials() async {
-    final credentials = CacheService.getCredentials();
+    final credentials = await CacheService.getCredentials();
     return credentials['rememberMe'] as bool? ?? false;
   }
 

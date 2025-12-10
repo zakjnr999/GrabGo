@@ -174,62 +174,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
 
                 const Spacer(),
 
-                Container(
-                  height: 44.h,
-                  width: 44.w,
-                  decoration: BoxDecoration(
-                    color: colors.backgroundPrimary,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                        spreadRadius: 0,
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        _animationController.forward().then((_) {
-                          _animationController.reset();
-                        });
-                        themeProvider.toggleTheme();
-                      },
-                      customBorder: const CircleBorder(),
-                      child: Padding(
-                        padding: EdgeInsets.all(10.r),
-                        child: AnimatedBuilder(
-                          animation: _rotationAnimation,
-                          builder: (context, child) {
-                            return Transform.rotate(
-                              angle: _rotationAnimation.value * 2 * 3.14159,
-                              child: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 300),
-                                transitionBuilder: (child, animation) {
-                                  return ScaleTransition(scale: animation, child: child);
-                                },
-                                child: SvgPicture.asset(
-                                  themeProvider.themeMode == ThemeMode.light
-                                      ? Assets.icons.sunLight
-                                      : themeProvider.themeMode == ThemeMode.dark
-                                      ? Assets.icons.halfMoon
-                                      : Assets.icons.sunMoon,
-                                  key: ValueKey(themeProvider.themeMode),
-                                  package: "grab_go_shared",
-                                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                SizedBox(height: 24.h, width: 24),
               ],
             ),
           ),
@@ -429,6 +374,9 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                     ),
                     child: Column(
                       children: [
+                        itemTile("Settings", Assets.icons.settings, context, () {
+                          context.push("/settings");
+                        }),
                         itemTile("Register Restaurant", Assets.icons.chefHat, context, () {
                           context.push("/restaurantRegistration");
                         }),

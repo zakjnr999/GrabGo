@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/auth/view/location_permission.dart';
 import 'package:grab_go_customer/features/auth/view/notification_permission.dart';
 import 'package:grab_go_customer/features/home/navigation/bottom_navigator.dart';
+import 'package:grab_go_customer/features/profile/view/settings_page.dart';
 import 'package:grab_go_customer/features/status/view/status_page.dart';
 import 'package:grab_go_customer/features/status/view/all_statuses_page.dart';
 import 'package:grab_go_customer/features/status/model/status_model.dart';
@@ -278,6 +279,25 @@ final GoRouter appRouter = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: const StatusPage(),
+          transitionDuration: const Duration(milliseconds: 400),
+          reverseTransitionDuration: const Duration(milliseconds: 400),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.vertical,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/settings",
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const SettingsPage(),
           transitionDuration: const Duration(milliseconds: 400),
           reverseTransitionDuration: const Duration(milliseconds: 400),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {

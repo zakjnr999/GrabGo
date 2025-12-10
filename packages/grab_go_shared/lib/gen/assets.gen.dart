@@ -311,6 +311,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/nav-arrow-right.svg
   String get navArrowRight => 'lib/assets/icons/nav-arrow-right.svg';
 
+  /// File path: lib/assets/icons/nav-arrow-up.svg
+  String get navArrowUp => 'lib/assets/icons/nav-arrow-up.svg';
+
   /// File path: lib/assets/icons/night.png
   AssetGenImage get night => const AssetGenImage('lib/assets/icons/night.png');
 
@@ -377,6 +380,9 @@ class $LibAssetsIconsGen {
 
   /// File path: lib/assets/icons/send-diagonal.svg
   String get sendDiagonal => 'lib/assets/icons/send-diagonal.svg';
+
+  /// File path: lib/assets/icons/settings.svg
+  String get settings => 'lib/assets/icons/settings.svg';
 
   /// File path: lib/assets/icons/share-android.svg
   String get shareAndroid => 'lib/assets/icons/share-android.svg';
@@ -525,6 +531,7 @@ class $LibAssetsIconsGen {
     navArrowDown,
     navArrowLeft,
     navArrowRight,
+    navArrowUp,
     night,
     noProfile,
     orderFood,
@@ -545,6 +552,7 @@ class $LibAssetsIconsGen {
     scanQrCode,
     search,
     sendDiagonal,
+    settings,
     shareAndroid,
     shieldCheck,
     slidersHorizontal,

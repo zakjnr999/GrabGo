@@ -291,13 +291,13 @@ class SocketService {
     unawaited(CacheService.saveChatUnreadCount(currentTotal));
   }
 
-  void _connectIfNeeded() {
+  Future<void> _connectIfNeeded() async {
     if (_socket != null || _connecting) return;
     _connecting = true;
     _setConnectionState(_reconnectAttempts > 0 ? SocketConnectionState.reconnecting : SocketConnectionState.connecting);
 
     final socketUrl = _buildSocketUrl();
-    final token = CacheService.getAuthToken();
+    final token = await CacheService.getAuthToken();
     if (token == null || token.isEmpty) {
       _connecting = false;
       _setConnectionState(SocketConnectionState.disconnected);

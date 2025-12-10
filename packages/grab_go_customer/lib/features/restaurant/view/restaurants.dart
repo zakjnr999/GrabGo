@@ -57,7 +57,7 @@ class _RestaurantsState extends State<Restaurants> {
       backgroundColor: colors.backgroundSecondary,
       body: SafeArea(
         child: SingleChildScrollView(
-          physics: const ClampingScrollPhysics(),
+          physics: const BouncingScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

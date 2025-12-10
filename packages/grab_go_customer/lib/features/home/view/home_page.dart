@@ -24,18 +24,50 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   FoodCategoryModel? _selectedCategory;
   late ScrollController _scrollController;
+  late AnimationController _fabAnimationController;
+  late AnimationController _badgePulseController;
+  late Animation<Offset> _fabSlideAnimation;
+  late Animation<double> _fabScaleAnimation;
+  late Animation<double> _badgePulseAnimation;
   bool _isFabVisible = true;
   double _lastScrollOffset = 0.0;
   FilterModel _activeFilter = FilterModel();
+  int _previousCartCount = 0;
 
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
+
+    // Initialize FAB animations
+    _fabAnimationController = AnimationController(duration: const Duration(milliseconds: 300), vsync: this);
+
+    _fabSlideAnimation = Tween<Offset>(
+      begin: const Offset(0, 2),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _fabAnimationController, curve: Curves.easeInOut));
+
+    _fabScaleAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _fabAnimationController, curve: Curves.easeOut));
+
+    // Initialize badge pulse animation
+    _badgePulseController = AnimationController(duration: const Duration(milliseconds: 400), vsync: this);
+
+    _badgePulseAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 1.3).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 50,
+      ),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.3, end: 1.0).chain(CurveTween(curve: Curves.easeIn)), weight: 50),
+    ]).animate(_badgePulseController);
+
+    _fabAnimationController.forward();
     _initializeData();
   }
 
@@ -43,6 +75,8 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _fabAnimationController.dispose();
+    _badgePulseController.dispose();
     super.dispose();
   }
 
@@ -52,27 +86,36 @@ class _HomePageState extends State<HomePage> {
     final currentOffset = _scrollController.offset;
     final scrollDelta = currentOffset - _lastScrollOffset;
 
+    // Always show FAB at top of page
     if (currentOffset <= 0) {
       if (!_isFabVisible) {
         setState(() {
           _isFabVisible = true;
         });
+        _fabAnimationController.forward();
       }
       _lastScrollOffset = currentOffset;
       return;
     }
 
-    if (scrollDelta > 5 && currentOffset > 50) {
-      if (_isFabVisible) {
-        setState(() {
-          _isFabVisible = false;
-        });
-      }
-    } else if (scrollDelta < -5) {
-      if (!_isFabVisible) {
-        setState(() {
-          _isFabVisible = true;
-        });
+    // Increased threshold from 5px to 12px for smoother transitions
+    if (scrollDelta.abs() > 12 && currentOffset > 50) {
+      if (scrollDelta > 0) {
+        // Scrolling down - hide FAB
+        if (_isFabVisible) {
+          setState(() {
+            _isFabVisible = false;
+          });
+          _fabAnimationController.reverse();
+        }
+      } else {
+        // Scrolling up - show FAB
+        if (!_isFabVisible) {
+          setState(() {
+            _isFabVisible = true;
+          });
+          _fabAnimationController.forward();
+        }
       }
     }
 
@@ -206,32 +249,72 @@ class _HomePageState extends State<HomePage> {
       ),
 
       floatingActionButton: Provider.of<CartProvider>(context, listen: true).cartItems.isNotEmpty
-          ? AnimatedOpacity(
-              opacity: _isFabVisible ? 1.0 : 0.0,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              child: IgnorePointer(
-                ignoring: !_isFabVisible,
+          ? SlideTransition(
+              position: _fabSlideAnimation,
+              child: ScaleTransition(
+                scale: _fabScaleAnimation,
                 child: Consumer<CartProvider>(
                   builder: (context, cartProvider, child) {
-                    return FloatingActionButton.extended(
-                      onPressed: () => context.push("/cart"),
-                      extendedPadding: EdgeInsets.all(10.r),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.border)),
-                      backgroundColor: colors.accentOrange,
-                      label: Text(
-                        "${cartProvider.cartItems.length} ${cartProvider.cartItems.length > 1 ? "items in cart" : "item in cart"}",
-                        style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: colors.backgroundPrimary),
-                      ),
-                      icon: Container(
-                        padding: EdgeInsets.all(8.r),
-                        decoration: BoxDecoration(color: colors.backgroundPrimary, shape: BoxShape.circle),
-                        child: SvgPicture.asset(
-                          Assets.icons.cart,
-                          height: 20.h,
-                          width: 20.w,
-                          package: 'grab_go_shared',
-                          colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                    final currentCount = cartProvider.cartItems.length;
+
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (!mounted) return;
+
+                      if (currentCount != _previousCartCount && _previousCartCount > 0) {
+                        _badgePulseController.forward(from: 0);
+                      }
+
+                      if (currentCount > _previousCartCount) {
+                        if (!_isFabVisible || _previousCartCount == 0) {
+                          setState(() {
+                            _isFabVisible = true;
+                          });
+                          _fabAnimationController.forward();
+                        }
+                      }
+
+                      _previousCartCount = currentCount;
+                    });
+
+                    return ScaleTransition(
+                      scale: _badgePulseAnimation,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(KBorderSize.border),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colors.accentOrange.withValues(alpha: 0.4),
+                              blurRadius: 16,
+                              spreadRadius: 0,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: FloatingActionButton.extended(
+                          onPressed: () => context.push("/cart"),
+                          extendedPadding: EdgeInsets.all(10.r),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.border)),
+                          backgroundColor: colors.accentOrange,
+                          elevation: 0,
+                          label: Text(
+                            "${cartProvider.cartItems.length} ${cartProvider.cartItems.length > 1 ? "items in cart" : "item in cart"}",
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w600,
+                              color: colors.backgroundPrimary,
+                            ),
+                          ),
+                          icon: Container(
+                            padding: EdgeInsets.all(8.r),
+                            decoration: BoxDecoration(color: colors.backgroundPrimary, shape: BoxShape.circle),
+                            child: SvgPicture.asset(
+                              Assets.icons.cart,
+                              height: 20.h,
+                              width: 20.w,
+                              package: 'grab_go_shared',
+                              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                            ),
+                          ),
                         ),
                       ),
                     );
@@ -240,6 +323,7 @@ class _HomePageState extends State<HomePage> {
               ),
             )
           : const SizedBox.shrink(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 

@@ -68,7 +68,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
   }
 
   Future<void> loadSavedCredentials() async {
-    final credentials = CacheService.getCredentials();
+    final credentials = await CacheService.getCredentials();
     if (mounted && credentials['rememberMe'] == true) {
       setState(() {
         emailController.text = credentials['email'] ?? '';

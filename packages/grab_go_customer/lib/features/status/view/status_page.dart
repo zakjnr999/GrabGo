@@ -583,7 +583,7 @@ class _StatusPageState extends State<StatusPage> {
       child: ListView.separated(
         padding: EdgeInsets.symmetric(horizontal: 20.w),
         scrollDirection: Axis.horizontal,
-        physics: const NeverScrollableScrollPhysics(),
+        physics: const BouncingScrollPhysics(),
         itemCount: 5,
         itemBuilder: (context, index) {
           return Shimmer.fromColors(
@@ -620,7 +620,7 @@ class _StatusPageState extends State<StatusPage> {
       child: ListView.builder(
         padding: EdgeInsets.only(left: 20.w),
         scrollDirection: Axis.horizontal,
-        physics: const NeverScrollableScrollPhysics(),
+        physics: const BouncingScrollPhysics(),
         itemCount: 3,
         itemBuilder: (context, index) {
           return Shimmer.fromColors(
@@ -641,7 +641,10 @@ class _StatusPageState extends State<StatusPage> {
                     height: 200.h,
                     decoration: BoxDecoration(
                       color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                      borderRadius: BorderRadius.only(topLeft: Radius.circular(20.r), topRight: Radius.circular(20.r)),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(KBorderSize.borderMedium),
+                        topRight: Radius.circular(KBorderSize.borderMedium),
+                      ),
                     ),
                   ),
                   Padding(

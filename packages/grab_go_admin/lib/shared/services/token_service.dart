@@ -1,29 +1,26 @@
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:grab_go_shared/shared/services/secure_storage_service.dart';
 
 class TokenService {
   static final TokenService _instance = TokenService._internal();
   factory TokenService() => _instance;
   TokenService._internal();
 
-  static const String _tokenKey = 'admin_auth_token';
   static String? _cachedToken;
-  static SharedPreferences? _prefs;
 
-  /// Initialize SharedPreferences (call this at app startup)
+  /// Initialize secure storage (call this at app startup)
   static Future<void> initialize() async {
-    _prefs = await SharedPreferences.getInstance();
-    _cachedToken = _prefs?.getString(_tokenKey);
+    await SecureStorageService.initialize();
+    _cachedToken = await SecureStorageService.getAuthToken();
   }
 
-  /// Save authentication token
+  /// Save authentication token securely
   Future<void> saveToken(String token) async {
     try {
       debugPrint('🔄 Saving admin token: ${token.substring(0, 20)}...');
-      _prefs ??= await SharedPreferences.getInstance();
-      await _prefs!.setString(_tokenKey, token);
+      await SecureStorageService.saveAuthToken(token);
       _cachedToken = token; // Update cache
-      debugPrint('🔐 Admin token saved successfully');
+      debugPrint('🔐 Admin token saved securely');
     } catch (e) {
       debugPrint('❌ Error saving admin token: $e');
     }
@@ -32,8 +29,7 @@ class TokenService {
   /// Get stored authentication token (async)
   Future<String?> getToken() async {
     try {
-      _prefs ??= await SharedPreferences.getInstance();
-      final token = _prefs!.getString(_tokenKey);
+      final token = await SecureStorageService.getAuthToken();
       _cachedToken = token; // Update cache
 
       if (token != null && token.isNotEmpty) {
@@ -52,28 +48,18 @@ class TokenService {
   /// Get stored authentication token synchronously (from cache)
   /// Returns null if not cached yet - use getToken() for first access
   static String? getTokenSync() {
-    if (_cachedToken != null) {
-      return _cachedToken;
-    }
-    // Try to get from SharedPreferences if initialized
-    if (_prefs != null) {
-      _cachedToken = _prefs!.getString(_tokenKey);
-      return _cachedToken;
-    }
-    return null;
+    return _cachedToken;
   }
 
   /// Check if user is authenticated (has valid token)
   Future<bool> isAuthenticated() async {
-    final token = await getToken();
-    return token != null && token.isNotEmpty;
+    return await SecureStorageService.isAuthenticated();
   }
 
   /// Clear stored token
   Future<void> clearToken() async {
     try {
-      _prefs ??= await SharedPreferences.getInstance();
-      await _prefs!.remove(_tokenKey);
+      await SecureStorageService.clearAuthToken();
       _cachedToken = null; // Clear cache
       debugPrint('🗑️ Admin token cleared successfully');
     } catch (e) {

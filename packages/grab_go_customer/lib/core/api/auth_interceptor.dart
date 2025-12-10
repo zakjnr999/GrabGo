@@ -18,7 +18,7 @@ class AuthInterceptor implements Interceptor {
 
     // Add authorization token
     try {
-      final token = CacheService.getAuthToken();
+      final token = await CacheService.getAuthToken();
 
       if (token != null && token.isNotEmpty) {
         final headers = Map<String, String>.from(request.headers);

@@ -15,7 +15,7 @@ class OrderProvider extends ChangeNotifier {
   Future<void> fetchOrders({bool forceRefresh = false}) async {
     // Check authentication first
     final userService = UserService();
-    final token = CacheService.getAuthToken();
+    final token = await CacheService.getAuthToken();
 
     if (!userService.isLoggedIn) {
       _error = 'Please log in to view your orders';
@@ -156,7 +156,7 @@ class OrderProvider extends ChangeNotifier {
       return;
     }
 
-    final token = CacheService.getAuthToken();
+    final token = await CacheService.getAuthToken();
     if (token == null || token.isEmpty) {
       if (kDebugMode) {
         print('❌ No authentication token found for refresh');

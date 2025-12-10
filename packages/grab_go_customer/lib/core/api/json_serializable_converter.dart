@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:chopper/chopper.dart';
+import 'package:grab_go_customer/features/auth/service/token_service.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurant_response.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
@@ -61,24 +62,13 @@ class JsonSerializableConverter extends JsonConverter {
 
     if (!isLoginEndpoint && !isRegisterEndpoint) {
       try {
-        final token = CacheService.getAuthToken();
-
-        if (token != null && token.isNotEmpty) {
-          headers['Authorization'] = 'Bearer $token';
-        } else {
-          // Try alternative token retrieval methods as fallback
-          try {
-            final userData = CacheService.getUserData();
-            if (userData != null && userData.containsKey('token')) {
-              final fallbackToken = userData['token'] as String?;
-              if (fallbackToken != null && fallbackToken.isNotEmpty) {
-                headers['Authorization'] = 'Bearer $fallbackToken';
-              }
-            }
-          } catch (fallbackError) {
-            // Silent fallback failure
+        // Use TokenService for synchronous token access
+        final tokenService = TokenService();
+        tokenService.getToken().then((token) {
+          if (token != null && token.isNotEmpty) {
+            headers['Authorization'] = 'Bearer $token';
           }
-        }
+        });
       } catch (e) {
         // Silent error handling
       }

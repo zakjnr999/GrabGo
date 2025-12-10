@@ -48,11 +48,13 @@ class JsonSerializableConverter extends JsonConverter {
     }
 
     // Add auth token for protected endpoints (not login/register)
+    // Note: This uses .then() to handle async token retrieval in a sync method
     if (!isLoginEndpoint && !isRegisterEndpoint) {
-      final token = CacheService.getAuthToken();
-      if (token != null && token.isNotEmpty) {
-        headers['Authorization'] = 'Bearer $token';
-      }
+      CacheService.getAuthToken().then((token) {
+        if (token != null && token.isNotEmpty) {
+          headers['Authorization'] = 'Bearer $token';
+        }
+      });
     }
 
     // Filter out null values from multipart requests

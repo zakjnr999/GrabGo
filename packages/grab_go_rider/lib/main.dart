@@ -8,6 +8,7 @@ import 'package:grab_go_rider/shared/viewmodel/theme_provider.dart';
 import 'package:grab_go_rider/shared/service/user_service.dart';
 import 'package:grab_go_rider/shared/utils/routes.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_shared/shared/services/secure_storage_service.dart';
 import 'package:provider/provider.dart';
 
 /// Global navigator key for navigation from outside widget tree
@@ -29,6 +30,10 @@ void main() async {
   // Set up background message handler
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
+  // Initialize secure storage first (for encrypted token/credential storage)
+  await SecureStorageService.initialize();
+
+  // Then initialize cache service
   await CacheService.initialize();
   await _initializeBackgroundServices();
 
