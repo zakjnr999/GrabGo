@@ -11,10 +11,8 @@ const referralCodeSchema = new mongoose.Schema({
     code: {
         type: String,
         required: true,
-        unique: true,
         uppercase: true,
-        trim: true,
-        index: true
+        trim: true
     },
     isActive: {
         type: Boolean,
@@ -53,7 +51,7 @@ const referralCodeSchema = new mongoose.Schema({
 });
 
 // Index for faster lookups
-referralCodeSchema.index({ code: 1 });
+referralCodeSchema.index({ code: 1 }, { unique: true });
 referralCodeSchema.index({ user: 1 }, { sparse: true }); // Sparse index allows multiple null values
 
 module.exports = mongoose.model('ReferralCode', referralCodeSchema);

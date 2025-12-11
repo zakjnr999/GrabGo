@@ -444,6 +444,13 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
             },
           );
 
+      print('🔍 Response status: ${response.statusCode}');
+      print('🔍 Response body: ${response.body}');
+
+      if (response.body == null) {
+        throw Exception('Empty response from server');
+      }
+
       final data = response.body as Map<String, dynamic>;
 
       if (data['valid'] == true) {
@@ -481,6 +488,8 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         isValidatingReferralCode = false;
       });
     } catch (e) {
+      print('❌ Referral validation error: $e');
+      print('Error type: ${e.runtimeType}');
       setState(() {
         isReferralCodeValid = false;
         referralCodeError = "Could not validate code. Please try again.";
