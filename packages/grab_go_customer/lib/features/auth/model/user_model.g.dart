@@ -14,6 +14,7 @@ RegisterRequest _$RegisterRequestFromJson(Map<String, dynamic> json) =>
       dateOfBirth: json['DateOfBirth'] as String?,
       phone: (json['phone'] as num?)?.toInt(),
       profilePicture: json['profilePicture'] as String?,
+      referralCode: json['referralCode'] as String?,
     );
 
 Map<String, dynamic> _$RegisterRequestToJson(RegisterRequest instance) =>
@@ -24,6 +25,7 @@ Map<String, dynamic> _$RegisterRequestToJson(RegisterRequest instance) =>
       'DateOfBirth': instance.dateOfBirth,
       'phone': instance.phone,
       'profilePicture': instance.profilePicture,
+      'referralCode': instance.referralCode,
     };
 
 UserPermissions _$UserPermissionsFromJson(Map<String, dynamic> json) =>

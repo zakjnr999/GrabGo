@@ -267,6 +267,7 @@ app.use("/api/riders", require("./routes/riders"));
 app.use("/api/chats", require("./routes/chats"));
 app.use("/api/statuses", require("./routes/statuses"));
 app.use("/api/notifications", require("./routes/notifications"));
+app.use("/api/referral", require("./routes/referrals"));
 
 // Health check
 app.get("/api/health", (req, res) => {
@@ -290,6 +291,7 @@ app.use((err, req, res, next) => {
 
 // Import cron jobs
 const { scheduleCleanup } = require("./jobs/statusCleanup");
+const { scheduleReferralCleanup } = require("./jobs/referralCleanup");
 
 // Import cache utility
 const cache = require("./utils/cache");
@@ -305,6 +307,9 @@ mongoose
 
     // Schedule status cleanup cron job (runs every hour)
     scheduleCleanup();
+
+    // Schedule referral cleanup cron job (runs daily at 2:00 AM)
+    scheduleReferralCleanup();
 
     const PORT = process.env.PORT || 5000;
     server.listen(PORT, () => {

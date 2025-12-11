@@ -5,6 +5,7 @@ const Food = require("../models/Food");
 const Restaurant = require("../models/Restaurant");
 const { protect, authorize } = require("../middleware/auth");
 const { sendOrderNotification } = require("../services/fcm_service");
+const ReferralService = require("../services/ReferralService");
 
 const router = express.Router();
 
@@ -116,7 +117,14 @@ router.post(
 
       const deliveryFee = restaurantDoc.delivery_fee || 0;
       const tax = subtotal * 0.05;
-      const totalAmount = subtotal + deliveryFee + tax;
+      let totalAmount = subtotal + deliveryFee + tax;
+
+      // Apply referral credits if available
+      const creditResult = await ReferralService.applyCreditsToOrder(req.user._id, totalAmount);
+      const creditApplied = creditResult.appliedAmount;
+      if (creditApplied > 0) {
+        totalAmount = creditResult.newTotal;
+      }
 
       const order = await Order.create({
         orderNumber,
@@ -135,6 +143,27 @@ router.post(
 
       await order.populate("restaurant", "restaurant_name logo");
       await order.populate("customer", "username email phone");
+
+      // Mark credits as used
+      if (creditApplied > 0 && creditResult.creditsUsed.length > 0) {
+        await ReferralService.markCreditsAsUsed(creditResult.creditsUsed, order._id);
+      }
+
+      // Check if this is user's first order and complete referral
+      const userOrderCount = await Order.countDocuments({ customer: req.user._id });
+      if (userOrderCount === 1) {
+        // This is the first order, complete referral if exists
+        const referralResult = await ReferralService.completeReferral(
+          req.user._id,
+          order._id,
+          subtotal + deliveryFee + tax // Use original amount before credits
+        );
+
+        if (referralResult.success) {
+          console.log(`Referral completed for user ${req.user._id}`);
+          // TODO: Send push notification to referrer
+        }
+      }
 
       res.status(201).json({
         success: true,

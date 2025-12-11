@@ -680,10 +680,10 @@ class Assets {
 
   static const $LibGen lib = $LibGen();
 
-  // Direct access shortcuts for backwards compatibility
-  static const $LibAssetsIconsGen icons = $LibAssetsIconsGen();
-  static const $LibAssetsImagesGen images = $LibAssetsImagesGen();
-  static const $LibAssetsFontsGen fonts = $LibAssetsFontsGen();
+  // Shortcuts for backward compatibility
+  static $LibAssetsIconsGen get icons => lib.assets.icons;
+  static $LibAssetsImagesGen get images => lib.assets.images;
+  static $LibAssetsFontsGen get fonts => lib.assets.fonts;
 }
 
 class AssetGenImage {

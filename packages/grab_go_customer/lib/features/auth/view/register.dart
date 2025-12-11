@@ -29,6 +29,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController = TextEditingController();
+  final TextEditingController referralCodeController = TextEditingController();
   final TextEditingController bdayController = TextEditingController();
   bool isChecked = false;
 
@@ -37,6 +38,9 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
   String? birthdayError;
   String? passwordError;
   String? confirmPasswordError;
+  String? referralCodeError;
+  bool isReferralCodeValid = false;
+  bool isValidatingReferralCode = false;
 
   bool isPasswordVisible = false;
   bool isConfirmPasswordVisible = false;
@@ -80,6 +84,11 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       ),
     );
 
+    // Add listener to rebuild when referral code changes
+    referralCodeController.addListener(() {
+      setState(() {});
+    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FocusManager.instance.primaryFocus?.unfocus();
       _animationController.forward();
@@ -94,6 +103,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
     passwordController.dispose();
     confirmPasswordController.dispose();
     bdayController.dispose();
+    referralCodeController.dispose();
     super.dispose();
   }
 
@@ -288,6 +298,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         email: emailController.text.trim(),
         password: passwordController.text,
         dateOfBirth: bdayController.text.trim(),
+        referralCode: referralCodeController.text.trim().isNotEmpty ? referralCodeController.text.trim() : null,
       );
       final response = await authService
           .registerUser(request)
@@ -403,6 +414,78 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
           backgroundColor: context.appColors.error,
         );
       }
+    }
+  }
+
+  Future<void> _validateAndApplyReferralCode() async {
+    final code = referralCodeController.text.trim();
+
+    if (code.isEmpty) {
+      setState(() {
+        referralCodeError = null;
+        isReferralCodeValid = false;
+      });
+      return;
+    }
+
+    // Set loading state
+    setState(() {
+      referralCodeError = null;
+      isValidatingReferralCode = true;
+    });
+
+    try {
+      final response = await chopperClient
+          .post(Uri.parse('${AppConfig.apiBaseUrl}/api/referral/validate'), body: {'code': code})
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw TimeoutException('Request timeout');
+            },
+          );
+
+      final data = response.body as Map<String, dynamic>;
+
+      if (data['valid'] == true) {
+        setState(() {
+          isReferralCodeValid = true;
+          referralCodeError = null;
+          isValidatingReferralCode = false;
+        });
+
+        if (mounted) {
+          AppToastMessage.show(
+            context: context,
+            icon: Icons.check_circle,
+            message: "Referral code applied! You'll get GHS ${data['discount']} off your first order.",
+            backgroundColor: Colors.green,
+          );
+        }
+      } else {
+        setState(() {
+          isReferralCodeValid = false;
+          referralCodeError = "Invalid referral code";
+          isValidatingReferralCode = false;
+        });
+      }
+    } on SocketException {
+      setState(() {
+        isReferralCodeValid = false;
+        referralCodeError = "No internet connection. Check your network.";
+        isValidatingReferralCode = false;
+      });
+    } on TimeoutException {
+      setState(() {
+        isReferralCodeValid = false;
+        referralCodeError = "Request timeout. Please try again.";
+        isValidatingReferralCode = false;
+      });
+    } catch (e) {
+      setState(() {
+        isReferralCodeValid = false;
+        referralCodeError = "Could not validate code. Please try again.";
+        isValidatingReferralCode = false;
+      });
     }
   }
 
@@ -858,6 +941,181 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                               ),
                             ),
                           ),
+
+                          SizedBox(height: KSpacing.lg.h),
+
+                          AppTextInput(
+                            controller: referralCodeController,
+                            label: "Have a referral code?",
+                            hintText: "Enter referral code (optional)",
+                            fillColor: colors.backgroundSecondary,
+                            borderColor: colors.inputBorder,
+                            borderActiveColor: colors.accentGreen,
+                            cursorColor: colors.accentGreen,
+                            borderRadius: KBorderSize.borderRadius15,
+                            contentPadding: EdgeInsets.all(KSpacing.md15.r),
+                            errorText: referralCodeError,
+                            textCapitalization: TextCapitalization.characters,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                              LengthLimitingTextInputFormatter(10),
+                            ],
+                            onChanged: (value) {
+                              // Clear validation when user types
+                              if (referralCodeError != null || isReferralCodeValid) {
+                                setState(() {
+                                  referralCodeError = null;
+                                  isReferralCodeValid = false;
+                                });
+                              }
+                            },
+                            prefixIcon: Padding(
+                              padding: EdgeInsets.all(KSpacing.md12.r),
+                              child: Image.asset(
+                                Assets.icons.discount.path,
+                                package: 'grab_go_shared',
+                                width: KIconSize.md,
+                                height: KIconSize.md,
+                                color: colors.iconSecondary,
+                              ),
+                            ),
+                            suffixIcon: referralCodeController.text.isEmpty
+                                ? null // Hide when empty
+                                : isReferralCodeValid
+                                ? Padding(
+                                    padding: EdgeInsets.all(KSpacing.md12.r),
+                                    child: SvgPicture.asset(
+                                      Assets.icons.check,
+                                      package: 'grab_go_shared',
+                                      width: KIconSize.md,
+                                      height: KIconSize.md,
+                                      colorFilter: ColorFilter.mode(colors.iconSecondary, BlendMode.srcIn),
+                                    ),
+                                  )
+                                : isValidatingReferralCode
+                                ? Padding(
+                                    padding: EdgeInsets.all(KSpacing.md12.r),
+                                    child: SizedBox(
+                                      width: 20.r,
+                                      height: 20.r,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(colors.accentGreen),
+                                      ),
+                                    ),
+                                  )
+                                : Padding(
+                                    padding: EdgeInsets.all(4.r),
+                                    child: Container(
+                                      constraints: BoxConstraints(maxWidth: 80.w),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [colors.accentGreen, colors.accentGreen.withOpacity(0.8)],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(12.r),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: colors.accentGreen.withOpacity(0.3),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          onTap: _validateAndApplyReferralCode,
+                                          borderRadius: BorderRadius.circular(12.r),
+                                          child: Padding(
+                                            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                                            child: Center(
+                                              child: Text(
+                                                "Apply",
+                                                style: TextStyle(
+                                                  fontSize: KTextSize.small.sp,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Colors.white,
+                                                  letterSpacing: 0.5,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                          ),
+
+                          SizedBox(height: KSpacing.sm.h),
+
+                          // GRABGO10 Welcome Code Suggestion - Only show if not applied
+                          if (!isReferralCodeValid || referralCodeController.text.toUpperCase() != 'GRABGO10')
+                            GestureDetector(
+                              onTap: () {
+                                referralCodeController.text = 'GRABGO10';
+                                _validateAndApplyReferralCode();
+                              },
+                              child: Container(
+                                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [colors.accentGreen.withOpacity(0.1), colors.accentGreen.withOpacity(0.05)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  border: Border.all(color: colors.accentGreen.withOpacity(0.3), width: 1.5),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.all(6.r),
+                                      decoration: BoxDecoration(
+                                        color: colors.accentGreen.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(8.r),
+                                      ),
+                                      child: Icon(Icons.celebration, color: colors.accentGreen, size: 18.r),
+                                    ),
+                                    SizedBox(width: 12.w),
+                                    Expanded(
+                                      child: RichText(
+                                        text: TextSpan(
+                                          style: TextStyle(
+                                            fontSize: KTextSize.extraSmall.sp,
+                                            color: colors.textSecondary,
+                                            height: 1.4,
+                                          ),
+                                          children: [
+                                            TextSpan(text: "New user? Tap to use "),
+                                            TextSpan(
+                                              text: "GRABGO10",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w800,
+                                                color: colors.accentGreen,
+                                                fontSize: (KTextSize.extraSmall + 1).sp,
+                                              ),
+                                            ),
+                                            TextSpan(text: " for "),
+                                            TextSpan(
+                                              text: "GHS 10 off",
+                                              style: TextStyle(fontWeight: FontWeight.w700, color: colors.accentGreen),
+                                            ),
+                                            TextSpan(text: " your first order!"),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    Icon(
+                                      Icons.arrow_forward_ios,
+                                      size: 14.r,
+                                      color: colors.accentGreen.withOpacity(0.5),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
 
                           SizedBox(height: KSpacing.lg.h),
 

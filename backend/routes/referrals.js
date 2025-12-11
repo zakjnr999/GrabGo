@@ -8,7 +8,13 @@ const { protect } = require('../middleware/auth');
 
 // Helper function to generate referral code
 const generateReferralCode = async (firstName) => {
-    const cleanName = firstName.toUpperCase().replace(/[^A-Z]/g, '');
+    let cleanName = firstName.toUpperCase().replace(/[^A-Z]/g, '');
+
+    // If no letters, use "USER" as default
+    if (cleanName.length === 0) {
+        cleanName = 'USER';
+    }
+
     const shortName = cleanName.substring(0, Math.min(cleanName.length, 6));
 
     // Try with random 4 digits
@@ -67,7 +73,7 @@ router.get('/my-code', protect, async (req, res) => {
 
         res.json({
             code: referralCode.code,
-            shareUrl: `${process.env.APP_URL}/r/${referralCode.code}`,
+            shareUrl: `${process.env.APP_URL || 'https://grabgo.app'}/r/${referralCode.code}`,
             totalReferrals,
             completedReferrals,
             pendingReferrals,
@@ -120,7 +126,7 @@ router.post('/validate', async (req, res) => {
         const referralCode = await ReferralCode.findOne({
             code: code.toUpperCase(),
             isActive: true
-        }).populate('user', 'username');
+        });
 
         if (!referralCode) {
             return res.json({
@@ -129,12 +135,18 @@ router.post('/validate', async (req, res) => {
             });
         }
 
+        // Only populate user for non-system codes
+        if (!referralCode.isSystemCode) {
+            await referralCode.populate('user', 'username');
+        }
+
         res.json({
             valid: true,
-            referrerName: referralCode.user.username,
-            discount: 10.00,
-            minOrderValue: 20.00,
-            validDays: 7
+            referrerName: referralCode.isSystemCode ? 'GrabGo' : (referralCode.user?.username || 'Unknown'),
+            discount: referralCode.discount || 10.00,
+            minOrderValue: referralCode.minOrderValue || 20.00,
+            validDays: referralCode.validDays || 7,
+            isSystemCode: referralCode.isSystemCode || false
         });
     } catch (error) {
         console.error('Error validating referral code:', error);
@@ -174,19 +186,7 @@ router.post('/apply', protect, async (req, res) => {
             return res.status(400).json({ message: 'You cannot use your own referral code' });
         }
 
-        // Create referee credit (expires in 7 days)
-        const refereeCreditExpiry = new Date();
-        refereeCreditExpiry.setDate(refereeCreditExpiry.getDate() + 7);
-
-        const refereeCredit = await UserCredit.create({
-            user: req.user._id,
-            amount: 10.00,
-            source: 'referral_received',
-            expiresAt: refereeCreditExpiry,
-            description: `Referral credit from ${code}`
-        });
-
-        // Create referral record (expires in 7 days for referee to complete order)
+        // Create referral record FIRST (without credit ID)
         const referralExpiry = new Date();
         referralExpiry.setDate(referralExpiry.getDate() + 7);
 
@@ -195,10 +195,27 @@ router.post('/apply', protect, async (req, res) => {
             referee: req.user._id,
             referralCode: code.toUpperCase(),
             status: 'pending_order',
-            refereeCreditId: refereeCredit._id,
             expiresAt: referralExpiry,
             deviceId: req.body.deviceId || null,
             ipAddress: req.ip || null
+        });
+
+        // Create referee credit with referral link
+        const refereeCreditExpiry = new Date();
+        refereeCreditExpiry.setDate(refereeCreditExpiry.getDate() + 7);
+
+        const refereeCredit = await UserCredit.create({
+            user: req.user._id,
+            amount: 10.00,
+            source: 'referral_received',
+            referralId: referral._id, // ✅ Now we have the referral ID
+            expiresAt: refereeCreditExpiry,
+            description: `Referral credit from ${code}`
+        });
+
+        // Update referral with credit ID
+        await Referral.findByIdAndUpdate(referral._id, {
+            refereeCreditId: refereeCredit._id
         });
 
         // Update referral code stats

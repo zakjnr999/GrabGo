@@ -237,15 +237,13 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
             FirebasePhoneAuthService().setUserId(user.id ?? '');
           }
         } catch (e) {
-          // Continue anyway - navigation should still work
+          //Nothing
         }
 
-        // Navigate to email verification after successful registration
         if (mounted) {
           try {
             await Future.delayed(const Duration(milliseconds: 300));
             if (mounted) {
-              // Use push instead of go to preserve navigation stack for context.pop()
               context.push("/verifyEmail");
             }
           } catch (e) {

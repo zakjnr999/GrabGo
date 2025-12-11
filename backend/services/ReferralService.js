@@ -56,19 +56,19 @@ class ReferralService {
                 completedAt: new Date()
             });
 
-            // Update referral code stats
-            await ReferralCode.findOneAndUpdate(
+            // Update referral code stats and get the NEW value atomically
+            const referrerCode = await ReferralCode.findOneAndUpdate(
                 { user: referral.referrer },
                 {
                     $inc: {
                         completedReferrals: 1,
                         totalEarned: 10.00
                     }
-                }
+                },
+                { new: true } // Return updated document
             );
 
             // Check for milestone bonus (every 5 completed referrals)
-            const referrerCode = await ReferralCode.findOne({ user: referral.referrer });
             if (referrerCode && referrerCode.completedReferrals % 5 === 0) {
                 // Award milestone bonus (GHS 5)
                 const bonusExpiry = new Date();
@@ -130,17 +130,17 @@ class ReferralService {
             for (const credit of credits) {
                 if (remainingAmount <= 0) break;
 
-                const amountToUse = Math.min(credit.amount, remainingAmount);
-                appliedAmount += amountToUse;
-                remainingAmount -= amountToUse;
+                // Only use credits that can be fully consumed
+                // This prevents losing unused credit portions
+                if (credit.amount <= remainingAmount) {
+                    appliedAmount += credit.amount;
+                    remainingAmount -= credit.amount;
 
-                creditsUsed.push({
-                    creditId: credit._id,
-                    amount: amountToUse
-                });
-
-                // If we used the full credit, we'll mark it as used later
-                // If partial, we'll need to split it (not implemented in this version)
+                    creditsUsed.push({
+                        creditId: credit._id,
+                        amount: credit.amount
+                    });
+                }
             }
 
             return {

@@ -3,6 +3,7 @@
 import 'dart:io' show Platform;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../utils/constants.dart';
 import 'package:intl/intl.dart';
@@ -30,6 +31,9 @@ class AppTextInput extends StatelessWidget {
   final bool readOnly;
   final VoidCallback? onTap;
   final String? errorText;
+  final TextCapitalization textCapitalization;
+  final List<TextInputFormatter>? inputFormatters;
+  final ValueChanged<String>? onChanged;
 
   const AppTextInput({
     super.key,
@@ -53,6 +57,9 @@ class AppTextInput extends StatelessWidget {
     this.readOnly = false,
     this.onTap,
     this.errorText,
+    this.textCapitalization = TextCapitalization.none,
+    this.inputFormatters,
+    this.onChanged,
   });
 
   Future<void> _handleTap(BuildContext context) async {
@@ -162,6 +169,9 @@ class AppTextInput extends StatelessWidget {
             enabled: enabled,
             readOnly: readOnly,
             cursorColor: cursorColor ?? colors.accentOrange,
+            textCapitalization: textCapitalization,
+            inputFormatters: inputFormatters,
+            onChanged: onChanged,
             onTap: () => _handleTap(context),
             style:
                 textStyle ??
