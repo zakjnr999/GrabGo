@@ -4,15 +4,13 @@ const referralSchema = new mongoose.Schema({
     referrer: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true,
-        index: true
+        required: true
     },
     referee: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true,
-        unique: true, // Each user can only be referred once
-        index: true
+        unique: true // Each user can only be referred once
     },
     referralCode: {
         type: String,
