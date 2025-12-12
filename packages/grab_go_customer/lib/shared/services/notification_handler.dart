@@ -53,6 +53,26 @@ void handleNotificationTap(Map<String, dynamic> data) {
             ),
           ),
         );
+      } else if (type == 'referral_completed' || type == 'milestone_bonus') {
+        // Navigate to referral page
+        debugPrint('Navigate to referral page');
+        Navigator.of(context).pushNamed('/referral');
+      } else if (type == 'payment_confirmed' && orderId != null) {
+        // Navigate to order details
+        debugPrint('Navigate to order: $orderId');
+        Navigator.of(context).pushNamed('/orders/$orderId');
+      } else if (type == 'delivery_arriving' && orderId != null) {
+        // Navigate to order tracking
+        debugPrint('Navigate to order tracking: $orderId');
+        Navigator.of(context).pushNamed('/orders/$orderId');
+      } else if (type == 'promo') {
+        // Navigate to promos page
+        debugPrint('Navigate to promos');
+        Navigator.of(context).pushNamed('/promos');
+      } else if (type == 'system' || type == 'update') {
+        // Navigate to notifications page
+        debugPrint('Navigate to notifications');
+        Navigator.of(context).pushNamed('/notifications');
       }
     } catch (e) {
       debugPrint('❌ Error handling notification tap: $e');

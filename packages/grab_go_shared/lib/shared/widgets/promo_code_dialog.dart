@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import '../utils/constants.dart';
 import '../utils/app_colors_extension.dart';
@@ -128,8 +129,8 @@ class _PromoCodeDialogState extends State<PromoCodeDialog> with SingleTickerProv
                           ),
                         ),
                         child: Center(
-                          child: Image.asset(
-                            Assets.icons.discount.path,
+                          child: SvgPicture.asset(
+                            Assets.icons.badgePercent,
                             package: "grab_go_shared",
                             height: 35.h,
                             width: 35.h,

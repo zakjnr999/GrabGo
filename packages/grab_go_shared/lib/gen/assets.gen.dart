@@ -94,6 +94,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/badge-check.svg
   String get badgeCheck => 'lib/assets/icons/badge-check.svg';
 
+  /// File path: lib/assets/icons/badge-percent.svg
+  String get badgePercent => 'lib/assets/icons/badge-percent.svg';
+
   /// File path: lib/assets/icons/ban.svg
   String get ban => 'lib/assets/icons/ban.svg';
 
@@ -114,6 +117,9 @@ class $LibAssetsIconsGen {
 
   /// File path: lib/assets/icons/box-iso.svg
   String get boxIso => 'lib/assets/icons/box-iso.svg';
+
+  /// File path: lib/assets/icons/brush-cleaning.svg
+  String get brushCleaning => 'lib/assets/icons/brush-cleaning.svg';
 
   /// File path: lib/assets/icons/calendar.svg
   String get calendar => 'lib/assets/icons/calendar.svg';
@@ -148,6 +154,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/clock.svg
   String get clock => 'lib/assets/icons/clock.svg';
 
+  /// File path: lib/assets/icons/community.svg
+  String get community => 'lib/assets/icons/community.svg';
+
   /// File path: lib/assets/icons/cooking-pot.svg
   String get cookingPot => 'lib/assets/icons/cooking-pot.svg';
 
@@ -167,15 +176,14 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/delivery_guy_icon.svg
   String get deliveryGuyIcon => 'lib/assets/icons/delivery_guy_icon.svg';
 
-  /// File path: lib/assets/icons/discount.png
-  AssetGenImage get discount =>
-      const AssetGenImage('lib/assets/icons/discount.png');
-
   /// File path: lib/assets/icons/dollar.svg
   String get dollar => 'lib/assets/icons/dollar.svg';
 
   /// File path: lib/assets/icons/double-check.svg
   String get doubleCheck => 'lib/assets/icons/double-check.svg';
+
+  /// File path: lib/assets/icons/download.svg
+  String get download => 'lib/assets/icons/download.svg';
 
   /// File path: lib/assets/icons/edit-pencil.svg
   String get editPencil => 'lib/assets/icons/edit-pencil.svg';
@@ -205,6 +213,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/fast-delivery.png
   AssetGenImage get fastDelivery =>
       const AssetGenImage('lib/assets/icons/fast-delivery.png');
+
+  /// File path: lib/assets/icons/fingerprint-scan.svg
+  String get fingerprintScan => 'lib/assets/icons/fingerprint-scan.svg';
 
   /// File path: lib/assets/icons/fire-flame.svg
   String get fireFlame => 'lib/assets/icons/fire-flame.svg';
@@ -262,6 +273,9 @@ class $LibAssetsIconsGen {
 
   /// File path: lib/assets/icons/keyboard.svg
   String get keyboard => 'lib/assets/icons/keyboard.svg';
+
+  /// File path: lib/assets/icons/language.svg
+  String get language => 'lib/assets/icons/language.svg';
 
   /// File path: lib/assets/icons/lock.svg
   String get lock => 'lib/assets/icons/lock.svg';
@@ -333,11 +347,20 @@ class $LibAssetsIconsGen {
   AssetGenImage get packageDelivered =>
       const AssetGenImage('lib/assets/icons/package-delivered.png');
 
+  /// File path: lib/assets/icons/package.svg
+  String get package => 'lib/assets/icons/package.svg';
+
+  /// File path: lib/assets/icons/party-popper.svg
+  String get partyPopper => 'lib/assets/icons/party-popper.svg';
+
   /// File path: lib/assets/icons/pause.svg
   String get pause => 'lib/assets/icons/pause.svg';
 
   /// File path: lib/assets/icons/percentage-circle.svg
   String get percentageCircle => 'lib/assets/icons/percentage-circle.svg';
+
+  /// File path: lib/assets/icons/percentage.svg
+  String get percentage => 'lib/assets/icons/percentage.svg';
 
   /// File path: lib/assets/icons/phone-solid.svg
   String get phoneSolid => 'lib/assets/icons/phone-solid.svg';
@@ -393,6 +416,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/sliders-horizontal.svg
   String get slidersHorizontal => 'lib/assets/icons/sliders-horizontal.svg';
 
+  /// File path: lib/assets/icons/sound-high.svg
+  String get soundHigh => 'lib/assets/icons/sound-high.svg';
+
   /// File path: lib/assets/icons/square-menu.svg
   String get squareMenu => 'lib/assets/icons/square-menu.svg';
 
@@ -413,6 +439,9 @@ class $LibAssetsIconsGen {
 
   /// File path: lib/assets/icons/sun-moon.svg
   String get sunMoon => 'lib/assets/icons/sun-moon.svg';
+
+  /// File path: lib/assets/icons/text-size.svg
+  String get textSize => 'lib/assets/icons/text-size.svg';
 
   /// File path: lib/assets/icons/tiktok.svg
   String get tiktok => 'lib/assets/icons/tiktok.svg';
@@ -461,6 +490,7 @@ class $LibAssetsIconsGen {
     backgroundIconMain,
     backgroundIconRider,
     badgeCheck,
+    badgePercent,
     ban,
     bbq,
     bellNotification,
@@ -468,6 +498,7 @@ class $LibAssetsIconsGen {
     binMinusIn,
     bin,
     boxIso,
+    brushCleaning,
     calendar,
     camera,
     cart,
@@ -479,15 +510,16 @@ class $LibAssetsIconsGen {
     chefHat,
     city,
     clock,
+    community,
     cookingPot,
     cooking,
     copy,
     creditCard,
     deliveryTruck,
     deliveryGuyIcon,
-    discount,
     dollar,
     doubleCheck,
+    download,
     editPencil,
     edit,
     emoji,
@@ -497,6 +529,7 @@ class $LibAssetsIconsGen {
     facebook,
     fastArrowDown,
     fastDelivery,
+    fingerprintScan,
     fireFlame,
     flame,
     folder,
@@ -515,6 +548,7 @@ class $LibAssetsIconsGen {
     infoCircle,
     instagram,
     keyboard,
+    language,
     lock,
     logIn,
     logOut,
@@ -537,8 +571,11 @@ class $LibAssetsIconsGen {
     orderFood,
     orderTrackSample,
     packageDelivered,
+    package,
+    partyPopper,
     pause,
     percentageCircle,
+    percentage,
     phoneSolid,
     phone,
     play,
@@ -556,6 +593,7 @@ class $LibAssetsIconsGen {
     shareAndroid,
     shieldCheck,
     slidersHorizontal,
+    soundHigh,
     squareMenu,
     starSolid,
     star,
@@ -563,6 +601,7 @@ class $LibAssetsIconsGen {
     styleBorder,
     sunLight,
     sunMoon,
+    textSize,
     tiktok,
     timer,
     user,
@@ -680,7 +719,6 @@ class Assets {
 
   static const $LibGen lib = $LibGen();
 
-  // Shortcuts for backward compatibility
   static $LibAssetsIconsGen get icons => lib.assets.icons;
   static $LibAssetsImagesGen get images => lib.assets.images;
   static $LibAssetsFontsGen get fonts => lib.assets.fonts;

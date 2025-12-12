@@ -2,6 +2,11 @@ const Referral = require('../models/Referral');
 const ReferralCode = require('../models/ReferralCode');
 const UserCredit = require('../models/UserCredit');
 const User = require('../models/User');
+const { sendReferralNotification, sendMilestoneBonusNotification } = require('./fcm_service');
+
+// Referral reward constants
+const REFERRAL_REWARD_AMOUNT = 10.00;
+const MILESTONE_BONUS_AMOUNT = 5.00;
 
 class ReferralService {
     /**
@@ -40,7 +45,7 @@ class ReferralService {
 
             const referrerCredit = await UserCredit.create({
                 user: referral.referrer,
-                amount: 10.00,
+                amount: REFERRAL_REWARD_AMOUNT,
                 source: 'referral_earned',
                 referralId: referral._id,
                 expiresAt: referrerCreditExpiry,
@@ -62,7 +67,7 @@ class ReferralService {
                 {
                     $inc: {
                         completedReferrals: 1,
-                        totalEarned: 10.00
+                        totalEarned: REFERRAL_REWARD_AMOUNT
                     }
                 },
                 { new: true } // Return updated document
@@ -76,15 +81,38 @@ class ReferralService {
 
                 await UserCredit.create({
                     user: referral.referrer,
-                    amount: 5.00,
+                    amount: MILESTONE_BONUS_AMOUNT,
                     source: 'bonus',
                     expiresAt: bonusExpiry,
                     description: `Milestone bonus - ${referrerCode.completedReferrals} referrals completed!`
                 });
 
                 await ReferralCode.findByIdAndUpdate(referrerCode._id, {
-                    $inc: { totalEarned: 5.00 }
+                    $inc: { totalEarned: MILESTONE_BONUS_AMOUNT }
                 });
+
+                // Send milestone notification
+                try {
+                    await sendMilestoneBonusNotification(
+                        referral.referrer,
+                        referrerCode.completedReferrals,
+                        MILESTONE_BONUS_AMOUNT
+                    );
+                    console.log(`✅ Milestone notification sent to ${referral.referrer}`);
+                } catch (notifError) {
+                    console.error('❌ Error sending milestone notification:', notifError.message);
+                }
+            }
+
+            // Send push notification to referrer
+            try {
+                const referee = await User.findById(userId).select('username');
+                const refereeName = referee?.username || 'Your friend';
+                await sendReferralNotification(referral.referrer, refereeName, REFERRAL_REWARD_AMOUNT);
+                console.log(`✅ Referral notification sent to ${referral.referrer}`);
+            } catch (notifError) {
+                console.error('❌ Error sending referral notification:', notifError.message);
+                // Don't fail the whole operation if notification fails
             }
 
             return {

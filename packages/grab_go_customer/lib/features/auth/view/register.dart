@@ -84,7 +84,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       ),
     );
 
-    // Add listener to rebuild when referral code changes
     referralCodeController.addListener(() {
       setState(() {});
     });
@@ -980,8 +979,8 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                             },
                             prefixIcon: Padding(
                               padding: EdgeInsets.all(KSpacing.md12.r),
-                              child: Image.asset(
-                                Assets.icons.discount.path,
+                              child: SvgPicture.asset(
+                                Assets.icons.badgePercent,
                                 package: 'grab_go_shared',
                                 width: KIconSize.md,
                                 height: KIconSize.md,
@@ -989,7 +988,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                               ),
                             ),
                             suffixIcon: referralCodeController.text.isEmpty
-                                ? null // Hide when empty
+                                ? null
                                 : isReferralCodeValid
                                 ? Padding(
                                     padding: EdgeInsets.all(KSpacing.md12.r),
@@ -1085,7 +1084,13 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                                         color: colors.accentGreen.withOpacity(0.2),
                                         borderRadius: BorderRadius.circular(8.r),
                                       ),
-                                      child: Icon(Icons.celebration, color: colors.accentGreen, size: 18.r),
+                                      child: SvgPicture.asset(
+                                        Assets.icons.partyPopper,
+                                        package: 'grab_go_shared',
+                                        width: 18.r,
+                                        height: 18.r,
+                                        colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                                      ),
                                     ),
                                     SizedBox(width: 12.w),
                                     Expanded(
@@ -1097,29 +1102,63 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                                             height: 1.4,
                                           ),
                                           children: [
-                                            TextSpan(text: "New user? Tap to use "),
+                                            TextSpan(
+                                              text: "New user? Tap to use ",
+                                              style: TextStyle(
+                                                fontFamily: "Lato",
+                                                package: "grab_go_shared",
+                                                fontSize: KTextSize.extraSmall.sp,
+                                                color: colors.textSecondary,
+                                                fontWeight: FontWeight.normal,
+                                              ),
+                                            ),
                                             TextSpan(
                                               text: "GRABGO10",
                                               style: TextStyle(
+                                                fontFamily: "Lato",
+                                                package: "grab_go_shared",
                                                 fontWeight: FontWeight.w800,
                                                 color: colors.accentGreen,
                                                 fontSize: (KTextSize.extraSmall + 1).sp,
                                               ),
                                             ),
-                                            TextSpan(text: " for "),
+                                            TextSpan(
+                                              text: " for ",
+                                              style: TextStyle(
+                                                fontFamily: "Lato",
+                                                package: "grab_go_shared",
+                                                fontSize: KTextSize.extraSmall.sp,
+                                                color: colors.textSecondary,
+                                                fontWeight: FontWeight.normal,
+                                              ),
+                                            ),
                                             TextSpan(
                                               text: "GHS 10 off",
                                               style: TextStyle(fontWeight: FontWeight.w700, color: colors.accentGreen),
                                             ),
-                                            TextSpan(text: " your first order!"),
+                                            TextSpan(
+                                              text: " your first order!",
+                                              style: TextStyle(
+                                                fontFamily: "Lato",
+                                                package: "grab_go_shared",
+                                                fontSize: KTextSize.extraSmall.sp,
+                                                color: colors.textSecondary,
+                                                fontWeight: FontWeight.normal,
+                                              ),
+                                            ),
                                           ],
                                         ),
                                       ),
                                     ),
-                                    Icon(
-                                      Icons.arrow_forward_ios,
-                                      size: 14.r,
-                                      color: colors.accentGreen.withOpacity(0.5),
+                                    SvgPicture.asset(
+                                      Assets.icons.navArrowRight,
+                                      package: "grab_go_shared",
+                                      width: 16.r,
+                                      height: 16.r,
+                                      colorFilter: ColorFilter.mode(
+                                        colors.accentGreen.withValues(alpha: 0.5),
+                                        BlendMode.srcIn,
+                                      ),
                                     ),
                                   ],
                                 ),

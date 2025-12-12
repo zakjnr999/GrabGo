@@ -343,6 +343,9 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                         itemTile("Payment Methods", Assets.icons.creditCard, context, () {
                           context.push("/paymentMethod");
                         }),
+                        itemTile("Refer & Earn", Assets.icons.gift, context, () {
+                          context.push("/referral");
+                        }),
                         itemTile("Change Password", Assets.icons.lock, context, () {
                           context.push("/orderTracking");
                         }),

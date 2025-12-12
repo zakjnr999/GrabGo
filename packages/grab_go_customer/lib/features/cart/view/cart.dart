@@ -235,11 +235,12 @@ class Cart extends StatelessWidget {
                               color: colors.accentViolet.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(8.r),
                             ),
-                            child: Assets.icons.discount.image(
+                            child: SvgPicture.asset(
+                              Assets.icons.badgePercent,
+                              package: 'grab_go_shared',
                               height: 20.h,
                               width: 20.w,
-                              color: colors.accentViolet,
-                              package: 'grab_go_shared',
+                              colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
                             ),
                           ),
                           SizedBox(width: 12.w),

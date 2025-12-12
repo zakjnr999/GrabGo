@@ -303,7 +303,6 @@ class _VerifyPhoneState extends State<ForgotPassword> with SingleTickerProviderS
                                     package: "grab_go_shared",
                                     color: colors.textSecondary,
                                     fontSize: KTextSize.small.sp,
-                                    fontWeight: FontWeight.w600,
                                   ),
                                   children: [
                                     TextSpan(
@@ -311,9 +310,9 @@ class _VerifyPhoneState extends State<ForgotPassword> with SingleTickerProviderS
                                       style: TextStyle(
                                         fontFamily: "Lato",
                                         package: 'grab_go_shared',
-                                        color: colors.accentViolet,
+                                        color: colors.textPrimary,
                                         fontSize: KTextSize.small.sp,
-                                        fontWeight: FontWeight.w700,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ],

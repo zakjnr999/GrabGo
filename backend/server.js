@@ -258,6 +258,7 @@ app.use("/uploads", express.static("uploads"));
 
 // Routes
 app.use("/api/users", require("./routes/auth"));
+app.use("/api/users", require("./routes/notification_settings"));
 app.use("/api/restaurants", require("./routes/restaurants"));
 app.use("/api/orders", require("./routes/orders"));
 app.use("/api/payments", require("./routes/payments"));

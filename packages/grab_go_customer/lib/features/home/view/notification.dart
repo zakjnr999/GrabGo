@@ -9,7 +9,6 @@ import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:intl/intl.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/shared/widgets/notification_skeleton.dart';
-import 'package:grab_go_shared/shared/services/socket_service.dart';
 import 'dart:async';
 
 class Actor {
@@ -354,11 +353,12 @@ class _NotificationState extends State<Notification> {
         return Container(
           padding: EdgeInsets.all(8.r),
           decoration: BoxDecoration(color: colors.accentViolet.withValues(alpha: 0.15), shape: BoxShape.circle),
-          child: Assets.icons.discount.image(
+          child: SvgPicture.asset(
+            Assets.icons.badgePercent,
+            package: 'grab_go_shared',
             height: 20.h,
             width: 20.w,
-            color: colors.accentViolet,
-            package: 'grab_go_shared',
+            colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
           ),
         );
       case NotificationType.update:

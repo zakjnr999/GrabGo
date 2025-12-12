@@ -113,10 +113,22 @@ const sendToUser = async (userId, notification, data = {}) => {
         }
 
         // Check notification settings
-        if (data.type === 'chat_message' && !user.notificationSettings?.chatMessages) {
-            return { success: false, reason: 'notifications_disabled' };
-        }
-        if (data.type === 'order_update' && !user.notificationSettings?.orderUpdates) {
+        const settingsMap = {
+            'chat_message': 'chatMessages',
+            'order_update': 'orderUpdates',
+            'referral_completed': 'referralUpdates',
+            'payment_confirmed': 'paymentUpdates',
+            'delivery_arriving': 'deliveryUpdates',
+            'promo': 'promoNotifications',
+            'system': 'systemUpdates',
+            'update': 'systemUpdates',
+            'comment_reply': 'commentReplies',
+            'comment_reaction': 'commentReactions',
+            'milestone_bonus': 'referralUpdates'
+        };
+
+        const settingKey = settingsMap[data.type];
+        if (settingKey && !user.notificationSettings?.[settingKey]) {
             return { success: false, reason: 'notifications_disabled' };
         }
 
@@ -367,6 +379,144 @@ const sendCommentReactionNotification = async (
     );
 };
 
+/**
+ * Send referral completion notification
+ * @param {string} referrerId - User ID of the referrer to receive notification
+ * @param {string} refereeName - Name of the person who completed the order
+ * @param {number} rewardAmount - Amount earned from referral
+ */
+const sendReferralNotification = async (referrerId, refereeName, rewardAmount = 10) => {
+    return sendToUser(
+        referrerId,
+        {
+            title: '🎉 Referral Success!',
+            body: `${refereeName} completed their first order. You earned GHS ${rewardAmount}!`,
+        },
+        {
+            type: 'referral_completed',
+            refereeName,
+            rewardAmount: rewardAmount.toString(),
+            route: '/referral',
+        }
+    );
+};
+
+/**
+ * Send promotional notification
+ * @param {string} userId - User ID to receive notification
+ * @param {string} title - Promo title
+ * @param {string} message - Promo message
+ * @param {string} promoCode - Optional promo code
+ * @param {string} imageUrl - Optional promo image
+ */
+const sendPromoNotification = async (userId, title, message, promoCode = null, imageUrl = null) => {
+    return sendToUser(
+        userId,
+        {
+            title,
+            body: message,
+            ...(imageUrl && { imageUrl })
+        },
+        {
+            type: 'promo',
+            promoCode: promoCode || '',
+            route: '/promos',
+        }
+    );
+};
+
+/**
+ * Send payment confirmation notification
+ * @param {string} userId - User ID
+ * @param {string} orderId - Order ID
+ * @param {number} amount - Payment amount
+ * @param {string} paymentMethod - Payment method used
+ */
+const sendPaymentConfirmation = async (userId, orderId, amount, paymentMethod) => {
+    return sendToUser(
+        userId,
+        {
+            title: '✅ Payment Successful',
+            body: `Your payment of GHS ${amount.toFixed(2)} has been confirmed.`,
+        },
+        {
+            type: 'payment_confirmed',
+            orderId,
+            amount: amount.toString(),
+            paymentMethod,
+            route: `/orders/${orderId}`,
+        }
+    );
+};
+
+/**
+ * Send delivery arriving notification
+ * @param {string} userId - User ID
+ * @param {string} orderId - Order ID
+ * @param {string} orderNumber - Order number
+ * @param {number} estimatedMinutes - ETA in minutes
+ */
+const sendDeliveryArrivingNotification = async (userId, orderId, orderNumber, estimatedMinutes = 5) => {
+    return sendToUser(
+        userId,
+        {
+            title: '🚴 Rider Arriving Soon!',
+            body: `Your order #${orderNumber} will arrive in ${estimatedMinutes} minutes.`,
+        },
+        {
+            type: 'delivery_arriving',
+            orderId,
+            orderNumber,
+            eta: estimatedMinutes.toString(),
+            route: `/orders/${orderId}`,
+        }
+    );
+};
+
+/**
+ * Send system update notification
+ * @param {string} userId - User ID (or 'all' for broadcast)
+ * @param {string} title - Update title
+ * @param {string} message - Update message
+ * @param {string} updateType - 'maintenance', 'feature', 'bug_fix'
+ */
+const sendSystemUpdate = async (userId, title, message, updateType = 'feature') => {
+    return sendToUser(
+        userId,
+        {
+            title: `🔔 ${title}`,
+            body: message,
+        },
+        {
+            type: 'system',
+            updateType,
+            route: '/notifications',
+        }
+    );
+};
+
+/**
+ * Send milestone bonus notification
+ * @param {string} userId - User ID
+ * @param {number} milestone - Milestone number (5, 10, 15, etc.)
+ * @param {number} bonusAmount - Bonus amount earned
+ */
+const sendMilestoneBonusNotification = async (userId, milestone, bonusAmount) => {
+    return sendToUser(
+        userId,
+        {
+            title: '🎉 Milestone Reached!',
+            body: `Congrats! You've completed ${milestone} referrals. Bonus GHS ${bonusAmount} added!`,
+        },
+        {
+            type: 'milestone_bonus',
+            milestone: milestone.toString(),
+            bonusAmount: bonusAmount.toString(),
+            route: '/referral',
+        }
+    );
+};
+
 module.exports = {
     initializeFirebase,
     registerToken,
@@ -375,5 +525,11 @@ module.exports = {
     sendChatNotification,
     sendOrderNotification,
     sendCommentReplyNotification,
-    sendCommentReactionNotification
+    sendCommentReactionNotification,
+    sendReferralNotification,
+    sendPromoNotification,
+    sendPaymentConfirmation,
+    sendDeliveryArrivingNotification,
+    sendSystemUpdate,
+    sendMilestoneBonusNotification
 };

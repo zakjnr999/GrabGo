@@ -97,24 +97,42 @@ class _SettingsPageState extends State<SettingsPage> {
             elevation: 0,
             scrolledUnderElevation: 0,
             backgroundColor: colors.backgroundSecondary,
-            leading: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => context.pop(),
-                customBorder: const CircleBorder(),
-                child: Padding(
-                  padding: EdgeInsets.all(10.r),
-                  child: SvgPicture.asset(
-                    Assets.icons.navArrowLeft,
-                    package: 'grab_go_shared',
-                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+            title: Row(
+              children: [
+                Container(
+                  height: 44.h,
+                  width: 44.w,
+                  decoration: BoxDecoration(
+                    color: colors.backgroundPrimary,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
+                        spreadRadius: 0,
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => context.pop(),
+                      customBorder: const CircleBorder(),
+                      child: Padding(
+                        padding: EdgeInsets.all(10.r),
+                        child: SvgPicture.asset(
+                          Assets.icons.navArrowLeft,
+                          package: 'grab_go_shared',
+                          colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+
+                const Spacer(),
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                   decoration: BoxDecoration(
@@ -140,7 +158,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           shape: BoxShape.circle,
                         ),
                         child: SvgPicture.asset(
-                          Assets.icons.user,
+                          Assets.icons.settings,
                           package: 'grab_go_shared',
                           height: 16.h,
                           width: 16.w,
@@ -161,9 +179,11 @@ class _SettingsPageState extends State<SettingsPage> {
                     ],
                   ),
                 ),
+
+                const Spacer(),
+                SizedBox(height: 44.h, width: 44.w),
               ],
             ),
-            actions: [SizedBox(width: 44.w)],
           ),
           body: SafeArea(
             top: false,
@@ -173,7 +193,6 @@ class _SettingsPageState extends State<SettingsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Appearance Section
                   _buildSectionHeader("Appearance", colors),
                   SizedBox(height: 12.h),
                   _buildSection(isDark, colors, [
@@ -182,42 +201,77 @@ class _SettingsPageState extends State<SettingsPage> {
                   ]),
                   SizedBox(height: 24.h),
 
-                  // Notifications Section
                   _buildSectionHeader("Notifications", colors),
                   SizedBox(height: 12.h),
                   _buildSection(isDark, colors, [
-                    _buildToggleTile(
-                      "Push Notifications",
-                      Assets.icons.bell,
-                      settingsProvider.pushNotificationsEnabled,
-                      (value) {
-                        settingsProvider.setPushNotifications(value);
-                      },
-                      colors,
-                    ),
-                    _buildToggleTile("Order Updates", Assets.icons.boxIso, settingsProvider.orderUpdatesEnabled, (
-                      value,
-                    ) {
-                      settingsProvider.setOrderUpdates(value);
-                    }, colors),
-                    _buildToggleTile("Promotions & Offers", Assets.icons.bell, settingsProvider.promotionsEnabled, (
-                      value,
-                    ) {
-                      settingsProvider.setPromotions(value);
-                    }, colors),
                     _buildToggleTile("Chat Messages", Assets.icons.chatBubble, settingsProvider.chatMessagesEnabled, (
                       value,
                     ) {
                       settingsProvider.setChatMessages(value);
                     }, colors),
-                    _buildToggleTile("Favorites Updates", Assets.icons.heart, settingsProvider.favoritesEnabled, (
+                    _buildToggleTile("Order Updates", Assets.icons.package, settingsProvider.orderUpdatesEnabled, (
                       value,
                     ) {
-                      settingsProvider.setFavorites(value);
+                      settingsProvider.setOrderUpdates(value);
+                    }, colors),
+                    _buildToggleTile(
+                      "Promotions & Offers",
+                      Assets.icons.gift,
+                      settingsProvider.promoNotificationsEnabled,
+                      (value) {
+                        settingsProvider.setPromoNotifications(value);
+                      },
+                      colors,
+                    ),
+                    _buildToggleTile(
+                      "Comment Replies",
+                      Assets.icons.chatBubble,
+                      settingsProvider.commentRepliesEnabled,
+                      (value) {
+                        settingsProvider.setCommentReplies(value);
+                      },
+                      colors,
+                    ),
+                    _buildToggleTile(
+                      "Comment Reactions",
+                      Assets.icons.heart,
+                      settingsProvider.commentReactionsEnabled,
+                      (value) {
+                        settingsProvider.setCommentReactions(value);
+                      },
+                      colors,
+                    ),
+                    _buildToggleTile("Referral Updates", Assets.icons.gift, settingsProvider.referralUpdatesEnabled, (
+                      value,
+                    ) {
+                      settingsProvider.setReferralUpdates(value);
+                    }, colors),
+                    _buildToggleTile(
+                      "Payment Confirmations",
+                      Assets.icons.alarm,
+                      settingsProvider.paymentUpdatesEnabled,
+                      (value) {
+                        settingsProvider.setPaymentUpdates(value);
+                      },
+                      colors,
+                    ),
+                    _buildToggleTile(
+                      "Delivery Alerts",
+                      Assets.icons.deliveryTruck,
+                      settingsProvider.deliveryUpdatesEnabled,
+                      (value) {
+                        settingsProvider.setDeliveryUpdates(value);
+                      },
+                      colors,
+                    ),
+                    _buildToggleTile("System Updates", Assets.icons.bell, settingsProvider.systemUpdatesEnabled, (
+                      value,
+                    ) {
+                      settingsProvider.setSystemUpdates(value);
                     }, colors),
                     _buildToggleTile(
                       "Notification Sound",
-                      Assets.icons.bell,
+                      Assets.icons.soundHigh,
                       settingsProvider.notificationSoundEnabled,
                       (value) {
                         settingsProvider.setNotificationSound(value);
@@ -227,13 +281,11 @@ class _SettingsPageState extends State<SettingsPage> {
                   ]),
                   SizedBox(height: 24.h),
 
-                  // Privacy & Security Section
                   _buildSectionHeader("Privacy & Security", colors),
                   SizedBox(height: 12.h),
                   _buildSection(isDark, colors, [
-                    // Location Services subsection
                     _buildSubsectionHeader("Location Services", colors),
-                    _buildActionTile("Permission Status", Assets.icons.sendDiagonal, "Manage permissions", () async {
+                    _buildActionTile("Permission Status", Assets.icons.lock, "Manage permissions", () async {
                       final hasPermission = await LocationService.hasPermission();
                       if (!hasPermission) {
                         await LocationService.openAppSettings();
@@ -241,7 +293,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     }, colors),
                     _buildActionTile(
                       "Clear Location Cache",
-                      Assets.icons.sendDiagonal,
+                      Assets.icons.brushCleaning,
                       "Remove cached location",
                       () async {
                         LocationService.clearCache();
@@ -254,17 +306,16 @@ class _SettingsPageState extends State<SettingsPage> {
                       colors,
                     ),
 
-                    // Data & Storage subsection
                     _buildSubsectionHeader("Data & Storage", colors),
-                    _buildActionTile("Clear Cache", Assets.icons.boxIso, _cacheSize, _clearCache, colors),
-                    _buildActionTile("Clear Search History", Assets.icons.boxIso, "Remove recent searches", () {
+                    _buildActionTile("Clear Cache", Assets.icons.brushCleaning, _cacheSize, _clearCache, colors),
+                    _buildActionTile("Clear Search History", Assets.icons.brushCleaning, "Remove recent searches", () {
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Search history cleared'), backgroundColor: Colors.green),
                         );
                       }
                     }, colors),
-                    _buildActionTile("Download My Data", Assets.icons.boxIso, "Export your data", () {
+                    _buildActionTile("Download My Data", Assets.icons.download, "Export your data", () {
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -275,27 +326,29 @@ class _SettingsPageState extends State<SettingsPage> {
                       }
                     }, colors),
 
-                    // Account Security subsection
                     _buildSubsectionHeader("Account Security", colors),
                     _buildActionTile("Change Password", Assets.icons.lock, "Update your password", () {
                       context.push("/orderTracking");
                     }, colors),
-                    _buildToggleTile("Biometric Login", Assets.icons.lock, settingsProvider.biometricLoginEnabled, (
-                      value,
-                    ) {
-                      settingsProvider.setBiometricLogin(value);
-                    }, colors),
+                    _buildToggleTile(
+                      "Biometric Login",
+                      Assets.icons.fingerprintScan,
+                      settingsProvider.biometricLoginEnabled,
+                      (value) {
+                        settingsProvider.setBiometricLogin(value);
+                      },
+                      colors,
+                    ),
                   ]),
                   SizedBox(height: 24.h),
 
-                  // App Preferences Section
                   _buildSectionHeader("App Preferences", colors),
                   SizedBox(height: 12.h),
                   _buildSection(isDark, colors, [
                     _buildLanguageSelector(settingsProvider, colors),
                     _buildActionTile(
                       "Default Pickup Location",
-                      Assets.icons.sendDiagonal,
+                      Assets.icons.mapPin,
                       settingsProvider.defaultPickupLocation.isEmpty
                           ? "Set location"
                           : settingsProvider.defaultPickupLocation,
@@ -309,7 +362,6 @@ class _SettingsPageState extends State<SettingsPage> {
                       colors,
                     ),
 
-                    // Order Preferences subsection
                     _buildSubsectionHeader("Order Preferences", colors),
                     _buildDefaultTipSelector(settingsProvider, colors),
                     _buildToggleTile(
@@ -511,6 +563,11 @@ class _SettingsPageState extends State<SettingsPage> {
           decoration: BoxDecoration(
             color: isSelected ? colors.accentOrange : Colors.transparent,
             borderRadius: BorderRadius.circular(12.r),
+            gradient: LinearGradient(
+              colors: isSelected
+                  ? [colors.accentOrange.withValues(alpha: 0.9), colors.accentOrange]
+                  : [Colors.transparent, Colors.transparent],
+            ),
           ),
           child: Center(
             child: Text(
@@ -538,7 +595,13 @@ class _SettingsPageState extends State<SettingsPage> {
               Container(
                 padding: EdgeInsets.all(8.r),
                 decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(10.r)),
-                child: Icon(Icons.text_fields, size: 18.sp, color: colors.textPrimary),
+                child: SvgPicture.asset(
+                  Assets.icons.textSize,
+                  package: 'grab_go_shared',
+                  height: 18.h,
+                  width: 18.w,
+                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                ),
               ),
               SizedBox(width: 14.w),
               Text(
@@ -586,7 +649,13 @@ class _SettingsPageState extends State<SettingsPage> {
               Container(
                 padding: EdgeInsets.all(8.r),
                 decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(10.r)),
-                child: Icon(Icons.language, size: 18.sp, color: colors.textPrimary),
+                child: SvgPicture.asset(
+                  Assets.icons.language,
+                  package: 'grab_go_shared',
+                  height: 18.h,
+                  width: 18.w,
+                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                ),
               ),
               SizedBox(width: 14.w),
               Text(
@@ -623,6 +692,11 @@ class _SettingsPageState extends State<SettingsPage> {
           decoration: BoxDecoration(
             color: isSelected ? colors.accentOrange : Colors.transparent,
             borderRadius: BorderRadius.circular(12.r),
+            gradient: LinearGradient(
+              colors: isSelected
+                  ? [colors.accentOrange.withValues(alpha: 0.9), colors.accentOrange]
+                  : [Colors.transparent, Colors.transparent],
+            ),
           ),
           child: Center(
             child: Text(
@@ -662,7 +736,13 @@ class _SettingsPageState extends State<SettingsPage> {
               Container(
                 padding: EdgeInsets.all(8.r),
                 decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(10.r)),
-                child: Icon(Icons.percent, size: 18.sp, color: colors.textPrimary),
+                child: SvgPicture.asset(
+                  Assets.icons.percentage,
+                  package: 'grab_go_shared',
+                  height: 18.h,
+                  width: 18.w,
+                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                ),
               ),
               SizedBox(width: 14.w),
               Text(
@@ -688,6 +768,11 @@ class _SettingsPageState extends State<SettingsPage> {
                       decoration: BoxDecoration(
                         color: isSelected ? colors.accentOrange : Colors.transparent,
                         borderRadius: BorderRadius.circular(12.r),
+                        gradient: LinearGradient(
+                          colors: isSelected
+                              ? [colors.accentOrange.withValues(alpha: 0.9), colors.accentOrange]
+                              : [Colors.transparent, Colors.transparent],
+                        ),
                       ),
                       child: Center(
                         child: Text(

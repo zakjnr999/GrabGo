@@ -98,7 +98,13 @@ const userSchema = new mongoose.Schema({
   notificationSettings: {
     chatMessages: { type: Boolean, default: true },
     orderUpdates: { type: Boolean, default: true },
-    promotions: { type: Boolean, default: true }
+    promoNotifications: { type: Boolean, default: true },
+    commentReplies: { type: Boolean, default: true },
+    commentReactions: { type: Boolean, default: true },
+    referralUpdates: { type: Boolean, default: true },
+    paymentUpdates: { type: Boolean, default: true },
+    deliveryUpdates: { type: Boolean, default: true },
+    systemUpdates: { type: Boolean, default: true }
   },
   permissions: {
     canManageUsers: { type: Boolean, default: false },

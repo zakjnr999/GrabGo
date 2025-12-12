@@ -161,7 +161,7 @@ router.post(
 
         if (referralResult.success) {
           console.log(`Referral completed for user ${req.user._id}`);
-          // TODO: Send push notification to referrer
+          // Notification sent automatically by ReferralService.completeReferral()
         }
       }
 

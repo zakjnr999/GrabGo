@@ -814,8 +814,8 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                             errorText: confirmPasswordError,
                             prefixIcon: Padding(
                               padding: EdgeInsets.all(KSpacing.md12.r),
-                              child: Image.asset(
-                                Assets.icons.discount.path,
+                              child: SvgPicture.asset(
+                                Assets.icons.badgePercent,
                                 package: 'grab_go_shared',
                                 width: KIconSize.md,
                                 height: KIconSize.md,
