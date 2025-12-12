@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,6 +12,7 @@ import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ReferralPage extends StatefulWidget {
   const ReferralPage({super.key});
@@ -19,7 +21,7 @@ class ReferralPage extends StatefulWidget {
   State<ReferralPage> createState() => _ReferralPageState();
 }
 
-class _ReferralPageState extends State<ReferralPage> with SingleTickerProviderStateMixin {
+class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMixin {
   String _referralCode = '••••••••';
   int _totalReferrals = 0;
   int _completedReferrals = 0;
@@ -33,9 +35,21 @@ class _ReferralPageState extends State<ReferralPage> with SingleTickerProviderSt
   late Animation<double> _completedReferralsAnimation;
   late Animation<double> _totalEarnedAnimation;
 
+  // Progress animations for milestone tracker
+  late AnimationController _progressAnimationController;
+  late Animation<double> _circularProgressAnimation;
+  late Animation<double> _linearProgressAnimation;
+
+  // Track previous values to prevent duplicate animations
+  int _previousTotalReferrals = 0;
+  int _previousCompletedReferrals = 0;
+  double _previousTotalEarned = 0.0;
+
   @override
   void initState() {
     super.initState();
+
+    // Stats animation controller
     _animationController = AnimationController(duration: const Duration(milliseconds: 1500), vsync: this);
 
     _totalReferralsAnimation = Tween<double>(
@@ -53,28 +67,87 @@ class _ReferralPageState extends State<ReferralPage> with SingleTickerProviderSt
       end: 0,
     ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOut));
 
+    // Progress animation controller for milestone tracker
+    _progressAnimationController = AnimationController(duration: const Duration(milliseconds: 1200), vsync: this);
+
+    _circularProgressAnimation = Tween<double>(
+      begin: 0,
+      end: 0,
+    ).animate(CurvedAnimation(parent: _progressAnimationController, curve: Curves.easeInOut));
+
+    _linearProgressAnimation = Tween<double>(
+      begin: 0,
+      end: 0,
+    ).animate(CurvedAnimation(parent: _progressAnimationController, curve: Curves.easeInOut));
+
     _loadReferralData();
   }
 
   @override
   void dispose() {
+    // Stop and dispose animation controllers
+    _animationController.stop();
+    _progressAnimationController.stop();
     _animationController.dispose();
+    _progressAnimationController.dispose();
     super.dispose();
   }
 
   Future<void> _loadReferralData() async {
     if (!mounted) return;
 
-    setState(() {
-      _isLoadingData = true;
-      _errorMessage = null;
-    });
+    // Load from cache first for instant display
+    await _loadFromCache();
 
+    // Then fetch from server in background
+    await _fetchFromServer();
+  }
+
+  Future<void> _loadFromCache() async {
     try {
-      print('🔍 Fetching referral data from: ${AppConfig.apiBaseUrl}/api/referral/my-code');
+      final prefs = await SharedPreferences.getInstance();
+      final cachedData = prefs.getString('referral_data');
+
+      if (cachedData != null) {
+        try {
+          final data = json.decode(cachedData) as Map<String, dynamic>;
+          print('📦 Loaded referral data from cache');
+
+          if (!mounted) return;
+
+          setState(() {
+            _referralCode = data['code'] ?? '••••••••';
+            _totalReferrals = data['totalReferrals'] ?? 0;
+            _completedReferrals = data['completedReferrals'] ?? 0;
+            _totalEarned = (data['totalEarned'] ?? 0).toDouble();
+            _isLoadingData = false;
+          });
+
+          // Animate with cached data
+          _animateStats();
+          _animateProgress();
+
+          // Update previous values to prevent re-animation if server data is same
+          _previousTotalReferrals = _totalReferrals;
+          _previousCompletedReferrals = _completedReferrals;
+          _previousTotalEarned = _totalEarned;
+        } catch (e) {
+          print('❌ Corrupted cache data, clearing: $e');
+          // Clear corrupted cache
+          await prefs.remove('referral_data');
+        }
+      }
+    } catch (e) {
+      print('❌ Error loading from cache: $e');
+    }
+  }
+
+  Future<void> _fetchFromServer() async {
+    try {
+      print('🔍 Fetching referral data from: ${AppConfig.apiBaseUrl}/referral/my-code');
 
       final response = await chopperClient
-          .get(Uri.parse('${AppConfig.apiBaseUrl}/api/referral/my-code'))
+          .get(Uri.parse('${AppConfig.apiBaseUrl}/referral/my-code'))
           .timeout(
             const Duration(seconds: 10),
             onTimeout: () {
@@ -83,19 +156,23 @@ class _ReferralPageState extends State<ReferralPage> with SingleTickerProviderSt
           );
 
       print('🔍 Response status: ${response.statusCode}');
-      print('🔍 Response body: ${response.body}');
 
       if (!mounted) return;
 
       if (response.statusCode == 200) {
         if (response.body == null) {
-          print('❌ Response body is null');
           throw Exception('Empty response from server');
         }
 
         final data = response.body as Map<String, dynamic>;
+        print('✅ Fetched fresh data from server');
 
-        print('✅ Parsed data: $data');
+        // Save to cache
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('referral_data', json.encode(data));
+        print('💾 Saved referral data to cache');
+
+        if (!mounted) return;
 
         setState(() {
           _referralCode = data['code'] ?? 'N/A';
@@ -104,34 +181,25 @@ class _ReferralPageState extends State<ReferralPage> with SingleTickerProviderSt
           _totalEarned = (data['totalEarned'] ?? 0).toDouble();
           _isLoadingData = false;
           _errorMessage = null;
-
-          // Update animations
-          _totalReferralsAnimation = Tween<double>(
-            begin: 0,
-            end: _totalReferrals.toDouble(),
-          ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOut));
-
-          _completedReferralsAnimation = Tween<double>(
-            begin: 0,
-            end: _completedReferrals.toDouble(),
-          ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOut));
-
-          _totalEarnedAnimation = Tween<double>(
-            begin: 0,
-            end: _totalEarned,
-          ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOut));
-
-          // Start animation
-          _animationController.forward(from: 0);
         });
+
+        // Only animate if data actually changed
+        if (_totalReferrals != _previousTotalReferrals ||
+            _completedReferrals != _previousCompletedReferrals ||
+            _totalEarned != _previousTotalEarned) {
+          _animateStats();
+          _animateProgress();
+
+          // Update previous values
+          _previousTotalReferrals = _totalReferrals;
+          _previousCompletedReferrals = _completedReferrals;
+          _previousTotalEarned = _totalEarned;
+        }
       } else if (response.statusCode == 401) {
-        print('❌ 401 Unauthorized - Token may be invalid');
         throw Exception('Unauthorized - Please log in again');
       } else if (response.statusCode == 404) {
-        print('❌ 404 Not Found - Endpoint may not exist');
         throw Exception('Referral endpoint not found');
       } else {
-        print('❌ Unexpected status code: ${response.statusCode}');
         throw Exception('Failed to load referral data: ${response.statusCode}');
       }
     } on SocketException catch (e) {
@@ -139,22 +207,66 @@ class _ReferralPageState extends State<ReferralPage> with SingleTickerProviderSt
       if (!mounted) return;
       setState(() {
         _isLoadingData = false;
-        _errorMessage = 'No internet connection. Please check your network.';
+        _errorMessage = 'No internet connection. Showing cached data.';
       });
     } on TimeoutException catch (e) {
       print('❌ TimeoutException: $e');
       if (!mounted) return;
       setState(() {
         _isLoadingData = false;
-        _errorMessage = 'Request timeout. Please try again.';
+        _errorMessage = 'Request timeout. Showing cached data.';
       });
     } catch (e) {
       print('❌ Error loading referral data: $e');
       if (!mounted) return;
       setState(() {
         _isLoadingData = false;
-        _errorMessage = 'Failed to load referral data. Please try again.';
+        _errorMessage = 'Failed to load fresh data. Showing cached data.';
       });
+    }
+  }
+
+  void _animateStats() {
+    if (!mounted) return;
+
+    _totalReferralsAnimation = Tween<double>(
+      begin: _totalReferralsAnimation.value,
+      end: _totalReferrals.toDouble(),
+    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOut));
+
+    _completedReferralsAnimation = Tween<double>(
+      begin: _completedReferralsAnimation.value,
+      end: _completedReferrals.toDouble(),
+    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOut));
+
+    _totalEarnedAnimation = Tween<double>(
+      begin: _totalEarnedAnimation.value,
+      end: _totalEarned,
+    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOut));
+
+    if (mounted) {
+      _animationController.forward(from: 0);
+    }
+  }
+
+  void _animateProgress() {
+    if (!mounted) return;
+
+    final progress = _completedReferrals % 5;
+    final progressPercent = (progress / 5.0);
+
+    _circularProgressAnimation = Tween<double>(
+      begin: 0,
+      end: progressPercent,
+    ).animate(CurvedAnimation(parent: _progressAnimationController, curve: Curves.easeInOut));
+
+    _linearProgressAnimation = Tween<double>(
+      begin: 0,
+      end: progressPercent,
+    ).animate(CurvedAnimation(parent: _progressAnimationController, curve: Curves.easeInOut));
+
+    if (mounted) {
+      _progressAnimationController.forward(from: 0);
     }
   }
 
@@ -322,6 +434,10 @@ class _ReferralPageState extends State<ReferralPage> with SingleTickerProviderSt
                 _buildStatsSection(colors, isDark),
                 SizedBox(height: 24.h),
 
+                // Milestone Tracker
+                _buildMilestoneTracker(colors, isDark),
+                SizedBox(height: 24.h),
+
                 // Referral History
                 _buildSectionHeader('Recent Referrals', colors),
                 SizedBox(height: 12.h),
@@ -415,7 +531,13 @@ class _ReferralPageState extends State<ReferralPage> with SingleTickerProviderSt
 
           Column(
             children: [
-              Icon(Icons.card_giftcard, size: 48.r, color: Colors.white),
+              SvgPicture.asset(
+                Assets.icons.gift,
+                package: 'grab_go_shared',
+                height: 48.r,
+                width: 48.r,
+                colorFilter: ColorFilter.mode(Colors.white.withOpacity(0.9), BlendMode.srcIn),
+              ),
               SizedBox(height: 16.h),
               Text(
                 'Your Referral Code',
@@ -555,15 +677,267 @@ class _ReferralPageState extends State<ReferralPage> with SingleTickerProviderSt
             child: Icon(icon, size: 20.r, color: colors.accentOrange),
           ),
           SizedBox(height: 12.h),
-          Text(
-            value,
-            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+            ),
           ),
           SizedBox(height: 4.h),
           Text(
             label,
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMilestoneTracker(AppColorsExtension colors, bool isDark) {
+    // Calculate milestone progress
+    final int currentReferrals = _completedReferrals;
+    final int progress = currentReferrals % 5; // Progress within current milestone
+    final double progressPercent = (progress / 5.0);
+    final int milestonesAchieved = (currentReferrals / 5).floor();
+    final double bonusEarned = milestonesAchieved * 5.0;
+    final int nextMilestone = (milestonesAchieved + 1) * 5;
+    final int referralsToGo = nextMilestone - currentReferrals;
+
+    // Motivational message based on progress
+    String motivationalMessage;
+    if (progressPercent == 0) {
+      motivationalMessage = "Great start! Keep sharing!";
+    } else if (progressPercent <= 0.4) {
+      motivationalMessage = "You're making progress!";
+    } else if (progressPercent <= 0.6) {
+      motivationalMessage = "More than halfway there!";
+    } else if (progressPercent <= 0.8) {
+      motivationalMessage = "Almost there! Keep going!";
+    } else {
+      motivationalMessage = "So close! Just a bit more!";
+    }
+
+    return Container(
+      padding: EdgeInsets.all(24.r),
+      decoration: BoxDecoration(
+        color: colors.backgroundPrimary,
+        borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+        border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
+            spreadRadius: 0,
+            blurRadius: 12,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Text('🏆', style: TextStyle(fontSize: 24.sp)),
+              SizedBox(width: 8.w),
+              Text(
+                'Milestone Progress',
+                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+              ),
+            ],
+          ),
+          SizedBox(height: 24.h),
+
+          // Circular Progress Indicator
+          Center(
+            child: SizedBox(
+              width: 160.r,
+              height: 160.r,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Background circle (always visible)
+                  SizedBox(
+                    width: 160.r,
+                    height: 160.r,
+                    child: CircularProgressIndicator(
+                      value: 1.0,
+                      strokeWidth: 14.w,
+                      valueColor: AlwaysStoppedAnimation<Color>(colors.inputBorder.withValues(alpha: 0.2)),
+                    ),
+                  ),
+                  // Progress circle (orange) - Animated
+                  AnimatedBuilder(
+                    animation: _progressAnimationController,
+                    builder: (context, child) {
+                      return SizedBox(
+                        width: 160.r,
+                        height: 160.r,
+                        child: CircularProgressIndicator(
+                          value: _circularProgressAnimation.value,
+                          strokeWidth: 14.w,
+                          strokeCap: StrokeCap.round,
+                          backgroundColor: Colors.transparent,
+                          valueColor: AlwaysStoppedAnimation<Color>(colors.accentOrange),
+                        ),
+                      );
+                    },
+                  ),
+                  // Center text
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '$progress/5',
+                        style: TextStyle(
+                          fontSize: 40.sp,
+                          fontWeight: FontWeight.w900,
+                          color: colors.textPrimary,
+                          letterSpacing: -1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(height: 20.h),
+
+          // Progress text
+          Center(
+            child: Text(
+              '$progress of 5 referrals',
+              style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+            ),
+          ),
+          SizedBox(height: 16.h),
+
+          // Progress bar - Animated
+          AnimatedBuilder(
+            animation: _progressAnimationController,
+            builder: (context, child) {
+              return Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10.r),
+                  border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 1),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors.accentOrange.withValues(alpha: _linearProgressAnimation.value > 0 ? 0.2 : 0),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(9.r),
+                  child: LinearProgressIndicator(
+                    value: _linearProgressAnimation.value,
+                    backgroundColor: colors.inputBorder.withValues(alpha: 0.15),
+                    valueColor: AlwaysStoppedAnimation<Color>(colors.accentOrange),
+                    minHeight: 14.h,
+                  ),
+                ),
+              );
+            },
+          ),
+          SizedBox(height: 20.h),
+
+          // Reward info
+          Container(
+            padding: EdgeInsets.all(16.r),
+            decoration: BoxDecoration(
+              color: colors.accentOrange.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12.r),
+            ),
+            child: Row(
+              children: [
+                Text('🎁', style: TextStyle(fontSize: 24.sp)),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Next Reward: GHS 5.00',
+                        style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                      ),
+                      SizedBox(height: 4.h),
+                      Text(
+                        '$referralsToGo more ${referralsToGo == 1 ? 'referral' : 'referrals'} to go!',
+                        style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: colors.accentGreen),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 16.h),
+
+          // Motivational message
+          Center(
+            child: Text(
+              motivationalMessage,
+              style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
+            ),
+          ),
+          SizedBox(height: 20.h),
+
+          // Stats row
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: EdgeInsets.all(12.r),
+                  decoration: BoxDecoration(
+                    color: colors.accentGreen.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        '$milestonesAchieved',
+                        style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                      ),
+                      SizedBox(height: 4.h),
+                      Text(
+                        'Milestones\nAchieved',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Container(
+                  padding: EdgeInsets.all(12.r),
+                  decoration: BoxDecoration(
+                    color: colors.accentOrange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'GHS ${bonusEarned.toStringAsFixed(2)}',
+                        style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                      ),
+                      SizedBox(height: 4.h),
+                      Text(
+                        'Total Bonus\nEarned',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

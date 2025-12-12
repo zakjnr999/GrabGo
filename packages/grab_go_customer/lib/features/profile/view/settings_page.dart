@@ -241,7 +241,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       },
                       colors,
                     ),
-                    _buildToggleTile("Referral Updates", Assets.icons.gift, settingsProvider.referralUpdatesEnabled, (
+                    _buildToggleTile("Referral Updates", Assets.icons.group, settingsProvider.referralUpdatesEnabled, (
                       value,
                     ) {
                       settingsProvider.setReferralUpdates(value);

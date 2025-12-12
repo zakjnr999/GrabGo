@@ -7,30 +7,29 @@ const User = require('../models/User');
 const { protect } = require('../middleware/auth');
 
 // Helper function to generate referral code
-const generateReferralCode = async (firstName) => {
-    let cleanName = firstName.toUpperCase().replace(/[^A-Z]/g, '');
+const generateReferralCode = async () => {
+    // Characters to use: uppercase letters and numbers (excluding similar-looking ones)
+    // Excluded: 0, O, I, 1, L to avoid confusion
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
-    // If no letters, use "USER" as default
-    if (cleanName.length === 0) {
-        cleanName = 'USER';
-    }
+    // Try to generate a unique 8-character code
+    for (let attempt = 0; attempt < 20; attempt++) {
+        let code = '';
+        for (let i = 0; i < 8; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
 
-    const shortName = cleanName.substring(0, Math.min(cleanName.length, 6));
-
-    // Try with random 4 digits
-    for (let i = 0; i < 10; i++) {
-        const suffix = Math.floor(Math.random() * 9000) + 1000; // 1000-9999
-        const code = `${shortName}${suffix}`;
-
+        // Check if code already exists
         const exists = await ReferralCode.findOne({ code });
         if (!exists) {
             return code;
         }
     }
 
-    // Fallback: use timestamp
-    const timestamp = Date.now() % 10000;
-    return `${shortName}${timestamp}`;
+    // Fallback: use timestamp-based code (very unlikely to reach here)
+    const timestamp = Date.now().toString(36).toUpperCase();
+    const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+    return `${timestamp}${randomSuffix}`.substring(0, 8);
 };
 
 // @route   GET /api/referral/my-code
@@ -42,8 +41,7 @@ router.get('/my-code', protect, async (req, res) => {
 
         // Generate code if doesn't exist
         if (!referralCode) {
-            const user = await User.findById(req.user._id);
-            const code = await generateReferralCode(user.username || 'USER');
+            const code = await generateReferralCode();
 
             referralCode = await ReferralCode.create({
                 user: req.user._id,

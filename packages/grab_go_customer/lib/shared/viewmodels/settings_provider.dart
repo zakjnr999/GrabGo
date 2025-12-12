@@ -110,7 +110,7 @@ class SettingsProvider extends ChangeNotifier {
 
       final response = await http
           .get(
-            Uri.parse('${AppConfig.apiBaseUrl}/api/users/settings/notifications'),
+            Uri.parse('${AppConfig.apiBaseUrl}/users/settings/notifications'),
             headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
           )
           .timeout(const Duration(seconds: 10));
@@ -168,7 +168,7 @@ class SettingsProvider extends ChangeNotifier {
 
       final response = await http
           .patch(
-            Uri.parse('${AppConfig.apiBaseUrl}/api/users/settings/notifications'),
+            Uri.parse('${AppConfig.apiBaseUrl}/users/settings/notifications'),
             headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
             body: jsonEncode({
               'settings': {
