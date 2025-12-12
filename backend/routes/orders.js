@@ -238,6 +238,75 @@ router.get("/", protect, async (req, res) => {
   }
 });
 
+/**
+ * Get user's recent order items for "Order Again" section
+ * Returns unique food items from user's completed orders
+ */
+router.get("/recent-items", protect, async (req, res) => {
+  try {
+    // Get user's completed orders with food items
+    const orders = await Order.find({
+      customer: req.user._id,
+      status: "delivered"
+    })
+      .populate("items.food")
+      .sort({ deliveredDate: -1 })
+      .limit(50); // Last 50 orders
+
+    // Extract unique food items with order info
+    const foodItemsMap = new Map();
+
+    orders.forEach(order => {
+      order.items.forEach(item => {
+        if (!item.food) return; // Skip if food was deleted
+
+        const foodId = item.food._id.toString();
+        if (!foodItemsMap.has(foodId)) {
+          const daysSince = Math.floor(
+            (Date.now() - order.deliveredDate) / (1000 * 60 * 60 * 24)
+          );
+
+          foodItemsMap.set(foodId, {
+            foodItem: item.food,
+            lastOrderedAt: order.deliveredDate,
+            orderCount: 1,
+            daysAgo: daysSince
+          });
+        } else {
+          // Increment order count for this food item
+          const existing = foodItemsMap.get(foodId);
+          existing.orderCount++;
+          // Keep the most recent order date
+          if (order.deliveredDate > existing.lastOrderedAt) {
+            existing.lastOrderedAt = order.deliveredDate;
+            existing.daysAgo = Math.floor(
+              (Date.now() - order.deliveredDate) / (1000 * 60 * 60 * 24)
+            );
+          }
+        }
+      });
+    });
+
+    // Convert to array and sort by most recent
+    const recentItems = Array.from(foodItemsMap.values())
+      .sort((a, b) => b.lastOrderedAt - a.lastOrderedAt)
+      .slice(0, 10); // Return top 10 most recent
+
+    res.json({
+      success: true,
+      message: "Recent items retrieved successfully",
+      data: recentItems
+    });
+  } catch (error) {
+    console.error("Get recent items error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
+  }
+});
+
 router.get("/:orderId", protect, async (req, res) => {
   try {
     const order = await Order.findById(req.params.orderId)

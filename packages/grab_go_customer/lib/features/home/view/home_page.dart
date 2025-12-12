@@ -15,6 +15,15 @@ import 'package:grab_go_customer/shared/widgets/home_search.dart';
 import 'package:grab_go_customer/shared/widgets/home_banner.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
 import 'package:grab_go_customer/features/home/model/filter_model.dart';
+import 'package:grab_go_customer/features/home/model/service_model.dart';
+import 'package:grab_go_customer/shared/widgets/service_selector.dart';
+import 'package:grab_go_customer/shared/widgets/service_selector_skeleton.dart';
+import 'package:grab_go_customer/shared/widgets/deals_section.dart';
+import 'package:grab_go_customer/shared/widgets/order_again_section.dart';
+import 'package:grab_go_customer/shared/widgets/popular_section.dart';
+import 'package:grab_go_customer/shared/widgets/promo_section.dart';
+import 'package:grab_go_customer/shared/widgets/top_rated_section.dart';
+import 'package:grab_go_customer/features/restaurant/model/restaurants_model.dart';
 import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
@@ -26,6 +35,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   FoodCategoryModel? _selectedCategory;
+  ServiceModel? _selectedService;
   late ScrollController _scrollController;
   late AnimationController _fabAnimationController;
   late AnimationController _badgePulseController;
@@ -128,6 +138,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final provider = Provider.of<FoodProvider>(context, listen: false);
       if (provider.categories.isEmpty) {
         provider.fetchCategories();
+        provider.fetchRecentOrderItems(); // Fetch order history
       } else {
         if (provider.categories.isNotEmpty) {
           setState(() {
@@ -169,10 +180,76 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               SizedBox(height: 8.h),
               _buildHomeSearch(itemsProvider),
               SizedBox(height: KSpacing.lg.h),
+              _buildServiceSelector(),
+              SizedBox(height: KSpacing.lg.h),
               HomeBanner(size: size),
               SizedBox(height: KSpacing.lg.h),
-              _buildCategoriesShimer(itemsProvider, isDark, size, colors),
-              SizedBox(height: KSpacing.lg.h),
+              _buildCategories(itemsProvider, isDark, size, colors),
+              SizedBox(height: KSpacing.xl.h),
+
+              // NEW SECTIONS - Horizontal Scrolling
+              DealsSection(
+                dealItems: itemsProvider.categories.expand((cat) => cat.items).take(5).toList(),
+                onSeeAll: () {
+                  debugPrint('See all deals');
+                },
+                onItemTap: (item) {
+                  context.push('/food-details', extra: item);
+                },
+                isLoading: itemsProvider.isLoading,
+              ),
+              SizedBox(height: KSpacing.xl.h),
+
+              OrderAgainSection(
+                recentOrders: itemsProvider.recentOrderItems,
+                onSeeAll: () {
+                  debugPrint('See all order history');
+                },
+                onItemTap: (item) {
+                  context.push('/food-details', extra: item);
+                },
+              ),
+              SizedBox(height: KSpacing.xl.h),
+
+              PopularSection(
+                popularItems: itemsProvider.categories
+                    .expand((cat) => cat.items)
+                    .where((item) => item.rating >= 4.0)
+                    .take(6)
+                    .toList(),
+                onSeeAll: () {
+                  debugPrint('See all popular');
+                },
+                onItemTap: (item) {
+                  context.push('/food-details', extra: item);
+                },
+                isLoading: itemsProvider.isLoading,
+              ),
+              SizedBox(height: KSpacing.xl.h),
+
+              PromoSection(
+                onSeeAll: () {
+                  debugPrint('See all promos');
+                },
+                isLoading: itemsProvider.isLoading,
+              ),
+              SizedBox(height: KSpacing.xl.h),
+
+              TopRatedSection(
+                topRatedItems: itemsProvider.categories
+                    .expand((cat) => cat.items)
+                    .where((item) => item.rating >= 4.5)
+                    .take(6)
+                    .toList(),
+                onSeeAll: () {
+                  debugPrint('See all top rated');
+                },
+                onItemTap: (item) {
+                  context.push('/food-details', extra: item);
+                },
+                isLoading: itemsProvider.isLoading,
+              ),
+              SizedBox(height: KSpacing.xl.h),
 
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20.w),
@@ -189,7 +266,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             borderRadius: BorderRadius.circular(KBorderSize.border),
                           ),
                           child: SvgPicture.asset(
-                            Assets.icons.flame,
+                            Assets.icons.sparkles,
                             package: 'grab_go_shared',
                             height: 20.h,
                             width: 20.w,
@@ -206,7 +283,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                       decoration: BoxDecoration(
-                        color: colors.accentOrange.withValues(alpha: 0.1),
+                        color: colors.accentViolet.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20.r),
                       ),
                       child: Material(
@@ -222,7 +299,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 style: TextStyle(
                                   fontSize: 12.sp,
                                   fontWeight: FontWeight.w700,
-                                  color: colors.accentOrange,
+                                  color: colors.accentViolet,
                                 ),
                               ),
                               SizedBox(width: 4.w),
@@ -231,7 +308,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 package: 'grab_go_shared',
                                 height: 12.h,
                                 width: 12.w,
-                                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
                               ),
                             ],
                           ),
@@ -512,7 +589,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Builder _buildCategoriesShimer(FoodProvider itemsProvider, bool isDark, Size size, AppColorsExtension colors) {
+  Builder _buildCategories(FoodProvider itemsProvider, bool isDark, Size size, AppColorsExtension colors) {
     return Builder(
       builder: (context) {
         if (itemsProvider.isLoading) {
@@ -548,7 +625,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
           if (categoriesToShow.isEmpty) {
             return Container(
-              height: 95.h,
+              height: 50.h,
               width: double.infinity,
               margin: EdgeInsets.only(left: 10.w, right: 20.w),
               decoration: BoxDecoration(
@@ -617,6 +694,28 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             }
           }
         });
+      },
+    );
+  }
+
+  Widget _buildServiceSelector() {
+    final itemsProvider = Provider.of<FoodProvider>(context);
+    final colors = context.appColors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (itemsProvider.isLoading) {
+      return ServiceSelectorSkeleton(colors: colors, isDark: isDark);
+    }
+
+    return ServiceSelector(
+      services: AppServices.all,
+      initialSelectedService: _selectedService ?? AppServices.food,
+      onServiceSelected: (ServiceModel service) {
+        setState(() {
+          _selectedService = service;
+        });
+        // TODO: In next step, we'll filter categories and items based on selected service
+        debugPrint('Selected service: ${service.name}');
       },
     );
   }
@@ -840,5 +939,53 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       return true;
     }).toList();
+  }
+
+  /// Create mock restaurants from food items for Nearby section
+  /// This extracts unique restaurants from food items
+  List<RestaurantModel> _createMockRestaurants(FoodProvider itemsProvider) {
+    if (itemsProvider.categories.isEmpty) {
+      return [];
+    }
+
+    // Collect unique restaurants from food items
+    final Map<String, RestaurantModel> restaurantMap = {};
+
+    for (var category in itemsProvider.categories) {
+      for (var item in category.items) {
+        if (item.restaurantId.isNotEmpty && !restaurantMap.containsKey(item.restaurantId)) {
+          // Create mock restaurant from food item data
+          restaurantMap[item.restaurantId] = RestaurantModel(
+            id: item.sellerId,
+            backendId: item.restaurantId,
+            name: item.sellerName.isNotEmpty ? item.sellerName : 'Restaurant ${item.sellerId}',
+            city: 'Accra',
+            foodType: category.name,
+            imageUrl: item.restaurantImage.isNotEmpty ? item.restaurantImage : item.image,
+            bannerImages: [],
+            distance: (restaurantMap.length * 0.5) + 0.5, // Mock distance: 0.5, 1.0, 1.5, etc.
+            rating: item.rating,
+            totalReviews: 120,
+            averageDeliveryTime: '${20 + (restaurantMap.length * 5)}-${30 + (restaurantMap.length * 5)}',
+            deliveryFee: 5.0,
+            minOrder: 15.0,
+            description: 'Delicious ${category.name} and more',
+            phone: '+233 XX XXX XXXX',
+            email: 'contact@restaurant.com',
+            address: 'Accra, Ghana',
+            latitude: 5.6037,
+            longitude: -0.1870,
+            openingHours: '9:00 AM - 10:00 PM',
+            isOpen: true,
+            paymentMethods: ['Cash', 'Mobile Money'],
+            socials: Socials(instagram: '', facebook: ''),
+            foods: [],
+          );
+        }
+      }
+    }
+
+    // Return up to 6 restaurants
+    return restaurantMap.values.take(6).toList();
   }
 }

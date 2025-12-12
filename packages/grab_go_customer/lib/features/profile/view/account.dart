@@ -174,7 +174,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
 
                 const Spacer(),
 
-                SizedBox(height: 24.h, width: 24),
+                SizedBox(width: 44.w),
               ],
             ),
           ),

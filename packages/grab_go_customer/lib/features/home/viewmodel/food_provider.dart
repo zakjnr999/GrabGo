@@ -14,6 +14,9 @@ class FoodProvider with ChangeNotifier {
   String? _error;
   String? get error => _error;
 
+  List<FoodItem> _recentOrderItems = [];
+  List<FoodItem> get recentOrderItems => _recentOrderItems;
+
   Future<void> fetchCategories() async {
     if (_categories.isNotEmpty || _isLoading) return;
 
@@ -205,6 +208,20 @@ class FoodProvider with ChangeNotifier {
       if (kDebugMode) {
         print('❌ Error enhancing food items with restaurant details: $e');
       }
+    }
+  }
+
+  /// Fetch user's recent order items for "Order Again" section
+  Future<void> fetchRecentOrderItems() async {
+    try {
+      _recentOrderItems = await FoodRepository().fetchRecentOrderItems();
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching recent order items: $e');
+      }
+      _recentOrderItems = [];
+      notifyListeners();
     }
   }
 }

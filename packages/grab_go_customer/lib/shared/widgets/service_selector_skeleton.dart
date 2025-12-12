@@ -4,11 +4,10 @@ import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
 import 'package:grab_go_shared/shared/utils/constants.dart';
 import 'package:shimmer/shimmer.dart';
 
-class CategorySkeleton extends StatelessWidget {
+class ServiceSelectorSkeleton extends StatelessWidget {
   final AppColorsExtension colors;
   final bool isDark;
-  final Size size;
-  const CategorySkeleton({super.key, required this.colors, required this.isDark, required this.size});
+  const ServiceSelectorSkeleton({super.key, required this.colors, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
@@ -43,10 +42,10 @@ class CategorySkeleton extends StatelessWidget {
                   ),
                   SizedBox(width: 8.w),
 
-                  //Category name placeholder
+                  //Service name placeholder
                   Container(
                     height: 14.h,
-                    width: 50.w,
+                    width: 60.w,
                     decoration: BoxDecoration(
                       color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
                       borderRadius: BorderRadius.circular(4.r),

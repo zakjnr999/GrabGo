@@ -148,6 +148,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/chef-hat.svg
   String get chefHat => 'lib/assets/icons/chef-hat.svg';
 
+  /// File path: lib/assets/icons/circle-alert.svg
+  String get circleAlert => 'lib/assets/icons/circle-alert.svg';
+
   /// File path: lib/assets/icons/city.svg
   String get city => 'lib/assets/icons/city.svg';
 
@@ -255,6 +258,9 @@ class $LibAssetsIconsGen {
 
   /// File path: lib/assets/icons/heart.svg
   String get heart => 'lib/assets/icons/heart.svg';
+
+  /// File path: lib/assets/icons/history.svg
+  String get history => 'lib/assets/icons/history.svg';
 
   /// File path: lib/assets/icons/home.svg
   String get home => 'lib/assets/icons/home.svg';
@@ -419,6 +425,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/sound-high.svg
   String get soundHigh => 'lib/assets/icons/sound-high.svg';
 
+  /// File path: lib/assets/icons/sparkles.svg
+  String get sparkles => 'lib/assets/icons/sparkles.svg';
+
   /// File path: lib/assets/icons/square-menu.svg
   String get squareMenu => 'lib/assets/icons/square-menu.svg';
 
@@ -440,6 +449,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/sun-moon.svg
   String get sunMoon => 'lib/assets/icons/sun-moon.svg';
 
+  /// File path: lib/assets/icons/tag.svg
+  String get tag => 'lib/assets/icons/tag.svg';
+
   /// File path: lib/assets/icons/text-size.svg
   String get textSize => 'lib/assets/icons/text-size.svg';
 
@@ -448,6 +460,9 @@ class $LibAssetsIconsGen {
 
   /// File path: lib/assets/icons/timer.svg
   String get timer => 'lib/assets/icons/timer.svg';
+
+  /// File path: lib/assets/icons/trophy.svg
+  String get trophy => 'lib/assets/icons/trophy.svg';
 
   /// File path: lib/assets/icons/user.svg
   String get user => 'lib/assets/icons/user.svg';
@@ -508,6 +523,7 @@ class $LibAssetsIconsGen {
     check,
     checkBig,
     chefHat,
+    circleAlert,
     city,
     clock,
     community,
@@ -542,6 +558,7 @@ class $LibAssetsIconsGen {
     headsetHelp,
     heartSolid,
     heart,
+    history,
     home,
     hourglass,
     idCard,
@@ -594,6 +611,7 @@ class $LibAssetsIconsGen {
     shieldCheck,
     slidersHorizontal,
     soundHigh,
+    sparkles,
     squareMenu,
     starSolid,
     star,
@@ -601,9 +619,11 @@ class $LibAssetsIconsGen {
     styleBorder,
     sunLight,
     sunMoon,
+    tag,
     textSize,
     tiktok,
     timer,
+    trophy,
     user,
     utensilsCrossed,
     vodafoneCash,

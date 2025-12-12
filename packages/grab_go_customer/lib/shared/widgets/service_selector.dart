@@ -1,111 +1,101 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:grab_go_customer/features/home/model/food_category.dart';
+import 'package:grab_go_customer/features/home/model/service_model.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
-class FoodCategoryList extends StatefulWidget {
-  final List<FoodCategoryModel> categories;
-  final ValueChanged<FoodCategoryModel> onCategorySelected;
-  final FoodCategoryModel? initialSelectedCategory;
+class ServiceSelector extends StatefulWidget {
+  final List<ServiceModel> services;
+  final ValueChanged<ServiceModel> onServiceSelected;
+  final ServiceModel? initialSelectedService;
 
-  const FoodCategoryList({
+  const ServiceSelector({
     super.key,
-    required this.categories,
-    required this.onCategorySelected,
-    this.initialSelectedCategory,
+    required this.services,
+    required this.onServiceSelected,
+    this.initialSelectedService,
   });
 
   @override
-  State<FoodCategoryList> createState() => _FoodCategoryListState();
+  State<ServiceSelector> createState() => _ServiceSelectorState();
 }
 
-class _FoodCategoryListState extends State<FoodCategoryList> {
+class _ServiceSelectorState extends State<ServiceSelector> {
   int selectedIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    // Try to find the initial selected category in the list
-    if (widget.initialSelectedCategory != null) {
-      final index = widget.categories.indexWhere((cat) => cat.id == widget.initialSelectedCategory!.id);
+    if (widget.initialSelectedService != null) {
+      final index = widget.services.indexWhere((service) => service.id == widget.initialSelectedService!.id);
       selectedIndex = index >= 0 ? index : 0;
     } else {
       selectedIndex = 0;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && widget.categories.isNotEmpty && selectedIndex < widget.categories.length) {
-        widget.onCategorySelected(widget.categories[selectedIndex]);
+      if (mounted && widget.services.isNotEmpty && selectedIndex < widget.services.length) {
+        widget.onServiceSelected(widget.services[selectedIndex]);
       }
     });
   }
 
   @override
-  void didUpdateWidget(FoodCategoryList oldWidget) {
+  void didUpdateWidget(ServiceSelector oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // Guard against empty categories
-    if (widget.categories.isEmpty) {
+    // Guard against empty services
+    if (widget.services.isEmpty) {
       return;
     }
 
-    // Update selected index when categories list changes
-    if (widget.categories.length != oldWidget.categories.length ||
-        !_categoriesEqual(widget.categories, oldWidget.categories)) {
+    // Update selected index when services list changes
+    if (widget.services.length != oldWidget.services.length || !_servicesEqual(widget.services, oldWidget.services)) {
       int newIndex = selectedIndex;
 
-      // Try to preserve the selected category if it still exists in the new list
-      if (widget.initialSelectedCategory != null) {
-        final index = widget.categories.indexWhere((cat) => cat.id == widget.initialSelectedCategory!.id);
+      // Try to preserve the selected service if it still exists in the new list
+      if (widget.initialSelectedService != null) {
+        final index = widget.services.indexWhere((service) => service.id == widget.initialSelectedService!.id);
         if (index >= 0) {
           newIndex = index;
         } else {
-          // Selected category not in new list, reset to first
+          // Selected service not in new list, reset to first
           newIndex = 0;
         }
       } else {
         // Check if current selected index is still valid
-        if (selectedIndex >= widget.categories.length) {
+        if (selectedIndex >= widget.services.length) {
           newIndex = 0;
         }
       }
 
       // Update state and notify parent only if index changed
-      if (newIndex != selectedIndex && newIndex < widget.categories.length) {
+      if (newIndex != selectedIndex && newIndex < widget.services.length) {
         setState(() {
           selectedIndex = newIndex;
         });
-        // Use post frame callback to ensure widget is still mounted
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && selectedIndex < widget.categories.length) {
-            widget.onCategorySelected(widget.categories[selectedIndex]);
-          }
-        });
-      } else if (newIndex < widget.categories.length) {
-        // Index is valid, just notify parent
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && newIndex < widget.categories.length) {
-            widget.onCategorySelected(widget.categories[newIndex]);
+          if (mounted && selectedIndex < widget.services.length) {
+            widget.onServiceSelected(widget.services[selectedIndex]);
           }
         });
       }
-    } else if (widget.initialSelectedCategory != null &&
-        widget.initialSelectedCategory!.id != oldWidget.initialSelectedCategory?.id) {
-      // Initial selected category changed, update selection
-      final index = widget.categories.indexWhere((cat) => cat.id == widget.initialSelectedCategory!.id);
-      if (index >= 0 && index != selectedIndex && index < widget.categories.length) {
+    } else if (widget.initialSelectedService != null &&
+        widget.initialSelectedService!.id != oldWidget.initialSelectedService?.id) {
+      // Initial selected service changed, update selection
+      final index = widget.services.indexWhere((service) => service.id == widget.initialSelectedService!.id);
+      if (index >= 0 && index != selectedIndex && index < widget.services.length) {
         setState(() {
           selectedIndex = index;
         });
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && selectedIndex < widget.categories.length) {
-            widget.onCategorySelected(widget.categories[selectedIndex]);
+          if (mounted && selectedIndex < widget.services.length) {
+            widget.onServiceSelected(widget.services[selectedIndex]);
           }
         });
       }
     }
   }
 
-  bool _categoriesEqual(List<FoodCategoryModel> list1, List<FoodCategoryModel> list2) {
+  bool _servicesEqual(List<ServiceModel> list1, List<ServiceModel> list2) {
     if (list1.length != list2.length) return false;
     for (int i = 0; i < list1.length; i++) {
       if (list1[i].id != list2[i].id) return false;
@@ -116,25 +106,26 @@ class _FoodCategoryListState extends State<FoodCategoryList> {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    Size size = MediaQuery.sizeOf(context);
 
     return SizedBox(
-      height: 50.h,
+      height: 95.h,
       child: ListView.builder(
         padding: EdgeInsets.only(left: 20.w),
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
-        itemCount: widget.categories.length,
+        itemCount: widget.services.length,
         itemBuilder: (context, index) {
-          final category = widget.categories[index];
+          final service = widget.services[index];
           final bool isSelected = selectedIndex == index;
 
           return GestureDetector(
             onTap: () {
-              if (index >= 0 && index < widget.categories.length) {
+              if (index >= 0 && index < widget.services.length) {
                 setState(() {
                   selectedIndex = index;
                 });
-                widget.onCategorySelected(category);
+                widget.onServiceSelected(service);
               }
             },
             child: Padding(
@@ -142,7 +133,7 @@ class _FoodCategoryListState extends State<FoodCategoryList> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 250),
                 curve: Curves.easeInOut,
-                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                width: size.width * 0.22,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: isSelected
@@ -165,32 +156,33 @@ class _FoodCategoryListState extends State<FoodCategoryList> {
                     ),
                   ],
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     AnimatedDefaultTextStyle(
                       duration: const Duration(milliseconds: 300),
                       curve: Curves.easeInOut,
-                      style: TextStyle(fontSize: 20, color: isSelected ? colors.backgroundPrimary : colors.textPrimary),
-                      child: Text(category.emoji),
+                      style: TextStyle(fontSize: 30, color: isSelected ? colors.backgroundPrimary : colors.textPrimary),
+                      child: Text(service.emoji),
                     ),
-                    SizedBox(width: 8.w),
+                    SizedBox(height: KSpacing.md.h),
                     AnimatedDefaultTextStyle(
                       duration: const Duration(milliseconds: 250),
                       curve: Curves.easeInOut,
                       style: TextStyle(
                         color: isSelected ? colors.backgroundPrimary : colors.textPrimary,
-                        fontWeight: FontWeight.w500,
-                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w400,
                       ),
-                      child: Text(
-                        category.name,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontFamily: "Lato",
-                          package: 'grab_go_shared',
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 5.w),
+                        child: Text(
+                          service.name,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w400,
+                            fontFamily: "Lato",
+                            package: 'grab_go_shared',
+                          ),
                         ),
                       ),
                     ),

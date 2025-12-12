@@ -26,7 +26,7 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
   int _totalReferrals = 0;
   int _completedReferrals = 0;
   double _totalEarned = 0.0;
-  bool _isLoadingData = true;
+  bool isLoadingData = true;
   String? _errorMessage;
 
   // Animation controllers
@@ -120,7 +120,7 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
             _totalReferrals = data['totalReferrals'] ?? 0;
             _completedReferrals = data['completedReferrals'] ?? 0;
             _totalEarned = (data['totalEarned'] ?? 0).toDouble();
-            _isLoadingData = false;
+            isLoadingData = false;
           });
 
           // Animate with cached data
@@ -179,7 +179,7 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
           _totalReferrals = data['totalReferrals'] ?? 0;
           _completedReferrals = data['completedReferrals'] ?? 0;
           _totalEarned = (data['totalEarned'] ?? 0).toDouble();
-          _isLoadingData = false;
+          isLoadingData = false;
           _errorMessage = null;
         });
 
@@ -206,21 +206,21 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
       print('❌ SocketException: $e');
       if (!mounted) return;
       setState(() {
-        _isLoadingData = false;
+        isLoadingData = false;
         _errorMessage = 'No internet connection. Showing cached data.';
       });
     } on TimeoutException catch (e) {
       print('❌ TimeoutException: $e');
       if (!mounted) return;
       setState(() {
-        _isLoadingData = false;
+        isLoadingData = false;
         _errorMessage = 'Request timeout. Showing cached data.';
       });
     } catch (e) {
       print('❌ Error loading referral data: $e');
       if (!mounted) return;
       setState(() {
-        _isLoadingData = false;
+        isLoadingData = false;
         _errorMessage = 'Failed to load fresh data. Showing cached data.';
       });
     }

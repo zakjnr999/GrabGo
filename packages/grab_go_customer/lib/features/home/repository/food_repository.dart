@@ -71,4 +71,27 @@ class FoodRepository {
 
     return categoriesWithFoods;
   }
+
+  /// Fetch user's recent order items for "Order Again" section
+  Future<List<FoodItem>> fetchRecentOrderItems() async {
+    try {
+      final response = await chopperClient.get(Uri.parse('/orders/recent-items'));
+
+      if (response.isSuccessful && response.body != null) {
+        final body = response.body as Map<String, dynamic>;
+        final data = (body['data'] as List<dynamic>?) ?? [];
+
+        // Extract food items from the response
+        return data.map((item) {
+          final foodItemData = item['foodItem'] as Map<String, dynamic>;
+          return FoodItem.fromJson(foodItemData);
+        }).toList();
+      } else {
+        throw Exception('Failed to load recent items: ${response.statusCode}');
+      }
+    } catch (e) {
+      // Return empty list if user has no order history
+      return [];
+    }
+  }
 }
