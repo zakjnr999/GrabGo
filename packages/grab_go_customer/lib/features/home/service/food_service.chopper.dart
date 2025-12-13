@@ -45,4 +45,18 @@ final class _$FoodService extends FoodService {
     );
     return client.send<dynamic, dynamic>($request);
   }
+
+  @override
+  Future<Response<dynamic>> getDeals() {
+    final Uri $url = Uri.parse('/foods/deals');
+    final Request $request = Request('GET', $url, client.baseUrl);
+    return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
+  Future<Response<dynamic>> getPromotionalBanners() {
+    final Uri $url = Uri.parse('/promotions/banners');
+    final Request $request = Request('GET', $url, client.baseUrl);
+    return client.send<dynamic, dynamic>($request);
+  }
 }

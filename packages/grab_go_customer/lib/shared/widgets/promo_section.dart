@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:grab_go_customer/features/home/model/promotional_banner.dart';
 import 'package:grab_go_customer/shared/widgets/promo_banner_card.dart';
 import 'package:grab_go_customer/shared/widgets/promo_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
@@ -7,10 +8,11 @@ import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class PromoSection extends StatefulWidget {
+  final List<PromotionalBanner> banners;
   final VoidCallback onSeeAll;
   final bool isLoading;
 
-  const PromoSection({super.key, required this.onSeeAll, this.isLoading = false});
+  const PromoSection({super.key, required this.banners, required this.onSeeAll, this.isLoading = false});
 
   @override
   State<PromoSection> createState() => _PromoSectionState();
@@ -19,6 +21,7 @@ class PromoSection extends StatefulWidget {
 class _PromoSectionState extends State<PromoSection> {
   late PageController _pageController;
   int _currentPage = 0;
+  bool _autoScrollStarted = false;
 
   @override
   void initState() {
@@ -27,17 +30,26 @@ class _PromoSectionState extends State<PromoSection> {
       viewportFraction: 0.85, // Show parts of adjacent cards
       initialPage: 0,
     );
+  }
 
-    // Auto-scroll every 5 seconds
-    Future.delayed(const Duration(seconds: 5), _autoScroll);
+  @override
+  void didUpdateWidget(PromoSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // Start auto-scroll when banners become available
+    if (!_autoScrollStarted && widget.banners.isNotEmpty && !widget.isLoading) {
+      _autoScrollStarted = true;
+      Future.delayed(const Duration(seconds: 5), _autoScroll);
+    }
   }
 
   void _autoScroll() {
-    if (!mounted) return;
+    if (!mounted || widget.banners.isEmpty) return;
 
-    final nextPage = (_currentPage + 1) % 3; // 3 promos
+    final nextPage = (_currentPage + 1) % widget.banners.length;
     _pageController.animateToPage(nextPage, duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
 
+    // Schedule next auto-scroll
     Future.delayed(const Duration(seconds: 5), _autoScroll);
   }
 
@@ -50,32 +62,27 @@ class _PromoSectionState extends State<PromoSection> {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Mock promotional data
-    final promos = [
-      {
-        'title': 'Slice & Save on\nPizza Hut',
-        'subtitle': 'Savour your favourite\npizza for just GHS43',
-        'imageUrl': 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400',
-        'discount': '-50%',
-        'backgroundColor': const Color(0xFFFFF4E6),
-      },
-      {
-        'title': 'Fresh Burgers\nat KFC',
-        'subtitle': 'Crispy chicken burgers\nstarting at GHS35',
-        'imageUrl': 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400',
-        'discount': '-40%',
-        'backgroundColor': const Color(0xFFFFEBEE),
-      },
-      {
-        'title': 'Sushi Special\nat Zen Garden',
-        'subtitle': 'Premium sushi rolls\nfrom GHS55',
-        'imageUrl': 'https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=400',
-        'discount': '-30%',
-        'backgroundColor': const Color(0xFFE8F5E9),
-      },
-    ];
+    // Show skeleton while loading
+    if (widget.isLoading) {
+      return Column(
+        children: [
+          SectionHeader(
+            title: "Special Offers",
+            icon: Assets.icons.tag,
+            accentColor: colors.accentOrange,
+            onSeeAll: widget.onSeeAll,
+          ),
+          SizedBox(height: 15.h),
+          PromoSkeleton(colors: colors, isDark: Theme.of(context).brightness == Brightness.dark),
+        ],
+      );
+    }
+
+    // Hide section if no banners
+    if (widget.banners.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return Column(
       children: [
@@ -85,52 +92,58 @@ class _PromoSectionState extends State<PromoSection> {
           accentColor: colors.accentOrange,
           onSeeAll: widget.onSeeAll,
         ),
-        SizedBox(height: 16.h),
-        if (widget.isLoading)
-          PromoSkeleton(colors: colors, isDark: isDark)
-        else
-          SizedBox(
-            height: 170.h,
-            child: PageView.builder(
-              controller: _pageController,
-              onPageChanged: (index) {
-                setState(() {
-                  _currentPage = index;
-                });
-              },
-              itemCount: promos.length,
-              itemBuilder: (context, index) {
-                final promo = promos[index];
-                return AnimatedBuilder(
-                  animation: _pageController,
-                  builder: (context, child) {
-                    double value = 1.0;
-                    if (_pageController.position.haveDimensions) {
-                      value = _pageController.page! - index;
-                      value = (1 - (value.abs() * 0.15)).clamp(0.85, 1.0);
-                    }
-                    return Center(
-                      child: SizedBox(height: Curves.easeInOut.transform(value) * 160.h, child: child),
-                    );
-                  },
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8.w),
-                    child: PromoBannerCard(
-                      title: promo['title'] as String,
-                      subtitle: promo['subtitle'] as String,
-                      imageUrl: promo['imageUrl'] as String,
-                      discount: promo['discount'] as String,
-                      backgroundColor: promo['backgroundColor'] as Color,
-                      onTap: () {
-                        debugPrint('Promo tapped: ${promo['title']}');
-                      },
-                    ),
+        SizedBox(height: 15.h),
+        SizedBox(
+          height: 140.h,
+          child: PageView.builder(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentPage = index;
+              });
+            },
+            itemCount: widget.banners.length,
+            itemBuilder: (context, index) {
+              final banner = widget.banners[index];
+              return AnimatedBuilder(
+                animation: _pageController,
+                builder: (context, child) {
+                  double value = 1.0;
+                  if (_pageController.position.haveDimensions) {
+                    value = _pageController.page! - index;
+                    value = (1 - (value.abs() * 0.1)).clamp(0.9, 1.0);
+                  }
+                  return Center(
+                    child: SizedBox(height: Curves.easeInOut.transform(value) * 180.h, child: child),
+                  );
+                },
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w),
+                  child: PromoBannerCard(
+                    title: banner.title,
+                    subtitle: banner.subtitle ?? '',
+                    imageUrl: banner.imageUrl,
+                    discount: banner.discount ?? '',
+                    backgroundColor: _parseColor(banner.backgroundColor),
+                    onTap: () {
+                      debugPrint('Tapped banner: ${banner.title}');
+                      // TODO: Navigate to targetUrl
+                    },
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
           ),
+        ),
       ],
     );
+  }
+
+  Color _parseColor(String hexColor) {
+    try {
+      return Color(int.parse(hexColor.substring(1, 7), radix: 16) + 0xFF000000);
+    } catch (e) {
+      return Colors.white;
+    }
   }
 }

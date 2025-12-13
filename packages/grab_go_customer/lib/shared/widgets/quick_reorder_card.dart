@@ -11,6 +11,7 @@ class QuickReorderCard extends StatelessWidget {
   final int daysAgo;
   final VoidCallback onTap;
   final VoidCallback onAddToCart;
+  final bool isInCart;
 
   const QuickReorderCard({
     super.key,
@@ -18,6 +19,7 @@ class QuickReorderCard extends StatelessWidget {
     required this.daysAgo,
     required this.onTap,
     required this.onAddToCart,
+    required this.isInCart,
   });
 
   @override
@@ -73,29 +75,27 @@ class QuickReorderCard extends StatelessWidget {
                   // Quick add button
                   GestureDetector(
                     onTap: onAddToCart,
-                    child: Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.symmetric(vertical: 8.h),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                      padding: EdgeInsets.all(10.r),
                       decoration: BoxDecoration(
-                        color: colors.accentViolet,
-                        borderRadius: BorderRadius.circular(KBorderSize.border),
+                        shape: BoxShape.circle,
+                        color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SvgPicture.asset(
-                            Assets.icons.cart,
-                            package: 'grab_go_shared',
-                            height: 14.h,
-                            width: 14.w,
-                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                          ),
-                          SizedBox(width: 6.w),
-                          Text(
-                            "Reorder",
-                            style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: Colors.white),
-                          ),
-                        ],
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        transitionBuilder: (child, animation) {
+                          return ScaleTransition(scale: animation, child: child);
+                        },
+                        child: SvgPicture.asset(
+                          isInCart ? Assets.icons.check : Assets.icons.cart,
+                          key: ValueKey(isInCart),
+                          package: 'grab_go_shared',
+                          height: 18.h,
+                          width: 18.w,
+                          colorFilter: ColorFilter.mode(isInCart ? Colors.white : colors.textPrimary, BlendMode.srcIn),
+                        ),
                       ),
                     ),
                   ),

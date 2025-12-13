@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_customer/features/home/repository/food_repository.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
+import 'package:grab_go_customer/features/home/model/promotional_banner.dart';
 import 'package:grab_go_customer/shared/services/restaurant_detail_service.dart';
 import 'package:grab_go_shared/shared/services/cache_service.dart';
 
@@ -22,6 +23,18 @@ class FoodProvider with ChangeNotifier {
 
   String? _recentItemsError;
   String? get recentItemsError => _recentItemsError;
+
+  List<PromotionalBanner> _promotionalBanners = [];
+  List<PromotionalBanner> get promotionalBanners => _promotionalBanners;
+
+  bool _isLoadingBanners = false;
+  bool get isLoadingBanners => _isLoadingBanners;
+
+  List<FoodItem> _dealItems = [];
+  List<FoodItem> get dealItems => _dealItems;
+
+  bool _isLoadingDeals = false;
+  bool get isLoadingDeals => _isLoadingDeals;
 
   Future<void> fetchCategories() async {
     if (_categories.isNotEmpty || _isLoading) return;
@@ -233,6 +246,42 @@ class FoodProvider with ChangeNotifier {
       // Global error handler will show network error page
     } finally {
       _isLoadingRecentItems = false;
+      notifyListeners();
+    }
+  }
+
+  /// Fetch promotional banners
+  Future<void> fetchPromotionalBanners() async {
+    _isLoadingBanners = true;
+    notifyListeners();
+
+    try {
+      _promotionalBanners = await FoodRepository().fetchPromotionalBanners();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching promotional banners: $e');
+      }
+      _promotionalBanners = [];
+    } finally {
+      _isLoadingBanners = false;
+      notifyListeners();
+    }
+  }
+
+  /// Fetch food deals
+  Future<void> fetchDeals() async {
+    _isLoadingDeals = true;
+    notifyListeners();
+
+    try {
+      _dealItems = await FoodRepository().fetchDeals();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching deals: $e');
+      }
+      _dealItems = [];
+    } finally {
+      _isLoadingDeals = false;
       notifyListeners();
     }
   }

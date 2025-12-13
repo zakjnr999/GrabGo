@@ -15,6 +15,15 @@ class FoodItem {
   final int deliveryTimeMinutes;
   final bool isAvailable;
   final double discountPercentage;
+  final DateTime? discountEndDate;
+
+  // Getter for original price before discount
+  double get originalPrice {
+    if (discountPercentage > 0) {
+      return price / (1 - discountPercentage / 100);
+    }
+    return price;
+  }
 
   FoodItem({
     required this.id,
@@ -32,6 +41,7 @@ class FoodItem {
     this.deliveryTimeMinutes = 30,
     this.isAvailable = true,
     this.discountPercentage = 0.0,
+    this.discountEndDate,
     required this.restaurantImage,
   });
 
@@ -87,7 +97,9 @@ class FoodItem {
 
     final description = json['description']?.toString() ?? '';
     // Mark items that need restaurant details to be fetched
-    final safeSellerName = restaurantName.isEmpty && restaurantId.isNotEmpty ? 'Loading Restaurant...' : (restaurantName.isEmpty ? 'Unknown Restaurant' : restaurantName);
+    final safeSellerName = restaurantName.isEmpty && restaurantId.isNotEmpty
+        ? 'Loading Restaurant...'
+        : (restaurantName.isEmpty ? 'Unknown Restaurant' : restaurantName);
     final safeRestaurantImage = restaurantImage.isEmpty ? '' : restaurantImage;
 
     return FoodItem(
@@ -114,6 +126,7 @@ class FoodItem {
           ? json['isAvailable'] as bool
           : (json['isAvailable']?.toString().toLowerCase() == 'true'),
       discountPercentage: (json['discountPercentage'] as num?)?.toDouble() ?? 0.0,
+      discountEndDate: json['discountEndDate'] != null ? DateTime.tryParse(json['discountEndDate'].toString()) : null,
     );
   }
 

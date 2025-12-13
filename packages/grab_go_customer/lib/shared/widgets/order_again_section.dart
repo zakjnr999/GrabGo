@@ -45,17 +45,26 @@ class OrderAgainSection extends StatelessWidget {
               // Mock days ago (0-7)
               final daysAgo = index;
 
-              return Padding(
-                padding: EdgeInsets.only(right: 15.w),
-                child: QuickReorderCard(
-                  item: item,
-                  daysAgo: daysAgo,
-                  onTap: () => onItemTap(item),
-                  onAddToCart: () {
-                    final cartProvider = Provider.of<CartProvider>(context, listen: false);
-                    cartProvider.addToCart(item);
-                  },
-                ),
+              return Consumer<CartProvider>(
+                builder: (context, cartProvider, child) {
+                  final bool isInCart = cartProvider.cartItems.containsKey(item);
+                  return Padding(
+                    padding: EdgeInsets.only(right: 15.w),
+                    child: QuickReorderCard(
+                      item: item,
+                      daysAgo: daysAgo,
+                      onTap: () => onItemTap(item),
+                      isInCart: isInCart,
+                      onAddToCart: () {
+                        if (isInCart) {
+                          cartProvider.removeItemCompletely(item);
+                        } else {
+                          cartProvider.addToCart(item);
+                        }
+                      },
+                    ),
+                  );
+                },
               );
             },
           ),

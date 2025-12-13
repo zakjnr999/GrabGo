@@ -2,6 +2,7 @@ import 'package:chopper/chopper.dart';
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
+import 'package:grab_go_customer/features/home/model/promotional_banner.dart';
 import 'package:grab_go_customer/features/home/service/food_service.dart';
 
 class FoodRepository {
@@ -100,6 +101,58 @@ class FoodRepository {
         print('❌ Error fetching recent order items: $e');
       }
       // Return empty list - skeleton will continue showing until global error handler kicks in
+      return [];
+    }
+  }
+
+  /// Fetch food deals (items with active discounts)
+  Future<List<FoodItem>> fetchDeals() async {
+    try {
+      final response = await service.getDeals();
+
+      if (response.isSuccessful && response.body != null) {
+        final body = response.body as Map<String, dynamic>;
+        final data = (body['data'] as List<dynamic>?) ?? [];
+
+        return data.map((item) {
+          return FoodItem.fromJson(item as Map<String, dynamic>);
+        }).toList();
+      } else {
+        if (kDebugMode) {
+          print('❌ Failed to load deals: ${response.statusCode}');
+        }
+        return [];
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching deals: $e');
+      }
+      return [];
+    }
+  }
+
+  /// Fetch promotional banners
+  Future<List<PromotionalBanner>> fetchPromotionalBanners() async {
+    try {
+      final response = await service.getPromotionalBanners();
+
+      if (response.isSuccessful && response.body != null) {
+        final body = response.body as Map<String, dynamic>;
+        final data = (body['data'] as List<dynamic>?) ?? [];
+
+        return data.map((item) {
+          return PromotionalBanner.fromJson(item as Map<String, dynamic>);
+        }).toList();
+      } else {
+        if (kDebugMode) {
+          print('❌ Failed to load promotional banners: ${response.statusCode}');
+        }
+        return [];
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching promotional banners: $e');
+      }
       return [];
     }
   }

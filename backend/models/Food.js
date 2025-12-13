@@ -45,9 +45,33 @@ const foodSchema = new mongoose.Schema({
   totalReviews: {
     type: Number,
     default: 0
+  },
+  discountPercentage: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100,
+    validate: {
+      validator: Number.isInteger,
+      message: 'Discount percentage must be an integer'
+    }
+  },
+  discountEndDate: {
+    type: Date,
+    default: null
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+// Virtual field for original price (before discount)
+foodSchema.virtual('originalPrice').get(function () {
+  if (this.discountPercentage > 0) {
+    return this.price / (1 - this.discountPercentage / 100);
+  }
+  return this.price;
 });
 
 module.exports = mongoose.model('Food', foodSchema);

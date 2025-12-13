@@ -47,6 +47,43 @@ router.get("/", async (req, res) => {
   }
 });
 
+/**
+ * @route   GET /api/foods/deals
+ * @desc    Get foods with active discounts
+ * @access  Public
+ */
+router.get("/deals", async (req, res) => {
+  try {
+    const now = new Date();
+
+    const deals = await Food.find({
+      isAvailable: true,
+      discountPercentage: { $gt: 0 },
+      $or: [
+        { discountEndDate: null },
+        { discountEndDate: { $gte: now } }
+      ]
+    })
+      .populate("category", "name")
+      .populate("restaurant", "restaurant_name logo")
+      .sort({ discountPercentage: -1 })
+      .limit(10);
+
+    res.json({
+      success: true,
+      message: "Deals retrieved successfully",
+      data: deals
+    });
+  } catch (error) {
+    console.error("Get deals error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
+  }
+});
+
 router.post(
   "/",
   protect,

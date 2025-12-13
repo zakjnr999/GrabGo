@@ -44,75 +44,86 @@ class PromoBannerCard extends StatelessWidget {
             color: backgroundColor,
             borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
           ),
-          child: Stack(
+          child: Row(
             children: [
-              // Content
-              Padding(
-                padding: EdgeInsets.all(20.r),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 20.sp,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.black87,
-                        height: 1.2,
-                      ),
-                    ),
-                    SizedBox(height: 8.h),
-                    Text(
-                      subtitle,
-                      style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: Colors.black54),
-                    ),
-                  ],
-                ),
-              ),
-              // Image on the right
-              Positioned(
-                right: -18.w,
-                top: 0,
-                bottom: 0,
-                child: SizedBox(
-                  width: 150.w,
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topRight: Radius.circular(KBorderSize.borderMedium),
-                      bottomRight: Radius.circular(KBorderSize.borderMedium),
-                    ),
-                    child: CachedImageWidget(imageUrl: imageUrl, fit: BoxFit.cover),
-                  ),
-                ),
-              ),
-              // Discount badge
-              Positioned(
-                right: 8.w,
-                top: 8.h,
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.pink.shade400, Colors.pink.shade600],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                    boxShadow: [BoxShadow(color: Colors.pink.withAlpha(80), blurRadius: 8, offset: const Offset(0, 2))],
-                  ),
+              // Left side - Text content (60%)
+              Expanded(
+                flex: 6,
+                child: Padding(
+                  padding: EdgeInsets.all(16.r),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'Up to',
-                        style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w600, color: Colors.white),
+                        title,
+                        style: TextStyle(
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.w800,
+                          color: colors.textPrimary.withOpacity(0.9),
+                          height: 1.2,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      Text(
-                        discount,
-                        style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w900, color: Colors.white, height: 1),
-                      ),
+                      if (subtitle.isNotEmpty) ...[
+                        SizedBox(height: 6.h),
+                        Text(
+                          subtitle,
+                          style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ],
                   ),
+                ),
+              ),
+              // Right side - Image (40%)
+              Expanded(
+                flex: 4,
+                child: Stack(
+                  children: [
+                    // Image
+                    Positioned.fill(
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          topRight: Radius.circular(KBorderSize.borderMedium),
+                          bottomRight: Radius.circular(KBorderSize.borderMedium),
+                        ),
+                        child: CachedImageWidget(imageUrl: imageUrl, fit: BoxFit.cover),
+                      ),
+                    ),
+                    // Discount badge (only show if discount is not empty)
+                    if (discount.isNotEmpty)
+                      Positioned(
+                        right: 8.w,
+                        top: 8.h,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.pink.shade400, Colors.pink.shade600],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                            boxShadow: [
+                              BoxShadow(color: Colors.pink.withAlpha(80), blurRadius: 8, offset: const Offset(0, 2)),
+                            ],
+                          ),
+                          child: Text(
+                            discount,
+                            style: TextStyle(
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              height: 1,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ],

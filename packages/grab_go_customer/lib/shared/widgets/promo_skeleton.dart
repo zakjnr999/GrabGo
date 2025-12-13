@@ -19,7 +19,7 @@ class PromoSkeleton extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: 20.w),
         child: Container(
           width: double.infinity,
-          height: 160.h,
+          height: 140.h,
           decoration: BoxDecoration(
             color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
             borderRadius: BorderRadius.circular(KBorderSize.borderMedium),

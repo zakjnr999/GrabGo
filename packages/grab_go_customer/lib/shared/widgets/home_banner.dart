@@ -1,7 +1,6 @@
 // ignore_for_file: deprecated_member_use
 
 import 'dart:math';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_image_slideshow/flutter_image_slideshow.dart';
@@ -572,7 +571,7 @@ class _HomeBannerState extends State<HomeBanner> {
                               padding: EdgeInsets.all(10.r),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: isInCart ? colors.accentOrange : Colors.white,
+                                color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
                               ),
                               child: AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 200),

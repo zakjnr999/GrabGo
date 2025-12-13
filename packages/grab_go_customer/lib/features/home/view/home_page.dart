@@ -139,6 +139,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       if (provider.categories.isEmpty) {
         provider.fetchCategories();
         provider.fetchRecentOrderItems(); // Fetch order history
+        provider.fetchPromotionalBanners(); // Fetch promotional banners
+        provider.fetchDeals(); // Fetch deals
       } else {
         if (provider.categories.isNotEmpty) {
           setState(() {
@@ -187,18 +189,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               _buildCategories(itemsProvider, isDark, size, colors),
               SizedBox(height: KSpacing.xl.h),
 
-              // NEW SECTIONS - Horizontal Scrolling
-              DealsSection(
-                dealItems: itemsProvider.categories.expand((cat) => cat.items).take(5).toList(),
-                onSeeAll: () {
-                  debugPrint('See all deals');
-                },
-                onItemTap: (item) {
-                  context.push('/food-details', extra: item);
-                },
-                isLoading: itemsProvider.isLoading,
-              ),
-              SizedBox(height: KSpacing.xl.h),
+              // Only show Deals section if deals available or loading
+              if (itemsProvider.isLoadingDeals || itemsProvider.dealItems.isNotEmpty) ...[
+                DealsSection(
+                  dealItems: itemsProvider.dealItems,
+                  onSeeAll: () {
+                    debugPrint('See all deals');
+                  },
+                  onItemTap: (item) {
+                    context.push('/food-details', extra: item);
+                  },
+                  isLoading: itemsProvider.isLoadingDeals,
+                ),
+                SizedBox(height: KSpacing.xl.h),
+              ],
 
               // Only show Order Again section if user has order history
               if (itemsProvider.recentOrderItems.isNotEmpty) ...[
@@ -230,13 +234,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               ),
               SizedBox(height: KSpacing.xl.h),
 
-              PromoSection(
-                onSeeAll: () {
-                  debugPrint('See all promos');
-                },
-                isLoading: itemsProvider.isLoading,
-              ),
-              SizedBox(height: KSpacing.xl.h),
+              if (itemsProvider.isLoadingBanners || itemsProvider.promotionalBanners.isNotEmpty) ...[
+                PromoSection(
+                  banners: itemsProvider.promotionalBanners,
+                  onSeeAll: () {
+                    debugPrint('See all promos');
+                  },
+                  isLoading: itemsProvider.isLoadingBanners,
+                ),
+                SizedBox(height: KSpacing.xl.h),
+              ],
 
               TopRatedSection(
                 topRatedItems: itemsProvider.categories
