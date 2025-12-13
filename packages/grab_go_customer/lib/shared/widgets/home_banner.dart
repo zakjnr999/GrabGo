@@ -66,8 +66,8 @@ class _HomeBannerState extends State<HomeBanner> {
           padding: EdgeInsets.all(14.r),
           margin: EdgeInsets.symmetric(horizontal: 20.w),
           decoration: BoxDecoration(
+            color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
             borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-            border: BoxBorder.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade300, width: 0.5),
           ),
           child: Column(
             children: [

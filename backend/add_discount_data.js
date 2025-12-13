@@ -9,10 +9,7 @@ const mongoose = require('mongoose');
 const Food = require('./models/Food');
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/grabgo', {
-    useNewParser: true,
-    useUnifiedTopology: true,
-});
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/grabgo');
 
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'MongoDB connection error:'));

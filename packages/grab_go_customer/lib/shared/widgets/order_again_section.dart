@@ -34,7 +34,7 @@ class OrderAgainSection extends StatelessWidget {
         ),
         SizedBox(height: 16.h),
         SizedBox(
-          height: 260.h,
+          height: 230.h,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.only(left: 20.w),

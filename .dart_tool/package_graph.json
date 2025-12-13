@@ -29,6 +29,7 @@
         "chopper",
         "crypto",
         "cupertino_icons",
+        "custom_refresh_indicator",
         "dio",
         "dotted_line",
         "easy_stepper",
@@ -1209,6 +1210,14 @@
       "version": "0.15.0",
       "dependencies": [
         "flutter"
+      ]
+    },
+    {
+      "name": "custom_refresh_indicator",
+      "version": "4.0.1",
+      "dependencies": [
+        "flutter",
+        "meta"
       ]
     },
     {

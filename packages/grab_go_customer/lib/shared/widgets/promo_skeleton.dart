@@ -19,10 +19,59 @@ class PromoSkeleton extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: 20.w),
         child: Container(
           width: double.infinity,
-          height: 140.h,
+          height: 160.h,
           decoration: BoxDecoration(
-            color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+            color: colors.backgroundPrimary,
             borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+          ),
+          child: Row(
+            children: [
+              // Left side - Text content (60%)
+              Expanded(
+                flex: 6,
+                child: Padding(
+                  padding: EdgeInsets.all(16.r),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Title placeholder
+                      Container(
+                        height: 18.h,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(4.r),
+                        ),
+                      ),
+                      SizedBox(height: 8.h),
+                      // Subtitle placeholder
+                      Container(
+                        height: 12.h,
+                        width: 120.w,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(4.r),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Right side - Image (40%)
+              Expanded(
+                flex: 4,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                    borderRadius: BorderRadius.only(
+                      topRight: Radius.circular(KBorderSize.borderMedium),
+                      bottomRight: Radius.circular(KBorderSize.borderMedium),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

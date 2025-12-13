@@ -19,6 +19,7 @@ import 'package:grab_go_customer/features/home/model/service_model.dart';
 import 'package:grab_go_customer/shared/widgets/service_selector.dart';
 import 'package:grab_go_customer/shared/widgets/service_selector_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/deals_section.dart';
+import 'package:grab_go_customer/shared/widgets/food_refresh_indicator.dart';
 import 'package:grab_go_customer/shared/widgets/order_again_section.dart';
 import 'package:grab_go_customer/shared/widgets/popular_section.dart';
 import 'package:grab_go_customer/shared/widgets/promo_section.dart';
@@ -151,6 +152,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     });
   }
 
+  Future<void> _refreshData() async {
+    final provider = Provider.of<FoodProvider>(context, listen: false);
+
+    // Refresh all data
+    await Future.wait([
+      provider.refreshCategories(),
+      provider.fetchRecentOrderItems(),
+      provider.fetchPromotionalBanners(),
+      provider.fetchDeals(),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
@@ -172,165 +185,168 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          controller: _scrollController,
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHomeHeader(context, size, colors, isDark, locationProvider),
-              SizedBox(height: 8.h),
-              _buildHomeSearch(itemsProvider),
-              SizedBox(height: KSpacing.lg.h),
-              _buildServiceSelector(),
-              SizedBox(height: KSpacing.lg.h),
-              HomeBanner(size: size),
-              SizedBox(height: KSpacing.lg.h),
-              _buildCategories(itemsProvider, isDark, size, colors),
-              SizedBox(height: KSpacing.xl.h),
+        child: FoodRefreshIndicator(
+          onRefresh: _refreshData,
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHomeHeader(context, size, colors, isDark, locationProvider),
+                SizedBox(height: 8.h),
+                _buildHomeSearch(itemsProvider),
+                SizedBox(height: KSpacing.lg.h),
+                _buildServiceSelector(),
+                SizedBox(height: KSpacing.lg.h),
+                HomeBanner(size: size),
+                SizedBox(height: KSpacing.lg.h),
+                _buildCategories(itemsProvider, isDark, size, colors),
+                SizedBox(height: KSpacing.xl.h),
 
-              // Only show Deals section if deals available or loading
-              if (itemsProvider.isLoadingDeals || itemsProvider.dealItems.isNotEmpty) ...[
-                DealsSection(
-                  dealItems: itemsProvider.dealItems,
+                // Only show Deals section if deals available or loading
+                if (itemsProvider.isLoadingDeals || itemsProvider.dealItems.isNotEmpty) ...[
+                  DealsSection(
+                    dealItems: itemsProvider.dealItems,
+                    onSeeAll: () {
+                      debugPrint('See all deals');
+                    },
+                    onItemTap: (item) {
+                      context.push('/food-details', extra: item);
+                    },
+                    isLoading: itemsProvider.isLoadingDeals,
+                  ),
+                  SizedBox(height: KSpacing.xl.h),
+                ],
+
+                // Only show Order Again section if user has order history
+                if (itemsProvider.recentOrderItems.isNotEmpty) ...[
+                  OrderAgainSection(
+                    recentOrders: itemsProvider.recentOrderItems,
+                    onSeeAll: () {
+                      debugPrint('See all order history');
+                    },
+                    onItemTap: (item) {
+                      context.push('/food-details', extra: item);
+                    },
+                  ),
+                  SizedBox(height: KSpacing.xl.h),
+                ],
+
+                PopularSection(
+                  popularItems: itemsProvider.categories
+                      .expand((cat) => cat.items)
+                      .where((item) => item.rating >= 4.0)
+                      .take(6)
+                      .toList(),
                   onSeeAll: () {
-                    debugPrint('See all deals');
+                    debugPrint('See all popular');
                   },
                   onItemTap: (item) {
                     context.push('/food-details', extra: item);
                   },
-                  isLoading: itemsProvider.isLoadingDeals,
+                  isLoading: itemsProvider.isLoading,
                 ),
                 SizedBox(height: KSpacing.xl.h),
-              ],
 
-              // Only show Order Again section if user has order history
-              if (itemsProvider.recentOrderItems.isNotEmpty) ...[
-                OrderAgainSection(
-                  recentOrders: itemsProvider.recentOrderItems,
+                if (itemsProvider.isLoadingBanners || itemsProvider.promotionalBanners.isNotEmpty) ...[
+                  PromoSection(
+                    banners: itemsProvider.promotionalBanners,
+                    onSeeAll: () {
+                      debugPrint('See all promos');
+                    },
+                    isLoading: itemsProvider.isLoadingBanners,
+                  ),
+                  SizedBox(height: KSpacing.xl.h),
+                ],
+
+                TopRatedSection(
+                  topRatedItems: itemsProvider.categories
+                      .expand((cat) => cat.items)
+                      .where((item) => item.rating >= 4.5)
+                      .take(6)
+                      .toList(),
                   onSeeAll: () {
-                    debugPrint('See all order history');
+                    debugPrint('See all top rated');
                   },
                   onItemTap: (item) {
                     context.push('/food-details', extra: item);
                   },
+                  isLoading: itemsProvider.isLoading,
                 ),
                 SizedBox(height: KSpacing.xl.h),
-              ],
 
-              PopularSection(
-                popularItems: itemsProvider.categories
-                    .expand((cat) => cat.items)
-                    .where((item) => item.rating >= 4.0)
-                    .take(6)
-                    .toList(),
-                onSeeAll: () {
-                  debugPrint('See all popular');
-                },
-                onItemTap: (item) {
-                  context.push('/food-details', extra: item);
-                },
-                isLoading: itemsProvider.isLoading,
-              ),
-              SizedBox(height: KSpacing.xl.h),
-
-              if (itemsProvider.isLoadingBanners || itemsProvider.promotionalBanners.isNotEmpty) ...[
-                PromoSection(
-                  banners: itemsProvider.promotionalBanners,
-                  onSeeAll: () {
-                    debugPrint('See all promos');
-                  },
-                  isLoading: itemsProvider.isLoadingBanners,
-                ),
-                SizedBox(height: KSpacing.xl.h),
-              ],
-
-              TopRatedSection(
-                topRatedItems: itemsProvider.categories
-                    .expand((cat) => cat.items)
-                    .where((item) => item.rating >= 4.5)
-                    .take(6)
-                    .toList(),
-                onSeeAll: () {
-                  debugPrint('See all top rated');
-                },
-                onItemTap: (item) {
-                  context.push('/food-details', extra: item);
-                },
-                isLoading: itemsProvider.isLoading,
-              ),
-              SizedBox(height: KSpacing.xl.h),
-
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20.w),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(8.r),
-                          decoration: BoxDecoration(
-                            color: colors.accentViolet.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(KBorderSize.border),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20.w),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(8.r),
+                            decoration: BoxDecoration(
+                              color: colors.accentViolet.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(KBorderSize.border),
+                            ),
+                            child: SvgPicture.asset(
+                              Assets.icons.sparkles,
+                              package: 'grab_go_shared',
+                              height: 20.h,
+                              width: 20.w,
+                              colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                            ),
                           ),
-                          child: SvgPicture.asset(
-                            Assets.icons.sparkles,
-                            package: 'grab_go_shared',
-                            height: 20.h,
-                            width: 20.w,
-                            colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                          SizedBox(width: 10.w),
+                          Text(
+                            "Recommended For You",
+                            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                           ),
-                        ),
-                        SizedBox(width: 10.w),
-                        Text(
-                          "Recommended For You",
-                          style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
-                        ),
-                      ],
-                    ),
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                      decoration: BoxDecoration(
-                        color: colors.accentViolet.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20.r),
+                        ],
                       ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () {},
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                        decoration: BoxDecoration(
+                          color: colors.accentViolet.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20.r),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                "See All",
-                                style: TextStyle(
-                                  fontSize: 12.sp,
-                                  fontWeight: FontWeight.w700,
-                                  color: colors.accentViolet,
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {},
+                            borderRadius: BorderRadius.circular(20.r),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  "See All",
+                                  style: TextStyle(
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w700,
+                                    color: colors.accentViolet,
+                                  ),
                                 ),
-                              ),
-                              SizedBox(width: 4.w),
-                              SvgPicture.asset(
-                                Assets.icons.navArrowRight,
-                                package: 'grab_go_shared',
-                                height: 12.h,
-                                width: 12.w,
-                                colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
-                              ),
-                            ],
+                                SizedBox(width: 4.w),
+                                SvgPicture.asset(
+                                  Assets.icons.navArrowRight,
+                                  package: 'grab_go_shared',
+                                  height: 12.h,
+                                  width: 12.w,
+                                  colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              SizedBox(height: KSpacing.lg.h),
-              _buildRecommendedFoodItems(itemsProvider, size, colors, isDark),
-            ],
+                SizedBox(height: KSpacing.lg.h),
+                _buildRecommendedFoodItems(itemsProvider, size, colors, isDark),
+              ],
+            ),
           ),
         ),
       ),

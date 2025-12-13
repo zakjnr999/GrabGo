@@ -15,47 +15,50 @@ class CategorySkeleton extends StatelessWidget {
     return Shimmer.fromColors(
       baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
       highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.only(left: 10.w),
-        child: Row(
-          children: List.generate(4, (index) {
-            return Container(
-              margin: EdgeInsets.symmetric(horizontal: 10.w),
-              height: 50.h,
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-              decoration: BoxDecoration(
-                border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade300, width: 0.5),
-                borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  //Emoji placeholder
-                  Container(
-                    height: 20.h,
-                    width: 20.w,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+      child: SizedBox(
+        height: 50.h,
+        child: ListView.builder(
+          padding: EdgeInsets.only(left: 20.w),
+          scrollDirection: Axis.horizontal,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: 4,
+          itemBuilder: (context, index) {
+            return Padding(
+              padding: EdgeInsets.only(right: 20.w),
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Emoji placeholder
+                    Container(
+                      height: 20.h,
+                      width: 20.w,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(4.r),
+                      ),
                     ),
-                  ),
-                  SizedBox(width: 8.w),
-
-                  //Category name placeholder
-                  Container(
-                    height: 14.h,
-                    width: 50.w,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(4.r),
+                    SizedBox(width: 8.w),
+                    // Category name placeholder
+                    Container(
+                      height: 14.h,
+                      width: 60.w,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(4.r),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
-          }),
+          },
         ),
       ),
     );

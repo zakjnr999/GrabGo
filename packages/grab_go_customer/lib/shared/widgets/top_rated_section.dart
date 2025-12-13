@@ -41,7 +41,7 @@ class TopRatedSection extends StatelessWidget {
           const SizedBox.shrink()
         else
           SizedBox(
-            height: 240.h,
+            height: 230.h,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.only(left: 20.w),
