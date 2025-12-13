@@ -10,6 +10,8 @@ import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
+import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart'; // Added
+import 'package:grab_go_customer/shared/viewmodels/service_provider.dart'; // Added
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -55,9 +57,24 @@ class _HomeBannerState extends State<HomeBanner> {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final itemsProvider = Provider.of<FoodProvider>(context);
 
-    if (itemsProvider.isLoading) {
+    final itemsProvider = Provider.of<FoodProvider>(context);
+    final groceryProvider = Provider.of<GroceryProvider>(context); // Added
+    final serviceProvider = Provider.of<ServiceProvider>(context); // Added
+
+    // Determine loading state and error state based on service
+    bool isLoading = false;
+    bool hasError = false;
+
+    if (serviceProvider.isGroceryService) {
+      isLoading = groceryProvider.isLoadingItems || groceryProvider.isLoadingCategories;
+      // Grocery provider doesn't strictly have an error field yet, defaulting to false or checking empty logic later
+    } else {
+      isLoading = itemsProvider.isLoading;
+      hasError = itemsProvider.error != null;
+    }
+
+    if (isLoading) {
       return Shimmer.fromColors(
         baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
         highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
@@ -148,7 +165,7 @@ class _HomeBannerState extends State<HomeBanner> {
       );
     }
 
-    if (itemsProvider.error != null) {
+    if (hasError) {
       return Shimmer.fromColors(
         baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
         highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
@@ -231,7 +248,18 @@ class _HomeBannerState extends State<HomeBanner> {
       );
     }
 
-    final allFoods = itemsProvider.categories.expand((cat) => cat.items).toList();
+    // Determine items to show
+    List<dynamic> allFoods = [];
+    if (serviceProvider.isGroceryService) {
+      // Prioritize items, then deals. Convert to FoodItem
+      if (groceryProvider.items.isNotEmpty) {
+        allFoods = groceryProvider.items.map((e) => e.toFoodItem()).toList();
+      } else if (groceryProvider.deals.isNotEmpty) {
+        allFoods = groceryProvider.deals.map((e) => e.toFoodItem()).toList();
+      }
+    } else {
+      allFoods = itemsProvider.categories.expand((cat) => cat.items).toList();
+    }
 
     if (allFoods.isEmpty) {
       return Shimmer.fromColors(
@@ -396,28 +424,64 @@ class _HomeBannerState extends State<HomeBanner> {
                 children: effectiveFoods
                     .map(
                       (food) => GestureDetector(
-                        onTap: () => context.push("/foodDetails", extra: food),
+                        onTap: () {
+                          // Conditional Navigation
+                          if (serviceProvider.isGroceryService) {
+                            // Find original grocery item
+                            final original = groceryProvider.items.firstWhere(
+                              (g) => g.id == food.id,
+                              orElse: () => groceryProvider.deals.firstWhere(
+                                (d) => d.id == food.id,
+                                orElse: () => groceryProvider.items.first,
+                              ),
+                            );
+                            context.push("/foodDetails", extra: original);
+                          } else {
+                            context.push("/foodDetails", extra: food);
+                          }
+                        },
                         child: Stack(
                           children: [
                             CachedImageWidget(
                               imageUrl: food.image,
                               fit: BoxFit.cover,
                               width: double.infinity,
-                              placeholder: Container(
+                              overlay: Container(
                                 width: double.infinity,
                                 height: widget.size.height * 0.28,
                                 decoration: BoxDecoration(
-                                  color: colors.backgroundPrimary,
-                                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      Colors.black.withOpacity(0.4),
+                                      Colors.transparent,
+                                      Colors.transparent,
+                                      Colors.black.withOpacity(0.7),
+                                    ],
+                                    stops: const [0.0, 0.25, 0.6, 1.0],
+                                  ),
                                 ),
-                                child: Center(
-                                  child: SizedBox(
-                                    height: 40.h,
-                                    width: 40.w,
-                                    child: SvgPicture.asset(
-                                      Assets.icons.utensilsCrossed,
-                                      package: 'grab_go_shared',
-                                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                              ),
+                              placeholder: Shimmer.fromColors(
+                                baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade600,
+                                highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade500,
+                                child: Container(
+                                  width: double.infinity,
+                                  height: widget.size.height * 0.28,
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.grey.shade800 : Colors.grey.shade600,
+                                    borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                                  ),
+                                  child: Center(
+                                    child: SizedBox(
+                                      height: 40.h,
+                                      width: 40.w,
+                                      child: SvgPicture.asset(
+                                        Assets.icons.utensilsCrossed,
+                                        package: 'grab_go_shared',
+                                        colorFilter: ColorFilter.mode(Colors.white.withOpacity(0.3), BlendMode.srcIn),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -426,7 +490,7 @@ class _HomeBannerState extends State<HomeBanner> {
                                 width: double.infinity,
                                 height: widget.size.height * 0.28,
                                 decoration: BoxDecoration(
-                                  color: colors.backgroundPrimary,
+                                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade600,
                                   borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                                 ),
                                 child: Center(
@@ -436,7 +500,7 @@ class _HomeBannerState extends State<HomeBanner> {
                                     child: SvgPicture.asset(
                                       Assets.icons.utensilsCrossed,
                                       package: 'grab_go_shared',
-                                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                      colorFilter: ColorFilter.mode(Colors.white.withOpacity(0.3), BlendMode.srcIn),
                                     ),
                                   ),
                                 ),
@@ -453,24 +517,6 @@ class _HomeBannerState extends State<HomeBanner> {
             Container(
               height: widget.size.height * 0.28,
               width: widget.size.width,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.4),
-                    Colors.transparent,
-                    Colors.transparent,
-                    Colors.black.withOpacity(0.7),
-                  ],
-                  stops: const [0.0, 0.25, 0.6, 1.0],
-                ),
-              ),
-            ),
-
-            Container(
-              height: widget.size.height * 0.28,
-              width: widget.size.width,
               padding: EdgeInsets.all(14.r),
               child: Column(
                 children: [
@@ -480,6 +526,7 @@ class _HomeBannerState extends State<HomeBanner> {
                     children: [
                       Consumer<FavoritesProvider>(
                         builder: (context, favoriteProvider, child) {
+                          // Using normalized food item for favorites
                           final bool isFavorite = favoriteProvider.isFavorite(effectiveFoods[safeIndex]);
                           return GestureDetector(
                             onTap: () {

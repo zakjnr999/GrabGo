@@ -45,6 +45,8 @@ import 'package:grab_go_customer/features/order/view/payment_complete.dart';
 import 'package:grab_go_customer/features/restaurant/view/restaurants.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/splash_screen.dart';
+import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
+import 'package:grab_go_customer/features/home/view/grocery_details.dart';
 import 'package:flutter/material.dart';
 
 final GoRouter appRouter = GoRouter(
@@ -723,8 +725,56 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: "/foodDetails",
       pageBuilder: (context, state) {
-        final foodItem = state.extra as FoodItem?;
-        if (foodItem == null) {
+        final extra = state.extra;
+
+        // Handle null case
+        if (extra == null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) {
+              context.pop();
+            }
+          });
+          return CustomTransitionPage(
+            key: state.pageKey,
+            child: const SizedBox.shrink(),
+            transitionDuration: const Duration(milliseconds: 400),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return child;
+            },
+          );
+        }
+
+        // Detect type and create appropriate widget
+        final Widget child;
+        if (extra is GroceryItem) {
+          child = FoodDetails(groceryItem: extra);
+        } else if (extra is FoodItem) {
+          child = FoodDetails(foodItem: extra);
+        } else {
+          // Invalid type - should not happen
+          child = const Scaffold(body: Center(child: Text('Invalid item type')));
+        }
+
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: child,
+          transitionDuration: const Duration(milliseconds: 400),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.horizontal,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/grocery-details",
+      pageBuilder: (context, state) {
+        final groceryItem = state.extra as GroceryItem?;
+        if (groceryItem == null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (context.mounted) {
               context.pop();
@@ -742,7 +792,7 @@ final GoRouter appRouter = GoRouter(
 
         return CustomTransitionPage(
           key: state.pageKey,
-          child: FoodDetails(foodItem: foodItem),
+          child: GroceryDetails(groceryItem: groceryItem),
           transitionDuration: const Duration(milliseconds: 400),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
@@ -818,6 +868,37 @@ final GoRouter appRouter = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: AllStatusesPage(initialCategory: category),
+          transitionDuration: const Duration(milliseconds: 400),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.horizontal,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/foodDetails",
+      pageBuilder: (context, state) {
+        final extra = state.extra;
+
+        // Detect type and pass to correct parameter
+        final Widget child;
+        if (extra is GroceryItem) {
+          child = FoodDetails(groceryItem: extra);
+        } else if (extra is FoodItem) {
+          child = FoodDetails(foodItem: extra);
+        } else {
+          // Fallback - should not happen
+          child = const Scaffold(body: Center(child: Text('Invalid item type')));
+        }
+
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: child,
           transitionDuration: const Duration(milliseconds: 400),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(

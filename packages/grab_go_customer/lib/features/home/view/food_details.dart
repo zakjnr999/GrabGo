@@ -6,9 +6,12 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
+import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
+import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/widgets/food_details_appbar.dart';
+import 'package:grab_go_customer/shared/widgets/grocery_item_card.dart';
 import 'package:provider/provider.dart';
 import 'package:readmore/readmore.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -16,9 +19,13 @@ import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
 
 class FoodDetails extends StatefulWidget {
-  const FoodDetails({super.key, required this.foodItem});
+  const FoodDetails({super.key, this.foodItem, this.groceryItem})
+    : assert(foodItem != null || groceryItem != null, 'Either foodItem or groceryItem must be provided');
 
-  final FoodItem foodItem;
+  final FoodItem? foodItem;
+  final GroceryItem? groceryItem;
+
+  bool get isGrocery => groceryItem != null;
 
   @override
   State<FoodDetails> createState() => _FoodDetailsState();
@@ -88,7 +95,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
 
     for (var category in categories) {
       for (var item in category.items) {
-        if (item.sellerId == widget.foodItem.sellerId && item.name != widget.foodItem.name) {
+        if (item.sellerId == widget.foodItem!.sellerId && item.name != widget.foodItem!.name) {
           similarFoods.add(item);
         }
       }
@@ -102,7 +109,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
 
     for (var category in categories) {
       for (var item in category.items) {
-        if (item.sellerId == widget.foodItem.sellerId && item.name != widget.foodItem.name) {
+        if (item.sellerId == widget.foodItem!.sellerId && item.name != widget.foodItem!.name) {
           restaurantFoods.add(item);
         }
       }
@@ -125,6 +132,16 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
       }
     });
   }
+
+  // Helper getters to access properties regardless of item type
+  String get itemName => widget.isGrocery ? widget.groceryItem!.name : widget.foodItem!.name;
+  String get itemDescription => widget.isGrocery ? widget.groceryItem!.description : widget.foodItem!.description;
+  String get itemImage => widget.isGrocery ? widget.groceryItem!.image : widget.foodItem!.image;
+  double get itemPrice => widget.isGrocery ? widget.groceryItem!.discountedPrice : widget.foodItem!.price;
+  double get itemRating => widget.isGrocery ? widget.groceryItem!.rating : widget.foodItem!.rating;
+
+  // Get FoodItem for cart (convert if grocery)
+  FoodItem get cartItem => widget.isGrocery ? widget.groceryItem!.toFoodItem() : widget.foodItem!;
 
   @override
   Widget build(BuildContext context) {
@@ -166,7 +183,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                   controller: _scrollController,
                   physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                   slivers: <Widget>[
-                    FoodDetailsAppBar(foodItem: widget.foodItem),
+                    FoodDetailsAppBar(foodItem: cartItem),
                     SliverToBoxAdapter(
                       child: Transform.translate(
                         offset: Offset(0, _slideAnimation.value),
@@ -186,8 +203,22 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
+                                            // Show brand for groceries
+                                            if (widget.isGrocery && widget.groceryItem!.brand.isNotEmpty) ...[
+                                              Text(
+                                                widget.groceryItem!.brand.toUpperCase(),
+                                                style: TextStyle(
+                                                  color: colors.textSecondary,
+                                                  fontSize: 12.sp,
+                                                  fontWeight: FontWeight.w600,
+                                                  letterSpacing: 1.0,
+                                                ),
+                                              ),
+                                              SizedBox(height: 4.h),
+                                            ],
+                                            // Item name
                                             Text(
-                                              widget.foodItem.name,
+                                              itemName,
                                               style: TextStyle(
                                                 color: colors.textPrimary,
                                                 fontSize: 22.sp,
@@ -196,14 +227,32 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                               ),
                                             ),
                                             SizedBox(height: 6.h),
-                                            Text(
-                                              "By ${widget.foodItem.sellerName}",
-                                              style: TextStyle(
-                                                color: colors.textSecondary,
-                                                fontSize: 13.sp,
-                                                fontWeight: FontWeight.w500,
+                                            // Show unit for groceries or seller for food
+                                            if (widget.isGrocery)
+                                              Container(
+                                                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                                                decoration: BoxDecoration(
+                                                  color: colors.inputBackground,
+                                                  borderRadius: BorderRadius.circular(6.r),
+                                                ),
+                                                child: Text(
+                                                  widget.groceryItem!.unit,
+                                                  style: TextStyle(
+                                                    color: colors.textSecondary,
+                                                    fontSize: 12.sp,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              )
+                                            else
+                                              Text(
+                                                "By ${widget.foodItem!.sellerName}",
+                                                style: TextStyle(
+                                                  color: colors.textSecondary,
+                                                  fontSize: 13.sp,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
                                               ),
-                                            ),
                                           ],
                                         ),
                                       ),
@@ -226,7 +275,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                               ),
                                             ),
                                             Text(
-                                              widget.foodItem.price.toStringAsFixed(2),
+                                              itemPrice.toStringAsFixed(2),
                                               style: TextStyle(
                                                 color: colors.accentOrange,
                                                 fontSize: 18.sp,
@@ -245,167 +294,200 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                   padding: EdgeInsets.symmetric(horizontal: 20.w),
                                   child: Row(
                                     children: [
+                                      // Rating chip (common for both)
                                       _buildInfoChip(
                                         icon: Assets.icons.star,
-                                        text: widget.foodItem.rating.toStringAsFixed(1),
+                                        text: itemRating.toStringAsFixed(1),
                                         colors: colors,
                                         isDark: isDark,
                                       ),
                                       SizedBox(width: 8.w),
 
-                                      _buildInfoChip(
-                                        icon: Assets.icons.timer,
-                                        text: "25-30 min",
-                                        colors: colors,
-                                        isDark: isDark,
-                                      ),
-                                      SizedBox(width: 8.w),
-
-                                      _buildInfoChip(
-                                        icon: Assets.icons.deliveryTruck,
-                                        text: "Free Delivery",
-                                        colors: colors,
-                                        isDark: isDark,
-                                      ),
+                                      // Conditional chips based on item type
+                                      if (widget.isGrocery) ...[
+                                        // Stock status for groceries
+                                        if (widget.groceryItem!.stock < 10 && widget.groceryItem!.isAvailable)
+                                          _buildInfoChip(
+                                            icon: Assets.icons.infoCircle,
+                                            text: "Only ${widget.groceryItem!.stock} left",
+                                            colors: colors,
+                                            isDark: isDark,
+                                          )
+                                        else if (widget.groceryItem!.isAvailable)
+                                          _buildInfoChip(
+                                            icon: Assets.icons.check,
+                                            text: "In Stock",
+                                            colors: colors,
+                                            isDark: isDark,
+                                          )
+                                        else
+                                          _buildInfoChip(
+                                            icon: Assets.icons.alarm,
+                                            text: "Out of Stock",
+                                            colors: colors,
+                                            isDark: isDark,
+                                          ),
+                                      ] else ...[
+                                        // Prep time and delivery for food
+                                        _buildInfoChip(
+                                          icon: Assets.icons.timer,
+                                          text: "25-30 min",
+                                          colors: colors,
+                                          isDark: isDark,
+                                        ),
+                                        SizedBox(width: 8.w),
+                                        _buildInfoChip(
+                                          icon: Assets.icons.deliveryTruck,
+                                          text: "Free Delivery",
+                                          colors: colors,
+                                          isDark: isDark,
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ),
 
                                 SizedBox(height: KSpacing.lg.h),
 
-                                Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 20.w),
-                                  child: Container(
-                                    padding: EdgeInsets.all(14.r),
-                                    decoration: BoxDecoration(
-                                      color: colors.backgroundPrimary,
-                                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                                      border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(5),
-                                          spreadRadius: 0,
-                                          blurRadius: 12,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: size.width * 0.14,
-                                          height: size.width * 0.14,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 2),
+                                // Restaurant info section (Food only)
+                                if (!widget.isGrocery)
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 20.w),
+                                    child: Container(
+                                      padding: EdgeInsets.all(14.r),
+                                      decoration: BoxDecoration(
+                                        color: colors.backgroundPrimary,
+                                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                                        border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(5),
+                                            spreadRadius: 0,
+                                            blurRadius: 12,
+                                            offset: const Offset(0, 2),
                                           ),
-                                          child: ClipOval(
-                                            child: CachedImageWidget(
-                                              imageUrl: widget.foodItem.restaurantImage,
-                                              width: size.width * 0.14,
-                                              height: size.width * 0.14,
-                                              fit: BoxFit.cover,
-                                              placeholder: Container(
+                                        ],
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: size.width * 0.14,
+                                            height: size.width * 0.14,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 2),
+                                            ),
+                                            child: ClipOval(
+                                              child: CachedImageWidget(
+                                                imageUrl: widget.foodItem!.restaurantImage,
                                                 width: size.width * 0.14,
                                                 height: size.width * 0.14,
-                                                decoration: BoxDecoration(
-                                                  color: colors.inputBorder,
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                child: Center(
-                                                  child: SvgPicture.asset(
-                                                    Assets.icons.chefHat,
-                                                    package: 'grab_go_shared',
-                                                    colorFilter: ColorFilter.mode(
-                                                      colors.textSecondary,
-                                                      BlendMode.srcIn,
+                                                fit: BoxFit.cover,
+                                                placeholder: Container(
+                                                  width: size.width * 0.14,
+                                                  height: size.width * 0.14,
+                                                  decoration: BoxDecoration(
+                                                    color: colors.inputBorder,
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: Center(
+                                                    child: SvgPicture.asset(
+                                                      Assets.icons.chefHat,
+                                                      package: 'grab_go_shared',
+                                                      colorFilter: ColorFilter.mode(
+                                                        colors.textSecondary,
+                                                        BlendMode.srcIn,
+                                                      ),
+                                                      width: size.width * 0.08,
+                                                      height: size.width * 0.08,
                                                     ),
-                                                    width: size.width * 0.08,
-                                                    height: size.width * 0.08,
                                                   ),
                                                 ),
-                                              ),
-                                              errorWidget: Container(
-                                                width: size.width * 0.14,
-                                                height: size.width * 0.14,
-                                                decoration: BoxDecoration(
-                                                  color: colors.inputBorder,
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                child: Center(
-                                                  child: SvgPicture.asset(
-                                                    Assets.icons.chefHat,
-                                                    package: 'grab_go_shared',
-                                                    colorFilter: ColorFilter.mode(
-                                                      colors.textSecondary,
-                                                      BlendMode.srcIn,
+                                                errorWidget: Container(
+                                                  width: size.width * 0.14,
+                                                  height: size.width * 0.14,
+                                                  decoration: BoxDecoration(
+                                                    color: colors.inputBorder,
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: Center(
+                                                    child: SvgPicture.asset(
+                                                      Assets.icons.chefHat,
+                                                      package: 'grab_go_shared',
+                                                      colorFilter: ColorFilter.mode(
+                                                        colors.textSecondary,
+                                                        BlendMode.srcIn,
+                                                      ),
+                                                      width: size.width * 0.08,
+                                                      height: size.width * 0.08,
                                                     ),
-                                                    width: size.width * 0.08,
-                                                    height: size.width * 0.08,
                                                   ),
                                                 ),
                                               ),
                                             ),
                                           ),
-                                        ),
-                                        SizedBox(width: 14.w),
+                                          SizedBox(width: 14.w),
 
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                widget.foodItem.sellerName,
-                                                style: TextStyle(
-                                                  color: colors.textPrimary,
-                                                  fontSize: 15.sp,
-                                                  fontWeight: FontWeight.w700,
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  widget.foodItem!.sellerName,
+                                                  style: TextStyle(
+                                                    color: colors.textPrimary,
+                                                    fontSize: 15.sp,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                  overflow: TextOverflow.ellipsis,
                                                 ),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              SizedBox(height: 4.h),
-                                              Row(
-                                                children: [
-                                                  SvgPicture.asset(
-                                                    Assets.icons.starSolid,
-                                                    package: 'grab_go_shared',
-                                                    height: 12.h,
-                                                    width: 12.w,
-                                                    colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                                                  ),
-                                                  SizedBox(width: 4.w),
-                                                  Text(
-                                                    "4.8 (120+ reviews)",
-                                                    style: TextStyle(
-                                                      color: colors.textSecondary,
-                                                      fontSize: 11.sp,
-                                                      fontWeight: FontWeight.w500,
+                                                SizedBox(height: 4.h),
+                                                Row(
+                                                  children: [
+                                                    SvgPicture.asset(
+                                                      Assets.icons.starSolid,
+                                                      package: 'grab_go_shared',
+                                                      height: 12.h,
+                                                      width: 12.w,
+                                                      colorFilter: ColorFilter.mode(
+                                                        colors.accentOrange,
+                                                        BlendMode.srcIn,
+                                                      ),
                                                     ),
-                                                  ),
-                                                ],
+                                                    SizedBox(width: 4.w),
+                                                    Text(
+                                                      "4.8 (120+ reviews)",
+                                                      style: TextStyle(
+                                                        color: colors.textSecondary,
+                                                        fontSize: 11.sp,
+                                                        fontWeight: FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Row(
+                                            children: [
+                                              _buildActionButton(
+                                                icon: Assets.icons.chatBubbleSolid,
+                                                colors: colors,
+                                                onTap: () {},
+                                              ),
+                                              SizedBox(width: 8.w),
+                                              _buildActionButton(
+                                                icon: Assets.icons.phoneSolid,
+                                                colors: colors,
+                                                onTap: () {},
                                               ),
                                             ],
                                           ),
-                                        ),
-                                        Row(
-                                          children: [
-                                            _buildActionButton(
-                                              icon: Assets.icons.chatBubbleSolid,
-                                              colors: colors,
-                                              onTap: () {},
-                                            ),
-                                            SizedBox(width: 8.w),
-                                            _buildActionButton(
-                                              icon: Assets.icons.phoneSolid,
-                                              colors: colors,
-                                              onTap: () {},
-                                            ),
-                                          ],
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                ),
+
                                 SizedBox(height: KSpacing.lg.h),
 
                                 Padding(
@@ -449,7 +531,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                         ),
                                         SizedBox(height: 12.h),
                                         ReadMoreText(
-                                          widget.foodItem.description,
+                                          itemDescription,
                                           trimMode: TrimMode.Line,
                                           trimLines: 3,
                                           colorClickableText: colors.accentOrange,
@@ -478,138 +560,202 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                 ),
                                 SizedBox(height: KSpacing.lg.h),
 
-                                Consumer<FoodProvider>(
-                                  builder: (context, foodProvider, child) {
-                                    final similarFoods = _getSimilarFoods(foodProvider.categories);
+                                // Similar Foods section (Food only)
+                                if (!widget.isGrocery)
+                                  Consumer<FoodProvider>(
+                                    builder: (context, foodProvider, child) {
+                                      final similarFoods = _getSimilarFoods(foodProvider.categories);
 
-                                    if (similarFoods.isEmpty) {
-                                      return const SizedBox.shrink();
-                                    }
+                                      if (similarFoods.isEmpty) {
+                                        return const SizedBox.shrink();
+                                      }
 
-                                    return Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Padding(
-                                          padding: EdgeInsets.symmetric(horizontal: 20.w),
-                                          child: Row(
-                                            children: [
-                                              Container(
-                                                padding: EdgeInsets.all(8.r),
-                                                decoration: BoxDecoration(
-                                                  color: colors.accentViolet.withOpacity(0.1),
-                                                  borderRadius: BorderRadius.circular(8.r),
+                                      return Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Padding(
+                                            padding: EdgeInsets.symmetric(horizontal: 20.w),
+                                            child: Row(
+                                              children: [
+                                                Container(
+                                                  padding: EdgeInsets.all(8.r),
+                                                  decoration: BoxDecoration(
+                                                    color: colors.accentViolet.withOpacity(0.1),
+                                                    borderRadius: BorderRadius.circular(8.r),
+                                                  ),
+                                                  child: SvgPicture.asset(
+                                                    Assets.icons.utensilsCrossed,
+                                                    package: 'grab_go_shared',
+                                                    height: 18.h,
+                                                    width: 18.w,
+                                                    colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                                                  ),
                                                 ),
-                                                child: SvgPicture.asset(
-                                                  Assets.icons.utensilsCrossed,
-                                                  package: 'grab_go_shared',
-                                                  height: 18.h,
-                                                  width: 18.w,
-                                                  colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                                                SizedBox(width: 10.w),
+                                                Text(
+                                                  "Similar Foods",
+                                                  style: TextStyle(
+                                                    fontSize: 18.sp,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: colors.textPrimary,
+                                                  ),
                                                 ),
-                                              ),
-                                              SizedBox(width: 10.w),
-                                              Text(
-                                                "Similar Foods",
-                                                style: TextStyle(
-                                                  fontSize: 18.sp,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: colors.textPrimary,
-                                                ),
-                                              ),
-                                            ],
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                        SizedBox(height: 12.h),
-                                        SizedBox(
-                                          height: 210.h,
-                                          child: ListView.builder(
-                                            padding: EdgeInsets.only(left: 20.w),
-                                            scrollDirection: Axis.horizontal,
-                                            physics: const BouncingScrollPhysics(),
-                                            itemCount: similarFoods.length,
-                                            itemBuilder: (context, index) {
-                                              return Padding(
-                                                padding: EdgeInsets.only(right: 12.w),
-                                                child: _buildSimilarFoodItem(colors, similarFoods[index], size, isDark),
-                                              );
-                                            },
+                                          SizedBox(height: 12.h),
+                                          SizedBox(
+                                            height: 210.h,
+                                            child: ListView.builder(
+                                              padding: EdgeInsets.only(left: 20.w),
+                                              scrollDirection: Axis.horizontal,
+                                              physics: const BouncingScrollPhysics(),
+                                              itemCount: similarFoods.length,
+                                              itemBuilder: (context, index) {
+                                                return Padding(
+                                                  padding: EdgeInsets.only(right: 12.w),
+                                                  child: _buildSimilarFoodItem(
+                                                    colors,
+                                                    similarFoods[index],
+                                                    size,
+                                                    isDark,
+                                                  ),
+                                                );
+                                              },
+                                            ),
                                           ),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                ),
+                                        ],
+                                      );
+                                    },
+                                  ),
 
                                 SizedBox(height: KSpacing.lg.h),
 
-                                Consumer<FoodProvider>(
-                                  builder: (context, foodProvider, child) {
-                                    final allRestaurantFoods = _getMoreFromRestaurant(foodProvider.categories);
+                                // More From Restaurant (Food only) or Similar Items (Grocery only)
+                                if (!widget.isGrocery)
+                                  Consumer<FoodProvider>(
+                                    builder: (context, foodProvider, child) {
+                                      final allRestaurantFoods = _getMoreFromRestaurant(foodProvider.categories);
 
-                                    if (allRestaurantFoods.isEmpty) {
-                                      return const SizedBox.shrink();
-                                    }
+                                      if (allRestaurantFoods.isEmpty) {
+                                        return const SizedBox.shrink();
+                                      }
 
-                                    final displayedItems = allRestaurantFoods.take(_restaurantItemsToShow).toList();
-                                    final hasMoreItems = allRestaurantFoods.length > _restaurantItemsToShow;
+                                      final displayedItems = allRestaurantFoods.take(_restaurantItemsToShow).toList();
+                                      final hasMoreItems = allRestaurantFoods.length > _restaurantItemsToShow;
 
-                                    return Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Padding(
-                                          padding: EdgeInsets.symmetric(horizontal: 20.w),
-                                          child: Row(
-                                            children: [
-                                              Container(
-                                                padding: EdgeInsets.all(8.r),
-                                                decoration: BoxDecoration(
-                                                  color: colors.accentGreen.withOpacity(0.1),
-                                                  borderRadius: BorderRadius.circular(8.r),
+                                      return Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Padding(
+                                            padding: EdgeInsets.symmetric(horizontal: 20.w),
+                                            child: Row(
+                                              children: [
+                                                Container(
+                                                  padding: EdgeInsets.all(8.r),
+                                                  decoration: BoxDecoration(
+                                                    color: colors.accentGreen.withOpacity(0.1),
+                                                    borderRadius: BorderRadius.circular(8.r),
+                                                  ),
+                                                  child: SvgPicture.asset(
+                                                    Assets.icons.chefHat,
+                                                    package: 'grab_go_shared',
+                                                    height: 18.h,
+                                                    width: 18.w,
+                                                    colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                                                  ),
                                                 ),
-                                                child: SvgPicture.asset(
-                                                  Assets.icons.chefHat,
-                                                  package: 'grab_go_shared',
-                                                  height: 18.h,
-                                                  width: 18.w,
-                                                  colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                                                SizedBox(width: 10.w),
+                                                Text(
+                                                  "More From Restaurant",
+                                                  style: TextStyle(
+                                                    fontSize: 18.sp,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: colors.textPrimary,
+                                                  ),
                                                 ),
-                                              ),
-                                              SizedBox(width: 10.w),
-                                              Text(
-                                                "More From Restaurant",
-                                                style: TextStyle(
-                                                  fontSize: 18.sp,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: colors.textPrimary,
-                                                ),
-                                              ),
-                                            ],
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                        SizedBox(height: 12.h),
-                                        Padding(
-                                          padding: EdgeInsets.symmetric(horizontal: 20.w),
-                                          child: Column(
-                                            children: displayedItems.map((item) {
-                                              return Padding(
-                                                padding: EdgeInsets.only(bottom: 12.h),
-                                                child: _buildRestaurantFoodItem(item, colors),
-                                              );
-                                            }).toList(),
+                                          SizedBox(height: 12.h),
+                                          Padding(
+                                            padding: EdgeInsets.symmetric(horizontal: 20.w),
+                                            child: Column(
+                                              children: displayedItems.map((item) {
+                                                return Padding(
+                                                  padding: EdgeInsets.only(bottom: 12.h),
+                                                  child: _buildRestaurantFoodItem(item, colors),
+                                                );
+                                              }).toList(),
+                                            ),
                                           ),
-                                        ),
-                                        if (hasMoreItems && _isLoadingMore) ...[
-                                          LoadingMore(
-                                            colors: colors,
-                                            spinnerColor: colors.accentOrange,
-                                            borderColor: colors.accentOrange,
-                                          ),
-                                          SizedBox(height: 8.h),
+                                          if (hasMoreItems && _isLoadingMore) ...[
+                                            LoadingMore(
+                                              colors: colors,
+                                              spinnerColor: colors.accentOrange,
+                                              borderColor: colors.accentOrange,
+                                            ),
+                                            SizedBox(height: 8.h),
+                                          ],
                                         ],
-                                      ],
-                                    );
-                                  },
-                                ),
+                                      );
+                                    },
+                                  )
+                                else
+                                  // Similar Items for Groceries
+                                  Consumer<GroceryProvider>(
+                                    builder: (context, groceryProvider, child) {
+                                      final similarItems = groceryProvider.items
+                                          .where(
+                                            (item) =>
+                                                item.categoryId == widget.groceryItem!.categoryId &&
+                                                item.id != widget.groceryItem!.id,
+                                          )
+                                          .take(5)
+                                          .toList();
+
+                                      if (similarItems.isEmpty) return const SizedBox.shrink();
+
+                                      return Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Padding(
+                                            padding: EdgeInsets.symmetric(horizontal: 20.w),
+                                            child: Text(
+                                              "Similar Items",
+                                              style: TextStyle(
+                                                fontSize: 18.sp,
+                                                fontWeight: FontWeight.w800,
+                                                color: colors.textPrimary,
+                                              ),
+                                            ),
+                                          ),
+                                          SizedBox(height: 12.h),
+                                          SizedBox(
+                                            height: 250.h,
+                                            child: ListView.builder(
+                                              padding: EdgeInsets.only(left: 20.w),
+                                              scrollDirection: Axis.horizontal,
+                                              physics: const BouncingScrollPhysics(),
+                                              itemCount: similarItems.length,
+                                              itemBuilder: (context, index) {
+                                                return SizedBox(
+                                                  width: 160.w,
+                                                  child: GroceryItemCard(
+                                                    item: similarItems[index],
+                                                    margin: EdgeInsets.only(right: 12.w, bottom: 10.h),
+                                                    onTap: () {
+                                                      context.push('/foodDetails', extra: similarItems[index]);
+                                                    },
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  ),
 
                                 SizedBox(height: KSpacing.md.h),
                               ],
@@ -651,7 +797,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                     decoration: BoxDecoration(color: colors.backgroundPrimary),
                     child: Consumer<CartProvider>(
                       builder: (context, provider, _) {
-                        final int qty = provider.cartItems[widget.foodItem] ?? 0;
+                        final int qty = provider.cartItems[cartItem] ?? 0;
                         final bool isInCart = qty > 0;
 
                         return Row(
@@ -673,7 +819,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                     InkWell(
                                       onTap: () {
                                         if (isInCart) {
-                                          provider.removeFromCart(widget.foodItem);
+                                          provider.removeFromCart(cartItem);
                                         }
                                       },
                                       child: Icon(Icons.remove, color: colors.textSecondary, size: 20),
@@ -688,7 +834,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                     ),
                                     GestureDetector(
                                       onTap: () {
-                                        provider.addToCart(widget.foodItem);
+                                        provider.addToCart(cartItem);
                                       },
                                       child: Container(
                                         padding: EdgeInsets.all(2.r),
@@ -723,9 +869,9 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                 child: AppButton(
                                   onPressed: () {
                                     if (isInCart) {
-                                      provider.removeItemCompletely(widget.foodItem);
+                                      provider.removeItemCompletely(cartItem);
                                     } else {
-                                      provider.addToCart(widget.foodItem);
+                                      provider.addToCart(cartItem);
                                     }
                                   },
                                   backgroundColor: Colors.transparent,

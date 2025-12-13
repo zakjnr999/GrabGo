@@ -17,6 +17,8 @@ import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/location_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/theme_provider.dart';
+import 'package:grab_go_customer/shared/viewmodels/service_provider.dart';
+import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart';
 import 'package:provider/provider.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -35,10 +37,8 @@ void main() async {
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   AppConfig.validateConfiguration();
 
-  // Initialize secure storage first (for encrypted token/credential storage)
   await SecureStorageService.initialize();
 
-  // Then initialize cache service
   await CacheService.initialize();
   await ImageCacheService.initialize();
   await _initializeBackgroundServices();
@@ -56,6 +56,8 @@ void main() async {
         ChangeNotifierProvider(create: (context) => FavoritesProvider()),
         ChangeNotifierProvider(create: (context) => StatusProvider()..init()),
         ChangeNotifierProvider(create: (context) => SettingsProvider()),
+        ChangeNotifierProvider(create: (context) => ServiceProvider()),
+        ChangeNotifierProvider(create: (context) => GroceryProvider()),
       ],
       child: const GrabGoCustomerApp(),
     ),

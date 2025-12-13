@@ -1,8 +1,16 @@
+const path = require('path');
+const dotenv = require('dotenv');
+
+// Load env vars
+const result = dotenv.config({ path: path.resolve(__dirname, '.env') });
+if (result.error) {
+    console.error('❌ Error loading .env file:', result.error);
+}
+
 const mongoose = require('mongoose');
 const GroceryStore = require('./models/GroceryStore');
 const GroceryCategory = require('./models/GroceryCategory');
 const GroceryItem = require('./models/GroceryItem');
-require('dotenv').config();
 
 // Sample grocery categories
 const categories = [
@@ -140,7 +148,9 @@ const getGroceryItems = (categoryMap, storeMap) => [
 async function seedGroceries() {
     try {
         // Connect to MongoDB
-        await mongoose.connect(process.env.MONGO_URI);
+        // Connect to MongoDB
+        const mongoUri = process.env.MONGODB_URI || "mongodb://localhost:27017/grabgo";
+        await mongoose.connect(mongoUri);
         console.log('✅ Connected to MongoDB');
 
         // Clear existing data

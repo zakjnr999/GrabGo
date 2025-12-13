@@ -83,7 +83,7 @@ class FoodRefreshIndicator extends StatelessWidget {
     return Transform.rotate(
       angle: rotation ?? 0,
       child: SvgPicture.asset(
-        iconPath ?? Assets.icons.cart,
+        iconPath ?? Assets.icons.utensilsCrossed,
         package: 'grab_go_shared',
         height: 24.h,
         width: 24.w,

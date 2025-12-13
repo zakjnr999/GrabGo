@@ -15,6 +15,7 @@ class CachedImageWidget extends StatefulWidget {
   final Widget? errorWidget;
   final BorderRadius? borderRadius;
   final bool preload;
+  final Widget? overlay; // Added
 
   const CachedImageWidget({
     super.key,
@@ -26,6 +27,7 @@ class CachedImageWidget extends StatefulWidget {
     this.errorWidget,
     this.borderRadius,
     this.preload = false,
+    this.overlay,
   });
 
   @override
@@ -33,6 +35,7 @@ class CachedImageWidget extends StatefulWidget {
 }
 
 class _CachedImageWidgetState extends State<CachedImageWidget> {
+  // ... (Lines 36-167 remain unchanged, skipping for brevity) ...
   File? _cachedFile;
   bool _isLoading = true;
   bool _hasError = false;
@@ -178,6 +181,15 @@ class _CachedImageWidgetState extends State<CachedImageWidget> {
       );
     } else {
       image = Image.file(_cachedFile!, width: widget.width, height: widget.height, fit: widget.fit);
+    }
+
+    if (widget.overlay != null) {
+      image = Stack(
+        children: [
+          image,
+          Positioned.fill(child: widget.overlay!),
+        ],
+      );
     }
 
     if (widget.borderRadius != null) {

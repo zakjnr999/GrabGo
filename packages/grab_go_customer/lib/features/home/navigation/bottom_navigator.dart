@@ -78,9 +78,9 @@ class _BottomNavigatorState extends State<BottomNavigator> {
           child: Row(
             children: [
               Expanded(child: _buildNavItem(Assets.icons.home, "Home", 0, context)),
-              Expanded(child: _buildNavItem(Assets.icons.squareMenu, "Menu", 1, context)),
-              Expanded(child: _buildNavItem(Assets.icons.chatBubble, "Chats", 2, context)),
-              Expanded(child: _buildNavItem(Assets.icons.chefHat, "Restaurants", 3, context)),
+              Expanded(child: _buildNavItem(Assets.icons.search, "Browse", 1, context)),
+              Expanded(child: _buildNavItem(Assets.icons.chatBubble, "chats", 2, context)),
+              Expanded(child: _buildNavItem(Assets.icons.store, "Stores", 3, context)),
               Expanded(child: _buildNavItem(Assets.icons.user, "Account", 4, context)),
             ],
           ),

@@ -3,13 +3,16 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
+import 'package:grab_go_customer/features/groceries/model/grocery_category.dart';
+import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/location_provider.dart';
 import 'package:grab_go_customer/shared/widgets/category_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_skeleton.dart';
+
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
-import 'package:grab_go_customer/shared/widgets/food_category.dart';
+import 'package:grab_go_customer/shared/widgets/service_category_list.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/shared/widgets/home_search.dart';
 import 'package:grab_go_customer/shared/widgets/home_banner.dart';
@@ -17,14 +20,15 @@ import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
 import 'package:grab_go_customer/features/home/model/filter_model.dart';
 import 'package:grab_go_customer/features/home/model/service_model.dart';
 import 'package:grab_go_customer/shared/widgets/service_selector.dart';
-import 'package:grab_go_customer/shared/widgets/service_selector_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/deals_section.dart';
 import 'package:grab_go_customer/shared/widgets/food_refresh_indicator.dart';
 import 'package:grab_go_customer/shared/widgets/order_again_section.dart';
 import 'package:grab_go_customer/shared/widgets/popular_section.dart';
 import 'package:grab_go_customer/shared/widgets/promo_section.dart';
 import 'package:grab_go_customer/shared/widgets/top_rated_section.dart';
+import 'package:grab_go_customer/shared/widgets/fresh_arrivals_section.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurants_model.dart';
+import 'package:grab_go_customer/shared/viewmodels/service_provider.dart';
 import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
@@ -36,7 +40,8 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   FoodCategoryModel? _selectedCategory;
-  ServiceModel? _selectedService;
+  GroceryCategory? _selectedGroceryCategory;
+
   late ScrollController _scrollController;
   late AnimationController _fabAnimationController;
   late AnimationController _badgePulseController;
@@ -54,7 +59,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
 
-    // Initialize FAB animations
     _fabAnimationController = AnimationController(duration: const Duration(milliseconds: 300), vsync: this);
 
     _fabSlideAnimation = Tween<Offset>(
@@ -67,7 +71,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       end: 1.0,
     ).animate(CurvedAnimation(parent: _fabAnimationController, curve: Curves.easeOut));
 
-    // Initialize badge pulse animation
     _badgePulseController = AnimationController(duration: const Duration(milliseconds: 400), vsync: this);
 
     _badgePulseAnimation = TweenSequence<double>([
@@ -97,7 +100,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final currentOffset = _scrollController.offset;
     final scrollDelta = currentOffset - _lastScrollOffset;
 
-    // Always show FAB at top of page
     if (currentOffset <= 0) {
       if (!_isFabVisible) {
         setState(() {
@@ -109,10 +111,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       return;
     }
 
-    // Increased threshold from 5px to 12px for smoother transitions
     if (scrollDelta.abs() > 12 && currentOffset > 50) {
       if (scrollDelta > 0) {
-        // Scrolling down - hide FAB
         if (_isFabVisible) {
           setState(() {
             _isFabVisible = false;
@@ -120,7 +120,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           _fabAnimationController.reverse();
         }
       } else {
-        // Scrolling up - show FAB
         if (!_isFabVisible) {
           setState(() {
             _isFabVisible = true;
@@ -139,9 +138,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final provider = Provider.of<FoodProvider>(context, listen: false);
       if (provider.categories.isEmpty) {
         provider.fetchCategories();
-        provider.fetchRecentOrderItems(); // Fetch order history
-        provider.fetchPromotionalBanners(); // Fetch promotional banners
-        provider.fetchDeals(); // Fetch deals
+        provider.fetchRecentOrderItems();
+        provider.fetchPromotionalBanners();
+        provider.fetchDeals();
       } else {
         if (provider.categories.isNotEmpty) {
           setState(() {
@@ -153,15 +152,22 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Future<void> _refreshData() async {
-    final provider = Provider.of<FoodProvider>(context, listen: false);
+    final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
 
-    // Refresh all data
-    await Future.wait([
-      provider.refreshCategories(),
-      provider.fetchRecentOrderItems(),
-      provider.fetchPromotionalBanners(),
-      provider.fetchDeals(),
-    ]);
+    if (serviceProvider.isFoodService) {
+      // Refresh food data
+      final provider = Provider.of<FoodProvider>(context, listen: false);
+      await Future.wait([
+        provider.refreshCategories(),
+        provider.fetchRecentOrderItems(),
+        provider.fetchPromotionalBanners(),
+        provider.fetchDeals(),
+      ]);
+    } else if (serviceProvider.isGroceryService) {
+      // Refresh grocery data
+      final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
+      await groceryProvider.refreshAll();
+    }
   }
 
   @override
@@ -172,6 +178,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     final locationProvider = Provider.of<LocationProvider>(context);
     final itemsProvider = Provider.of<FoodProvider>(context);
+    final serviceProvider = Provider.of<ServiceProvider>(context);
 
     if (itemsProvider.categories.isNotEmpty && _selectedCategory == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -201,31 +208,88 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 SizedBox(height: KSpacing.lg.h),
                 HomeBanner(size: size),
                 SizedBox(height: KSpacing.lg.h),
-                _buildCategories(itemsProvider, isDark, size, colors),
-                SizedBox(height: KSpacing.xl.h),
+                if (serviceProvider.isFoodService)
+                  _buildCategories(itemsProvider, isDark, size, colors)
+                else if (serviceProvider.isGroceryService)
+                  _buildGroceryCategories(Provider.of<GroceryProvider>(context), isDark, size, colors),
 
-                // Only show Deals section if deals available or loading
-                if (itemsProvider.isLoadingDeals || itemsProvider.dealItems.isNotEmpty) ...[
-                  DealsSection(
-                    dealItems: itemsProvider.dealItems,
-                    onSeeAll: () {
-                      debugPrint('See all deals');
+                SizedBox(height: KSpacing.lg.h),
+
+                // Fresh Arrivals (Grocery only)
+                if (serviceProvider.isGroceryService) ...[
+                  Builder(
+                    builder: (context) {
+                      final groceryProvider = Provider.of<GroceryProvider>(context);
+
+                      if (groceryProvider.isLoadingFreshArrivals || groceryProvider.freshArrivals.isNotEmpty) {
+                        return Column(
+                          children: [
+                            FreshArrivalsSection(
+                              items: groceryProvider.freshArrivals,
+                              onSeeAll: () {
+                                // TODO: Navigate to full fresh arrivals page
+                              },
+                              onItemTap: (item) {
+                                context.push('/foodDetails', extra: item);
+                              },
+                              isLoading: groceryProvider.isLoadingFreshArrivals,
+                            ),
+                            SizedBox(height: KSpacing.xl.h),
+                          ],
+                        );
+                      }
+                      return const SizedBox.shrink();
                     },
-                    onItemTap: (item) {
-                      context.push('/food-details', extra: item);
-                    },
-                    isLoading: itemsProvider.isLoadingDeals,
                   ),
-                  SizedBox(height: KSpacing.xl.h),
                 ],
 
-                // Only show Order Again section if user has order history
-                if (itemsProvider.recentOrderItems.isNotEmpty) ...[
+                // Deals & Offers
+                Builder(
+                  builder: (context) {
+                    final deals = serviceProvider.isFoodService
+                        ? itemsProvider.dealItems
+                        : Provider.of<GroceryProvider>(context).deals.map((e) => e.toFoodItem()).toList();
+
+                    final isLoading = serviceProvider.isFoodService
+                        ? itemsProvider.isLoadingDeals
+                        : Provider.of<GroceryProvider>(context).isLoadingDeals;
+
+                    if (isLoading || deals.isNotEmpty) {
+                      return Column(
+                        children: [
+                          DealsSection(
+                            dealItems: deals,
+                            onSeeAll: () {},
+                            onItemTap: (item) {
+                              if (serviceProvider.isGroceryService) {
+                                final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
+                                final originalItem = groceryProvider.deals.firstWhere(
+                                  (g) => g.id == item.id,
+                                  orElse: () => groceryProvider.items.firstWhere(
+                                    (g) => g.id == item.id,
+                                    orElse: () => groceryProvider.deals.first,
+                                  ),
+                                );
+                                context.push('/foodDetails', extra: originalItem);
+                              } else {
+                                context.push('/foodDetails', extra: item);
+                              }
+                            },
+                            isLoading: isLoading,
+                          ),
+                          SizedBox(height: KSpacing.xl.h),
+                        ],
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+
+                // Order Again (Food only for now)
+                if (serviceProvider.isFoodService && itemsProvider.recentOrderItems.isNotEmpty) ...[
                   OrderAgainSection(
                     recentOrders: itemsProvider.recentOrderItems,
-                    onSeeAll: () {
-                      debugPrint('See all order history');
-                    },
+                    onSeeAll: () {},
                     onItemTap: (item) {
                       context.push('/food-details', extra: item);
                     },
@@ -233,118 +297,179 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   SizedBox(height: KSpacing.xl.h),
                 ],
 
-                PopularSection(
-                  popularItems: itemsProvider.categories
-                      .expand((cat) => cat.items)
-                      .where((item) => item.rating >= 4.0)
-                      .take(6)
-                      .toList(),
-                  onSeeAll: () {
-                    debugPrint('See all popular');
+                // Unified Popular Section
+                Builder(
+                  builder: (context) {
+                    List<FoodItem> popularItems = [];
+                    bool isLoading = false;
+
+                    if (serviceProvider.isFoodService) {
+                      popularItems = itemsProvider.categories
+                          .expand((cat) => cat.items)
+                          .where((item) => item.rating >= 4.0)
+                          .take(6)
+                          .toList();
+                      isLoading = itemsProvider.isLoading;
+                    } else {
+                      final groceryProvider = Provider.of<GroceryProvider>(context);
+                      popularItems = groceryProvider.items
+                          .where((item) => item.rating >= 4.0)
+                          .take(6)
+                          .map((e) => e.toFoodItem())
+                          .toList();
+                      isLoading = groceryProvider.isLoadingItems;
+                    }
+
+                    return PopularSection(
+                      popularItems: popularItems,
+                      onSeeAll: () {},
+                      onItemTap: (item) {
+                        if (serviceProvider.isGroceryService) {
+                          final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
+                          final originalItem = groceryProvider.items.firstWhere(
+                            (g) => g.id == item.id,
+                            orElse: () => groceryProvider.items.first,
+                          );
+                          context.push('/grocery-details', extra: originalItem);
+                        } else {
+                          context.push('/food-details', extra: item);
+                        }
+                      },
+                      isLoading: isLoading,
+                    );
                   },
-                  onItemTap: (item) {
-                    context.push('/food-details', extra: item);
-                  },
-                  isLoading: itemsProvider.isLoading,
                 ),
                 SizedBox(height: KSpacing.xl.h),
 
-                if (itemsProvider.isLoadingBanners || itemsProvider.promotionalBanners.isNotEmpty) ...[
-                  PromoSection(
-                    banners: itemsProvider.promotionalBanners,
-                    onSeeAll: () {
-                      debugPrint('See all promos');
-                    },
-                    isLoading: itemsProvider.isLoadingBanners,
-                  ),
-                  SizedBox(height: KSpacing.xl.h),
+                // Unified Banners (Promo Section)
+                if (serviceProvider.isFoodService) ...[
+                  if (itemsProvider.isLoadingBanners || itemsProvider.promotionalBanners.isNotEmpty) ...[
+                    PromoSection(
+                      banners: itemsProvider.promotionalBanners,
+                      onSeeAll: () {},
+                      isLoading: itemsProvider.isLoadingBanners,
+                    ),
+                    SizedBox(height: KSpacing.xl.h),
+                  ],
                 ],
 
-                TopRatedSection(
-                  topRatedItems: itemsProvider.categories
-                      .expand((cat) => cat.items)
-                      .where((item) => item.rating >= 4.5)
-                      .take(6)
-                      .toList(),
-                  onSeeAll: () {
-                    debugPrint('See all top rated');
+                // Unified Top Rated Section
+                Builder(
+                  builder: (context) {
+                    List<FoodItem> topRatedItems = [];
+                    bool isLoading = false;
+
+                    if (serviceProvider.isFoodService) {
+                      topRatedItems = itemsProvider.categories
+                          .expand((cat) => cat.items)
+                          .where((item) => item.rating >= 4.5)
+                          .take(6)
+                          .toList();
+                      isLoading = itemsProvider.isLoading;
+                    } else {
+                      final groceryProvider = Provider.of<GroceryProvider>(context);
+                      topRatedItems = groceryProvider.items
+                          .where((item) => item.rating >= 4.5)
+                          .take(6)
+                          .map((e) => e.toFoodItem())
+                          .toList();
+                      isLoading = groceryProvider.isLoadingItems;
+                    }
+
+                    return TopRatedSection(
+                      topRatedItems: topRatedItems,
+                      onSeeAll: () {},
+                      onItemTap: (item) {
+                        if (serviceProvider.isGroceryService) {
+                          // Find original grocery item by ID
+                          final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
+                          final originalItem = groceryProvider.items.firstWhere(
+                            (g) => g.id == item.id,
+                            orElse: () => groceryProvider.items.first,
+                          );
+                          context.push('/grocery-details', extra: originalItem);
+                        } else {
+                          context.push('/food-details', extra: item);
+                        }
+                      },
+                      isLoading: isLoading,
+                    );
                   },
-                  onItemTap: (item) {
-                    context.push('/food-details', extra: item);
-                  },
-                  isLoading: itemsProvider.isLoading,
                 ),
                 SizedBox(height: KSpacing.xl.h),
 
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20.w),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(8.r),
-                            decoration: BoxDecoration(
-                              color: colors.accentViolet.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(KBorderSize.border),
+                // Recommended (Food Specific or Generic)
+                if (serviceProvider.isFoodService) ...[
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20.w),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(8.r),
+                              decoration: BoxDecoration(
+                                color: colors.accentViolet.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(KBorderSize.border),
+                              ),
+                              child: SvgPicture.asset(
+                                Assets.icons.sparkles,
+                                package: 'grab_go_shared',
+                                height: 20.h,
+                                width: 20.w,
+                                colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                              ),
                             ),
-                            child: SvgPicture.asset(
-                              Assets.icons.sparkles,
-                              package: 'grab_go_shared',
-                              height: 20.h,
-                              width: 20.w,
-                              colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                            SizedBox(width: 10.w),
+                            Text(
+                              "Recommended For You",
+                              style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                             ),
-                          ),
-                          SizedBox(width: 10.w),
-                          Text(
-                            "Recommended For You",
-                            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
-                          ),
-                        ],
-                      ),
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                        decoration: BoxDecoration(
-                          color: colors.accentViolet.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20.r),
+                          ],
                         ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () {},
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                          decoration: BoxDecoration(
+                            color: colors.accentViolet.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20.r),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  "See All",
-                                  style: TextStyle(
-                                    fontSize: 12.sp,
-                                    fontWeight: FontWeight.w700,
-                                    color: colors.accentViolet,
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {},
+                              borderRadius: BorderRadius.circular(20.r),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    "See All",
+                                    style: TextStyle(
+                                      fontSize: 12.sp,
+                                      fontWeight: FontWeight.w700,
+                                      color: colors.accentViolet,
+                                    ),
                                   ),
-                                ),
-                                SizedBox(width: 4.w),
-                                SvgPicture.asset(
-                                  Assets.icons.navArrowRight,
-                                  package: 'grab_go_shared',
-                                  height: 12.h,
-                                  width: 12.w,
-                                  colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
-                                ),
-                              ],
+                                  SizedBox(width: 4.w),
+                                  SvgPicture.asset(
+                                    Assets.icons.navArrowRight,
+                                    package: 'grab_go_shared',
+                                    height: 12.h,
+                                    width: 12.w,
+                                    colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                SizedBox(height: KSpacing.lg.h),
-                _buildRecommendedFoodItems(itemsProvider, size, colors, isDark),
+                  SizedBox(height: KSpacing.lg.h),
+                  _buildRecommendedFoodItems(itemsProvider, size, colors, isDark),
+                ],
               ],
             ),
           ),
@@ -443,21 +568,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
         List<FoodCategoryModel> categoriesToProcess = itemsProvider.categories;
 
-        // Priority 1: If a category is manually selected, show items from that category
-        // (This takes precedence over filter categories - user's manual selection should be respected)
         if (_selectedCategory != null) {
-          // Check if selected category still exists in the list
           final categoryExists = categoriesToProcess.any((cat) => cat.id == _selectedCategory!.id);
           if (categoryExists) {
             categoriesToProcess = categoriesToProcess
                 .where((category) => category.id == _selectedCategory!.id)
                 .toList();
           } else {
-            // Selected category no longer exists, use first category
             if (categoriesToProcess.isNotEmpty) {
               final firstCategory = categoriesToProcess.first;
               categoriesToProcess = [firstCategory];
-              // Update selected category to match only if different
               if (_selectedCategory?.id != firstCategory.id) {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (mounted) {
@@ -469,10 +589,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               }
             }
           }
-        }
-        // Priority 2: If categories are selected in filter (and no manual selection), use those
-        else if (_activeFilter.isActive && _activeFilter.selectedCategories.isNotEmpty) {
-          // Validate that selected category IDs actually exist
+        } else if (_activeFilter.isActive && _activeFilter.selectedCategories.isNotEmpty) {
           final validCategoryIds = itemsProvider.categories.map((cat) => cat.id).where((id) => id.isNotEmpty).toSet();
 
           final validSelectedCategories = _activeFilter.selectedCategories
@@ -484,11 +601,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 .where((category) => validSelectedCategories.contains(category.id))
                 .toList();
           } else {
-            // Selected categories no longer exist, fall back to first category
             if (categoriesToProcess.isNotEmpty) {
               categoriesToProcess = [categoriesToProcess.first];
             }
-            // Clear invalid categories from filter
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
                 setState(() {
@@ -497,12 +612,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               }
             });
           }
-        }
-        // Priority 3: No category selected and no filter, default to first category
-        else if (categoriesToProcess.isNotEmpty) {
+        } else if (categoriesToProcess.isNotEmpty) {
           final firstCategory = categoriesToProcess.first;
           categoriesToProcess = [firstCategory];
-          // Only update if category is actually different
           if (_selectedCategory?.id != firstCategory.id) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
@@ -514,12 +626,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           }
         }
 
-        // Collect all food items from categories and remove duplicates immediately
         final Set<String> seenItemKeys = {};
         for (var category in categoriesToProcess) {
           if (category.items.isNotEmpty) {
             for (var item in category.items) {
-              // Use a unique key to identify duplicates
               final key = '${item.id}_${item.sellerId}';
               if (!seenItemKeys.contains(key)) {
                 seenItemKeys.add(key);
@@ -668,8 +778,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           }
         }
 
-        return FoodCategoryList(
+        return ServiceCategoryList<FoodCategoryModel>(
           categories: categoriesToShow,
+          getName: (cat) => cat.name,
+          getEmoji: (cat) => cat.emoji,
+          getId: (cat) => cat.id,
           initialSelectedCategory: _selectedCategory,
           onCategorySelected: (FoodCategoryModel category) {
             setState(() {
@@ -725,23 +838,44 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildServiceSelector() {
-    final itemsProvider = Provider.of<FoodProvider>(context);
+    final serviceProvider = Provider.of<ServiceProvider>(context);
+    final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
+    final foodProvider = Provider.of<FoodProvider>(context, listen: false);
+
+    /*
+    // Uncomment if you need skeleton loading state
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
     if (itemsProvider.isLoading) {
-      return ServiceSelectorSkeleton(colors: colors, isDark: isDark);
+       return ServiceSelectorSkeleton(colors: colors, isDark: isDark);
     }
+    */
 
     return ServiceSelector(
       services: AppServices.all,
-      initialSelectedService: _selectedService ?? AppServices.food,
+      initialSelectedService: serviceProvider.currentService,
       onServiceSelected: (ServiceModel service) {
-        setState(() {
-          _selectedService = service;
-        });
-        // TODO: In next step, we'll filter categories and items based on selected service
-        debugPrint('Selected service: ${service.name}');
+        debugPrint("Service Selected: ${service.id}");
+        serviceProvider.selectService(service);
+
+        // Load data for the selected service
+        if (service.id == 'groceries') {
+          // Load grocery data
+          if (groceryProvider.categories.isEmpty) {
+            groceryProvider.fetchCategories();
+            groceryProvider.fetchStores();
+            groceryProvider.fetchItems();
+            groceryProvider.fetchDeals();
+          }
+        } else if (service.id == 'food') {
+          // Load food data (already loaded in initState)
+          if (foodProvider.categories.isEmpty) {
+            foodProvider.fetchCategories();
+            foodProvider.fetchRecentOrderItems();
+            foodProvider.fetchPromotionalBanners();
+            foodProvider.fetchDeals();
+          }
+        }
       },
     );
   }
@@ -969,7 +1103,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   /// Create mock restaurants from food items for Nearby section
   /// This extracts unique restaurants from food items
-  List<RestaurantModel> _createMockRestaurants(FoodProvider itemsProvider) {
+  List<RestaurantModel> createMockRestaurants(FoodProvider itemsProvider) {
     if (itemsProvider.categories.isEmpty) {
       return [];
     }
@@ -1013,5 +1147,79 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     // Return up to 6 restaurants
     return restaurantMap.values.take(6).toList();
+  }
+
+  /// Build service selector (Food, Groceries, Pharmacy, Stores)
+  Widget buildServiceSelector() {
+    final serviceProvider = Provider.of<ServiceProvider>(context);
+    final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
+    final foodProvider = Provider.of<FoodProvider>(context, listen: false);
+
+    return ServiceSelector(
+      services: AppServices.all,
+      initialSelectedService: serviceProvider.currentService,
+      onServiceSelected: (service) {
+        serviceProvider.selectService(service);
+
+        // Load data for the selected service
+        if (service.id == 'groceries') {
+          // Load grocery data
+          if (groceryProvider.categories.isEmpty) {
+            groceryProvider.fetchCategories();
+            groceryProvider.fetchStores();
+            groceryProvider.fetchItems();
+            groceryProvider.fetchDeals();
+          }
+        } else if (service.id == 'food') {
+          // Load food data (already loaded in initState)
+          if (foodProvider.categories.isEmpty) {
+            foodProvider.fetchCategories();
+            foodProvider.fetchRecentOrderItems();
+            foodProvider.fetchPromotionalBanners();
+            foodProvider.fetchDeals();
+          }
+        }
+        // Other services (pharmacy, stores) can be added later
+      },
+    );
+  }
+
+  /// Build grocery content
+  /// Build grocery content
+  Widget _buildGroceryCategories(GroceryProvider groceryProvider, bool isDark, Size size, AppColorsExtension colors) {
+    // Create "All" category
+    final allCategory = GroceryCategory(
+      id: 'all',
+      name: 'All',
+      emoji: '🥣',
+      description: 'All items',
+      image: '',
+      sortOrder: 0,
+      isActive: true,
+    );
+
+    // Combine categories
+    final categoriesWithType = [allCategory, ...groceryProvider.categories];
+
+    if (groceryProvider.isLoadingCategories) {
+      return CategorySkeleton(colors: colors, isDark: isDark, size: size);
+    }
+
+    if (groceryProvider.categories.isNotEmpty) {
+      return ServiceCategoryList<GroceryCategory>(
+        categories: categoriesWithType,
+        getName: (cat) => cat.name,
+        getEmoji: (cat) => cat.emoji,
+        getId: (cat) => cat.id,
+        initialSelectedCategory: _selectedGroceryCategory ?? allCategory,
+        onCategorySelected: (category) {
+          setState(() {
+            _selectedGroceryCategory = category;
+          });
+        },
+      );
+    }
+
+    return const SizedBox.shrink();
   }
 }

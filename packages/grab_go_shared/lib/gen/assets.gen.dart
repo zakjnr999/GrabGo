@@ -440,6 +440,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/star_heavy.svg
   String get starHeavy => 'lib/assets/icons/star_heavy.svg';
 
+  /// File path: lib/assets/icons/store.svg
+  String get store => 'lib/assets/icons/store.svg';
+
   /// File path: lib/assets/icons/style-border.svg
   String get styleBorder => 'lib/assets/icons/style-border.svg';
 
@@ -616,6 +619,7 @@ class $LibAssetsIconsGen {
     starSolid,
     star,
     starHeavy,
+    store,
     styleBorder,
     sunLight,
     sunMoon,
