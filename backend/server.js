@@ -269,6 +269,7 @@ app.use("/api/chats", require("./routes/chats"));
 app.use("/api/statuses", require("./routes/statuses"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/referral", require("./routes/referrals"));
+app.use("/api/promotions", require("./routes/promotions"));
 
 // Health check
 app.get("/api/health", (req, res) => {
