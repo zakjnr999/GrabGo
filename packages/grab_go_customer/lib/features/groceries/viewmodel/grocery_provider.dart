@@ -27,6 +27,9 @@ class GroceryProvider extends ChangeNotifier {
   List<GroceryItem> _freshArrivals = [];
   bool _isLoadingFreshArrivals = false;
 
+  List<GroceryItem> _buyAgainItems = [];
+  bool _isLoadingBuyAgain = false;
+
   // Getters
   List<GroceryStore> get stores => _stores;
   bool get isLoadingStores => _isLoadingStores;
@@ -42,6 +45,9 @@ class GroceryProvider extends ChangeNotifier {
 
   List<GroceryItem> get freshArrivals => _freshArrivals;
   bool get isLoadingFreshArrivals => _isLoadingFreshArrivals;
+
+  List<GroceryItem> get buyAgainItems => _buyAgainItems;
+  bool get isLoadingBuyAgain => _isLoadingBuyAgain;
 
   /// Fetch all grocery stores
   Future<void> fetchStores() async {
@@ -100,6 +106,11 @@ class GroceryProvider extends ChangeNotifier {
     } finally {
       _isLoadingItems = false;
       notifyListeners();
+
+      // Automatically fetch fresh arrivals after items are loaded
+      if (_items.isNotEmpty) {
+        fetchFreshArrivals();
+      }
     }
   }
 
@@ -152,11 +163,29 @@ class GroceryProvider extends ChangeNotifier {
     }
   }
 
+  /// Fetch buy again items (order history)
+  Future<void> fetchBuyAgainItems() async {
+    _isLoadingBuyAgain = true;
+    notifyListeners();
+
+    try {
+      _buyAgainItems = await _repository.fetchOrderHistory();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error in fetchBuyAgainItems: $e');
+      }
+      _buyAgainItems = [];
+    } finally {
+      _isLoadingBuyAgain = false;
+      notifyListeners();
+    }
+  }
+
   /// Refresh all grocery data
   Future<void> refreshAll() async {
     await Future.wait([fetchStores(), fetchCategories(), fetchItems(), fetchDeals()]);
-    // Fetch fresh arrivals after items are loaded
-    await fetchFreshArrivals();
+    // Fetch fresh arrivals and buy again after items are loaded
+    await Future.wait([fetchFreshArrivals(), fetchBuyAgainItems()]);
   }
 
   /// Clear all data

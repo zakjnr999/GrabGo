@@ -1,9 +1,20 @@
 const mongoose = require('mongoose');
 
 const orderItemSchema = new mongoose.Schema({
+  // Flexible reference - can be Food or GroceryItem
   food: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Food',
+    default: null
+  },
+  groceryItem: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'GroceryItem',
+    default: null
+  },
+  itemType: {
+    type: String,
+    enum: ['food', 'grocery'],
     required: true
   },
   name: {
@@ -23,6 +34,10 @@ const orderItemSchema = new mongoose.Schema({
   image: {
     type: String,
     default: null
+  },
+  unit: {
+    type: String,
+    default: null // For groceries: 'kg', 'liter', 'piece', etc.
   }
 }, { _id: false });
 
@@ -41,6 +56,12 @@ const orderSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
+  orderType: {
+    type: String,
+    enum: ['food', 'grocery'],
+    required: true,
+    default: 'food'
+  },
   customer: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -49,7 +70,12 @@ const orderSchema = new mongoose.Schema({
   restaurant: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Restaurant',
-    required: true
+    default: null // Only for food orders
+  },
+  groceryStore: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'GroceryStore',
+    default: null // Only for grocery orders
   },
   rider: {
     type: mongoose.Schema.Types.ObjectId,
@@ -133,12 +159,12 @@ const orderSchema = new mongoose.Schema({
   timestamps: true
 });
 
-orderSchema.pre('save', async function(next) {
+orderSchema.pre('save', async function (next) {
   if (!this.orderNumber) {
     const timestamp = Date.now();
     const random = Math.floor(Math.random() * 10000);
     this.orderNumber = `ORD-${timestamp}-${random}`;
-    
+
     const Order = mongoose.model('Order');
     let exists = await Order.findOne({ orderNumber: this.orderNumber });
     let attempts = 0;

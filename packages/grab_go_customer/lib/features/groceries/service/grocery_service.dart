@@ -34,5 +34,8 @@ abstract class GroceryService extends ChopperService {
   @GET(path: '/groceries/stores/{id}/items')
   Future<Response> getStoreItems(@Path('id') String storeId);
 
+  @GET(path: '/groceries/order-history')
+  Future<Response> getOrderHistory();
+
   static GroceryService create([ChopperClient? client]) => _$GroceryService(client);
 }

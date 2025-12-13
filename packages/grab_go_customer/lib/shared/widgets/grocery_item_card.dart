@@ -18,7 +18,6 @@ class GroceryItemCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final size = MediaQuery.sizeOf(context);
 
     // Calculate discount display
     final bool hasDiscount = item.hasDiscount;

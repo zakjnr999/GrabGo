@@ -6,12 +6,12 @@ import 'package:custom_refresh_indicator/custom_refresh_indicator.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
-class FoodRefreshIndicator extends StatelessWidget {
+class AppRefreshIndicator extends StatelessWidget {
   final Widget child;
   final Future<void> Function() onRefresh;
   final String? iconPath;
 
-  const FoodRefreshIndicator({super.key, required this.child, required this.onRefresh, this.iconPath});
+  const AppRefreshIndicator({super.key, required this.child, required this.onRefresh, this.iconPath});
 
   @override
   Widget build(BuildContext context) {

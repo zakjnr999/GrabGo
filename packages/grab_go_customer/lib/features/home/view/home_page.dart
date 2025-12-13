@@ -7,9 +7,9 @@ import 'package:grab_go_customer/features/groceries/model/grocery_category.dart'
 import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/location_provider.dart';
+import 'package:grab_go_customer/shared/widgets/app_refresh_indicator.dart';
 import 'package:grab_go_customer/shared/widgets/category_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_skeleton.dart';
-
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/widgets/service_category_list.dart';
@@ -21,7 +21,6 @@ import 'package:grab_go_customer/features/home/model/filter_model.dart';
 import 'package:grab_go_customer/features/home/model/service_model.dart';
 import 'package:grab_go_customer/shared/widgets/service_selector.dart';
 import 'package:grab_go_customer/shared/widgets/deals_section.dart';
-import 'package:grab_go_customer/shared/widgets/food_refresh_indicator.dart';
 import 'package:grab_go_customer/shared/widgets/order_again_section.dart';
 import 'package:grab_go_customer/shared/widgets/popular_section.dart';
 import 'package:grab_go_customer/shared/widgets/promo_section.dart';
@@ -192,8 +191,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     return Scaffold(
       body: SafeArea(
-        child: FoodRefreshIndicator(
+        child: AppRefreshIndicator(
           onRefresh: _refreshData,
+          iconPath: serviceProvider.isFoodService ? Assets.icons.utensilsCrossed : Assets.icons.cart,
           child: SingleChildScrollView(
             controller: _scrollController,
             physics: const BouncingScrollPhysics(),
@@ -233,6 +233,39 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 context.push('/foodDetails', extra: item);
                               },
                               isLoading: groceryProvider.isLoadingFreshArrivals,
+                            ),
+                            SizedBox(height: KSpacing.xl.h),
+                          ],
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                ],
+
+                // Buy Again (Grocery only)
+                if (serviceProvider.isGroceryService) ...[
+                  Builder(
+                    builder: (context) {
+                      final groceryProvider = Provider.of<GroceryProvider>(context);
+
+                      // Only show if user has order history
+                      if (groceryProvider.buyAgainItems.isNotEmpty) {
+                        return Column(
+                          children: [
+                            OrderAgainSection(
+                              recentOrders: groceryProvider.buyAgainItems.map((item) => item.toFoodItem()).toList(),
+                              onSeeAll: () {
+                                // TODO: Navigate to order history page
+                              },
+                              onItemTap: (foodItem) {
+                                // Find original grocery item and navigate
+                                final groceryItem = groceryProvider.buyAgainItems.firstWhere(
+                                  (item) => item.id == foodItem.id,
+                                  orElse: () => groceryProvider.buyAgainItems.first,
+                                );
+                                context.push('/foodDetails', extra: groceryItem);
+                              },
                             ),
                             SizedBox(height: KSpacing.xl.h),
                           ],

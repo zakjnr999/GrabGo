@@ -171,4 +171,25 @@ class GroceryRepository {
       return [];
     }
   }
+
+  /// Fetch grocery order history for Buy Again section
+  Future<List<GroceryItem>> fetchOrderHistory() async {
+    try {
+      final response = await _groceryService.getOrderHistory();
+
+      if (response.isSuccessful && response.body != null) {
+        final data = response.body as Map<String, dynamic>;
+        final items = data['data'] as List;
+
+        return items.map((json) => GroceryItem.fromJson(json as Map<String, dynamic>)).toList();
+      }
+
+      return [];
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching order history: $e');
+      }
+      return [];
+    }
+  }
 }

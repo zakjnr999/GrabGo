@@ -253,4 +253,104 @@ router.get("/stores/:id/items", async (req, res) => {
     }
 });
 
+// ==================== ORDER HISTORY ====================
+
+// Get grocery order history for current user (for Buy Again section)
+router.get("/order-history", async (req, res) => {
+    try {
+        const Order = require('../models/Order');
+
+        // For now, return empty array if no user authentication
+        // In production, this should be protected with auth middleware
+        if (!req.user && !req.headers['x-user-id']) {
+            return res.status(200).json({
+                success: true,
+                count: 0,
+                data: []
+            });
+        }
+
+        const userId = req.user?._id || req.headers['x-user-id'];
+
+        // Get completed grocery orders for the user
+        const orders = await Order.find({
+            customer: userId,
+            orderType: 'grocery',
+            status: 'delivered' // Only delivered orders (completed doesn't exist in enum)
+        })
+            .populate({
+                path: 'items.groceryItem',
+                model: 'GroceryItem',
+                populate: [
+                    { path: 'category', model: 'GroceryCategory' },
+                    { path: 'store', model: 'GroceryStore' }
+                ]
+            })
+            .sort({ deliveredDate: -1, orderDate: -1 })
+            .limit(50);
+
+        if (!orders || orders.length === 0) {
+            return res.status(200).json({
+                success: true,
+                count: 0,
+                data: []
+            });
+        }
+
+        // Extract unique grocery items from orders
+        const itemsMap = new Map();
+
+        orders.forEach(order => {
+            order.items.forEach(item => {
+                if (item.itemType === 'grocery' && item.groceryItem) {
+                    const itemId = item.groceryItem._id.toString();
+
+                    if (!itemsMap.has(itemId)) {
+                        itemsMap.set(itemId, {
+                            item: item.groceryItem,
+                            lastOrdered: order.deliveredDate || order.orderDate,
+                            timesOrdered: 1,
+                            totalQuantity: item.quantity
+                        });
+                    } else {
+                        const existing = itemsMap.get(itemId);
+                        existing.timesOrdered += 1;
+                        existing.totalQuantity += item.quantity; // FIX: was undefined totalQuantity
+                        // Update last ordered if this order is more recent
+                        const orderDate = order.deliveredDate || order.orderDate;
+                        if (orderDate > existing.lastOrdered) {
+                            existing.lastOrdered = orderDate;
+                        }
+                    }
+                }
+            });
+        });
+
+        // Convert map to array and sort by last ordered date
+        const buyAgainItems = Array.from(itemsMap.values())
+            .sort((a, b) => b.lastOrdered - a.lastOrdered)
+            .slice(0, 20) // Return top 20 most recent items
+            .map(({ item, lastOrdered, timesOrdered, totalQuantity }) => ({
+                ...item.toObject(),
+                lastOrdered,
+                timesOrdered,
+                totalQuantity
+            }));
+
+        res.status(200).json({
+            success: true,
+            count: buyAgainItems.length,
+            data: buyAgainItems
+        });
+
+    } catch (error) {
+        console.error('Error fetching grocery order history:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch order history',
+            message: error.message
+        });
+    }
+});
+
 module.exports = router;

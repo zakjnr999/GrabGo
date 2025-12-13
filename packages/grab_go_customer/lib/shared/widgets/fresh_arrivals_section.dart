@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
-import 'package:grab_go_customer/shared/widgets/grocery_item_card.dart';
+import 'package:grab_go_customer/shared/widgets/popular_item_card.dart';
 import 'package:grab_go_customer/shared/widgets/horizontal_card_skeleton.dart';
+import 'package:grab_go_customer/shared/widgets/section_header.dart';
+import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 /// Fresh Arrivals Section
@@ -27,12 +29,16 @@ class FreshArrivalsSection extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildHeader(context, colors),
-        SizedBox(height: KSpacing.md.h),
+        SectionHeader(
+          title: 'Fresh Arrivals',
+          icon: Assets.icons.sparkles,
+          accentColor: const Color(0xFF4CAF50),
+          onSeeAll: onSeeAll,
+        ),
+        SizedBox(height: 16.h),
         if (isLoading)
-          HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 240.h)
+          HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 260.h)
         else if (items.isEmpty)
           _buildEmptyState(colors)
         else
@@ -41,69 +47,37 @@ class FreshArrivalsSection extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, AppColorsExtension colors) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(8.r),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)]),
-                  borderRadius: BorderRadius.circular(KBorderSize.border),
-                ),
-                child: Icon(Icons.fiber_new, size: 20.sp, color: Colors.white),
-              ),
-              SizedBox(width: 10.w),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Fresh Arrivals',
-                    style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
-                  ),
-                  Text(
-                    'New this week',
-                    style: TextStyle(fontSize: 12.sp, color: colors.textTertiary),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          if (items.isNotEmpty)
-            TextButton(
-              onPressed: onSeeAll,
-              child: Text(
-                'See All',
-                style: TextStyle(color: colors.accentOrange, fontSize: 14.sp, fontWeight: FontWeight.w600),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildItemsList() {
     return SizedBox(
-      height: 240.h,
+      height: 260.h,
       child: ListView.builder(
-        padding: EdgeInsets.symmetric(horizontal: 20.w),
+        padding: EdgeInsets.only(left: 20.w),
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         itemCount: items.length,
         itemBuilder: (context, index) {
           final item = items[index];
+          final foodItem = item.toFoodItem();
+
+          // Calculate order count based on how long item has been available
+          // Newer items (1-2 days) = 5-15 orders
+          // Slightly older (3-4 days) = 15-30 orders
+          // Older fresh items (5-7 days) = 30-50 orders
+          final daysSinceCreation = item.daysSinceCreation;
+          int orderCount;
+          if (daysSinceCreation <= 2) {
+            orderCount = 5 + (index % 3) * 5; // 5-15 orders
+          } else if (daysSinceCreation <= 4) {
+            orderCount = 15 + (index % 4) * 5; // 15-30 orders
+          } else {
+            orderCount = 30 + (index % 5) * 4; // 30-50 orders
+          }
+
           return Padding(
-            padding: EdgeInsets.only(right: 16.w),
+            padding: EdgeInsets.only(right: 15.w),
             child: Stack(
               children: [
-                SizedBox(
-                  width: 160.w,
-                  child: GroceryItemCard(item: item, onTap: () => onItemTap(item)),
-                ),
+                PopularItemCard(item: foodItem, orderCount: orderCount, onTap: () => onItemTap(item)),
                 // NEW badge
                 Positioned(top: 8, right: 8, child: _buildNewBadge(item)),
               ],

@@ -97,4 +97,11 @@ final class _$GroceryService extends GroceryService {
     final Request $request = Request('GET', $url, client.baseUrl);
     return client.send<dynamic, dynamic>($request);
   }
+
+  @override
+  Future<Response<dynamic>> getOrderHistory() {
+    final Uri $url = Uri.parse('/groceries/order-history');
+    final Request $request = Request('GET', $url, client.baseUrl);
+    return client.send<dynamic, dynamic>($request);
+  }
 }
