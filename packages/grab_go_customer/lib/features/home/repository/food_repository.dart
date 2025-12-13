@@ -1,4 +1,5 @@
 import 'package:chopper/chopper.dart';
+import 'package:flutter/foundation.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/features/home/service/food_service.dart';
@@ -75,6 +76,7 @@ class FoodRepository {
   /// Fetch user's recent order items for "Order Again" section
   Future<List<FoodItem>> fetchRecentOrderItems() async {
     try {
+      // Use service client to make the request
       final response = await chopperClient.get(Uri.parse('/orders/recent-items'));
 
       if (response.isSuccessful && response.body != null) {
@@ -87,10 +89,17 @@ class FoodRepository {
           return FoodItem.fromJson(foodItemData);
         }).toList();
       } else {
-        throw Exception('Failed to load recent items: ${response.statusCode}');
+        // Return empty list for any error - global error handler will show network error page
+        if (kDebugMode) {
+          print('❌ Failed to load recent items: ${response.statusCode}');
+        }
+        return [];
       }
     } catch (e) {
-      // Return empty list if user has no order history
+      if (kDebugMode) {
+        print('❌ Error fetching recent order items: $e');
+      }
+      // Return empty list - skeleton will continue showing until global error handler kicks in
       return [];
     }
   }

@@ -200,16 +200,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               ),
               SizedBox(height: KSpacing.xl.h),
 
-              OrderAgainSection(
-                recentOrders: itemsProvider.recentOrderItems,
-                onSeeAll: () {
-                  debugPrint('See all order history');
-                },
-                onItemTap: (item) {
-                  context.push('/food-details', extra: item);
-                },
-              ),
-              SizedBox(height: KSpacing.xl.h),
+              // Only show Order Again section if user has order history
+              if (itemsProvider.recentOrderItems.isNotEmpty) ...[
+                OrderAgainSection(
+                  recentOrders: itemsProvider.recentOrderItems,
+                  onSeeAll: () {
+                    debugPrint('See all order history');
+                  },
+                  onItemTap: (item) {
+                    context.push('/food-details', extra: item);
+                  },
+                ),
+                SizedBox(height: KSpacing.xl.h),
+              ],
 
               PopularSection(
                 popularItems: itemsProvider.categories

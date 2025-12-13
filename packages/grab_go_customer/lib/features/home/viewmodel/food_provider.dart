@@ -17,6 +17,12 @@ class FoodProvider with ChangeNotifier {
   List<FoodItem> _recentOrderItems = [];
   List<FoodItem> get recentOrderItems => _recentOrderItems;
 
+  bool _isLoadingRecentItems = false;
+  bool get isLoadingRecentItems => _isLoadingRecentItems;
+
+  String? _recentItemsError;
+  String? get recentItemsError => _recentItemsError;
+
   Future<void> fetchCategories() async {
     if (_categories.isNotEmpty || _isLoading) return;
 
@@ -213,14 +219,20 @@ class FoodProvider with ChangeNotifier {
 
   /// Fetch user's recent order items for "Order Again" section
   Future<void> fetchRecentOrderItems() async {
+    _isLoadingRecentItems = true;
+    notifyListeners();
+
     try {
       _recentOrderItems = await FoodRepository().fetchRecentOrderItems();
-      notifyListeners();
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error fetching recent order items: $e');
       }
       _recentOrderItems = [];
+      // Keep loading state true - skeleton will continue showing
+      // Global error handler will show network error page
+    } finally {
+      _isLoadingRecentItems = false;
       notifyListeners();
     }
   }

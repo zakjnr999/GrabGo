@@ -262,13 +262,14 @@ router.get("/recent-items", protect, async (req, res) => {
 
         const foodId = item.food._id.toString();
         if (!foodItemsMap.has(foodId)) {
-          const daysSince = Math.floor(
-            (Date.now() - order.deliveredDate) / (1000 * 60 * 60 * 24)
-          );
+          // Calculate days since last order, handle null deliveredDate
+          const daysSince = order.deliveredDate
+            ? Math.floor((Date.now() - order.deliveredDate) / (1000 * 60 * 60 * 24))
+            : 0;
 
           foodItemsMap.set(foodId, {
             foodItem: item.food,
-            lastOrderedAt: order.deliveredDate,
+            lastOrderedAt: order.deliveredDate || new Date(),
             orderCount: 1,
             daysAgo: daysSince
           });
@@ -277,7 +278,7 @@ router.get("/recent-items", protect, async (req, res) => {
           const existing = foodItemsMap.get(foodId);
           existing.orderCount++;
           // Keep the most recent order date
-          if (order.deliveredDate > existing.lastOrderedAt) {
+          if (order.deliveredDate && order.deliveredDate > existing.lastOrderedAt) {
             existing.lastOrderedAt = order.deliveredDate;
             existing.daysAgo = Math.floor(
               (Date.now() - order.deliveredDate) / (1000 * 60 * 60 * 24)
