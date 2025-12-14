@@ -36,6 +36,13 @@ class FoodProvider with ChangeNotifier {
   bool _isLoadingDeals = false;
   bool get isLoadingDeals => _isLoadingDeals;
 
+  // Order history for Order Again section
+  List<FoodItem> _orderHistoryItems = [];
+  List<FoodItem> get orderHistoryItems => _orderHistoryItems;
+
+  bool _isLoadingOrderHistory = false;
+  bool get isLoadingOrderHistory => _isLoadingOrderHistory;
+
   Future<void> fetchCategories() async {
     if (_categories.isNotEmpty || _isLoading) return;
 
@@ -69,6 +76,9 @@ class FoodProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+
+    // Fetch order history after categories
+    fetchOrderHistory();
   }
 
   Future<void> refreshCategories() async {
@@ -282,6 +292,24 @@ class FoodProvider with ChangeNotifier {
       _dealItems = [];
     } finally {
       _isLoadingDeals = false;
+      notifyListeners();
+    }
+  }
+
+  /// Fetch order history for Order Again section
+  Future<void> fetchOrderHistory() async {
+    _isLoadingOrderHistory = true;
+    notifyListeners();
+
+    try {
+      _orderHistoryItems = await FoodRepository().fetchOrderHistory();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching order history: $e');
+      }
+      _orderHistoryItems = [];
+    } finally {
+      _isLoadingOrderHistory = false;
       notifyListeners();
     }
   }

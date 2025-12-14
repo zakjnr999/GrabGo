@@ -473,6 +473,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/utensils-crossed.svg
   String get utensilsCrossed => 'lib/assets/icons/utensils-crossed.svg';
 
+  /// File path: lib/assets/icons/view-grid.svg
+  String get viewGrid => 'lib/assets/icons/view-grid.svg';
+
   /// File path: lib/assets/icons/vodafone_cash.jpg
   AssetGenImage get vodafoneCash =>
       const AssetGenImage('lib/assets/icons/vodafone_cash.jpg');
@@ -630,6 +633,7 @@ class $LibAssetsIconsGen {
     trophy,
     user,
     utensilsCrossed,
+    viewGrid,
     vodafoneCash,
     warningCircle,
     weight,

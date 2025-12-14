@@ -273,10 +273,6 @@ router.get("/order-history", protect, async (req, res) => {
 
         const userId = req.user?._id || req.headers['x-user-id'];
 
-        console.log('🔍 Order History Debug:');
-        console.log('   User from token:', req.user?._id?.toString());
-        console.log('   User ID being used:', userId?.toString());
-
         // Get completed grocery orders for the user
         const orders = await Order.find({
             customer: userId,
@@ -293,8 +289,6 @@ router.get("/order-history", protect, async (req, res) => {
             })
             .sort({ deliveredDate: -1, orderDate: -1 })
             .limit(50);
-
-        console.log('   Orders found:', orders.length);
 
         if (!orders || orders.length === 0) {
             return res.status(200).json({

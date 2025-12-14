@@ -280,4 +280,102 @@ router.put(
   }
 );
 
+// ==================== ORDER HISTORY ====================
+
+/**
+ * @route   GET /api/foods/order-history
+ * @desc    Get food order history for current user (for Order Again section)
+ * @access  Protected
+ */
+router.get("/order-history", protect, async (req, res) => {
+  try {
+    const Order = require('../models/Order');
+
+    // Return empty array if no user authentication
+    if (!req.user && !req.headers['x-user-id']) {
+      return res.status(200).json({
+        success: true,
+        count: 0,
+        data: []
+      });
+    }
+
+    const userId = req.user?._id || req.headers['x-user-id'];
+
+    // Get completed food orders for the user
+    const orders = await Order.find({
+      customer: userId,
+      orderType: 'food',
+      status: 'delivered'
+    })
+      .populate({
+        path: 'items.food',
+        model: 'Food',
+        populate: [
+          { path: 'category', model: 'Category' },
+          { path: 'restaurant', model: 'Restaurant' }
+        ]
+      })
+      .sort({ deliveredDate: -1, orderDate: -1 })
+      .limit(50);
+
+    if (!orders || orders.length === 0) {
+      return res.status(200).json({
+        success: true,
+        count: 0,
+        data: []
+      });
+    }
+
+    // Extract unique food items from orders
+    const itemsMap = new Map();
+
+    orders.forEach(order => {
+      order.items.forEach(item => {
+        if (item.itemType === 'food' && item.food) {
+          const itemId = item.food._id.toString();
+
+          if (!itemsMap.has(itemId)) {
+            itemsMap.set(itemId, {
+              item: item.food,
+              lastOrdered: order.deliveredDate || order.orderDate,
+              timesOrdered: 1,
+              totalQuantity: item.quantity
+            });
+          } else {
+            const existing = itemsMap.get(itemId);
+            existing.timesOrdered += 1;
+            existing.totalQuantity += item.quantity;
+            // Update last ordered if this order is more recent
+            const orderDate = order.deliveredDate || order.orderDate;
+            if (orderDate > existing.lastOrdered) {
+              existing.lastOrdered = orderDate;
+            }
+          }
+        }
+      });
+    });
+
+    // Convert map to array and sort by last ordered date
+    const orderHistory = Array.from(itemsMap.values())
+      .sort((a, b) => b.lastOrdered - a.lastOrdered)
+      .slice(0, 20) // Limit to 20 most recent items
+      .map(entry => entry.item);
+
+    res.status(200).json({
+      success: true,
+      count: orderHistory.length,
+      data: orderHistory
+    });
+
+  } catch (error) {
+    console.error('Get food order history error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

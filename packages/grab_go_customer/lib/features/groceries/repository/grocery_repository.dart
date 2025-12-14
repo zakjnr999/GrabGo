@@ -175,30 +175,15 @@ class GroceryRepository {
   /// Fetch grocery order history for Buy Again section
   Future<List<GroceryItem>> fetchOrderHistory() async {
     try {
-      if (kDebugMode) {
-        print('🔄 Repository: Calling getOrderHistory...');
-      }
       final response = await _groceryService.getOrderHistory();
-
-      if (kDebugMode) {
-        print('📡 Repository: Response received - Success: ${response.isSuccessful}');
-        print('📦 Repository: Response body: ${response.body}');
-      }
 
       if (response.isSuccessful && response.body != null) {
         final data = response.body as Map<String, dynamic>;
         final items = data['data'] as List;
 
-        if (kDebugMode) {
-          print('✅ Repository: Parsed ${items.length} items from response');
-        }
-
         return items.map((json) => GroceryItem.fromJson(json as Map<String, dynamic>)).toList();
       }
 
-      if (kDebugMode) {
-        print('⚠️ Repository: Response not successful or body is null');
-      }
       return [];
     } catch (e) {
       if (kDebugMode) {

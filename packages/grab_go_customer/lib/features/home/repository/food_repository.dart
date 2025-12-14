@@ -156,4 +156,30 @@ class FoodRepository {
       return [];
     }
   }
+
+  /// Fetch order history for Order Again section
+  Future<List<FoodItem>> fetchOrderHistory() async {
+    try {
+      final response = await service.getOrderHistory();
+
+      if (response.isSuccessful && response.body != null) {
+        final body = response.body as Map<String, dynamic>;
+        final data = (body['data'] as List<dynamic>?) ?? [];
+
+        return data.map((item) {
+          return FoodItem.fromJson(item as Map<String, dynamic>);
+        }).toList();
+      } else {
+        if (kDebugMode) {
+          print('❌ Failed to load order history: ${response.statusCode}');
+        }
+        return [];
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching order history: $e');
+      }
+      return [];
+    }
+  }
 }

@@ -20,5 +20,8 @@ abstract class FoodService extends ChopperService {
   @GET(path: '/promotions/banners')
   Future<Response> getPromotionalBanners();
 
+  @GET(path: '/foods/order-history')
+  Future<Response> getOrderHistory();
+
   static FoodService create([ChopperClient? client]) => _$FoodService(client);
 }
