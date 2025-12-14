@@ -3,6 +3,7 @@ const router = express.Router();
 const GroceryStore = require('../models/GroceryStore');
 const GroceryCategory = require('../models/GroceryCategory');
 const GroceryItem = require('../models/GroceryItem');
+const { protect } = require('../middleware/auth');
 
 // ==================== STORES ====================
 
@@ -256,7 +257,7 @@ router.get("/stores/:id/items", async (req, res) => {
 // ==================== ORDER HISTORY ====================
 
 // Get grocery order history for current user (for Buy Again section)
-router.get("/order-history", async (req, res) => {
+router.get("/order-history", protect, async (req, res) => {
     try {
         const Order = require('../models/Order');
 
@@ -271,6 +272,10 @@ router.get("/order-history", async (req, res) => {
         }
 
         const userId = req.user?._id || req.headers['x-user-id'];
+
+        console.log('🔍 Order History Debug:');
+        console.log('   User from token:', req.user?._id?.toString());
+        console.log('   User ID being used:', userId?.toString());
 
         // Get completed grocery orders for the user
         const orders = await Order.find({
@@ -288,6 +293,8 @@ router.get("/order-history", async (req, res) => {
             })
             .sort({ deliveredDate: -1, orderDate: -1 })
             .limit(50);
+
+        console.log('   Orders found:', orders.length);
 
         if (!orders || orders.length === 0) {
             return res.status(200).json({

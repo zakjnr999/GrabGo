@@ -107,9 +107,10 @@ class GroceryProvider extends ChangeNotifier {
       _isLoadingItems = false;
       notifyListeners();
 
-      // Automatically fetch fresh arrivals after items are loaded
+      // Automatically fetch fresh arrivals and buy again after items are loaded
       if (_items.isNotEmpty) {
         fetchFreshArrivals();
+        fetchBuyAgainItems();
       }
     }
   }
@@ -169,7 +170,13 @@ class GroceryProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      if (kDebugMode) {
+        print('🔄 Fetching buy again items...');
+      }
       _buyAgainItems = await _repository.fetchOrderHistory();
+      if (kDebugMode) {
+        print('✅ Buy again items fetched: ${_buyAgainItems.length} items');
+      }
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error in fetchBuyAgainItems: $e');

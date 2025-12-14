@@ -249,8 +249,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     builder: (context) {
                       final groceryProvider = Provider.of<GroceryProvider>(context);
 
-                      // Only show if user has order history
-                      if (groceryProvider.buyAgainItems.isNotEmpty) {
+                      // Show if loading or has items (like Fresh Arrivals)
+                      if (groceryProvider.isLoadingBuyAgain || groceryProvider.buyAgainItems.isNotEmpty) {
                         return Column(
                           children: [
                             OrderAgainSection(

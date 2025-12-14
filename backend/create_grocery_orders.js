@@ -1,10 +1,22 @@
 const path = require('path');
 const dotenv = require('dotenv');
 
-// Load env vars
-const result = dotenv.config({ path: path.resolve(__dirname, '.env') });
+// Load env vars from .env file in backend directory
+const envPath = path.resolve(__dirname, '.env');
+const result = dotenv.config({ path: envPath });
+
 if (result.error) {
     console.error('❌ Error loading .env file:', result.error);
+    console.error('   Looking for .env at:', envPath);
+    process.exit(1);
+}
+
+// Validate MONGODB_URI exists
+if (!process.env.MONGODB_URI) {
+    console.error('❌ MONGODB_URI not found in .env file');
+    console.error('   Please ensure your .env file contains MONGODB_URI');
+    console.error('   Expected location:', envPath);
+    process.exit(1);
 }
 
 const mongoose = require('mongoose');
@@ -27,15 +39,16 @@ async function createDummyGroceryOrders() {
     try {
         // Connect to MongoDB
         console.log('📡 Connecting to MongoDB...');
-        await mongoose.connect(process.env.MONGO_URI);
+        await mongoose.connect(process.env.MONGODB_URI);
         console.log('✅ Connected to MongoDB\n');
 
         // Find or create a test user
         console.log('👤 Finding test user...');
-        let testUser = await User.findOne({ email: 'test@example.com' });
+        let testUser = await User.findOne({ email: 'zakjnr5@gmail.com' });
 
         if (!testUser) {
-            console.log('⚠️  No test user found. Please provide a user email:');
+            console.log('⚠️  No user found with email: zakjnr5@gmail.com');
+            console.log('   Please provide a user email:');
             console.log('   You can use any existing user email from your database');
             console.log('   Or create a user first and run this script again\n');
             process.exit(1);
