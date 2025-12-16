@@ -380,7 +380,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                         itemTile("Settings", Assets.icons.settings, context, () {
                           context.push("/settings");
                         }),
-                        itemTile("Register Restaurant", Assets.icons.chefHat, context, () {
+                        itemTile("Vender Registration", Assets.icons.store, context, () {
                           context.push("/restaurantRegistration");
                         }),
                         itemTile("Notifications", Assets.icons.bell, context, () {

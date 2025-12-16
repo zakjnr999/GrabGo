@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
+import 'package:grab_go_customer/shared/widgets/horizontal_card_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/quick_reorder_card.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -12,17 +13,20 @@ class OrderAgainSection extends StatelessWidget {
   final List<FoodItem> recentOrders;
   final VoidCallback onSeeAll;
   final Function(FoodItem) onItemTap;
+  final bool isLoading;
 
-  const OrderAgainSection({super.key, required this.recentOrders, required this.onSeeAll, required this.onItemTap});
+  const OrderAgainSection({
+    super.key,
+    required this.recentOrders,
+    required this.onSeeAll,
+    required this.onItemTap,
+    required this.isLoading,
+  });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-
-    // Don't show if no order history
-    if (recentOrders.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
       children: [
@@ -33,6 +37,10 @@ class OrderAgainSection extends StatelessWidget {
           onSeeAll: onSeeAll,
         ),
         SizedBox(height: 16.h),
+        if (isLoading)
+          HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 230.h)
+        else if (recentOrders.isEmpty)
+          const SizedBox.shrink(),
         SizedBox(
           height: 230.h,
           child: ListView.builder(

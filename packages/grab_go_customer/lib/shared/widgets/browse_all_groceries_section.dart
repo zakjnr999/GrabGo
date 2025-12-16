@@ -5,7 +5,7 @@ import 'package:grab_go_customer/shared/widgets/popular_item_card.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:grab_go_shared/shared/widgets/loading_more.dart';
+import 'package:shimmer/shimmer.dart';
 
 class BrowseAllGroceriesSection extends StatefulWidget {
   final List<GroceryItem> items;
@@ -50,6 +50,7 @@ class _BrowseAllGroceriesSectionState extends State<BrowseAllGroceriesSection> {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -58,7 +59,7 @@ class _BrowseAllGroceriesSectionState extends State<BrowseAllGroceriesSection> {
         SizedBox(height: 16.h),
 
         if (widget.isLoading)
-          _buildLoadingGrid()
+          _buildLoadingGrid(isDark)
         else if (widget.items.isEmpty)
           _buildEmptyState(colors)
         else
@@ -74,22 +75,32 @@ class _BrowseAllGroceriesSectionState extends State<BrowseAllGroceriesSection> {
     );
   }
 
-  Widget _buildLoadingGrid() {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 0.68,
-        crossAxisSpacing: 12.w,
-        mainAxisSpacing: 16.h,
+  Widget _buildLoadingGrid(bool isDark) {
+    return Shimmer.fromColors(
+      baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+      highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20.w),
+        child: GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            childAspectRatio: 0.65,
+            crossAxisSpacing: 12.w,
+            mainAxisSpacing: 16.h,
+          ),
+          itemCount: 6,
+          itemBuilder: (context, index) {
+            return Container(
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+            );
+          },
+        ),
       ),
-      itemCount: 6, // Show 6 skeleton cards
-      itemBuilder: (context, index) {
-        return Container(
-          decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(12.r)),
-        );
-      },
     );
   }
 
@@ -121,7 +132,7 @@ class _BrowseAllGroceriesSectionState extends State<BrowseAllGroceriesSection> {
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 0.65, // Reduced from 0.75 to give more vertical space
+          childAspectRatio: 0.65,
           crossAxisSpacing: 12.w,
           mainAxisSpacing: 16.h,
         ),
@@ -129,7 +140,6 @@ class _BrowseAllGroceriesSectionState extends State<BrowseAllGroceriesSection> {
         itemBuilder: (context, index) {
           final item = displayedItems[index];
 
-          // Calculate dynamic order count based on rating
           final orderCount = (item.rating * 20).toInt();
 
           return PopularItemCard(item: item.toFoodItem(), orderCount: orderCount, onTap: () => widget.onItemTap(item));

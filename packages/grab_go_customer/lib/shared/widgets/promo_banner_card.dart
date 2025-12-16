@@ -60,7 +60,7 @@ class PromoBannerCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 18.sp,
                           fontWeight: FontWeight.w800,
-                          color: colors.textPrimary.withOpacity(0.9),
+                          color: Colors.black,
                           height: 1.2,
                         ),
                         maxLines: 2,
@@ -70,7 +70,11 @@ class PromoBannerCard extends StatelessWidget {
                         SizedBox(height: 6.h),
                         Text(
                           subtitle,
-                          style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black.withValues(alpha: 0.4),
+                          ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),

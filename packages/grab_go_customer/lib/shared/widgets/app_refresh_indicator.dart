@@ -4,18 +4,23 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:custom_refresh_indicator/custom_refresh_indicator.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
-import 'package:grab_go_shared/grub_go_shared.dart';
 
 class AppRefreshIndicator extends StatelessWidget {
   final Widget child;
   final Future<void> Function() onRefresh;
   final String? iconPath;
+  final Color bgColor;
 
-  const AppRefreshIndicator({super.key, required this.child, required this.onRefresh, this.iconPath});
+  const AppRefreshIndicator({
+    super.key,
+    required this.child,
+    required this.onRefresh,
+    this.iconPath,
+    required this.bgColor,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.appColors;
     final size = MediaQuery.sizeOf(context);
 
     return CustomRefreshIndicator(
@@ -29,7 +34,7 @@ class AppRefreshIndicator extends StatelessWidget {
                 top: size.height * 0.15 + (controller.value * 50),
                 left: 0,
                 right: 0,
-                child: _buildIndicator(controller, colors),
+                child: _buildIndicator(controller, bgColor),
               ),
           ],
         );
@@ -38,7 +43,7 @@ class AppRefreshIndicator extends StatelessWidget {
     );
   }
 
-  Widget _buildIndicator(IndicatorController controller, AppColorsExtension colors) {
+  Widget _buildIndicator(IndicatorController controller, Color bgColor) {
     final value = controller.value.clamp(0.0, 1.5);
     final opacity = (value * 2).clamp(0.0, 1.0);
     final scale = (value * 0.8).clamp(0.0, 1.0);
@@ -56,14 +61,15 @@ class AppRefreshIndicator extends StatelessWidget {
             height: 60.h,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [colors.accentOrange, colors.accentOrange.withOpacity(0.8)],
+                colors: [bgColor, bgColor.withValues(alpha: 0.8)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 0.5),
               boxShadow: [
                 BoxShadow(
-                  color: colors.accentOrange.withOpacity(0.3),
+                  color: bgColor.withValues(alpha: 0.3),
                   spreadRadius: 0,
                   blurRadius: 20,
                   offset: const Offset(0, 4),

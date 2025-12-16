@@ -37,7 +37,10 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
+    animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
 
     fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
@@ -46,12 +49,13 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
       ),
     );
 
-    slideAnimation = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
-      CurvedAnimation(
-        parent: animationController,
-        curve: const Interval(0.2, 0.8, curve: Curves.easeOutCubic),
-      ),
-    );
+    slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: animationController,
+            curve: const Interval(0.2, 0.8, curve: Curves.easeOutCubic),
+          ),
+        );
 
     scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
       CurvedAnimation(
@@ -93,7 +97,9 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
 
       if (emailController.text.trim().isEmpty) {
         emailError = "Please enter your email address";
-      } else if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(emailController.text.trim())) {
+      } else if (!RegExp(
+        r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+      ).hasMatch(emailController.text.trim())) {
         emailError = "Please enter a valid email address";
       }
 
@@ -119,7 +125,10 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
 
   Future<void> handleGoogleSignIn() async {
     FocusManager.instance.primaryFocus?.unfocus();
-    LoadingDialog.instance().show(context: context, text: "Checking connection...");
+    LoadingDialog.instance().show(
+      context: context,
+      text: "Checking connection...",
+    );
 
     final hasInternet = await checkInternetConnection();
     if (!hasInternet) {
@@ -128,14 +137,18 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         AppToastMessage.show(
           context: context,
           icon: Icons.wifi_off,
-          message: "No internet connection. Please check your network settings.",
+          message:
+              "No internet connection. Please check your network settings.",
           backgroundColor: context.appColors.error,
         );
       }
       return;
     }
 
-    LoadingDialog.instance().show(context: context, text: "Signing in with Google...");
+    LoadingDialog.instance().show(
+      context: context,
+      text: "Signing in with Google...",
+    );
 
     try {
       final googleUserData = await GoogleSignInService().signInWithGoogle();
@@ -149,7 +162,10 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
 
       if (!mounted) return;
 
-      LoadingDialog.instance().show(context: context, text: "Authenticating with server...");
+      LoadingDialog.instance().show(
+        context: context,
+        text: "Authenticating with server...",
+      );
 
       final request = GoogleSignInRequest(
         googleId: googleUserData['googleId'],
@@ -184,7 +200,9 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         final token = response.body!.token;
         User? user = response.body!.userData;
 
-        if (user != null && user.role != null && user.role!.toLowerCase() != 'rider') {
+        if (user != null &&
+            user.role != null &&
+            user.role!.toLowerCase() != 'rider') {
           if (mounted) {
             AppToastMessage.show(
               context: context,
@@ -246,7 +264,12 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
       }
 
       if (mounted) {
-        AppToastMessage.show(context: context, icon: icon, message: message, backgroundColor: context.appColors.error);
+        AppToastMessage.show(
+          context: context,
+          icon: icon,
+          message: message,
+          backgroundColor: context.appColors.error,
+        );
       }
     } on TimeoutException {
       if (mounted) {
@@ -257,7 +280,8 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         AppToastMessage.show(
           context: context,
           icon: Icons.timer_off,
-          message: "Request timeout. Server is taking too long. Please try again.",
+          message:
+              "Request timeout. Server is taking too long. Please try again.",
           backgroundColor: context.appColors.error,
         );
       }
@@ -283,7 +307,10 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
     }
 
     FocusManager.instance.primaryFocus?.unfocus();
-    LoadingDialog.instance().show(context: context, text: "Checking connection...");
+    LoadingDialog.instance().show(
+      context: context,
+      text: "Checking connection...",
+    );
 
     final hasInternet = await checkInternetConnection();
     if (!hasInternet) {
@@ -292,17 +319,24 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         AppToastMessage.show(
           context: context,
           icon: Icons.wifi_off,
-          message: "No internet connection. Please check your network settings.",
+          message:
+              "No internet connection. Please check your network settings.",
           backgroundColor: context.appColors.error,
         );
       }
       return;
     }
 
-    LoadingDialog.instance().show(context: context, text: "Signing you in...\nThis may take up to a minute.");
+    LoadingDialog.instance().show(
+      context: context,
+      text: "Signing you in...\nThis may take up to a minute.",
+    );
 
     try {
-      final request = LoginRequest(email: emailController.text.trim(), password: passwordController.text);
+      final request = LoginRequest(
+        email: emailController.text.trim(),
+        password: passwordController.text,
+      );
 
       final response = await authService
           .loginUser(request)
@@ -330,7 +364,9 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         User? user = response.body!.userData;
 
         // Validate that the user has the "rider" role
-        if (user != null && user.role != null && user.role!.toLowerCase() != 'rider') {
+        if (user != null &&
+            user.role != null &&
+            user.role!.toLowerCase() != 'rider') {
           if (mounted) {
             AppToastMessage.show(
               context: context,
@@ -366,9 +402,11 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         if (response.statusCode == 400) {
           errorMessage = "Invalid email or password.";
         } else if (response.statusCode == 401) {
-          errorMessage = "Invalid credentials. Please check your email and password.";
+          errorMessage =
+              "Invalid credentials. Please check your email and password.";
         } else if (response.statusCode == 404) {
-          errorMessage = "User not found. Please check your email or create an account.";
+          errorMessage =
+              "User not found. Please check your email or create an account.";
         } else if (response.statusCode == 500) {
           errorMessage = "Server error. Please try again later.";
         }
@@ -401,7 +439,12 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
       }
 
       if (mounted) {
-        AppToastMessage.show(context: context, icon: icon, message: message, backgroundColor: context.appColors.error);
+        AppToastMessage.show(
+          context: context,
+          icon: icon,
+          message: message,
+          backgroundColor: context.appColors.error,
+        );
       }
     } on TimeoutException {
       if (mounted) {
@@ -412,7 +455,8 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         AppToastMessage.show(
           context: context,
           icon: Icons.timer_off,
-          message: "Request timeout. Server is taking too long. Please try again.",
+          message:
+              "Request timeout. Server is taking too long. Please try again.",
           backgroundColor: context.appColors.error,
         );
       }
@@ -444,14 +488,21 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         child: AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle(
             statusBarColor: Colors.transparent,
-            statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+            statusBarIconBrightness: isDark
+                ? Brightness.light
+                : Brightness.dark,
             systemNavigationBarColor: colors.backgroundPrimary,
-            systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+            systemNavigationBarIconBrightness: isDark
+                ? Brightness.light
+                : Brightness.dark,
           ),
           child: SafeArea(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w, vertical: KSpacing.xl40.h),
+              padding: EdgeInsets.symmetric(
+                horizontal: KSpacing.lg.w,
+                vertical: KSpacing.xl40.h,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -463,9 +514,11 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                         opacity: fadeAnimation,
                         child: Container(
                           height: 80.h,
-                          width: 80.h,
+                          width: 80.w,
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                            borderRadius: BorderRadius.circular(
+                              KBorderSize.borderRadius4,
+                            ),
                             color: colors.accentOrange.withValues(alpha: 0.15),
                           ),
                           child: Center(
@@ -474,7 +527,10 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                               package: "grab_go_shared",
                               height: 50.h,
                               width: 50.w,
-                              colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                              colorFilter: ColorFilter.mode(
+                                colors.accentOrange,
+                                BlendMode.srcIn,
+                              ),
                             ),
                           ),
                         ),
@@ -543,7 +599,10 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                                 package: 'grab_go_shared',
                                 width: KIconSize.md,
                                 height: KIconSize.md,
-                                colorFilter: ColorFilter.mode(colors.iconSecondary, BlendMode.srcIn),
+                                colorFilter: ColorFilter.mode(
+                                  colors.iconSecondary,
+                                  BlendMode.srcIn,
+                                ),
                               ),
                             ),
                           ),
@@ -567,7 +626,10 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                                 package: 'grab_go_shared',
                                 width: KIconSize.md,
                                 height: KIconSize.md,
-                                colorFilter: ColorFilter.mode(colors.iconSecondary, BlendMode.srcIn),
+                                colorFilter: ColorFilter.mode(
+                                  colors.iconSecondary,
+                                  BlendMode.srcIn,
+                                ),
                               ),
                             ),
                             suffixIcon: GestureDetector(
@@ -579,11 +641,16 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                               child: Padding(
                                 padding: EdgeInsets.all(KSpacing.md12.r),
                                 child: SvgPicture.asset(
-                                  isPasswordVisible ? Assets.icons.eye : Assets.icons.eyeClosed,
+                                  isPasswordVisible
+                                      ? Assets.icons.eye
+                                      : Assets.icons.eyeClosed,
                                   package: 'grab_go_shared',
                                   width: KIconSize.md,
                                   height: KIconSize.md,
-                                  colorFilter: ColorFilter.mode(colors.iconSecondary, BlendMode.srcIn),
+                                  colorFilter: ColorFilter.mode(
+                                    colors.iconSecondary,
+                                    BlendMode.srcIn,
+                                  ),
                                 ),
                               ),
                             ),
@@ -608,8 +675,15 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                           }
                         },
                         activeColor: colors.accentOrange,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.borderRadius4)),
-                        side: BorderSide(color: colors.border, width: KBorderWidth.thick),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            KBorderSize.borderRadius4,
+                          ),
+                        ),
+                        side: BorderSide(
+                          color: colors.border,
+                          width: KBorderWidth.thick,
+                        ),
                       ),
                       Text(
                         AppStrings.loginCheckboxLabel,
@@ -648,14 +722,21 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                           height: 56.h,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
+                              colors: [
+                                colors.accentOrange,
+                                colors.accentOrange.withValues(alpha: 0.8),
+                              ],
                               begin: Alignment.centerLeft,
                               end: Alignment.centerRight,
                             ),
-                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                            borderRadius: BorderRadius.circular(
+                              KBorderSize.borderRadius4,
+                            ),
                             boxShadow: [
                               BoxShadow(
-                                color: colors.accentOrange.withValues(alpha: 0.4),
+                                color: colors.accentOrange.withValues(
+                                  alpha: 0.4,
+                                ),
                                 blurRadius: 20,
                                 offset: const Offset(0, 8),
                               ),
@@ -718,7 +799,11 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                   Row(
                     children: [
                       Expanded(
-                        child: Divider(color: colors.divider, thickness: KBorderWidth.normal, endIndent: KSpacing.md),
+                        child: Divider(
+                          color: colors.divider,
+                          thickness: KBorderWidth.normal,
+                          endIndent: KSpacing.md,
+                        ),
                       ),
                       Text(
                         "or continue with",
@@ -729,7 +814,11 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                         ),
                       ),
                       Expanded(
-                        child: Divider(color: colors.divider, thickness: KBorderWidth.normal, indent: KSpacing.md),
+                        child: Divider(
+                          color: colors.divider,
+                          thickness: KBorderWidth.normal,
+                          indent: KSpacing.md,
+                        ),
                       ),
                     ],
                   ),
@@ -748,11 +837,18 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                               height: 56.h,
                               decoration: BoxDecoration(
                                 color: colors.backgroundSecondary,
-                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                                border: Border.all(color: colors.border, width: 1.5),
+                                borderRadius: BorderRadius.circular(
+                                  KBorderSize.borderRadius4,
+                                ),
+                                border: Border.all(
+                                  color: colors.border,
+                                  width: 1.5,
+                                ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: colors.shadow.withValues(alpha: 0.05),
+                                    color: colors.shadow.withValues(
+                                      alpha: 0.05,
+                                    ),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
                                   ),
@@ -762,7 +858,9 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Image(
-                                    image: Assets.icons.google.provider(package: 'grab_go_shared'),
+                                    image: Assets.icons.google.provider(
+                                      package: 'grab_go_shared',
+                                    ),
                                     height: 24.r,
                                     width: 24.r,
                                   ),
@@ -789,11 +887,18 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                               height: 56.h,
                               decoration: BoxDecoration(
                                 color: colors.backgroundSecondary,
-                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                                border: Border.all(color: colors.border, width: 1.5),
+                                borderRadius: BorderRadius.circular(
+                                  KBorderSize.borderRadius4,
+                                ),
+                                border: Border.all(
+                                  color: colors.border,
+                                  width: 1.5,
+                                ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: colors.shadow.withValues(alpha: 0.05),
+                                    color: colors.shadow.withValues(
+                                      alpha: 0.05,
+                                    ),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
                                   ),
@@ -803,7 +908,9 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Image(
-                                    image: Assets.icons.facebook.provider(package: 'grab_go_shared'),
+                                    image: Assets.icons.facebook.provider(
+                                      package: 'grab_go_shared',
+                                    ),
                                     height: 24.r,
                                     width: 24.r,
                                   ),

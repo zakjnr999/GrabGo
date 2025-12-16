@@ -86,81 +86,6 @@ class _HomeBannerState extends State<HomeBanner> {
             color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
             borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
           ),
-          child: Column(
-            children: [
-              // Top row: Only favorite icon placeholder at the right
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Heart icon placeholder
-                  Container(
-                    height: 24.h,
-                    width: 24.w,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              // Bottom row: Price, rating, and cart button placeholders
-              Row(
-                children: [
-                  // Price placeholder
-                  Container(
-                    height: 20.h,
-                    width: 80.w,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(4.r),
-                    ),
-                  ),
-                  SizedBox(width: 12.w),
-                  // Star placeholder
-                  Container(
-                    height: 16.h,
-                    width: 16.w,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(2.r),
-                    ),
-                  ),
-                  SizedBox(width: 4.w),
-                  // Rating placeholder
-                  Container(
-                    height: 16.h,
-                    width: 30.w,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(2.r),
-                    ),
-                  ),
-                  SizedBox(width: 4.w),
-                  // Review count placeholder
-                  Container(
-                    height: 14.h,
-                    width: 40.w,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(2.r),
-                    ),
-                  ),
-                  const Spacer(),
-                  // Cart button placeholder
-                  Container(
-                    height: 42.h,
-                    width: 42.w,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
         ),
       );
     }
@@ -174,75 +99,8 @@ class _HomeBannerState extends State<HomeBanner> {
           padding: EdgeInsets.all(14.r),
           margin: EdgeInsets.symmetric(horizontal: 20.w),
           decoration: BoxDecoration(
+            color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
             borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-            border: BoxBorder.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade300, width: 0.5),
-          ),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    height: 24.h,
-                    width: 24.w,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              Row(
-                children: [
-                  Container(
-                    height: 20.h,
-                    width: 80.w,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(4.r),
-                    ),
-                  ),
-                  SizedBox(width: 12.w),
-                  Container(
-                    height: 16.h,
-                    width: 16.w,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(2.r),
-                    ),
-                  ),
-                  SizedBox(width: 4.w),
-                  Container(
-                    height: 16.h,
-                    width: 30.w,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(2.r),
-                    ),
-                  ),
-                  SizedBox(width: 4.w),
-                  Container(
-                    height: 14.h,
-                    width: 40.w,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(2.r),
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    height: 42.h,
-                    width: 42.w,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ],
-              ),
-            ],
           ),
         ),
       );
@@ -270,75 +128,8 @@ class _HomeBannerState extends State<HomeBanner> {
           padding: EdgeInsets.all(14.r),
           margin: EdgeInsets.symmetric(horizontal: 20.w),
           decoration: BoxDecoration(
+            color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
             borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-            border: BoxBorder.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade300, width: 0.5),
-          ),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    height: 24.h,
-                    width: 24.w,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              Row(
-                children: [
-                  Container(
-                    height: 20.h,
-                    width: 80.w,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(4.r),
-                    ),
-                  ),
-                  SizedBox(width: 12.w),
-                  Container(
-                    height: 16.h,
-                    width: 16.w,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(2.r),
-                    ),
-                  ),
-                  SizedBox(width: 4.w),
-                  Container(
-                    height: 16.h,
-                    width: 30.w,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(2.r),
-                    ),
-                  ),
-                  SizedBox(width: 4.w),
-                  Container(
-                    height: 14.h,
-                    width: 40.w,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(2.r),
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    height: 42.h,
-                    width: 42.w,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ],
-              ),
-            ],
           ),
         ),
       );
@@ -464,25 +255,14 @@ class _HomeBannerState extends State<HomeBanner> {
                                 ),
                               ),
                               placeholder: Shimmer.fromColors(
-                                baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade600,
-                                highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade500,
+                                baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                                highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
                                 child: Container(
                                   width: double.infinity,
                                   height: widget.size.height * 0.28,
                                   decoration: BoxDecoration(
-                                    color: isDark ? Colors.grey.shade800 : Colors.grey.shade600,
+                                    color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
                                     borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                                  ),
-                                  child: Center(
-                                    child: SizedBox(
-                                      height: 40.h,
-                                      width: 40.w,
-                                      child: SvgPicture.asset(
-                                        Assets.icons.utensilsCrossed,
-                                        package: 'grab_go_shared',
-                                        colorFilter: ColorFilter.mode(Colors.white.withOpacity(0.3), BlendMode.srcIn),
-                                      ),
-                                    ),
                                   ),
                                 ),
                               ),
@@ -492,17 +272,6 @@ class _HomeBannerState extends State<HomeBanner> {
                                 decoration: BoxDecoration(
                                   color: isDark ? Colors.grey.shade800 : Colors.grey.shade600,
                                   borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                                ),
-                                child: Center(
-                                  child: SizedBox(
-                                    height: 40.h,
-                                    width: 40.w,
-                                    child: SvgPicture.asset(
-                                      Assets.icons.utensilsCrossed,
-                                      package: 'grab_go_shared',
-                                      colorFilter: ColorFilter.mode(Colors.white.withOpacity(0.3), BlendMode.srcIn),
-                                    ),
-                                  ),
                                 ),
                               ),
                             ),

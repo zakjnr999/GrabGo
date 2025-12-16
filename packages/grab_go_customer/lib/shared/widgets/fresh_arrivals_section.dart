@@ -90,22 +90,15 @@ class FreshArrivalsSection extends StatelessWidget {
 
   Widget _buildNewBadge(GroceryItem item) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
       decoration: BoxDecoration(
         gradient: const LinearGradient(colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)]),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
         boxShadow: [BoxShadow(color: Colors.green.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2))],
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.fiber_new, size: 12.sp, color: Colors.white),
-          SizedBox(width: 4.w),
-          Text(
-            'NEW',
-            style: TextStyle(color: Colors.white, fontSize: 10.sp, fontWeight: FontWeight.bold, letterSpacing: 0.5),
-          ),
-        ],
+      child: Text(
+        'NEW',
+        style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.bold, letterSpacing: 0.5),
       ),
     );
   }

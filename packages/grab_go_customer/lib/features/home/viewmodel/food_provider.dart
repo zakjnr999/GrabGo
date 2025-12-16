@@ -298,19 +298,36 @@ class FoodProvider with ChangeNotifier {
 
   /// Fetch order history for Order Again section
   Future<void> fetchOrderHistory() async {
+    if (kDebugMode) {
+      print('🔍 [FoodProvider] Fetching order history...');
+    }
+
     _isLoadingOrderHistory = true;
     notifyListeners();
 
     try {
       _orderHistoryItems = await FoodRepository().fetchOrderHistory();
+
+      if (kDebugMode) {
+        print('✅ [FoodProvider] Order history fetched: ${_orderHistoryItems.length} items');
+        if (_orderHistoryItems.isNotEmpty) {
+          print('   First item: ${_orderHistoryItems.first.name}');
+        }
+      }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error fetching order history: $e');
+        print('❌ [FoodProvider] Error fetching order history: $e');
       }
       _orderHistoryItems = [];
     } finally {
       _isLoadingOrderHistory = false;
       notifyListeners();
+
+      if (kDebugMode) {
+        print(
+          '🏁 [FoodProvider] Order history fetch complete. Loading: $_isLoadingOrderHistory, Items: ${_orderHistoryItems.length}',
+        );
+      }
     }
   }
 }

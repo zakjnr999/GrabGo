@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:grab_go_customer/shared/widgets/app_refresh_indicator.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:share_plus/share_plus.dart';
@@ -27,8 +28,6 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
   int _completedReferrals = 0;
   double _totalEarned = 0.0;
   bool isLoadingData = true;
-  String? _errorMessage;
-
   // Animation controllers
   late AnimationController _animationController;
   late Animation<double> _totalReferralsAnimation;
@@ -111,7 +110,7 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
       if (cachedData != null) {
         try {
           final data = json.decode(cachedData) as Map<String, dynamic>;
-          print('📦 Loaded referral data from cache');
+          debugPrint('📦 Loaded referral data from cache');
 
           if (!mounted) return;
 
@@ -132,19 +131,19 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
           _previousCompletedReferrals = _completedReferrals;
           _previousTotalEarned = _totalEarned;
         } catch (e) {
-          print('❌ Corrupted cache data, clearing: $e');
+          debugPrint('❌ Corrupted cache data, clearing: $e');
           // Clear corrupted cache
           await prefs.remove('referral_data');
         }
       }
     } catch (e) {
-      print('❌ Error loading from cache: $e');
+      debugPrint('❌ Error loading from cache: $e');
     }
   }
 
   Future<void> _fetchFromServer() async {
     try {
-      print('🔍 Fetching referral data from: ${AppConfig.apiBaseUrl}/referral/my-code');
+      debugPrint('🔍 Fetching referral data from: ${AppConfig.apiBaseUrl}/referral/my-code');
 
       final response = await chopperClient
           .get(Uri.parse('${AppConfig.apiBaseUrl}/referral/my-code'))
@@ -155,7 +154,7 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
             },
           );
 
-      print('🔍 Response status: ${response.statusCode}');
+      debugPrint('🔍 Response status: ${response.statusCode}');
 
       if (!mounted) return;
 
@@ -165,12 +164,12 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
         }
 
         final data = response.body as Map<String, dynamic>;
-        print('✅ Fetched fresh data from server');
+        debugPrint('✅ Fetched fresh data from server');
 
         // Save to cache
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('referral_data', json.encode(data));
-        print('💾 Saved referral data to cache');
+        debugPrint('💾 Saved referral data to cache');
 
         if (!mounted) return;
 
@@ -180,7 +179,6 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
           _completedReferrals = data['completedReferrals'] ?? 0;
           _totalEarned = (data['totalEarned'] ?? 0).toDouble();
           isLoadingData = false;
-          _errorMessage = null;
         });
 
         // Only animate if data actually changed
@@ -203,26 +201,14 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
         throw Exception('Failed to load referral data: ${response.statusCode}');
       }
     } on SocketException catch (e) {
-      print('❌ SocketException: $e');
+      debugPrint('SocketException: $e');
       if (!mounted) return;
-      setState(() {
-        isLoadingData = false;
-        _errorMessage = 'No internet connection. Showing cached data.';
-      });
     } on TimeoutException catch (e) {
-      print('❌ TimeoutException: $e');
+      debugPrint('TimeoutException: $e');
       if (!mounted) return;
-      setState(() {
-        isLoadingData = false;
-        _errorMessage = 'Request timeout. Showing cached data.';
-      });
     } catch (e) {
-      print('❌ Error loading referral data: $e');
+      debugPrint('Error loading referral data: $e');
       if (!mounted) return;
-      setState(() {
-        isLoadingData = false;
-        _errorMessage = 'Failed to load fresh data. Showing cached data.';
-      });
     }
   }
 
@@ -273,41 +259,32 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
   void _copyReferralCode() {
     try {
       Clipboard.setData(ClipboardData(text: _referralCode));
-      HapticFeedback.mediumImpact();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Referral code "$_referralCode" copied!'),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
+      AppToastMessage.show(
+        context: context,
+        icon: Icons.check,
+        message: "Referral code $_referralCode copied!",
+        backgroundColor: Colors.green,
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Failed to copy code. Please try again.'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
+      AppToastMessage.show(
+        context: context,
+        icon: Icons.error,
+        message: "Failed to copy code. Please try again.",
+        backgroundColor: AppColors.errorRed,
       );
     }
   }
 
   void _shareReferralCode() async {
     try {
-      HapticFeedback.lightImpact();
       await Share.share('Join GrabGo using my referral code $_referralCode and get GHS 10 off your first order! 🎉');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Failed to share code. Please try again.'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
+      AppToastMessage.show(
+        context: context,
+        icon: Icons.error,
+        message: "Failed to copy code. Please try again.",
+        backgroundColor: AppColors.errorRed,
       );
     }
   }
@@ -414,18 +391,16 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
       ),
       body: SafeArea(
         top: false,
-        child: RefreshIndicator(
+        child: AppRefreshIndicator(
           onRefresh: _loadReferralData,
-          color: colors.accentOrange,
+          iconPath: Assets.icons.gift,
+          bgColor: colors.accentOrange,
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Error banner if any
-                if (_errorMessage != null) ...[_buildErrorBanner(colors), SizedBox(height: 16.h)],
-
                 // Referral Code Card
                 _buildReferralCodeCard(colors, isDark),
                 SizedBox(height: 20.h),
@@ -562,7 +537,7 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
                   Expanded(
                     child: _buildActionButton(
                       'Copy Code',
-                      Icons.copy,
+                      Assets.icons.copy,
                       _copyReferralCode,
                       Colors.white,
                       colors.accentOrange,
@@ -572,7 +547,7 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
                   Expanded(
                     child: _buildActionButton(
                       'Share',
-                      Icons.share,
+                      Assets.icons.shareAndroid,
                       _shareReferralCode,
                       colors.accentOrange,
                       Colors.white,
@@ -587,7 +562,7 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
     );
   }
 
-  Widget _buildActionButton(String label, IconData icon, VoidCallback onTap, Color bgColor, Color textColor) {
+  Widget _buildActionButton(String label, String icon, VoidCallback onTap, Color bgColor, Color textColor) {
     return Material(
       color: bgColor,
       borderRadius: BorderRadius.circular(12.r),
@@ -599,7 +574,13 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 18.r, color: textColor),
+              SvgPicture.asset(
+                icon,
+                package: "grab_go_shared",
+                height: 18.h,
+                width: 18.w,
+                colorFilter: ColorFilter.mode(textColor, BlendMode.srcIn),
+              ),
               SizedBox(width: 8.w),
               Text(
                 label,
@@ -622,7 +603,7 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
               child: _buildStatCard(
                 'Referrals',
                 _totalReferralsAnimation.value.toInt().toString(),
-                Icons.people,
+                Assets.icons.group,
                 colors,
                 isDark,
               ),
@@ -632,7 +613,7 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
               child: _buildStatCard(
                 'Completed',
                 _completedReferralsAnimation.value.toInt().toString(),
-                Icons.check_circle,
+                Assets.icons.check,
                 colors,
                 isDark,
               ),
@@ -642,7 +623,7 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
               child: _buildStatCard(
                 'Total Earned',
                 'GHS ${_totalEarnedAnimation.value.toStringAsFixed(2)}',
-                Icons.monetization_on,
+                Assets.icons.dollar,
                 colors,
                 isDark,
               ),
@@ -653,7 +634,7 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, AppColorsExtension colors, bool isDark) {
+  Widget _buildStatCard(String label, String value, String icon, AppColorsExtension colors, bool isDark) {
     return Container(
       padding: EdgeInsets.all(16.r),
       decoration: BoxDecoration(
@@ -674,7 +655,13 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
           Container(
             padding: EdgeInsets.all(8.r),
             decoration: BoxDecoration(color: colors.accentOrange.withOpacity(0.1), shape: BoxShape.circle),
-            child: Icon(icon, size: 20.r, color: colors.accentOrange),
+            child: SvgPicture.asset(
+              icon,
+              package: "grab_go_shared",
+              height: 20.h,
+              width: 20.w,
+              colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+            ),
           ),
           SizedBox(height: 12.h),
           FittedBox(
@@ -741,7 +728,13 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
           // Header
           Row(
             children: [
-              Text('🏆', style: TextStyle(fontSize: 24.sp)),
+              SvgPicture.asset(
+                Assets.icons.trophy,
+                package: "grab_go_shared",
+                height: 30.h,
+                width: 30.w,
+                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+              ),
               SizedBox(width: 8.w),
               Text(
                 'Milestone Progress',
@@ -766,7 +759,7 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
                     child: CircularProgressIndicator(
                       value: 1.0,
                       strokeWidth: 14.w,
-                      valueColor: AlwaysStoppedAnimation<Color>(colors.inputBorder.withValues(alpha: 0.2)),
+                      valueColor: AlwaysStoppedAnimation<Color>(colors.backgroundSecondary),
                     ),
                   ),
                   // Progress circle (orange) - Animated
@@ -855,8 +848,14 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
             ),
             child: Row(
               children: [
-                Text('🎁', style: TextStyle(fontSize: 24.sp)),
-                SizedBox(width: 12.w),
+                SvgPicture.asset(
+                  Assets.icons.gift,
+                  package: "grab_go_shared",
+                  height: 30.h,
+                  width: 30.w,
+                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                ),
+                SizedBox(width: 18.w),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1187,7 +1186,13 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
           childrenPadding: EdgeInsets.only(left: 16.w, right: 16.w, bottom: 16.h),
           title: Row(
             children: [
-              Icon(Icons.info_outline, size: 20.r, color: colors.accentOrange),
+              SvgPicture.asset(
+                Assets.icons.infoCircle,
+                package: "grab_go_shared",
+                height: 24.h,
+                width: 24.w,
+                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+              ),
               SizedBox(width: 8.w),
               Text(
                 'Terms & Conditions',
@@ -1220,61 +1225,6 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
     return Text(
       text,
       style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: colors.textSecondary, height: 1.5),
-    );
-  }
-
-  Widget _buildErrorBanner(AppColorsExtension colors) {
-    return Container(
-      padding: EdgeInsets.all(16.r),
-      decoration: BoxDecoration(
-        color: colors.error.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.red.withOpacity(0.3), width: 1),
-      ),
-      child: Row(
-        children: [
-          SvgPicture.asset(
-            Assets.icons.warningCircle,
-            package: 'grab_go_shared',
-            height: 24.r,
-            width: 24.r,
-            colorFilter: ColorFilter.mode(colors.error, BlendMode.srcIn),
-          ),
-          SizedBox(width: 12.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Error Loading Data',
-                  style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
-                ),
-                SizedBox(height: 4.h),
-                Text(
-                  _errorMessage ?? 'Something went wrong',
-                  style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(width: 8.w),
-          Material(
-            color: colors.accentOrange,
-            borderRadius: BorderRadius.circular(8.r),
-            child: InkWell(
-              onTap: _loadReferralData,
-              borderRadius: BorderRadius.circular(8.r),
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                child: Text(
-                  'Retry',
-                  style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: Colors.white),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -35,7 +35,6 @@ class CategorySkeleton extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Emoji placeholder
                     Container(
                       height: 20.h,
                       width: 20.w,
@@ -45,7 +44,6 @@ class CategorySkeleton extends StatelessWidget {
                       ),
                     ),
                     SizedBox(width: 8.w),
-                    // Category name placeholder
                     Container(
                       height: 14.h,
                       width: 60.w,

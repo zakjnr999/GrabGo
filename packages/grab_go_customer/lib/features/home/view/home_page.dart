@@ -177,14 +177,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     Size size = MediaQuery.sizeOf(context);
 
     final locationProvider = Provider.of<LocationProvider>(context);
-    final itemsProvider = Provider.of<FoodProvider>(context);
+    final foodProvider = Provider.of<FoodProvider>(context);
     final serviceProvider = Provider.of<ServiceProvider>(context);
+    final groceryProvider = Provider.of<GroceryProvider>(context);
 
-    if (itemsProvider.categories.isNotEmpty && _selectedCategory == null) {
+    if (foodProvider.categories.isNotEmpty && _selectedCategory == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           setState(() {
-            _selectedCategory = itemsProvider.categories.first;
+            _selectedCategory = foodProvider.categories.first;
           });
         }
       });
@@ -195,6 +196,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         child: AppRefreshIndicator(
           onRefresh: _refreshData,
           iconPath: serviceProvider.isFoodService ? Assets.icons.utensilsCrossed : Assets.icons.cart,
+          bgColor: colors.accentOrange,
           child: SingleChildScrollView(
             controller: _scrollController,
             physics: const BouncingScrollPhysics(),
@@ -203,14 +205,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               children: [
                 _buildHomeHeader(context, size, colors, isDark, locationProvider),
                 SizedBox(height: 8.h),
-                _buildHomeSearch(itemsProvider),
+                _buildHomeSearch(foodProvider),
                 SizedBox(height: KSpacing.lg.h),
                 _buildServiceSelector(),
                 SizedBox(height: KSpacing.lg.h),
                 HomeBanner(size: size),
                 SizedBox(height: KSpacing.lg.h),
 
-                // Animated content based on selected service
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 300),
                   switchInCurve: Curves.easeInOut,
@@ -230,9 +231,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     children: [
                       // Categories
                       if (serviceProvider.isFoodService)
-                        _buildCategories(itemsProvider, isDark, size, colors)
+                        _buildFoodCategories(foodProvider, isDark, size, colors)
                       else if (serviceProvider.isGroceryService)
-                        _buildGroceryCategories(Provider.of<GroceryProvider>(context), isDark, size, colors),
+                        _buildGroceryCategories(groceryProvider, isDark, size, colors),
 
                       SizedBox(height: KSpacing.xl.h),
 
@@ -240,16 +241,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       if (serviceProvider.isGroceryService) ...[
                         Builder(
                           builder: (context) {
-                            final groceryProvider = Provider.of<GroceryProvider>(context);
-
                             if (groceryProvider.isLoadingFreshArrivals || groceryProvider.freshArrivals.isNotEmpty) {
                               return Column(
                                 children: [
                                   FreshArrivalsSection(
                                     items: groceryProvider.freshArrivals,
-                                    onSeeAll: () {
-                                      // TODO: Navigate to full fresh arrivals page
-                                    },
+                                    onSeeAll: () {},
                                     onItemTap: (item) {
                                       context.push('/foodDetails', extra: item);
                                     },
@@ -268,9 +265,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       if (serviceProvider.isGroceryService) ...[
                         Builder(
                           builder: (context) {
-                            final groceryProvider = Provider.of<GroceryProvider>(context);
-
-                            // Show if loading or has items (like Fresh Arrivals)
                             if (groceryProvider.isLoadingBuyAgain || groceryProvider.buyAgainItems.isNotEmpty) {
                               return Column(
                                 children: [
@@ -278,9 +272,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                     recentOrders: groceryProvider.buyAgainItems
                                         .map((item) => item.toFoodItem())
                                         .toList(),
-                                    onSeeAll: () {
-                                      // TODO: Navigate to order history page
-                                    },
+                                    onSeeAll: () {},
                                     onItemTap: (foodItem) {
                                       // Find original grocery item and navigate
                                       final groceryItem = groceryProvider.buyAgainItems.firstWhere(
@@ -289,6 +281,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                       );
                                       context.push('/foodDetails', extra: groceryItem);
                                     },
+                                    isLoading: groceryProvider.isLoadingBuyAgain,
                                   ),
                                   SizedBox(height: KSpacing.xl.h),
                                 ],
@@ -303,11 +296,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       Builder(
                         builder: (context) {
                           final deals = serviceProvider.isFoodService
-                              ? itemsProvider.dealItems
+                              ? foodProvider.dealItems
                               : Provider.of<GroceryProvider>(context).deals.map((e) => e.toFoodItem()).toList();
 
                           final isLoading = serviceProvider.isFoodService
-                              ? itemsProvider.isLoadingDeals
+                              ? foodProvider.isLoadingDeals
                               : Provider.of<GroceryProvider>(context).isLoadingDeals;
 
                           if (isLoading || deals.isNotEmpty) {
@@ -341,19 +334,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         },
                       ),
 
-                      // Order Again (Food only - now using order history)
+                      // Order Again (Food only)
                       if (serviceProvider.isFoodService) ...[
                         Builder(
                           builder: (context) {
-                            if (itemsProvider.isLoadingOrderHistory || itemsProvider.orderHistoryItems.isNotEmpty) {
+                            if (foodProvider.isLoadingOrderHistory || foodProvider.orderHistoryItems.isNotEmpty) {
                               return Column(
                                 children: [
                                   OrderAgainSection(
-                                    recentOrders: itemsProvider.orderHistoryItems,
+                                    recentOrders: foodProvider.orderHistoryItems,
                                     onSeeAll: () {},
                                     onItemTap: (item) {
                                       context.push('/food-details', extra: item);
                                     },
+                                    isLoading: foodProvider.isLoadingOrderHistory,
                                   ),
                                   SizedBox(height: KSpacing.xl.h),
                                 ],
@@ -371,12 +365,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           bool isLoading = false;
 
                           if (serviceProvider.isFoodService) {
-                            popularItems = itemsProvider.categories
+                            popularItems = foodProvider.categories
                                 .expand((cat) => cat.items)
                                 .where((item) => item.rating >= 4.0)
                                 .take(6)
                                 .toList();
-                            isLoading = itemsProvider.isLoading;
+                            isLoading = foodProvider.isLoading;
                           } else {
                             final groceryProvider = Provider.of<GroceryProvider>(context);
                             popularItems = groceryProvider.items
@@ -410,11 +404,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
                       // Unified Banners (Promo Section)
                       if (serviceProvider.isFoodService) ...[
-                        if (itemsProvider.isLoadingBanners || itemsProvider.promotionalBanners.isNotEmpty) ...[
+                        if (foodProvider.isLoadingBanners || foodProvider.promotionalBanners.isNotEmpty) ...[
                           PromoSection(
-                            banners: itemsProvider.promotionalBanners,
+                            banners: foodProvider.promotionalBanners,
                             onSeeAll: () {},
-                            isLoading: itemsProvider.isLoadingBanners,
+                            isLoading: foodProvider.isLoadingBanners,
                           ),
                           SizedBox(height: KSpacing.xl.h),
                         ],
@@ -427,12 +421,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           bool isLoading = false;
 
                           if (serviceProvider.isFoodService) {
-                            topRatedItems = itemsProvider.categories
+                            topRatedItems = foodProvider.categories
                                 .expand((cat) => cat.items)
                                 .where((item) => item.rating >= 4.5)
                                 .take(6)
                                 .toList();
-                            isLoading = itemsProvider.isLoading;
+                            isLoading = foodProvider.isLoading;
                           } else {
                             final groceryProvider = Provider.of<GroceryProvider>(context);
                             topRatedItems = groceryProvider.items
@@ -465,7 +459,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       ),
                       SizedBox(height: KSpacing.xl.h),
 
-                      // Browse All Groceries (Grocery only - Final vertical section)
+                      // Browse All Groceries (Grocery only)
                       if (serviceProvider.isGroceryService) ...[
                         Builder(
                           builder: (context) {
@@ -485,7 +479,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     ],
                   ),
                 ),
-                // End of AnimatedSwitcher
 
                 // Recommended (Food Specific or Generic)
                 if (serviceProvider.isFoodService) ...[
@@ -557,7 +550,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     ),
                   ),
                   SizedBox(height: KSpacing.lg.h),
-                  _buildRecommendedFoodItems(itemsProvider, size, colors, isDark),
+                  _buildRecommendedFoodItems(foodProvider, size, colors, isDark),
                 ],
               ],
             ),
@@ -814,7 +807,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Builder _buildCategories(FoodProvider itemsProvider, bool isDark, Size size, AppColorsExtension colors) {
+  Builder _buildFoodCategories(FoodProvider itemsProvider, bool isDark, Size size, AppColorsExtension colors) {
     return Builder(
       builder: (context) {
         if (itemsProvider.isLoading) {
@@ -949,7 +942,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
         // Load data for the selected service
         if (service.id == 'groceries') {
-          // Load grocery data
           if (groceryProvider.categories.isEmpty) {
             groceryProvider.fetchCategories();
             groceryProvider.fetchStores();
@@ -1274,21 +1266,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   /// Build grocery content
-  /// Build grocery content
   Widget _buildGroceryCategories(GroceryProvider groceryProvider, bool isDark, Size size, AppColorsExtension colors) {
-    // Create "All" category
-    final allCategory = GroceryCategory(
-      id: 'all',
-      name: 'All',
-      emoji: '🥣',
-      description: 'All items',
-      image: '',
-      sortOrder: 0,
-      isActive: true,
-    );
-
     // Combine categories
-    final categoriesWithType = [allCategory, ...groceryProvider.categories];
+    final categoriesWithType = [...groceryProvider.categories];
 
     if (groceryProvider.isLoadingCategories) {
       return CategorySkeleton(colors: colors, isDark: isDark, size: size);
@@ -1300,7 +1280,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         getName: (cat) => cat.name,
         getEmoji: (cat) => cat.emoji,
         getId: (cat) => cat.id,
-        initialSelectedCategory: _selectedGroceryCategory ?? allCategory,
+        initialSelectedCategory: _selectedGroceryCategory,
         onCategorySelected: (category) {
           setState(() {
             _selectedGroceryCategory = category;

@@ -310,10 +310,10 @@ router.get("/order-history", protect, async (req, res) => {
     })
       .populate({
         path: 'items.food',
-        model: 'Food',
+        model: Food,
         populate: [
-          { path: 'category', model: 'Category' },
-          { path: 'restaurant', model: 'Restaurant' }
+          { path: 'category', model: Category },
+          { path: 'restaurant', model: Restaurant }
         ]
       })
       .sort({ deliveredDate: -1, orderDate: -1 })
