@@ -208,8 +208,14 @@ class GroceryProvider extends ChangeNotifier {
   /// Refresh all grocery data
   Future<void> refreshAll() async {
     await Future.wait([fetchStores(), fetchCategories(), fetchItems(), fetchDeals()]);
-    // Fetch fresh arrivals, buy again, and store specials after items are loaded
-    await Future.wait([fetchFreshArrivals(), fetchBuyAgainItems(), fetchStoreSpecials()]);
+    // Fetch fresh arrivals, buy again, store specials, popular, and top-rated after items are loaded
+    await Future.wait([
+      fetchFreshArrivals(),
+      fetchBuyAgainItems(),
+      fetchStoreSpecials(),
+      fetchPopularItems(),
+      fetchTopRatedItems(),
+    ]);
   }
 
   /// Clear all data

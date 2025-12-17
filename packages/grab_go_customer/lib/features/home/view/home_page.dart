@@ -137,20 +137,28 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void _initializeData() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<LocationProvider>(context, listen: false).fetchAddress();
-      final provider = Provider.of<FoodProvider>(context, listen: false);
-      if (provider.categories.isEmpty) {
-        provider.fetchCategories();
-        provider.fetchRecentOrderItems();
-        provider.fetchPromotionalBanners();
-        provider.fetchDeals();
-        provider.fetchPopularItems(); // Fetch popular items from backend
-        provider.fetchTopRatedItems(); // Fetch top rated items from backend
+
+      // Initialize Food provider
+      final foodProvider = Provider.of<FoodProvider>(context, listen: false);
+      if (foodProvider.categories.isEmpty) {
+        foodProvider.fetchCategories();
+        foodProvider.fetchOrderHistory(); // Fetch order history for Order Again
+        foodProvider.fetchPromotionalBanners();
+        foodProvider.fetchDeals();
+        foodProvider.fetchPopularItems(); // Fetch popular items from backend
+        foodProvider.fetchTopRatedItems(); // Fetch top rated items from backend
       } else {
-        if (provider.categories.isNotEmpty) {
+        if (foodProvider.categories.isNotEmpty) {
           setState(() {
-            _selectedCategory = provider.categories.first;
+            _selectedCategory = foodProvider.categories.first;
           });
         }
+      }
+
+      // Initialize Grocery provider
+      final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
+      if (groceryProvider.items.isEmpty) {
+        groceryProvider.refreshAll(); // This now includes popular and top-rated
       }
     });
   }
@@ -163,7 +171,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final provider = Provider.of<FoodProvider>(context, listen: false);
       await Future.wait([
         provider.refreshCategories(),
-        provider.fetchRecentOrderItems(),
+        provider.fetchOrderHistory(), // Refresh order history
         provider.fetchPromotionalBanners(),
         provider.fetchDeals(),
         provider.fetchPopularItems(), // Refresh popular items
