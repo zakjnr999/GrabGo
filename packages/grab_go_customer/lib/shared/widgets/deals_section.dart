@@ -38,7 +38,7 @@ class DealsSection extends StatelessWidget {
         if (isLoading)
           HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 200.h, itemCount: 5)
         else if (dealItems.isEmpty)
-          const SizedBox.shrink()
+          _buildEmptyState(colors)
         else
           SizedBox(
             height: 200.h,
@@ -49,8 +49,8 @@ class DealsSection extends StatelessWidget {
               itemCount: dealItems.length,
               itemBuilder: (context, index) {
                 final item = dealItems[index];
-                // Mock discount percentage (20-50%)
-                final discountPercent = 20 + (index % 3) * 10;
+                // Use real discount percentage from backend
+                final discountPercent = item.discountPercentage.toInt();
 
                 return Padding(
                   padding: EdgeInsets.only(right: 15.w),
@@ -60,6 +60,30 @@ class DealsSection extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildEmptyState(AppColorsExtension colors) {
+    return Container(
+      height: 180.h,
+      padding: EdgeInsets.symmetric(horizontal: 40.w, vertical: 32.h),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.local_offer_outlined, size: 48.sp, color: colors.textSecondary.withValues(alpha: 0.5)),
+          SizedBox(height: 16.h),
+          Text(
+            'No deals available right now',
+            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+          ),
+          SizedBox(height: 8.h),
+          Text(
+            'Check back later for amazing offers!',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13.sp, color: colors.textSecondary),
+          ),
+        ],
+      ),
     );
   }
 }

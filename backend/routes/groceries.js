@@ -254,6 +254,89 @@ router.get("/stores/:id/items", async (req, res) => {
     }
 });
 
+// ==================== STORE SPECIALS ====================
+
+/**
+ * @route   GET /api/groceries/store-specials
+ * @desc    Get grocery items with active discounts, grouped by store
+ * @access  Public
+ */
+router.get("/store-specials", async (req, res) => {
+    try {
+        const now = new Date();
+
+        // Find items with active discounts
+        const items = await GroceryItem.find({
+            isAvailable: true,
+            discountPercentage: { $gt: 0 },
+            $or: [
+                { discountEndDate: null },
+                { discountEndDate: { $gte: now } }
+            ]
+        })
+            .populate('store', 'store_name logo rating isOpen deliveryFee minOrder')
+            .populate('category', 'name emoji')
+            .sort({ discountPercentage: -1 })
+            .limit(50);
+
+        if (!items || items.length === 0) {
+            return res.status(200).json({
+                success: true,
+                count: 0,
+                data: []
+            });
+        }
+
+        // Group items by store
+        const storeMap = new Map();
+
+        items.forEach(item => {
+            if (item.store) {
+                const storeId = item.store._id.toString();
+
+                if (!storeMap.has(storeId)) {
+                    storeMap.set(storeId, {
+                        storeId: item.store._id,
+                        storeName: item.store.store_name,
+                        storeLogo: item.store.logo,
+                        storeRating: item.store.rating,
+                        isOpen: item.store.isOpen,
+                        deliveryFee: item.store.deliveryFee,
+                        minOrder: item.store.minOrder,
+                        items: []
+                    });
+                }
+
+                storeMap.get(storeId).items.push(item);
+            }
+        });
+
+        // Convert map to array and limit items per store
+        const storeSpecials = Array.from(storeMap.values())
+            .map(store => ({
+                ...store,
+                items: store.items.slice(0, 10) // Limit to 10 items per store
+            }))
+            .filter(store => store.items.length > 0) // Only stores with items
+            .sort((a, b) => b.items.length - a.items.length) // Sort by item count
+            .slice(0, 5); // Limit to top 5 stores
+
+        res.status(200).json({
+            success: true,
+            count: storeSpecials.length,
+            data: storeSpecials
+        });
+
+    } catch (error) {
+        console.error('Get store specials error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error: error.message
+        });
+    }
+});
+
 // ==================== ORDER HISTORY ====================
 
 // Get grocery order history for current user (for Buy Again section)
@@ -333,7 +416,7 @@ router.get("/order-history", protect, async (req, res) => {
             .slice(0, 20) // Return top 20 most recent items
             .map(({ item, lastOrdered, timesOrdered, totalQuantity }) => ({
                 ...item.toObject(),
-                lastOrdered,
+                lastOrderedAt: lastOrdered, // Renamed for frontend consistency
                 timesOrdered,
                 totalQuantity
             }));
@@ -354,4 +437,44 @@ router.get("/order-history", protect, async (req, res) => {
     }
 });
 
+// ==================== POPULAR ITEMS ====================
+
+// Get popular items (sorted by order count)
+router.get("/popular", async (req, res) => {
+    try {
+        // Validate and sanitize limit parameter
+        let { limit = 10 } = req.query;
+        limit = parseInt(limit);
+
+        // Handle invalid input
+        if (isNaN(limit) || limit < 1) {
+            limit = 10;
+        }
+        // Cap at maximum 50 items
+        if (limit > 50) {
+            limit = 50;
+        }
+
+        const popularItems = await GroceryItem.find({ isAvailable: true })
+            .sort({ orderCount: -1, rating: -1 }) // Sort by order count, then rating
+            .limit(limit)
+            .populate('category', 'name emoji')
+            .populate('store', 'store_name logo rating');
+
+        res.json({
+            success: true,
+            message: "Popular items retrieved successfully",
+            data: popularItems
+        });
+    } catch (error) {
+        console.error("Get popular items error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Server error",
+            error: error.message
+        });
+    }
+});
+
 module.exports = router;
+

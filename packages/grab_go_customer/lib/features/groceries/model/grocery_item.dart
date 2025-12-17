@@ -44,6 +44,7 @@ class GroceryItem {
   final List<String> tags;
   final double rating;
   final int reviewCount;
+  final int orderCount; // Number of times ordered (for popularity)
   final DateTime createdAt;
 
   GroceryItem({
@@ -68,6 +69,7 @@ class GroceryItem {
     required this.tags,
     required this.rating,
     required this.reviewCount,
+    this.orderCount = 0, // Default to 0 if not provided
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
@@ -146,6 +148,7 @@ class GroceryItem {
       tags: (json['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
       rating: (json['rating'] ?? 0).toDouble(),
       reviewCount: json['reviewCount'] ?? 0,
+      orderCount: json['orderCount'] ?? 0, // Parse from backend
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),

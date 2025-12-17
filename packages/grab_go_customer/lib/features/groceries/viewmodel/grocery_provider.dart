@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_category.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_store.dart';
+import 'package:grab_go_customer/features/groceries/model/store_special.dart';
 import 'package:grab_go_customer/features/groceries/repository/grocery_repository.dart';
 
 class GroceryProvider extends ChangeNotifier {
@@ -30,6 +31,10 @@ class GroceryProvider extends ChangeNotifier {
   List<GroceryItem> _buyAgainItems = [];
   bool _isLoadingBuyAgain = false;
 
+  // Store Specials
+  List<StoreSpecial> _storeSpecials = [];
+  bool _isLoadingStoreSpecials = false;
+
   // Getters
   List<GroceryStore> get stores => _stores;
   bool get isLoadingStores => _isLoadingStores;
@@ -48,6 +53,9 @@ class GroceryProvider extends ChangeNotifier {
 
   List<GroceryItem> get buyAgainItems => _buyAgainItems;
   bool get isLoadingBuyAgain => _isLoadingBuyAgain;
+
+  List<StoreSpecial> get storeSpecials => _storeSpecials;
+  bool get isLoadingStoreSpecials => _isLoadingStoreSpecials;
 
   /// Fetch all grocery stores
   Future<void> fetchStores() async {
@@ -111,6 +119,7 @@ class GroceryProvider extends ChangeNotifier {
       if (_items.isNotEmpty) {
         fetchFreshArrivals();
         fetchBuyAgainItems();
+        fetchStoreSpecials();
       }
     }
   }
@@ -185,8 +194,8 @@ class GroceryProvider extends ChangeNotifier {
   /// Refresh all grocery data
   Future<void> refreshAll() async {
     await Future.wait([fetchStores(), fetchCategories(), fetchItems(), fetchDeals()]);
-    // Fetch fresh arrivals and buy again after items are loaded
-    await Future.wait([fetchFreshArrivals(), fetchBuyAgainItems()]);
+    // Fetch fresh arrivals, buy again, and store specials after items are loaded
+    await Future.wait([fetchFreshArrivals(), fetchBuyAgainItems(), fetchStoreSpecials()]);
   }
 
   /// Clear all data
@@ -196,5 +205,23 @@ class GroceryProvider extends ChangeNotifier {
     _items = [];
     _deals = [];
     notifyListeners();
+  }
+
+  /// Fetch store specials (items with active discounts grouped by store)
+  Future<void> fetchStoreSpecials() async {
+    _isLoadingStoreSpecials = true;
+    notifyListeners();
+
+    try {
+      _storeSpecials = await _repository.fetchStoreSpecials();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching store specials: $e');
+      }
+      _storeSpecials = [];
+    } finally {
+      _isLoadingStoreSpecials = false;
+      notifyListeners();
+    }
   }
 }

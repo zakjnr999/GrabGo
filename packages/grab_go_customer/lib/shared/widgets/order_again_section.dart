@@ -40,44 +40,70 @@ class OrderAgainSection extends StatelessWidget {
         if (isLoading)
           HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 230.h)
         else if (recentOrders.isEmpty)
-          const SizedBox.shrink(),
-        SizedBox(
-          height: 230.h,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.only(left: 20.w),
-            physics: const BouncingScrollPhysics(),
-            itemCount: recentOrders.length,
-            itemBuilder: (context, index) {
-              final item = recentOrders[index];
-              // Mock days ago (0-7)
-              final daysAgo = index;
+          _buildEmptyState(colors)
+        else
+          SizedBox(
+            height: 230.h,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: EdgeInsets.only(left: 20.w),
+              physics: const BouncingScrollPhysics(),
+              itemCount: recentOrders.length,
+              itemBuilder: (context, index) {
+                final item = recentOrders[index];
+                // TODO: Calculate from lastOrderedAt when backend provides it
+                // For now, use index as placeholder
+                final daysAgo = index;
 
-              return Consumer<CartProvider>(
-                builder: (context, cartProvider, child) {
-                  final bool isInCart = cartProvider.cartItems.containsKey(item);
-                  return Padding(
-                    padding: EdgeInsets.only(right: 15.w),
-                    child: QuickReorderCard(
-                      item: item,
-                      daysAgo: daysAgo,
-                      onTap: () => onItemTap(item),
-                      isInCart: isInCart,
-                      onAddToCart: () {
-                        if (isInCart) {
-                          cartProvider.removeItemCompletely(item);
-                        } else {
-                          cartProvider.addToCart(item);
-                        }
-                      },
-                    ),
-                  );
-                },
-              );
-            },
+                return Consumer<CartProvider>(
+                  builder: (context, cartProvider, child) {
+                    final bool isInCart = cartProvider.cartItems.containsKey(item);
+                    return Padding(
+                      padding: EdgeInsets.only(right: 15.w),
+                      child: QuickReorderCard(
+                        item: item,
+                        daysAgo: daysAgo,
+                        onTap: () => onItemTap(item),
+                        isInCart: isInCart,
+                        onAddToCart: () {
+                          if (isInCart) {
+                            cartProvider.removeItemCompletely(item);
+                          } else {
+                            cartProvider.addToCart(item);
+                          }
+                        },
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
-        ),
       ],
+    );
+  }
+
+  Widget _buildEmptyState(AppColorsExtension colors) {
+    return Container(
+      height: 200.h,
+      padding: EdgeInsets.symmetric(horizontal: 40.w, vertical: 32.h),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.history, size: 48.sp, color: colors.textSecondary.withValues(alpha: 0.5)),
+          SizedBox(height: 16.h),
+          Text(
+            'No previous orders yet',
+            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+          ),
+          SizedBox(height: 8.h),
+          Text(
+            'Items you order will appear here for quick reordering',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13.sp, color: colors.textSecondary),
+          ),
+        ],
+      ),
     );
   }
 }

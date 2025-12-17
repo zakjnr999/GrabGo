@@ -78,6 +78,12 @@ const groceryItemSchema = new mongoose.Schema(
             default: 0,
             min: [0, 'Review count cannot be negative'],
         },
+        orderCount: {
+            type: Number,
+            default: 0,
+            min: [0, 'Order count cannot be negative'],
+            index: true, // For sorting by popularity
+        },
     },
     {
         timestamps: true,
@@ -102,6 +108,7 @@ groceryItemSchema.index({ price: 1 });
 groceryItemSchema.index({ rating: -1 });
 groceryItemSchema.index({ isAvailable: 1 });
 groceryItemSchema.index({ discountPercentage: -1 });
+groceryItemSchema.index({ orderCount: -1 }); // For popular items query
 
 const GroceryItem = mongoose.model('GroceryItem', groceryItemSchema);
 

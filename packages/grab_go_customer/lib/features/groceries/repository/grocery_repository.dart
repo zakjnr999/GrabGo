@@ -3,6 +3,7 @@ import 'package:grab_go_customer/core/api/api_client.dart' as chopper_client_ser
 import 'package:grab_go_customer/features/groceries/model/grocery_category.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_store.dart';
+import 'package:grab_go_customer/features/groceries/model/store_special.dart';
 import 'package:grab_go_customer/features/groceries/service/grocery_service.dart';
 
 class GroceryRepository {
@@ -188,6 +189,31 @@ class GroceryRepository {
     } catch (e) {
       if (kDebugMode) {
         print('❌ Repository: Error fetching order history: $e');
+      }
+      return [];
+    }
+  }
+
+  /// Fetch store specials (items with active discounts grouped by store)
+  Future<List<StoreSpecial>> fetchStoreSpecials() async {
+    try {
+      final response = await _groceryService.getStoreSpecials();
+
+      if (response.isSuccessful && response.body != null) {
+        final data = response.body as Map<String, dynamic>;
+        if (data['success'] == true && data['data'] != null) {
+          final specials = (data['data'] as List).map((json) => StoreSpecial.fromJson(json)).toList();
+          return specials;
+        }
+      }
+
+      if (kDebugMode) {
+        print('❌ Failed to fetch store specials: ${response.error}');
+      }
+      return [];
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching store specials: $e');
       }
       return [];
     }

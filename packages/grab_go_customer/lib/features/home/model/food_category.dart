@@ -16,6 +16,7 @@ class FoodItem {
   final bool isAvailable;
   final double discountPercentage;
   final DateTime? discountEndDate;
+  final int orderCount; // Number of times ordered (for popularity)
 
   // Getter for original price before discount
   double get originalPrice {
@@ -43,6 +44,7 @@ class FoodItem {
     this.discountPercentage = 0.0,
     this.discountEndDate,
     required this.restaurantImage,
+    this.orderCount = 0, // Default to 0
   });
 
   factory FoodItem.fromJson(Map<String, dynamic> json) {
@@ -127,6 +129,7 @@ class FoodItem {
           : (json['isAvailable']?.toString().toLowerCase() == 'true'),
       discountPercentage: (json['discountPercentage'] as num?)?.toDouble() ?? 0.0,
       discountEndDate: json['discountEndDate'] != null ? DateTime.tryParse(json['discountEndDate'].toString()) : null,
+      orderCount: (json['orderCount'] as num?)?.toInt() ?? 0, // Parse from backend
     );
   }
 

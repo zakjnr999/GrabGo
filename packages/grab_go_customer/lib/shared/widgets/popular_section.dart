@@ -38,7 +38,7 @@ class PopularSection extends StatelessWidget {
         if (isLoading)
           HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 260.h, itemCount: 6)
         else if (popularItems.isEmpty)
-          const SizedBox.shrink()
+          _buildEmptyState(colors)
         else
           SizedBox(
             height: 260.h,
@@ -49,8 +49,8 @@ class PopularSection extends StatelessWidget {
               itemCount: popularItems.length,
               itemBuilder: (context, index) {
                 final item = popularItems[index];
-                // Mock order count (50-200)
-                final orderCount = 50 + (index * 25);
+                // Use real order count from backend
+                final orderCount = item.orderCount;
 
                 return Padding(
                   padding: EdgeInsets.only(right: 15.w),
@@ -60,6 +60,30 @@ class PopularSection extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildEmptyState(AppColorsExtension colors) {
+    return Container(
+      height: 200.h,
+      padding: EdgeInsets.symmetric(horizontal: 40.w, vertical: 32.h),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.trending_up, size: 48.sp, color: colors.textSecondary.withValues(alpha: 0.5)),
+          SizedBox(height: 16.h),
+          Text(
+            'No popular items yet',
+            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+          ),
+          SizedBox(height: 8.h),
+          Text(
+            'Check back soon to see what\'s trending!',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13.sp, color: colors.textSecondary),
+          ),
+        ],
+      ),
     );
   }
 }

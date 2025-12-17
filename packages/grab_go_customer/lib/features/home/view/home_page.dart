@@ -10,6 +10,7 @@ import 'package:grab_go_customer/shared/viewmodels/location_provider.dart';
 import 'package:grab_go_customer/shared/widgets/app_refresh_indicator.dart';
 import 'package:grab_go_customer/shared/widgets/category_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_skeleton.dart';
+import 'package:grab_go_customer/shared/widgets/store_specials_section.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/widgets/service_category_list.dart';
@@ -27,6 +28,7 @@ import 'package:grab_go_customer/shared/widgets/promo_section.dart';
 import 'package:grab_go_customer/shared/widgets/top_rated_section.dart';
 import 'package:grab_go_customer/shared/widgets/fresh_arrivals_section.dart';
 import 'package:grab_go_customer/shared/widgets/browse_all_groceries_section.dart';
+import 'package:grab_go_customer/shared/widgets/store_specials_section.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurants_model.dart';
 import 'package:grab_go_customer/shared/viewmodels/service_provider.dart';
 import 'package:provider/provider.dart';
@@ -239,56 +241,65 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
                       // Fresh Arrivals (Grocery only)
                       if (serviceProvider.isGroceryService) ...[
-                        Builder(
-                          builder: (context) {
-                            if (groceryProvider.isLoadingFreshArrivals || groceryProvider.freshArrivals.isNotEmpty) {
-                              return Column(
-                                children: [
-                                  FreshArrivalsSection(
-                                    items: groceryProvider.freshArrivals,
-                                    onSeeAll: () {},
-                                    onItemTap: (item) {
-                                      context.push('/foodDetails', extra: item);
-                                    },
-                                    isLoading: groceryProvider.isLoadingFreshArrivals,
-                                  ),
-                                  SizedBox(height: KSpacing.xl.h),
-                                ],
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          },
+                        Column(
+                          children: [
+                            FreshArrivalsSection(
+                              items: groceryProvider.freshArrivals.take(10).toList(),
+                              onSeeAll: () {},
+                              onItemTap: (item) {
+                                context.push('/foodDetails', extra: item);
+                              },
+                              isLoading: groceryProvider.isLoadingFreshArrivals,
+                            ),
+                            SizedBox(height: KSpacing.xl.h),
+                          ],
                         ),
                       ],
 
                       // Buy Again (Grocery only)
                       if (serviceProvider.isGroceryService) ...[
-                        Builder(
-                          builder: (context) {
-                            if (groceryProvider.isLoadingBuyAgain || groceryProvider.buyAgainItems.isNotEmpty) {
-                              return Column(
-                                children: [
-                                  OrderAgainSection(
-                                    recentOrders: groceryProvider.buyAgainItems
-                                        .map((item) => item.toFoodItem())
-                                        .toList(),
-                                    onSeeAll: () {},
-                                    onItemTap: (foodItem) {
-                                      // Find original grocery item and navigate
-                                      final groceryItem = groceryProvider.buyAgainItems.firstWhere(
-                                        (item) => item.id == foodItem.id,
-                                        orElse: () => groceryProvider.buyAgainItems.first,
-                                      );
-                                      context.push('/foodDetails', extra: groceryItem);
-                                    },
-                                    isLoading: groceryProvider.isLoadingBuyAgain,
-                                  ),
-                                  SizedBox(height: KSpacing.xl.h),
-                                ],
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          },
+                        Column(
+                          children: [
+                            OrderAgainSection(
+                              recentOrders: groceryProvider.buyAgainItems
+                                  .take(10)
+                                  .map((item) => item.toFoodItem())
+                                  .toList(),
+                              onSeeAll: () {},
+                              onItemTap: (foodItem) {
+                                // Find original grocery item and navigate
+                                final groceryItem = groceryProvider.buyAgainItems.firstWhere(
+                                  (item) => item.id == foodItem.id,
+                                  orElse: () => groceryProvider.buyAgainItems.first,
+                                );
+                                context.push('/foodDetails', extra: groceryItem);
+                              },
+                              isLoading: groceryProvider.isLoadingBuyAgain,
+                            ),
+                            SizedBox(height: KSpacing.xl.h),
+                          ],
+                        ),
+                      ],
+
+                      // Store Specials (Grocery only)
+                      if (serviceProvider.isGroceryService) ...[
+                        Column(
+                          children: [
+                            StoreSpecialsSection(
+                              storeSpecials: groceryProvider.storeSpecials,
+                              isLoading: groceryProvider.isLoadingStoreSpecials,
+                              onSeeAll: () {
+                                // TODO: Navigate to all store specials
+                              },
+                              onItemTap: (item) {
+                                context.push('/foodDetails', extra: item);
+                              },
+                              onStoreTap: (store) {
+                                // TODO: Navigate to store page
+                              },
+                            ),
+                            SizedBox(height: KSpacing.xl.h),
+                          ],
                         ),
                       ],
 
@@ -296,65 +307,57 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       Builder(
                         builder: (context) {
                           final deals = serviceProvider.isFoodService
-                              ? foodProvider.dealItems
-                              : Provider.of<GroceryProvider>(context).deals.map((e) => e.toFoodItem()).toList();
+                              ? foodProvider.dealItems.take(10).toList()
+                              : Provider.of<GroceryProvider>(
+                                  context,
+                                ).deals.take(10).map((e) => e.toFoodItem()).toList();
 
                           final isLoading = serviceProvider.isFoodService
                               ? foodProvider.isLoadingDeals
                               : Provider.of<GroceryProvider>(context).isLoadingDeals;
 
-                          if (isLoading || deals.isNotEmpty) {
-                            return Column(
-                              children: [
-                                DealsSection(
-                                  dealItems: deals,
-                                  onSeeAll: () {},
-                                  onItemTap: (item) {
-                                    if (serviceProvider.isGroceryService) {
-                                      final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
-                                      final originalItem = groceryProvider.deals.firstWhere(
+                          return Column(
+                            children: [
+                              DealsSection(
+                                dealItems: deals,
+                                onSeeAll: () {},
+                                onItemTap: (item) {
+                                  if (serviceProvider.isGroceryService) {
+                                    final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
+                                    final originalItem = groceryProvider.deals.firstWhere(
+                                      (g) => g.id == item.id,
+                                      orElse: () => groceryProvider.items.firstWhere(
                                         (g) => g.id == item.id,
-                                        orElse: () => groceryProvider.items.firstWhere(
-                                          (g) => g.id == item.id,
-                                          orElse: () => groceryProvider.deals.first,
-                                        ),
-                                      );
-                                      context.push('/foodDetails', extra: originalItem);
-                                    } else {
-                                      context.push('/foodDetails', extra: item);
-                                    }
-                                  },
-                                  isLoading: isLoading,
-                                ),
-                                SizedBox(height: KSpacing.xl.h),
-                              ],
-                            );
-                          }
-                          return const SizedBox.shrink();
+                                        orElse: () => groceryProvider.deals.first,
+                                      ),
+                                    );
+                                    context.push('/foodDetails', extra: originalItem);
+                                  } else {
+                                    context.push('/foodDetails', extra: item);
+                                  }
+                                },
+                                isLoading: isLoading,
+                              ),
+                              SizedBox(height: KSpacing.xl.h),
+                            ],
+                          );
                         },
                       ),
 
                       // Order Again (Food only)
                       if (serviceProvider.isFoodService) ...[
-                        Builder(
-                          builder: (context) {
-                            if (foodProvider.isLoadingOrderHistory || foodProvider.orderHistoryItems.isNotEmpty) {
-                              return Column(
-                                children: [
-                                  OrderAgainSection(
-                                    recentOrders: foodProvider.orderHistoryItems,
-                                    onSeeAll: () {},
-                                    onItemTap: (item) {
-                                      context.push('/food-details', extra: item);
-                                    },
-                                    isLoading: foodProvider.isLoadingOrderHistory,
-                                  ),
-                                  SizedBox(height: KSpacing.xl.h),
-                                ],
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          },
+                        Column(
+                          children: [
+                            OrderAgainSection(
+                              recentOrders: foodProvider.orderHistoryItems.take(10).toList(),
+                              onSeeAll: () {},
+                              onItemTap: (item) {
+                                context.push('/food-details', extra: item);
+                              },
+                              isLoading: foodProvider.isLoadingOrderHistory,
+                            ),
+                            SizedBox(height: KSpacing.xl.h),
+                          ],
                         ),
                       ],
 
@@ -368,14 +371,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             popularItems = foodProvider.categories
                                 .expand((cat) => cat.items)
                                 .where((item) => item.rating >= 4.0)
-                                .take(6)
+                                .take(10)
                                 .toList();
                             isLoading = foodProvider.isLoading;
                           } else {
                             final groceryProvider = Provider.of<GroceryProvider>(context);
                             popularItems = groceryProvider.items
                                 .where((item) => item.rating >= 4.0)
-                                .take(6)
+                                .take(10)
                                 .map((e) => e.toFoodItem())
                                 .toList();
                             isLoading = groceryProvider.isLoadingItems;
@@ -404,14 +407,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
                       // Unified Banners (Promo Section)
                       if (serviceProvider.isFoodService) ...[
-                        if (foodProvider.isLoadingBanners || foodProvider.promotionalBanners.isNotEmpty) ...[
-                          PromoSection(
-                            banners: foodProvider.promotionalBanners,
-                            onSeeAll: () {},
-                            isLoading: foodProvider.isLoadingBanners,
-                          ),
-                          SizedBox(height: KSpacing.xl.h),
-                        ],
+                        PromoSection(
+                          banners: foodProvider.promotionalBanners,
+                          onSeeAll: () {},
+                          isLoading: foodProvider.isLoadingBanners,
+                        ),
+                        SizedBox(height: KSpacing.xl.h),
                       ],
 
                       // Unified Top Rated Section
@@ -424,14 +425,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             topRatedItems = foodProvider.categories
                                 .expand((cat) => cat.items)
                                 .where((item) => item.rating >= 4.5)
-                                .take(6)
+                                .take(10)
                                 .toList();
                             isLoading = foodProvider.isLoading;
                           } else {
                             final groceryProvider = Provider.of<GroceryProvider>(context);
                             topRatedItems = groceryProvider.items
                                 .where((item) => item.rating >= 4.5)
-                                .take(6)
+                                .take(10)
                                 .map((e) => e.toFoodItem())
                                 .toList();
                             isLoading = groceryProvider.isLoadingItems;

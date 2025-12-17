@@ -38,7 +38,7 @@ class TopRatedSection extends StatelessWidget {
         if (isLoading)
           HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 240.h, itemCount: 6)
         else if (topRatedItems.isEmpty)
-          const SizedBox.shrink()
+          _buildEmptyState(colors)
         else
           SizedBox(
             height: 230.h,
@@ -58,6 +58,30 @@ class TopRatedSection extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildEmptyState(AppColorsExtension colors) {
+    return Container(
+      height: 200.h,
+      padding: EdgeInsets.symmetric(horizontal: 40.w, vertical: 32.h),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.star_border, size: 48.sp, color: colors.textSecondary.withValues(alpha: 0.5)),
+          SizedBox(height: 16.h),
+          Text(
+            'No top-rated items this week',
+            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+          ),
+          SizedBox(height: 8.h),
+          Text(
+            'Check back later for highly rated items',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13.sp, color: colors.textSecondary),
+          ),
+        ],
+      ),
     );
   }
 }
