@@ -84,6 +84,94 @@ router.get("/deals", async (req, res) => {
   }
 });
 
+// ==================== POPULAR ITEMS ====================
+
+// Get popular food items (sorted by order count)
+// IMPORTANT: This must come BEFORE /:foodId route
+router.get("/popular", async (req, res) => {
+  try {
+    // Validate and sanitize limit parameter
+    let { limit = 10 } = req.query;
+    limit = parseInt(limit);
+
+    // Handle invalid input
+    if (isNaN(limit) || limit < 1) {
+      limit = 10;
+    }
+    // Cap at maximum 50 items
+    if (limit > 50) {
+      limit = 50;
+    }
+
+    const popularItems = await Food.find({ isAvailable: true })
+      .sort({ orderCount: -1, rating: -1 }) // Sort by order count, then rating
+      .limit(limit)
+      .populate('category', 'name')
+      .populate('restaurant', 'restaurant_name logo rating');
+
+    res.json({
+      success: true,
+      message: "Popular items retrieved successfully",
+      data: popularItems
+    });
+  } catch (error) {
+    console.error("Get popular items error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
+  }
+});
+
+// ==================== TOP RATED ITEMS ====================
+
+// Get top-rated food items (sorted by rating)
+// IMPORTANT: This must come BEFORE /:foodId route
+router.get("/top-rated", async (req, res) => {
+  try {
+    // Validate and sanitize limit parameter
+    let { limit = 10, minRating = 4.5 } = req.query;
+    limit = parseInt(limit);
+    minRating = parseFloat(minRating);
+
+    // Handle invalid input
+    if (isNaN(limit) || limit < 1) {
+      limit = 10;
+    }
+    // Cap at maximum 50 items
+    if (limit > 50) {
+      limit = 50;
+    }
+    // Validate minRating
+    if (isNaN(minRating) || minRating < 0 || minRating > 5) {
+      minRating = 4.5;
+    }
+
+    const topRatedItems = await Food.find({
+      isAvailable: true,
+      rating: { $gte: minRating }
+    })
+      .sort({ rating: -1, totalReviews: -1 }) // Sort by rating, then review count
+      .limit(limit)
+      .populate('category', 'name')
+      .populate('restaurant', 'restaurant_name logo rating');
+
+    res.json({
+      success: true,
+      message: "Top rated items retrieved successfully",
+      data: topRatedItems
+    });
+  } catch (error) {
+    console.error("Get top rated items error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
+  }
+});
+
 router.post(
   "/",
   protect,
@@ -414,53 +502,6 @@ router.get("/popular", async (req, res) => {
     });
   } catch (error) {
     console.error("Get popular items error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message
-    });
-  }
-});
-
-// ==================== TOP RATED ITEMS ====================
-
-// Get top-rated food items (sorted by rating)
-router.get("/top-rated", async (req, res) => {
-  try {
-    // Validate and sanitize limit parameter
-    let { limit = 10, minRating = 4.5 } = req.query;
-    limit = parseInt(limit);
-    minRating = parseFloat(minRating);
-
-    // Handle invalid input
-    if (isNaN(limit) || limit < 1) {
-      limit = 10;
-    }
-    // Cap at maximum 50 items
-    if (limit > 50) {
-      limit = 50;
-    }
-    // Validate minRating
-    if (isNaN(minRating) || minRating < 0 || minRating > 5) {
-      minRating = 4.5;
-    }
-
-    const topRatedItems = await Food.find({
-      isAvailable: true,
-      rating: { $gte: minRating }
-    })
-      .sort({ rating: -1, totalReviews: -1 }) // Sort by rating, then review count
-      .limit(limit)
-      .populate('category', 'name')
-      .populate('restaurant', 'restaurant_name logo rating');
-
-    res.json({
-      success: true,
-      message: "Top rated items retrieved successfully",
-      data: topRatedItems
-    });
-  } catch (error) {
-    console.error("Get top rated items error:", error);
     res.status(500).json({
       success: false,
       message: "Server error",
