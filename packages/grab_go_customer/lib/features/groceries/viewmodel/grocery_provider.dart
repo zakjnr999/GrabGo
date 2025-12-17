@@ -35,6 +35,10 @@ class GroceryProvider extends ChangeNotifier {
   List<StoreSpecial> _storeSpecials = [];
   bool _isLoadingStoreSpecials = false;
 
+  // Popular items
+  List<GroceryItem> _popularItems = [];
+  bool _isLoadingPopular = false;
+
   // Getters
   List<GroceryStore> get stores => _stores;
   bool get isLoadingStores => _isLoadingStores;
@@ -56,6 +60,9 @@ class GroceryProvider extends ChangeNotifier {
 
   List<StoreSpecial> get storeSpecials => _storeSpecials;
   bool get isLoadingStoreSpecials => _isLoadingStoreSpecials;
+
+  List<GroceryItem> get popularItems => _popularItems;
+  bool get isLoadingPopular => _isLoadingPopular;
 
   /// Fetch all grocery stores
   Future<void> fetchStores() async {
@@ -221,6 +228,24 @@ class GroceryProvider extends ChangeNotifier {
       _storeSpecials = [];
     } finally {
       _isLoadingStoreSpecials = false;
+      notifyListeners();
+    }
+  }
+
+  /// Fetch popular grocery items sorted by order count
+  Future<void> fetchPopularItems() async {
+    _isLoadingPopular = true;
+    notifyListeners();
+
+    try {
+      _popularItems = await _repository.fetchPopularItems(limit: 10);
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching popular items: $e');
+      }
+      _popularItems = [];
+    } finally {
+      _isLoadingPopular = false;
       notifyListeners();
     }
   }

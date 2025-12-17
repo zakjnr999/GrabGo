@@ -17,6 +17,7 @@ class FoodItem {
   final double discountPercentage;
   final DateTime? discountEndDate;
   final int orderCount; // Number of times ordered (for popularity)
+  final DateTime? lastOrderedAt; // Last time this item was ordered
 
   // Getter for original price before discount
   double get originalPrice {
@@ -45,6 +46,7 @@ class FoodItem {
     this.discountEndDate,
     required this.restaurantImage,
     this.orderCount = 0, // Default to 0
+    this.lastOrderedAt, // Optional - only for order history
   });
 
   factory FoodItem.fromJson(Map<String, dynamic> json) {
@@ -130,6 +132,7 @@ class FoodItem {
       discountPercentage: (json['discountPercentage'] as num?)?.toDouble() ?? 0.0,
       discountEndDate: json['discountEndDate'] != null ? DateTime.tryParse(json['discountEndDate'].toString()) : null,
       orderCount: (json['orderCount'] as num?)?.toInt() ?? 0, // Parse from backend
+      lastOrderedAt: json['lastOrderedAt'] != null ? DateTime.tryParse(json['lastOrderedAt'].toString()) : null,
     );
   }
 

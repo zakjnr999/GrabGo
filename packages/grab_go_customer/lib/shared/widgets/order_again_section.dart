@@ -51,9 +51,8 @@ class OrderAgainSection extends StatelessWidget {
               itemCount: recentOrders.length,
               itemBuilder: (context, index) {
                 final item = recentOrders[index];
-                // TODO: Calculate from lastOrderedAt when backend provides it
-                // For now, use index as placeholder
-                final daysAgo = index;
+                // Calculate real days ago from lastOrderedAt
+                final daysAgo = item.lastOrderedAt != null ? DateTime.now().difference(item.lastOrderedAt!).inDays : 0;
 
                 return Consumer<CartProvider>(
                   builder: (context, cartProvider, child) {

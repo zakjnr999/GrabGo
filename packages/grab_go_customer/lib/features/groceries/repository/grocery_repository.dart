@@ -218,4 +218,28 @@ class GroceryRepository {
       return [];
     }
   }
+
+  /// Fetch popular grocery items sorted by order count
+  Future<List<GroceryItem>> fetchPopularItems({int limit = 10}) async {
+    try {
+      final response = await _groceryService.getPopularItems(limit);
+
+      if (response.isSuccessful && response.body != null) {
+        final data = response.body as Map<String, dynamic>;
+        if (data['success'] == true && data['data'] != null) {
+          return (data['data'] as List).map((json) => GroceryItem.fromJson(json)).toList();
+        }
+      }
+
+      if (kDebugMode) {
+        print('❌ Failed to fetch popular items: ${response.error}');
+      }
+      return [];
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching popular items: $e');
+      }
+      return [];
+    }
+  }
 }

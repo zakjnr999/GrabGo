@@ -59,6 +59,12 @@ const foodSchema = new mongoose.Schema({
   discountEndDate: {
     type: Date,
     default: null
+  },
+  orderCount: {
+    type: Number,
+    default: 0,
+    min: [0, 'Order count cannot be negative'],
+    index: true // For sorting by popularity
   }
 }, {
   timestamps: true,
@@ -73,6 +79,9 @@ foodSchema.virtual('originalPrice').get(function () {
   }
   return this.price;
 });
+
+// Index for popular items query
+foodSchema.index({ orderCount: -1, rating: -1 });
 
 module.exports = mongoose.model('Food', foodSchema);
 

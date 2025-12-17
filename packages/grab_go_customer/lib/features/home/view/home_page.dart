@@ -143,6 +143,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         provider.fetchRecentOrderItems();
         provider.fetchPromotionalBanners();
         provider.fetchDeals();
+        provider.fetchPopularItems(); // Fetch popular items from backend
       } else {
         if (provider.categories.isNotEmpty) {
           setState(() {
@@ -164,6 +165,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         provider.fetchRecentOrderItems(),
         provider.fetchPromotionalBanners(),
         provider.fetchDeals(),
+        provider.fetchPopularItems(), // Refresh popular items
       ]);
     } else if (serviceProvider.isGroceryService) {
       // Refresh grocery data
@@ -368,20 +370,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           bool isLoading = false;
 
                           if (serviceProvider.isFoodService) {
-                            popularItems = foodProvider.categories
-                                .expand((cat) => cat.items)
-                                .where((item) => item.rating >= 4.0)
-                                .take(10)
-                                .toList();
-                            isLoading = foodProvider.isLoading;
+                            // Use backend popular items (sorted by orderCount)
+                            popularItems = foodProvider.popularItems;
+                            isLoading = foodProvider.isLoadingPopular;
                           } else {
                             final groceryProvider = Provider.of<GroceryProvider>(context);
-                            popularItems = groceryProvider.items
-                                .where((item) => item.rating >= 4.0)
-                                .take(10)
-                                .map((e) => e.toFoodItem())
-                                .toList();
-                            isLoading = groceryProvider.isLoadingItems;
+                            // Use backend popular items (sorted by orderCount)
+                            popularItems = groceryProvider.popularItems.map((e) => e.toFoodItem()).toList();
+                            isLoading = groceryProvider.isLoadingPopular;
                           }
 
                           return PopularSection(

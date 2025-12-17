@@ -360,7 +360,12 @@ router.get("/order-history", protect, async (req, res) => {
     const orderHistory = Array.from(itemsMap.values())
       .sort((a, b) => b.lastOrdered - a.lastOrdered)
       .slice(0, 20) // Limit to 20 most recent items
-      .map(entry => entry.item);
+      .map(({ item, lastOrdered, timesOrdered, totalQuantity }) => ({
+        ...item.toObject(),
+        lastOrderedAt: lastOrdered, // Renamed for frontend consistency
+        timesOrdered,
+        totalQuantity
+      }));
 
     res.status(200).json({
       success: true,
@@ -373,6 +378,45 @@ router.get("/order-history", protect, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// ==================== POPULAR ITEMS ====================
+
+// Get popular food items (sorted by order count)
+router.get("/popular", async (req, res) => {
+  try {
+    // Validate and sanitize limit parameter
+    let { limit = 10 } = req.query;
+    limit = parseInt(limit);
+
+    // Handle invalid input
+    if (isNaN(limit) || limit < 1) {
+      limit = 10;
+    }
+    // Cap at maximum 50 items
+    if (limit > 50) {
+      limit = 50;
+    }
+
+    const popularItems = await Food.find({ isAvailable: true })
+      .sort({ orderCount: -1, rating: -1 }) // Sort by order count, then rating
+      .limit(limit)
+      .populate('category', 'name')
+      .populate('restaurant', 'restaurant_name logo rating');
+
+    res.json({
+      success: true,
+      message: "Popular items retrieved successfully",
+      data: popularItems
+    });
+  } catch (error) {
+    console.error("Get popular items error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
       error: error.message
     });
   }

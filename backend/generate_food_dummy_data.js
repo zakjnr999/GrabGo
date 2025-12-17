@@ -1,12 +1,11 @@
 /**
- * Dummy Data Generator for Testing
+ * Dummy Data Generator for Food Items
  * 
  * This script generates realistic test data for:
  * - Order counts (for popular items)
- * - Order history with dates
  * - Discount percentages
  * 
- * Run with: node backend/generate_dummy_data.js
+ * Run with: node backend/generate_food_dummy_data.js
  */
 
 // Load environment variables
@@ -15,7 +14,8 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 
 // Import models
-const GroceryItem = require('./models/GroceryItem');
+const Food = require('./models/Food');
+const Restaurant = require('./models/Restaurant'); // For populate
 
 // Connect to MongoDB (uses MONGODB_URI from .env)
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/grabgo');
@@ -29,16 +29,13 @@ db.once('open', () => {
 
 async function generateDummyData() {
     try {
-        console.log('\n🚀 Starting dummy data generation...\n');
+        console.log('\n🚀 Starting dummy data generation for Food items...\n');
 
         // Step 1: Add order counts to items
         await generateOrderCounts();
 
         // Step 2: Add discount percentages to some items
         await generateDiscounts();
-
-        // Step 3: Create sample order history (optional)
-        // await generateOrderHistory();
 
         console.log('\n✅ Dummy data generation complete!');
         process.exit(0);
@@ -49,7 +46,7 @@ async function generateDummyData() {
 }
 
 /**
- * Generate realistic order counts for items
+ * Generate realistic order counts for food items
  * - Popular items: 50-200 orders
  * - Regular items: 10-50 orders
  * - Less popular: 0-10 orders
@@ -57,15 +54,15 @@ async function generateDummyData() {
 async function generateOrderCounts() {
     console.log('📊 Generating order counts...');
 
-    const items = await GroceryItem.find({ isAvailable: true });
+    const items = await Food.find({ isAvailable: true });
 
     if (!items || items.length === 0) {
-        console.log('   ⚠️  No items found in database');
-        console.log('   💡 Tip: Add items first before running this script');
+        console.log('   ⚠️  No food items found in database');
+        console.log('   💡 Tip: Add food items first before running this script');
         return;
     }
 
-    console.log(`   Found ${items.length} items`);
+    console.log(`   Found ${items.length} food items`);
 
     let updated = 0;
 
@@ -97,17 +94,19 @@ async function generateOrderCounts() {
         }
     }
 
-    console.log(`   ✅ Updated ${updated} items with order counts`);
+    console.log(`   ✅ Updated ${updated} food items with order counts`);
 
     // Show top 10 popular items
-    const topItems = await GroceryItem.find({ isAvailable: true })
+    const topItems = await Food.find({ isAvailable: true })
         .sort({ orderCount: -1 })
         .limit(10)
-        .select('name orderCount rating');
+        .select('name orderCount rating')
+        .populate('restaurant', 'restaurant_name');
 
-    console.log('\n   📈 Top 10 Popular Items:');
+    console.log('\n   📈 Top 10 Popular Food Items:');
     topItems.forEach((item, index) => {
-        console.log(`   ${index + 1}. ${item.name} - ${item.orderCount} orders (⭐ ${item.rating})`);
+        const restaurantName = item.restaurant?.restaurant_name || 'Unknown';
+        console.log(`   ${index + 1}. ${item.name} (${restaurantName}) - ${item.orderCount} orders (⭐ ${item.rating})`);
     });
 }
 
@@ -120,10 +119,10 @@ async function generateOrderCounts() {
 async function generateDiscounts() {
     console.log('\n🏷️  Generating discounts...');
 
-    const items = await GroceryItem.find({ isAvailable: true });
+    const items = await Food.find({ isAvailable: true });
 
     if (!items || items.length === 0) {
-        console.log('   ⚠️  No items found in database');
+        console.log('   ⚠️  No food items found in database');
         return;
     }
 
@@ -152,40 +151,28 @@ async function generateDiscounts() {
         updated++;
     }
 
-    console.log(`   ✅ Applied discounts to ${updated} items`);
+    console.log(`   ✅ Applied discounts to ${updated} food items`);
 
     // Show sample discounted items
-    const discountedItems = await GroceryItem.find({
+    const discountedItems = await Food.find({
         discountPercentage: { $gt: 0 },
         isAvailable: true
     })
         .sort({ discountPercentage: -1 })
         .limit(5)
-        .select('name price discountPercentage discountEndDate');
+        .select('name price discountPercentage discountEndDate')
+        .populate('restaurant', 'restaurant_name');
 
-    console.log('\n   🔥 Sample Discounted Items:');
+    console.log('\n   🔥 Sample Discounted Food Items:');
     discountedItems.forEach((item, index) => {
         const originalPrice = item.price;
         const discountedPrice = (originalPrice * (1 - item.discountPercentage / 100)).toFixed(2);
         const daysLeft = Math.ceil((item.discountEndDate - new Date()) / (1000 * 60 * 60 * 24));
-        console.log(`   ${index + 1}. ${item.name}`);
+        const restaurantName = item.restaurant?.restaurant_name || 'Unknown';
+        console.log(`   ${index + 1}. ${item.name} (${restaurantName})`);
         console.log(`      ${item.discountPercentage}% OFF - $${originalPrice} → $${discountedPrice}`);
         console.log(`      Ends in ${daysLeft} days`);
     });
-}
-
-/**
- * Generate sample order history for testing
- * This creates orders with different dates for testing "days ago" feature
- */
-async function generateOrderHistory() {
-    console.log('\n📦 Generating order history...');
-
-    // This would require user IDs and more complex logic
-    // Implement if needed for testing order history features
-
-    console.log('   ⚠️  Order history generation not implemented yet');
-    console.log('   💡 Tip: Create orders manually or through the app for testing');
 }
 
 // Handle process termination

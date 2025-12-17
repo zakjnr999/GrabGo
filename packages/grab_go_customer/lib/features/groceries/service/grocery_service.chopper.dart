@@ -111,4 +111,17 @@ final class _$GroceryService extends GroceryService {
     final Request $request = Request('GET', $url, client.baseUrl);
     return client.send<dynamic, dynamic>($request);
   }
+
+  @override
+  Future<Response<dynamic>> getPopularItems(int? limit) {
+    final Uri $url = Uri.parse('/groceries/popular');
+    final Map<String, dynamic> $params = <String, dynamic>{'limit': limit};
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+      parameters: $params,
+    );
+    return client.send<dynamic, dynamic>($request);
+  }
 }

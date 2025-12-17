@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:grab_go_customer/features/home/model/promotional_banner.dart';
@@ -22,6 +23,7 @@ class _PromoSectionState extends State<PromoSection> {
   late PageController _pageController;
   int _currentPage = 0;
   bool _autoScrollStarted = false;
+  Timer? _autoScrollTimer; // Timer for auto-scroll
 
   @override
   void initState() {
@@ -39,22 +41,33 @@ class _PromoSectionState extends State<PromoSection> {
     // Start auto-scroll when banners become available
     if (!_autoScrollStarted && widget.banners.isNotEmpty && !widget.isLoading) {
       _autoScrollStarted = true;
-      Future.delayed(const Duration(seconds: 5), _autoScroll);
+      _startAutoScroll();
     }
   }
 
-  void _autoScroll() {
-    if (!mounted || widget.banners.isEmpty) return;
+  void _startAutoScroll() {
+    // Cancel existing timer if any
+    _autoScrollTimer?.cancel();
 
-    final nextPage = (_currentPage + 1) % widget.banners.length;
-    _pageController.animateToPage(nextPage, duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+    // Create new periodic timer
+    _autoScrollTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (!mounted || widget.banners.isEmpty) {
+        timer.cancel();
+        return;
+      }
 
-    // Schedule next auto-scroll
-    Future.delayed(const Duration(seconds: 5), _autoScroll);
+      final nextPage = (_currentPage + 1) % widget.banners.length;
+      _currentPage = nextPage;
+
+      if (_pageController.hasClients) {
+        _pageController.animateToPage(nextPage, duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+      }
+    });
   }
 
   @override
   void dispose() {
+    _autoScrollTimer?.cancel(); // Cancel timer to prevent memory leak
     _pageController.dispose();
     super.dispose();
   }

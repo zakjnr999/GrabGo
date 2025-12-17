@@ -43,6 +43,13 @@ class FoodProvider with ChangeNotifier {
   bool _isLoadingOrderHistory = false;
   bool get isLoadingOrderHistory => _isLoadingOrderHistory;
 
+  // Popular items
+  List<FoodItem> _popularItems = [];
+  List<FoodItem> get popularItems => _popularItems;
+
+  bool _isLoadingPopular = false;
+  bool get isLoadingPopular => _isLoadingPopular;
+
   Future<void> fetchCategories() async {
     if (_categories.isNotEmpty || _isLoading) return;
 
@@ -328,6 +335,24 @@ class FoodProvider with ChangeNotifier {
           '🏁 [FoodProvider] Order history fetch complete. Loading: $_isLoadingOrderHistory, Items: ${_orderHistoryItems.length}',
         );
       }
+    }
+  }
+
+  /// Fetch popular food items sorted by order count
+  Future<void> fetchPopularItems() async {
+    _isLoadingPopular = true;
+    notifyListeners();
+
+    try {
+      _popularItems = await FoodRepository().fetchPopularItems(limit: 10);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching popular items: $e');
+      }
+      _popularItems = [];
+    } finally {
+      _isLoadingPopular = false;
+      notifyListeners();
     }
   }
 }
