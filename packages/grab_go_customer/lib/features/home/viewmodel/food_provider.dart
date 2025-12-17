@@ -50,6 +50,13 @@ class FoodProvider with ChangeNotifier {
   bool _isLoadingPopular = false;
   bool get isLoadingPopular => _isLoadingPopular;
 
+  // Top rated items
+  List<FoodItem> _topRatedItems = [];
+  List<FoodItem> get topRatedItems => _topRatedItems;
+
+  bool _isLoadingTopRated = false;
+  bool get isLoadingTopRated => _isLoadingTopRated;
+
   Future<void> fetchCategories() async {
     if (_categories.isNotEmpty || _isLoading) return;
 
@@ -352,6 +359,24 @@ class FoodProvider with ChangeNotifier {
       _popularItems = [];
     } finally {
       _isLoadingPopular = false;
+      notifyListeners();
+    }
+  }
+
+  /// Fetch top-rated food items sorted by rating
+  Future<void> fetchTopRatedItems() async {
+    _isLoadingTopRated = true;
+    notifyListeners();
+
+    try {
+      _topRatedItems = await FoodRepository().fetchTopRatedItems(limit: 10, minRating: 4.5);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching top rated items: $e');
+      }
+      _topRatedItems = [];
+    } finally {
+      _isLoadingTopRated = false;
       notifyListeners();
     }
   }

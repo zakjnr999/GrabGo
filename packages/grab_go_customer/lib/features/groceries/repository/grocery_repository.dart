@@ -242,4 +242,28 @@ class GroceryRepository {
       return [];
     }
   }
+
+  /// Fetch top-rated grocery items sorted by rating
+  Future<List<GroceryItem>> fetchTopRatedItems({int limit = 10, double minRating = 4.5}) async {
+    try {
+      final response = await _groceryService.getTopRatedItems(limit, minRating);
+
+      if (response.isSuccessful && response.body != null) {
+        final data = response.body as Map<String, dynamic>;
+        if (data['success'] == true && data['data'] != null) {
+          return (data['data'] as List).map((json) => GroceryItem.fromJson(json)).toList();
+        }
+      }
+
+      if (kDebugMode) {
+        print('❌ Failed to fetch top rated items: ${response.error}');
+      }
+      return [];
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching top rated items: $e');
+      }
+      return [];
+    }
+  }
 }

@@ -144,6 +144,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         provider.fetchPromotionalBanners();
         provider.fetchDeals();
         provider.fetchPopularItems(); // Fetch popular items from backend
+        provider.fetchTopRatedItems(); // Fetch top rated items from backend
       } else {
         if (provider.categories.isNotEmpty) {
           setState(() {
@@ -166,6 +167,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         provider.fetchPromotionalBanners(),
         provider.fetchDeals(),
         provider.fetchPopularItems(), // Refresh popular items
+        provider.fetchTopRatedItems(), // Refresh top rated items
       ]);
     } else if (serviceProvider.isGroceryService) {
       // Refresh grocery data
@@ -418,20 +420,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           bool isLoading = false;
 
                           if (serviceProvider.isFoodService) {
-                            topRatedItems = foodProvider.categories
-                                .expand((cat) => cat.items)
-                                .where((item) => item.rating >= 4.5)
-                                .take(10)
-                                .toList();
-                            isLoading = foodProvider.isLoading;
+                            // Use backend top-rated items (sorted by rating)
+                            topRatedItems = foodProvider.topRatedItems;
+                            isLoading = foodProvider.isLoadingTopRated;
                           } else {
                             final groceryProvider = Provider.of<GroceryProvider>(context);
-                            topRatedItems = groceryProvider.items
-                                .where((item) => item.rating >= 4.5)
-                                .take(10)
-                                .map((e) => e.toFoodItem())
-                                .toList();
-                            isLoading = groceryProvider.isLoadingItems;
+                            // Use backend top-rated items (sorted by rating)
+                            topRatedItems = groceryProvider.topRatedItems.map((e) => e.toFoodItem()).toList();
+                            isLoading = groceryProvider.isLoadingTopRated;
                           }
 
                           return TopRatedSection(

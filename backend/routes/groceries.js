@@ -476,5 +476,52 @@ router.get("/popular", async (req, res) => {
     }
 });
 
+// ==================== TOP RATED ITEMS ====================
+
+// Get top-rated grocery items (sorted by rating)
+router.get("/top-rated", async (req, res) => {
+    try {
+        // Validate and sanitize limit parameter
+        let { limit = 10, minRating = 4.5 } = req.query;
+        limit = parseInt(limit);
+        minRating = parseFloat(minRating);
+
+        // Handle invalid input
+        if (isNaN(limit) || limit < 1) {
+            limit = 10;
+        }
+        // Cap at maximum 50 items
+        if (limit > 50) {
+            limit = 50;
+        }
+        // Validate minRating
+        if (isNaN(minRating) || minRating < 0 || minRating > 5) {
+            minRating = 4.5;
+        }
+
+        const topRatedItems = await GroceryItem.find({
+            isAvailable: true,
+            rating: { $gte: minRating }
+        })
+            .sort({ rating: -1, totalReviews: -1 }) // Sort by rating, then review count
+            .limit(limit)
+            .populate('category', 'name emoji')
+            .populate('store', 'store_name logo rating');
+
+        res.json({
+            success: true,
+            message: "Top rated items retrieved successfully",
+            data: topRatedItems
+        });
+    } catch (error) {
+        console.error("Get top rated items error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Server error",
+            error: error.message
+        });
+    }
+});
+
 module.exports = router;
 

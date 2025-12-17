@@ -64,6 +64,13 @@ class GroceryProvider extends ChangeNotifier {
   List<GroceryItem> get popularItems => _popularItems;
   bool get isLoadingPopular => _isLoadingPopular;
 
+  // Top rated items
+  List<GroceryItem> _topRatedItems = [];
+  List<GroceryItem> get topRatedItems => _topRatedItems;
+
+  bool _isLoadingTopRated = false;
+  bool get isLoadingTopRated => _isLoadingTopRated;
+
   /// Fetch all grocery stores
   Future<void> fetchStores() async {
     _isLoadingStores = true;
@@ -246,6 +253,24 @@ class GroceryProvider extends ChangeNotifier {
       _popularItems = [];
     } finally {
       _isLoadingPopular = false;
+      notifyListeners();
+    }
+  }
+
+  /// Fetch top-rated grocery items sorted by rating
+  Future<void> fetchTopRatedItems() async {
+    _isLoadingTopRated = true;
+    notifyListeners();
+
+    try {
+      _topRatedItems = await _repository.fetchTopRatedItems(limit: 10, minRating: 4.5);
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching top rated items: $e');
+      }
+      _topRatedItems = [];
+    } finally {
+      _isLoadingTopRated = false;
       notifyListeners();
     }
   }

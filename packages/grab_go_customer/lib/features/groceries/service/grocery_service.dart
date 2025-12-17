@@ -43,5 +43,8 @@ abstract class GroceryService extends ChopperService {
   @GET(path: '/groceries/popular')
   Future<Response> getPopularItems(@Query('limit') int? limit);
 
+  @GET(path: '/groceries/top-rated')
+  Future<Response> getTopRatedItems(@Query('limit') int? limit, @Query('minRating') double? minRating);
+
   static GroceryService create([ChopperClient? client]) => _$GroceryService(client);
 }

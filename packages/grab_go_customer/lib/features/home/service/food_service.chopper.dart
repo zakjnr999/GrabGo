@@ -79,4 +79,20 @@ final class _$FoodService extends FoodService {
     );
     return client.send<dynamic, dynamic>($request);
   }
+
+  @override
+  Future<Response<dynamic>> getTopRatedItems(int? limit, double? minRating) {
+    final Uri $url = Uri.parse('/foods/top-rated');
+    final Map<String, dynamic> $params = <String, dynamic>{
+      'limit': limit,
+      'minRating': minRating,
+    };
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+      parameters: $params,
+    );
+    return client.send<dynamic, dynamic>($request);
+  }
 }
