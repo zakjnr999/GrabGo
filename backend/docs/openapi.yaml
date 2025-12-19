@@ -46,6 +46,16 @@ tags:
     description: Real-time chat between customers and riders
   - name: Statuses
     description: Restaurant stories and status updates (daily specials, discounts, new items, videos)
+  - name: Notifications
+    description: In-app notifications for users
+  - name: Referrals
+    description: Referral system for user acquisition
+  - name: Promotions
+    description: Promotional banners and campaigns
+  - name: Notification Settings
+    description: User notification preferences
+  - name: Scheduled Notifications
+    description: Schedule notifications to be sent at specific future times (Admin only)
 
 components:
   securitySchemes:
@@ -448,6 +458,248 @@ components:
           example: true
         message:
           type: string
+
+    ScheduledNotification:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        scheduledFor:
+          type: string
+          format: date-time
+          description: When to send the notification
+        timezone:
+          type: string
+          default: UTC
+          example: "Africa/Accra"
+        status:
+          type: string
+          enum: [pending, sent, cancelled, failed]
+          description: Current status of the scheduled notification
+        type:
+          type: string
+          enum: [order, promo, update, system, comment_reply, comment_reaction, referral_completed, payment_confirmed, delivery_arriving, milestone_bonus]
+          description: Type of notification
+        title:
+          type: string
+          maxLength: 200
+          example: "Flash Sale!"
+        message:
+          type: string
+          maxLength: 500
+          example: "Get 50% off all orders for the next hour!"
+        data:
+          type: object
+          description: Additional data for deep linking
+          properties:
+            route:
+              type: string
+            promoCode:
+              type: string
+        targetType:
+          type: string
+          enum: [user, segment, all]
+          description: Who should receive this notification
+        targetUsers:
+          type: array
+          items:
+            type: string
+          description: Specific user IDs (when targetType is 'user')
+        targetSegment:
+          type: object
+          description: Segment criteria (when targetType is 'segment')
+          properties:
+            inactive:
+              type: boolean
+            daysSinceLastOrder:
+              type: integer
+            newUsers:
+              type: boolean
+            registeredWithinDays:
+              type: integer
+        isRecurring:
+          type: boolean
+          default: false
+        recurrencePattern:
+          type: object
+          properties:
+            frequency:
+              type: string
+              enum: [daily, weekly, monthly]
+            timeOfDay:
+              type: string
+              example: "12:00"
+            endDate:
+              type: string
+              format: date-time
+        createdBy:
+          type: string
+          description: Admin user who created this
+        sentAt:
+          type: string
+          format: date-time
+        failureReason:
+          type: string
+        retryCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Notification:
+      type: object
+      properties:
+        _id:
+          type: string
+        user:
+          type: string
+        type:
+          type: string
+          enum: [order, promo, update, system, comment_reply, comment_reaction, referral_completed, payment_confirmed, delivery_arriving, milestone_bonus]
+        title:
+          type: string
+        message:
+          type: string
+        isRead:
+          type: boolean
+        data:
+          type: object
+        actors:
+          type: array
+          items:
+            type: object
+            properties:
+              actorId:
+                type: string
+              actorName:
+                type: string
+              actorAvatar:
+                type: string
+        actorCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    ReferralCode:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "ABC12345"
+        shareUrl:
+          type: string
+          example: "https://grabgo.app/r/ABC12345"
+        totalReferrals:
+          type: integer
+        completedReferrals:
+          type: integer
+        pendingReferrals:
+          type: integer
+        totalEarned:
+          type: number
+        availableCredit:
+          type: string
+
+    Referral:
+      type: object
+      properties:
+        id:
+          type: string
+        refereeName:
+          type: string
+        status:
+          type: string
+          enum: [pending_order, completed, expired]
+        creditEarned:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+
+    UserCredit:
+      type: object
+      properties:
+        id:
+          type: string
+        amount:
+          type: number
+        source:
+          type: string
+          enum: [referral_received, referral_earned, promo, milestone_bonus]
+        expiresAt:
+          type: string
+          format: date-time
+        description:
+          type: string
+
+    PromotionalBanner:
+      type: object
+      properties:
+        _id:
+          type: string
+        title:
+          type: string
+        subtitle:
+          type: string
+        imageUrl:
+          type: string
+          format: uri
+        targetUrl:
+          type: string
+        targetScreen:
+          type: string
+        priority:
+          type: integer
+        isActive:
+          type: boolean
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    NotificationSettings:
+      type: object
+      properties:
+        chatMessages:
+          type: boolean
+          default: true
+        orderUpdates:
+          type: boolean
+          default: true
+        promoNotifications:
+          type: boolean
+          default: true
+        commentReplies:
+          type: boolean
+          default: true
+        commentReactions:
+          type: boolean
+          default: true
+        referralUpdates:
+          type: boolean
+          default: true
+        paymentUpdates:
+          type: boolean
+          default: true
+        deliveryUpdates:
+          type: boolean
+          default: true
+        systemUpdates:
+          type: boolean
+          default: true
 
 paths:
   # ============ USERS ============
@@ -2237,6 +2489,774 @@ paths:
                     type: boolean
                   message:
                     type: string
+
+  # ============ SCHEDULED NOTIFICATIONS ============
+  /scheduled-notifications:
+    post:
+      tags: [Scheduled Notifications]
+      summary: Create a scheduled notification
+      description: Schedule a notification to be sent at a specific future time (Admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scheduledFor, type, title, message]
+              properties:
+                scheduledFor:
+                  type: string
+                  format: date-time
+                  example: "2025-12-25T09:00:00Z"
+                timezone:
+                  type: string
+                  default: UTC
+                type:
+                  type: string
+                  enum: [order, promo, update, system, comment_reply, comment_reaction, referral_completed, payment_confirmed, delivery_arriving, milestone_bonus]
+                title:
+                  type: string
+                  maxLength: 200
+                  example: "Christmas Special!"
+                message:
+                  type: string
+                  maxLength: 500
+                  example: "Get 50% off today!"
+                data:
+                  type: object
+                  example: {"promoCode": "XMAS50", "route": "/promos"}
+                targetType:
+                  type: string
+                  enum: [user, segment, all]
+                  default: all
+                targetUsers:
+                  type: array
+                  items:
+                    type: string
+                targetSegment:
+                  type: object
+                isRecurring:
+                  type: boolean
+                  default: false
+                recurrencePattern:
+                  type: object
+                  properties:
+                    frequency:
+                      type: string
+                      enum: [daily, weekly, monthly]
+                    timeOfDay:
+                      type: string
+                    endDate:
+                      type: string
+                      format: date-time
+      responses:
+        '201':
+          description: Scheduled notification created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  scheduledNotification:
+                    $ref: '#/components/schemas/ScheduledNotification'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - Admin only
+
+    get:
+      tags: [Scheduled Notifications]
+      summary: Get all scheduled notifications
+      description: List scheduled notifications with optional filters (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, sent, cancelled, failed]
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [order, promo, update, system]
+        - name: scheduledAfter
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: scheduledBefore
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+      responses:
+        '200':
+          description: Scheduled notifications retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  notifications:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ScheduledNotification'
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - Admin only
+
+  /scheduled-notifications/stats:
+    get:
+      tags: [Scheduled Notifications]
+      summary: Get scheduled notification statistics
+      description: Get counts by status (Admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  stats:
+                    type: object
+                    properties:
+                      pending:
+                        type: integer
+                      sent:
+                        type: integer
+                      cancelled:
+                        type: integer
+                      failed:
+                        type: integer
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - Admin only
+
+  /scheduled-notifications/{id}:
+    get:
+      tags: [Scheduled Notifications]
+      summary: Get single scheduled notification
+      description: Get detailed information about a specific scheduled notification (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Scheduled notification retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  notification:
+                    $ref: '#/components/schemas/ScheduledNotification'
+        '404':
+          description: Scheduled notification not found
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - Admin only
+
+    patch:
+      tags: [Scheduled Notifications]
+      summary: Update a scheduled notification
+      description: Update a pending scheduled notification (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scheduledFor:
+                  type: string
+                  format: date-time
+                title:
+                  type: string
+                  maxLength: 200
+                message:
+                  type: string
+                  maxLength: 500
+                data:
+                  type: object
+                targetType:
+                  type: string
+                  enum: [user, segment, all]
+                targetUsers:
+                  type: array
+                  items:
+                    type: string
+                targetSegment:
+                  type: object
+      responses:
+        '200':
+          description: Scheduled notification updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  notification:
+                    $ref: '#/components/schemas/ScheduledNotification'
+        '400':
+          description: Validation error
+        '404':
+          description: Scheduled notification not found or cannot be updated
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - Admin only
+
+    delete:
+      tags: [Scheduled Notifications]
+      summary: Cancel a scheduled notification
+      description: Cancel a pending scheduled notification (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Scheduled notification cancelled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '404':
+          description: Scheduled notification not found or cannot be cancelled
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - Admin only
+
+  # ============ NOTIFICATIONS ============
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: Get user notifications
+      description: Get paginated list of user's notifications
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Notifications retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  notifications:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Notification'
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                      total:
+                        type: integer
+                      hasMore:
+                        type: boolean
+                      totalPages:
+                        type: integer
+
+  /notifications/unread-count:
+    get:
+      tags: [Notifications]
+      summary: Get unread notification count
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Unread count retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  count:
+                    type: integer
+
+  /notifications/{id}/read:
+    patch:
+      tags: [Notifications]
+      summary: Mark notification as read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Notification marked as read
+        '404':
+          description: Notification not found
+
+  /notifications/mark-all-read:
+    patch:
+      tags: [Notifications]
+      summary: Mark all notifications as read
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: All notifications marked as read
+
+  /notifications/clear-all:
+    delete:
+      tags: [Notifications]
+      summary: Clear all notifications
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: All notifications cleared
+
+  # ============ REFERRALS ============
+  /referral/my-code:
+    get:
+      tags: [Referrals]
+      summary: Get user's referral code and stats
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Referral code retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferralCode'
+
+  /referral/my-referrals:
+    get:
+      tags: [Referrals]
+      summary: Get list of user's referrals
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Referrals retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  referrals:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Referral'
+
+  /referral/validate:
+    post:
+      tags: [Referrals]
+      summary: Validate a referral code
+      description: Public endpoint to validate referral codes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  example: "ABC12345"
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  referrerName:
+                    type: string
+                  discount:
+                    type: number
+                  minOrderValue:
+                    type: number
+                  validDays:
+                    type: integer
+                  isSystemCode:
+                    type: boolean
+
+  /referral/apply:
+    post:
+      tags: [Referrals]
+      summary: Apply referral code to new user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+                deviceId:
+                  type: string
+      responses:
+        '200':
+          description: Referral code applied successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  discount:
+                    type: number
+                  expiresAt:
+                    type: string
+                    format: date-time
+        '400':
+          description: Invalid code or already used
+
+  /referral/available-credits:
+    get:
+      tags: [Referrals]
+      summary: Get user's available credits
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Credits retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  credits:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserCredit'
+                  totalAmount:
+                    type: string
+
+  # ============ PROMOTIONS ============
+  /promotions/banners:
+    get:
+      tags: [Promotions]
+      summary: Get active promotional banners
+      description: Public endpoint to get currently active banners
+      responses:
+        '200':
+          description: Banners retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PromotionalBanner'
+
+    post:
+      tags: [Promotions]
+      summary: Create promotional banner
+      description: Admin only
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, imageUrl, startDate, endDate]
+              properties:
+                title:
+                  type: string
+                subtitle:
+                  type: string
+                imageUrl:
+                  type: string
+                  format: uri
+                targetUrl:
+                  type: string
+                targetScreen:
+                  type: string
+                priority:
+                  type: integer
+                isActive:
+                  type: boolean
+                startDate:
+                  type: string
+                  format: date-time
+                endDate:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          description: Banner created
+        '400':
+          description: Validation error
+        '403':
+          description: Admin only
+
+  /promotions/banners/all:
+    get:
+      tags: [Promotions]
+      summary: Get all promotional banners
+      description: Admin only - includes inactive banners
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: All banners retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PromotionalBanner'
+        '403':
+          description: Admin only
+
+  /promotions/banners/{id}:
+    put:
+      tags: [Promotions]
+      summary: Update promotional banner
+      description: Admin only
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                subtitle:
+                  type: string
+                imageUrl:
+                  type: string
+                targetUrl:
+                  type: string
+                priority:
+                  type: integer
+                isActive:
+                  type: boolean
+                startDate:
+                  type: string
+                  format: date-time
+                endDate:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: Banner updated
+        '404':
+          description: Banner not found
+        '403':
+          description: Admin only
+
+    delete:
+      tags: [Promotions]
+      summary: Delete promotional banner
+      description: Admin only
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Banner deleted
+        '404':
+          description: Banner not found
+        '403':
+          description: Admin only
+
+  # ============ NOTIFICATION SETTINGS ============
+  /users/settings/notifications:
+    get:
+      tags: [Notification Settings]
+      summary: Get user's notification settings
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Settings retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  notificationSettings:
+                    $ref: '#/components/schemas/NotificationSettings'
+
+    patch:
+      tags: [Notification Settings]
+      summary: Update user's notification settings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [settings]
+              properties:
+                settings:
+                  type: object
+                  properties:
+                    chatMessages:
+                      type: boolean
+                    orderUpdates:
+                      type: boolean
+                    promoNotifications:
+                      type: boolean
+                    commentReplies:
+                      type: boolean
+                    commentReactions:
+                      type: boolean
+                    referralUpdates:
+                      type: boolean
+                    paymentUpdates:
+                      type: boolean
+                    deliveryUpdates:
+                      type: boolean
+                    systemUpdates:
+                      type: boolean
+      responses:
+        '200':
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  notificationSettings:
+                    $ref: '#/components/schemas/NotificationSettings'
+        '400':
+          description: Invalid settings format
 
   # ============ HEALTH ============
   /health:
