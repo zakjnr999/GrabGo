@@ -298,6 +298,7 @@ app.use((err, req, res, next) => {
 const { scheduleCleanup } = require("./jobs/statusCleanup");
 const { scheduleReferralCleanup } = require("./jobs/referralCleanup");
 const { initializeScheduler } = require("./jobs/notification_scheduler");
+const { initializeCartAbandonmentJob } = require("./jobs/cart_abandonment");
 
 // Import cache utility
 const cache = require("./utils/cache");
@@ -319,6 +320,9 @@ mongoose
 
     // Initialize notification scheduler (runs every minute)
     initializeScheduler(io);
+
+    // Initialize cart abandonment job (runs every 30 minutes)
+    initializeCartAbandonmentJob(io);
 
     const PORT = process.env.PORT || 5000;
     server.listen(PORT, () => {

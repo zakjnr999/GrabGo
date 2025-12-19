@@ -104,7 +104,8 @@ const userSchema = new mongoose.Schema({
     referralUpdates: { type: Boolean, default: true },
     paymentUpdates: { type: Boolean, default: true },
     deliveryUpdates: { type: Boolean, default: true },
-    systemUpdates: { type: Boolean, default: true }
+    systemUpdates: { type: Boolean, default: true },
+    cartReminders: { type: Boolean, default: true }
   },
   permissions: {
     canManageUsers: { type: Boolean, default: false },
