@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/widgets/horizontal_card_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/popular_item_card.dart';
@@ -49,7 +50,6 @@ class PopularSection extends StatelessWidget {
               itemCount: popularItems.length,
               itemBuilder: (context, index) {
                 final item = popularItems[index];
-                // Use real order count from backend
                 final orderCount = item.orderCount;
 
                 return Padding(
@@ -70,7 +70,13 @@ class PopularSection extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.trending_up, size: 48.sp, color: colors.textSecondary.withValues(alpha: 0.5)),
+          SvgPicture.asset(
+            Assets.icons.flame,
+            package: "grab_go_shared",
+            height: 48.h,
+            width: 48.w,
+            colorFilter: ColorFilter.mode(colors.textSecondary.withValues(alpha: 0.5), BlendMode.srcIn),
+          ),
           SizedBox(height: 16.h),
           Text(
             'No popular items yet',
@@ -78,7 +84,7 @@ class PopularSection extends StatelessWidget {
           ),
           SizedBox(height: 8.h),
           Text(
-            'Check back soon to see what\'s trending!',
+            'Check back soon for trending items!',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 13.sp, color: colors.textSecondary),
           ),

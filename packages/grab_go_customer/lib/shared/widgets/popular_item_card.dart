@@ -12,8 +12,17 @@ class PopularItemCard extends StatelessWidget {
   final FoodItem item;
   final int orderCount;
   final VoidCallback onTap;
+  final String? deliveryTime;
+  final bool showDeliveryTime;
 
-  const PopularItemCard({super.key, required this.item, required this.orderCount, required this.onTap});
+  const PopularItemCard({
+    super.key,
+    required this.item,
+    required this.orderCount,
+    required this.onTap,
+    this.deliveryTime,
+    this.showDeliveryTime = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +53,7 @@ class PopularItemCard extends StatelessWidget {
             ),
             // Content
             Padding(
-              padding: EdgeInsets.all(10.r),
+              padding: EdgeInsets.fromLTRB(10.r, 10.r, 10.r, 6.r),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -69,6 +78,27 @@ class PopularItemCard extends StatelessWidget {
                         item.rating.toStringAsFixed(1),
                         style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                       ),
+                      if (showDeliveryTime) ...[
+                        SizedBox(width: 8.w),
+                        Container(
+                          width: 3.w,
+                          height: 3.h,
+                          decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
+                        ),
+                        SizedBox(width: 8.w),
+                        SvgPicture.asset(
+                          Assets.icons.timer,
+                          package: 'grab_go_shared',
+                          height: 12.h,
+                          width: 12.w,
+                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                        ),
+                        SizedBox(width: 4.w),
+                        Text(
+                          deliveryTime ?? '25-30 min',
+                          style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                        ),
+                      ],
                     ],
                   ),
                   SizedBox(height: 8.h),

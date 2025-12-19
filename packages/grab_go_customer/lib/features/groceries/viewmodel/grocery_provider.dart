@@ -129,12 +129,11 @@ class GroceryProvider extends ChangeNotifier {
       _isLoadingItems = false;
       notifyListeners();
 
-      // Automatically fetch fresh arrivals and buy again after items are loaded
-      if (_items.isNotEmpty) {
-        fetchFreshArrivals();
-        fetchBuyAgainItems();
-        fetchStoreSpecials();
-      }
+      // Automatically fetch fresh arrivals, buy again, and store specials after items are loaded
+      // These will set their own loading states and handle empty data gracefully
+      fetchFreshArrivals();
+      fetchBuyAgainItems();
+      fetchStoreSpecials();
     }
   }
 
@@ -207,6 +206,18 @@ class GroceryProvider extends ChangeNotifier {
 
   /// Refresh all grocery data
   Future<void> refreshAll() async {
+    // Pre-set all loading states to true so UI shows loading skeletons immediately
+    _isLoadingStores = true;
+    _isLoadingCategories = true;
+    _isLoadingItems = true;
+    _isLoadingDeals = true;
+    _isLoadingFreshArrivals = true;
+    _isLoadingBuyAgain = true;
+    _isLoadingStoreSpecials = true;
+    _isLoadingPopular = true;
+    _isLoadingTopRated = true;
+    notifyListeners();
+
     await Future.wait([fetchStores(), fetchCategories(), fetchItems(), fetchDeals()]);
     // Fetch fresh arrivals, buy again, store specials, popular, and top-rated after items are loaded
     await Future.wait([

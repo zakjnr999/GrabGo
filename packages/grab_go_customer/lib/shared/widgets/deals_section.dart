@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/widgets/deal_card.dart';
 import 'package:grab_go_customer/shared/widgets/horizontal_card_skeleton.dart';
@@ -36,12 +37,12 @@ class DealsSection extends StatelessWidget {
         ),
         SizedBox(height: 16.h),
         if (isLoading)
-          HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 200.h, itemCount: 5)
+          HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 230.h, itemCount: 5)
         else if (dealItems.isEmpty)
           _buildEmptyState(colors)
         else
           SizedBox(
-            height: 200.h,
+            height: 230.h,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.only(left: 20.w),
@@ -49,7 +50,6 @@ class DealsSection extends StatelessWidget {
               itemCount: dealItems.length,
               itemBuilder: (context, index) {
                 final item = dealItems[index];
-                // Use real discount percentage from backend
                 final discountPercent = item.discountPercentage.toInt();
 
                 return Padding(
@@ -65,12 +65,18 @@ class DealsSection extends StatelessWidget {
 
   Widget _buildEmptyState(AppColorsExtension colors) {
     return Container(
-      height: 180.h,
+      height: 230.h,
       padding: EdgeInsets.symmetric(horizontal: 40.w, vertical: 32.h),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.local_offer_outlined, size: 48.sp, color: colors.textSecondary.withValues(alpha: 0.5)),
+          SvgPicture.asset(
+            Assets.icons.tag,
+            package: "grab_go_shared",
+            height: 48.h,
+            width: 48.w,
+            colorFilter: ColorFilter.mode(colors.textSecondary.withValues(alpha: 0.5), BlendMode.srcIn),
+          ),
           SizedBox(height: 16.h),
           Text(
             'No deals available right now',

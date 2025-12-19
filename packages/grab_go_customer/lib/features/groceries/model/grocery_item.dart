@@ -148,7 +148,7 @@ class GroceryItem {
       tags: (json['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
       rating: (json['rating'] ?? 0).toDouble(),
       reviewCount: json['reviewCount'] ?? 0,
-      orderCount: json['orderCount'] ?? 0, // Parse from backend
+      orderCount: json['orderCount'] ?? 0, // Parse orderCount from backend
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),
@@ -174,6 +174,7 @@ class GroceryItem {
       'tags': tags,
       'rating': rating,
       'reviewCount': reviewCount,
+      'orderCount': orderCount, // Include orderCount in JSON
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -207,6 +208,7 @@ class GroceryItem {
       isAvailable: isAvailable,
       discountPercentage: discountPercentage,
       discountEndDate: discountEndDate,
+      orderCount: orderCount, // Pass through the order count from backend
     );
   }
 }

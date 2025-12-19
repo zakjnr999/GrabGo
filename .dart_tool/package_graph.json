@@ -55,6 +55,7 @@
         "geolocator",
         "get_it",
         "go_router",
+        "google_places_flutter",
         "google_sign_in",
         "grab_go_shared",
         "http",
@@ -1169,6 +1170,15 @@
       "version": "1.2.1",
       "dependencies": [
         "flutter"
+      ]
+    },
+    {
+      "name": "google_places_flutter",
+      "version": "2.1.1",
+      "dependencies": [
+        "dio",
+        "flutter",
+        "rxdart"
       ]
     },
     {
@@ -2556,6 +2566,11 @@
       ]
     },
     {
+      "name": "rxdart",
+      "version": "0.28.0",
+      "dependencies": []
+    },
+    {
       "name": "share_plus_platform_interface",
       "version": "6.1.0",
       "dependencies": [
@@ -2758,11 +2773,6 @@
         "sqflite_darwin",
         "sqflite_platform_interface"
       ]
-    },
-    {
-      "name": "rxdart",
-      "version": "0.28.0",
-      "dependencies": []
     },
     {
       "name": "package_info_plus",

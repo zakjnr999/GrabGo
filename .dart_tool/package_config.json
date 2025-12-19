@@ -782,6 +782,12 @@
       "languageVersion": "3.4"
     },
     {
+      "name": "google_places_flutter",
+      "rootUri": "file:///C:/Users/USER/AppData/Local/Pub/Cache/hosted/pub.dev/google_places_flutter-2.1.1",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
       "name": "google_sign_in",
       "rootUri": "file:///C:/Users/USER/AppData/Local/Pub/Cache/hosted/pub.dev/google_sign_in-7.2.0",
       "packageUri": "lib/",

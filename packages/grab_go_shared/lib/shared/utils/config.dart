@@ -9,6 +9,11 @@ class AppConfig {
 
   static const String apiKey = String.fromEnvironment('API_KEY');
 
+  static const String googlePlacesApiKey = String.fromEnvironment(
+    'GOOGLE_PLACES_API_KEY',
+    defaultValue: 'AIzaSyBvSX6emxtbMNjweHsnetgASW7vCmBysGQ',
+  );
+
   // App Configuration
   static const String appName = String.fromEnvironment('APP_NAME', defaultValue: 'GrabGo');
   static const String currency = 'GHS';

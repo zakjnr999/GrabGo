@@ -86,6 +86,46 @@ class DealCard extends StatelessWidget {
                         SizedBox(height: 6.h),
                         Row(
                           children: [
+                            SvgPicture.asset(
+                              Assets.icons.starSolid,
+                              package: 'grab_go_shared',
+                              height: 13.h,
+                              width: 13.w,
+                              colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                            ),
+                            SizedBox(width: 4.w),
+                            Text(
+                              item.rating.toStringAsFixed(1),
+                              style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                            ),
+                            SizedBox(width: 8.w),
+                            Container(
+                              width: 3.w,
+                              height: 3.h,
+                              decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
+                            ),
+                            SizedBox(width: 8.w),
+                            SvgPicture.asset(
+                              Assets.icons.timer,
+                              package: 'grab_go_shared',
+                              height: 12.h,
+                              width: 12.w,
+                              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                            ),
+                            SizedBox(width: 4.w),
+                            Text(
+                              '25-30 min',
+                              style: TextStyle(
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w500,
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8.h),
+                        Row(
+                          children: [
                             Text(
                               "GHS ${item.price.toStringAsFixed(2)}",
                               style: TextStyle(

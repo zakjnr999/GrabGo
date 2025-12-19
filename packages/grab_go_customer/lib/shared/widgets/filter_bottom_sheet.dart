@@ -11,6 +11,7 @@ class FilterBottomSheet extends StatefulWidget {
   final List<FoodCategoryModel> categories;
   final List<String> restaurants;
   final Function(FilterModel) onApply;
+  final bool isFood; // True for Food service, false for Groceries
 
   const FilterBottomSheet({
     super.key,
@@ -18,6 +19,7 @@ class FilterBottomSheet extends StatefulWidget {
     required this.categories,
     required this.restaurants,
     required this.onApply,
+    this.isFood = true, // Default to Food service
   });
 
   @override
@@ -140,6 +142,11 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                   child: SingleChildScrollView(
                     child: Column(
                       children: [
+                        _buildSectionHeader('Quick Filters', colors),
+                        _buildQuickFilters(colors),
+
+                        SizedBox(height: 20.h),
+
                         _buildSectionHeader('Price Range', colors),
                         _buildPriceFilter(colors, size),
 
@@ -150,12 +157,28 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
 
                         SizedBox(height: 20.h),
 
+                        _buildSectionHeader('Delivery Time', colors),
+                        _buildDeliveryTimeFilter(colors),
+
+                        SizedBox(height: 20.h),
+
+                        if (widget.isFood) ...[
+                          _buildSectionHeader('Dietary Preferences', colors),
+                          _buildDietaryFilter(colors),
+                          SizedBox(height: 20.h),
+                        ],
+
+                        _buildSectionHeader('Distance', colors),
+                        _buildDistanceFilter(colors),
+
+                        SizedBox(height: 20.h),
+
                         _buildSectionHeader('Categories', colors),
                         _buildCategoriesFilter(colors, size),
 
                         SizedBox(height: 20.h),
 
-                        _buildSectionHeader('Restaurants', colors),
+                        _buildSectionHeader(widget.isFood ? 'Restaurants' : "Grocery Stores", colors),
                         _buildRestaurantsFilter(colors, size),
 
                         SizedBox(height: 20.h),
@@ -259,6 +282,302 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
     );
   }
 
+  Widget _buildQuickFilters(AppColorsExtension colors) {
+    final quickFilters = [
+      {'key': 'onSale', 'label': 'On Sale', 'value': _filter.onSale},
+      {'key': 'popular', 'label': 'Popular', 'value': _filter.popular},
+      {'key': 'isNew', 'label': 'New', 'value': _filter.isNew},
+      {'key': 'fast', 'label': 'Fast Delivery', 'value': _filter.fast},
+    ];
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
+      child: Wrap(
+        spacing: 8.w,
+        runSpacing: 8.h,
+        children: quickFilters.map((filter) {
+          final isSelected = filter['value'] as bool;
+          return SizedBox(
+            width: (MediaQuery.of(context).size.width - 56.w) / 2, // 2 columns with spacing
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  switch (filter['key']) {
+                    case 'onSale':
+                      _filter.onSale = !_filter.onSale;
+                      break;
+                    case 'popular':
+                      _filter.popular = !_filter.popular;
+                      break;
+                    case 'isNew':
+                      _filter.isNew = !_filter.isNew;
+                      break;
+                    case 'fast':
+                      _filter.fast = !_filter.fast;
+                      break;
+                  }
+                });
+              },
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isSelected
+                        ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
+                        : [colors.backgroundPrimary, colors.backgroundPrimary],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  border: Border.all(color: isSelected ? colors.accentOrange : colors.inputBorder, width: 1.5),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 16.w,
+                      height: 16.h,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: isSelected ? colors.backgroundPrimary : colors.inputBorder, width: 2),
+                        color: isSelected ? colors.backgroundPrimary : Colors.transparent,
+                      ),
+                      child: isSelected
+                          ? Center(
+                              child: Container(
+                                width: 8.w,
+                                height: 8.h,
+                                decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
+                              ),
+                            )
+                          : null,
+                    ),
+                    SizedBox(width: 8.w),
+                    Text(
+                      filter['label'] as String,
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected ? colors.backgroundPrimary : colors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildDeliveryTimeFilter(AppColorsExtension colors) {
+    final deliveryTimes = ['Under 20 min', '20-30 min', '30-45 min', 'Any Time'];
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
+      child: Wrap(
+        spacing: 8.w,
+        runSpacing: 8.h,
+        children: deliveryTimes.map((time) {
+          final isSelected = _filter.deliveryTime == time;
+          return SizedBox(
+            width: (MediaQuery.of(context).size.width - 56.w) / 2, // 2 columns
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _filter.deliveryTime = isSelected ? null : time;
+                });
+              },
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isSelected
+                        ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
+                        : [colors.backgroundPrimary, colors.backgroundPrimary],
+                  ),
+                  border: Border.all(color: isSelected ? colors.accentOrange : colors.inputBorder, width: 1.5),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 16.w,
+                      height: 16.h,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: isSelected ? colors.backgroundPrimary : colors.inputBorder, width: 2),
+                        color: isSelected ? colors.backgroundPrimary : Colors.transparent,
+                      ),
+                      child: isSelected
+                          ? Center(
+                              child: Container(
+                                width: 8.w,
+                                height: 8.h,
+                                decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
+                              ),
+                            )
+                          : null,
+                    ),
+                    SizedBox(width: 8.w),
+                    Text(
+                      time,
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected ? colors.backgroundPrimary : colors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildDietaryFilter(AppColorsExtension colors) {
+    final dietaryOptions = ['Vegetarian', 'Vegan', 'Halal', 'Gluten-Free'];
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
+      child: Wrap(
+        spacing: 8.w,
+        runSpacing: 8.h,
+        children: dietaryOptions.map((option) {
+          final isSelected = _filter.dietary == option;
+          return SizedBox(
+            width: (MediaQuery.of(context).size.width - 56.w) / 2, // 2 columns
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _filter.dietary = isSelected ? null : option;
+                });
+              },
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isSelected
+                        ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
+                        : [colors.backgroundPrimary, colors.backgroundPrimary],
+                  ),
+                  border: Border.all(color: isSelected ? colors.accentOrange : colors.inputBorder, width: 1.5),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 16.w,
+                      height: 16.h,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: isSelected ? colors.backgroundPrimary : colors.inputBorder, width: 2),
+                        color: isSelected ? colors.backgroundPrimary : Colors.transparent,
+                      ),
+                      child: isSelected
+                          ? Center(
+                              child: Container(
+                                width: 8.w,
+                                height: 8.h,
+                                decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
+                              ),
+                            )
+                          : null,
+                    ),
+                    SizedBox(width: 8.w),
+                    Text(
+                      option,
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected ? colors.backgroundPrimary : colors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildDistanceFilter(AppColorsExtension colors) {
+    final distances = ['Under 1 km', '1-3 km', '3-5 km', 'Any Distance'];
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
+      child: Wrap(
+        spacing: 8.w,
+        runSpacing: 8.h,
+        children: distances.map((distance) {
+          final isSelected = _filter.distance == distance;
+          return SizedBox(
+            width: (MediaQuery.of(context).size.width - 56.w) / 2, // 2 columns
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _filter.distance = isSelected ? null : distance;
+                });
+              },
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isSelected
+                        ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
+                        : [colors.backgroundPrimary, colors.backgroundPrimary],
+                  ),
+                  border: Border.all(color: isSelected ? colors.accentOrange : colors.inputBorder, width: 1.5),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 16.w,
+                      height: 16.h,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: isSelected ? colors.backgroundPrimary : colors.inputBorder, width: 2),
+                        color: isSelected ? colors.backgroundPrimary : Colors.transparent,
+                      ),
+                      child: isSelected
+                          ? Center(
+                              child: Container(
+                                width: 8.w,
+                                height: 8.h,
+                                decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
+                              ),
+                            )
+                          : null,
+                    ),
+                    SizedBox(width: 8.w),
+                    Text(
+                      distance,
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected ? colors.backgroundPrimary : colors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   Widget _buildSectionHeader(String title, AppColorsExtension colors) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
@@ -293,49 +612,72 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 20.w),
-      child: SingleChildScrollView(
-        scrollDirection: .horizontal,
-        child: Row(
-          spacing: 8.w,
-          mainAxisAlignment: .spaceBetween,
-          children: [
-            for (var filter in priceFilters)
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _filter.minPrice = (filter['min'] as num).toDouble();
-                    _filter.maxPrice = (filter['max'] as num).toDouble();
-                  });
-                },
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                  decoration: BoxDecoration(
-                    color: currentPriceFilter == filter['key'] ? colors.accentOrange : Colors.transparent,
-                    gradient: LinearGradient(
-                      colors: currentPriceFilter == filter['key']
-                          ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
-                          : [colors.backgroundPrimary, colors.backgroundPrimary],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    border: Border.all(
-                      color: currentPriceFilter == filter['key'] ? colors.accentOrange : colors.inputBorder,
-                      width: 1.5,
-                    ),
-                    borderRadius: BorderRadius.circular(8.r),
+      child: Wrap(
+        spacing: 8.w,
+        runSpacing: 8.h,
+        children: [
+          for (var filter in priceFilters)
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _filter.minPrice = (filter['min'] as num).toDouble();
+                  _filter.maxPrice = (filter['max'] as num).toDouble();
+                });
+              },
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                decoration: BoxDecoration(
+                  color: currentPriceFilter == filter['key'] ? colors.accentOrange : Colors.transparent,
+                  gradient: LinearGradient(
+                    colors: currentPriceFilter == filter['key']
+                        ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
+                        : [colors.backgroundPrimary, colors.backgroundPrimary],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  child: Text(
-                    filter['label'],
-                    style: TextStyle(
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w600,
-                      color: currentPriceFilter == filter['key'] ? colors.backgroundPrimary : colors.textPrimary,
-                    ),
+                  border: Border.all(
+                    color: currentPriceFilter == filter['key'] ? colors.accentOrange : colors.inputBorder,
+                    width: 1.5,
                   ),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 16.w,
+                      height: 16.h,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: currentPriceFilter == filter['key'] ? colors.backgroundPrimary : Colors.transparent,
+                        border: Border.all(
+                          color: currentPriceFilter == filter['key'] ? colors.backgroundPrimary : colors.inputBorder,
+                          width: 2,
+                        ),
+                      ),
+                      child: currentPriceFilter == filter["key"]
+                          ? Center(
+                              child: Container(
+                                width: 8.w,
+                                height: 8.h,
+                                decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
+                              ),
+                            )
+                          : null,
+                    ),
+                    SizedBox(width: 8.w),
+                    Text(
+                      filter['label'],
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                        color: currentPriceFilter == filter['key'] ? colors.backgroundPrimary : colors.textPrimary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
@@ -343,63 +685,82 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
   Widget _buildRatingFilter(AppColorsExtension colors) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 20.w),
-      child: SingleChildScrollView(
-        scrollDirection: .horizontal,
-        child: Row(
-          spacing: 8.w,
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            for (double rating in [2.0, 3.0, 4.0, 4.5, 5.0])
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _filter.minRating = (_filter.minRating == rating) ? null : rating;
-                  });
-                },
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                  decoration: BoxDecoration(
-                    color: _filter.minRating == rating ? colors.accentOrange : Colors.transparent,
-                    gradient: LinearGradient(
-                      colors: _filter.minRating == rating
-                          ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
-                          : [colors.backgroundPrimary, colors.backgroundPrimary],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    border: Border.all(
-                      color: _filter.minRating == rating ? colors.accentOrange : colors.inputBorder,
-                      width: 1.5,
-                    ),
-                    borderRadius: BorderRadius.circular(8.r),
+      child: Wrap(
+        spacing: 8.w,
+        runSpacing: 8.h,
+        children: [
+          for (double rating in [2.0, 3.0, 4.0, 4.5, 5.0])
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _filter.minRating = (_filter.minRating == rating) ? null : rating;
+                });
+              },
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                decoration: BoxDecoration(
+                  color: _filter.minRating == rating ? colors.accentOrange : Colors.transparent,
+                  gradient: LinearGradient(
+                    colors: _filter.minRating == rating
+                        ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
+                        : [colors.backgroundPrimary, colors.backgroundPrimary],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  child: Row(
-                    children: [
-                      Text(
-                        rating.toStringAsFixed(1),
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w600,
-                          color: _filter.minRating == rating ? colors.backgroundPrimary : colors.textPrimary,
+                  border: Border.all(
+                    color: _filter.minRating == rating ? colors.accentOrange : colors.inputBorder,
+                    width: 1.5,
+                  ),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 16.w,
+                      height: 16.h,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _filter.minRating == rating ? colors.backgroundPrimary : Colors.transparent,
+                        border: Border.all(
+                          color: _filter.minRating == rating ? colors.backgroundPrimary : colors.inputBorder,
+                          width: 2,
                         ),
                       ),
-                      SizedBox(width: 4.w),
-                      SvgPicture.asset(
-                        Assets.icons.star,
-                        package: 'grab_go_shared',
-                        height: 14.h,
-                        width: 14.w,
-                        colorFilter: ColorFilter.mode(
-                          _filter.minRating == rating ? colors.backgroundPrimary : colors.textPrimary,
-                          BlendMode.srcIn,
-                        ),
+                      child: _filter.minRating == rating
+                          ? Center(
+                              child: Container(
+                                width: 8.w,
+                                height: 8.h,
+                                decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
+                              ),
+                            )
+                          : null,
+                    ),
+                    SizedBox(width: 4.w),
+                    Text(
+                      rating.toStringAsFixed(1),
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                        color: _filter.minRating == rating ? colors.backgroundPrimary : colors.textPrimary,
                       ),
-                    ],
-                  ),
+                    ),
+                    SizedBox(width: 4.w),
+                    SvgPicture.asset(
+                      Assets.icons.star,
+                      package: 'grab_go_shared',
+                      height: 14.h,
+                      width: 14.w,
+                      colorFilter: ColorFilter.mode(
+                        _filter.minRating == rating ? colors.backgroundPrimary : colors.textPrimary,
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
@@ -415,59 +776,87 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
       );
     }
 
-    return Wrap(
-      spacing: 8.w,
-      runSpacing: 8.h,
-      children: [
-        for (var category in widget.categories)
-          GestureDetector(
-            onTap: () {
-              if (category.id.isEmpty) return;
-              setState(() {
-                if (_filter.selectedCategories.contains(category.id)) {
-                  _filter.selectedCategories.remove(category.id);
-                } else {
-                  _filter.selectedCategories.add(category.id);
-                }
-              });
-            },
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: _filter.selectedCategories.contains(category.id)
-                      ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
-                      : [colors.backgroundPrimary, colors.backgroundPrimary],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                color: _filter.selectedCategories.contains(category.id) ? colors.accentOrange : Colors.transparent,
-                border: Border.all(
-                  color: _filter.selectedCategories.contains(category.id) ? colors.accentOrange : colors.inputBorder,
-                  width: 1.5,
-                ),
-                borderRadius: BorderRadius.circular(8.r),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(category.emoji, style: TextStyle(fontSize: 16.sp)),
-                  SizedBox(width: 6.w),
-                  Text(
-                    category.name,
-                    style: TextStyle(
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w600,
-                      color: _filter.selectedCategories.contains(category.id)
-                          ? colors.backgroundPrimary
-                          : colors.textPrimary,
-                    ),
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
+      child: Wrap(
+        spacing: 8.w,
+        runSpacing: 8.h,
+        children: [
+          for (var category in widget.categories)
+            GestureDetector(
+              onTap: () {
+                if (category.id.isEmpty) return;
+                setState(() {
+                  if (_filter.selectedCategories.contains(category.id)) {
+                    _filter.selectedCategories.remove(category.id);
+                  } else {
+                    _filter.selectedCategories.add(category.id);
+                  }
+                });
+              },
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: _filter.selectedCategories.contains(category.id)
+                        ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
+                        : [colors.backgroundPrimary, colors.backgroundPrimary],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                ],
+                  color: _filter.selectedCategories.contains(category.id) ? colors.accentOrange : Colors.transparent,
+                  border: Border.all(
+                    color: _filter.selectedCategories.contains(category.id) ? colors.accentOrange : colors.inputBorder,
+                    width: 1.5,
+                  ),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 16.w,
+                      height: 16.h,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _filter.selectedCategories.contains(category.id)
+                            ? colors.backgroundPrimary
+                            : Colors.transparent,
+                        border: Border.all(
+                          color: _filter.selectedCategories.contains(category.id)
+                              ? colors.backgroundPrimary
+                              : colors.inputBorder,
+                          width: 2,
+                        ),
+                      ),
+                      child: _filter.selectedCategories.contains(category.id)
+                          ? Center(
+                              child: Container(
+                                width: 8.w,
+                                height: 8.h,
+                                decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
+                              ),
+                            )
+                          : null,
+                    ),
+                    SizedBox(width: 8.w),
+                    Text(category.emoji, style: TextStyle(fontSize: 12.sp)),
+                    SizedBox(width: 6.w),
+                    Text(
+                      category.name,
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                        color: _filter.selectedCategories.contains(category.id)
+                            ? colors.backgroundPrimary
+                            : colors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -500,14 +889,16 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                   });
                 },
                 child: Container(
-                  padding: EdgeInsets.all(12.r),
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                   decoration: BoxDecoration(
-                    color: _filter.selectedRestaurants.contains(restaurant)
-                        ? colors.accentOrange.withAlpha(25)
-                        : Colors.transparent,
+                    gradient: LinearGradient(
+                      colors: _filter.selectedRestaurants.contains(restaurant)
+                          ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
+                          : [colors.backgroundPrimary, colors.backgroundPrimary],
+                    ),
                     border: Border.all(
                       color: _filter.selectedRestaurants.contains(restaurant)
-                          ? colors.accentOrange.withValues(alpha: 0.4)
+                          ? colors.accentOrange
                           : colors.inputBorder,
                       width: 1.5,
                     ),
@@ -516,31 +907,40 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                   child: Row(
                     children: [
                       Container(
-                        width: 20.w,
-                        height: 20.h,
+                        width: 16.w,
+                        height: 16.h,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: _filter.selectedRestaurants.contains(restaurant)
-                                ? colors.accentOrange
+                                ? colors.backgroundPrimary
                                 : colors.inputBorder,
                             width: 2,
                           ),
+                          color: _filter.selectedRestaurants.contains(restaurant)
+                              ? colors.backgroundPrimary
+                              : Colors.transparent,
                         ),
                         child: _filter.selectedRestaurants.contains(restaurant)
                             ? Center(
                                 child: Container(
-                                  width: 10.w,
-                                  height: 10.h,
+                                  width: 8.w,
+                                  height: 8.h,
                                   decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
                                 ),
                               )
                             : null,
                       ),
-                      SizedBox(width: 12.w),
+                      SizedBox(width: 8.w),
                       Text(
                         restaurant,
-                        style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: colors.textPrimary),
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w500,
+                          color: _filter.selectedRestaurants.contains(restaurant)
+                              ? colors.backgroundPrimary
+                              : colors.textPrimary,
+                        ),
                       ),
                     ],
                   ),

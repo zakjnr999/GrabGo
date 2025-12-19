@@ -12,8 +12,15 @@ class HomeSearch extends StatefulWidget {
   final List<FoodCategoryModel> categories;
   final FilterModel? activeFilter;
   final void Function(FilterModel)? onFilterApplied;
+  final bool isFood; // True for Food service, false for Groceries
 
-  const HomeSearch({super.key, required this.categories, this.activeFilter, this.onFilterApplied});
+  const HomeSearch({
+    super.key,
+    required this.categories,
+    this.activeFilter,
+    this.onFilterApplied,
+    this.isFood = true, // Default to Food service
+  });
 
   @override
   State<HomeSearch> createState() => _HomeSearchState();
@@ -79,6 +86,7 @@ class _HomeSearchState extends State<HomeSearch> {
         initialFilter: _currentFilter,
         categories: categories,
         restaurants: _getUniqueRestaurants(categories),
+        isFood: widget.isFood,
         onApply: (FilterModel filter) {
           setState(() {
             _currentFilter = filter.copyWith();
@@ -105,7 +113,6 @@ class _HomeSearchState extends State<HomeSearch> {
           color: colors.backgroundPrimary,
           boxShadow: [
             BoxShadow(color: Colors.black.withAlpha(10), spreadRadius: 1, blurRadius: 12, offset: const Offset(0, 4)),
-            BoxShadow(color: Colors.black.withAlpha(5), spreadRadius: -1, blurRadius: 6, offset: const Offset(0, 2)),
           ],
         ),
         child: Row(

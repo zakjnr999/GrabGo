@@ -269,6 +269,7 @@ app.use("/api/riders", require("./routes/riders"));
 app.use("/api/chats", require("./routes/chats"));
 app.use("/api/statuses", require("./routes/statuses"));
 app.use("/api/notifications", require("./routes/notifications"));
+app.use("/api/scheduled-notifications", require("./routes/scheduled_notifications"));
 app.use("/api/referral", require("./routes/referrals"));
 app.use("/api/promotions", require("./routes/promotions"));
 
@@ -295,6 +296,7 @@ app.use((err, req, res, next) => {
 // Import cron jobs
 const { scheduleCleanup } = require("./jobs/statusCleanup");
 const { scheduleReferralCleanup } = require("./jobs/referralCleanup");
+const { initializeScheduler } = require("./jobs/notification_scheduler");
 
 // Import cache utility
 const cache = require("./utils/cache");
@@ -313,6 +315,9 @@ mongoose
 
     // Schedule referral cleanup cron job (runs daily at 2:00 AM)
     scheduleReferralCleanup();
+
+    // Initialize notification scheduler (runs every minute)
+    initializeScheduler(io);
 
     const PORT = process.env.PORT || 5000;
     server.listen(PORT, () => {

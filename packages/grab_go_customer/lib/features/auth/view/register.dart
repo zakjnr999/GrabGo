@@ -443,9 +443,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
             },
           );
 
-      print('🔍 Response status: ${response.statusCode}');
-      print('🔍 Response body: ${response.body}');
-
       if (response.body == null) {
         throw Exception('Empty response from server');
       }

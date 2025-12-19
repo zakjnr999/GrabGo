@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/widgets/horizontal_card_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
@@ -31,17 +32,17 @@ class TopRatedSection extends StatelessWidget {
         SectionHeader(
           title: "Top Rated This Week",
           icon: Assets.icons.star,
-          accentColor: Colors.amber,
+          accentColor: AppColors.accentGreen,
           onSeeAll: onSeeAll,
         ),
         SizedBox(height: 16.h),
         if (isLoading)
-          HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 240.h, itemCount: 6)
+          HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 260.h, itemCount: 6)
         else if (topRatedItems.isEmpty)
           _buildEmptyState(colors)
         else
           SizedBox(
-            height: 230.h,
+            height: 225.h,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.only(left: 20.w),
@@ -49,7 +50,6 @@ class TopRatedSection extends StatelessWidget {
               itemCount: topRatedItems.length,
               itemBuilder: (context, index) {
                 final item = topRatedItems[index];
-
                 return Padding(
                   padding: EdgeInsets.only(right: 15.w),
                   child: TopRatedCard(item: item, onTap: () => onItemTap(item)),
@@ -68,15 +68,21 @@ class TopRatedSection extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.star_border, size: 48.sp, color: colors.textSecondary.withValues(alpha: 0.5)),
+          SvgPicture.asset(
+            Assets.icons.star,
+            package: "grab_go_shared",
+            height: 48.h,
+            width: 48.w,
+            colorFilter: ColorFilter.mode(colors.textSecondary.withValues(alpha: 0.5), BlendMode.srcIn),
+          ),
           SizedBox(height: 16.h),
           Text(
-            'No top-rated items this week',
+            'No top rated items yet',
             style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
           ),
           SizedBox(height: 8.h),
           Text(
-            'Check back later for highly rated items',
+            'Check back soon for highly rated items!',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 13.sp, color: colors.textSecondary),
           ),

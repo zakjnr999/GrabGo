@@ -132,7 +132,7 @@ class _BrowseAllGroceriesSectionState extends State<BrowseAllGroceriesSection> {
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 0.65,
+          childAspectRatio: 0.68,
           crossAxisSpacing: 12.w,
           mainAxisSpacing: 16.h,
         ),
@@ -140,9 +140,11 @@ class _BrowseAllGroceriesSectionState extends State<BrowseAllGroceriesSection> {
         itemBuilder: (context, index) {
           final item = displayedItems[index];
 
-          final orderCount = (item.rating * 20).toInt();
-
-          return PopularItemCard(item: item.toFoodItem(), orderCount: orderCount, onTap: () => widget.onItemTap(item));
+          return PopularItemCard(
+            item: item.toFoodItem(),
+            orderCount: item.orderCount,
+            onTap: () => widget.onItemTap(item),
+          );
         },
       ),
     );

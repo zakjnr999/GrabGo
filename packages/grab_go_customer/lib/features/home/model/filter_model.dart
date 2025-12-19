@@ -9,8 +9,23 @@ class FilterModel {
   // Selected categories
   List<String> selectedCategories; // category IDs
 
-  // Selected restaurants
-  List<String> selectedRestaurants; // restaurant IDs
+  // Selected restaurants/stores
+  List<String> selectedRestaurants; // restaurant/store IDs
+
+  // Quick filters
+  bool onSale;
+  bool popular;
+  bool isNew;
+  bool fast;
+
+  // Dietary preferences
+  String? dietary; // 'Vegetarian', 'Vegan', 'Halal', 'Gluten-Free'
+
+  // Distance filter
+  String? distance; // 'Under 1 km', '1-3 km', '3-5 km', 'Any Distance'
+
+  // Delivery time filter
+  String? deliveryTime; // 'Under 20 min', '20-30 min', '30-45 min', 'Any Time'
 
   FilterModel({
     this.minPrice = 0,
@@ -18,6 +33,13 @@ class FilterModel {
     this.minRating,
     List<String>? selectedCategories,
     List<String>? selectedRestaurants,
+    this.onSale = false,
+    this.popular = false,
+    this.isNew = false,
+    this.fast = false,
+    this.dietary,
+    this.distance,
+    this.deliveryTime,
   }) : selectedCategories = selectedCategories ?? [],
        selectedRestaurants = selectedRestaurants ?? [];
 
@@ -25,7 +47,17 @@ class FilterModel {
   bool get isActive {
     // Price filter is active if range is different from default (0-10000)
     final isPriceFilterActive = minPrice != 0 || maxPrice != 10000;
-    return isPriceFilterActive || minRating != null || selectedCategories.isNotEmpty || selectedRestaurants.isNotEmpty;
+    return isPriceFilterActive ||
+        minRating != null ||
+        selectedCategories.isNotEmpty ||
+        selectedRestaurants.isNotEmpty ||
+        onSale ||
+        popular ||
+        isNew ||
+        fast ||
+        dietary != null ||
+        distance != null ||
+        deliveryTime != null;
   }
 
   Map<String, dynamic> toJson() => {
@@ -34,6 +66,13 @@ class FilterModel {
     'minRating': minRating,
     'selectedCategories': selectedCategories,
     'selectedRestaurants': selectedRestaurants,
+    'onSale': onSale,
+    'popular': popular,
+    'isNew': isNew,
+    'fast': fast,
+    'dietary': dietary,
+    'distance': distance,
+    'deliveryTime': deliveryTime,
   };
 
   factory FilterModel.fromJson(Map<String, dynamic> json) {
@@ -66,6 +105,13 @@ class FilterModel {
               .where((e) => e.isNotEmpty)
               .toList() ??
           [],
+      onSale: json['onSale'] as bool? ?? false,
+      popular: json['popular'] as bool? ?? false,
+      isNew: json['isNew'] as bool? ?? false,
+      fast: json['fast'] as bool? ?? false,
+      dietary: json['dietary'] as String?,
+      distance: json['distance'] as String?,
+      deliveryTime: json['deliveryTime'] as String?,
     );
   }
 
@@ -76,6 +122,13 @@ class FilterModel {
     minRating = null;
     selectedCategories.clear();
     selectedRestaurants.clear();
+    onSale = false;
+    popular = false;
+    isNew = false;
+    fast = false;
+    dietary = null;
+    distance = null;
+    deliveryTime = null;
   }
 
   // Create a copy
@@ -85,6 +138,13 @@ class FilterModel {
     double? minRating,
     List<String>? selectedCategories,
     List<String>? selectedRestaurants,
+    bool? onSale,
+    bool? popular,
+    bool? isNew,
+    bool? fast,
+    String? dietary,
+    String? distance,
+    String? deliveryTime,
   }) {
     return FilterModel(
       minPrice: minPrice ?? this.minPrice,
@@ -92,6 +152,13 @@ class FilterModel {
       minRating: minRating ?? this.minRating,
       selectedCategories: selectedCategories ?? [...this.selectedCategories],
       selectedRestaurants: selectedRestaurants ?? [...this.selectedRestaurants],
+      onSale: onSale ?? this.onSale,
+      popular: popular ?? this.popular,
+      isNew: isNew ?? this.isNew,
+      fast: fast ?? this.fast,
+      dietary: dietary ?? this.dietary,
+      distance: distance ?? this.distance,
+      deliveryTime: deliveryTime ?? this.deliveryTime,
     );
   }
 }

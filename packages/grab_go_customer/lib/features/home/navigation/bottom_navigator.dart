@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:grab_go_customer/features/browse/view/browse_page.dart';
 import 'package:grab_go_customer/features/chat/view/chats.dart';
 import 'package:grab_go_customer/features/home/view/home_page.dart';
-import 'package:grab_go_customer/features/home/view/menu.dart';
 import 'package:grab_go_customer/features/profile/view/account.dart';
 import 'package:grab_go_customer/features/restaurant/view/restaurants.dart';
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
@@ -23,7 +23,13 @@ class _BottomNavigatorState extends State<BottomNavigator> {
     Provider.of<NavigationProvider>(context, listen: false).setIndex(index);
   }
 
-  final List<Widget> _screens = [const HomePage(), const Menu(), const Chats(), const Restaurants(), const Account()];
+  final List<Widget> _screens = [
+    const HomePage(),
+    const BrowsePage(),
+    const Chats(),
+    const Restaurants(),
+    const Account(),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +86,7 @@ class _BottomNavigatorState extends State<BottomNavigator> {
               Expanded(child: _buildNavItem(Assets.icons.home, "Home", 0, context)),
               Expanded(child: _buildNavItem(Assets.icons.search, "Browse", 1, context)),
               Expanded(child: _buildNavItem(Assets.icons.chatBubble, "chats", 2, context)),
-              Expanded(child: _buildNavItem(Assets.icons.store, "Stores", 3, context)),
+              Expanded(child: _buildNavItem(Assets.icons.store, "Vendors", 3, context)),
               Expanded(child: _buildNavItem(Assets.icons.user, "Account", 4, context)),
             ],
           ),

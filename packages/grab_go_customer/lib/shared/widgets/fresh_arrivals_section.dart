@@ -59,25 +59,11 @@ class FreshArrivalsSection extends StatelessWidget {
           final item = items[index];
           final foodItem = item.toFoodItem();
 
-          // Calculate order count based on how long item has been available
-          // Newer items (1-2 days) = 5-15 orders
-          // Slightly older (3-4 days) = 15-30 orders
-          // Older fresh items (5-7 days) = 30-50 orders
-          final daysSinceCreation = item.daysSinceCreation;
-          int orderCount;
-          if (daysSinceCreation <= 2) {
-            orderCount = 5 + (index % 3) * 5; // 5-15 orders
-          } else if (daysSinceCreation <= 4) {
-            orderCount = 15 + (index % 4) * 5; // 15-30 orders
-          } else {
-            orderCount = 30 + (index % 5) * 4; // 30-50 orders
-          }
-
           return Padding(
             padding: EdgeInsets.only(right: 15.w),
             child: Stack(
               children: [
-                PopularItemCard(item: foodItem, orderCount: orderCount, onTap: () => onItemTap(item)),
+                PopularItemCard(item: foodItem, orderCount: item.orderCount, onTap: () => onItemTap(item)),
                 // NEW badge
                 Positioned(top: 8, right: 8, child: _buildNewBadge(item)),
               ],

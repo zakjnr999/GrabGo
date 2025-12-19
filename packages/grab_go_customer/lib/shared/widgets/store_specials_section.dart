@@ -35,15 +35,7 @@ class StoreSpecialsSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Section Header
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20.w),
-          child: SectionHeader(
-            title: 'Store Specials',
-            icon: Assets.icons.tag,
-            accentColor: colors.error,
-            onSeeAll: onSeeAll,
-          ),
-        ),
+        SectionHeader(title: 'Store Specials', icon: Assets.icons.tag, accentColor: colors.error, onSeeAll: onSeeAll),
         SizedBox(height: 16.h),
 
         // Loading State
@@ -57,6 +49,8 @@ class StoreSpecialsSection extends StatelessWidget {
   }
 
   Widget _buildLoadingSkeleton(AppColorsExtension colors) {
+    final isDark = colors.backgroundPrimary.computeLuminance() < 0.5;
+
     return Column(
       children: List.generate(2, (index) {
         return Column(
@@ -67,12 +61,15 @@ class StoreSpecialsSection extends StatelessWidget {
               child: Row(
                 children: [
                   Shimmer.fromColors(
-                    baseColor: colors.backgroundSecondary,
-                    highlightColor: colors.backgroundTertiary,
+                    baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                    highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
                     child: Container(
                       width: 40.w,
                       height: 40.h,
-                      decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                      ),
                     ),
                   ),
                   SizedBox(width: 12.w),
@@ -81,22 +78,28 @@ class StoreSpecialsSection extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Shimmer.fromColors(
-                          baseColor: colors.backgroundSecondary,
-                          highlightColor: colors.backgroundTertiary,
+                          baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                          highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
                           child: Container(
                             width: 120.w,
                             height: 16.h,
-                            decoration: BoxDecoration(borderRadius: BorderRadius.circular(4.r), color: Colors.white),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4.r),
+                              color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                            ),
                           ),
                         ),
                         SizedBox(height: 4.h),
                         Shimmer.fromColors(
-                          baseColor: colors.backgroundSecondary,
-                          highlightColor: colors.backgroundTertiary,
+                          baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                          highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
                           child: Container(
                             width: 60.w,
                             height: 12.h,
-                            decoration: BoxDecoration(borderRadius: BorderRadius.circular(4.r), color: Colors.white),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4.r),
+                              color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                            ),
                           ),
                         ),
                       ],
@@ -115,11 +118,14 @@ class StoreSpecialsSection extends StatelessWidget {
                 separatorBuilder: (context, index) => SizedBox(width: 12.w),
                 itemBuilder: (context, index) {
                   return Shimmer.fromColors(
-                    baseColor: colors.backgroundSecondary,
-                    highlightColor: colors.backgroundTertiary,
+                    baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                    highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
                     child: Container(
                       width: 160.w,
-                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(12.r), color: Colors.white),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12.r),
+                        color: isDark ? Colors.grey.shade700 : Colors.grey.shade200,
+                      ),
                     ),
                   );
                 },
@@ -181,7 +187,11 @@ class StoreSpecialsSection extends StatelessWidget {
                   final item = storeSpecial.items[index];
                   return SizedBox(
                     width: 160.w,
-                    child: PopularItemCard(item: item.toFoodItem(), orderCount: 0, onTap: () => onItemTap(item)),
+                    child: PopularItemCard(
+                      item: item.toFoodItem(),
+                      orderCount: item.orderCount,
+                      onTap: () => onItemTap(item),
+                    ),
                   );
                 },
               ),

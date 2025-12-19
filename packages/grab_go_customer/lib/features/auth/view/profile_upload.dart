@@ -194,7 +194,7 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
         }
 
         if (mounted) {
-          context.go("/accountCreated");
+          context.push("/location-picker", extra: true);
         }
       } else {
         String errorMessage = "Failed to upload profile image. Please try again.";
