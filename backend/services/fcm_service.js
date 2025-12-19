@@ -176,6 +176,9 @@ const sendToUser = async (userId, notification, data = {}) => {
         response.responses.forEach((resp, idx) => {
             if (!resp.success) {
                 const errorCode = resp.error?.code;
+                const errorMessage = resp.error?.message;
+                console.error(`❌ FCM token ${idx + 1} failed: ${errorCode} - ${errorMessage}`);
+
                 if (
                     errorCode === 'messaging/invalid-registration-token' ||
                     errorCode === 'messaging/registration-token-not-registered'

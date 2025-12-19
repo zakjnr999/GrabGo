@@ -69,23 +69,37 @@ const createNotification = async (userId, type, title, message, data = {}, io = 
 
         // Send FCM push notification (for closed apps)
         try {
-            await sendToUser(
+            // FCM requires all data values to be strings
+            const fcmData = {
+                type: type,
+                notificationId: notification._id.toString(),
+                actorCount: notification.actorCount.toString(),
+            };
+
+            // Convert all additional data values to strings
+            for (const [key, value] of Object.entries(data)) {
+                if (value !== null && value !== undefined) {
+                    fcmData[key] = typeof value === 'object' ? JSON.stringify(value) : String(value);
+                }
+            }
+
+            const fcmResult = await sendToUser(
                 userId,
                 {
                     title: title,
                     body: message
                 },
-                {
-                    type: type,
-                    notificationId: notification._id.toString(),
-                    actorCount: notification.actorCount,
-                    ...data
-                }
+                fcmData
             );
-            console.log(`📲 Push notification sent to user ${userId}`);
+
+            if (fcmResult.success) {
+                console.log(`📲 Push notification sent to user ${userId}: ${fcmResult.successCount}/${fcmResult.successCount + fcmResult.failureCount} succeeded`);
+            } else {
+                console.warn(`⚠️ Push notification failed for user ${userId}: ${fcmResult.reason || 'unknown'}`);
+            }
         } catch (fcmError) {
             // Don't fail the entire notification if push fails
-            console.error('Push notification failed (non-critical):', fcmError.message);
+            console.error(`❌ Push notification error for user ${userId}:`, fcmError.message);
         }
 
         return notification;
