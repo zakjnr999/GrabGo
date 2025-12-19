@@ -46,14 +46,27 @@ const testCartAbandonment = async () => {
         console.log(`   Items: ${cart.itemCount}`);
         console.log(`   Total: GH₵${cart.totalAmount}`);
         console.log(`   Last updated: ${cart.lastUpdatedAt}`);
+        console.log(`   isActive: ${cart.isActive}`);
+        console.log(`   convertedToOrder: ${cart.convertedToOrder}`);
+        console.log(`   abandonmentNotificationSent: ${cart.abandonmentNotificationSent}`);
 
-        // Manually set lastUpdatedAt to 31 minutes ago to simulate abandonment
-        const thirtyOneMinutesAgo = new Date(Date.now() - 31 * 60 * 1000);
-        cart.lastUpdatedAt = thirtyOneMinutesAgo;
-        cart.abandonmentNotificationSent = false;
-        await cart.save();
+        // Manually set lastUpdatedAt to 35 minutes ago to simulate abandonment
+        // (Using 35 min to ensure it's definitely before the 30-min cutoff)
+        // Use direct update to bypass pre-save hook that resets lastUpdatedAt
+        const thirtyFiveMinutesAgo = new Date(Date.now() - 35 * 60 * 1000);
 
-        console.log(`\n⏰ Set cart as abandoned (31 minutes old)`);
+        await Cart.updateOne(
+            { _id: cart._id },
+            {
+                $set: {
+                    lastUpdatedAt: thirtyFiveMinutesAgo,
+                    abandonmentNotificationSent: false
+                }
+            }
+        );
+
+        console.log(`\n⏰ Set cart as abandoned (35 minutes old)`);
+        console.log(`   New lastUpdatedAt: ${thirtyFiveMinutesAgo}`);
 
         // Trigger abandonment check
         console.log('\n🔔 Triggering abandonment check...');

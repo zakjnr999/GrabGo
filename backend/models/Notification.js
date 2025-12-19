@@ -19,7 +19,8 @@ const notificationSchema = new mongoose.Schema({
             'referral_completed',
             'payment_confirmed',
             'delivery_arriving',
-            'milestone_bonus'
+            'milestone_bonus',
+            'cart_reminder'
         ],
         required: true
     },

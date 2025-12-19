@@ -273,6 +273,10 @@ const findAbandonedCarts = async () => {
     const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
+    console.log('🔍 Query criteria:');
+    console.log(`   30 min ago: ${thirtyMinutesAgo}`);
+    console.log(`   1 day ago: ${oneDayAgo}`);
+
     const carts = await Cart.find({
         isActive: true,
         convertedToOrder: false,
@@ -286,6 +290,8 @@ const findAbandonedCarts = async () => {
             }
         ]
     }).populate('user', 'username email fcmTokens notificationSettings');
+
+    console.log(`🔍 Found ${carts.length} cart(s) matching criteria`);
 
     return carts;
 };
