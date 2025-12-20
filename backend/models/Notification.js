@@ -20,7 +20,10 @@ const notificationSchema = new mongoose.Schema({
             'payment_confirmed',
             'delivery_arriving',
             'milestone_bonus',
-            'cart_reminder'
+            'cart_reminder',
+            'meal_nudge_breakfast',
+            'meal_nudge_lunch',
+            'meal_nudge_dinner'
         ],
         required: true
     },

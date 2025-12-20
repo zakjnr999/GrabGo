@@ -299,6 +299,7 @@ const { scheduleCleanup } = require("./jobs/statusCleanup");
 const { scheduleReferralCleanup } = require("./jobs/referralCleanup");
 const { initializeScheduler } = require("./jobs/notification_scheduler");
 const { initializeCartAbandonmentJob } = require("./jobs/cart_abandonment");
+const { initializeMealNudges } = require("./jobs/meal_nudges");
 
 // Import cache utility
 const cache = require("./utils/cache");
@@ -323,6 +324,9 @@ mongoose
 
     // Initialize cart abandonment job (runs every 30 minutes)
     initializeCartAbandonmentJob(io);
+
+    // Initialize meal-time nudges (breakfast, lunch, dinner)
+    initializeMealNudges(io);
 
     const PORT = process.env.PORT || 5000;
     server.listen(PORT, () => {

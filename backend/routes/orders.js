@@ -165,6 +165,12 @@ router.post(
         }
       }
 
+      // Update user's lastOrderDate for meal nudge targeting
+      const User = require("../models/User");
+      await User.findByIdAndUpdate(req.user._id, {
+        lastOrderDate: new Date()
+      });
+
       res.status(201).json({
         success: true,
         message: "Order created successfully",

@@ -107,6 +107,19 @@ const userSchema = new mongoose.Schema({
     systemUpdates: { type: Boolean, default: true },
     cartReminders: { type: Boolean, default: true }
   },
+  // Meal-time nudge preferences
+  mealTimePreferences: {
+    enabled: { type: Boolean, default: true },
+    breakfast: { type: Boolean, default: true },
+    lunch: { type: Boolean, default: true },
+    dinner: { type: Boolean, default: true },
+    maxPerWeek: { type: Number, default: 3, min: 0, max: 7 }
+  },
+  // Meal nudge tracking
+  lastMealNudgeAt: { type: Date, default: null },
+  mealNudgesThisWeek: { type: Number, default: 0 },
+  weekStartDate: { type: Date, default: null },
+  lastOrderDate: { type: Date, default: null },
   permissions: {
     canManageUsers: { type: Boolean, default: false },
     canManageProducts: { type: Boolean, default: false },
@@ -115,6 +128,14 @@ const userSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true
+});
+
+// Index for meal nudge queries
+userSchema.index({
+  lastOrderDate: 1,
+  'mealTimePreferences.enabled': 1,
+  lastMealNudgeAt: 1,
+  mealNudgesThisWeek: 1
 });
 
 userSchema.pre('save', async function (next) {
