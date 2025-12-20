@@ -5,26 +5,71 @@ const Food = require("../models/Food");
 const Restaurant = require("../models/Restaurant");
 const { protect, authorize } = require("../middleware/auth");
 const { sendOrderNotification } = require("../services/fcm_service");
+const { createNotification } = require("../services/notification_service");
 const ReferralService = require("../services/ReferralService");
+const { getIO } = require("../utils/socket");
 
 const router = express.Router();
 
 /**
  * Helper to send order status notification to customer
  */
-const notifyOrderStatusChange = async (order, status, customMessage = null) => {
+const notifyOrderStatusChange = async (order, status, customMessage = null, io = null) => {
   try {
     if (!order.customer) return;
 
     const customerId = order.customer._id?.toString() || order.customer.toString();
+    const orderNumber = order.orderNumber;
+    const orderId = order._id.toString();
 
+    // 1. Send FCM push notification
     await sendOrderNotification(
       customerId,
-      order._id.toString(),
-      order.orderNumber,
+      orderId,
+      orderNumber,
       status,
       customMessage
     );
+
+    // 2. Create in-app notification with WebSocket delivery
+    const statusMessages = {
+      confirmed: 'Your order has been confirmed!',
+      preparing: 'Your order is being prepared.',
+      ready: 'Your order is ready for pickup!',
+      picked_up: 'Your order has been picked up by the rider.',
+      on_the_way: 'Your order is on the way!',
+      delivered: 'Your order has been delivered. Enjoy!',
+      cancelled: 'Your order has been cancelled.',
+    };
+
+    const statusEmojis = {
+      confirmed: '✅',
+      preparing: '🍳',
+      ready: '📦',
+      picked_up: '🚴',
+      on_the_way: '🛣️',
+      delivered: '✅',
+      cancelled: '❌',
+    };
+
+    const emoji = statusEmojis[status] || '📦';
+    const message = customMessage || statusMessages[status] || `Order status: ${status}`;
+
+    if (io) {
+      await createNotification(
+        customerId,
+        'order_update',
+        `${emoji} Order #${orderNumber}`,
+        message,
+        {
+          orderId,
+          orderNumber,
+          status,
+          route: `/orders/${orderId}`
+        },
+        io
+      );
+    }
   } catch (error) {
     console.error('Error sending order notification:', error.message);
   }
@@ -153,10 +198,12 @@ router.post(
       const userOrderCount = await Order.countDocuments({ customer: req.user._id });
       if (userOrderCount === 1) {
         // This is the first order, complete referral if exists
+        const io = getIO();
         const referralResult = await ReferralService.completeReferral(
           req.user._id,
           order._id,
-          subtotal + deliveryFee + tax // Use original amount before credits
+          subtotal + deliveryFee + tax, // Use original amount before credits
+          io
         );
 
         if (referralResult.success) {
@@ -452,7 +499,8 @@ router.put(
       await order.populate("rider", "username email phone");
 
       // Send push notification to customer about order status change
-      notifyOrderStatusChange(order, status);
+      const io = getIO();
+      notifyOrderStatusChange(order, status, null, io);
 
       res.json({
         success: true,
@@ -509,7 +557,8 @@ router.put(
       notifyRiderAssignment(riderId, order);
 
       // Notify customer that a rider has been assigned
-      notifyOrderStatusChange(order, 'picked_up', `${rider.username} is picking up your order!`);
+      const io = getIO();
+      notifyOrderStatusChange(order, 'picked_up', `${rider.username} is picking up your order!`, io);
 
       res.json({
         success: true,

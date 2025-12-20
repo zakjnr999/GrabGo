@@ -9,6 +9,7 @@ const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
 const User = require("./models/User");
 const Chat = require("./models/Chat");
+const { initIO } = require("./utils/socket");
 require("dotenv").config();
 
 const app = express();
@@ -21,6 +22,9 @@ const io = new Server(server, {
     credentials: true,
   },
 });
+
+// Initialize Socket.IO singleton for global access
+initIO(io);
 
 // Track per-chat presence across all sockets so that a user only appears
 // offline for a chat when all of their sockets for that chat have

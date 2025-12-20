@@ -3,6 +3,8 @@ const ReferralCode = require('../models/ReferralCode');
 const UserCredit = require('../models/UserCredit');
 const User = require('../models/User');
 const { sendReferralNotification, sendMilestoneBonusNotification } = require('./fcm_service');
+const { createNotification } = require('./notification_service');
+const { getIO } = require('../utils/socket');
 
 // Referral reward constants
 const REFERRAL_REWARD_AMOUNT = 10.00;
@@ -14,9 +16,10 @@ class ReferralService {
      * @param {String} userId - Referee user ID
      * @param {String} orderId - Order ID
      * @param {Number} orderAmount - Order total amount
+     * @param {Object} io - Socket.IO instance (optional)
      * @returns {Object} - Result of referral completion
      */
-    static async completeReferral(userId, orderId, orderAmount) {
+    static async completeReferral(userId, orderId, orderAmount, io = null) {
         try {
             // Find pending referral for this user
             const referral = await Referral.findOne({
@@ -91,25 +94,62 @@ class ReferralService {
                     $inc: { totalEarned: MILESTONE_BONUS_AMOUNT }
                 });
 
-                // Send milestone notification
+                // Send milestone notifications (FCM + in-app)
                 try {
+                    // FCM push notification
                     await sendMilestoneBonusNotification(
                         referral.referrer,
                         referrerCode.completedReferrals,
                         MILESTONE_BONUS_AMOUNT
                     );
-                    console.log(`✅ Milestone notification sent to ${referral.referrer}`);
+
+                    // In-app notification with WebSocket
+                    const ioInstance = io || getIO();
+                    if (ioInstance) {
+                        await createNotification(
+                            referral.referrer,
+                            'milestone_bonus',
+                            '🎉 Milestone Reached!',
+                            `Congrats! You've completed ${referrerCode.completedReferrals} referrals. Bonus GHS ${MILESTONE_BONUS_AMOUNT} added!`,
+                            {
+                                milestone: referrerCode.completedReferrals,
+                                bonusAmount: MILESTONE_BONUS_AMOUNT,
+                                route: '/referral'
+                            },
+                            ioInstance
+                        );
+                    }
+                    console.log(`✅ Milestone notifications sent to ${referral.referrer}`);
                 } catch (notifError) {
                     console.error('❌ Error sending milestone notification:', notifError.message);
                 }
             }
 
-            // Send push notification to referrer
+            // Send referral notifications (FCM + in-app)
             try {
                 const referee = await User.findById(userId).select('username');
                 const refereeName = referee?.username || 'Your friend';
+
+                // FCM push notification
                 await sendReferralNotification(referral.referrer, refereeName, REFERRAL_REWARD_AMOUNT);
-                console.log(`✅ Referral notification sent to ${referral.referrer}`);
+
+                // In-app notification with WebSocket
+                const ioInstance = io || getIO();
+                if (ioInstance) {
+                    await createNotification(
+                        referral.referrer,
+                        'referral_completed',
+                        '🎉 Referral Success!',
+                        `${refereeName} completed their first order. You earned GHS ${REFERRAL_REWARD_AMOUNT}!`,
+                        {
+                            refereeName,
+                            rewardAmount: REFERRAL_REWARD_AMOUNT,
+                            route: '/referral'
+                        },
+                        ioInstance
+                    );
+                }
+                console.log(`✅ Referral notifications sent to ${referral.referrer}`);
             } catch (notifError) {
                 console.error('❌ Error sending referral notification:', notifError.message);
                 // Don't fail the whole operation if notification fails
