@@ -7,6 +7,7 @@ import 'package:grab_go_customer/shared/services/image_cache_service.dart';
 import 'package:grab_go_customer/shared/services/location_service.dart';
 import 'package:grab_go_customer/shared/viewmodels/settings_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/theme_provider.dart';
+import 'package:grab_go_customer/shared/widgets/custom_switch.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -20,6 +21,11 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   String _cacheSize = 'Calculating...';
+
+  // Track expansion state for notification sections
+  bool _socialExpanded = false;
+  bool _promosExpanded = false;
+  bool _otherExpanded = false;
 
   @override
   void initState() {
@@ -204,57 +210,13 @@ class _SettingsPageState extends State<SettingsPage> {
                   _buildSectionHeader("Notifications", colors),
                   SizedBox(height: 12.h),
                   _buildSection(isDark, colors, [
-                    _buildToggleTile("Chat Messages", Assets.icons.chatBubble, settingsProvider.chatMessagesEnabled, (
-                      value,
-                    ) {
-                      settingsProvider.setChatMessages(value);
-                    }, colors),
+                    // Essential Notifications (Always visible)
+                    _buildSubsectionHeader("Essential", colors),
                     _buildToggleTile("Order Updates", Assets.icons.package, settingsProvider.orderUpdatesEnabled, (
                       value,
                     ) {
                       settingsProvider.setOrderUpdates(value);
                     }, colors),
-                    _buildToggleTile(
-                      "Promotions & Offers",
-                      Assets.icons.gift,
-                      settingsProvider.promoNotificationsEnabled,
-                      (value) {
-                        settingsProvider.setPromoNotifications(value);
-                      },
-                      colors,
-                    ),
-                    _buildToggleTile(
-                      "Comment Replies",
-                      Assets.icons.chatBubble,
-                      settingsProvider.commentRepliesEnabled,
-                      (value) {
-                        settingsProvider.setCommentReplies(value);
-                      },
-                      colors,
-                    ),
-                    _buildToggleTile(
-                      "Comment Reactions",
-                      Assets.icons.heart,
-                      settingsProvider.commentReactionsEnabled,
-                      (value) {
-                        settingsProvider.setCommentReactions(value);
-                      },
-                      colors,
-                    ),
-                    _buildToggleTile("Referral Updates", Assets.icons.group, settingsProvider.referralUpdatesEnabled, (
-                      value,
-                    ) {
-                      settingsProvider.setReferralUpdates(value);
-                    }, colors),
-                    _buildToggleTile(
-                      "Payment Confirmations",
-                      Assets.icons.alarm,
-                      settingsProvider.paymentUpdatesEnabled,
-                      (value) {
-                        settingsProvider.setPaymentUpdates(value);
-                      },
-                      colors,
-                    ),
                     _buildToggleTile(
                       "Delivery Alerts",
                       Assets.icons.deliveryTruck,
@@ -264,51 +226,141 @@ class _SettingsPageState extends State<SettingsPage> {
                       },
                       colors,
                     ),
-                    _buildToggleTile("System Updates", Assets.icons.bell, settingsProvider.systemUpdatesEnabled, (
-                      value,
-                    ) {
-                      settingsProvider.setSystemUpdates(value);
-                    }, colors),
-                    _buildToggleTile("Cart Reminders", Assets.icons.cart, settingsProvider.cartRemindersEnabled, (
-                      value,
-                    ) {
-                      settingsProvider.setCartReminders(value);
-                    }, colors),
                     _buildToggleTile(
-                      "Favorites Reminders",
-                      Assets.icons.heart,
-                      settingsProvider.favoritesRemindersEnabled,
+                      "Payment Confirmations",
+                      Assets.icons.alarm,
+                      settingsProvider.paymentUpdatesEnabled,
                       (value) {
-                        settingsProvider.setFavoritesReminders(value);
+                        settingsProvider.setPaymentUpdates(value);
                       },
                       colors,
                     ),
-                    _buildToggleTile(
-                      "Reorder Suggestions",
-                      Assets.icons.refresh,
-                      settingsProvider.reorderSuggestionsEnabled,
-                      (value) {
-                        settingsProvider.setReorderSuggestions(value);
-                      },
+
+                    // Social Notifications (Collapsible)
+                    _buildCollapsibleSection(
+                      "Social",
+                      Assets.icons.chatBubble,
+                      [
+                        _buildToggleTile(
+                          "Chat Messages",
+                          Assets.icons.chatBubble,
+                          settingsProvider.chatMessagesEnabled,
+                          (value) {
+                            settingsProvider.setChatMessages(value);
+                          },
+                          colors,
+                        ),
+                        _buildToggleTile(
+                          "Comment Replies",
+                          Assets.icons.chatBubble,
+                          settingsProvider.commentRepliesEnabled,
+                          (value) {
+                            settingsProvider.setCommentReplies(value);
+                          },
+                          colors,
+                        ),
+                        _buildToggleTile(
+                          "Comment Reactions",
+                          Assets.icons.heart,
+                          settingsProvider.commentReactionsEnabled,
+                          (value) {
+                            settingsProvider.setCommentReactions(value);
+                          },
+                          colors,
+                        ),
+                      ],
                       colors,
+                      isDark,
+                      _socialExpanded,
+                      (expanded) => setState(() => _socialExpanded = expanded),
                     ),
-                    _buildToggleTile(
-                      "Re-engagement Reminders",
-                      Assets.icons.bell,
-                      settingsProvider.reengagementRemindersEnabled,
-                      (value) {
-                        settingsProvider.setReengagementReminders(value);
-                      },
+
+                    // Promotions & Offers (Collapsible)
+                    _buildCollapsibleSection(
+                      "Promotions & Offers",
+                      Assets.icons.gift,
+                      [
+                        _buildToggleTile(
+                          "All Promotions",
+                          Assets.icons.gift,
+                          settingsProvider.promoNotificationsEnabled,
+                          (value) {
+                            settingsProvider.setPromoNotifications(value);
+                          },
+                          colors,
+                        ),
+                        _buildToggleTile("Cart Reminders", Assets.icons.cart, settingsProvider.cartRemindersEnabled, (
+                          value,
+                        ) {
+                          settingsProvider.setCartReminders(value);
+                        }, colors),
+                        _buildToggleTile(
+                          "Favorites Reminders",
+                          Assets.icons.heart,
+                          settingsProvider.favoritesRemindersEnabled,
+                          (value) {
+                            settingsProvider.setFavoritesReminders(value);
+                          },
+                          colors,
+                        ),
+                        _buildToggleTile(
+                          "Reorder Suggestions",
+                          Assets.icons.refresh,
+                          settingsProvider.reorderSuggestionsEnabled,
+                          (value) {
+                            settingsProvider.setReorderSuggestions(value);
+                          },
+                          colors,
+                        ),
+                        _buildToggleTile(
+                          "Re-engagement Reminders",
+                          Assets.icons.bell,
+                          settingsProvider.reengagementRemindersEnabled,
+                          (value) {
+                            settingsProvider.setReengagementReminders(value);
+                          },
+                          colors,
+                        ),
+                      ],
                       colors,
+                      isDark,
+                      _promosExpanded,
+                      (expanded) => setState(() => _promosExpanded = expanded),
                     ),
-                    _buildToggleTile(
-                      "Notification Sound",
-                      Assets.icons.soundHigh,
-                      settingsProvider.notificationSoundEnabled,
-                      (value) {
-                        settingsProvider.setNotificationSound(value);
-                      },
+
+                    // Other Notifications (Collapsible)
+                    _buildCollapsibleSection(
+                      "Other",
+                      Assets.icons.settings,
+                      [
+                        _buildToggleTile(
+                          "Referral Updates",
+                          Assets.icons.group,
+                          settingsProvider.referralUpdatesEnabled,
+                          (value) {
+                            settingsProvider.setReferralUpdates(value);
+                          },
+                          colors,
+                        ),
+                        _buildToggleTile("System Updates", Assets.icons.bell, settingsProvider.systemUpdatesEnabled, (
+                          value,
+                        ) {
+                          settingsProvider.setSystemUpdates(value);
+                        }, colors),
+                        _buildToggleTile(
+                          "Notification Sound",
+                          Assets.icons.soundHigh,
+                          settingsProvider.notificationSoundEnabled,
+                          (value) {
+                            settingsProvider.setNotificationSound(value);
+                          },
+                          colors,
+                        ),
+                      ],
                       colors,
+                      isDark,
+                      _otherExpanded,
+                      (expanded) => setState(() => _otherExpanded = expanded),
                     ),
                   ]),
                   SizedBox(height: 24.h),
@@ -477,14 +529,13 @@ class _SettingsPageState extends State<SettingsPage> {
                 style: TextStyle(fontSize: 14.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
               ),
             ),
-            Switch(
+            CustomSwitch(
               value: value,
               onChanged: (newValue) {
                 HapticFeedback.lightImpact();
                 onChanged(newValue);
               },
-              activeThumbColor: colors.accentOrange,
-              activeTrackColor: colors.accentOrange.withValues(alpha: 0.5),
+              activeColor: colors.accentOrange,
             ),
           ],
         ),
@@ -823,6 +874,44 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCollapsibleSection(
+    String title,
+    String icon,
+    List<Widget> children,
+    AppColorsExtension colors,
+    bool isDark,
+    bool isExpanded,
+    ValueChanged<bool> onExpansionChanged,
+  ) {
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 4.h),
+        childrenPadding: EdgeInsets.only(left: 12.w),
+        initiallyExpanded: isExpanded,
+        onExpansionChanged: onExpansionChanged,
+        leading: Container(
+          padding: EdgeInsets.all(8.r),
+          decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(10.r)),
+          child: SvgPicture.asset(
+            icon,
+            package: 'grab_go_shared',
+            height: 18.h,
+            width: 18.w,
+            colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+          ),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(fontSize: 14.sp, color: colors.textPrimary, fontWeight: FontWeight.w700),
+        ),
+        iconColor: colors.textSecondary,
+        collapsedIconColor: colors.textSecondary,
+        children: children,
       ),
     );
   }

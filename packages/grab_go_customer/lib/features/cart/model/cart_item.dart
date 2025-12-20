@@ -113,15 +113,20 @@ class _CartItemState extends State<CartItem> {
           controller: _scrollController,
           itemCount: cartEntries.length,
           itemBuilder: (context, index) {
-            final foodItem = cartEntries[index].key;
+            final cartItem = cartEntries[index].key; // Changed from cartItem to cartItem
             final quantity = cartEntries[index].value;
 
             return GestureDetector(
               onTap: () {
-                context.push("/foodDetails", extra: foodItem);
+                // Type-based navigation
+                if (cartItem.itemType == 'Food') {
+                  context.push("/foodDetails", extra: cartItem);
+                } else if (cartItem.itemType == 'GroceryItem') {
+                  context.push("/groceryDetails", extra: cartItem);
+                }
               },
               child: SwipeActionCell(
-                key: ObjectKey(foodItem),
+                key: ObjectKey(cartItem),
                 trailingActions: [
                   SwipeAction(
                     color: Colors.transparent,
@@ -156,7 +161,7 @@ class _CartItemState extends State<CartItem> {
                       ),
                     ),
                     onTap: (handler) {
-                      provider.removeItemCompletely(foodItem);
+                      provider.removeItemCompletely(cartItem);
                       AppToastMessage.show(
                         context: context,
                         icon: Icons.check,
@@ -190,7 +195,7 @@ class _CartItemState extends State<CartItem> {
                           bottomLeft: Radius.circular(KBorderSize.borderRadius15),
                         ),
                         child: CachedImageWidget(
-                          imageUrl: foodItem.image,
+                          imageUrl: cartItem.image,
                           height: size.height * 0.14,
                           width: size.width * 0.32,
                           fit: BoxFit.cover,
@@ -222,7 +227,7 @@ class _CartItemState extends State<CartItem> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    foodItem.name,
+                                    cartItem.name,
                                     style: TextStyle(
                                       fontSize: 15.sp,
                                       fontWeight: FontWeight.w700,
@@ -243,7 +248,7 @@ class _CartItemState extends State<CartItem> {
                                       ),
                                       SizedBox(width: 4.w),
                                       Text(
-                                        foodItem.rating.toStringAsFixed(1),
+                                        cartItem.rating.toStringAsFixed(1),
                                         style: TextStyle(
                                           fontSize: 12.sp,
                                           color: colors.textPrimary,
@@ -280,7 +285,7 @@ class _CartItemState extends State<CartItem> {
                                       borderRadius: BorderRadius.circular(8.r),
                                     ),
                                     child: Text(
-                                      "GHS ${foodItem.price.toStringAsFixed(2)}",
+                                      "GHS ${cartItem.price.toStringAsFixed(2)}",
                                       style: TextStyle(
                                         fontSize: 13.sp,
                                         fontWeight: FontWeight.w800,
@@ -300,7 +305,7 @@ class _CartItemState extends State<CartItem> {
                                       children: [
                                         GestureDetector(
                                           onTap: () {
-                                            provider.removeFromCart(foodItem);
+                                            provider.removeFromCart(cartItem);
                                           },
                                           child: Container(
                                             padding: EdgeInsets.all(4.r),
@@ -324,7 +329,7 @@ class _CartItemState extends State<CartItem> {
                                         ),
                                         GestureDetector(
                                           onTap: () {
-                                            provider.addToCart(foodItem);
+                                            provider.addToCart(cartItem);
                                           },
                                           child: Container(
                                             padding: EdgeInsets.all(4.r),

@@ -10,6 +10,7 @@ import 'package:grab_go_customer/features/cart/service/payment_service.dart';
 import 'package:grab_go_customer/features/order/service/order_service_chopper.dart';
 import 'package:grab_go_customer/features/status/service/status_service.dart';
 import 'package:grab_go_customer/shared/services/notification_service_chopper.dart';
+import 'package:grab_go_customer/shared/api/cart_api_service.dart';
 
 final chopperClient = ChopperClient(
   baseUrl: Uri.parse(AppConfig.apiBaseUrl),
@@ -21,6 +22,7 @@ final chopperClient = ChopperClient(
     OrderServiceChopper.create(),
     StatusService.create(),
     NotificationServiceChopper.create(),
+    CartApiService.create(),
   ],
   converter: const local.JsonSerializableConverter(),
   interceptors: [AuthInterceptor(), HttpLoggingInterceptor()],
@@ -34,3 +36,4 @@ PaymentService get paymentService => chopperClient.getService<PaymentService>();
 OrderServiceChopper get orderServiceChopper => chopperClient.getService<OrderServiceChopper>();
 StatusService get statusService => chopperClient.getService<StatusService>();
 NotificationServiceChopper get notificationServiceChopper => chopperClient.getService<NotificationServiceChopper>();
+CartApiService get cartApiService => chopperClient.getService<CartApiService>();

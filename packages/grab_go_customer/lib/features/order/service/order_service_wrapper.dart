@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_customer/features/order/service/order_service_chopper.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
+import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
 
 class OrderServiceWrapper {
@@ -12,7 +13,7 @@ class OrderServiceWrapper {
 
   // Create a new order
   Future<String> createOrder({
-    required Map<FoodItem, int> cartItems,
+    required Map<CartItem, int> cartItems,
     required String deliveryAddress,
     required String paymentMethod,
     required double subtotal,
@@ -25,7 +26,7 @@ class OrderServiceWrapper {
         throw Exception('Cart is empty');
       }
 
-      final restaurantIds = cartItems.keys.map((item) => item.restaurantId).where((id) => id.isNotEmpty).toSet();
+      final restaurantIds = cartItems.keys.map((item) => item.providerId).where((id) => id.isNotEmpty).toSet();
 
       if (restaurantIds.isEmpty) {
         throw Exception('Unable to determine restaurant for order');

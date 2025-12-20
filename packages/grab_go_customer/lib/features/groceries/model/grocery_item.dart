@@ -1,4 +1,5 @@
 import 'package:grab_go_customer/features/home/model/food_category.dart';
+import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
 
 class NutritionInfo {
   final double calories;
@@ -22,7 +23,7 @@ class NutritionInfo {
   }
 }
 
-class GroceryItem {
+class GroceryItem implements CartItem {
   final String id;
   final String name;
   final String description;
@@ -46,6 +47,19 @@ class GroceryItem {
   final int reviewCount;
   final int orderCount; // Number of times ordered (for popularity)
   final DateTime createdAt;
+
+  // CartItem interface implementations
+  @override
+  String get itemType => 'GroceryItem';
+
+  @override
+  String get providerName => storeName ?? 'Grocery Store';
+
+  @override
+  String get providerId => storeId;
+
+  @override
+  String get providerImage => storeLogo ?? '';
 
   GroceryItem({
     required this.id,

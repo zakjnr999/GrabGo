@@ -220,7 +220,11 @@ const getUserCart = async (userId, cartType = null) => {
     const cart = await Cart.findOne(query)
         .populate({
             path: 'items.itemId',
-            options: { strictPopulate: false } // Fix #1: Don't fail on missing refs
+            options: { strictPopulate: false }, // Fix #1: Don't fail on missing refs
+            populate: {
+                path: 'restaurant',
+                select: 'name restaurant_name logo image imageUrl'
+            }
         })
         .populate('restaurant', 'name imageUrl')
         .populate('groceryStore', 'name imageUrl');

@@ -1,4 +1,6 @@
-class FoodItem {
+import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
+
+class FoodItem implements CartItem {
   final String id;
   final String name;
   final String image;
@@ -18,6 +20,19 @@ class FoodItem {
   final DateTime? discountEndDate;
   final int orderCount; // Number of times ordered (for popularity)
   final DateTime? lastOrderedAt; // Last time this item was ordered
+
+  // CartItem interface implementations
+  @override
+  String get itemType => 'Food';
+
+  @override
+  String get providerName => sellerName;
+
+  @override
+  String get providerId => restaurantId;
+
+  @override
+  String get providerImage => restaurantImage;
 
   // Getter for original price before discount
   double get originalPrice {
@@ -136,6 +151,7 @@ class FoodItem {
     );
   }
 
+  @override
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
