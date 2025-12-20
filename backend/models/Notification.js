@@ -23,7 +23,12 @@ const notificationSchema = new mongoose.Schema({
             'cart_reminder',
             'meal_nudge_breakfast',
             'meal_nudge_lunch',
-            'meal_nudge_dinner'
+            'meal_nudge_dinner',
+            'favorites_reminder',
+            'reorder_suggestion',
+            'reengagement_two_weeks',
+            'reengagement_one_month',
+            'reengagement_two_months'
         ],
         required: true
     },

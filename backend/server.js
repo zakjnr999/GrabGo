@@ -301,6 +301,7 @@ const { scheduleReferralCleanup } = require("./jobs/referralCleanup");
 const { initializeScheduler } = require("./jobs/notification_scheduler");
 const { initializeCartAbandonmentJob } = require("./jobs/cart_abandonment");
 const { initializeMealNudges } = require("./jobs/meal_nudges");
+const { initializeEngagementNudges } = require("./jobs/engagement_nudges");
 
 // Import cache utility
 const cache = require("./utils/cache");
@@ -328,6 +329,9 @@ mongoose
 
     // Initialize meal-time nudges (breakfast, lunch, dinner)
     initializeMealNudges(io);
+
+    // Initialize engagement nudges (favorites, reorder, re-engagement)
+    initializeEngagementNudges(io);
 
     const PORT = process.env.PORT || 5000;
     server.listen(PORT, () => {

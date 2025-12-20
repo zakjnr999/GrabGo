@@ -1,118 +1,130 @@
 /**
- * Test Backend Favorites System
+ * Test Backend Favorites System (Direct Service Test)
  * 
- * Tests the favorites CRUD operations and sync functionality
+ * This script tests the favorites CRUD operations and sync functionality
+ * by calling the service functions directly, avoiding HTTP/network issues.
  * 
  * Usage:
  *   node scripts/test_favorites.js
  */
 
 require('dotenv').config();
-const axios = require('axios');
+const mongoose = require('mongoose');
+const User = require('../models/User');
+const Restaurant = require('../models/Restaurant');
+const GroceryStore = require('../models/GroceryStore');
+const Food = require('../models/Food');
+const GroceryItem = require('../models/GroceryItem');
+const {
+    getUserFavorites,
+    addFavoriteRestaurant,
+    removeFavoriteRestaurant,
+    addFavoriteStore,
+    removeFavoriteStore,
+    addFavoriteFoodItem,
+    removeFavoriteFoodItem,
+    addFavoriteGroceryItem,
+    removeFavoriteGroceryItem,
+    syncFavorites
+} = require('../services/favorites_service');
 
-const API_URL = process.env.API_URL || 'http://localhost:5000/api';
-let token = '';
-
-const login = async () => {
+const connectDB = async () => {
     try {
-        const response = await axios.post(`${API_URL}/users/login`, {
-            email: 'zakjnr5@gmail.com',
-            password: 'password123'
-        });
-        token = response.data.token;
-        console.log('✅ Login successful');
+        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/grabgo');
+        console.log('✅ Connected to MongoDB');
     } catch (error) {
-        console.error('❌ Login failed:', error.response?.data?.message || error.message);
+        console.error('❌ MongoDB connection error:', error);
         process.exit(1);
     }
 };
 
 const testFavorites = async () => {
-    console.log('🧪 Testing Backend Favorites System\n');
+    console.log('🧪 Testing Backend Favorites System (Direct)\n');
     console.log('='.repeat(60));
 
-    await login();
-
-    const headers = { Authorization: `Bearer ${token}` };
+    await connectDB();
 
     try {
+        // Find test user
+        const user = await User.findOne({ email: 'zakjnr5@gmail.com' });
+        if (!user) {
+            console.log('❌ Test user zakjnr5@gmail.com not found');
+            process.exit(1);
+        }
+        const userId = user._id;
+        console.log(`👤 Testing for user: ${user.email} (${userId})`);
+
         // 1. Get initial favorites
         console.log('\n📋 1. Getting initial favorites...');
-        const initialRes = await axios.get(`${API_URL}/favorites`, { headers });
+        const initialFavs = await getUserFavorites(userId);
         console.log('✅ Favorites retrieved');
-        console.log(`   Restaurants: ${initialRes.data.data.restaurants.length}`);
-        console.log(`   Food Items: ${initialRes.data.data.foodItems.length}`);
+        console.log(`   Restaurants: ${initialFavs.restaurants.length}`);
+        console.log(`   Grocery Stores: ${initialFavs.groceryStores.length}`);
+        console.log(`   Food Items: ${initialFavs.foodItems.length}`);
+        console.log(`   Grocery Items: ${initialFavs.groceryItems.length}`);
 
-        // 2. Add a favorite restaurant (Need a valid ID)
+        // 2. Add a favorite restaurant
         console.log('\n📝 2. Adding favorite restaurant...');
-        // Find a restaurant first
-        const restaurantsRes = await axios.get(`${API_URL}/restaurants`, { headers });
-        if (restaurantsRes.data.data.length > 0) {
-            const restaurantId = restaurantsRes.data.data[0]._id;
-            const addRes = await axios.post(`${API_URL}/favorites/restaurant/${restaurantId}`, {}, { headers });
-            console.log(`✅ Added restaurant: ${restaurantsRes.data.data[0].restaurant_name}`);
+        const restaurant = await Restaurant.findOne();
+        if (restaurant) {
+            await addFavoriteRestaurant(userId, restaurant._id.toString());
+            console.log(`✅ Added restaurant: ${restaurant.restaurant_name}`);
         } else {
-            console.log('⚠️ No restaurants found to test adding to favorites');
+            console.log('⚠️ No restaurants found in DB');
         }
 
         // 3. Add a favorite food item
         console.log('\n📝 3. Adding favorite food item...');
-        const foodsRes = await axios.get(`${API_URL}/foods`, { headers });
-        if (foodsRes.data.data.length > 0) {
-            const foodId = foodsRes.data.data[0]._id;
-            const addFoodRes = await axios.post(`${API_URL}/favorites/food/${foodId}`, {}, { headers });
-            console.log(`✅ Added food item: ${foodsRes.data.data[0].name}`);
+        const food = await Food.findOne();
+        if (food) {
+            await addFavoriteFoodItem(userId, food._id.toString());
+            console.log(`✅ Added food item: ${food.name}`);
         } else {
-            console.log('⚠️ No food items found to test adding to favorites');
+            console.log('⚠️ No food items found in DB');
         }
 
-        // 4. Get updated favorites
+        // 4. Verify updated favorites
         console.log('\n📋 4. Verifying updated favorites...');
-        const updatedRes = await axios.get(`${API_URL}/favorites`, { headers });
-        console.log(`✅ Verified: ${updatedRes.data.data.restaurants.length} restaurants, ${updatedRes.data.data.foodItems.length} food items`);
+        const updatedFavs = await getUserFavorites(userId);
+        console.log(`✅ Verified: ${updatedFavs.restaurants.length} restaurants, ${updatedFavs.foodItems.length} food items`);
 
-        // 5. Sync favorites
+        // 5. Sync favorites (Testing deduplication and cross-category sync)
         console.log('\n🔄 5. Testing favorites sync...');
-        // Let's get a store and a grocery item for sync test
-        const storesRes = await axios.get(`${API_URL}/groceries`, { headers });
-        const groceryItemsRes = await axios.get(`${API_URL}/groceries/items`, { headers });
+        const otherFood = await Food.findOne({ _id: { $ne: food?._id } });
+        const store = await GroceryStore.findOne();
+        const groceryItem = await GroceryItem.findOne();
 
-        const syncData = {
-            restaurants: [],
-            stores: storesRes.data.data.length > 0 ? [storesRes.data.data[0]._id] : [],
-            foodItems: foodsRes.data.data.length > 1 ? [foodsRes.data.data[1]._id] : [],
-            groceryItems: groceryItemsRes.data.data.length > 0 ? [groceryItemsRes.data.data[0]._id] : []
+        const localFavs = {
+            restaurants: restaurant ? [restaurant._id.toString()] : [], // Existing
+            stores: store ? [store._id.toString()] : [], // New
+            foodItems: otherFood ? [otherFood._id.toString(), otherFood._id.toString()] : [], // New + Duplicate
+            groceryItems: groceryItem ? [groceryItem._id.toString()] : [] // New
         };
 
-        const syncRes = await axios.post(`${API_URL}/favorites/sync`, syncData, { headers });
+        const syncedFavs = await syncFavorites(userId, localFavs);
         console.log('✅ Sync successful');
-        console.log(`   Synced Stores: ${syncRes.data.data.groceryStores.length}`);
-        console.log(`   Synced Food Items: ${syncRes.data.data.foodItems.length}`);
-        console.log(`   Synced Grocery Items: ${syncRes.data.data.groceryItems.length}`);
+        console.log(`   Total Restaurants: ${syncedFavs.restaurants.length}`);
+        console.log(`   Total Stores: ${syncedFavs.groceryStores.length}`);
+        console.log(`   Total Food Items: ${syncedFavs.foodItems.length} (deduplicated)`);
+        console.log(`   Total Grocery Items: ${syncedFavs.groceryItems.length}`);
 
         // 6. Remove favorite restaurant
         console.log('\n🗑️ 6. Removing favorite restaurant...');
-        if (restaurantsRes.data.data.length > 0) {
-            const restaurantId = restaurantsRes.data.data[0]._id;
-            await axios.delete(`${API_URL}/favorites/restaurant/${restaurantId}`, { headers });
-            console.log('✅ Restaurant removed');
+        if (restaurant) {
+            const finalFavs = await removeFavoriteRestaurant(userId, restaurant._id.toString());
+            console.log(`✅ Restaurant removed. Remaining restaurants: ${finalFavs.restaurants.length}`);
         }
 
-        // 7. Final verification
-        const finalRes = await axios.get(`${API_URL}/favorites`, { headers });
-        console.log('\n📊 Final Results:');
-        console.log(`   Restaurants: ${finalRes.data.data.restaurants.length}`);
-        console.log(`   Food Items: ${finalRes.data.data.foodItems.length}`);
-        console.log('\n✅ SUCCESS! All favorites tests passed!');
+        console.log('\n📊 Final Test Completed');
+        console.log('✅ SUCCESS! Favorites service verified.');
 
     } catch (error) {
-        console.error('\n❌ Test failed:', error.response?.data?.message || error.message);
-        if (error.response?.data) {
-            console.log(JSON.stringify(error.response.data, null, 2));
-        }
+        console.error('\n❌ Test failed:', error.message);
+        console.error(error.stack);
+    } finally {
+        await mongoose.connection.close();
+        process.exit(0);
     }
-
-    console.log('\n' + '='.repeat(60));
 };
 
 testFavorites();

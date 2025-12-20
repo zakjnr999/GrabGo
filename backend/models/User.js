@@ -115,9 +115,19 @@ const userSchema = new mongoose.Schema({
     dinner: { type: Boolean, default: true },
     maxPerWeek: { type: Number, default: 3, min: 0, max: 7 }
   },
-  // Meal nudge tracking
+  // Nudge tracking
   lastMealNudgeAt: { type: Date, default: null },
   mealNudgesThisWeek: { type: Number, default: 0 },
+  lastFavoritesNudgeAt: { type: Date, default: null },
+  favoritesNudgesThisWeek: { type: Number, default: 0 },
+  lastReorderSuggestionAt: { type: Date, default: null },
+  reorderSuggestionsThisWeek: { type: Number, default: 0 },
+  lastReengagementNudgeAt: { type: Date, default: null },
+  reengagementLevel: {
+    type: String,
+    enum: ['none', 'two_weeks', 'one_month', 'two_months'],
+    default: 'none'
+  },
   weekStartDate: { type: Date, default: null },
   lastOrderDate: { type: Date, default: null },
   // Favorites

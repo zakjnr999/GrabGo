@@ -261,10 +261,18 @@ const resetWeeklyCounters = async () => {
         console.log('🔄 Resetting weekly meal nudge counters...');
 
         const result = await User.updateMany(
-            { mealNudgesThisWeek: { $gt: 0 } },
+            {
+                $or: [
+                    { mealNudgesThisWeek: { $gt: 0 } },
+                    { favoritesNudgesThisWeek: { $gt: 0 } },
+                    { reorderSuggestionsThisWeek: { $gt: 0 } }
+                ]
+            },
             {
                 $set: {
                     mealNudgesThisWeek: 0,
+                    favoritesNudgesThisWeek: 0,
+                    reorderSuggestionsThisWeek: 0,
                     weekStartDate: new Date()
                 }
             }
