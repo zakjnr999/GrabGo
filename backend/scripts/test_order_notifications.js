@@ -16,7 +16,7 @@ const { createNotification } = require('../services/notification_service');
 require('dotenv').config();
 
 // Test configuration
-const TEST_USER_EMAIL = 'test@example.com'; // Change this to your test user email
+const TEST_USER_EMAIL = 'zakjnr5@gmail.com'; // Change this to your test user email
 const ORDER_STATUSES = ['confirmed', 'preparing', 'ready', 'picked_up', 'on_the_way', 'delivered'];
 
 async function testOrderNotifications() {
@@ -56,10 +56,12 @@ async function testOrderNotifications() {
         console.log('📦 Creating test order...');
         const order = await Order.create({
             orderNumber: `TEST-${Date.now()}`,
+            orderType: 'food',
             customer: user._id,
             restaurant: restaurant._id,
             items: [{
                 food: food._id,
+                itemType: 'food',
                 name: food.name,
                 quantity: 2,
                 price: food.price,
@@ -69,7 +71,12 @@ async function testOrderNotifications() {
             deliveryFee: 5.00,
             tax: (food.price * 2) * 0.05,
             totalAmount: (food.price * 2) + 5.00 + ((food.price * 2) * 0.05),
-            deliveryAddress: 'Test Address, Accra',
+            deliveryAddress: {
+                street: 'Test Street 123',
+                city: 'Accra',
+                state: 'Greater Accra',
+                zipCode: '00233'
+            },
             paymentMethod: 'cash',
             status: 'pending'
         });
@@ -127,7 +134,7 @@ async function testOrderNotifications() {
             // Create in-app notification
             const notification = await createNotification(
                 user._id,
-                'order_update',
+                'order',
                 `${emoji} Order #${order.orderNumber}`,
                 message,
                 {

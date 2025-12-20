@@ -15,8 +15,8 @@ const { getIO } = require('../utils/socket');
 require('dotenv').config();
 
 // Test configuration
-const REFERRER_EMAIL = 'referrer@example.com'; // User who will receive notifications
-const REFEREE_EMAIL = 'referee@example.com';   // User who completes the order
+const REFERRER_EMAIL = 'zakjnr5@gmail.com'; // User who will receive notifications
+const REFEREE_EMAIL = 'test@example.com';   // User who completes the order
 
 async function testReferralNotifications() {
     try {

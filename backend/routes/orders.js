@@ -58,7 +58,7 @@ const notifyOrderStatusChange = async (order, status, customMessage = null, io =
     if (io) {
       await createNotification(
         customerId,
-        'order_update',
+        'order',
         `${emoji} Order #${orderNumber}`,
         message,
         {
