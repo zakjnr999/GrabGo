@@ -16,6 +16,10 @@ class SettingsProvider extends ChangeNotifier {
   bool _paymentUpdatesEnabled = true;
   bool _deliveryUpdatesEnabled = true;
   bool _systemUpdatesEnabled = true;
+  bool _cartRemindersEnabled = true;
+  bool _favoritesRemindersEnabled = true;
+  bool _reorderSuggestionsEnabled = true;
+  bool _reengagementRemindersEnabled = true;
   bool _notificationSoundEnabled = true;
 
   // Display preferences
@@ -49,6 +53,10 @@ class SettingsProvider extends ChangeNotifier {
   bool get paymentUpdatesEnabled => _paymentUpdatesEnabled;
   bool get deliveryUpdatesEnabled => _deliveryUpdatesEnabled;
   bool get systemUpdatesEnabled => _systemUpdatesEnabled;
+  bool get cartRemindersEnabled => _cartRemindersEnabled;
+  bool get favoritesRemindersEnabled => _favoritesRemindersEnabled;
+  bool get reorderSuggestionsEnabled => _reorderSuggestionsEnabled;
+  bool get reengagementRemindersEnabled => _reengagementRemindersEnabled;
   bool get notificationSoundEnabled => _notificationSoundEnabled;
 
   // Other getters
@@ -79,6 +87,10 @@ class SettingsProvider extends ChangeNotifier {
       _paymentUpdatesEnabled = _prefs!.getBool('payment_updates') ?? true;
       _deliveryUpdatesEnabled = _prefs!.getBool('delivery_updates') ?? true;
       _systemUpdatesEnabled = _prefs!.getBool('system_updates') ?? true;
+      _cartRemindersEnabled = _prefs!.getBool('cart_reminders') ?? true;
+      _favoritesRemindersEnabled = _prefs!.getBool('favorites_reminders') ?? true;
+      _reorderSuggestionsEnabled = _prefs!.getBool('reorder_suggestions') ?? true;
+      _reengagementRemindersEnabled = _prefs!.getBool('reengagement_reminders') ?? true;
       _notificationSoundEnabled = _prefs!.getBool('notification_sound') ?? true;
 
       _fontScale = (_prefs!.getDouble('font_scale') ?? 1.0).clamp(0.85, 1.3);
@@ -129,6 +141,10 @@ class SettingsProvider extends ChangeNotifier {
           _paymentUpdatesEnabled = settings['paymentUpdates'] ?? true;
           _deliveryUpdatesEnabled = settings['deliveryUpdates'] ?? true;
           _systemUpdatesEnabled = settings['systemUpdates'] ?? true;
+          _cartRemindersEnabled = settings['cartReminders'] ?? true;
+          _favoritesRemindersEnabled = settings['favoritesReminders'] ?? true;
+          _reorderSuggestionsEnabled = settings['reorderSuggestions'] ?? true;
+          _reengagementRemindersEnabled = settings['reengagementReminders'] ?? true;
 
           // Save to local cache
           await _saveNotificationSettingsLocally();
@@ -155,6 +171,10 @@ class SettingsProvider extends ChangeNotifier {
     await _prefs!.setBool('payment_updates', _paymentUpdatesEnabled);
     await _prefs!.setBool('delivery_updates', _deliveryUpdatesEnabled);
     await _prefs!.setBool('system_updates', _systemUpdatesEnabled);
+    await _prefs!.setBool('cart_reminders', _cartRemindersEnabled);
+    await _prefs!.setBool('favorites_reminders', _favoritesRemindersEnabled);
+    await _prefs!.setBool('reorder_suggestions', _reorderSuggestionsEnabled);
+    await _prefs!.setBool('reengagement_reminders', _reengagementRemindersEnabled);
   }
 
   /// Sync notification settings with backend
@@ -181,6 +201,10 @@ class SettingsProvider extends ChangeNotifier {
                 'paymentUpdates': _paymentUpdatesEnabled,
                 'deliveryUpdates': _deliveryUpdatesEnabled,
                 'systemUpdates': _systemUpdatesEnabled,
+                'cartReminders': _cartRemindersEnabled,
+                'favoritesReminders': _favoritesRemindersEnabled,
+                'reorderSuggestions': _reorderSuggestionsEnabled,
+                'reengagementReminders': _reengagementRemindersEnabled,
               },
             }),
           )
@@ -265,6 +289,38 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     _prefs ??= await SharedPreferences.getInstance();
     await _prefs!.setBool('system_updates', value);
+    await _syncNotificationSettingsWithBackend();
+  }
+
+  Future<void> setCartReminders(bool value) async {
+    _cartRemindersEnabled = value;
+    notifyListeners();
+    _prefs ??= await SharedPreferences.getInstance();
+    await _prefs!.setBool('cart_reminders', value);
+    await _syncNotificationSettingsWithBackend();
+  }
+
+  Future<void> setFavoritesReminders(bool value) async {
+    _favoritesRemindersEnabled = value;
+    notifyListeners();
+    _prefs ??= await SharedPreferences.getInstance();
+    await _prefs!.setBool('favorites_reminders', value);
+    await _syncNotificationSettingsWithBackend();
+  }
+
+  Future<void> setReorderSuggestions(bool value) async {
+    _reorderSuggestionsEnabled = value;
+    notifyListeners();
+    _prefs ??= await SharedPreferences.getInstance();
+    await _prefs!.setBool('reorder_suggestions', value);
+    await _syncNotificationSettingsWithBackend();
+  }
+
+  Future<void> setReengagementReminders(bool value) async {
+    _reengagementRemindersEnabled = value;
+    notifyListeners();
+    _prefs ??= await SharedPreferences.getInstance();
+    await _prefs!.setBool('reengagement_reminders', value);
     await _syncNotificationSettingsWithBackend();
   }
 

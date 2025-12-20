@@ -19,7 +19,7 @@ const findEligibleUsers = async () => {
         const now = new Date();
 
         return await User.find({
-            'notificationSettings.promoNotifications': true,
+            'notificationSettings.reorderSuggestions': true,
             $or: [
                 { lastReorderSuggestionAt: null },
                 { lastReorderSuggestionAt: { $lt: sevenDaysAgo } }

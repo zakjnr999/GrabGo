@@ -59,7 +59,11 @@ router.patch('/settings/notifications', protect, async (req, res) => {
             'referralUpdates',
             'paymentUpdates',
             'deliveryUpdates',
-            'systemUpdates'
+            'systemUpdates',
+            'cartReminders',
+            'favoritesReminders',
+            'reorderSuggestions',
+            'reengagementReminders'
         ];
 
         // Build update object

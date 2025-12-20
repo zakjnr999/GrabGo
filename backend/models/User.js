@@ -105,7 +105,10 @@ const userSchema = new mongoose.Schema({
     paymentUpdates: { type: Boolean, default: true },
     deliveryUpdates: { type: Boolean, default: true },
     systemUpdates: { type: Boolean, default: true },
-    cartReminders: { type: Boolean, default: true }
+    cartReminders: { type: Boolean, default: true },
+    favoritesReminders: { type: Boolean, default: true },
+    reorderSuggestions: { type: Boolean, default: true },
+    reengagementReminders: { type: Boolean, default: true }
   },
   // Meal-time nudge preferences
   mealTimePreferences: {

@@ -269,6 +269,38 @@ class _SettingsPageState extends State<SettingsPage> {
                     ) {
                       settingsProvider.setSystemUpdates(value);
                     }, colors),
+                    _buildToggleTile("Cart Reminders", Assets.icons.cart, settingsProvider.cartRemindersEnabled, (
+                      value,
+                    ) {
+                      settingsProvider.setCartReminders(value);
+                    }, colors),
+                    _buildToggleTile(
+                      "Favorites Reminders",
+                      Assets.icons.heart,
+                      settingsProvider.favoritesRemindersEnabled,
+                      (value) {
+                        settingsProvider.setFavoritesReminders(value);
+                      },
+                      colors,
+                    ),
+                    _buildToggleTile(
+                      "Reorder Suggestions",
+                      Assets.icons.refresh,
+                      settingsProvider.reorderSuggestionsEnabled,
+                      (value) {
+                        settingsProvider.setReorderSuggestions(value);
+                      },
+                      colors,
+                    ),
+                    _buildToggleTile(
+                      "Re-engagement Reminders",
+                      Assets.icons.bell,
+                      settingsProvider.reengagementRemindersEnabled,
+                      (value) {
+                        settingsProvider.setReengagementReminders(value);
+                      },
+                      colors,
+                    ),
                     _buildToggleTile(
                       "Notification Sound",
                       Assets.icons.soundHigh,

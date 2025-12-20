@@ -28,7 +28,7 @@ const findEligibleUsers = async () => {
         // Find users with favorites
         const users = await User.find({
             'favorites.restaurants.0': { $exists: true }, // Has at least one favorite
-            'notificationSettings.promoNotifications': true,
+            'notificationSettings.favoritesReminders': true,
             // Never ordered OR haven't ordered in 7 days
             $or: [
                 { lastOrderDate: null },
