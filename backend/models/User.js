@@ -120,6 +120,37 @@ const userSchema = new mongoose.Schema({
   mealNudgesThisWeek: { type: Number, default: 0 },
   weekStartDate: { type: Date, default: null },
   lastOrderDate: { type: Date, default: null },
+  // Favorites
+  favorites: {
+    restaurants: [{
+      restaurantId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Restaurant'
+      },
+      addedAt: { type: Date, default: Date.now }
+    }],
+    groceryStores: [{
+      storeId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'GroceryStore'
+      },
+      addedAt: { type: Date, default: Date.now }
+    }],
+    foodItems: [{
+      itemId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Food'
+      },
+      addedAt: { type: Date, default: Date.now }
+    }],
+    groceryItems: [{
+      itemId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'GroceryItem'
+      },
+      addedAt: { type: Date, default: Date.now }
+    }]
+  },
   permissions: {
     canManageUsers: { type: Boolean, default: false },
     canManageProducts: { type: Boolean, default: false },
@@ -137,6 +168,12 @@ userSchema.index({
   lastMealNudgeAt: 1,
   mealNudgesThisWeek: 1
 });
+
+// Indexes for favorites queries
+userSchema.index({ 'favorites.restaurants.restaurantId': 1 });
+userSchema.index({ 'favorites.groceryStores.storeId': 1 });
+userSchema.index({ 'favorites.foodItems.itemId': 1 });
+userSchema.index({ 'favorites.groceryItems.itemId': 1 });
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {

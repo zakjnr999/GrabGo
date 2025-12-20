@@ -273,6 +273,7 @@ app.use("/api/scheduled-notifications", require("./routes/scheduled_notification
 app.use("/api/referral", require("./routes/referrals"));
 app.use("/api/promotions", require("./routes/promotions"));
 app.use("/api/cart", require("./routes/cart"));
+app.use("/api/favorites", require("./routes/favorites"));
 
 // Health check
 app.get("/api/health", (req, res) => {
