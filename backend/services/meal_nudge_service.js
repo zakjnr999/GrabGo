@@ -39,14 +39,16 @@ const findEligibleUsers = async (mealType) => {
                 { lastMealNudgeAt: { $lt: oneDayAgo } }
             ],
 
-            // Weekly limit
-            $expr: {
-                $lt: ['$mealNudgesThisWeek', '$mealTimePreferences.maxPerWeek']
-            }
         }).select('_id username email lastOrderDate mealTimePreferences mealNudgesThisWeek weekStartDate');
 
-        console.log(`🔍 Found ${users.length} eligible users for ${mealType} nudge`);
-        return users;
+        // Filter by weekly limit in JavaScript (simpler than $expr)
+        const eligibleUsers = users.filter(user => {
+            const maxPerWeek = user.mealTimePreferences?.maxPerWeek || 3;
+            return user.mealNudgesThisWeek < maxPerWeek;
+        });
+
+        console.log(`🔍 Found ${eligibleUsers.length} eligible users for ${mealType} nudge`);
+        return eligibleUsers;
 
     } catch (error) {
         console.error(`Error finding eligible users for ${mealType}:`, error.message);
