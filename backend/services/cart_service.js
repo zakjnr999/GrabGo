@@ -170,11 +170,28 @@ const updateCartItem = async (userId, itemId, quantity) => {
  */
 const removeFromCart = async (userId, itemId) => {
     console.log(`🗑️ Backend: Removing item ${itemId} from cart for user ${userId}`);
-    const cart = await Cart.findOne({ user: userId, isActive: true });
+
+    // Find ALL active carts and locate the one with the item
+    const carts = await Cart.find({ user: userId, isActive: true });
+
+    if (!carts || carts.length === 0) {
+        console.log('❌ No active carts found');
+        throw new Error('Cart not found');
+    }
+
+    // Find which cart contains the item
+    let cart = null;
+    for (const c of carts) {
+        const hasItem = c.items.some(item => item.itemId.toString() === itemId);
+        if (hasItem) {
+            cart = c;
+            break;
+        }
+    }
 
     if (!cart) {
-        console.log('❌ Cart not found');
-        throw new Error('Cart not found');
+        console.log('⚠️ Item not found in any cart');
+        throw new Error('Item not found in cart');
     }
 
     console.log(`📋 Cart details BEFORE removal:`, {
