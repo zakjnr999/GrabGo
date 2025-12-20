@@ -177,6 +177,17 @@ const removeFromCart = async (userId, itemId) => {
         throw new Error('Cart not found');
     }
 
+    console.log(`📋 Cart details BEFORE removal:`, {
+        cartId: cart._id,
+        cartType: cart.cartType,
+        itemCount: cart.items.length,
+        items: cart.items.map(item => ({
+            itemId: item.itemId.toString(),
+            name: item.name,
+            quantity: item.quantity
+        }))
+    });
+
     const initialLength = cart.items.length;
     cart.items = cart.items.filter(
         item => item.itemId.toString() !== itemId
