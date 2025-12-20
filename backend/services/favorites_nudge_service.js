@@ -1,5 +1,5 @@
 const User = require('../models/User');
-const { sendPushNotification } = require('./fcm_service');
+const { sendToUser } = require('./fcm_service');
 const { createNotification } = require('./notification_service');
 
 /**
@@ -139,21 +139,23 @@ const sendFavoritesNudge = async (user) => {
         if (!nudgeData) return;
 
         // 1. In-app notification
-        await createNotification({
-            user: user._id,
-            type: 'favorites_reminder',
-            title: nudgeData.title,
-            message: nudgeData.message,
-            data: {
-                restaurantId: nudgeData.restaurantId
-            }
-        });
-
-        // 2. Push notification
-        await sendPushNotification(
+        await createNotification(
             user._id,
+            'favorites_reminder',
             nudgeData.title,
             nudgeData.message,
+            {
+                restaurantId: nudgeData.restaurantId
+            }
+        );
+
+        // 2. Push notification
+        await sendToUser(
+            user._id,
+            {
+                title: nudgeData.title,
+                body: nudgeData.message
+            },
             {
                 type: 'favorites_reminder',
                 restaurantId: nudgeData.restaurantId,
