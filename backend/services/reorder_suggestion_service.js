@@ -112,15 +112,15 @@ const sendReorderSuggestion = async (user) => {
         const templates = [
             {
                 title: `🍴 Missing your ${item.name}?`,
-                message: `It's been a few days since your last order. Ready for another ${item.name}?`
+                message: `Use code REORDER10 for 10% off your next order!`
             },
             {
                 title: `🏠 Time to stock up?`,
-                message: `You usually order ${item.name} around this time. Want us to get it ready?`
+                message: `Get ${item.name} with 10% off using code REORDER10!`
             },
             {
                 title: `✨ Treat yourself to ${item.name}!`,
-                message: `The usual? One tap and your ${item.name} is on the way.`
+                message: `The usual? Save 10% with code REORDER10!`
             }
         ];
 
@@ -150,7 +150,8 @@ const sendReorderSuggestion = async (user) => {
             {
                 type: 'reorder_suggestion',
                 itemId: (item.food || item.groceryItem).toString(),
-                itemType: item.itemType,
+                itemType: String(item.itemType),
+                promoCode: 'REORDER10',
                 click_action: 'FLUTTER_NOTIFICATION_CLICK'
             }
         );

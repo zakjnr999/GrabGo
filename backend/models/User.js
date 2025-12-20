@@ -161,6 +161,13 @@ const userSchema = new mongoose.Schema({
       addedAt: { type: Date, default: Date.now }
     }]
   },
+  // Promo code usage tracking
+  usedPromoCodes: [{
+    code: { type: String, required: true },
+    usedAt: { type: Date, default: Date.now },
+    orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
+    discountAmount: { type: Number, default: 0 }
+  }],
   permissions: {
     canManageUsers: { type: Boolean, default: false },
     canManageProducts: { type: Boolean, default: false },

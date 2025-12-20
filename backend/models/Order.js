@@ -151,6 +151,21 @@ const orderSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  // Promo code information
+  promoCode: {
+    type: String,
+    default: null
+  },
+  promoDiscount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  promoType: {
+    type: String,
+    enum: ['percentage', 'fixed', 'free_delivery'],
+    default: null
+  },
   notes: {
     type: String,
     default: null

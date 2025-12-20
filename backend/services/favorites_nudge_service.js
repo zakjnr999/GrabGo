@@ -93,30 +93,30 @@ const generateFavoritesMessage = (user) => {
         templates = [
             {
                 title: `🍔 Missing ${restaurantName}?`,
-                message: `It's been a while since your last order. Grab your favorites now!`
+                message: `Use code FAVE10 for 10% off your next order!`
             },
             {
                 title: `🍕 ${restaurantName} is waiting!`,
-                message: `Treat yourself to something delicious from one of your favorite spots.`
+                message: `Get 10% off with code FAVE10. Order now!`
             },
             {
                 title: `✨ Craving ${restaurantName}?`,
-                message: `Your favorites are just a tap away. Order today and enjoy!`
+                message: `Special offer: 10% off with FAVE10!`
             }
         ];
     } else {
         templates = [
             {
                 title: '🍔 Missing your favorites?',
-                message: 'It\'s been a while! Order from your favorite restaurants today.'
+                message: 'Use code FAVE10 for 10% off your next order!'
             },
             {
                 title: '🍕 Craving something good?',
-                message: 'Your favorites are just a tap away. Check out what\'s new!'
+                message: 'Get 10% off with code FAVE10!'
             },
             {
                 title: '✨ Time for a treat?',
-                message: 'Treat yourself to a meal from one of your top-rated spots.'
+                message: 'Order from your favorites and save 10% with FAVE10!'
             }
         ];
     }
@@ -159,6 +159,7 @@ const sendFavoritesNudge = async (user) => {
             {
                 type: 'favorites_reminder',
                 restaurantId: nudgeData.restaurantId,
+                promoCode: 'FAVE10',
                 click_action: 'FLUTTER_NOTIFICATION_CLICK'
             }
         );

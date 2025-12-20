@@ -274,6 +274,7 @@ app.use("/api/referral", require("./routes/referrals"));
 app.use("/api/promotions", require("./routes/promotions"));
 app.use("/api/cart", require("./routes/cart"));
 app.use("/api/favorites", require("./routes/favorites"));
+app.use("/api/promo", require("./routes/promo"));
 
 // Health check
 app.get("/api/health", (req, res) => {
