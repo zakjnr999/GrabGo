@@ -1,5 +1,6 @@
 const cron = require('node-cron');
 const { processFavoritesNudges } = require('../services/favorites_nudge_service');
+const { processReorderSuggestions } = require('../services/reorder_suggestion_service');
 
 /**
  * Engagement Nudges Cron Jobs
@@ -23,7 +24,16 @@ const initializeEngagementNudges = (io) => {
     });
     console.log('✅ Favorites nudges scheduled (10:30 AM GMT daily)');
 
-    // Note: Reorder suggestions and Re-engagement nudges will be added in subsequent steps
+    // Reorder Prompt - 4:30 PM GMT daily
+    cron.schedule('30 16 * * *', async () => {
+        console.log('\n🔄 REORDER PROMPT - Checking for frequent items...');
+        await processReorderSuggestions();
+    }, {
+        timezone: 'GMT'
+    });
+    console.log('✅ Reorder prompts scheduled (4:30 PM GMT daily)');
+
+    // Note: Re-engagement nudges will be added in subsequent steps
 };
 
 module.exports = {

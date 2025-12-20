@@ -71,7 +71,9 @@ const notificationSchema = new mongoose.Schema({
         actorAvatar: String,
         reactionType: String,
         commentText: String,
-        replyText: String
+        replyText: String,
+        itemId: String,
+        itemName: String
     }
 }, {
     timestamps: true
