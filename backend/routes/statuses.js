@@ -1484,7 +1484,7 @@ router.post(
                             req.user.name,
                             text,
                             parentComment.status,
-                            newReply._id,  // Reply ID for deep linking
+                            reply._id,  // Reply ID for deep linking
                             parentComment._id,  // Parent comment ID
                             req.user._id,
                             req.user.profileImage,
@@ -1500,7 +1500,7 @@ router.post(
                             `💬 ${text.length > 100 ? text.substring(0, 100) + '...' : text}`,
                             {
                                 statusId: parentComment.status.toString(),
-                                commentId: newReply._id.toString(),  // The reply ID, not parent
+                                commentId: reply._id.toString(),  // The reply ID, not parent
                                 parentCommentId: parentComment._id.toString(),  // NEW: Parent comment ID
                                 isReply: true,  // NEW: Flag to indicate this is a reply
                                 restaurantId: status.restaurant.toString(),

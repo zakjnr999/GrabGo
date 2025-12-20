@@ -706,7 +706,7 @@ class _RestaurantDetailsState extends State<RestaurantDetails> with TickerProvid
                                                   if (isInCart) {
                                                     cartProvider.removeItemCompletely(food);
                                                   } else {
-                                                    cartProvider.addToCart(food);
+                                                    cartProvider.addToCart(food, context: context);
                                                   }
                                                 },
                                                 child: Container(

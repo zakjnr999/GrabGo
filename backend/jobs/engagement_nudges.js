@@ -18,7 +18,7 @@ const initializeEngagementNudges = (io) => {
     // Favorites nudge - 10:30 AM GMT daily
     cron.schedule('30 10 * * *', async () => {
         console.log('\n⭐ FAVORITES NUDGE - Checking for eligible users...');
-        await processFavoritesNudges();
+        await processFavoritesNudges(io);
     }, {
         timezone: 'GMT'
     });
@@ -27,7 +27,7 @@ const initializeEngagementNudges = (io) => {
     // Reorder Prompt - 4:30 PM GMT daily
     cron.schedule('30 16 * * *', async () => {
         console.log('\n🔄 REORDER PROMPT - Checking for frequent items...');
-        await processReorderSuggestions();
+        await processReorderSuggestions(io);
     }, {
         timezone: 'GMT'
     });

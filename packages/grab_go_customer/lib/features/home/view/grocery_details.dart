@@ -409,7 +409,7 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
                                 ),
                                 GestureDetector(
                                   onTap: () {
-                                    provider.addToCart(widget.groceryItem);
+                                    provider.addToCart(widget.groceryItem, context: context);
                                   },
                                   child: Container(
                                     padding: EdgeInsets.all(2.r),
@@ -447,7 +447,7 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
                                 if (isInCart) {
                                   provider.removeItemCompletely(widget.groceryItem);
                                 } else {
-                                  provider.addToCart(widget.groceryItem);
+                                  provider.addToCart(widget.groceryItem, context: context);
                                 }
                               },
                               style: ElevatedButton.styleFrom(

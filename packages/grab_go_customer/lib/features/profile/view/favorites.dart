@@ -463,7 +463,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
                   if (isInCart) {
                     cartProvider.removeItemCompletely(item);
                   } else {
-                    cartProvider.addToCart(item);
+                    cartProvider.addToCart(item, context: context);
                   }
                 },
                 child: Container(

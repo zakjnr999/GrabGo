@@ -132,8 +132,9 @@ const generateFavoritesMessage = (user) => {
 /**
  * Send a favorites nudge to a specific user
  * @param {Object} user - User object
+ * @param {Object} io - Socket.io instance
  */
-const sendFavoritesNudge = async (user) => {
+const sendFavoritesNudge = async (user, io = null) => {
     try {
         const nudgeData = generateFavoritesMessage(user);
         if (!nudgeData) return;
@@ -146,7 +147,8 @@ const sendFavoritesNudge = async (user) => {
             nudgeData.message,
             {
                 restaurantId: nudgeData.restaurantId
-            }
+            },
+            io
         );
 
         // 2. Push notification
@@ -190,15 +192,16 @@ const sendFavoritesNudge = async (user) => {
 
 /**
  * Process all favorites nudges
+ * @param {Object} io - Socket.io instance
  */
-const processFavoritesNudges = async () => {
+const processFavoritesNudges = async (io = null) => {
     try {
         const users = await findEligibleUsers();
 
         for (const user of users) {
             // Add slight random delay to avoid pounding FCM
             await new Promise(resolve => setTimeout(resolve, 500));
-            await sendFavoritesNudge(user);
+            await sendFavoritesNudge(user, io);
         }
 
         console.log(`📊 Favorites nudges processing complete: ${users.length} processed`);

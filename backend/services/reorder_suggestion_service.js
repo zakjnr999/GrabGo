@@ -103,8 +103,9 @@ const getFrequentItemToSuggest = async (userId) => {
 /**
  * Send a reorder suggestion to a user
  * @param {Object} user - User object
+ * @param {Object} io - Socket.io instance
  */
-const sendReorderSuggestion = async (user) => {
+const sendReorderSuggestion = async (user, io = null) => {
     try {
         const item = await getFrequentItemToSuggest(user._id);
         if (!item) return;
@@ -137,7 +138,8 @@ const sendReorderSuggestion = async (user) => {
                 itemType: item.itemType,
                 itemName: item.name,
                 route: '/browse'
-            }
+            },
+            io
         );
 
         // 2. Push notification
@@ -180,15 +182,16 @@ const sendReorderSuggestion = async (user) => {
 
 /**
  * Process all reorder suggestions
+ * @param {Object} io - Socket.io instance
  */
-const processReorderSuggestions = async () => {
+const processReorderSuggestions = async (io = null) => {
     try {
         const users = await findEligibleUsers();
         console.log(`🔍 Found ${users.length} potentially eligible users for reorder prompts`);
 
         for (const user of users) {
             await new Promise(resolve => setTimeout(resolve, 500));
-            await sendReorderSuggestion(user);
+            await sendReorderSuggestion(user, io);
         }
 
         console.log(`📊 Reorder prompts processing complete`);

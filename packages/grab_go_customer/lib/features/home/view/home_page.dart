@@ -813,7 +813,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           if (isInCart) {
                             provider.removeItemCompletely(item);
                           } else {
-                            provider.addToCart(item);
+                            provider.addToCart(item, context: context);
                           }
                         },
                         child: Container(

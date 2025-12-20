@@ -120,7 +120,7 @@ class TopRatedCard extends StatelessWidget {
                           if (isInCart) {
                             provider.removeItemCompletely(itemForCart);
                           } else {
-                            provider.addToCart(itemForCart);
+                            provider.addToCart(itemForCart, context: context);
                           }
                         },
                         child: AnimatedContainer(

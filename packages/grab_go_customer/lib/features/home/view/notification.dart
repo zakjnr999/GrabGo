@@ -5,6 +5,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/status/view/story_viewer.dart';
 import 'package:grab_go_customer/shared/services/notification_service.dart';
+import 'package:grab_go_customer/shared/widgets/app_refresh_indicator.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:intl/intl.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -565,18 +566,19 @@ class _NotificationState extends State<Notification> {
               ? NotificationSkeleton(colors: colors, isDark: isDark)
               : _notifications.isEmpty
               ? _buildEmptyState(colors)
-              : RefreshIndicator(
+              : AppRefreshIndicator(
                   onRefresh: _loadNotifications,
-                  color: colors.accentViolet,
+                  bgColor: colors.accentOrange,
+                  iconPath: Assets.icons.bellNotification,
                   child: ListView.separated(
                     controller: _scrollController,
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: EdgeInsets.symmetric(horizontal: 20.w),
+                    padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
                     itemCount: _notifications.length + (_isLoadingMore ? 1 : 0),
                     separatorBuilder: (context, index) => SizedBox(height: 12.h),
                     itemBuilder: (context, index) {
                       if (index == _notifications.length) {
-                        LoadingMore(
+                        return LoadingMore(
                           colors: colors,
                           spinnerColor: colors.accentOrange,
                           borderColor: colors.accentOrange,

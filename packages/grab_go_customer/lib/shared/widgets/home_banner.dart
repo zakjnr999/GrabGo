@@ -393,7 +393,7 @@ class _HomeBannerState extends State<HomeBanner> {
                               if (isInCart) {
                                 cartProvider.removeItemCompletely(itemForCart);
                               } else {
-                                cartProvider.addToCart(itemForCart);
+                                cartProvider.addToCart(itemForCart, context: context);
                               }
                             },
                             child: AnimatedContainer(

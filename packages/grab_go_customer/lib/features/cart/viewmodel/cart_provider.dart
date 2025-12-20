@@ -3,7 +3,7 @@ import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
-import 'package:grab_go_shared/shared/services/cache_service.dart';
+import 'package:grab_go_shared/grub_go_shared.dart';
 
 class CartProvider extends ChangeNotifier {
   final Map<CartItem, int> _cartItems = {};
@@ -230,7 +230,39 @@ class CartProvider extends ChangeNotifier {
     }
   }
 
-  void addToCart(CartItem item) {
+  Future<void> addToCart(CartItem item, {BuildContext? context}) async {
+    // Check for store/restaurant mismatch
+    if (context != null && _cartItems.isNotEmpty) {
+      final existingItem = _cartItems.keys.first;
+      final existingProviderId = existingItem.providerId;
+      final newProviderId = item.providerId;
+
+      // Check if switching stores/restaurants
+      if (existingProviderId != newProviderId) {
+        final isGrocery = item.itemType == 'GroceryItem';
+        final providerType = isGrocery ? 'store' : 'restaurant';
+
+        // Show warning dialog
+        final shouldReplace = await AppDialog.show(
+          context: context,
+          type: AppDialogType.warning,
+          title: 'Replace Cart Items?',
+          message:
+              'You have items from a different $providerType in your cart. Adding this item will remove your current cart items. Do you want to continue?',
+          primaryButtonText: 'Replace Cart',
+          secondaryButtonText: 'Cancel',
+        );
+
+        if (shouldReplace != true) {
+          return; // User cancelled
+        }
+
+        // Clear cart before adding new item
+        _cartItems.clear();
+        _saveCart();
+      }
+    }
+
     final previousQuantity = _cartItems[item] ?? 0;
 
     if (_cartItems.containsKey(item)) {

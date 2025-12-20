@@ -834,7 +834,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                     ),
                                     GestureDetector(
                                       onTap: () {
-                                        provider.addToCart(cartItem);
+                                        provider.addToCart(cartItem, context: context);
                                       },
                                       child: Container(
                                         padding: EdgeInsets.all(2.r),
@@ -871,7 +871,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                     if (isInCart) {
                                       provider.removeItemCompletely(cartItem);
                                     } else {
-                                      provider.addToCart(cartItem);
+                                      provider.addToCart(cartItem, context: context);
                                     }
                                   },
                                   backgroundColor: Colors.transparent,
@@ -1057,7 +1057,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                               if (isInCart) {
                                 provider.removeItemCompletely(item);
                               } else {
-                                provider.addToCart(item);
+                                provider.addToCart(item, context: context);
                               }
                             },
                             child: Container(
@@ -1111,7 +1111,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
               if (isInCart) {
                 cartProvider.removeItemCompletely(item);
               } else {
-                cartProvider.addToCart(item);
+                cartProvider.addToCart(item, context: context);
               }
             },
             child: Container(

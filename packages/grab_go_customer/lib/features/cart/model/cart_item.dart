@@ -329,7 +329,7 @@ class _CartItemState extends State<CartItem> {
                                         ),
                                         GestureDetector(
                                           onTap: () {
-                                            provider.addToCart(cartItem);
+                                            provider.addToCart(cartItem, context: context);
                                           },
                                           child: Container(
                                             padding: EdgeInsets.all(4.r),
