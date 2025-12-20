@@ -10,6 +10,7 @@ import 'package:grab_go_shared/grub_go_shared.dart';
 
 class DealsSection extends StatelessWidget {
   final List<FoodItem> dealItems;
+  final List<dynamic>? originalItems; // Original GroceryItem list for cart operations
   final VoidCallback onSeeAll;
   final Function(FoodItem) onItemTap;
   final bool isLoading;
@@ -17,6 +18,7 @@ class DealsSection extends StatelessWidget {
   const DealsSection({
     super.key,
     required this.dealItems,
+    this.originalItems,
     required this.onSeeAll,
     required this.onItemTap,
     this.isLoading = false,
@@ -51,10 +53,18 @@ class DealsSection extends StatelessWidget {
               itemBuilder: (context, index) {
                 final item = dealItems[index];
                 final discountPercent = item.discountPercentage.toInt();
+                final originalItem = originalItems != null && index < originalItems!.length
+                    ? originalItems![index]
+                    : null;
 
                 return Padding(
                   padding: EdgeInsets.only(right: 15.w),
-                  child: DealCard(item: item, discountPercent: discountPercent, onTap: () => onItemTap(item)),
+                  child: DealCard(
+                    item: item,
+                    cartItem: originalItem,
+                    discountPercent: discountPercent,
+                    onTap: () => onItemTap(item),
+                  ),
                 );
               },
             ),

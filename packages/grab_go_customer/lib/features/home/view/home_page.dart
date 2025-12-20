@@ -260,20 +260,24 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       // 3. Deals & Offers (Unified for both Food & Grocery)
                       Builder(
                         builder: (context) {
+                          final groceryProvider = Provider.of<GroceryProvider>(context);
                           final deals = serviceProvider.isFoodService
                               ? foodProvider.dealItems.take(10).toList()
-                              : Provider.of<GroceryProvider>(
-                                  context,
-                                ).deals.take(10).map((e) => e.toFoodItem()).toList();
+                              : groceryProvider.deals.take(10).map((e) => e.toFoodItem()).toList();
+
+                          final originalDeals = serviceProvider.isGroceryService
+                              ? groceryProvider.deals.take(10).toList()
+                              : null;
 
                           final isLoading = serviceProvider.isFoodService
                               ? foodProvider.isLoadingDeals
-                              : Provider.of<GroceryProvider>(context).isLoadingDeals;
+                              : groceryProvider.isLoadingDeals;
 
                           return Column(
                             children: [
                               DealsSection(
                                 dealItems: deals,
+                                originalItems: originalDeals,
                                 onSeeAll: () {},
                                 onItemTap: (item) {
                                   if (serviceProvider.isGroceryService) {
@@ -340,6 +344,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       Builder(
                         builder: (context) {
                           List<FoodItem> popularItems = [];
+                          List<dynamic>? originalPopularItems;
                           bool isLoading = false;
 
                           if (serviceProvider.isFoodService) {
@@ -350,11 +355,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             final groceryProvider = Provider.of<GroceryProvider>(context);
                             // Use backend popular items (sorted by orderCount)
                             popularItems = groceryProvider.popularItems.map((e) => e.toFoodItem()).toList();
+                            originalPopularItems = groceryProvider.popularItems;
                             isLoading = groceryProvider.isLoadingPopular;
                           }
 
                           return PopularSection(
                             popularItems: popularItems,
+                            originalItems: originalPopularItems,
                             onSeeAll: () {},
                             onItemTap: (item) {
                               if (serviceProvider.isGroceryService) {
@@ -386,6 +393,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   .take(10)
                                   .map((item) => item.toFoodItem())
                                   .toList(),
+                              originalItems: groceryProvider.buyAgainItems.take(10).toList(),
                               onSeeAll: () {},
                               onItemTap: (foodItem) {
                                 // Safely find original grocery item
@@ -420,6 +428,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       Builder(
                         builder: (context) {
                           List<FoodItem> topRatedItems = [];
+                          List<dynamic>? originalTopRatedItems;
                           bool isLoading = false;
 
                           if (serviceProvider.isFoodService) {
@@ -430,11 +439,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             final groceryProvider = Provider.of<GroceryProvider>(context);
                             // Use backend top-rated items (sorted by rating)
                             topRatedItems = groceryProvider.topRatedItems.map((e) => e.toFoodItem()).toList();
+                            originalTopRatedItems = groceryProvider.topRatedItems;
                             isLoading = groceryProvider.isLoadingTopRated;
                           }
 
                           return TopRatedSection(
                             topRatedItems: topRatedItems,
+                            originalItems: originalTopRatedItems,
                             onSeeAll: () {},
                             onItemTap: (item) {
                               if (serviceProvider.isGroceryService) {

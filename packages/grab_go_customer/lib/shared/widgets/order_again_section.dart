@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 
 class OrderAgainSection extends StatelessWidget {
   final List<FoodItem> recentOrders;
+  final List<dynamic>? originalItems; // Original GroceryItem list for cart operations
   final VoidCallback onSeeAll;
   final Function(FoodItem) onItemTap;
   final bool isLoading;
@@ -18,6 +19,7 @@ class OrderAgainSection extends StatelessWidget {
   const OrderAgainSection({
     super.key,
     required this.recentOrders,
+    this.originalItems,
     required this.onSeeAll,
     required this.onItemTap,
     required this.isLoading,
@@ -51,12 +53,16 @@ class OrderAgainSection extends StatelessWidget {
               itemCount: recentOrders.length,
               itemBuilder: (context, index) {
                 final item = recentOrders[index];
+                final originalItem = originalItems != null && index < originalItems!.length
+                    ? originalItems![index]
+                    : null;
                 // Calculate real days ago from lastOrderedAt
                 final daysAgo = item.lastOrderedAt != null ? DateTime.now().difference(item.lastOrderedAt!).inDays : 0;
 
                 return Consumer<CartProvider>(
                   builder: (context, cartProvider, child) {
-                    final bool isInCart = cartProvider.cartItems.containsKey(item);
+                    final itemForCart = originalItem ?? item;
+                    final bool isInCart = cartProvider.cartItems.containsKey(itemForCart);
                     return Padding(
                       padding: EdgeInsets.only(right: 15.w),
                       child: QuickReorderCard(
@@ -66,9 +72,9 @@ class OrderAgainSection extends StatelessWidget {
                         isInCart: isInCart,
                         onAddToCart: () {
                           if (isInCart) {
-                            cartProvider.removeItemCompletely(item);
+                            cartProvider.removeItemCompletely(itemForCart);
                           } else {
-                            cartProvider.addToCart(item);
+                            cartProvider.addToCart(itemForCart);
                           }
                         },
                       ),

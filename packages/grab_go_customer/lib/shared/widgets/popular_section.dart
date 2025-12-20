@@ -10,6 +10,7 @@ import 'package:grab_go_shared/grub_go_shared.dart';
 
 class PopularSection extends StatelessWidget {
   final List<FoodItem> popularItems;
+  final List<dynamic>? originalItems; // Original GroceryItem list for cart operations
   final VoidCallback onSeeAll;
   final Function(FoodItem) onItemTap;
   final bool isLoading;
@@ -17,6 +18,7 @@ class PopularSection extends StatelessWidget {
   const PopularSection({
     super.key,
     required this.popularItems,
+    this.originalItems,
     required this.onSeeAll,
     required this.onItemTap,
     this.isLoading = false,
@@ -51,10 +53,18 @@ class PopularSection extends StatelessWidget {
               itemBuilder: (context, index) {
                 final item = popularItems[index];
                 final orderCount = item.orderCount;
+                final originalItem = originalItems != null && index < originalItems!.length
+                    ? originalItems![index]
+                    : null;
 
                 return Padding(
                   padding: EdgeInsets.only(right: 15.w),
-                  child: PopularItemCard(item: item, orderCount: orderCount, onTap: () => onItemTap(item)),
+                  child: PopularItemCard(
+                    item: item,
+                    cartItem: originalItem,
+                    orderCount: orderCount,
+                    onTap: () => onItemTap(item),
+                  ),
                 );
               },
             ),

@@ -372,13 +372,28 @@ class _HomeBannerState extends State<HomeBanner> {
                       // Cart button
                       Consumer<CartProvider>(
                         builder: (context, cartProvider, child) {
-                          final bool isInCart = cartProvider.cartItems.containsKey(effectiveFoods[safeIndex]);
+                          // Find original item for cart operations
+                          dynamic itemForCart = effectiveFoods[safeIndex];
+                          if (serviceProvider.isGroceryService) {
+                            // Find original grocery item
+                            try {
+                              itemForCart = groceryProvider.items.firstWhere(
+                                (g) => g.id == effectiveFoods[safeIndex].id,
+                                orElse: () =>
+                                    groceryProvider.deals.firstWhere((d) => d.id == effectiveFoods[safeIndex].id),
+                              );
+                            } catch (_) {
+                              // Fallback to converted item if not found
+                            }
+                          }
+
+                          final bool isInCart = cartProvider.cartItems.containsKey(itemForCart);
                           return GestureDetector(
                             onTap: () {
                               if (isInCart) {
-                                cartProvider.removeItemCompletely(effectiveFoods[safeIndex]);
+                                cartProvider.removeItemCompletely(itemForCart);
                               } else {
-                                cartProvider.addToCart(effectiveFoods[safeIndex]);
+                                cartProvider.addToCart(itemForCart);
                               }
                             },
                             child: AnimatedContainer(

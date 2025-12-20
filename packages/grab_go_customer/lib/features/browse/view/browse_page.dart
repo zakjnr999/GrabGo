@@ -804,6 +804,7 @@ class _BrowsePageState extends State<BrowsePage> {
               final item = items[index];
               return PopularItemCard(
                 item: item.toFoodItem(),
+                cartItem: item,
                 orderCount: item.orderCount,
                 onTap: () => context.push('/grocery-details', extra: item),
               );

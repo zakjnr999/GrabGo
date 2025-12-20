@@ -140,8 +140,8 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
   double get itemPrice => widget.isGrocery ? widget.groceryItem!.discountedPrice : widget.foodItem!.price;
   double get itemRating => widget.isGrocery ? widget.groceryItem!.rating : widget.foodItem!.rating;
 
-  // Get FoodItem for cart (convert if grocery)
-  FoodItem get cartItem => widget.isGrocery ? widget.groceryItem!.toFoodItem() : widget.foodItem!;
+  // Get CartItem for cart operations (use original type)
+  dynamic get cartItem => widget.isGrocery ? widget.groceryItem! : widget.foodItem!;
 
   @override
   Widget build(BuildContext context) {

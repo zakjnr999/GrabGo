@@ -142,6 +142,7 @@ class _BrowseAllGroceriesSectionState extends State<BrowseAllGroceriesSection> {
 
           return PopularItemCard(
             item: item.toFoodItem(),
+            cartItem: item,
             orderCount: item.orderCount,
             onTap: () => widget.onItemTap(item),
           );

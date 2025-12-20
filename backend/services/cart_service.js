@@ -169,17 +169,28 @@ const updateCartItem = async (userId, itemId, quantity) => {
  * @returns {Promise<Object>} Updated cart
  */
 const removeFromCart = async (userId, itemId) => {
+    console.log(`🗑️ Backend: Removing item ${itemId} from cart for user ${userId}`);
     const cart = await Cart.findOne({ user: userId, isActive: true });
 
     if (!cart) {
+        console.log('❌ Cart not found');
         throw new Error('Cart not found');
     }
 
+    const initialLength = cart.items.length;
     cart.items = cart.items.filter(
         item => item.itemId.toString() !== itemId
     );
 
+    const itemsRemoved = initialLength - cart.items.length;
+    console.log(`📊 Items before: ${initialLength}, Items after: ${cart.items.length}, Removed: ${itemsRemoved}`);
+
+    // Reset abandonment tracking
+    cart.abandonmentNotificationSent = false;
+    cart.abandonmentNotificationSentAt = null;
+
     await cart.save();
+    console.log('✅ Cart saved successfully');
     return cart;
 };
 

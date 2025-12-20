@@ -188,7 +188,7 @@ class StoreSpecialsSection extends StatelessWidget {
                   return SizedBox(
                     width: 160.w,
                     child: PopularItemCard(
-                      item: item.toFoodItem(),
+                      item: item.toFoodItem(), cartItem: item,
                       orderCount: item.orderCount,
                       onTap: () => onItemTap(item),
                     ),

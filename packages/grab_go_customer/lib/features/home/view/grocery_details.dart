@@ -84,7 +84,6 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     Size size = MediaQuery.sizeOf(context);
-    final foodItemForCart = widget.groceryItem.toFoodItem();
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
@@ -373,7 +372,7 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
                 decoration: BoxDecoration(color: colors.backgroundPrimary),
                 child: Consumer<CartProvider>(
                   builder: (context, provider, _) {
-                    final int qty = provider.cartItems[foodItemForCart] ?? 0;
+                    final int qty = provider.cartItems[widget.groceryItem] ?? 0;
                     final bool isInCart = qty > 0;
 
                     return Row(
@@ -395,7 +394,7 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
                                 InkWell(
                                   onTap: () {
                                     if (isInCart) {
-                                      provider.removeFromCart(foodItemForCart);
+                                      provider.removeFromCart(widget.groceryItem);
                                     }
                                   },
                                   child: Icon(Icons.remove, color: colors.textSecondary, size: 20.sp),
@@ -410,7 +409,7 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
                                 ),
                                 GestureDetector(
                                   onTap: () {
-                                    provider.addToCart(foodItemForCart);
+                                    provider.addToCart(widget.groceryItem);
                                   },
                                   child: Container(
                                     padding: EdgeInsets.all(2.r),
@@ -446,9 +445,9 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
                             child: ElevatedButton(
                               onPressed: () {
                                 if (isInCart) {
-                                  provider.removeItemCompletely(foodItemForCart);
+                                  provider.removeItemCompletely(widget.groceryItem);
                                 } else {
-                                  provider.addToCart(foodItemForCart);
+                                  provider.addToCart(widget.groceryItem);
                                 }
                               },
                               style: ElevatedButton.styleFrom(

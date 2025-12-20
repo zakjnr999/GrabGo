@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
+import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -10,6 +11,7 @@ import 'package:provider/provider.dart';
 
 class PopularItemCard extends StatelessWidget {
   final FoodItem item;
+  final CartItem? cartItem; // Original item for cart operations
   final int orderCount;
   final VoidCallback onTap;
   final String? deliveryTime;
@@ -18,6 +20,7 @@ class PopularItemCard extends StatelessWidget {
   const PopularItemCard({
     super.key,
     required this.item,
+    this.cartItem, // Optional, defaults to item
     required this.orderCount,
     required this.onTap,
     this.deliveryTime,
@@ -148,13 +151,14 @@ class PopularItemCard extends StatelessWidget {
                       ),
                       Consumer<CartProvider>(
                         builder: (context, provider, _) {
-                          final bool isInCart = provider.cartItems.containsKey(item);
+                          final itemForCart = cartItem ?? item;
+                          final bool isInCart = provider.cartItems.containsKey(itemForCart);
                           return GestureDetector(
                             onTap: () {
                               if (isInCart) {
-                                provider.removeItemCompletely(item);
+                                provider.removeItemCompletely(itemForCart);
                               } else {
-                                provider.addToCart(item);
+                                provider.addToCart(itemForCart);
                               }
                             },
                             child: AnimatedContainer(

@@ -63,7 +63,12 @@ class FreshArrivalsSection extends StatelessWidget {
             padding: EdgeInsets.only(right: 15.w),
             child: Stack(
               children: [
-                PopularItemCard(item: foodItem, orderCount: item.orderCount, onTap: () => onItemTap(item)),
+                PopularItemCard(
+                  item: foodItem,
+                  cartItem: item,
+                  orderCount: item.orderCount,
+                  onTap: () => onItemTap(item),
+                ),
                 // NEW badge
                 Positioned(top: 8, right: 8, child: _buildNewBadge(item)),
               ],

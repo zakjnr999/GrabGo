@@ -28,12 +28,13 @@ class CartProvider extends ChangeNotifier {
       for (var item in cartList) {
         final itemData = item['item'];
         final quantity = item['quantity'] as int;
+        final cachedItemType = item['itemType'] as String?; // Get cached type
 
         // Detect item type from cached data
         CartItem? cartItem;
 
-        // Check if it's a grocery item (has 'unit' or 'brand' field)
-        if (itemData['unit'] != null || itemData['brand'] != null) {
+        // Use cached itemType if available, otherwise detect from fields
+        if (cachedItemType == 'GroceryItem' || itemData['unit'] != null || itemData['brand'] != null) {
           cartItem = GroceryItem.fromJson(itemData);
         } else {
           // Default to FoodItem
@@ -175,7 +176,7 @@ class CartProvider extends ChangeNotifier {
   Future<void> _saveCart() async {
     try {
       final List<Map<String, dynamic>> cartList = _cartItems.entries.map((entry) {
-        return {'item': entry.key.toJson(), 'quantity': entry.value};
+        return {'item': entry.key.toJson(), 'quantity': entry.value, 'itemType': entry.key.itemType};
       }).toList();
 
       await CacheService.saveCartItems(cartList);
@@ -187,19 +188,25 @@ class CartProvider extends ChangeNotifier {
   /// Add item to backend
   Future<void> _addToBackend(CartItem item, int quantity) async {
     try {
+      debugPrint('🛒 Adding to backend cart:');
+      debugPrint('  Item ID: ${item.id}');
+      debugPrint('  Item Type: ${item.itemType}');
+      debugPrint('  Item Name: ${item.name}');
+      debugPrint('  Provider ID: ${item.providerId}');
+
       final body = {'itemId': item.id, 'itemType': item.itemType, 'quantity': quantity};
 
-      // Add provider ID based on item type
       if (item.itemType == 'Food') {
         body['restaurantId'] = item.providerId;
       } else if (item.itemType == 'GroceryItem') {
         body['groceryStoreId'] = item.providerId;
       }
 
+      debugPrint('  Request body: $body');
       await cartApiService.addToCart(body);
+      debugPrint('✅ Successfully added to backend');
     } catch (e) {
-      debugPrint('Error adding to backend cart: $e');
-      // Local cart already updated, will retry on next sync
+      debugPrint('❌ Error adding to backend cart: $e');
     }
   }
 
@@ -215,9 +222,11 @@ class CartProvider extends ChangeNotifier {
   /// Remove from backend
   Future<void> _removeFromBackend(String itemId) async {
     try {
+      debugPrint('🔄 Calling backend remove API for item: $itemId');
       await cartApiService.removeFromCart(itemId);
+      debugPrint('✅ Successfully removed from backend');
     } catch (e) {
-      debugPrint('Error removing from backend cart: $e');
+      debugPrint('❌ Error removing from backend cart: $e');
     }
   }
 
@@ -258,10 +267,17 @@ class CartProvider extends ChangeNotifier {
   }
 
   void removeItemCompletely(CartItem item) {
+    debugPrint('🗑️ Removing item completely:');
+    debugPrint('  Item ID: ${item.id}');
+    debugPrint('  Item Type: ${item.itemType}');
+    debugPrint('  Item Name: ${item.name}');
+    debugPrint('  Was in cart: ${_cartItems.containsKey(item)}');
+
     _cartItems.remove(item);
     _saveCart();
     notifyListeners();
     _removeFromBackend(item.id);
+    debugPrint('✅ Remove operation completed');
   }
 
   void clearCart() {
