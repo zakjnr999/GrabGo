@@ -279,6 +279,7 @@ app.use("/api/promotions", require("./routes/promotions"));
 app.use("/api/cart", require("./routes/cart"));
 app.use("/api/favorites", require("./routes/favorites"));
 app.use("/api/promo", require("./routes/promo"));
+app.use("/api/test", require("./routes/test")); // Test endpoints
 
 // Health check
 app.get("/api/health", (req, res) => {
