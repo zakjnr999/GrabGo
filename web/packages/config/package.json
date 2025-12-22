@@ -1,0 +1,15 @@
+{
+    "name": "@grabgo/config",
+    "version": "0.1.0",
+    "private": true,
+    "exports": {
+        "./tailwind/theme": "./src/tailwind/theme.css",
+        "./tailwind/animations": "./src/tailwind/animations.css",
+        "./eslint/base": "./src/eslint/base.mjs",
+        "./eslint/next": "./src/eslint/next.mjs"
+    },
+    "peerDependencies": {
+        "eslint": "^9",
+        "tailwindcss": "^4"
+    }
+}
