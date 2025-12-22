@@ -14,6 +14,18 @@ import {
     TrendingDown,
     CheckCircle,
 } from "lucide-react";
+import { LineChart } from "../../components/charts/LineChart";
+import { PieChart } from "../../components/charts/PieChart";
+import { BarChart } from "../../components/charts/BarChart";
+import {
+    mockRevenueData,
+    mockOrderStatusData,
+    mockPeakHoursData,
+    mockTopVendors,
+    mockPopularItems,
+    getTodayStats,
+    getWeekStats
+} from "../../lib/mockAnalyticsData";
 
 interface StatCardProps {
     title: string;
@@ -164,6 +176,146 @@ export default function DashboardPage() {
                             <p className="text-sm text-muted-foreground">Revenue Today</p>
                             <p className="text-2xl font-bold">GH₵ 45,230</p>
                         </div>
+                    </div>
+                </Card>
+            </div>
+
+            {/* Analytics Charts */}
+            <div className="grid gap-6 lg:grid-cols-2">
+                {/* Revenue Trend Chart */}
+                <Card className="p-6 border-border/50 animate-fade-in-up" style={{ animationDelay: "700ms" }}>
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 className="text-lg font-semibold">Revenue Trend</h3>
+                            <p className="text-sm text-muted-foreground">Last 7 days</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-2xl font-bold text-[#FE6132]">
+                                GH₵ {mockRevenueData.reduce((sum, day) => sum + day.revenue, 0).toLocaleString()}
+                            </p>
+                            <p className="text-sm text-muted-foreground">Total revenue</p>
+                        </div>
+                    </div>
+                    <LineChart
+                        data={mockRevenueData.map(d => ({
+                            ...d,
+                            date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                        }))}
+                        xKey="date"
+                        yKey="revenue"
+                        height={250}
+                    />
+                </Card>
+
+                {/* Order Status Distribution */}
+                <Card className="p-6 border-border/50 animate-fade-in-up" style={{ animationDelay: "800ms" }}>
+                    <div className="mb-6">
+                        <h3 className="text-lg font-semibold">Order Status Distribution</h3>
+                        <p className="text-sm text-muted-foreground">Current orders breakdown</p>
+                    </div>
+                    <PieChart
+                        data={mockOrderStatusData}
+                        dataKey="count"
+                        nameKey="status"
+                        height={250}
+                    />
+                </Card>
+            </div>
+
+            {/* Peak Hours Chart */}
+            <Card className="p-6 border-border/50 animate-fade-in-up" style={{ animationDelay: "900ms" }}>
+                <div className="mb-6">
+                    <h3 className="text-lg font-semibold">Peak Hours</h3>
+                    <p className="text-sm text-muted-foreground">Orders by hour (24-hour view)</p>
+                </div>
+                <BarChart
+                    data={mockPeakHoursData}
+                    xKey="hour"
+                    yKey="orders"
+                    height={250}
+                />
+            </Card>
+
+            {/* Top Performers */}
+            <div className="grid gap-6 lg:grid-cols-2">
+                {/* Top Performing Vendors */}
+                <Card className="p-6 border-border/50 animate-fade-in-up" style={{ animationDelay: "1000ms" }}>
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 className="text-lg font-semibold">Top Performing Vendors</h3>
+                            <p className="text-sm text-muted-foreground">By revenue (this month)</p>
+                        </div>
+                        <Shop className="w-5 h-5 text-[#FE6132]" />
+                    </div>
+                    <div className="space-y-3">
+                        {mockTopVendors.slice(0, 5).map((vendor, index) => (
+                            <div key={vendor.id} className="flex items-center justify-between p-3 rounded-md bg-accent/50 hover:bg-accent transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-md bg-gradient-to-br from-[#FE6132]/20 to-[#FE6132]/10 flex items-center justify-center">
+                                        <span className="text-sm font-bold text-[#FE6132]">#{index + 1}</span>
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-medium">{vendor.name}</p>
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium capitalize ${vendor.type === 'food' ? 'bg-orange-100 text-orange-700' :
+                                                vendor.type === 'grocery' ? 'bg-green-100 text-green-700' :
+                                                    vendor.type === 'pharmacy' ? 'bg-blue-100 text-blue-700' :
+                                                        'bg-purple-100 text-purple-700'
+                                                }`}>
+                                                {vendor.type}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">{vendor.orders} orders</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="font-semibold">GH₵ {vendor.revenue.toLocaleString()}</p>
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                        <span>⭐</span>
+                                        <span>{vendor.rating}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+
+                {/* Popular Items */}
+                <Card className="p-6 border-border/50 animate-fade-in-up" style={{ animationDelay: "1100ms" }}>
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 className="text-lg font-semibold">Popular Items</h3>
+                            <p className="text-sm text-muted-foreground">Most ordered across all services</p>
+                        </div>
+                        <Cart className="w-5 h-5 text-[#FE6132]" />
+                    </div>
+                    <div className="space-y-3">
+                        {mockPopularItems.slice(0, 5).map((item, index) => (
+                            <div key={item.id} className="flex items-center justify-between p-3 rounded-md bg-accent/50 hover:bg-accent transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-md bg-gradient-to-br from-[#FE6132]/20 to-[#FE6132]/10 flex items-center justify-center">
+                                        <span className="text-sm font-bold text-[#FE6132]">#{index + 1}</span>
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-medium">{item.name}</p>
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium capitalize ${item.type === 'food' ? 'bg-orange-100 text-orange-700' :
+                                                    item.type === 'grocery' ? 'bg-green-100 text-green-700' :
+                                                        item.type === 'pharmacy' ? 'bg-blue-100 text-blue-700' :
+                                                            'bg-purple-100 text-purple-700'
+                                                }`}>
+                                                {item.type}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">{item.vendor}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="font-semibold">{item.orders} orders</p>
+                                    <p className="text-xs text-muted-foreground">GH₵ {item.revenue.toLocaleString()}</p>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </Card>
             </div>
