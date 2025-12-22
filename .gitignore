@@ -55,6 +55,13 @@ temp/
 node_modules/
 npm-debug.log*
 
+# Next.js / Turbo
+.next/
+.turbo/
+out/
+dist/
+*.tsbuildinfo
+
 # Database
 *.db
 *.sqlite
