@@ -21,7 +21,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@grabgo/ui";
-import { Search, Filter, Download, Plus, Star, Shop, Xmark } from "iconoir-react";
+import { Search, Filter, Download, Plus, Star, Shop, Xmark, CheckCircleSolid } from "iconoir-react";
 import { mockVendors, type Vendor } from "../../../lib/mockData";
 import { format } from "date-fns";
 
@@ -213,10 +213,49 @@ export default function VendorsPage() {
                         </thead>
                         <tbody className="divide-y divide-border/50">
                             {isInitialLoading ? (
-                                Array.from({ length: 5 }).map((_, i) => (
-                                    <tr key={i} className="animate-pulse">
-                                        <td className="p-4" colSpan={7}>
-                                            <div className="h-12 bg-muted rounded-md w-full" />
+                                // Skeleton Loaders
+                                Array.from({ length: itemsPerPage }).map((_, i) => (
+                                    <tr key={`skeleton-${i}`} className="animate-pulse">
+                                        <td className="p-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-md bg-muted" />
+                                                <div className="space-y-2">
+                                                    <div className="h-4 w-32 bg-muted rounded" />
+                                                    <div className="h-3 w-16 bg-muted rounded" />
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-4 h-4 bg-muted rounded" />
+                                                <div className="h-4 w-20 bg-muted rounded" />
+                                            </div>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="space-y-2">
+                                                <div className="h-4 w-28 bg-muted rounded" />
+                                                <div className="h-3 w-24 bg-muted rounded" />
+                                            </div>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="h-6 w-20 bg-muted rounded-full" />
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="flex items-center gap-1">
+                                                <div className="w-4 h-4 bg-muted rounded" />
+                                                <div className="h-4 w-8 bg-muted rounded" />
+                                            </div>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="space-y-2">
+                                                <div className="h-4 w-24 bg-muted rounded" />
+                                                <div className="h-3 w-20 bg-muted rounded" />
+                                            </div>
+                                        </td>
+                                        <td className="p-4 text-right">
+                                            <div className="flex justify-end">
+                                                <div className="h-8 w-16 bg-muted rounded" />
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -238,7 +277,7 @@ export default function VendorsPage() {
                                             <div>
                                                 <div className="font-semibold flex items-center gap-2">
                                                     {vendor.name}
-                                                    {vendor.isVerified && <Badge variant="outline" className="text-[10px] px-1 py-0 border-blue-200 text-blue-600 bg-blue-50">Verified</Badge>}
+                                                    {vendor.isVerified && <CheckCircleSolid className="w-4 h-4 text-blue-500" />}
                                                 </div>
                                                 <div className="text-xs text-muted-foreground">{vendor.id}</div>
                                             </div>

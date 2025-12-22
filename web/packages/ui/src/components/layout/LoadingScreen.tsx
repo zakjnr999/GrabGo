@@ -3,6 +3,41 @@
 export function LoadingScreen() {
     return (
         <div className="fixed inset-0 bg-background flex items-center justify-center z-50">
+            <style>{`
+                @keyframes pulse-grid {
+                    0%, 100% {
+                        opacity: 0;
+                        transform: scale(0.95);
+                    }
+                    50% {
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+                }
+
+                @keyframes scan {
+                    0% {
+                        top: 0;
+                        opacity: 0;
+                    }
+                    50% {
+                        opacity: 1;
+                    }
+                    100% {
+                        top: 100%;
+                        opacity: 0;
+                    }
+                }
+
+                .animate-pulse-grid {
+                    animation: pulse-grid 1.4s ease-in-out infinite;
+                }
+
+                .animate-scan {
+                    animation: scan 2s ease-in-out infinite;
+                }
+            `}</style>
+
             <div className="flex flex-col items-center gap-8 md:gap-12">
                 {/* Logo/Brand */}
                 <div className="text-center space-y-2 animate-fade-in">
