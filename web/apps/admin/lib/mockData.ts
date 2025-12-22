@@ -198,7 +198,7 @@ export interface Vendor {
     email: string
     phone: string
     address: string
-    status: 'open' | 'closed' | 'busy' | 'under_review'
+    status: 'open' | 'closed' | 'busy' | 'under_review' | 'suspended'
     rating: number
     totalRevenue: number
     orderCount: number

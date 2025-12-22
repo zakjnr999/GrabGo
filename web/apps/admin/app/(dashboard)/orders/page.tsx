@@ -10,6 +10,36 @@ import { useOrderUpdates } from "../../../hooks/useOrderUpdates";
 import { LiveOrderNotification } from "../../../components/orders/LiveOrderNotification";
 import { OrderAnalyticsCharts } from "../../../components/orders/OrderAnalyticsCharts";
 
+// Animated Number Component
+function AnimatedNumber({ value, delay = 0 }: { value: number; delay?: number }) {
+    const [count, setCount] = useState(0);
+
+    useEffect(() => {
+        const duration = 1000;
+        const steps = 30;
+        const increment = value / steps;
+        let current = 0;
+
+        const timer = setTimeout(() => {
+            const interval = setInterval(() => {
+                current += increment;
+                if (current >= value) {
+                    setCount(value);
+                    clearInterval(interval);
+                } else {
+                    setCount(Math.floor(current));
+                }
+            }, duration / steps);
+
+            return () => clearInterval(interval);
+        }, delay + 300);
+
+        return () => clearTimeout(timer);
+    }, [value, delay]);
+
+    return <>{count.toLocaleString()}</>;
+}
+
 export default function OrdersPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -19,6 +49,7 @@ export default function OrdersPage() {
     const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
     const [notification, setNotification] = useState<{ orderNumber: string; status: OrderStatus } | null>(null);
     const [showCharts, setShowCharts] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     // Sync lastUpdate to notification
     useEffect(() => {
@@ -51,6 +82,18 @@ export default function OrdersPage() {
             revenue: todayOrders.reduce((sum, o) => sum + o.pricing.total, 0)
         };
     }, [liveOrders]);
+
+    // Set loading to false after minimum display time
+    useEffect(() => {
+        if (liveOrders.length > 0) {
+            // Show skeleton for at least 800ms for better UX
+            const timer = setTimeout(() => {
+                setIsLoading(false);
+            }, 800);
+            return () => clearTimeout(timer);
+        }
+    }, [liveOrders]);
+
     // Sync state to URL
     useEffect(() => {
         const params = new URLSearchParams(searchParams.toString());
@@ -230,8 +273,8 @@ export default function OrdersPage() {
             {/* Page Header */}
             <div className="flex items-center justify-between animate-fade-in-up">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Orders</h1>
-                    <p className="text-muted-foreground mt-1 text-lg">Manage and track all orders in real-time</p>
+                    <h1 className="text-4xl font-extrabold tracking-tight">Orders</h1>
+                    <p className="text-muted-foreground mt-2 text-lg">Manage and track all orders in real-time</p>
                 </div>
                 <button
                     onClick={() => setShowCharts(!showCharts)}
@@ -261,7 +304,7 @@ export default function OrdersPage() {
                         </div>
                         <div>
                             <p className="text-sm font-medium text-muted-foreground">Total Today</p>
-                            <p className="text-3xl font-bold tracking-tight">{stats.totalToday}</p>
+                            <p className="text-3xl font-bold tracking-tight"><AnimatedNumber value={stats.totalToday} delay={100} /></p>
                         </div>
                     </div>
                 </Card>
@@ -273,7 +316,7 @@ export default function OrdersPage() {
                         </div>
                         <div>
                             <p className="text-sm font-medium text-muted-foreground">Pending</p>
-                            <p className="text-3xl font-bold tracking-tight">{stats.pending}</p>
+                            <p className="text-3xl font-bold tracking-tight"><AnimatedNumber value={stats.pending} delay={200} /></p>
                         </div>
                     </div>
                 </Card>
@@ -285,7 +328,7 @@ export default function OrdersPage() {
                         </div>
                         <div>
                             <p className="text-sm font-medium text-muted-foreground">Active</p>
-                            <p className="text-3xl font-bold tracking-tight">{stats.active}</p>
+                            <p className="text-3xl font-bold tracking-tight"><AnimatedNumber value={stats.active} delay={300} /></p>
                         </div>
                     </div>
                 </Card>
@@ -297,7 +340,7 @@ export default function OrdersPage() {
                         </div>
                         <div>
                             <p className="text-sm font-medium text-muted-foreground">Completed Today</p>
-                            <p className="text-3xl font-bold tracking-tight">{stats.completed}</p>
+                            <p className="text-3xl font-bold tracking-tight"><AnimatedNumber value={stats.completed} delay={400} /></p>
                         </div>
                     </div>
                 </Card>
@@ -483,70 +526,117 @@ export default function OrdersPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {paginatedOrders.map((order, index) => (
-                                <tr
-                                    key={order.id}
-                                    className="border-b border-border/50 hover:bg-accent/30 transition-all duration-200 animate-fade-in-up"
-                                    style={{ animationDelay: `${700 + index * 50}ms` }}
-                                >
-                                    <td className="p-4">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedOrders.includes(order.id)}
-                                            onChange={() => toggleOrderSelection(order.id)}
-                                            className="w-4 h-4 rounded border-border text-[#FE6132] focus:ring-[#FE6132]"
-                                        />
-                                    </td>
-                                    <td className="p-4">
-                                        <p className="font-semibold text-foreground">{order.orderNumber}</p>
-                                        {order.rider && <p className="text-xs text-muted-foreground mt-0.5">🚴 {order.rider.name}</p>}
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        <div className="flex flex-col">
-                                            <span className="text-sm font-medium">{order.customer.name}</span>
-                                            <span className="text-xs text-muted-foreground">{order.customer.phone}</span>
-                                        </div>
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        <div className="flex flex-col">
-                                            <span className="text-sm font-medium">{order.vendor.name}</span>
-                                            <span className="text-xs text-muted-foreground">{order.delivery.address}</span>
-                                        </div>
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        <span className={`text-xs px-2 py-1 rounded-full font-medium capitalize ${getTypeColor(order.type)}`}>
-                                            {order.type}
-                                        </span>
-                                    </td>
-                                    <td className="py-3 px-4 text-right">
-                                        <span className="text-sm font-semibold">GH₵ {order.pricing.total.toFixed(2)}</span>
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        <div className="flex flex-col gap-1">
-                                            <span className={`text-xs px-2 py-1 rounded-full font-medium capitalize inline-block w-fit ${getPaymentStatusColor(order.paymentStatus)}`}>
-                                                {order.paymentStatus}
+                            {isLoading ? (
+                                // Skeleton Loaders
+                                Array.from({ length: itemsPerPage }).map((_, i) => (
+                                    <tr key={`skeleton-${i}`} className="border-b border-border/50 animate-pulse">
+                                        <td className="p-4">
+                                            <div className="w-4 h-4 bg-muted rounded" />
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="space-y-2">
+                                                <div className="h-4 w-24 bg-muted rounded" />
+                                                <div className="h-3 w-16 bg-muted rounded" />
+                                            </div>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="space-y-2">
+                                                <div className="h-4 w-28 bg-muted rounded" />
+                                                <div className="h-3 w-20 bg-muted rounded" />
+                                            </div>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="space-y-2">
+                                                <div className="h-4 w-32 bg-muted rounded" />
+                                                <div className="h-3 w-24 bg-muted rounded" />
+                                            </div>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="h-6 w-16 bg-muted rounded-full" />
+                                        </td>
+                                        <td className="p-4 text-right">
+                                            <div className="h-4 w-20 bg-muted rounded ml-auto" />
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="h-6 w-24 bg-muted rounded-full" />
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="h-6 w-20 bg-muted rounded-full" />
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="h-3 w-16 bg-muted rounded" />
+                                        </td>
+                                        <td className="p-4 text-right">
+                                            <div className="h-8 w-16 bg-muted rounded-lg ml-auto" />
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                paginatedOrders.map((order, index) => (
+                                    <tr
+                                        key={order.id}
+                                        className="border-b border-border/50 hover:bg-accent/30 transition-all duration-200 animate-fade-in-up"
+                                        style={{ animationDelay: `${700 + index * 50}ms` }}
+                                    >
+                                        <td className="p-4">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedOrders.includes(order.id)}
+                                                onChange={() => toggleOrderSelection(order.id)}
+                                                className="w-4 h-4 rounded border-border text-[#FE6132] focus:ring-[#FE6132]"
+                                            />
+                                        </td>
+                                        <td className="p-4">
+                                            <p className="font-semibold text-foreground">{order.orderNumber}</p>
+                                            {order.rider && <p className="text-xs text-muted-foreground mt-0.5">🚴 {order.rider.name}</p>}
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-medium">{order.customer.name}</span>
+                                                <span className="text-xs text-muted-foreground">{order.customer.phone}</span>
+                                            </div>
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-medium">{order.vendor.name}</span>
+                                                <span className="text-xs text-muted-foreground">{order.delivery.address}</span>
+                                            </div>
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            <span className={`text-xs px-2 py-1 rounded-full font-medium capitalize ${getTypeColor(order.type)}`}>
+                                                {order.type}
                                             </span>
-                                            <span className="text-xs text-muted-foreground capitalize">{order.paymentMethod.replace('_', ' ')}</span>
-                                        </div>
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        <span className={`text-xs px-2 py-1 rounded-full font-medium capitalize ${getStatusColor(order.status)}`}>
-                                            {order.status.replace('_', ' ')}
-                                        </span>
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        <span className="text-sm text-muted-foreground">{formatDate(order.createdAt)}</span>
-                                    </td>
-                                    <td className="py-3 px-4 text-right">
-                                        <Link
-                                            href={`/orders/${order.id}`}
-                                            className="text-sm text-[#FE6132] hover:underline font-medium"
-                                        >
-                                            View
-                                        </Link>
-                                    </td>
-                                </tr>
-                            ))}
+                                        </td>
+                                        <td className="py-3 px-4 text-right">
+                                            <span className="text-sm font-semibold">GH₵ {order.pricing.total.toFixed(2)}</span>
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            <div className="flex flex-col gap-1">
+                                                <span className={`text-xs px-2 py-1 rounded-full font-medium capitalize inline-block w-fit ${getPaymentStatusColor(order.paymentStatus)}`}>
+                                                    {order.paymentStatus}
+                                                </span>
+                                                <span className="text-xs text-muted-foreground capitalize">{order.paymentMethod.replace('_', ' ')}</span>
+                                            </div>
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            <span className={`text-xs px-2 py-1 rounded-full font-medium capitalize ${getStatusColor(order.status)}`}>
+                                                {order.status.replace('_', ' ')}
+                                            </span>
+                                        </td>
+                                        <td className="py-3 px-4">
+                                            <span className="text-sm text-muted-foreground">{formatDate(order.createdAt)}</span>
+                                        </td>
+                                        <td className="py-3 px-4 text-right">
+                                            <Link
+                                                href={`/orders/${order.id}`}
+                                                className="text-sm text-[#FE6132] hover:underline font-medium"
+                                            >
+                                                View
+                                            </Link>
+                                        </td>
+                                    </tr>
+                                )
+                                ))}
                         </tbody>
                     </table>
                 </div>

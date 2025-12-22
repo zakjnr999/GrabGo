@@ -2,7 +2,7 @@
 
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { useState, use } from "react";
+import { useState, use, useEffect } from "react";
 import { Card, Badge, Button, Tabs, TabsContent, TabsList, TabsTrigger } from "@grabgo/ui";
 import {
     ArrowLeft,
@@ -12,23 +12,58 @@ import {
     StatsReport,
     ArrowUp,
     CheckCircleSolid,
+    CheckCircle,
     InfoCircle,
     Settings,
     Database,
     Cart,
     Plus,
+    Clock,
+    FireFlame,
 } from "iconoir-react";
 import { TrendingUp } from "lucide-react";
 import { getVendorById, getVendorCatalog, getVendorOrders, type Vendor } from "../../../../lib/mockData";
 import { format } from "date-fns";
-
-interface PageProps {
+import { RejectVendorDialog } from "./RejectVendorDialog";
+import { SuspendVendorDialog } from "./SuspendVendorDialog";
+import { EditVendorDialog } from "./EditVendorDialog";
+import { DeliverySettingsDialog } from "./DeliverySettingsDialog";
+interface VendorPageProps {
     params: Promise<{
         id: string;
     }>;
 }
+// Animated Number Component
+function AnimatedNumber({ value, delay = 0, decimals = 0 }: { value: number; delay?: number; decimals?: number }) {
+    const [count, setCount] = useState(0);
 
-export default function VendorDetailPage({ params }: PageProps) {
+    useEffect(() => {
+        const duration = 1000;
+        const steps = 30;
+        const increment = value / steps;
+        let current = 0;
+
+        const timer = setTimeout(() => {
+            const interval = setInterval(() => {
+                current += increment;
+                if (current >= value) {
+                    setCount(value);
+                    clearInterval(interval);
+                } else {
+                    setCount(current);
+                }
+            }, duration / steps);
+
+            return () => clearInterval(interval);
+        }, delay + 300);
+
+        return () => clearTimeout(timer);
+    }, [value, delay]);
+
+    return <>{decimals > 0 ? count.toFixed(decimals) : Math.floor(count).toLocaleString()}</>;
+}
+
+export default function VendorDetailPage({ params }: VendorPageProps) {
     const { id } = use(params);
     const initialVendor = getVendorById(id);
     const catalog = getVendorCatalog(id);
@@ -40,6 +75,10 @@ export default function VendorDetailPage({ params }: PageProps) {
 
     const [vendor, setVendor] = useState(initialVendor);
     const categories = Array.from(new Set(catalog.map(item => item.category)));
+    const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+    const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
+    const [editDialogOpen, setEditDialogOpen] = useState(false);
+    const [deliverySettingsDialogOpen, setDeliverySettingsDialogOpen] = useState(false);
 
     const handleStatusToggle = () => {
         setVendor(prev => ({
@@ -128,34 +167,82 @@ export default function VendorDetailPage({ params }: PageProps) {
 
                     {/* Actions */}
                     <div className="grid grid-cols-2 lg:flex lg:flex-wrap gap-2 w-full md:w-auto">
-                        <Button variant="outline" size="sm" className="gap-2 border-border/50 h-10 md:h-9">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2 border-border/50 h-10 md:h-9"
+                            onClick={() => setEditDialogOpen(true)}
+                        >
                             <Edit className="w-4 h-4" />
                             Edit Profile
                         </Button>
-                        <Button variant="outline" size="sm" className="gap-2 border-border/50 h-10 md:h-9">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2 border-border/50 h-10 md:h-9"
+                            onClick={() => setDeliverySettingsDialogOpen(true)}
+                        >
                             <Settings className="w-4 h-4" />
-                            Settings
+                            Delivery Settings
                         </Button>
 
                         {vendor.status === "under_review" ? (
-                            <Button
-                                className="gap-2 h-10 md:h-9 bg-blue-600 hover:bg-blue-700 text-white"
-                                onClick={handleVerifyVendor}
-                            >
-                                <CheckCircleSolid className="w-4 h-4" />
-                                Verify Vendor
-                            </Button>
+                            <>
+                                <Button
+                                    className="gap-2 h-10 md:h-9 bg-blue-600 hover:bg-blue-700 text-white"
+                                    onClick={handleVerifyVendor}
+                                >
+                                    <CheckCircleSolid className="w-4 h-4" />
+                                    Approve Vendor
+                                </Button>
+                                <Button
+                                    className="gap-2 h-10 md:h-9 bg-red-600 hover:bg-red-700 text-white"
+                                    onClick={() => setRejectDialogOpen(true)}
+                                >
+                                    Reject Application
+                                </Button>
+                            </>
                         ) : (
-                            <Button
-                                className={`gap-2 h-10 md:h-9 ${vendor.status === "open" ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600"} text-white`}
-                                onClick={handleStatusToggle}
-                            >
-                                {vendor.status === "open" ? "Force Close" : "Open Vendor"}
-                            </Button>
+                            <>
+                                <Button
+                                    className={`gap-2 h-10 md:h-9 ${vendor.status === "open" ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600"} text-white`}
+                                    onClick={handleStatusToggle}
+                                >
+                                    {vendor.status === "open" ? "Close Vendor" : "Open Vendor"}
+                                </Button>
+                                <Button
+                                    className="gap-2 h-10 md:h-9 bg-orange-600 hover:bg-orange-700 text-white"
+                                    onClick={() => setSuspendDialogOpen(true)}
+                                >
+                                    {vendor.status === "suspended" ? "Unsuspend" : "Suspend"} Vendor
+                                </Button>
+                            </>
                         )}
                     </div>
                 </div>
             </Card>
+
+            {/* Dialogs */}
+            <RejectVendorDialog
+                vendor={vendor}
+                open={rejectDialogOpen}
+                onOpenChange={setRejectDialogOpen}
+            />
+            <SuspendVendorDialog
+                vendor={vendor}
+                open={suspendDialogOpen}
+                onOpenChange={setSuspendDialogOpen}
+            />
+            <EditVendorDialog
+                vendor={vendor}
+                open={editDialogOpen}
+                onOpenChange={setEditDialogOpen}
+            />
+            <DeliverySettingsDialog
+                vendor={vendor}
+                open={deliverySettingsDialogOpen}
+                onOpenChange={setDeliverySettingsDialogOpen}
+            />
 
             {/* Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -165,7 +252,7 @@ export default function VendorDetailPage({ params }: PageProps) {
                             <TrendingUp className="w-6 h-6 text-[#FE6132]" />
                         </div>
                         <div>
-                            <p className="text-2xl font-black text-foreground">GH₵{vendor.totalRevenue.toLocaleString()}</p>
+                            <p className="text-2xl font-black text-foreground">GH₵<AnimatedNumber value={vendor.totalRevenue} delay={100} /></p>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Revenue</p>
                         </div>
                     </div>
@@ -177,7 +264,7 @@ export default function VendorDetailPage({ params }: PageProps) {
                             <Cart className="w-6 h-6 text-blue-600" />
                         </div>
                         <div>
-                            <p className="text-2xl font-black text-foreground">{vendor.orderCount.toLocaleString()}</p>
+                            <p className="text-2xl font-black text-foreground"><AnimatedNumber value={vendor.orderCount} delay={200} /></p>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Total Orders</p>
                         </div>
                     </div>
@@ -189,7 +276,7 @@ export default function VendorDetailPage({ params }: PageProps) {
                             <Star className="w-6 h-6 text-purple-600" />
                         </div>
                         <div>
-                            <p className="text-2xl font-black text-foreground">{vendor.rating.toFixed(1)}</p>
+                            <p className="text-2xl font-black text-foreground"><AnimatedNumber value={vendor.rating} delay={300} decimals={1} /></p>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Avg Rating</p>
                         </div>
                     </div>
@@ -202,7 +289,7 @@ export default function VendorDetailPage({ params }: PageProps) {
                                 <ArrowUp className="w-6 h-6 text-green-600" />
                             </div>
                             <div>
-                                <p className="text-2xl font-black text-foreground">+12%</p>
+                                <p className="text-2xl font-black text-foreground">+<AnimatedNumber value={12} delay={400} />%</p>
                                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Growth</p>
                             </div>
                         </div>
@@ -237,6 +324,13 @@ export default function VendorDetailPage({ params }: PageProps) {
                                 Recent Orders
                             </TabsTrigger>
                             <TabsTrigger
+                                value="verification"
+                                className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#FE6132] data-[state=active]:bg-transparent data-[state=active]:text-foreground text-muted-foreground hover:text-foreground transition-all px-6 py-4 font-medium data-[state=active]:shadow-none"
+                            >
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Verification
+                            </TabsTrigger>
+                            <TabsTrigger
                                 value="settings"
                                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#FE6132] data-[state=active]:bg-transparent data-[state=active]:text-foreground text-muted-foreground hover:text-foreground transition-all px-6 py-4 font-medium data-[state=active]:shadow-none"
                             >
@@ -245,6 +339,178 @@ export default function VendorDetailPage({ params }: PageProps) {
                             </TabsTrigger>
                         </TabsList>
                     </div>
+
+                    {/* Verification Tab */}
+                    <TabsContent value="verification" className="p-6 space-y-6 animate-fade-in">
+                        <div className="space-y-6">
+                            {/* Documents Section */}
+                            <div>
+                                <h3 className="font-semibold text-lg border-b pb-2 mb-4">Verification Documents</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    {/* Business ID Photo */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-muted-foreground">Business ID Document</label>
+                                        <div className="border-2 border-dashed border-border/50 rounded-lg p-4 bg-muted/20 hover:bg-muted/40 transition-colors">
+                                            <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 rounded flex items-center justify-center">
+                                                <p className="text-sm text-muted-foreground">Business ID Photo</p>
+                                                {/* TODO: Replace with actual image when available */}
+                                                {/* <img src={vendor.business_id_photo} alt="Business ID" className="w-full h-full object-cover rounded" /> */}
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">Business registration or license document</p>
+                                    </div>
+
+                                    {/* Owner Photo */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-muted-foreground">Owner ID Photo</label>
+                                        <div className="border-2 border-dashed border-border/50 rounded-lg p-4 bg-muted/20 hover:bg-muted/40 transition-colors">
+                                            <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 rounded flex items-center justify-center">
+                                                <p className="text-sm text-muted-foreground">Owner Photo</p>
+                                                {/* TODO: Replace with actual image when available */}
+                                                {/* <img src={vendor.owner_photo} alt="Owner ID" className="w-full h-full object-cover rounded" /> */}
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">Owner's identification document</p>
+                                    </div>
+
+                                    {/* Logo */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-muted-foreground">Business Logo</label>
+                                        <div className="border-2 border-dashed border-border/50 rounded-lg p-4 bg-muted/20 hover:bg-muted/40 transition-colors">
+                                            <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 rounded flex items-center justify-center">
+                                                <p className="text-sm text-muted-foreground">Logo</p>
+                                                {/* TODO: Replace with actual image when available */}
+                                                {/* <img src={vendor.logo} alt="Logo" className="w-full h-full object-contain rounded" /> */}
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">Business logo for display</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Business Verification Details */}
+                            <div>
+                                <h3 className="font-semibold text-lg border-b pb-2 mb-4">Business Verification Details</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Owner Full Name</label>
+                                            <p className="mt-1 font-medium">{vendor.ownerName}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Owner Contact Number</label>
+                                            <p className="mt-1 font-medium">{vendor.phone}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Business ID Number</label>
+                                            <p className="mt-1 font-medium">BIZ-{vendor.id}-2024</p>
+                                            <p className="text-xs text-muted-foreground mt-1">Unique business registration number</p>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Business Type</label>
+                                            <p className="mt-1 font-medium capitalize">{vendor.type}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Service Category</label>
+                                            <p className="mt-1 font-medium">
+                                                {vendor.type === 'food' ? 'Food Delivery' :
+                                                    vendor.type === 'grocery' ? 'Grocery Shopping' :
+                                                        vendor.type === 'pharmacy' ? 'Pharmacy Services' : 'Market Place'}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Registration Date</label>
+                                            <p className="mt-1 font-medium">{format(new Date(vendor.createdAt), "PPP")}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Operating Details */}
+                            <div>
+                                <h3 className="font-semibold text-lg border-b pb-2 mb-4">Operating Details</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Opening Hours</label>
+                                            <p className="mt-1 font-medium">9:00 AM - 10:00 PM (Daily)</p>
+                                            <p className="text-xs text-muted-foreground mt-1">Standard operating hours</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Average Delivery Time</label>
+                                            <p className="mt-1 font-medium">{vendor.preparationTime || 30} minutes</p>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Payment Methods</label>
+                                            <div className="mt-1 flex flex-wrap gap-2">
+                                                <span className="px-3 py-1.5 bg-green-600 text-white rounded-full text-xs font-medium shadow-sm">Cash</span>
+                                                <span className="px-3 py-1.5 bg-blue-600 text-white rounded-full text-xs font-medium shadow-sm">Mobile Money</span>
+                                                <span className="px-3 py-1.5 bg-purple-600 text-white rounded-full text-xs font-medium shadow-sm">Card</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Delivery Coverage</label>
+                                            <p className="mt-1 font-medium">{vendor.deliveryRadius || 5} km radius</p>
+                                            <p className="text-xs text-muted-foreground mt-1">From business location</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Location Details */}
+                            <div>
+                                <h3 className="font-semibold text-lg border-b pb-2 mb-4">Location Information</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Full Address</label>
+                                            <p className="mt-1 font-medium">{vendor.address}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Coordinates</label>
+                                            <p className="mt-1 font-mono text-sm">Lat: 5.6037, Lng: -0.1870</p>
+                                            <p className="text-xs text-muted-foreground mt-1">GPS coordinates for mapping</p>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="border-2 border-dashed border-border/50 rounded-lg p-4 bg-muted/20 h-48 flex items-center justify-center">
+                                            <p className="text-sm text-muted-foreground">Map Preview</p>
+                                            {/* TODO: Add Google Maps integration */}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Verification Status */}
+                            {vendor.status === "under_review" && (
+                                <div
+                                    className="rounded-md p-4 animate-fade-in"
+                                    style={{
+                                        backgroundColor: 'rgba(254, 248, 242, 0.5)',
+                                        border: '1px solid rgba(254, 226, 200, 0.8)'
+                                    }}
+                                >
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex-shrink-0">
+                                            <Clock className="w-5 h-5 mt-0.5" style={{ color: '#FE6132' }} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className="text-sm font-semibold" style={{ color: '#c2410c' }}>
+                                                Pending Verification
+                                            </h3>
+                                            <p className="mt-1 text-sm" style={{ color: '#ea580c' }}>
+                                                Please review all documents and details above before approving or rejecting this vendor application.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </TabsContent>
 
                     <TabsContent value="info" className="p-6 space-y-8 animate-fade-in">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -311,43 +577,89 @@ export default function VendorDetailPage({ params }: PageProps) {
 
                         {catalog.length > 0 ? (
                             <div className="space-y-6">
-                                {/* Categories Quick Filter */}
-                                <div className="flex gap-2 overflow-x-auto pb-2">
-                                    <Badge variant="outline" className="cursor-pointer bg-[#FE6132]/10 text-[#FE6132] border-[#FE6132]/20">All Items</Badge>
-                                    {categories.map(cat => (
-                                        <Badge key={cat} variant="outline" className="cursor-pointer hover:bg-muted transition-colors">{cat}</Badge>
-                                    ))}
-                                </div>
-
-                                {/* Items Grid */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {catalog.map((item, idx) => (
-                                        <Card key={item.id} className="p-4 border-border/50 hover:shadow-lg transition-all hover:-translate-y-1 group animate-fade-in-up" style={{ animationDelay: `${idx * 50}ms` }}>
-                                            <div className="flex gap-4">
-                                                <div className="w-20 h-20 rounded-xl bg-accent/30 flex items-center justify-center text-muted-foreground flex-shrink-0 group-hover:scale-105 transition-transform overflow-hidden">
-                                                    {item.image ? (
-                                                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <Database className="w-8 h-8 opacity-40" />
-                                                    )}
-                                                </div>
-                                                <div className="flex-1 space-y-1">
-                                                    <div className="flex items-start justify-between">
-                                                        <h4 className="font-bold text-sm group-hover:text-[#FE6132] transition-colors">{item.name}</h4>
-                                                        <span className="text-sm font-black text-[#FE6132]">GH₵ {item.price.toFixed(2)}</span>
+                                {/* Popular Items Section */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="font-semibold text-lg flex items-center gap-2">
+                                            <FireFlame className="w-5 h-5 text-[#FE6132]" />
+                                            Popular Items
+                                        </h3>
+                                        <Badge className="bg-[#FE6132]/10 text-[#FE6132] border-[#FE6132]/20">
+                                            Top Sellers
+                                        </Badge>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        {catalog.slice(0, 3).map((item, idx) => (
+                                            <Card key={item.id} className="p-4 border-border/50 bg-gradient-to-br from-[#FE6132]/5 to-transparent hover:shadow-lg transition-all hover:-translate-y-1 group animate-fade-in-up" style={{ animationDelay: `${idx * 50}ms` }}>
+                                                <div className="flex gap-4">
+                                                    <div className="w-16 h-16 rounded-xl bg-muted flex items-center justify-center text-muted-foreground flex-shrink-0 group-hover:scale-105 transition-transform overflow-hidden relative">
+                                                        {item.image ? (
+                                                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <Database className="w-6 h-6 opacity-40" />
+                                                        )}
+                                                        <div className="absolute top-0 right-0 bg-[#FE6132] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-bl">
+                                                            #{idx + 1}
+                                                        </div>
                                                     </div>
-                                                    <p className="text-xs font-medium text-muted-foreground line-clamp-2">{item.description}</p>
-                                                    <div className="flex items-center justify-between mt-3">
-                                                        <Badge className="text-[10px] px-2 py-0.5 font-black uppercase tracking-widest bg-accent/50 text-foreground border-0">{item.category}</Badge>
-                                                        <div className="flex items-center gap-1.5 font-bold">
-                                                            <div className={`w-2 h-2 rounded-full ${item.inStock ? "bg-green-500" : "bg-red-500"} shadow-sm`} />
-                                                            <span className="text-[10px] uppercase text-muted-foreground">{item.inStock ? "Ready" : "Sold Out"}</span>
+                                                    <div className="flex-1 space-y-1">
+                                                        <h4 className="font-bold text-sm group-hover:text-[#FE6132] transition-colors line-clamp-1">{item.name}</h4>
+                                                        <p className="text-xs text-muted-foreground line-clamp-1">{item.description}</p>
+                                                        <div className="flex items-center justify-between mt-2">
+                                                            <span className="text-sm font-black text-[#FE6132]">GH₵ {item.price.toFixed(2)}</span>
+                                                            <span className="text-xs text-muted-foreground">
+                                                                {Math.floor(Math.random() * 100) + 50} sold
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </Card>
-                                    ))}
+                                            </Card>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* All Items Section */}
+                                <div>
+                                    <h3 className="font-semibold text-lg mb-4">All Items ({catalog.length})</h3>
+
+                                    {/* Categories Quick Filter */}
+                                    <div className="flex gap-2 overflow-x-auto pb-2">
+                                        <Badge variant="outline" className="cursor-pointer bg-[#FE6132]/10 text-[#FE6132] border-[#FE6132]/20">All Items</Badge>
+                                        {categories.map(cat => (
+                                            <Badge key={cat} variant="outline" className="cursor-pointer hover:bg-muted transition-colors">{cat}</Badge>
+                                        ))}
+                                    </div>
+
+                                    {/* Items Grid */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {catalog.map((item, idx) => (
+                                            <Card key={item.id} className="p-4 border-border/50 hover:shadow-lg transition-all hover:-translate-y-1 group animate-fade-in-up" style={{ animationDelay: `${idx * 50}ms` }}>
+                                                <div className="flex gap-4">
+                                                    <div className="w-20 h-20 rounded-xl bg-accent/30 flex items-center justify-center text-muted-foreground flex-shrink-0 group-hover:scale-105 transition-transform overflow-hidden">
+                                                        {item.image ? (
+                                                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <Database className="w-8 h-8 opacity-40" />
+                                                        )}
+                                                    </div>
+                                                    <div className="flex-1 space-y-1">
+                                                        <div className="flex items-start justify-between">
+                                                            <h4 className="font-bold text-sm group-hover:text-[#FE6132] transition-colors">{item.name}</h4>
+                                                            <span className="text-sm font-black text-[#FE6132]">GH₵ {item.price.toFixed(2)}</span>
+                                                        </div>
+                                                        <p className="text-xs font-medium text-muted-foreground line-clamp-2">{item.description}</p>
+                                                        <div className="flex items-center justify-between mt-3">
+                                                            <Badge className="text-[10px] px-2 py-0.5 font-black uppercase tracking-widest bg-accent/50 text-foreground border-0">{item.category}</Badge>
+                                                            <div className="flex items-center gap-1.5 font-bold">
+                                                                <div className={`w-2 h-2 rounded-full ${item.inStock ? "bg-green-500" : "bg-red-500"} shadow-sm`} />
+                                                                <span className="text-[10px] uppercase text-muted-foreground">{item.inStock ? "Ready" : "Sold Out"}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </Card>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         ) : (

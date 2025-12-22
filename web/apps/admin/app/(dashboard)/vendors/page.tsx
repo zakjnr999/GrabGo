@@ -97,7 +97,7 @@ export default function VendorsPage() {
     };
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="space-y-6">
             {/* Page Header */}
             <div className="flex items-center justify-between animate-fade-in-up">
                 <div>
@@ -272,7 +272,7 @@ export default function VendorsPage() {
                                                 <div>
                                                     <div className="font-bold text-foreground group-hover:text-[#FE6132] transition-colors flex items-center gap-2">
                                                         {vendor.name}
-                                                        {vendor.isVerified && <CheckCircleSolid className="w-4 h-4 text-blue-500 shadow-sm" />}
+                                                        {vendor.isVerified && <CheckCircleSolid className="w-4 h-4 text-blue-500" />}
                                                     </div>
                                                     <div className="text-[10px] font-black font-mono text-muted-foreground uppercase opacity-60">ID-{vendor.id.slice(0, 8)}</div>
                                                 </div>

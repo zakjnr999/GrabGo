@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card } from "@grabgo/ui";
 import { Calendar, Download, Filter } from "lucide-react";
 import { LineChart } from "../../../components/charts/LineChart";
@@ -17,6 +17,36 @@ import {
     mockOrderStatusData
 } from "../../../lib/mockAnalyticsData";
 import * as ExportUtils from "../../../lib/exportUtils";
+
+// Animated Number Component
+function AnimatedNumber({ value, delay = 0 }: { value: number; delay?: number }) {
+    const [count, setCount] = useState(0);
+
+    useEffect(() => {
+        const duration = 1000;
+        const steps = 30;
+        const increment = value / steps;
+        let current = 0;
+
+        const timer = setTimeout(() => {
+            const interval = setInterval(() => {
+                current += increment;
+                if (current >= value) {
+                    setCount(value);
+                    clearInterval(interval);
+                } else {
+                    setCount(Math.floor(current));
+                }
+            }, duration / steps);
+
+            return () => clearInterval(interval);
+        }, delay + 300);
+
+        return () => clearTimeout(timer);
+    }, [value, delay]);
+
+    return <>{count.toLocaleString()}</>;
+}
 
 type ReportType =
     | "user-growth"
@@ -386,7 +416,7 @@ export default function AnalyticsPage() {
                                 <div className="grid gap-6 md:grid-cols-3">
                                     <Card className="p-6 border-border/50 animate-fade-in-up [animation-delay:200ms] hover:shadow-lg transition-all group">
                                         <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Total Active Users</p>
-                                        <p className="text-4xl font-black mt-2 text-foreground group-hover:text-[#FE6132] transition-colors">12,458</p>
+                                        <p className="text-4xl font-black mt-2 text-foreground group-hover:text-[#FE6132] transition-colors"><AnimatedNumber value={12458} delay={200} /></p>
                                         <div className="flex items-center gap-2 mt-2">
                                             <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[10px] font-black uppercase tracking-wider">+12.5%</span>
                                             <p className="text-xs font-bold text-muted-foreground">vs last month</p>
@@ -394,7 +424,7 @@ export default function AnalyticsPage() {
                                     </Card>
                                     <Card className="p-6 border-border/50 animate-fade-in-up [animation-delay:300ms] hover:shadow-lg transition-all group">
                                         <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">New Acquisitions</p>
-                                        <p className="text-4xl font-black mt-2 text-foreground group-hover:text-[#FE6132] transition-colors">1,247</p>
+                                        <p className="text-4xl font-black mt-2 text-foreground group-hover:text-[#FE6132] transition-colors"><AnimatedNumber value={1247} delay={300} /></p>
                                         <div className="flex items-center gap-2 mt-2">
                                             <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[10px] font-black uppercase tracking-wider">+8.3%</span>
                                             <p className="text-xs font-bold text-muted-foreground">vs prev. period</p>
@@ -402,7 +432,7 @@ export default function AnalyticsPage() {
                                     </Card>
                                     <Card className="p-6 border-border/50 animate-fade-in-up [animation-delay:400ms] hover:shadow-lg transition-all group">
                                         <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Velocity Curve</p>
-                                        <p className="text-4xl font-black mt-2 text-foreground group-hover:text-[#FE6132] transition-colors">42</p>
+                                        <p className="text-4xl font-black mt-2 text-foreground group-hover:text-[#FE6132] transition-colors"><AnimatedNumber value={42} delay={400} /></p>
                                         <p className="text-xs font-bold text-muted-foreground mt-2">Daily Growth Average</p>
                                     </Card>
                                 </div>
@@ -647,22 +677,22 @@ export default function AnalyticsPage() {
                                 <div className="grid gap-6 md:grid-cols-4">
                                     <Card className="p-6 border-border/50">
                                         <p className="text-sm text-muted-foreground">Total Orders</p>
-                                        <p className="text-3xl font-bold mt-2">1,155</p>
+                                        <p className="text-3xl font-bold mt-2"><AnimatedNumber value={1155} delay={200} /></p>
                                         <p className="text-sm text-green-600 mt-1">+8.7% vs last week</p>
                                     </Card>
                                     <Card className="p-6 border-border/50">
                                         <p className="text-sm text-muted-foreground">Food Orders</p>
-                                        <p className="text-3xl font-bold mt-2">687</p>
+                                        <p className="text-3xl font-bold mt-2"><AnimatedNumber value={687} delay={300} /></p>
                                         <p className="text-sm text-muted-foreground mt-1">59.5% of total</p>
                                     </Card>
                                     <Card className="p-6 border-border/50">
                                         <p className="text-sm text-muted-foreground">Grocery Orders</p>
-                                        <p className="text-3xl font-bold mt-2">298</p>
+                                        <p className="text-3xl font-bold mt-2"><AnimatedNumber value={298} delay={400} /></p>
                                         <p className="text-sm text-muted-foreground mt-1">25.8% of total</p>
                                     </Card>
                                     <Card className="p-6 border-border/50">
                                         <p className="text-sm text-muted-foreground">Avg. Daily Orders</p>
-                                        <p className="text-3xl font-bold mt-2">165</p>
+                                        <p className="text-3xl font-bold mt-2"><AnimatedNumber value={165} delay={500} /></p>
                                         <p className="text-sm text-muted-foreground mt-1">orders per day</p>
                                     </Card>
                                 </div>

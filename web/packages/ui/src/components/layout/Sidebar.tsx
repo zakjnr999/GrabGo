@@ -19,6 +19,11 @@ import {
     NavArrowLeft,
     NavArrowRight,
     ShieldCheck,
+    Database,
+    NavArrowDown,
+    FastArrowDown,
+    PharmacyCrossTag,
+    Leaf,
 } from "iconoir-react";
 import { useAuth } from "../../context/AuthContext";
 
@@ -27,10 +32,20 @@ interface SidebarProps {
     onToggle: () => void;
 }
 
-const navigation = [
+const mainNavigation = [
     { name: "Dashboard", href: "/", icon: ViewGrid },
     { name: "Customers", href: "/users", icon: Group },
     { name: "Vendors", href: "/vendors", icon: Shop },
+];
+
+const catalogNavigation = [
+    { name: "Food Items", href: "/food-items", icon: Database },
+    { name: "Grocery Items", href: "/grocery-items", icon: Leaf },
+    { name: "Pharmacy Items", href: "/pharmacy-items", icon: PharmacyCrossTag },
+    { name: "Market Items", href: "/market-items", icon: Gift },
+];
+
+const bottomNavigation = [
     { name: "Orders", href: "/orders", icon: Cart },
     { name: "Riders", href: "/riders", icon: Cycling },
     { name: "Payments", href: "/payments", icon: CreditCard },
@@ -44,6 +59,10 @@ const navigation = [
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
     const pathname = usePathname();
     const { user } = useAuth();
+    const [catalogExpanded, setCatalogExpanded] = useState(true);
+
+    // Check if any catalog item is active
+    const isCatalogActive = catalogNavigation.some(item => pathname.startsWith(item.href));
 
     return (
         <aside
@@ -104,7 +123,8 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
 
                 {/* Navigation */}
                 <nav className="flex-1 overflow-y-auto p-4 space-y-1 custom-scrollbar">
-                    {navigation.map((item, index) => {
+                    {/* Main Navigation */}
+                    {mainNavigation.map((item, index) => {
                         const isActive = pathname === item.href;
                         const Icon = item.icon;
 
@@ -131,6 +151,106 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                             </Link>
                         );
                     })}
+
+                    {/* Catalog Management Section */}
+                    {!isCollapsed && (
+                        <div className="pt-2">
+                            <button
+                                onClick={() => setCatalogExpanded(!catalogExpanded)}
+                                className={cn(
+                                    "w-full flex items-center justify-between px-3 py-2.5 rounded-md transition-all duration-200",
+                                    "hover:bg-accent group",
+                                    isCatalogActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <Database className="w-5 h-5 flex-shrink-0" />
+                                    <span className="font-medium whitespace-nowrap">Catalog Management</span>
+                                </div>
+                                <NavArrowDown className={cn(
+                                    "w-4 h-4 transition-transform duration-200",
+                                    catalogExpanded && "rotate-180"
+                                )} />
+                            </button>
+
+                            {/* Submenu */}
+                            {catalogExpanded && (
+                                <div className="ml-4 mt-1 space-y-1 border-l-2 border-border/50 pl-2">
+                                    {catalogNavigation.map((item, index) => {
+                                        const isActive = pathname.startsWith(item.href);
+                                        const Icon = item.icon;
+
+                                        return (
+                                            <Link
+                                                key={item.name}
+                                                href={item.href}
+                                                className={cn(
+                                                    "flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200",
+                                                    "hover:-translate-y-0.5 group text-sm",
+                                                    isActive
+                                                        ? "bg-[#FE6132] text-white shadow-lg shadow-[#FE6132]/20"
+                                                        : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                                                    "animate-fade-in-left"
+                                                )}
+                                                style={{ animationDelay: `${(index + 3) * 30}ms` }}
+                                            >
+                                                <Icon className={cn("w-4 h-4 flex-shrink-0 transition-transform duration-200", !isActive && "group-hover:scale-110")} />
+                                                <span className="font-medium whitespace-nowrap">{item.name}</span>
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Collapsed Catalog Icon */}
+                    {isCollapsed && (
+                        <Link
+                            href="/food-items"
+                            className={cn(
+                                "flex items-center justify-center px-2 py-2.5 rounded-md transition-all duration-200",
+                                "hover:-translate-y-0.5 group",
+                                isCatalogActive
+                                    ? "bg-[#FE6132] text-white shadow-lg shadow-[#FE6132]/20"
+                                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                            )}
+                            title="Catalog Management"
+                        >
+                            <Database className={cn("w-5 h-5 flex-shrink-0 transition-transform duration-200", !isCatalogActive && "group-hover:scale-110")} />
+                        </Link>
+                    )}
+
+                    {/* Bottom Navigation */}
+                    <div className="pt-2 mt-2 border-t border-border/50">
+                        {bottomNavigation.map((item, index) => {
+                            const isActive = pathname === item.href;
+                            const Icon = item.icon;
+
+                            return (
+                                <Link
+                                    key={item.name}
+                                    href={item.href}
+                                    className={cn(
+                                        "flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200",
+                                        "hover:-translate-y-0.5 group",
+                                        isActive
+                                            ? "bg-[#FE6132] text-white shadow-lg shadow-[#FE6132]/20"
+                                            : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                                        isCollapsed && "justify-center px-2",
+                                        "animate-fade-in-left"
+                                    )}
+                                    title={isCollapsed ? item.name : ""}
+                                    style={{ animationDelay: `${(index + 7) * 30}ms` }}
+                                >
+                                    <Icon className={cn("w-5 h-5 flex-shrink-0 transition-transform duration-200", !isActive && "group-hover:scale-110")} />
+                                    {!isCollapsed && (
+                                        <span className="font-medium whitespace-nowrap">{item.name}</span>
+                                    )}
+                                </Link>
+                            );
+                        })}
+                    </div>
                 </nav>
 
                 {/* User Section */}

@@ -169,14 +169,12 @@ export default function OrderDetailPage() {
                         >
                             Update Status
                         </button>
-                        {!order.rider && (
-                            <button
-                                onClick={() => setAssignRiderOpen(true)}
-                                className="px-6 py-2.5 text-sm rounded-full border border-border bg-background hover:bg-accent transition-all font-bold shadow-sm hover:scale-105 active:scale-95"
-                            >
-                                Assign Rider
-                            </button>
-                        )}
+                        <button
+                            onClick={() => setAssignRiderOpen(true)}
+                            className="px-6 py-2.5 text-sm rounded-full border border-border bg-background hover:bg-accent transition-all font-bold shadow-sm hover:scale-105 active:scale-95"
+                        >
+                            {order.rider ? 'Reassign Rider' : 'Assign Rider'}
+                        </button>
                         <button
                             onClick={() => setCancelOrderOpen(true)}
                             className="px-6 py-2.5 text-sm rounded-full border border-red-200 text-red-600 hover:bg-red-50 transition-all font-bold shadow-sm hover:scale-105 active:scale-95"

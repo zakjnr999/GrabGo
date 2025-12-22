@@ -8,6 +8,7 @@ import { EditCustomerDialog } from "./EditCustomerDialog";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";
 import { ManageCreditsDialog } from "./ManageCreditsDialog";
 import { SendNotificationDialog } from "./SendNotificationDialog";
+import { ToggleAccountStatusDialog } from "./ToggleAccountStatusDialog";
 
 interface CustomerProfileHeaderProps {
     customer: Customer;
@@ -18,6 +19,7 @@ export function CustomerProfileHeader({ customer }: CustomerProfileHeaderProps) 
     const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
     const [manageCreditsDialogOpen, setManageCreditsDialogOpen] = useState(false);
     const [sendNotificationDialogOpen, setSendNotificationDialogOpen] = useState(false);
+    const [toggleStatusDialogOpen, setToggleStatusDialogOpen] = useState(false);
 
     return (
         <>
@@ -99,6 +101,16 @@ export function CustomerProfileHeader({ customer }: CustomerProfileHeaderProps) 
                         <Bell className="w-4 h-4" />
                         Send Notification
                     </Button>
+                    <Button
+                        size="sm"
+                        className={`gap-2 h-10 md:h-9 w-full lg:w-auto ${customer.isActive
+                                ? 'bg-red-600 hover:bg-red-700 text-white'
+                                : 'bg-green-600 hover:bg-green-700 text-white'
+                            }`}
+                        onClick={() => setToggleStatusDialogOpen(true)}
+                    >
+                        {customer.isActive ? 'Deactivate Account' : 'Activate Account'}
+                    </Button>
                 </div>
             </div>
 
@@ -122,6 +134,11 @@ export function CustomerProfileHeader({ customer }: CustomerProfileHeaderProps) 
                 customer={customer}
                 open={sendNotificationDialogOpen}
                 onOpenChange={setSendNotificationDialogOpen}
+            />
+            <ToggleAccountStatusDialog
+                customer={customer}
+                open={toggleStatusDialogOpen}
+                onOpenChange={setToggleStatusDialogOpen}
             />
         </>
     );
