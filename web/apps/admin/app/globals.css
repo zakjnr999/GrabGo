@@ -113,6 +113,36 @@
   }
 }
 
+@keyframes pulse-grid {
+
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes scan {
+  0% {
+    top: 0;
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
 .animate-fade-in-left {
   animation: fade-in-left 0.8s ease-out;
 }
@@ -127,4 +157,12 @@
 
 .animate-fade-in {
   animation: fade-in 1s ease-out;
+}
+
+.animate-pulse-grid {
+  animation: pulse-grid 1.4s ease-in-out infinite;
+}
+
+.animate-scan {
+  animation: scan 2s ease-in-out infinite;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth, DashboardLayout as Layout } from "@grabgo/ui";
+import { useAuth, DashboardLayout as Layout, LoadingScreen } from "@grabgo/ui";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
@@ -30,14 +30,7 @@ export default function DashboardLayout({
     }, [isAuthenticated, isLoading, router]);
 
     if (isLoading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-background">
-                <div className="flex flex-col items-center space-y-4">
-                    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-sm text-muted-foreground animate-pulse">Loading dashboard...</p>
-                </div>
-            </div>
-        );
+        return <LoadingScreen />;
     }
 
     if (!isAuthenticated) return null;

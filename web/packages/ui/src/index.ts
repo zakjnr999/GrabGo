@@ -6,6 +6,7 @@ export * from './components/ui/label';
 export * from './components/layout/DashboardLayout';
 export * from './components/layout/Header';
 export * from './components/layout/Sidebar';
+export * from './components/layout/LoadingScreen';
 export * from './context/AuthContext';
 export * from './lib/utils';
 export * from './components/ui/badge';
