@@ -58,7 +58,7 @@ function StatCard({ title, value, change, icon: Icon, delay = 0 }: StatCardProps
             }, duration / steps);
 
             return () => clearInterval(interval);
-        }, delay);
+        }, delay + 300); // Standardize entry offset
 
         return () => clearTimeout(timer);
     }, [targetValue, delay]);
@@ -102,10 +102,10 @@ export default function DashboardPage() {
     return (
         <div className="space-y-6">
             {/* Page Header */}
-            <div className="animate-fade-in">
-                <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-                <p className="text-muted-foreground mt-1">
-                    Welcome back! Here's what's happening with GrabGo today.
+            <div className="animate-fade-in-up">
+                <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Dashboard</h1>
+                <p className="text-muted-foreground mt-2 text-lg">
+                    Welcome back! Here's a real-time overview of GrabGo performance.
                 </p>
             </div>
 
@@ -143,38 +143,47 @@ export default function DashboardPage() {
 
             {/* Quick Stats Row */}
             <div className="grid gap-6 md:grid-cols-3">
-                <Card className="p-6 border-border/50 animate-fade-in-up" style={{ animationDelay: "400ms" }}>
+                <Card
+                    className="p-6 border-border/50 animate-fade-in-up hover:shadow-lg transition-all hover:-translate-y-1 group"
+                    style={{ animationDelay: "400ms" }}
+                >
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-md flex items-center justify-center bg-green-500/10">
-                            <CheckCircle className="w-6 h-6 text-green-600" />
+                        <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-green-500/10 group-hover:scale-110 transition-transform">
+                            <CheckCircle className="w-7 h-7 text-green-600" />
                         </div>
                         <div>
-                            <p className="text-sm text-muted-foreground">Completed Today</p>
-                            <p className="text-2xl font-bold">1,124</p>
+                            <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Completed Today</p>
+                            <p className="text-3xl font-black">1,124</p>
                         </div>
                     </div>
                 </Card>
 
-                <Card className="p-6 border-border/50 animate-fade-in-up" style={{ animationDelay: "500ms" }}>
+                <Card
+                    className="p-6 border-border/50 animate-fade-in-up hover:shadow-lg transition-all hover:-translate-y-1 group"
+                    style={{ animationDelay: "500ms" }}
+                >
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-md flex items-center justify-center bg-yellow-500/10">
-                            <Clock className="w-6 h-6 text-yellow-600" />
+                        <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-yellow-500/10 group-hover:scale-110 transition-transform">
+                            <Clock className="w-7 h-7 text-yellow-600" />
                         </div>
                         <div>
-                            <p className="text-sm text-muted-foreground">Pending Orders</p>
-                            <p className="text-2xl font-bold">23</p>
+                            <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Pending Orders</p>
+                            <p className="text-3xl font-black">23</p>
                         </div>
                     </div>
                 </Card>
 
-                <Card className="p-6 border-border/50 animate-fade-in-up" style={{ animationDelay: "600ms" }}>
+                <Card
+                    className="p-6 border-border/50 animate-fade-in-up hover:shadow-lg transition-all hover:-translate-y-1 group"
+                    style={{ animationDelay: "600ms" }}
+                >
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-md flex items-center justify-center bg-[#FE6132]/10">
-                            <TrendingUp className="w-6 h-6 text-[#FE6132]" />
+                        <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-[#FE6132]/10 group-hover:scale-110 transition-transform">
+                            <TrendingUp className="w-7 h-7 text-[#FE6132]" />
                         </div>
                         <div>
-                            <p className="text-sm text-muted-foreground">Revenue Today</p>
-                            <p className="text-2xl font-bold">GH₵ 45,230</p>
+                            <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Revenue Today</p>
+                            <p className="text-3xl font-black">GH₵ 45,230</p>
                         </div>
                     </div>
                 </Card>
@@ -183,81 +192,93 @@ export default function DashboardPage() {
             {/* Analytics Charts */}
             <div className="grid gap-6 lg:grid-cols-2">
                 {/* Revenue Trend Chart */}
-                <Card className="p-6 border-border/50 animate-fade-in-up" style={{ animationDelay: "700ms" }}>
-                    <div className="flex items-center justify-between mb-6">
+                <Card className="p-6 border-border/50 animate-fade-in-up hover:shadow-md transition-all" style={{ animationDelay: "700ms" }}>
+                    <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h3 className="text-lg font-semibold">Revenue Trend</h3>
-                            <p className="text-sm text-muted-foreground">Last 7 days</p>
+                            <h3 className="text-xl font-bold">Revenue Trend</h3>
+                            <p className="text-sm font-medium text-muted-foreground mt-1">Daily revenue performance across all services</p>
                         </div>
-                        <div className="text-right">
-                            <p className="text-2xl font-bold text-[#FE6132]">
+                        <div className="text-right p-3 rounded-xl bg-orange-50 border border-orange-100">
+                            <p className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-1">Total Revenue</p>
+                            <p className="text-2xl font-black text-[#FE6132]">
                                 GH₵ {mockRevenueData.reduce((sum, day) => sum + day.revenue, 0).toLocaleString()}
                             </p>
-                            <p className="text-sm text-muted-foreground">Total revenue</p>
                         </div>
                     </div>
-                    <LineChart
-                        data={mockRevenueData.map(d => ({
-                            ...d,
-                            date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                        }))}
-                        xKey="date"
-                        yKey="revenue"
-                        height={250}
-                    />
+                    <div className="h-[250px] w-full">
+                        <LineChart
+                            data={mockRevenueData.map(d => ({
+                                ...d,
+                                date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                            }))}
+                            xKey="date"
+                            yKey="revenue"
+                            height={250}
+                        />
+                    </div>
                 </Card>
 
                 {/* Order Status Distribution */}
-                <Card className="p-6 border-border/50 animate-fade-in-up" style={{ animationDelay: "800ms" }}>
-                    <div className="mb-6">
-                        <h3 className="text-lg font-semibold">Order Status Distribution</h3>
-                        <p className="text-sm text-muted-foreground">Current orders breakdown</p>
+                <Card className="p-6 border-border/50 animate-fade-in-up hover:shadow-md transition-all" style={{ animationDelay: "800ms" }}>
+                    <div className="mb-8">
+                        <h3 className="text-xl font-bold">Order Live Status</h3>
+                        <p className="text-sm font-medium text-muted-foreground mt-1">Real-time breakdown of current order states</p>
                     </div>
-                    <PieChart
-                        data={mockOrderStatusData}
-                        dataKey="count"
-                        nameKey="status"
-                        height={250}
-                    />
+                    <div className="h-[250px] w-full flex items-center justify-center">
+                        <PieChart
+                            data={mockOrderStatusData}
+                            dataKey="count"
+                            nameKey="status"
+                            height={250}
+                        />
+                    </div>
                 </Card>
             </div>
 
             {/* Peak Hours Chart */}
-            <Card className="p-6 border-border/50 animate-fade-in-up" style={{ animationDelay: "900ms" }}>
-                <div className="mb-6">
-                    <h3 className="text-lg font-semibold">Peak Hours</h3>
-                    <p className="text-sm text-muted-foreground">Orders by hour (24-hour view)</p>
+            <Card className="p-6 border-border/50 animate-fade-in-up hover:shadow-md transition-all" style={{ animationDelay: "900ms" }}>
+                <div className="mb-8">
+                    <h3 className="text-xl font-bold">Busiest Store Hours</h3>
+                    <p className="text-sm font-medium text-muted-foreground mt-1">Aggregated order volume by hour (24h system)</p>
                 </div>
-                <BarChart
-                    data={mockPeakHoursData}
-                    xKey="hour"
-                    yKey="orders"
-                    height={250}
-                />
+                <div className="h-[250px]">
+                    <BarChart
+                        data={mockPeakHoursData}
+                        xKey="hour"
+                        yKey="orders"
+                        height={250}
+                    />
+                </div>
             </Card>
 
             {/* Top Performers */}
             <div className="grid gap-6 lg:grid-cols-2">
                 {/* Top Performing Vendors */}
-                <Card className="p-6 border-border/50 animate-fade-in-up" style={{ animationDelay: "1000ms" }}>
+                <Card className="p-6 border-border/50 animate-fade-in-up hover:shadow-md transition-all" style={{ animationDelay: "1000ms" }}>
                     <div className="flex items-center justify-between mb-6">
                         <div>
-                            <h3 className="text-lg font-semibold">Top Performing Vendors</h3>
-                            <p className="text-sm text-muted-foreground">By revenue (this month)</p>
+                            <h3 className="text-xl font-bold text-foreground">Elite Vendors</h3>
+                            <p className="text-sm font-medium text-muted-foreground mt-1">Highest grossing stores this month</p>
                         </div>
-                        <Shop className="w-5 h-5 text-[#FE6132]" />
+                        <div className="p-2.5 rounded-xl bg-orange-50">
+                            <Shop className="w-5 h-5 text-[#FE6132]" />
+                        </div>
                     </div>
                     <div className="space-y-3">
                         {mockTopVendors.slice(0, 5).map((vendor, index) => (
-                            <div key={vendor.id} className="flex items-center justify-between p-3 rounded-md bg-accent/50 hover:bg-accent transition-colors">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-md bg-gradient-to-br from-[#FE6132]/20 to-[#FE6132]/10 flex items-center justify-center">
-                                        <span className="text-sm font-bold text-[#FE6132]">#{index + 1}</span>
+                            <div
+                                key={vendor.id}
+                                className="flex items-center justify-between p-3.5 rounded-xl bg-accent/30 hover:bg-accent/60 transition-all cursor-pointer group animate-fade-in-up"
+                                style={{ animationDelay: `${1100 + index * 50}ms` }}
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FE6132] to-[#FE6132]/80 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                                        <span className="text-sm font-black text-white">{index + 1}</span>
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <p className="font-medium">{vendor.name}</p>
-                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium capitalize ${vendor.type === 'food' ? 'bg-orange-100 text-orange-700' :
+                                            <p className="font-bold text-foreground">{vendor.name}</p>
+                                            <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest ${vendor.type === 'food' ? 'bg-orange-100 text-orange-700' :
                                                 vendor.type === 'grocery' ? 'bg-green-100 text-green-700' :
                                                     vendor.type === 'pharmacy' ? 'bg-blue-100 text-blue-700' :
                                                         'bg-purple-100 text-purple-700'
@@ -265,14 +286,14 @@ export default function DashboardPage() {
                                                 {vendor.type}
                                             </span>
                                         </div>
-                                        <p className="text-xs text-muted-foreground">{vendor.orders} orders</p>
+                                        <p className="text-xs font-bold text-muted-foreground mt-0.5">{vendor.orders.toLocaleString()} Successful Orders</p>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className="font-semibold">GH₵ {vendor.revenue.toLocaleString()}</p>
-                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <p className="font-black text-foreground">GH₵ {vendor.revenue.toLocaleString()}</p>
+                                    <div className="flex items-center justify-end gap-1 text-xs font-bold text-orange-600">
                                         <span>⭐</span>
-                                        <span>{vendor.rating}</span>
+                                        <span>{vendor.rating.toFixed(1)}</span>
                                     </div>
                                 </div>
                             </div>
@@ -281,38 +302,44 @@ export default function DashboardPage() {
                 </Card>
 
                 {/* Popular Items */}
-                <Card className="p-6 border-border/50 animate-fade-in-up" style={{ animationDelay: "1100ms" }}>
+                <Card className="p-6 border-border/50 animate-fade-in-up hover:shadow-md transition-all" style={{ animationDelay: "1100ms" }}>
                     <div className="flex items-center justify-between mb-6">
                         <div>
-                            <h3 className="text-lg font-semibold">Popular Items</h3>
-                            <p className="text-sm text-muted-foreground">Most ordered across all services</p>
+                            <h3 className="text-xl font-bold text-foreground">Trending Goods</h3>
+                            <p className="text-sm font-medium text-muted-foreground mt-1">Most loved items across the platform</p>
                         </div>
-                        <Cart className="w-5 h-5 text-[#FE6132]" />
+                        <div className="p-2.5 rounded-xl bg-orange-50">
+                            <Cart className="w-5 h-5 text-[#FE6132]" />
+                        </div>
                     </div>
                     <div className="space-y-3">
                         {mockPopularItems.slice(0, 5).map((item, index) => (
-                            <div key={item.id} className="flex items-center justify-between p-3 rounded-md bg-accent/50 hover:bg-accent transition-colors">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-md bg-gradient-to-br from-[#FE6132]/20 to-[#FE6132]/10 flex items-center justify-center">
-                                        <span className="text-sm font-bold text-[#FE6132]">#{index + 1}</span>
+                            <div
+                                key={item.id}
+                                className="flex items-center justify-between p-3.5 rounded-xl bg-accent/30 hover:bg-accent/60 transition-all cursor-pointer group animate-fade-in-up"
+                                style={{ animationDelay: `${1200 + index * 50}ms` }}
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
+                                        <span className="text-sm font-black text-[#FE6132]">{index + 1}</span>
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <p className="font-medium">{item.name}</p>
-                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium capitalize ${item.type === 'food' ? 'bg-orange-100 text-orange-700' :
-                                                    item.type === 'grocery' ? 'bg-green-100 text-green-700' :
-                                                        item.type === 'pharmacy' ? 'bg-blue-100 text-blue-700' :
-                                                            'bg-purple-100 text-purple-700'
+                                            <p className="font-bold text-foreground">{item.name}</p>
+                                            <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest ${item.type === 'food' ? 'bg-orange-100 text-orange-700' :
+                                                item.type === 'grocery' ? 'bg-green-100 text-green-700' :
+                                                    item.type === 'pharmacy' ? 'bg-blue-100 text-blue-700' :
+                                                        'bg-purple-100 text-purple-700'
                                                 }`}>
                                                 {item.type}
                                             </span>
                                         </div>
-                                        <p className="text-xs text-muted-foreground">{item.vendor}</p>
+                                        <p className="text-xs font-bold text-muted-foreground mt-0.5">from {item.vendor}</p>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className="font-semibold">{item.orders} orders</p>
-                                    <p className="text-xs text-muted-foreground">GH₵ {item.revenue.toLocaleString()}</p>
+                                    <p className="font-black text-foreground">{item.orders.toLocaleString()} Sold</p>
+                                    <p className="text-xs font-bold text-muted-foreground">GH₵ {item.revenue.toLocaleString()}</p>
                                 </div>
                             </div>
                         ))}
@@ -322,61 +349,67 @@ export default function DashboardPage() {
 
             {/* Pending Actions */}
             <div className="grid gap-6 md:grid-cols-2">
-                <Card className="p-6 border-border/50 animate-fade-in-up" style={{ animationDelay: "700ms" }}>
-                    <h3 className="text-lg font-semibold mb-4">Pending Approvals</h3>
+                <Card className="p-6 border-border/50 animate-fade-in-up hover:shadow-md transition-all" style={{ animationDelay: "1300ms" }}>
+                    <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                        <span className="relative flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-[#FE6132]"></span>
+                        </span>
+                        Pending Approvals
+                    </h3>
                     <div className="space-y-3">
-                        <div className="flex items-center justify-between p-3 rounded-md bg-accent/50 hover:bg-accent transition-colors cursor-pointer">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-md bg-[#FE6132]/10 flex items-center justify-center">
-                                    <Shop className="w-5 h-5 text-[#FE6132]" />
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-orange-50 border border-orange-100/50 hover:bg-orange-100 transition-all cursor-pointer group">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-white border border-orange-200 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                                    <Shop className="w-6 h-6 text-[#FE6132]" />
                                 </div>
                                 <div>
-                                    <p className="font-medium">New Vendor Applications</p>
-                                    <p className="text-sm text-muted-foreground">5 pending review</p>
+                                    <p className="font-bold text-[#FE6132]">Vendor Applications</p>
+                                    <p className="text-xs font-bold text-orange-600/60 uppercase tracking-tighter">5 stores awaiting review</p>
                                 </div>
                             </div>
-                            <span className="text-sm font-medium text-[#FE6132]">Review →</span>
+                            <span className="text-sm font-black text-[#FE6132] group-hover:translate-x-1 transition-transform">GO →</span>
                         </div>
 
-                        <div className="flex items-center justify-between p-3 rounded-md bg-accent/50 hover:bg-accent transition-colors cursor-pointer">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-md bg-[#FE6132]/10 flex items-center justify-center">
-                                    <Cycling className="w-5 h-5 text-[#FE6132]" />
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-blue-50 border border-blue-100/50 hover:bg-blue-100 transition-all cursor-pointer group">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-white border border-blue-200 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                                    <Cycling className="w-6 h-6 text-blue-600" />
                                 </div>
                                 <div>
-                                    <p className="font-medium">Rider Verifications</p>
-                                    <p className="text-sm text-muted-foreground">8 pending verification</p>
+                                    <p className="font-bold text-blue-700">Rider Onboarding</p>
+                                    <p className="text-xs font-bold text-blue-600/60 uppercase tracking-tighter">8 riders pending check</p>
                                 </div>
                             </div>
-                            <span className="text-sm font-medium text-[#FE6132]">Review →</span>
+                            <span className="text-sm font-black text-blue-700 group-hover:translate-x-1 transition-transform">GO →</span>
                         </div>
                     </div>
                 </Card>
 
-                <Card className="p-6 border-border/50 animate-fade-in-up" style={{ animationDelay: "800ms" }}>
-                    <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
-                    <div className="space-y-3">
-                        <div className="flex items-start gap-3 p-3 rounded-md bg-accent/50">
-                            <div className="w-2 h-2 rounded-full bg-green-500 mt-2" />
+                <Card className="p-6 border-border/50 animate-fade-in-up hover:shadow-md transition-all" style={{ animationDelay: "1400ms" }}>
+                    <h3 className="text-xl font-bold mb-6">Recent Activity Stream</h3>
+                    <div className="space-y-4">
+                        <div className="flex items-start gap-4 p-3.5 rounded-xl bg-accent/30 hover:bg-accent/50 transition-colors border border-transparent hover:border-border/50">
+                            <div className="w-3 h-3 rounded-full bg-green-500 mt-1.5 shadow-[0_0_10px_rgba(34,197,94,0.3)] animate-pulse" />
                             <div className="flex-1">
-                                <p className="text-sm font-medium">New order placed</p>
-                                <p className="text-xs text-muted-foreground">Order #ORD-1234 • 2 min ago</p>
+                                <p className="text-sm font-bold text-foreground">New order successfully placed</p>
+                                <p className="text-xs font-bold text-muted-foreground mt-0.5">Order #ORD-1234 • <span className="text-green-600">2 min ago</span></p>
                             </div>
                         </div>
 
-                        <div className="flex items-start gap-3 p-3 rounded-md bg-accent/50">
-                            <div className="w-2 h-2 rounded-full bg-blue-500 mt-2" />
+                        <div className="flex items-start gap-4 p-3.5 rounded-xl bg-accent/30 hover:bg-accent/50 transition-colors border border-transparent hover:border-border/50">
+                            <div className="w-3 h-3 rounded-full bg-blue-500 mt-1.5 shadow-[0_0_10px_rgba(59,130,246,0.3)]" />
                             <div className="flex-1">
-                                <p className="text-sm font-medium">Vendor approved</p>
-                                <p className="text-xs text-muted-foreground">Tasty Bites • 15 min ago</p>
+                                <p className="text-sm font-bold text-foreground">Premium Vendor approved</p>
+                                <p className="text-xs font-bold text-muted-foreground mt-0.5">Tasty Bites • <span className="text-blue-600">15 min ago</span></p>
                             </div>
                         </div>
 
-                        <div className="flex items-start gap-3 p-3 rounded-md bg-accent/50">
-                            <div className="w-2 h-2 rounded-full bg-yellow-500 mt-2" />
+                        <div className="flex items-start gap-4 p-3.5 rounded-xl bg-accent/30 hover:bg-accent/50 transition-colors border border-transparent hover:border-border/50">
+                            <div className="w-3 h-3 rounded-full bg-yellow-500 mt-1.5 shadow-[0_0_10px_rgba(234,179,8,0.3)]" />
                             <div className="flex-1">
-                                <p className="text-sm font-medium">Rider verification pending</p>
-                                <p className="text-xs text-muted-foreground">John Doe • 1 hour ago</p>
+                                <p className="text-sm font-bold text-foreground">Rider verification pending</p>
+                                <p className="text-xs font-bold text-muted-foreground mt-0.5">John Doe • <span className="text-yellow-600">1 hour ago</span></p>
                             </div>
                         </div>
                     </div>

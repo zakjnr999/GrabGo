@@ -39,14 +39,6 @@ export function LoadingScreen() {
             `}</style>
 
             <div className="flex flex-col items-center gap-8 md:gap-12">
-                {/* Logo/Brand */}
-                <div className="text-center space-y-2 animate-fade-in">
-                    <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#FE6132] to-[#FE6132]/80 bg-clip-text text-transparent">
-                        GrabGo
-                    </h1>
-                    <p className="text-sm text-muted-foreground font-medium tracking-wide">Admin Panel</p>
-                </div>
-
                 {/* Data Grid Animation */}
                 <div className="relative w-56 h-40 md:w-72 md:h-48">
                     {/* Background Grid */}
@@ -85,14 +77,11 @@ export function LoadingScreen() {
                     <div className="absolute -bottom-1 -right-1 w-3 h-3 border-r-2 border-b-2 border-[#FE6132]/40 rounded-br" />
                 </div>
 
-                {/* Loading Text with Dots */}
-                <div className="flex items-center gap-3">
-                    <div className="flex gap-1.5">
-                        <div className="w-2 h-2 bg-[#FE6132] rounded-full animate-bounce [animation-delay:0ms]" />
-                        <div className="w-2 h-2 bg-[#FE6132] rounded-full animate-bounce [animation-delay:150ms]" />
-                        <div className="w-2 h-2 bg-[#FE6132] rounded-full animate-bounce [animation-delay:300ms]" />
-                    </div>
-                    <span className="text-sm text-muted-foreground font-medium">Loading dashboard</span>
+                {/* Loading Dots */}
+                <div className="flex gap-1.5">
+                    <div className="w-2 h-2 bg-[#FE6132] rounded-full animate-bounce [animation-delay:0ms]" />
+                    <div className="w-2 h-2 bg-[#FE6132] rounded-full animate-bounce [animation-delay:150ms]" />
+                    <div className="w-2 h-2 bg-[#FE6132] rounded-full animate-bounce [animation-delay:300ms]" />
                 </div>
             </div>
         </div>

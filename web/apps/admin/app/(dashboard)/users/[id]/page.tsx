@@ -56,63 +56,61 @@ export default async function CustomerDetailPage({ params }: PageProps) {
             {/* Stat Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Total Orders */}
-                <Card className="p-6 border-border/50 animate-fade-in-up" style={{ animationDelay: "100ms" }}>
+                <Card className="p-6 border-border/50 animate-fade-in-up hover:shadow-lg transition-all hover:-translate-y-1 group" style={{ animationDelay: "100ms" }}>
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-md bg-blue-500/10 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                             <Cart className="w-6 h-6 text-blue-600" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold">{customer.totalOrders}</p>
-                            <p className="text-sm text-muted-foreground">Total Orders</p>
+                            <p className="text-2xl font-black text-foreground">{customer.totalOrders.toLocaleString()}</p>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Orders</p>
                         </div>
                     </div>
                 </Card>
 
                 {/* Total Spending */}
-                <Card className="p-6 border-border/50 animate-fade-in-up" style={{ animationDelay: "200ms" }}>
+                <Card className="p-6 border-border/50 animate-fade-in-up hover:shadow-lg transition-all hover:-translate-y-1 group" style={{ animationDelay: "200ms" }}>
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-md bg-[#FE6132]/10 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-xl bg-[#FE6132]/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                             <TrendingUp className="w-6 h-6 text-[#FE6132]" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold">
+                            <p className="text-2xl font-black text-foreground">
                                 GH₵{customer.totalSpending.toLocaleString("en-GH", {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
+                                    maximumFractionDigits: 0,
                                 })}
                             </p>
-                            <p className="text-sm text-muted-foreground">Total Spending</p>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Spent</p>
                         </div>
                     </div>
                 </Card>
 
                 {/* Credits Balance */}
-                <Card className="p-6 border-border/50 animate-fade-in-up" style={{ animationDelay: "300ms" }}>
+                <Card className="p-6 border-border/50 animate-fade-in-up hover:shadow-lg transition-all hover:-translate-y-1 group" style={{ animationDelay: "300ms" }}>
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-md bg-green-500/10 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                             <Wallet className="w-6 h-6 text-green-600" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold">
+                            <p className="text-2xl font-black text-foreground">
                                 GH₵{customer.creditsBalance.toLocaleString("en-GH", {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
+                                    maximumFractionDigits: 0,
                                 })}
                             </p>
-                            <p className="text-sm text-muted-foreground">Credits Balance</p>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Credits</p>
                         </div>
                     </div>
                 </Card>
 
                 {/* Referrals */}
-                <Card className="p-6 border-border/50 animate-fade-in-up" style={{ animationDelay: "400ms" }}>
+                <Card className="p-6 border-border/50 animate-fade-in-up hover:shadow-lg transition-all hover:-translate-y-1 group" style={{ animationDelay: "400ms" }}>
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-md bg-purple-500/10 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                             <Group className="w-6 h-6 text-purple-600" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold">{customer.referralCount}</p>
-                            <p className="text-sm text-muted-foreground">Referrals</p>
+                            <p className="text-2xl font-black text-foreground">{customer.referralCount}</p>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Referrals</p>
                         </div>
                     </div>
                 </Card>

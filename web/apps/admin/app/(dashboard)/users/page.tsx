@@ -126,47 +126,48 @@ export default function UsersPage() {
     return (
         <div className="p-6 space-y-6">
             {/* Page Header */}
-            <div className="flex items-center justify-between animate-fade-in-left">
+            <div className="flex items-center justify-between animate-fade-in-up">
                 <div>
-                    <h1 className="text-3xl font-bold">Customers</h1>
-                    <p className="text-muted-foreground mt-1">
-                        Manage and monitor all customer accounts
+                    <h1 className="text-4xl font-extrabold tracking-tight">Customer Network</h1>
+                    <p className="text-muted-foreground mt-2 text-lg font-medium">
+                        Comprehensive management and behavioral monitoring of all user accounts
                     </p>
                 </div>
                 <Button
-                    className="bg-gradient-to-br from-[#FE6132] to-[#FE6132]/80 text-white hover:opacity-90"
+                    className="bg-gradient-to-br from-[#FE6132] to-[#FE6132]/80 text-white hover:shadow-lg hover:shadow-orange-200 transition-all font-bold rounded-xl h-12 px-6 hover:scale-105 active:scale-95"
                 >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Customer
+                    <Plus className="w-5 h-5 mr-2" />
+                    Expand Network
                 </Button>
             </div>
 
             {/* Filters and Search */}
-            <Card className="p-6 border-border/50 animate-fade-in-right">
+            <Card className="p-6 border-border/50 animate-fade-in-up [animation-delay:100ms] hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-4">
-                    <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <div className="flex-1 relative group">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-[#FE6132] transition-colors" />
                         <Input
-                            placeholder="Search by name, email, or phone..."
+                            placeholder="Search by identity, email, or digital contact..."
                             value={searchQuery}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-                            className="pl-10 bg-accent/50 border-border/50 focus:bg-background transition-colors"
+                            className="pl-12 h-12 bg-accent/30 border-border/50 focus:bg-background transition-all rounded-xl font-medium"
                         />
                     </div>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="gap-2 border-border/50">
+                            <Button variant="outline" className="gap-2 border-border/50 h-12 px-5 rounded-xl font-bold bg-background hover:bg-accent transition-all">
                                 <Filter className="w-4 h-4" />
-                                Filters
+                                Filter Intelligence
                                 {activeFilterCount > 0 && (
-                                    <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-xs">
+                                    <Badge className="ml-1 px-2 py-0.5 text-[10px] bg-[#FE6132] text-white font-black border-0">
                                         {activeFilterCount}
                                     </Badge>
                                 )}
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56">
-                            <DropdownMenuLabel>Status</DropdownMenuLabel>
+                        {/* ... content remains same ... */}
+                        <DropdownMenuContent align="end" className="w-64 p-2 rounded-xl border-border/50 shadow-xl">
+                            <DropdownMenuLabel className="px-3 py-2 text-xs font-black uppercase tracking-widest text-muted-foreground">Account Status</DropdownMenuLabel>
                             <DropdownMenuRadioGroup
                                 value={statusFilter}
                                 onValueChange={(value) => {
@@ -174,14 +175,14 @@ export default function UsersPage() {
                                     handleFilterChange();
                                 }}
                             >
-                                <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="active">Active</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="inactive">Inactive</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="all" className="rounded-lg">All Statuses</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="active" className="rounded-lg">Active Performance</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="inactive" className="rounded-lg">Inactive Accounts</DropdownMenuRadioItem>
                             </DropdownMenuRadioGroup>
 
-                            <DropdownMenuSeparator />
+                            <DropdownMenuSeparator className="my-2" />
 
-                            <DropdownMenuLabel>Verification</DropdownMenuLabel>
+                            <DropdownMenuLabel className="px-3 py-2 text-xs font-black uppercase tracking-widest text-muted-foreground">Verification Tier</DropdownMenuLabel>
                             <DropdownMenuRadioGroup
                                 value={verificationFilter}
                                 onValueChange={(value) => {
@@ -189,17 +190,17 @@ export default function UsersPage() {
                                     handleFilterChange();
                                 }}
                             >
-                                <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="verified">Verified</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="unverified">Unverified</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="all" className="rounded-lg">All Verifications</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="verified" className="rounded-lg">Verified Identity</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="unverified" className="rounded-lg">Pending Verification</DropdownMenuRadioItem>
                             </DropdownMenuRadioGroup>
 
                             {activeFilterCount > 0 && (
                                 <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={clearFilters} className="text-destructive">
+                                    <DropdownMenuSeparator className="my-2" />
+                                    <DropdownMenuItem onClick={clearFilters} className="text-destructive font-bold rounded-lg focus:bg-red-50 focus:text-red-600 transition-colors">
                                         <Xmark className="w-4 h-4 mr-2" />
-                                        Clear Filters
+                                        Reset All Filters
                                     </DropdownMenuItem>
                                 </>
                             )}
@@ -207,12 +208,12 @@ export default function UsersPage() {
                     </DropdownMenu>
                     <Button
                         variant="outline"
-                        className="gap-2 border-border/50"
+                        className="gap-2 border-border/50 h-12 px-5 rounded-xl font-bold hover:shadow-sm transition-all"
                         onClick={handleExport}
                         disabled={filteredCustomers.length === 0}
                     >
                         <Download className="w-4 h-4" />
-                        Export
+                        Export Data
                     </Button>
                 </div>
             </Card>
@@ -273,22 +274,23 @@ export default function UsersPage() {
                                     </tr>
                                 ))
                             ) : (
-                                paginatedCustomers.map((customer) => (
+                                paginatedCustomers.map((customer, index) => (
                                     <tr
                                         key={customer.id}
                                         onClick={() => router.push(`/users/${customer.id}`)}
-                                        className="hover:bg-muted/30 transition-colors cursor-pointer"
+                                        className="hover:bg-accent/40 transition-all cursor-pointer group animate-fade-in-up border-b border-border/50 last:border-0"
+                                        style={{ animationDelay: `${200 + index * 50}ms` }}
                                     >
                                         {/* Customer Info */}
                                         <td className="p-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-md bg-gradient-to-br from-[#FE6132] to-[#FE6132]/80 flex items-center justify-center text-white font-semibold">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FE6132] to-[#FE6132]/80 flex items-center justify-center text-white font-black shadow-sm group-hover:scale-110 transition-transform">
                                                     {customer.username.charAt(0).toUpperCase()}
                                                 </div>
                                                 <div>
-                                                    <div className="font-medium">{customer.username}</div>
-                                                    <div className="text-sm text-muted-foreground">
-                                                        ID: {customer.id}
+                                                    <div className="font-bold text-foreground group-hover:text-[#FE6132] transition-colors">{customer.username}</div>
+                                                    <div className="text-xs font-bold text-muted-foreground uppercase tracking-tighter">
+                                                        U-ID: {customer.id.slice(0, 8)}
                                                     </div>
                                                 </div>
                                             </div>
@@ -296,17 +298,18 @@ export default function UsersPage() {
 
                                         {/* Contact */}
                                         <td className="p-4">
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-2 text-sm">
+                                            <div className="space-y-1.5">
+                                                <div className="flex items-center gap-2 text-sm font-medium">
                                                     <span>{customer.email}</span>
                                                     {customer.emailVerified && (
                                                         <CheckCircleSolid className="w-4 h-4 text-green-500" />
                                                     )}
                                                 </div>
-                                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
+                                                    <span className="bg-accent/50 px-1.5 py-0.5 rounded text-[10px]">PHONE</span>
                                                     <span>{customer.phone}</span>
                                                     {customer.phoneVerified && (
-                                                        <CheckCircleSolid className="w-4 h-4 text-green-500" />
+                                                        <CheckCircleSolid className="w-3.5 h-3.5 text-green-500" />
                                                     )}
                                                 </div>
                                             </div>
@@ -314,19 +317,21 @@ export default function UsersPage() {
 
                                         {/* Status */}
                                         <td className="p-4">
-                                            <Badge variant={customer.isActive ? "success" : "destructive"}>
-                                                {customer.isActive ? "Active" : "Inactive"}
-                                            </Badge>
+                                            <div className="group-hover:scale-105 transition-transform origin-left">
+                                                <Badge variant={customer.isActive ? "success" : "destructive"}>
+                                                    {customer.isActive ? "Active" : "Inactive"}
+                                                </Badge>
+                                            </div>
                                         </td>
 
                                         {/* Orders */}
                                         <td className="p-4">
-                                            <div className="font-medium">{customer.totalOrders}</div>
+                                            <div className="font-black text-foreground">{customer.totalOrders.toLocaleString()}</div>
                                         </td>
 
                                         {/* Spending */}
                                         <td className="p-4">
-                                            <div className="font-medium">
+                                            <div className="font-black text-foreground">
                                                 GH₵{customer.totalSpending.toLocaleString("en-GH", {
                                                     minimumFractionDigits: 2,
                                                     maximumFractionDigits: 2,
@@ -336,7 +341,7 @@ export default function UsersPage() {
 
                                         {/* Joined Date */}
                                         <td className="p-4">
-                                            <div className="text-sm">
+                                            <div className="text-sm font-bold text-muted-foreground">
                                                 {format(new Date(customer.createdAt), "MMM dd, yyyy")}
                                             </div>
                                         </td>
@@ -344,11 +349,8 @@ export default function UsersPage() {
                                         {/* Actions */}
                                         <td className="p-4">
                                             <div className="flex items-center justify-end gap-2">
-                                                <Button variant="ghost" size="sm">
-                                                    View
-                                                </Button>
-                                                <Button variant="ghost" size="sm">
-                                                    Edit
+                                                <Button variant="ghost" size="sm" className="rounded-lg h-9 font-bold hover:bg-accent transition-all ring-0 border-0 outline-none">
+                                                    More
                                                 </Button>
                                             </div>
                                         </td>

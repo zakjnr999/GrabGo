@@ -99,45 +99,45 @@ export default function VendorsPage() {
     return (
         <div className="p-6 space-y-6">
             {/* Page Header */}
-            <div className="flex items-center justify-between animate-fade-in-left">
+            <div className="flex items-center justify-between animate-fade-in-up">
                 <div>
-                    <h1 className="text-3xl font-bold">Vendors</h1>
-                    <p className="text-muted-foreground mt-1">
-                        Manage restaurants, groceries, pharmacies, and markets
+                    <h1 className="text-4xl font-extrabold tracking-tight">Vendor Ecosystem</h1>
+                    <p className="text-muted-foreground mt-2 text-lg font-medium">
+                        Strategic oversight for restaurants, grocery stores, and specialty markets
                     </p>
                 </div>
                 <Button
                     onClick={() => setIsRegisterOpen(true)}
-                    className="bg-gradient-to-br from-[#FE6132] to-[#FE6132]/80 text-white hover:opacity-90"
+                    className="bg-gradient-to-br from-[#FE6132] to-[#FE6132]/80 text-white hover:shadow-lg hover:shadow-orange-200 transition-all font-bold rounded-xl h-12 px-6 hover:scale-105 active:scale-95"
                 >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Register Vendor
+                    <Plus className="w-5 h-5 mr-2" />
+                    Onboard Vendor
                 </Button>
             </div>
 
             {/* Filters */}
-            <Card className="p-6 border-border/50 animate-fade-in-right">
+            <Card className="p-6 border-border/50 animate-fade-in-up [animation-delay:100ms] hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-4">
-                    <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <div className="flex-1 relative group">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-[#FE6132] transition-colors" />
                         <Input
-                            placeholder="Search by vendor name or owner..."
+                            placeholder="Find vendors by brand or principal agent..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10 bg-accent/50 border-border/50 focus:bg-background transition-colors"
+                            className="pl-12 h-12 bg-accent/30 border-border/50 focus:bg-background transition-all rounded-xl font-medium"
                         />
                     </div>
 
                     {/* Service Type Tab-like Filter */}
-                    <div className="hidden lg:flex items-center bg-muted/40 p-1 rounded-lg border border-border/50 gap-1 h-10">
+                    <div className="hidden lg:flex items-center bg-accent/30 p-1 rounded-xl border border-border/50 gap-1 h-12">
                         {["all", "food", "grocery", "pharmacy", "market"].map((type) => (
                             <button
                                 key={type}
                                 onClick={() => { setTypeFilter(type as any); setCurrentPage(1); }}
-                                className={`px-4 h-full rounded-md text-sm font-medium transition-all duration-200 ${typeFilter === type
-                                    ? "bg-background text-[#FE6132] shadow-sm ring-1 ring-black/5 dark:ring-white/5"
+                                className={`px-5 h-full rounded-lg text-sm font-black transition-all duration-300 ${typeFilter === type
+                                    ? "bg-white text-[#FE6132] shadow-sm scale-110"
                                     : "text-muted-foreground hover:text-foreground hover:bg-background/40"
-                                    } capitalize`}
+                                    } uppercase tracking-tighter`}
                             >
                                 {type}
                             </button>
@@ -146,52 +146,52 @@ export default function VendorsPage() {
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="gap-2 border-border/50">
+                            <Button variant="outline" className="gap-2 border-border/50 h-12 px-5 rounded-xl font-bold bg-background hover:bg-accent transition-all">
                                 <Filter className="w-4 h-4" />
-                                Filters
+                                Operation Filters
                                 {activeFilterCount > 0 && (
-                                    <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-xs">
+                                    <Badge className="ml-1 px-2 py-0.5 text-[10px] bg-[#FE6132] text-white font-black border-0">
                                         {activeFilterCount}
                                     </Badge>
                                 )}
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56">
-                            <DropdownMenuLabel>Service Type</DropdownMenuLabel>
+                        <DropdownMenuContent align="end" className="w-64 p-2 rounded-xl border-border/50 shadow-xl">
+                            <DropdownMenuLabel className="px-3 py-2 text-xs font-black uppercase tracking-widest text-muted-foreground">Market Segment</DropdownMenuLabel>
                             <DropdownMenuRadioGroup value={typeFilter} onValueChange={(v) => { setTypeFilter(v as any); setCurrentPage(1); }}>
-                                <DropdownMenuRadioItem value="all">All Services</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="food">Food</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="grocery">Grocery</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="pharmacy">Pharmacy</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="market">Market</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="all" className="rounded-lg">All Entities</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="food" className="rounded-lg">Culinary/Food</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="grocery" className="rounded-lg">Grocery Supply</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="pharmacy" className="rounded-lg">Healthcare/Pharma</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="market" className="rounded-lg">Open Market</DropdownMenuRadioItem>
                             </DropdownMenuRadioGroup>
 
-                            <DropdownMenuSeparator />
+                            <DropdownMenuSeparator className="my-2" />
 
-                            <DropdownMenuLabel>Operation Status</DropdownMenuLabel>
+                            <DropdownMenuLabel className="px-3 py-2 text-xs font-black uppercase tracking-widest text-muted-foreground">Operating State</DropdownMenuLabel>
                             <DropdownMenuRadioGroup value={statusFilter} onValueChange={(v) => { setStatusFilter(v as any); setCurrentPage(1); }}>
-                                <DropdownMenuRadioItem value="all">All Statuses</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="open">Open</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="busy">Busy</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="closed">Closed</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="under_review">Under Review</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="all" className="rounded-lg">Universal View</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="open" className="rounded-lg">Open & Serving</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="busy" className="rounded-lg">High Demand/Busy</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="closed" className="rounded-lg">Closed/Offline</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="under_review" className="rounded-lg">Audit/Review</DropdownMenuRadioItem>
                             </DropdownMenuRadioGroup>
 
                             {activeFilterCount > 0 && (
                                 <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={clearFilters} className="text-destructive">
+                                    <DropdownMenuSeparator className="my-2" />
+                                    <DropdownMenuItem onClick={clearFilters} className="text-destructive font-bold rounded-lg focus:bg-red-50 focus:text-red-600 transition-colors">
                                         <Xmark className="w-4 h-4 mr-2" />
-                                        Clear Filters
+                                        Reset Intel Filters
                                     </DropdownMenuItem>
                                 </>
                             )}
                         </DropdownMenuContent>
                     </DropdownMenu>
 
-                    <Button variant="outline" className="gap-2 border-border/50">
+                    <Button variant="outline" className="gap-2 border-border/50 h-12 px-5 rounded-xl font-bold hover:shadow-sm transition-all">
                         <Download className="w-4 h-4" />
-                        Export
+                        Export Audit
                     </Button>
                 </div>
             </Card>
@@ -202,119 +202,121 @@ export default function VendorsPage() {
                     <table className="w-full">
                         <thead className="bg-muted/50 border-b border-border/50">
                             <tr>
-                                <th className="text-left p-4 font-semibold text-sm">Vendor</th>
-                                <th className="text-left p-4 font-semibold text-sm">Type</th>
-                                <th className="text-left p-4 font-semibold text-sm">Owner & Contact</th>
-                                <th className="text-left p-4 font-semibold text-sm">Status</th>
-                                <th className="text-left p-4 font-semibold text-sm">Rating</th>
-                                <th className="text-left p-4 font-semibold text-sm">Performance</th>
-                                <th className="text-right p-4 font-semibold text-sm">Actions</th>
+                                <th className="text-left p-6 text-sm font-semibold">Entity Recognition</th>
+                                <th className="text-left p-6 text-sm font-semibold">Division</th>
+                                <th className="text-left p-6 text-sm font-semibold">Stakeholder Info</th>
+                                <th className="text-left p-6 text-sm font-semibold">State</th>
+                                <th className="text-left p-6 text-sm font-semibold">Trust Index</th>
+                                <th className="text-left p-6 text-sm font-semibold">Capital Flow</th>
+                                <th className="text-right p-6 text-sm font-semibold">Operations</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border/50">
                             {isInitialLoading ? (
                                 // Skeleton Loaders
-                                Array.from({ length: itemsPerPage }).map((_, i) => (
+                                Array.from({ length: 10 }).map((_, i) => (
                                     <tr key={`skeleton-${i}`} className="animate-pulse">
-                                        <td className="p-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-md bg-muted" />
+                                        <td className="p-6">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-14 h-14 rounded-2xl bg-muted" />
                                                 <div className="space-y-2">
                                                     <div className="h-4 w-32 bg-muted rounded" />
-                                                    <div className="h-3 w-16 bg-muted rounded" />
+                                                    <div className="h-2 w-16 bg-muted rounded" />
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="p-4">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-4 h-4 bg-muted rounded" />
-                                                <div className="h-4 w-20 bg-muted rounded" />
-                                            </div>
+                                        <td className="p-6">
+                                            <div className="h-4 w-20 bg-muted rounded-lg" />
                                         </td>
-                                        <td className="p-4">
+                                        <td className="p-6">
                                             <div className="space-y-2">
                                                 <div className="h-4 w-28 bg-muted rounded" />
                                                 <div className="h-3 w-24 bg-muted rounded" />
                                             </div>
                                         </td>
-                                        <td className="p-4">
+                                        <td className="p-6">
                                             <div className="h-6 w-20 bg-muted rounded-full" />
                                         </td>
-                                        <td className="p-4">
-                                            <div className="flex items-center gap-1">
-                                                <div className="w-4 h-4 bg-muted rounded" />
-                                                <div className="h-4 w-8 bg-muted rounded" />
-                                            </div>
+                                        <td className="p-6">
+                                            <div className="h-4 w-12 bg-muted rounded" />
                                         </td>
-                                        <td className="p-4">
+                                        <td className="p-6">
                                             <div className="space-y-2">
                                                 <div className="h-4 w-24 bg-muted rounded" />
-                                                <div className="h-3 w-20 bg-muted rounded" />
+                                                <div className="h-2 w-20 bg-muted rounded" />
                                             </div>
                                         </td>
-                                        <td className="p-4 text-right">
-                                            <div className="flex justify-end">
-                                                <div className="h-8 w-16 bg-muted rounded" />
-                                            </div>
+                                        <td className="p-6 text-right">
+                                            <div className="h-10 w-24 bg-muted rounded-xl ml-auto" />
                                         </td>
                                     </tr>
                                 ))
-                            ) : paginatedVendors.map((vendor) => (
-                                <tr
-                                    key={vendor.id}
-                                    className="hover:bg-muted/30 transition-colors cursor-pointer"
-                                    onClick={() => router.push(`/vendors/${vendor.id}`)}
-                                >
-                                    <td className="p-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-md bg-gradient-to-br from-accent to-accent-foreground/10 flex items-center justify-center text-primary font-bold">
-                                                {vendor.logo ? (
-                                                    <img src={vendor.logo} alt={vendor.name} className="w-full h-full object-cover rounded-md" />
-                                                ) : (
-                                                    vendor.name.charAt(0)
-                                                )}
-                                            </div>
-                                            <div>
-                                                <div className="font-semibold flex items-center gap-2">
-                                                    {vendor.name}
-                                                    {vendor.isVerified && <CheckCircleSolid className="w-4 h-4 text-blue-500" />}
+                            ) : (
+                                paginatedVendors.map((vendor, index) => (
+                                    <tr
+                                        key={vendor.id}
+                                        className="hover:bg-accent/40 transition-all cursor-pointer group animate-fade-in-up border-b border-border/50 last:border-0"
+                                        style={{ animationDelay: `${200 + index * 50}ms` }}
+                                        onClick={() => router.push(`/vendors/${vendor.id}`)}
+                                    >
+                                        <td className="p-6">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent to-accent-foreground/5 flex items-center justify-center text-primary font-black shadow-inner group-hover:scale-110 transition-transform overflow-hidden relative border border-border/30">
+                                                    {vendor.logo ? (
+                                                        <img src={vendor.logo} alt={vendor.name} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <span className="text-xl">{vendor.name.charAt(0)}</span>
+                                                    )}
+                                                    <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                                 </div>
-                                                <div className="text-xs text-muted-foreground">{vendor.id}</div>
+                                                <div>
+                                                    <div className="font-bold text-foreground group-hover:text-[#FE6132] transition-colors flex items-center gap-2">
+                                                        {vendor.name}
+                                                        {vendor.isVerified && <CheckCircleSolid className="w-4 h-4 text-blue-500 shadow-sm" />}
+                                                    </div>
+                                                    <div className="text-[10px] font-black font-mono text-muted-foreground uppercase opacity-60">ID-{vendor.id.slice(0, 8)}</div>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="flex items-center gap-2 capitalize text-sm">
-                                            {getTypeIcon(vendor.type)}
-                                            {vendor.type}
-                                        </div>
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="text-sm">
-                                            <div className="font-medium">{vendor.ownerName}</div>
-                                            <div className="text-muted-foreground">{vendor.phone}</div>
-                                        </div>
-                                    </td>
-                                    <td className="p-4">
-                                        {getStatusBadge(vendor.status)}
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="flex items-center gap-1">
-                                            <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                                            <span className="font-medium">{vendor.rating.toFixed(1)}</span>
-                                        </div>
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="text-sm">
-                                            <div className="font-semibold">GH₵{vendor.totalRevenue.toLocaleString()}</div>
-                                            <div className="text-muted-foreground text-xs">{vendor.orderCount} orders</div>
-                                        </div>
-                                    </td>
-                                    <td className="p-4 text-right">
-                                        <Button variant="ghost" size="sm">Manage</Button>
-                                    </td>
-                                </tr>
-                            ))}
+                                        </td>
+                                        <td className="p-6">
+                                            <div className="flex items-center gap-2.5">
+                                                <div className="p-1.5 rounded-lg bg-accent/50 group-hover:bg-[#FE6132]/10 transition-colors">
+                                                    {getTypeIcon(vendor.type)}
+                                                </div>
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-foreground">{vendor.type}</span>
+                                            </div>
+                                        </td>
+                                        <td className="p-6">
+                                            <div className="space-y-1">
+                                                <div className="font-bold text-sm text-foreground">{vendor.ownerName}</div>
+                                                <div className="text-xs font-bold text-muted-foreground">{vendor.phone}</div>
+                                            </div>
+                                        </td>
+                                        <td className="p-6">
+                                            <div className="group-hover:scale-105 transition-transform origin-left">
+                                                {getStatusBadge(vendor.status)}
+                                            </div>
+                                        </td>
+                                        <td className="p-6">
+                                            <div className="flex items-center gap-1.5">
+                                                <Star className="w-4 h-4 text-yellow-500 fill-yellow-500 animate-pulse" />
+                                                <span className="font-black text-foreground">{vendor.rating.toFixed(1)}</span>
+                                            </div>
+                                        </td>
+                                        <td className="p-6">
+                                            <div className="space-y-1">
+                                                <div className="font-black text-[#FE6132]">GH₵ {vendor.totalRevenue.toLocaleString()}</div>
+                                                <div className="text-[10px] font-black text-muted-foreground uppercase tracking-tighter">{vendor.orderCount.toLocaleString()} Successful Orders</div>
+                                            </div>
+                                        </td>
+                                        <td className="p-6 text-right">
+                                            <Button size="sm" className="rounded-xl h-10 px-5 font-black bg-accent/40 text-foreground hover:bg-[#FE6132] hover:text-white hover:shadow-lg hover:shadow-orange-200/50 transition-all border-0 ring-0">
+                                                Manage Hub
+                                            </Button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>

@@ -159,51 +159,51 @@ export default function VendorDetailPage({ params }: PageProps) {
 
             {/* Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="p-6 border-border/50 animate-fade-in-up" style={{ animationDelay: "100ms" }}>
+                <Card className="p-6 border-border/50 animate-fade-in-up hover:shadow-lg transition-all hover:-translate-y-1 group" style={{ animationDelay: "100ms" }}>
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-md bg-[#FE6132]/10 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-xl bg-[#FE6132]/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                             <TrendingUp className="w-6 h-6 text-[#FE6132]" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold">GH₵{vendor.totalRevenue.toLocaleString()}</p>
-                            <p className="text-sm text-muted-foreground">Total Revenue</p>
+                            <p className="text-2xl font-black text-foreground">GH₵{vendor.totalRevenue.toLocaleString()}</p>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Revenue</p>
                         </div>
                     </div>
                 </Card>
 
-                <Card className="p-6 border-border/50 animate-fade-in-up" style={{ animationDelay: "200ms" }}>
+                <Card className="p-6 border-border/50 animate-fade-in-up hover:shadow-lg transition-all hover:-translate-y-1 group" style={{ animationDelay: "200ms" }}>
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-md bg-blue-500/10 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                             <Cart className="w-6 h-6 text-blue-600" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold">{vendor.orderCount}</p>
-                            <p className="text-sm text-muted-foreground">Total Orders</p>
+                            <p className="text-2xl font-black text-foreground">{vendor.orderCount.toLocaleString()}</p>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Total Orders</p>
                         </div>
                     </div>
                 </Card>
 
-                <Card className="p-6 border-border/50 animate-fade-in-up" style={{ animationDelay: "300ms" }}>
+                <Card className="p-6 border-border/50 animate-fade-in-up hover:shadow-lg transition-all hover:-translate-y-1 group" style={{ animationDelay: "300ms" }}>
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-md bg-purple-500/10 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                             <Star className="w-6 h-6 text-purple-600" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold">{vendor.rating}</p>
-                            <p className="text-sm text-muted-foreground">Avg. Rating</p>
+                            <p className="text-2xl font-black text-foreground">{vendor.rating.toFixed(1)}</p>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Avg Rating</p>
                         </div>
                     </div>
                 </Card>
 
-                <Card className="p-6 border-border/50 animate-fade-in-up" style={{ animationDelay: "400ms" }}>
+                <Card className="p-6 border-border/50 animate-fade-in-up hover:shadow-lg transition-all hover:-translate-y-1 group" style={{ animationDelay: "400ms" }}>
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-md bg-green-500/10 flex items-center justify-center">
+                            <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                                 <ArrowUp className="w-6 h-6 text-green-600" />
                             </div>
                             <div>
-                                <p className="text-2xl font-bold">+12%</p>
-                                <p className="text-sm text-muted-foreground">Growth</p>
+                                <p className="text-2xl font-black text-foreground">+12%</p>
+                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Growth</p>
                             </div>
                         </div>
                     </div>
@@ -321,27 +321,27 @@ export default function VendorDetailPage({ params }: PageProps) {
 
                                 {/* Items Grid */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {catalog.map(item => (
-                                        <Card key={item.id} className="p-4 border-border/50 hover:shadow-md transition-shadow group">
+                                    {catalog.map((item, idx) => (
+                                        <Card key={item.id} className="p-4 border-border/50 hover:shadow-lg transition-all hover:-translate-y-1 group animate-fade-in-up" style={{ animationDelay: `${idx * 50}ms` }}>
                                             <div className="flex gap-4">
-                                                <div className="w-16 h-16 rounded-md bg-muted flex items-center justify-center text-muted-foreground flex-shrink-0">
+                                                <div className="w-20 h-20 rounded-xl bg-accent/30 flex items-center justify-center text-muted-foreground flex-shrink-0 group-hover:scale-105 transition-transform overflow-hidden">
                                                     {item.image ? (
-                                                        <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-md" />
+                                                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                                                     ) : (
-                                                        <Database className="w-6 h-6 opacity-40" />
+                                                        <Database className="w-8 h-8 opacity-40" />
                                                     )}
                                                 </div>
                                                 <div className="flex-1 space-y-1">
                                                     <div className="flex items-start justify-between">
-                                                        <h4 className="font-semibold text-sm group-hover:text-[#FE6132] transition-colors">{item.name}</h4>
-                                                        <span className="text-sm font-bold">GH₵{item.price.toFixed(2)}</span>
+                                                        <h4 className="font-bold text-sm group-hover:text-[#FE6132] transition-colors">{item.name}</h4>
+                                                        <span className="text-sm font-black text-[#FE6132]">GH₵ {item.price.toFixed(2)}</span>
                                                     </div>
-                                                    <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>
-                                                    <div className="flex items-center justify-between mt-2">
-                                                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 uppercase tracking-wider">{item.category}</Badge>
-                                                        <div className="flex items-center gap-2">
-                                                            <div className={`w-2 h-2 rounded-full ${item.inStock ? "bg-green-500" : "bg-red-500"}`} />
-                                                            <span className="text-[10px] font-medium text-muted-foreground">{item.inStock ? "In Stock" : "Out of Stock"}</span>
+                                                    <p className="text-xs font-medium text-muted-foreground line-clamp-2">{item.description}</p>
+                                                    <div className="flex items-center justify-between mt-3">
+                                                        <Badge className="text-[10px] px-2 py-0.5 font-black uppercase tracking-widest bg-accent/50 text-foreground border-0">{item.category}</Badge>
+                                                        <div className="flex items-center gap-1.5 font-bold">
+                                                            <div className={`w-2 h-2 rounded-full ${item.inStock ? "bg-green-500" : "bg-red-500"} shadow-sm`} />
+                                                            <span className="text-[10px] uppercase text-muted-foreground">{item.inStock ? "Ready" : "Sold Out"}</span>
                                                         </div>
                                                     </div>
                                                 </div>

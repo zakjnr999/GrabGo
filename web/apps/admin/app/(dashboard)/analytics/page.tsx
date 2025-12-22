@@ -212,23 +212,23 @@ export default function AnalyticsPage() {
     return (
         <div className="space-y-6">
             {/* Page Header */}
-            <div className="animate-fade-in">
-                <h1 className="text-3xl font-bold text-foreground">Analytics & Reports</h1>
-                <p className="text-muted-foreground mt-1">
-                    Comprehensive insights and detailed reports for your business
+            <div className="animate-fade-in-up">
+                <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Intelligence Center</h1>
+                <p className="text-muted-foreground mt-2 text-lg">
+                    Advanced business analytics and real-time performance reports
                 </p>
             </div>
 
             {/* Filters & Controls */}
-            <Card className="p-6 border-border/50">
-                <div className="grid gap-4 md:grid-cols-3">
+            <Card className="p-6 border-border/50 animate-fade-in-up [animation-delay:100ms] hover:shadow-md transition-shadow">
+                <div className="grid gap-6 md:grid-cols-3">
                     {/* Report Type Selector */}
                     <div>
-                        <label className="text-sm font-medium mb-2 block">Report Type</label>
+                        <label className="text-xs font-black uppercase tracking-widest text-[#FE6132] mb-2 block">Analytical Lens</label>
                         <select
                             value={selectedReport}
                             onChange={(e) => handleReportChange(e.target.value as ReportType)}
-                            className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground focus:outline-none"
+                            className="w-full px-4 py-2.5 rounded-xl border border-border bg-accent/30 text-foreground font-bold focus:ring-2 focus:ring-[#FE6132]/20 transition-all outline-none"
                         >
                             {reportTypes.map((type) => (
                                 <option key={type.value} value={type.value}>
@@ -240,11 +240,11 @@ export default function AnalyticsPage() {
 
                     {/* Date Range Selector */}
                     <div>
-                        <label className="text-sm font-medium mb-2 block">Date Range</label>
+                        <label className="text-xs font-black uppercase tracking-widest text-[#FE6132] mb-2 block">Time Horizon</label>
                         <select
                             value={dateRange}
                             onChange={(e) => setDateRange(e.target.value)}
-                            className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground focus:outline-none"
+                            className="w-full px-4 py-2.5 rounded-xl border border-border bg-accent/30 text-foreground font-bold focus:ring-2 focus:ring-[#FE6132]/20 transition-all outline-none"
                         >
                             {dateRangePresets.map((preset) => (
                                 <option key={preset.value} value={preset.value}>
@@ -256,31 +256,30 @@ export default function AnalyticsPage() {
 
                     {/* Export Buttons */}
                     <div>
-                        <label className="text-sm font-medium mb-2 block">Actions</label>
+                        <label className="text-xs font-black uppercase tracking-widest text-[#FE6132] mb-2 block">Extract Intelligence</label>
                         <div className="flex gap-2">
                             <button
                                 onClick={exportToCSV}
-                                className="flex-1 px-3 py-2 rounded-md border border-border bg-background hover:bg-accent transition-colors flex items-center justify-center gap-2"
+                                className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-background hover:bg-orange-50 hover:text-[#FE6132] hover:border-orange-200 transition-all flex items-center justify-center gap-2 font-bold shadow-sm active:scale-95"
                             >
                                 <Download className="w-4 h-4" />
                                 <span className="text-sm">CSV</span>
                             </button>
                             <button
                                 onClick={exportToExcel}
-                                className="flex-1 px-3 py-2 rounded-md border border-border bg-background hover:bg-accent transition-colors flex items-center justify-center gap-2"
+                                className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-background hover:bg-orange-50 hover:text-[#FE6132] hover:border-orange-200 transition-all flex items-center justify-center gap-2 font-bold shadow-sm active:scale-95"
                             >
                                 <Download className="w-4 h-4" />
                                 <span className="text-sm">Excel</span>
                             </button>
                             <button
                                 onClick={handlePrint}
-                                className="flex-1 px-3 py-2 rounded-md border border-border bg-background hover:bg-accent transition-colors flex items-center justify-center gap-2"
+                                className="px-4 py-2.5 rounded-xl border border-border bg-background hover:bg-accent transition-all flex items-center justify-center font-bold shadow-sm active:scale-95"
                                 title="Print Report"
                             >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                                 </svg>
-                                <span className="text-sm">Print</span>
                             </button>
                         </div>
                     </div>
@@ -385,26 +384,32 @@ export default function AnalyticsPage() {
                             <div className="space-y-6">
                                 {/* Summary Cards */}
                                 <div className="grid gap-6 md:grid-cols-3">
-                                    <Card className="p-6 border-border/50">
-                                        <p className="text-sm text-muted-foreground">Total Users</p>
-                                        <p className="text-3xl font-bold mt-2">12,458</p>
-                                        <p className="text-sm text-green-600 mt-1">+12.5% from last month</p>
+                                    <Card className="p-6 border-border/50 animate-fade-in-up [animation-delay:200ms] hover:shadow-lg transition-all group">
+                                        <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Total Active Users</p>
+                                        <p className="text-4xl font-black mt-2 text-foreground group-hover:text-[#FE6132] transition-colors">12,458</p>
+                                        <div className="flex items-center gap-2 mt-2">
+                                            <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[10px] font-black uppercase tracking-wider">+12.5%</span>
+                                            <p className="text-xs font-bold text-muted-foreground">vs last month</p>
+                                        </div>
                                     </Card>
-                                    <Card className="p-6 border-border/50">
-                                        <p className="text-sm text-muted-foreground">New Users (30 days)</p>
-                                        <p className="text-3xl font-bold mt-2">1,247</p>
-                                        <p className="text-sm text-green-600 mt-1">+8.3% from previous period</p>
+                                    <Card className="p-6 border-border/50 animate-fade-in-up [animation-delay:300ms] hover:shadow-lg transition-all group">
+                                        <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">New Acquisitions</p>
+                                        <p className="text-4xl font-black mt-2 text-foreground group-hover:text-[#FE6132] transition-colors">1,247</p>
+                                        <div className="flex items-center gap-2 mt-2">
+                                            <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[10px] font-black uppercase tracking-wider">+8.3%</span>
+                                            <p className="text-xs font-bold text-muted-foreground">vs prev. period</p>
+                                        </div>
                                     </Card>
-                                    <Card className="p-6 border-border/50">
-                                        <p className="text-sm text-muted-foreground">Avg. Daily Growth</p>
-                                        <p className="text-3xl font-bold mt-2">42</p>
-                                        <p className="text-sm text-muted-foreground mt-1">users per day</p>
+                                    <Card className="p-6 border-border/50 animate-fade-in-up [animation-delay:400ms] hover:shadow-lg transition-all group">
+                                        <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Velocity Curve</p>
+                                        <p className="text-4xl font-black mt-2 text-foreground group-hover:text-[#FE6132] transition-colors">42</p>
+                                        <p className="text-xs font-bold text-muted-foreground mt-2">Daily Growth Average</p>
                                     </Card>
                                 </div>
 
                                 {/* User Growth Chart */}
-                                <Card className="p-6 border-border/50">
-                                    <h3 className="text-lg font-semibold mb-6">User Growth Trend</h3>
+                                <Card className="p-8 border-border/50 animate-fade-in-up [animation-delay:500ms] hover:shadow-md transition-all">
+                                    <h3 className="text-xl font-black mb-8">User Growth Trendline</h3>
                                     <LineChart
                                         data={mockUserGrowthData.map(d => ({
                                             ...d,
@@ -418,26 +423,32 @@ export default function AnalyticsPage() {
                                 </Card>
 
                                 {/* User Breakdown Table */}
-                                <Card className="p-6 border-border/50">
-                                    <h3 className="text-lg font-semibold mb-4">Daily Breakdown</h3>
-                                    <div className="overflow-x-auto">
+                                <Card className="p-6 border-border/50 animate-fade-in-up [animation-delay:600ms]">
+                                    <h3 className="text-xl font-black mb-6">Granular Expansion Log</h3>
+                                    <div className="overflow-x-auto rounded-xl border border-border/50">
                                         <table className="w-full">
                                             <thead>
-                                                <tr className="border-b border-border">
-                                                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Date</th>
-                                                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">New Users</th>
-                                                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Total Users</th>
-                                                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Growth Rate</th>
+                                                <tr className="bg-accent/30 border-b border-border">
+                                                    <th className="text-left py-4 px-6 text-xs font-black uppercase tracking-widest text-[#FE6132]">Intelligence Snapshot</th>
+                                                    <th className="text-right py-4 px-6 text-xs font-black uppercase tracking-widest text-[#FE6132]">New Onboardings</th>
+                                                    <th className="text-right py-4 px-6 text-xs font-black uppercase tracking-widest text-[#FE6132]">Cumulative Base</th>
+                                                    <th className="text-right py-4 px-6 text-xs font-black uppercase tracking-widest text-[#FE6132]">Velocity ∆</th>
                                                 </tr>
                                             </thead>
-                                            <tbody>
+                                            <tbody className="divide-y divide-border/50">
                                                 {mockUserGrowthData.slice(-10).reverse().map((data, index) => (
-                                                    <tr key={index} className="border-b border-border/50 hover:bg-accent/50 transition-colors">
-                                                        <td className="py-3 px-4 text-sm">{new Date(data.date).toLocaleDateString()}</td>
-                                                        <td className="py-3 px-4 text-sm text-right font-medium">{data.newUsers}</td>
-                                                        <td className="py-3 px-4 text-sm text-right">{data.totalUsers.toLocaleString()}</td>
-                                                        <td className="py-3 px-4 text-sm text-right text-green-600">
-                                                            +{((data.newUsers / data.totalUsers) * 100).toFixed(2)}%
+                                                    <tr
+                                                        key={index}
+                                                        className="hover:bg-accent/50 transition-all group animate-fade-in-up"
+                                                        style={{ animationDelay: `${700 + index * 50}ms` }}
+                                                    >
+                                                        <td className="py-4 px-6 text-sm font-bold text-foreground">{new Date(data.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</td>
+                                                        <td className="py-4 px-6 text-sm text-right font-black text-[#FE6132] bg-[#FE6132]/5 group-hover:bg-[#FE6132]/10 transition-colors">{data.newUsers.toLocaleString()}</td>
+                                                        <td className="py-4 px-6 text-sm text-right font-bold text-muted-foreground">{data.totalUsers.toLocaleString()}</td>
+                                                        <td className="py-4 px-6 text-sm text-right">
+                                                            <span className="px-2.5 py-1 rounded-lg bg-green-100 text-green-700 font-black text-xs">
+                                                                +{((data.newUsers / data.totalUsers) * 100).toFixed(2)}%
+                                                            </span>
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -452,31 +463,31 @@ export default function AnalyticsPage() {
                             <div className="space-y-6">
                                 {/* Revenue Summary Cards */}
                                 <div className="grid gap-6 md:grid-cols-4">
-                                    <Card className="p-6 border-border/50">
-                                        <p className="text-sm text-muted-foreground">Total Revenue</p>
-                                        <p className="text-3xl font-bold mt-2">GH₵ 97,950</p>
-                                        <p className="text-sm text-green-600 mt-1">+15.3% vs last week</p>
+                                    <Card className="p-6 border-border/50 animate-fade-in-up [animation-delay:200ms] hover:shadow-lg transition-all group">
+                                        <p className="text-xs font-black uppercase tracking-widest text-[#FE6132]">Gross Revenue</p>
+                                        <p className="text-3xl font-black mt-2">GH₵ 97,950</p>
+                                        <p className="text-xs font-black text-green-600 mt-2 uppercase tracking-wide">+15.3% vs LW</p>
                                     </Card>
-                                    <Card className="p-6 border-border/50">
-                                        <p className="text-sm text-muted-foreground">Avg. Order Value</p>
-                                        <p className="text-3xl font-bold mt-2">GH₵ 84.50</p>
-                                        <p className="text-sm text-muted-foreground mt-1">per order</p>
+                                    <Card className="p-6 border-border/50 animate-fade-in-up [animation-delay:300ms] hover:shadow-lg transition-all group">
+                                        <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Unit Ticket</p>
+                                        <p className="text-3xl font-black mt-2">GH₵ 84.50</p>
+                                        <p className="text-xs font-black text-muted-foreground mt-2 uppercase tracking-wide">Avg. per order</p>
                                     </Card>
-                                    <Card className="p-6 border-border/50">
-                                        <p className="text-sm text-muted-foreground">Total Orders</p>
-                                        <p className="text-3xl font-bold mt-2">1,155</p>
-                                        <p className="text-sm text-green-600 mt-1">+8.7% vs last week</p>
+                                    <Card className="p-6 border-border/50 animate-fade-in-up [animation-delay:400ms] hover:shadow-lg transition-all group">
+                                        <p className="text-xs font-black uppercase tracking-widest text-[#FE6132]">Volume Base</p>
+                                        <p className="text-3xl font-black mt-2">1,155</p>
+                                        <p className="text-xs font-black text-green-600 mt-2 uppercase tracking-wide">+8.7% vs LW</p>
                                     </Card>
-                                    <Card className="p-6 border-border/50">
-                                        <p className="text-sm text-muted-foreground">Revenue/Day</p>
-                                        <p className="text-3xl font-bold mt-2">GH₵ 13,993</p>
-                                        <p className="text-sm text-muted-foreground mt-1">average</p>
+                                    <Card className="p-6 border-border/50 animate-fade-in-up [animation-delay:500ms] hover:shadow-lg transition-all group">
+                                        <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Daily Index</p>
+                                        <p className="text-3xl font-black mt-2">GH₵ 13.9k</p>
+                                        <p className="text-xs font-black text-muted-foreground mt-2 uppercase tracking-wide">Mean Revenue</p>
                                     </Card>
                                 </div>
 
                                 {/* Revenue Trend Chart */}
-                                <Card className="p-6 border-border/50">
-                                    <h3 className="text-lg font-semibold mb-6">Revenue Trend (Last 7 Days)</h3>
+                                <Card className="p-8 border-border/50 animate-fade-in-up [animation-delay:600ms] hover:shadow-md transition-all">
+                                    <h3 className="text-xl font-black mb-8">Revenue Momentum (L7D)</h3>
                                     <BarChart
                                         data={mockRevenueData.map(d => ({
                                             ...d,
@@ -528,11 +539,15 @@ export default function AnalyticsPage() {
                                             </thead>
                                             <tbody>
                                                 {paginatedVendors.map((vendor, index) => (
-                                                    <tr key={vendor.id} className="border-b border-border/50 hover:bg-accent/50 transition-colors">
-                                                        <td className="py-3 px-4 text-sm font-bold text-[#FE6132]">#{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                                                        <td className="py-3 px-4 text-sm font-medium">{vendor.name}</td>
-                                                        <td className="py-3 px-4">
-                                                            <span className={`text-[10px] px-2 py-1 rounded-full font-medium capitalize ${vendor.type === 'food' ? 'bg-orange-100 text-orange-700' :
+                                                    <tr
+                                                        key={vendor.id}
+                                                        className="hover:bg-accent/50 transition-all group animate-fade-in-up"
+                                                        style={{ animationDelay: `${200 + index * 50}ms` }}
+                                                    >
+                                                        <td className="py-4 px-6 text-sm font-black text-[#FE6132] bg-[#FE6132]/5 group-hover:bg-[#FE6132]/10 transition-colors">#{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                                                        <td className="py-4 px-6 text-sm font-bold text-foreground">{vendor.name}</td>
+                                                        <td className="py-4 px-6">
+                                                            <span className={`text-[10px] px-2.5 py-1 rounded-full font-black uppercase tracking-widest ${vendor.type === 'food' ? 'bg-orange-100 text-orange-700' :
                                                                 vendor.type === 'grocery' ? 'bg-green-100 text-green-700' :
                                                                     vendor.type === 'pharmacy' ? 'bg-blue-100 text-blue-700' :
                                                                         'bg-purple-100 text-purple-700'
@@ -540,9 +555,14 @@ export default function AnalyticsPage() {
                                                                 {vendor.type}
                                                             </span>
                                                         </td>
-                                                        <td className="py-3 px-4 text-sm text-right">{vendor.orders}</td>
-                                                        <td className="py-3 px-4 text-sm text-right font-semibold">GH₵ {vendor.revenue.toLocaleString()}</td>
-                                                        <td className="py-3 px-4 text-sm text-right">⭐ {vendor.rating}</td>
+                                                        <td className="py-4 px-6 text-sm text-right font-bold text-muted-foreground">{vendor.orders.toLocaleString()}</td>
+                                                        <td className="py-4 px-6 text-sm text-right font-black text-foreground">GH₵ {vendor.revenue.toLocaleString()}</td>
+                                                        <td className="py-4 px-6 text-right">
+                                                            <div className="flex items-center justify-end gap-1.5 font-black text-[#FE6132]">
+                                                                <span className="text-xs">⭐</span>
+                                                                <span className="text-sm">{vendor.rating.toFixed(1)}</span>
+                                                            </div>
+                                                        </td>
                                                     </tr>
                                                 ))}
                                             </tbody>
