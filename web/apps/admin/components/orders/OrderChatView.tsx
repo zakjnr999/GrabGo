@@ -63,16 +63,16 @@ export function OrderChatView({ orderId, customerName, riderName }: OrderChatVie
     const getSenderInfo = (sender: Message['sender']) => {
         switch (sender) {
             case 'admin': return { label: 'Admin (You)', color: 'bg-[#FE6132] text-white', icon: <User className="w-3 h-3" /> };
-            case 'customer': return { label: customerName, color: 'bg-blue-100 text-blue-700', icon: <User className="w-3 h-3" /> };
-            case 'rider': return { label: riderName || 'Rider', color: 'bg-orange-100 text-orange-700', icon: <Cycling className="w-3 h-3" /> };
-            case 'system': return { label: 'System', color: 'bg-gray-100 text-gray-500', icon: null };
+            case 'customer': return { label: customerName, color: 'bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400', icon: <User className="w-3 h-3" /> };
+            case 'rider': return { label: riderName || 'Rider', color: 'bg-orange-500/10 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400', icon: <Cycling className="w-3 h-3" /> };
+            case 'system': return { label: 'System', color: 'bg-accent/50 text-muted-foreground', icon: null };
         }
     };
 
     return (
         <Card className="flex flex-col h-[500px] border-border/50 overflow-hidden shadow-sm">
             {/* Chat Header */}
-            <div className="p-4 border-b border-border bg-white flex items-center justify-between">
+            <div className="p-4 border-b border-border bg-card flex items-center justify-between">
                 <div>
                     <h3 className="font-bold flex items-center gap-2 text-foreground">
                         Order Communications
@@ -88,7 +88,7 @@ export function OrderChatView({ orderId, customerName, riderName }: OrderChatVie
             {/* Messages Area */}
             <div
                 ref={scrollRef}
-                className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/30"
+                className="flex-1 overflow-y-auto p-4 space-y-4 bg-accent/10"
             >
                 {messages.map((msg) => {
                     const info = getSenderInfo(msg.sender);
@@ -98,7 +98,7 @@ export function OrderChatView({ orderId, customerName, riderName }: OrderChatVie
                     if (isSystem) {
                         return (
                             <div key={msg.id} className="text-center animate-in fade-in slide-in-from-bottom-2 duration-500">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-white/50 backdrop-blur-sm px-4 py-1.5 rounded-full border border-border/50 shadow-sm">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-card/80 backdrop-blur-sm px-4 py-1.5 rounded-full border border-border/50 shadow-sm">
                                     {msg.text}
                                 </span>
                             </div>
@@ -112,20 +112,20 @@ export function OrderChatView({ orderId, customerName, riderName }: OrderChatVie
                         >
                             <div className="flex items-center gap-2 mb-1.5 px-1">
                                 {isAdmin ? null : (
-                                    <div className={`p-1.5 rounded-full shadow-sm ring-2 ring-white ${info.color}`}>
+                                    <div className={`p-1.5 rounded-full shadow-sm ring-2 ring-background ${info.color}`}>
                                         {info.icon}
                                     </div>
                                 )}
                                 <span className="text-[11px] font-bold text-muted-foreground tracking-tight">{info.label}</span>
                                 {isAdmin ? (
-                                    <div className={`p-1.5 rounded-full shadow-sm ring-2 ring-white ${info.color}`}>
+                                    <div className={`p-1.5 rounded-full shadow-sm ring-2 ring-background ${info.color}`}>
                                         {info.icon}
                                     </div>
                                 ) : null}
                             </div>
                             <div className={`max-w-[85%] p-3.5 rounded-2xl text-sm font-medium shadow-sm leading-relaxed ${isAdmin
-                                ? 'bg-[#FE6132] text-white rounded-tr-[4px] shadow-orange-100'
-                                : 'bg-white border border-border/50 rounded-tl-[4px] text-gray-800'
+                                ? 'bg-[#FE6132] text-white rounded-tr-[4px] shadow-orange-500/10 dark:shadow-none'
+                                : 'bg-card border border-border/50 rounded-tl-[4px] text-foreground'
                                 }`}>
                                 {msg.text}
                             </div>
@@ -138,7 +138,7 @@ export function OrderChatView({ orderId, customerName, riderName }: OrderChatVie
             </div>
 
             {/* Message Input */}
-            <div className="p-4 border-t border-border bg-white">
+            <div className="p-4 border-t border-border bg-card">
                 <div className="flex gap-2">
                     <input
                         type="text"
@@ -146,12 +146,12 @@ export function OrderChatView({ orderId, customerName, riderName }: OrderChatVie
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                        className="flex-1 px-4 py-2 rounded-full border border-border bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-[#FE6132]/20 transition-all"
+                        className="flex-1 px-4 py-2 rounded-full border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-[#FE6132]/20 transition-all text-foreground"
                     />
                     <button
                         onClick={handleSendMessage}
                         disabled={!newMessage.trim()}
-                        className="p-2 rounded-full bg-[#FE6132] text-white hover:bg-[#E5572D] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md shadow-orange-200"
+                        className="p-2 rounded-full bg-[#FE6132] text-white hover:bg-[#E5572D] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md shadow-[#FE6132]/20 dark:shadow-none"
                     >
                         <Send className="w-5 h-5" />
                     </button>

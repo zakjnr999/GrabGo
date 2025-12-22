@@ -134,7 +134,7 @@ export default function UsersPage() {
                     </p>
                 </div>
                 <Button
-                    className="bg-gradient-to-br from-[#FE6132] to-[#FE6132]/80 text-white hover:shadow-lg hover:shadow-orange-200 transition-all font-bold rounded-xl h-12 px-6 hover:scale-105 active:scale-95"
+                    className="bg-gradient-to-br from-[#FE6132] to-[#FE6132]/80 text-white hover:shadow-lg hover:shadow-orange-200 dark:hover:shadow-none transition-all font-bold rounded-xl h-12 px-6 hover:scale-105 active:scale-95"
                 >
                     <Plus className="w-5 h-5 mr-2" />
                     Expand Network

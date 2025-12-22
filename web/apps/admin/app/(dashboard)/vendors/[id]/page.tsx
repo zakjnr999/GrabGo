@@ -114,13 +114,14 @@ export default function VendorDetailPage({ params }: VendorPageProps) {
 
     return (
         <div className="p-6 space-y-6">
-            {/* Back Button */}
-            <Link href="/vendors">
-                <Button variant="ghost" className="gap-2 -ml-2">
-                    <ArrowLeft className="w-4 h-4" />
-                    Back to Vendors
-                </Button>
-            </Link>
+            <div className="flex items-center gap-4">
+                <Link href="/vendors">
+                    <Button variant="outline" size="sm" className="gap-2">
+                        <ArrowLeft className="w-4 h-4" />
+                        Back to Vendors
+                    </Button>
+                </Link>
+            </div>
 
             {/* Profile Header */}
             <Card className="p-6 border-border/50 animate-fade-in-up">

@@ -19,21 +19,21 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                     className="absolute top-0 -left-4 w-96 h-96 rounded-full blur-3xl animate-blob"
                     style={{
                         background:
-                            "radial-gradient(circle, rgba(150, 150, 150, 0.05) 0%, rgba(150, 150, 150, 0.01) 100%)",
+                            "radial-gradient(circle, rgba(254, 97, 50, 0.08) 0%, rgba(254, 97, 50, 0.01) 100%)",
                     }}
                 />
                 <div
                     className="absolute top-0 -right-4 w-96 h-96 rounded-full blur-3xl animate-blob animation-delay-2000"
                     style={{
                         background:
-                            "radial-gradient(circle, rgba(150, 150, 150, 0.04) 0%, transparent 100%)",
+                            "radial-gradient(circle, rgba(254, 97, 50, 0.06) 0%, transparent 100%)",
                     }}
                 />
                 <div
                     className="absolute -bottom-8 left-20 w-96 h-96 rounded-full blur-3xl animate-blob animation-delay-4000"
                     style={{
                         background:
-                            "radial-gradient(circle, rgba(150, 150, 150, 0.05) 0%, rgba(150, 150, 150, 0.01) 100%)",
+                            "radial-gradient(circle, rgba(254, 97, 50, 0.08) 0%, rgba(254, 97, 50, 0.01) 100%)",
                     }}
                 />
             </div>

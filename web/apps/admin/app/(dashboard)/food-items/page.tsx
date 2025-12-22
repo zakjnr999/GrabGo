@@ -2,7 +2,17 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Card, Badge, Button, Input } from "@grabgo/ui";
+import {
+    Card,
+    Badge,
+    Button,
+    Input,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@grabgo/ui";
 import {
     Search,
     Filter,
@@ -194,43 +204,49 @@ export default function FoodItemsPage() {
                         {/* Category Filter */}
                         <div>
                             <label className="text-sm font-medium mb-2 block">Category</label>
-                            <select
-                                value={selectedCategory}
-                                onChange={(e) => setSelectedCategory(e.target.value)}
-                                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                            >
-                                {categories.map(cat => (
-                                    <option key={cat} value={cat}>{cat}</option>
-                                ))}
-                            </select>
+                            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                                <SelectTrigger className="w-full h-10 border-input bg-background px-3 text-sm">
+                                    <SelectValue placeholder="All" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-card text-foreground">
+                                    {categories.map(cat => (
+                                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         {/* Restaurant Filter */}
                         <div>
                             <label className="text-sm font-medium mb-2 block">Restaurant</label>
-                            <select
-                                value={selectedRestaurant}
-                                onChange={(e) => setSelectedRestaurant(e.target.value)}
-                                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                            >
-                                {restaurants.map(rest => (
-                                    <option key={rest} value={rest}>{rest}</option>
-                                ))}
-                            </select>
+                            <Select value={selectedRestaurant} onValueChange={setSelectedRestaurant}>
+                                <SelectTrigger className="w-full h-10 border-input bg-background px-3 text-sm">
+                                    <SelectValue placeholder="All Restaurants" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-card text-foreground">
+                                    {restaurants.map(rest => (
+                                        <SelectItem key={rest} value={rest}>{rest}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         {/* Availability Filter */}
                         <div>
                             <label className="text-sm font-medium mb-2 block">Availability</label>
-                            <select
+                            <Select
                                 value={availabilityFilter}
-                                onChange={(e) => setAvailabilityFilter(e.target.value as any)}
-                                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                                onValueChange={(v) => setAvailabilityFilter(v as any)}
                             >
-                                <option value="all">All Items</option>
-                                <option value="in-stock">In Stock</option>
-                                <option value="out-of-stock">Out of Stock</option>
-                            </select>
+                                <SelectTrigger className="w-full h-10 border-input bg-background px-3 text-sm">
+                                    <SelectValue placeholder="All Items" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-card text-foreground">
+                                    <SelectItem value="all">All Items</SelectItem>
+                                    <SelectItem value="in-stock">In Stock</SelectItem>
+                                    <SelectItem value="out-of-stock">Out of Stock</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         {/* Price Range */}

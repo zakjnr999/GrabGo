@@ -14,27 +14,31 @@ export function LineChart({ data, xKey, yKey, color = "#FE6132", height = 300 }:
     return (
         <ResponsiveContainer width="100%" height={height}>
             <RechartsLineChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.6} vertical={false} />
                 <XAxis
                     dataKey={xKey}
-                    stroke="#6b7280"
+                    stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
                     tickLine={false}
+                    axisLine={false}
                 />
                 <YAxis
-                    stroke="#6b7280"
+                    stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
                 />
                 <Tooltip
                     contentStyle={{
-                        backgroundColor: "white",
-                        border: "1px solid #e5e7eb",
-                        borderRadius: "8px",
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "12px",
                         padding: "8px 12px",
+                        boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
                     }}
-                    labelStyle={{ color: "#374151", fontWeight: 600 }}
+                    labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600 }}
+                    itemStyle={{ color: "hsl(var(--muted-foreground))" }}
+                    cursor={{ stroke: "hsl(var(--border))", strokeWidth: 2 }}
                 />
                 <Line
                     type="monotone"

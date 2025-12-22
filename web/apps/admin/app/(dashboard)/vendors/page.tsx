@@ -86,7 +86,7 @@ export default function VendorsPage() {
             case "open": return <Badge variant="success">Open</Badge>;
             case "busy": return <Badge variant="warning">Busy</Badge>;
             case "closed": return <Badge variant="destructive">Closed</Badge>;
-            case "under_review": return <Badge variant="outline" className="border-amber-500 text-amber-600">Under Review</Badge>;
+            case "under_review": return <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-transparent dark:bg-amber-500/20 dark:text-amber-400">Under Review</Badge>;
             default: return <Badge variant="outline">{status}</Badge>;
         }
     };
@@ -108,7 +108,7 @@ export default function VendorsPage() {
                 </div>
                 <Button
                     onClick={() => setIsRegisterOpen(true)}
-                    className="bg-gradient-to-br from-[#FE6132] to-[#FE6132]/80 text-white hover:shadow-lg hover:shadow-orange-200 transition-all font-bold rounded-xl h-12 px-6 hover:scale-105 active:scale-95"
+                    className="bg-gradient-to-br from-[#FE6132] to-[#FE6132]/80 text-white hover:shadow-lg hover:shadow-orange-200 dark:hover:shadow-none transition-all font-bold rounded-xl h-12 px-6 hover:scale-105 active:scale-95"
                 >
                     <Plus className="w-5 h-5 mr-2" />
                     Onboard Vendor
@@ -135,7 +135,7 @@ export default function VendorsPage() {
                                 key={type}
                                 onClick={() => { setTypeFilter(type as any); setCurrentPage(1); }}
                                 className={`px-5 h-full rounded-lg text-sm font-black transition-all duration-300 ${typeFilter === type
-                                    ? "bg-white text-[#FE6132] shadow-sm scale-110"
+                                    ? "bg-background text-[#FE6132] shadow-sm scale-110 border border-border/50"
                                     : "text-muted-foreground hover:text-foreground hover:bg-background/40"
                                     } uppercase tracking-tighter`}
                             >
@@ -310,7 +310,7 @@ export default function VendorsPage() {
                                             </div>
                                         </td>
                                         <td className="p-6 text-right">
-                                            <Button size="sm" className="rounded-xl h-10 px-5 font-black bg-accent/40 text-foreground hover:bg-[#FE6132] hover:text-white hover:shadow-lg hover:shadow-orange-200/50 transition-all border-0 ring-0">
+                                            <Button size="sm" className="rounded-xl h-10 px-5 font-black bg-accent/40 text-foreground hover:bg-[#FE6132] hover:text-white hover:shadow-lg hover:shadow-orange-200/50 dark:hover:shadow-none transition-all border-0 ring-0">
                                                 Manage Hub
                                             </Button>
                                         </td>

@@ -220,34 +220,34 @@ export default function OrdersPage() {
 
     const getStatusColor = (status: OrderStatus) => {
         const colors: Record<OrderStatus, string> = {
-            pending: 'bg-yellow-100 text-yellow-700',
-            confirmed: 'bg-blue-100 text-blue-700',
-            preparing: 'bg-purple-100 text-purple-700',
-            ready: 'bg-indigo-100 text-indigo-700',
-            picked_up: 'bg-cyan-100 text-cyan-700',
-            on_the_way: 'bg-orange-100 text-orange-700',
-            delivered: 'bg-green-100 text-green-700',
-            cancelled: 'bg-red-100 text-red-700'
+            pending: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 dark:bg-yellow-500/20',
+            confirmed: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 dark:bg-blue-500/20',
+            preparing: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 dark:bg-purple-500/20',
+            ready: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 dark:bg-indigo-500/20',
+            picked_up: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 dark:bg-cyan-500/20',
+            on_the_way: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 dark:bg-orange-500/20',
+            delivered: 'bg-green-500/10 text-green-600 dark:text-green-400 dark:bg-green-500/20',
+            cancelled: 'bg-red-500/10 text-red-600 dark:text-red-400 dark:bg-red-500/20'
         };
-        return colors[status] || 'bg-gray-100 text-gray-700';
+        return colors[status] || 'bg-gray-500/10 text-gray-600 dark:text-gray-400 dark:bg-gray-500/20';
     };
 
     const getPaymentStatusColor = (status: PaymentStatus) => {
         const colors: Record<PaymentStatus, string> = {
-            pending: 'bg-yellow-100 text-yellow-700',
-            paid: 'bg-green-100 text-green-700',
-            failed: 'bg-red-100 text-red-700',
-            refunded: 'bg-gray-100 text-gray-700'
+            pending: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 dark:bg-yellow-500/20',
+            paid: 'bg-green-500/10 text-green-600 dark:text-green-400 dark:bg-green-500/20',
+            failed: 'bg-red-500/10 text-red-600 dark:text-red-400 dark:bg-red-500/20',
+            refunded: 'bg-gray-500/10 text-gray-600 dark:text-gray-400 dark:bg-gray-500/20'
         };
         return colors[status];
     };
 
     const getTypeColor = (type: OrderType) => {
         const colors: Record<OrderType, string> = {
-            food: 'bg-orange-100 text-orange-700',
-            grocery: 'bg-green-100 text-green-700',
-            pharmacy: 'bg-blue-100 text-blue-700',
-            market: 'bg-purple-100 text-purple-700'
+            food: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 dark:bg-orange-500/20',
+            grocery: 'bg-green-500/10 text-green-600 dark:text-green-400 dark:bg-green-500/20',
+            pharmacy: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 dark:bg-blue-500/20',
+            market: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 dark:bg-purple-500/20'
         };
         return colors[type];
     };
@@ -297,9 +297,9 @@ export default function OrdersPage() {
 
             {/* Statistics Cards */}
             <div className="grid gap-6 md:grid-cols-4">
-                <Card className="p-6 border-border/50 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group animate-fade-in-up [animation-delay:100ms]">
+                <Card className="p-6 border-border/50 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group animate-fade-in-up [animation-delay:100ms] bg-card/50 backdrop-blur-sm">
                     <div className="flex items-center gap-4">
-                        <div className="p-4 rounded-2xl bg-blue-50 group-hover:bg-blue-100 transition-colors">
+                        <div className="p-4 rounded-2xl bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors">
                             <Cart className="w-8 h-8 text-blue-600" />
                         </div>
                         <div>
@@ -309,9 +309,9 @@ export default function OrdersPage() {
                     </div>
                 </Card>
 
-                <Card className="p-6 border-border/50 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group animate-fade-in-up [animation-delay:200ms]">
+                <Card className="p-6 border-border/50 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group animate-fade-in-up [animation-delay:200ms] bg-card/50 backdrop-blur-sm">
                     <div className="flex items-center gap-4">
-                        <div className="p-4 rounded-2xl bg-yellow-50 group-hover:bg-yellow-100 transition-colors">
+                        <div className="p-4 rounded-2xl bg-yellow-500/10 group-hover:bg-yellow-500/20 transition-colors">
                             <Clock className="w-8 h-8 text-yellow-600" />
                         </div>
                         <div>
@@ -321,9 +321,9 @@ export default function OrdersPage() {
                     </div>
                 </Card>
 
-                <Card className="p-6 border-border/50 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group animate-fade-in-up [animation-delay:300ms]">
+                <Card className="p-6 border-border/50 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group animate-fade-in-up [animation-delay:300ms] bg-card/50 backdrop-blur-sm">
                     <div className="flex items-center gap-4">
-                        <div className="p-4 rounded-2xl bg-orange-50 group-hover:bg-orange-100 transition-colors">
+                        <div className="p-4 rounded-2xl bg-orange-500/10 group-hover:bg-orange-500/20 transition-colors">
                             <Clock className="w-8 h-8 text-orange-600" />
                         </div>
                         <div>
@@ -333,9 +333,9 @@ export default function OrdersPage() {
                     </div>
                 </Card>
 
-                <Card className="p-6 border-border/50 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group animate-fade-in-up [animation-delay:400ms]">
+                <Card className="p-6 border-border/50 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group animate-fade-in-up [animation-delay:400ms] bg-card/50 backdrop-blur-sm">
                     <div className="flex items-center gap-4">
-                        <div className="p-4 rounded-2xl bg-green-50 group-hover:bg-green-100 transition-colors">
+                        <div className="p-4 rounded-2xl bg-green-500/10 group-hover:bg-green-500/20 transition-colors">
                             <CheckCircle className="w-8 h-8 text-green-600" />
                         </div>
                         <div>

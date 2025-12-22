@@ -73,13 +73,14 @@ export default function CustomerDetailPage({ params }: CustomerPageProps) {
 
     return (
         <div className="p-6 space-y-6">
-            {/* Back Button */}
-            <Link href="/users">
-                <Button variant="ghost" className="gap-2 -ml-2">
-                    <ArrowLeft className="w-4 h-4" />
-                    Back to Customers
-                </Button>
-            </Link>
+            <div className="flex items-center gap-4">
+                <Link href="/users">
+                    <Button variant="outline" size="sm" className="gap-2">
+                        <ArrowLeft className="w-4 h-4" />
+                        Back to Customers
+                    </Button>
+                </Link>
+            </div>
 
             {/* Profile Header */}
             <Card className="p-6 border-border/50 animate-fade-in-up">

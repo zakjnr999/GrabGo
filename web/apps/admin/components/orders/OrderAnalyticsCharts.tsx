@@ -51,12 +51,20 @@ export function OrderAnalyticsCharts({ orders }: OrderAnalyticsChartsProps) {
                 <div className="h-[300px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                            <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} tick={{ fill: '#6B7280' }} />
-                            <YAxis yAxisId="left" fontSize={12} tickLine={false} axisLine={false} tick={{ fill: '#6B7280' }} />
-                            <YAxis yAxisId="right" orientation="right" fontSize={12} tickLine={false} axisLine={false} tick={{ fill: '#6B7280' }} />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.6} />
+                            <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} stroke="hsl(var(--muted-foreground))" />
+                            <YAxis yAxisId="left" fontSize={12} tickLine={false} axisLine={false} stroke="hsl(var(--muted-foreground))" />
+                            <YAxis yAxisId="right" orientation="right" fontSize={12} tickLine={false} axisLine={false} stroke="hsl(var(--muted-foreground))" />
                             <Tooltip
-                                contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #E5E7EB', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                contentStyle={{
+                                    backgroundColor: 'hsl(var(--card))',
+                                    borderRadius: '8px',
+                                    border: '1px solid hsl(var(--border))',
+                                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                                    color: 'hsl(var(--foreground))'
+                                }}
+                                itemStyle={{ color: 'hsl(var(--foreground))' }}
+                                labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
                             />
                             <Legend verticalAlign="top" height={36} />
                             <Line yAxisId="left" type="monotone" dataKey="orders" name="Orders" stroke="#FE6132" strokeWidth={2} dot={{ r: 4, fill: '#FE6132' }} activeDot={{ r: 6 }} />
@@ -76,12 +84,20 @@ export function OrderAnalyticsCharts({ orders }: OrderAnalyticsChartsProps) {
                 <div className="h-[300px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={typeData}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                            <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} tick={{ fill: '#6B7280' }} />
-                            <YAxis fontSize={12} tickLine={false} axisLine={false} tick={{ fill: '#6B7280' }} />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.6} />
+                            <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} stroke="hsl(var(--muted-foreground))" />
+                            <YAxis fontSize={12} tickLine={false} axisLine={false} stroke="hsl(var(--muted-foreground))" />
                             <Tooltip
-                                cursor={{ fill: '#F3F4F6' }}
-                                contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #E5E7EB', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                cursor={{ fill: 'hsl(var(--muted))', opacity: 0.1 }}
+                                contentStyle={{
+                                    backgroundColor: 'hsl(var(--card))',
+                                    borderRadius: '8px',
+                                    border: '1px solid hsl(var(--border))',
+                                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                                    color: 'hsl(var(--foreground))'
+                                }}
+                                itemStyle={{ color: 'hsl(var(--foreground))' }}
+                                labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
                             />
                             <Bar dataKey="value" name="Total Orders" fill="#FE6132" radius={[4, 4, 0, 0]} />
                         </BarChart>

@@ -198,8 +198,8 @@ export default function DashboardPage() {
                             <h3 className="text-xl font-bold">Revenue Trend</h3>
                             <p className="text-sm font-medium text-muted-foreground mt-1">Daily revenue performance across all services</p>
                         </div>
-                        <div className="text-right p-3 rounded-xl bg-orange-50 border border-orange-100">
-                            <p className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-1">Total Revenue</p>
+                        <div className="text-right p-3 rounded-xl bg-orange-500/10 border border-[#FE6132]/20">
+                            <p className="text-xs font-bold text-[#FE6132]/80 uppercase tracking-wider mb-1">Total Revenue</p>
                             <p className="text-2xl font-black text-[#FE6132]">
                                 GH₵ {mockRevenueData.reduce((sum, day) => sum + day.revenue, 0).toLocaleString()}
                             </p>
@@ -260,7 +260,7 @@ export default function DashboardPage() {
                             <h3 className="text-xl font-bold text-foreground">Elite Vendors</h3>
                             <p className="text-sm font-medium text-muted-foreground mt-1">Highest grossing stores this month</p>
                         </div>
-                        <div className="p-2.5 rounded-xl bg-orange-50">
+                        <div className="p-2.5 rounded-xl bg-[#FE6132]/10">
                             <Shop className="w-5 h-5 text-[#FE6132]" />
                         </div>
                     </div>
@@ -278,10 +278,10 @@ export default function DashboardPage() {
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <p className="font-bold text-foreground">{vendor.name}</p>
-                                            <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest ${vendor.type === 'food' ? 'bg-orange-100 text-orange-700' :
-                                                vendor.type === 'grocery' ? 'bg-green-100 text-green-700' :
-                                                    vendor.type === 'pharmacy' ? 'bg-blue-100 text-blue-700' :
-                                                        'bg-purple-100 text-purple-700'
+                                            <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest ${vendor.type === 'food' ? 'bg-orange-500/10 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400' :
+                                                    vendor.type === 'grocery' ? 'bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400' :
+                                                        vendor.type === 'pharmacy' ? 'bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' :
+                                                            'bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400'
                                                 }`}>
                                                 {vendor.type}
                                             </span>
@@ -308,7 +308,7 @@ export default function DashboardPage() {
                             <h3 className="text-xl font-bold text-foreground">Trending Goods</h3>
                             <p className="text-sm font-medium text-muted-foreground mt-1">Most loved items across the platform</p>
                         </div>
-                        <div className="p-2.5 rounded-xl bg-orange-50">
+                        <div className="p-2.5 rounded-xl bg-[#FE6132]/10">
                             <Cart className="w-5 h-5 text-[#FE6132]" />
                         </div>
                     </div>
@@ -320,16 +320,16 @@ export default function DashboardPage() {
                                 style={{ animationDelay: `${1200 + index * 50}ms` }}
                             >
                                 <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
+                                    <div className="w-10 h-10 rounded-xl bg-[#FE6132]/10 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
                                         <span className="text-sm font-black text-[#FE6132]">{index + 1}</span>
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <p className="font-bold text-foreground">{item.name}</p>
-                                            <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest ${item.type === 'food' ? 'bg-orange-100 text-orange-700' :
-                                                item.type === 'grocery' ? 'bg-green-100 text-green-700' :
-                                                    item.type === 'pharmacy' ? 'bg-blue-100 text-blue-700' :
-                                                        'bg-purple-100 text-purple-700'
+                                            <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest ${item.type === 'food' ? 'bg-orange-500/10 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400' :
+                                                    item.type === 'grocery' ? 'bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400' :
+                                                        item.type === 'pharmacy' ? 'bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' :
+                                                            'bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400'
                                                 }`}>
                                                 {item.type}
                                             </span>
@@ -358,30 +358,30 @@ export default function DashboardPage() {
                         Pending Approvals
                     </h3>
                     <div className="space-y-3">
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-orange-50 border border-orange-100/50 hover:bg-orange-100 transition-all cursor-pointer group">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-orange-500/10 border border-[#FE6132]/20 hover:bg-orange-500/20 transition-all cursor-pointer group">
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-white border border-orange-200 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                                    <Shop className="w-6 h-6 text-[#FE6132]" />
+                                <div className="w-12 h-12 rounded-xl bg-card border border-[#FE6132]/20 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform text-[#FE6132]">
+                                    <Shop className="w-6 h-6" />
                                 </div>
                                 <div>
                                     <p className="font-bold text-[#FE6132]">Vendor Applications</p>
-                                    <p className="text-xs font-bold text-orange-600/60 uppercase tracking-tighter">5 stores awaiting review</p>
+                                    <p className="text-xs font-bold text-[#FE6132]/60 uppercase tracking-tighter">5 stores awaiting review</p>
                                 </div>
                             </div>
                             <span className="text-sm font-black text-[#FE6132] group-hover:translate-x-1 transition-transform">GO →</span>
                         </div>
 
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-blue-50 border border-blue-100/50 hover:bg-blue-100 transition-all cursor-pointer group">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 transition-all cursor-pointer group">
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-white border border-blue-200 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                                    <Cycling className="w-6 h-6 text-blue-600" />
+                                <div className="w-12 h-12 rounded-xl bg-card border border-blue-500/20 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform text-blue-500">
+                                    <Cycling className="w-6 h-6" />
                                 </div>
                                 <div>
-                                    <p className="font-bold text-blue-700">Rider Onboarding</p>
-                                    <p className="text-xs font-bold text-blue-600/60 uppercase tracking-tighter">8 riders pending check</p>
+                                    <p className="font-bold text-blue-500">Rider Onboarding</p>
+                                    <p className="text-xs font-bold text-blue-500/60 uppercase tracking-tighter">8 riders pending check</p>
                                 </div>
                             </div>
-                            <span className="text-sm font-black text-blue-700 group-hover:translate-x-1 transition-transform">GO →</span>
+                            <span className="text-sm font-black text-blue-500 group-hover:translate-x-1 transition-transform">GO →</span>
                         </div>
                     </div>
                 </Card>

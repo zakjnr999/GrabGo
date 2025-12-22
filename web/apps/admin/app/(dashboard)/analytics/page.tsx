@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { Card } from "@grabgo/ui";
+import {
+    Card,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@grabgo/ui";
 import { Calendar, Download, Filter } from "lucide-react";
 import { LineChart } from "../../../components/charts/LineChart";
 import { BarChart } from "../../../components/charts/BarChart";
@@ -255,33 +262,35 @@ export default function AnalyticsPage() {
                     {/* Report Type Selector */}
                     <div>
                         <label className="text-xs font-black uppercase tracking-widest text-[#FE6132] mb-2 block">Analytical Lens</label>
-                        <select
-                            value={selectedReport}
-                            onChange={(e) => handleReportChange(e.target.value as ReportType)}
-                            className="w-full px-4 py-2.5 rounded-xl border border-border bg-accent/30 text-foreground font-bold focus:ring-2 focus:ring-[#FE6132]/20 transition-all outline-none"
-                        >
-                            {reportTypes.map((type) => (
-                                <option key={type.value} value={type.value}>
-                                    {type.label}
-                                </option>
-                            ))}
-                        </select>
+                        <Select value={selectedReport} onValueChange={(v) => handleReportChange(v as ReportType)}>
+                            <SelectTrigger className="w-full h-11 rounded-xl border-border bg-accent/30 text-foreground font-bold focus:ring-2 focus:ring-[#FE6132]/20 transition-all outline-none">
+                                <SelectValue placeholder="Select report" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-border/50 shadow-xl bg-card text-foreground">
+                                {reportTypes.map((type) => (
+                                    <SelectItem key={type.value} value={type.value} className="font-medium rounded-lg cursor-pointer my-0.5">
+                                        {type.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     {/* Date Range Selector */}
                     <div>
                         <label className="text-xs font-black uppercase tracking-widest text-[#FE6132] mb-2 block">Time Horizon</label>
-                        <select
-                            value={dateRange}
-                            onChange={(e) => setDateRange(e.target.value)}
-                            className="w-full px-4 py-2.5 rounded-xl border border-border bg-accent/30 text-foreground font-bold focus:ring-2 focus:ring-[#FE6132]/20 transition-all outline-none"
-                        >
-                            {dateRangePresets.map((preset) => (
-                                <option key={preset.value} value={preset.value}>
-                                    {preset.label}
-                                </option>
-                            ))}
-                        </select>
+                        <Select value={dateRange} onValueChange={setDateRange}>
+                            <SelectTrigger className="w-full h-11 rounded-xl border-border bg-accent/30 text-foreground font-bold focus:ring-2 focus:ring-[#FE6132]/20 transition-all outline-none">
+                                <SelectValue placeholder="Select range" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-border/50 shadow-xl bg-card text-foreground">
+                                {dateRangePresets.map((preset) => (
+                                    <SelectItem key={preset.value} value={preset.value} className="font-medium rounded-lg cursor-pointer my-0.5">
+                                        {preset.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     {/* Export Buttons */}
@@ -290,14 +299,14 @@ export default function AnalyticsPage() {
                         <div className="flex gap-2">
                             <button
                                 onClick={exportToCSV}
-                                className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-background hover:bg-orange-50 hover:text-[#FE6132] hover:border-orange-200 transition-all flex items-center justify-center gap-2 font-bold shadow-sm active:scale-95"
+                                className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-background hover:bg-accent transition-all flex items-center justify-center gap-2 font-bold shadow-sm active:scale-95"
                             >
                                 <Download className="w-4 h-4" />
                                 <span className="text-sm">CSV</span>
                             </button>
                             <button
                                 onClick={exportToExcel}
-                                className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-background hover:bg-orange-50 hover:text-[#FE6132] hover:border-orange-200 transition-all flex items-center justify-center gap-2 font-bold shadow-sm active:scale-95"
+                                className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-background hover:bg-accent transition-all flex items-center justify-center gap-2 font-bold shadow-sm active:scale-95"
                             >
                                 <Download className="w-4 h-4" />
                                 <span className="text-sm">Excel</span>
@@ -324,17 +333,18 @@ export default function AnalyticsPage() {
                         {(selectedReport === "vendor-performance" || selectedReport === "order-volume") && (
                             <div className="flex-1 min-w-[200px]">
                                 <label className="text-xs font-medium mb-1 block text-muted-foreground">Vendor Type</label>
-                                <select
-                                    value={vendorTypeFilter}
-                                    onChange={(e) => setVendorTypeFilter(e.target.value)}
-                                    className="w-full px-3 py-2 text-sm rounded-md border border-border bg-background text-foreground focus:outline-none"
-                                >
-                                    <option value="all">All Types</option>
-                                    <option value="food">🍕 Food</option>
-                                    <option value="grocery">🛒 Grocery</option>
-                                    <option value="pharmacy">💊 Pharmacy</option>
-                                    <option value="market">🏪 Market</option>
-                                </select>
+                                <Select value={vendorTypeFilter} onValueChange={setVendorTypeFilter}>
+                                    <SelectTrigger className="w-full px-3 py-2 text-sm rounded-md border border-border bg-background text-foreground focus:outline-none">
+                                        <SelectValue placeholder="All Types" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-lg border-border bg-card text-foreground">
+                                        <SelectItem value="all">All Types</SelectItem>
+                                        <SelectItem value="food">🍕 Food</SelectItem>
+                                        <SelectItem value="grocery">🛒 Grocery</SelectItem>
+                                        <SelectItem value="pharmacy">💊 Pharmacy</SelectItem>
+                                        <SelectItem value="market">🏪 Market</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         )}
 

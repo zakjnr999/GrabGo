@@ -42,14 +42,14 @@ export default function OrderDetailPage() {
 
     const getStatusColor = (status: OrderStatus) => {
         const colors: Record<OrderStatus, string> = {
-            pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-            confirmed: 'bg-blue-100 text-blue-700 border-blue-200',
-            preparing: 'bg-purple-100 text-purple-700 border-purple-200',
-            ready: 'bg-indigo-100 text-indigo-700 border-indigo-200',
-            picked_up: 'bg-cyan-100 text-cyan-700 border-cyan-200',
-            on_the_way: 'bg-orange-100 text-orange-700 border-orange-200',
-            delivered: 'bg-green-100 text-green-700 border-green-200',
-            cancelled: 'bg-red-100 text-red-700 border-red-200'
+            pending: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20 dark:bg-yellow-500/20 dark:text-yellow-400',
+            confirmed: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-500/20 dark:text-blue-400',
+            preparing: 'bg-purple-500/10 text-purple-600 border-purple-500/20 dark:bg-purple-500/20 dark:text-purple-400',
+            ready: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-400',
+            picked_up: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20 dark:bg-cyan-500/20 dark:text-cyan-400',
+            on_the_way: 'bg-orange-500/10 text-orange-600 border-orange-500/20 dark:bg-orange-500/20 dark:text-orange-400',
+            delivered: 'bg-green-500/10 text-green-600 border-green-500/20 dark:bg-green-500/20 dark:text-green-400',
+            cancelled: 'bg-red-500/10 text-red-600 border-red-500/20 dark:bg-red-500/20 dark:text-red-400'
         };
         return colors[status];
     };
@@ -87,12 +87,12 @@ export default function OrderDetailPage() {
 
     const getTypeColor = (type: string) => {
         const colors: Record<string, string> = {
-            food: 'bg-orange-100 text-orange-700',
-            grocery: 'bg-green-100 text-green-700',
-            pharmacy: 'bg-blue-100 text-blue-700',
-            market: 'bg-purple-100 text-purple-700'
+            food: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 dark:bg-orange-500/20',
+            grocery: 'bg-green-500/10 text-green-600 dark:text-green-400 dark:bg-green-500/20',
+            pharmacy: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 dark:bg-blue-500/20',
+            market: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 dark:bg-purple-500/20'
         };
-        return colors[type] || 'bg-gray-100 text-gray-700';
+        return colors[type] || 'bg-gray-500/10 text-gray-600 dark:text-gray-400 dark:bg-gray-500/20';
     };
 
     // Action handlers
@@ -165,7 +165,7 @@ export default function OrderDetailPage() {
                     <div className="flex gap-4">
                         <button
                             onClick={() => setUpdateStatusOpen(true)}
-                            className="px-6 py-2.5 text-sm rounded-full bg-[#FE6132] text-white hover:bg-[#FE6132]/90 transition-all font-bold shadow-md shadow-orange-100 hover:scale-105 active:scale-95"
+                            className="px-6 py-2.5 text-sm rounded-full bg-[#FE6132] text-white hover:bg-[#FE6132]/90 transition-all font-bold shadow-md shadow-[#FE6132]/20 dark:shadow-none hover:scale-105 active:scale-95"
                         >
                             Update Status
                         </button>
@@ -177,7 +177,7 @@ export default function OrderDetailPage() {
                         </button>
                         <button
                             onClick={() => setCancelOrderOpen(true)}
-                            className="px-6 py-2.5 text-sm rounded-full border border-red-200 text-red-600 hover:bg-red-50 transition-all font-bold shadow-sm hover:scale-105 active:scale-95"
+                            className="px-6 py-2.5 text-sm rounded-full border border-red-500/50 text-red-600 hover:bg-red-500/10 transition-all font-bold shadow-sm hover:scale-105 active:scale-95"
                         >
                             Cancel Order
                         </button>
@@ -264,9 +264,9 @@ export default function OrderDetailPage() {
                                             <p className="font-bold text-foreground">{item.name}</p>
                                             <p className="text-sm font-medium text-muted-foreground">Quantity: {item.quantity}</p>
                                             {item.specialInstructions && (
-                                                <div className="flex items-start gap-1.5 mt-2 bg-orange-50/50 p-2 rounded-lg border border-orange-100">
-                                                    <span className="text-[10px] text-orange-600 font-bold uppercase tracking-wider">Note:</span>
-                                                    <p className="text-xs text-orange-700 italic">{item.specialInstructions}</p>
+                                                <div className="flex items-start gap-1.5 mt-2 bg-[#FE6132]/5 p-2 rounded-lg border border-[#FE6132]/20">
+                                                    <span className="text-[10px] text-[#FE6132] font-bold uppercase tracking-wider">Note:</span>
+                                                    <p className="text-xs text-[#FE6132]/80 italic">{item.specialInstructions}</p>
                                                 </div>
                                             )}
                                         </div>
@@ -309,14 +309,14 @@ export default function OrderDetailPage() {
                     {/* Customer Info */}
                     <Card className="p-6 border-border/50 animate-fade-in-up [animation-delay:300ms] hover:shadow-md transition-all group">
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 rounded-lg bg-orange-50 group-hover:bg-orange-100 transition-colors">
+                            <div className="p-2 rounded-lg bg-[#FE6132]/10 group-hover:bg-[#FE6132]/20 transition-colors">
                                 <User className="w-5 h-5 text-[#FE6132]" />
                             </div>
                             <h2 className="text-lg font-bold">Customer</h2>
                         </div>
                         <div className="space-y-4">
                             <div className="flex items-center gap-4">
-                                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#FE6132] to-[#FE6132]/80 flex items-center justify-center text-white text-xl font-bold shadow-sm ring-4 ring-orange-50">
+                                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#FE6132] to-[#FE6132]/80 flex items-center justify-center text-white text-xl font-bold shadow-sm ring-4 ring-[#FE6132]/5">
                                     {order.customer.name.charAt(0)}
                                 </div>
                                 <div className="flex-1">
@@ -334,7 +334,7 @@ export default function OrderDetailPage() {
                             </div>
                             <Link
                                 href={`/users/${order.customer.id}`}
-                                className="w-full text-center px-4 py-2.5 text-sm font-bold text-[#FE6132] bg-orange-50 hover:bg-orange-100 rounded-xl transition-colors block"
+                                className="w-full text-center px-4 py-2.5 text-sm font-bold text-[#FE6132] bg-[#FE6132]/5 hover:bg-[#FE6132]/10 rounded-xl transition-colors block"
                             >
                                 View Detailed Profile
                             </Link>
@@ -344,7 +344,7 @@ export default function OrderDetailPage() {
                     {/* Vendor Info */}
                     <Card className="p-6 border-border/50 animate-fade-in-up [animation-delay:400ms] hover:shadow-md transition-all group">
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 rounded-lg bg-orange-50 group-hover:bg-orange-100 transition-colors">
+                            <div className="p-2 rounded-lg bg-[#FE6132]/10 group-hover:bg-[#FE6132]/20 transition-colors">
                                 <Shop className="w-5 h-5 text-[#FE6132]" />
                             </div>
                             <h2 className="text-lg font-bold">Vendor</h2>
@@ -372,7 +372,7 @@ export default function OrderDetailPage() {
                             </div>
                             <Link
                                 href={`/vendors/${order.vendor.id}`}
-                                className="w-full text-center px-4 py-2.5 text-sm font-bold text-[#FE6132] bg-orange-50 hover:bg-orange-100 rounded-xl transition-colors block"
+                                className="w-full text-center px-4 py-2.5 text-sm font-bold text-[#FE6132] bg-[#FE6132]/5 hover:bg-[#FE6132]/10 rounded-xl transition-colors block"
                             >
                                 View Vendor Store
                             </Link>
@@ -383,14 +383,14 @@ export default function OrderDetailPage() {
                     {order.rider && (
                         <Card className="p-6 border-border/50 animate-fade-in-up [animation-delay:500ms] hover:shadow-md transition-all group">
                             <div className="flex items-center gap-3 mb-6">
-                                <div className="p-2 rounded-lg bg-orange-50 group-hover:bg-orange-100 transition-colors">
+                                <div className="p-2 rounded-lg bg-[#FE6132]/10 group-hover:bg-[#FE6132]/20 transition-colors">
                                     <Cycling className="w-5 h-5 text-[#FE6132]" />
                                 </div>
                                 <h2 className="text-lg font-bold">Rider</h2>
                             </div>
                             <div className="space-y-4">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-14 h-14 rounded-2xl bg-orange-100 flex items-center justify-center text-2xl shadow-inner">
+                                    <div className="w-14 h-14 rounded-2xl bg-[#FE6132]/10 flex items-center justify-center text-2xl shadow-inner">
                                         🚴
                                     </div>
                                     <div className="flex-1">
@@ -409,10 +409,10 @@ export default function OrderDetailPage() {
                                     </div>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button className="flex-1 py-2 text-sm font-bold text-[#FE6132] bg-orange-50 hover:bg-orange-100 rounded-xl transition-colors">
+                                    <button className="flex-1 py-2 text-sm font-bold text-[#FE6132] bg-[#FE6132]/5 hover:bg-[#FE6132]/10 rounded-xl transition-colors">
                                         Call Rider
                                     </button>
-                                    <button className="flex-1 py-2 text-sm font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors">
+                                    <button className="flex-1 py-2 text-sm font-bold text-blue-500 bg-blue-500/5 hover:bg-blue-500/10 rounded-xl transition-colors">
                                         Live Track
                                     </button>
                                 </div>
@@ -423,7 +423,7 @@ export default function OrderDetailPage() {
                     {/* Delivery Info */}
                     <Card className="p-6 border-border/50 animate-fade-in-up [animation-delay:600ms] hover:shadow-md transition-all group">
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 rounded-lg bg-orange-50 group-hover:bg-orange-100 transition-colors">
+                            <div className="p-2 rounded-lg bg-[#FE6132]/10 group-hover:bg-[#FE6132]/20 transition-colors">
                                 <MapPin className="w-5 h-5 text-[#FE6132]" />
                             </div>
                             <h2 className="text-lg font-bold">Delivery Info</h2>
@@ -434,21 +434,21 @@ export default function OrderDetailPage() {
                                 <p className="text-sm font-medium text-muted-foreground">{order.delivery.city}</p>
                             </div>
                             {order.delivery.instructions && (
-                                <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 border-dashed">
+                                <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20 border-dashed">
                                     <div className="flex items-center gap-2 mb-2">
-                                        <span className="text-blue-600">📝</span>
-                                        <p className="text-xs font-bold text-blue-700 uppercase tracking-wider">Instructions</p>
+                                        <span className="text-blue-500">📝</span>
+                                        <p className="text-xs font-bold text-blue-500 uppercase tracking-wider">Instructions</p>
                                     </div>
-                                    <p className="text-sm text-blue-800 font-medium italic">{order.delivery.instructions}</p>
+                                    <p className="text-sm text-blue-500/80 font-medium italic">{order.delivery.instructions}</p>
                                 </div>
                             )}
                             {order.delivery.estimatedTime && (
-                                <div className="flex items-center justify-between p-4 rounded-xl bg-green-50 border border-green-100">
-                                    <div className="flex items-center gap-2 text-green-700">
+                                <div className="flex items-center justify-between p-4 rounded-xl bg-green-500/5 border border-green-500/20">
+                                    <div className="flex items-center gap-2 text-green-500">
                                         <Clock className="w-5 h-5" />
                                         <span className="text-sm font-bold">Expected Delivery</span>
                                     </div>
-                                    <span className="text-sm font-bold text-green-700">{order.delivery.estimatedTime}</span>
+                                    <span className="text-sm font-bold text-green-500">{order.delivery.estimatedTime}</span>
                                 </div>
                             )}
                         </div>
@@ -457,7 +457,7 @@ export default function OrderDetailPage() {
                     {/* Payment Info */}
                     <Card className="p-6 border-border/50 animate-fade-in-up [animation-delay:700ms] hover:shadow-md transition-all group">
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="p-2 rounded-lg bg-orange-50 group-hover:bg-orange-100 transition-colors">
+                            <div className="p-2 rounded-lg bg-[#FE6132]/10 group-hover:bg-[#FE6132]/20 transition-colors">
                                 <CreditCard className="w-5 h-5 text-[#FE6132]" />
                             </div>
                             <h2 className="text-lg font-bold">Payment Details</h2>
@@ -471,10 +471,10 @@ export default function OrderDetailPage() {
                             </div>
                             <div className="flex items-center justify-between p-3 rounded-xl bg-accent/30 border border-border/50">
                                 <span className="text-sm font-medium text-muted-foreground">Transaction Status</span>
-                                <span className={`text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-widest ${order.paymentStatus === 'paid' ? 'bg-green-100 text-green-700 ring-2 ring-green-50' :
-                                    order.paymentStatus === 'pending' ? 'bg-yellow-100 text-yellow-700 ring-2 ring-yellow-50' :
-                                        order.paymentStatus === 'failed' ? 'bg-red-100 text-red-700 ring-2 ring-red-50' :
-                                            'bg-gray-100 text-gray-700'
+                                <span className={`text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-widest ${order.paymentStatus === 'paid' ? 'bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400' :
+                                        order.paymentStatus === 'pending' ? 'bg-yellow-500/10 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-400' :
+                                            order.paymentStatus === 'failed' ? 'bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400' :
+                                                'bg-gray-500/10 text-gray-600 dark:text-gray-400'
                                     }`}>
                                     {order.paymentStatus}
                                 </span>
@@ -489,7 +489,7 @@ export default function OrderDetailPage() {
                                 <div className="pt-4">
                                     <button
                                         onClick={() => setRefundDialogOpen(true)}
-                                        className="w-full px-6 py-3 text-sm font-bold rounded-xl border-2 border-orange-200 text-[#FE6132] hover:bg-orange-50 transition-all hover:scale-[1.02] active:scale-95 shadow-sm"
+                                        className="w-full px-6 py-3 text-sm font-bold rounded-xl border border-[#FE6132]/20 text-[#FE6132] bg-[#FE6132]/5 hover:bg-[#FE6132]/10 rounded-xl transition-all hover:scale-[1.02] active:scale-95 shadow-sm"
                                     >
                                         Process Order Refund
                                     </button>
@@ -533,12 +533,12 @@ export default function OrderDetailPage() {
 
                     {/* Notes */}
                     {order.notes && (
-                        <Card className="p-6 border-border/50 animate-fade-in-up [animation-delay:900ms] bg-yellow-50/30 border-dashed hover:shadow-md transition-all">
+                        <Card className="p-6 border-border/50 animate-fade-in-up [animation-delay:900ms] bg-yellow-500/5 border-dashed hover:shadow-md transition-all">
                             <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
                                 <span className="text-xl">📌</span>
                                 Order Notes
                             </h2>
-                            <p className="text-sm text-foreground font-medium bg-white p-4 rounded-xl border border-border/50 shadow-sm leading-relaxed">
+                            <p className="text-sm text-foreground font-medium bg-card p-4 rounded-xl border border-border/50 shadow-sm leading-relaxed">
                                 {order.notes}
                             </p>
                         </Card>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Lato } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@grabgo/ui";
+import { ThemeProvider } from "../components/ThemeProvider";
 
 const lato = Lato({
   weight: ["300", "400", "700", "900"],
@@ -24,9 +25,16 @@ export default function RootLayout({
       <body
         className={`${lato.variable} font-sans antialiased`}
       >
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

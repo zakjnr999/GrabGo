@@ -14,28 +14,31 @@ export function BarChart({ data, xKey, yKey, color = "#FE6132", height = 300 }: 
     return (
         <ResponsiveContainer width="100%" height={height}>
             <RechartsBarChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.6} vertical={false} />
                 <XAxis
                     dataKey={xKey}
-                    stroke="#6b7280"
+                    stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
                 />
                 <YAxis
-                    stroke="#6b7280"
+                    stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
                 />
                 <Tooltip
                     contentStyle={{
-                        backgroundColor: "white",
-                        border: "1px solid #e5e7eb",
-                        borderRadius: "8px",
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "12px",
                         padding: "8px 12px",
+                        boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
                     }}
-                    cursor={{ fill: 'rgba(254, 97, 50, 0.1)' }}
+                    labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600 }}
+                    itemStyle={{ color: "hsl(var(--muted-foreground))" }}
+                    cursor={{ fill: 'var(--primary)', opacity: 0.1 }}
                 />
                 <Bar
                     dataKey={yKey}
