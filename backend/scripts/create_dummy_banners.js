@@ -6,7 +6,7 @@
 
 require('dotenv').config();
 const mongoose = require('mongoose');
-const PromotionalBanner = require('./models/PromotionalBanner');
+const PromotionalBanner = require('../models/PromotionalBanner');
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/grabgo', {

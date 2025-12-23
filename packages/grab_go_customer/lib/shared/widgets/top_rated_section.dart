@@ -10,7 +10,7 @@ import 'package:grab_go_shared/grub_go_shared.dart';
 
 class TopRatedSection extends StatelessWidget {
   final List<FoodItem> topRatedItems;
-  final List<dynamic>? originalItems; // Original GroceryItem list for cart operations
+  final List<dynamic>? originalItems;
   final VoidCallback onSeeAll;
   final Function(FoodItem) onItemTap;
   final bool isLoading;

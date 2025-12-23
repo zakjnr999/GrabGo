@@ -8,10 +8,10 @@
 
 require('dotenv').config();
 const mongoose = require('mongoose');
-const Order = require('./models/Order');
-const User = require('./models/User');
-const Food = require('./models/Food');
-const Restaurant = require('./models/Restaurant');
+const Order = require('../models/Order');
+const User = require('../models/User');
+const Food = require('../models/Food');
+const Restaurant = require('../models/Restaurant');
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/grabgo', {

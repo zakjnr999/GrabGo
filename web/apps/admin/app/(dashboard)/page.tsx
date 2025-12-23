@@ -23,8 +23,6 @@ import {
     mockPeakHoursData,
     mockTopVendors,
     mockPopularItems,
-    getTodayStats,
-    getWeekStats
 } from "../../lib/mockAnalyticsData";
 
 interface StatCardProps {
@@ -90,7 +88,7 @@ function StatCard({ title, value, change, icon: Icon, delay = 0 }: StatCardProps
                         )}
                     </div>
                 </div>
-                <div className="w-12 h-12 rounded-md flex items-center justify-center bg-gradient-to-br from-[#FE6132]/10 to-[#FE6132]/5">
+                <div className="w-12 h-12 rounded-md flex items-center justify-center bg-linear-to-br from-[#FE6132]/10 to-[#FE6132]/5">
                     <Icon className="w-6 h-6 text-[#FE6132]" strokeWidth={2} />
                 </div>
             </div>
@@ -105,7 +103,7 @@ export default function DashboardPage() {
             <div className="animate-fade-in-up">
                 <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Dashboard</h1>
                 <p className="text-muted-foreground mt-2 text-lg">
-                    Welcome back! Here's a real-time overview of GrabGo performance.
+                    Welcome back! Here&apos;s a real-time overview of GrabGo performance.
                 </p>
             </div>
 
@@ -272,16 +270,16 @@ export default function DashboardPage() {
                                 style={{ animationDelay: `${1100 + index * 50}ms` }}
                             >
                                 <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FE6132] to-[#FE6132]/80 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                                    <div className="w-10 h-10 rounded-xl bg-linear-to-br from-[#FE6132] to-[#FE6132]/80 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
                                         <span className="text-sm font-black text-white">{index + 1}</span>
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <p className="font-bold text-foreground">{vendor.name}</p>
                                             <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest ${vendor.type === 'food' ? 'bg-orange-500/10 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400' :
-                                                    vendor.type === 'grocery' ? 'bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400' :
-                                                        vendor.type === 'pharmacy' ? 'bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' :
-                                                            'bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400'
+                                                vendor.type === 'grocery' ? 'bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400' :
+                                                    vendor.type === 'pharmacy' ? 'bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' :
+                                                        'bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400'
                                                 }`}>
                                                 {vendor.type}
                                             </span>
@@ -327,9 +325,9 @@ export default function DashboardPage() {
                                         <div className="flex items-center gap-2">
                                             <p className="font-bold text-foreground">{item.name}</p>
                                             <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest ${item.type === 'food' ? 'bg-orange-500/10 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400' :
-                                                    item.type === 'grocery' ? 'bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400' :
-                                                        item.type === 'pharmacy' ? 'bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' :
-                                                            'bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400'
+                                                item.type === 'grocery' ? 'bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400' :
+                                                    item.type === 'pharmacy' ? 'bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' :
+                                                        'bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400'
                                                 }`}>
                                                 {item.type}
                                             </span>
