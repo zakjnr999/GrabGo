@@ -1,6 +1,6 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
-const ReferralCode = require('./models/ReferralCode');
+const ReferralCode = require('../models/ReferralCode');
 
 // Helper function to generate random referral code (same as in routes/referrals.js)
 const generateReferralCode = async () => {

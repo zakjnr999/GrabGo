@@ -8,9 +8,9 @@ if (result.error) {
 }
 
 const mongoose = require('mongoose');
-const GroceryStore = require('./models/GroceryStore');
-const GroceryCategory = require('./models/GroceryCategory');
-const GroceryItem = require('./models/GroceryItem');
+const GroceryStore = require('../models/GroceryStore');
+const GroceryCategory = require('../models/GroceryCategory');
+const GroceryItem = require('../models/GroceryItem');
 
 // Sample grocery categories
 const categories = [

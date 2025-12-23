@@ -1,9 +1,9 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
-const User = require('./models/User');
-const ReferralCode = require('./models/ReferralCode');
-const Referral = require('./models/Referral');
-const UserCredit = require('./models/UserCredit');
+const User = require('../models/User');
+const ReferralCode = require('../models/ReferralCode');
+const Referral = require('../models/Referral');
+const UserCredit = require('../models/UserCredit');
 
 async function createDummyReferralData() {
     try {

@@ -9,7 +9,7 @@ const {
     sendMilestoneBonusNotification,
     sendPromoNotification,
     sendSystemUpdate
-} = require('./services/fcm_service');
+} = require('../services/fcm_service');
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI);

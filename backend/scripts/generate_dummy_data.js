@@ -15,7 +15,7 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 
 // Import models
-const GroceryItem = require('./models/GroceryItem');
+const GroceryItem = require('../models/GroceryItem');
 
 // Connect to MongoDB (uses MONGODB_URI from .env)
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/grabgo');

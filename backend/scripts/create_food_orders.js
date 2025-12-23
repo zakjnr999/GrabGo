@@ -1,8 +1,8 @@
 require('dotenv').config({ path: './.env' });
 const mongoose = require('mongoose');
-const Order = require('./models/Order');
-const Food = require('./models/Food');
-const User = require('./models/User');
+const Order = require('../models/Order');
+const Food = require('../models/Food');
+const User = require('../models/User');
 
 // MongoDB connection
 const MONGODB_URI = process.env.MONGODB_URI;

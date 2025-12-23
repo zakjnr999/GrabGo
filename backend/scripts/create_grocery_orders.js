@@ -20,10 +20,10 @@ if (!process.env.MONGODB_URI) {
 }
 
 const mongoose = require('mongoose');
-const Order = require('./models/Order');
-const GroceryItem = require('./models/GroceryItem');
-const GroceryStore = require('./models/GroceryStore');
-const User = require('./models/User');
+const Order = require('../models/Order');
+const GroceryItem = require('../models/GroceryItem');
+const GroceryStore = require('../models/GroceryStore');
+const User = require('../models/User');
 
 /**
  * Script to create dummy grocery orders for testing Buy Again section
