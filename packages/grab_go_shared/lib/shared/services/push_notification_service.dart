@@ -73,6 +73,13 @@ class PushNotificationService {
     _onTokenRefresh = onTokenRefresh;
 
     try {
+      // Check permission first
+      final settings = await _messaging.getNotificationSettings();
+      if (settings.authorizationStatus != AuthorizationStatus.authorized) {
+        debugPrint('⚠️ Notification permission not granted, skipping FCM initialization');
+        return;
+      }
+
       // Initialize local notifications
       await _initializeLocalNotifications();
 
@@ -147,8 +154,66 @@ class PushNotificationService {
       final androidPlugin = _localNotifications
           .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
 
+      // Chat messages channel
       await androidPlugin?.createNotificationChannel(_chatChannel);
+
+      // Order updates channel
       await androidPlugin?.createNotificationChannel(_orderChannel);
+
+      // Social notifications (comments, reactions)
+      await androidPlugin?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'social',
+          'Social Notifications',
+          description: 'Notifications for comments and reactions',
+          importance: Importance.high,
+          playSound: true,
+        ),
+      );
+
+      // Promotions channel
+      await androidPlugin?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'promotions',
+          'Promotions',
+          description: 'Promotional offers and discounts',
+          importance: Importance.defaultImportance,
+          playSound: true,
+        ),
+      );
+
+      // Referrals channel
+      await androidPlugin?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'referrals',
+          'Referrals',
+          description: 'Referral rewards and milestones',
+          importance: Importance.high,
+          playSound: true,
+        ),
+      );
+
+      // Payments channel
+      await androidPlugin?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'payments',
+          'Payments',
+          description: 'Payment confirmations',
+          importance: Importance.high,
+          playSound: true,
+        ),
+      );
+
+      // System updates channel
+      await androidPlugin?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'system_updates',
+          'System Updates',
+          description: 'App updates and system notifications',
+          importance: Importance.defaultImportance,
+          playSound: false,
+        ),
+      );
     }
   }
 
@@ -161,6 +226,40 @@ class PushNotificationService {
 
   /// Get the current chat ID
   String? get currentChatId => _currentChatId;
+
+  /// Get appropriate notification channel for a notification type
+  String _getNotificationChannel(String? type) {
+    const channelMap = {
+      'chat_message': 'chat_messages',
+      'order': 'order_updates',
+      'order_update': 'order_updates',
+      'delivery_arriving': 'order_updates',
+      'comment_reply': 'social',
+      'comment_reaction': 'social',
+      'promo': 'promotions',
+      'referral_completed': 'referrals',
+      'milestone_bonus': 'referrals',
+      'payment_confirmed': 'payments',
+      'system': 'system_updates',
+      'update': 'system_updates',
+    };
+    return channelMap[type] ?? 'default';
+  }
+
+  /// Get user-friendly channel name
+  String _getChannelName(String channelId) {
+    const channelNames = {
+      'chat_messages': 'Chat Messages',
+      'order_updates': 'Order Updates',
+      'social': 'Social Notifications',
+      'promotions': 'Promotions',
+      'referrals': 'Referrals',
+      'payments': 'Payments',
+      'system_updates': 'System Updates',
+      'default': 'Notifications',
+    };
+    return channelNames[channelId] ?? 'Notifications';
+  }
 
   /// Handle foreground messages - show local notification
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
@@ -179,8 +278,8 @@ class PushNotificationService {
       // Increment badge count
       await incrementBadge();
 
-      // Determine which channel to use
-      final channelId = data['type'] == 'chat_message' ? 'chat_messages' : 'order_updates';
+      // Get appropriate channel for this notification type
+      final channelId = _getNotificationChannel(data['type']);
 
       await _localNotifications.show(
         message.hashCode,
@@ -189,7 +288,7 @@ class PushNotificationService {
         NotificationDetails(
           android: AndroidNotificationDetails(
             channelId,
-            channelId == 'chat_messages' ? 'Chat Messages' : 'Order Updates',
+            _getChannelName(channelId),
             importance: Importance.high,
             priority: Priority.high,
             showWhen: true,

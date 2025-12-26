@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 
 import 'package:flutter/widgets.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -62,6 +63,11 @@ class SocketService {
 
   final Set<String> _joinedChats = <String>{};
   final Set<String> _pendingJoinChats = <String>{};
+
+  // Notification deduplication with proper FIFO ordering
+  final Queue<String> _notificationIdQueue = Queue<String>();
+  final Set<String> _notificationIdSet = <String>{};
+  static const int _maxCachedNotificationIds = 1000;
 
   SocketConnectionState _connectionState = SocketConnectionState.disconnected;
   final List<void Function(SocketConnectionState)> _connectionListeners = [];
@@ -254,10 +260,13 @@ class SocketService {
       return;
     }
 
-    final delaySeconds = 2 * (_reconnectAttempts + 1);
+    // Exponential backoff with cap: 2s, 4s, 8s, 16s, 30s (max)
+    final delaySeconds = (2 << _reconnectAttempts).clamp(2, 30);
     _reconnectAttempts += 1;
 
     _setConnectionState(SocketConnectionState.reconnecting);
+
+    debugPrint('Scheduling socket reconnect in ${delaySeconds}s (attempt $_reconnectAttempts/$_maxReconnectAttempts)');
 
     _reconnectTimer = Timer(Duration(seconds: delaySeconds), () {
       _connectIfNeeded();
@@ -389,6 +398,27 @@ class SocketService {
     });
 
     _socket!.on('newNotification', (data) {
+      if (data is Map) {
+        final notificationId = data['_id']?.toString() ?? data['id']?.toString();
+        if (notificationId != null) {
+          // Check for duplicates using Set for O(1) lookup
+          if (_notificationIdSet.contains(notificationId)) {
+            debugPrint('Deduplicating notification: $notificationId');
+            return;
+          }
+
+          // Add to both Queue and Set
+          _notificationIdQueue.add(notificationId);
+          _notificationIdSet.add(notificationId);
+
+          // Remove oldest if exceeding limit (proper FIFO)
+          while (_notificationIdQueue.length > _maxCachedNotificationIds) {
+            final oldest = _notificationIdQueue.removeFirst();
+            _notificationIdSet.remove(oldest);
+          }
+        }
+      }
+
       for (final listener in List.from(_notificationListeners)) {
         try {
           listener(data);
@@ -699,9 +729,17 @@ class SocketService {
       _joinedChats.clear();
       _unreadByChatId.clear();
       _messageQueue.clear();
+      _notificationIdQueue.clear();
+      _notificationIdSet.clear();
       _totalUnread = 0;
       _notifyUnreadChanged();
       _setConnectionState(SocketConnectionState.disconnected);
     } catch (_) {}
+  }
+
+  /// Clear notification cache (call on logout)
+  void clearNotificationCache() {
+    _notificationIdQueue.clear();
+    _notificationIdSet.clear();
   }
 }

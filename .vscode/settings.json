@@ -26,19 +26,33 @@
     "**/.gradle": true,
     "**/android/build": true,
     "**/ios/Pods": true,
-    "**/ios/build": true
+    "**/ios/build": true,
+    "**/.next": true,
+    "**/.turbo": true
   },
   "search.exclude": {
+    "**/node_modules": true,
     "**/.dart_tool": true,
     "**/build": true,
-    "**/android/build": true,
-    "**/ios/Pods": true
+    "**/.next": true,
+    "**/.turbo": true,
+    "**/dist": true,
+    "**/out": true,
+    "**/.pub-cache": true,
+    "**/pubspec.lock": true,
+    "**/package-lock.json": true
   },
   "files.watcherExclude": {
+    "**/node_modules/**": true,
     "**/.dart_tool/**": true,
     "**/build/**": true,
-    "**/android/build/**": true,
-    "**/ios/Pods/**": true
+    "**/.next/**": true,
+    "**/.turbo/**": true,
+    "**/dist/**": true,
+    "**/out/**": true,
+    "**/.pub-cache/**": true,
+    "**/backend/node_modules/**": true,
+    "**/web/node_modules/**": true
   },
   "dart.analysisMaxFileSize": 1000,
   "editor.minimap.enabled": true,

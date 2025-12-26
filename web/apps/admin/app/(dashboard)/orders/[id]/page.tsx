@@ -31,7 +31,7 @@ export default function OrderDetailPage() {
             <div className="flex items-center justify-center min-h-[400px]">
                 <div className="text-center">
                     <h2 className="text-2xl font-bold mb-2">Order Not Found</h2>
-                    <p className="text-muted-foreground mb-4">The order you're looking for doesn't exist.</p>
+                    <p className="text-muted-foreground mb-4">The order you&apos;re looking for doesn&apos;t exist.</p>
                     <Link href="/orders" className="text-[#FE6132] hover:underline">
                         Back to Orders
                     </Link>
@@ -472,9 +472,9 @@ export default function OrderDetailPage() {
                             <div className="flex items-center justify-between p-3 rounded-xl bg-accent/30 border border-border/50">
                                 <span className="text-sm font-medium text-muted-foreground">Transaction Status</span>
                                 <span className={`text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-widest ${order.paymentStatus === 'paid' ? 'bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400' :
-                                        order.paymentStatus === 'pending' ? 'bg-yellow-500/10 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-400' :
-                                            order.paymentStatus === 'failed' ? 'bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400' :
-                                                'bg-gray-500/10 text-gray-600 dark:text-gray-400'
+                                    order.paymentStatus === 'pending' ? 'bg-yellow-500/10 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-400' :
+                                        order.paymentStatus === 'failed' ? 'bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400' :
+                                            'bg-gray-500/10 text-gray-600 dark:text-gray-400'
                                     }`}>
                                     {order.paymentStatus}
                                 </span>

@@ -1,5 +1,6 @@
 const Notification = require('../models/Notification');
 const { sendToUser } = require('./fcm_service');
+const { checkRateLimit, validateNotificationInput } = require('../utils/validation');
 
 // Grouping configuration
 const GROUPING_CONFIG = {
@@ -7,6 +8,35 @@ const GROUPING_CONFIG = {
     timeWindow: 24 * 60 * 60 * 1000, // 24 hours
     groupableTypes: ['comment_reaction', 'comment_reply'],
     maxActorsInList: 50
+};
+
+// Text truncation limits for consistency
+const TRUNCATION_LIMITS = {
+    COMMENT_TEXT: 50,
+    REPLY_TEXT: 100,
+    MESSAGE_PREVIEW: 100,
+    TITLE: 200,
+    MESSAGE: 1000
+};
+
+/**
+ * Prepare FCM data payload by converting all values to strings
+ * FCM requires all data values to be strings, otherwise notifications fail silently
+ * @param {object} data - Data object to prepare
+ * @returns {object} - Data object with all values as strings
+ */
+const prepareFCMData = (data) => {
+    const fcmData = {};
+    for (const [key, value] of Object.entries(data)) {
+        if (value !== null && value !== undefined) {
+            if (typeof value === 'object' && !Array.isArray(value)) {
+                fcmData[key] = JSON.stringify(value);
+            } else {
+                fcmData[key] = String(value);
+            }
+        }
+    }
+    return fcmData;
 };
 
 /**
@@ -21,6 +51,20 @@ const GROUPING_CONFIG = {
  */
 const createNotification = async (userId, type, title, message, data = {}, io = null) => {
     try {
+        // SECURITY: Validate and sanitize all inputs
+        const validated = validateNotificationInput(userId, type, title, message, data);
+        userId = validated.userId;
+        type = validated.type;
+        title = validated.title;
+        message = validated.message;
+        data = validated.data;
+
+        // SECURITY: Check rate limits
+        if (!checkRateLimit(userId, type)) {
+            console.warn(`⚠️ Rate limit exceeded for user ${userId}, type ${type}`);
+            return null; // Silently drop notification
+        }
+
         // Check for existing notification to group
         if (GROUPING_CONFIG.enabled && GROUPING_CONFIG.groupableTypes.includes(type)) {
             const existingNotification = await findGroupableNotification(userId, type, data);
@@ -65,31 +109,24 @@ const createNotification = async (userId, type, title, message, data = {}, io = 
             // Emit to specific user's room (not broadcast to all!)
             io.to(`user:${userId}`).emit('newNotification', notificationData);
             console.log(`📡 Real-time notification emitted to user ${userId}`);
+        } else {
+            console.warn(`⚠️ Socket.IO not available, notification created but not emitted in real-time for user ${userId}`);
         }
 
         // Send FCM push notification (for closed apps)
         try {
-            // FCM requires all data values to be strings
-            const fcmData = {
-                type: type,
-                notificationId: notification._id.toString(),
-                actorCount: notification.actorCount.toString(),
-            };
-
-            // Convert all additional data values to strings
-            for (const [key, value] of Object.entries(data)) {
-                if (value !== null && value !== undefined) {
-                    fcmData[key] = typeof value === 'object' ? JSON.stringify(value) : String(value);
-                }
-            }
-
             const fcmResult = await sendToUser(
                 userId,
                 {
                     title: title,
                     body: message
                 },
-                fcmData
+                prepareFCMData({
+                    type: type,
+                    notificationId: notification._id.toString(),
+                    actorCount: notification.actorCount,
+                    ...data
+                })
             );
 
             if (fcmResult.success) {
@@ -104,7 +141,15 @@ const createNotification = async (userId, type, title, message, data = {}, io = 
 
         return notification;
     } catch (error) {
-        console.error('Error creating notification:', error.message);
+        console.error('❌ Error creating notification:', {
+            error: error.message,
+            stack: error.stack,
+            userId,
+            type,
+            title,
+            dataKeys: Object.keys(data),
+            timestamp: new Date().toISOString()
+        });
         return null;
     }
 };
@@ -134,6 +179,10 @@ const findGroupableNotification = async (userId, type, data) => {
 /**
  * Update grouped notification with new actor
  */
+/**
+ * Update grouped notification with new actor
+ * SECURITY: Uses atomic updates to prevent race conditions
+ */
 const updateGroupedNotification = async (notification, data, io) => {
     const actorId = data.actorId?.toString();
     const actorName = data.actorName;
@@ -143,75 +192,108 @@ const updateGroupedNotification = async (notification, data, io) => {
         return notification;
     }
 
-    // Check if actor already in list (prevent duplicates)
-    const actorExists = notification.actors.some(a => a.actorId === actorId);
-
-    if (!actorExists) {
-        // Add new actor (limit array size)
-        if (notification.actors.length < GROUPING_CONFIG.maxActorsInList) {
-            notification.actors.push({
-                actorId,
-                actorName,
-                actorAvatar,
-                reactedAt: new Date()
-            });
-        }
-        notification.actorCount = notification.actors.length;
-    }
-
-    // Update title and message
-    notification.title = buildGroupedTitle(notification.type, notification.actors);
-    notification.message = buildGroupedMessage(notification.type, notification.actors, data);
-    notification.isRead = false; // Mark as unread again
-    notification.updatedAt = new Date();
-
-    // Update data with latest info
-    if (data.commentText) notification.data.commentText = data.commentText;
-    if (data.replyText) notification.data.replyText = data.replyText;
-    if (data.reactionType) notification.data.reactionType = data.reactionType;
-
-    await notification.save();
-
-    console.log(`📬 Grouped notification updated for user ${notification.user}: ${notification.type} (${notification.actorCount} actors)`);
-
-    // Emit via Socket.IO
-    if (io) {
-        io.to(`user:${notification.user}`).emit('newNotification', {
-            _id: notification._id,
-            title: notification.title,
-            message: notification.message,
-            type: notification.type,
-            createdAt: notification.createdAt,
-            isRead: notification.isRead,
-            data: notification.data,
-            actors: notification.actors,
-            actorCount: notification.actorCount
-        });
-        console.log(`📡 Grouped notification emitted to user ${notification.user}`);
-    }
-
-    // Send FCM push
     try {
-        await sendToUser(
-            notification.user.toString(),
+        // Fetch existing notification to pre-calculate title and message
+        const existingNotification = await Notification.findById(notification._id);
+        if (!existingNotification) return notification;
+
+        // Pre-calculate title and message with the new actor included
+        const updatedActors = [
+            { actorId, actorName, actorAvatar, reactedAt: new Date() },
+            ...existingNotification.actors
+        ].slice(0, GROUPING_CONFIG.maxActorsInList);
+
+        const newTitle = buildGroupedTitle(existingNotification.type, updatedActors);
+        const newMessage = buildGroupedMessage(existingNotification.type, updatedActors, data);
+
+        // Prepare updated data object
+        const updatedData = { ...existingNotification.data };
+        if (data.commentText) updatedData.commentText = data.commentText;
+        if (data.replyText) updatedData.replyText = data.replyText;
+        if (data.reactionType) updatedData.reactionType = data.reactionType;
+
+        // ATOMIC UPDATE: Everything in one operation to prevent race conditions
+        const updatedNotification = await Notification.findOneAndUpdate(
             {
-                title: notification.title,
-                body: notification.message
+                _id: notification._id,
+                'actors.actorId': { $ne: actorId } // Double-check actor doesn't exist
             },
             {
-                type: notification.type,
-                notificationId: notification._id.toString(),
-                actorCount: notification.actorCount,
-                ...notification.data
-            }
+                $push: {
+                    actors: {
+                        $each: [{
+                            actorId,
+                            actorName,
+                            actorAvatar,
+                            reactedAt: new Date()
+                        }],
+                        $position: 0,
+                        $slice: GROUPING_CONFIG.maxActorsInList
+                    }
+                },
+                $inc: { actorCount: 1 },
+                $set: {
+                    isRead: false,
+                    updatedAt: new Date(),
+                    title: newTitle,      // ✅ Atomic title update
+                    message: newMessage,  // ✅ Atomic message update
+                    data: updatedData     // ✅ Atomic data update
+                }
+            },
+            { new: true }
         );
-        console.log(`📲 Grouped push notification sent to user ${notification.user}`);
-    } catch (fcmError) {
-        console.error('Push notification failed (non-critical):', fcmError.message);
-    }
 
-    return notification;
+        // If the update returned null, actor was added by another process
+        if (!updatedNotification) {
+            console.log(`Actor ${actorId} was already added to notification ${notification._id} by another process`);
+            return await Notification.findById(notification._id);
+        }
+
+        console.log(`📬 Grouped notification updated for user ${updatedNotification.user}: ${updatedNotification.type} (${updatedNotification.actorCount} actors)`);
+
+        // Emit via Socket.IO
+        if (io) {
+            io.to(`user:${updatedNotification.user}`).emit('newNotification', {
+                _id: updatedNotification._id,
+                title: updatedNotification.title,
+                message: updatedNotification.message,
+                type: updatedNotification.type,
+                createdAt: updatedNotification.createdAt,
+                isRead: updatedNotification.isRead,
+                data: updatedNotification.data,
+                actors: updatedNotification.actors,
+                actorCount: updatedNotification.actorCount
+            });
+            console.log(`📡 Grouped notification emitted to user ${updatedNotification.user}`);
+        }
+
+        // Send FCM push with properly formatted data
+        try {
+            await sendToUser(
+                updatedNotification.user.toString(),
+                {
+                    title: updatedNotification.title,
+                    body: updatedNotification.message
+                },
+                prepareFCMData({
+                    type: updatedNotification.type,
+                    notificationId: updatedNotification._id.toString(),
+                    actorCount: updatedNotification.actorCount,
+                    ...updatedNotification.data
+                })
+            );
+            console.log(`📲 Grouped push notification sent to user ${updatedNotification.user}`);
+        } catch (fcmError) {
+            console.error('Push notification failed (non-critical):', fcmError.message);
+        }
+
+        return updatedNotification;
+    } catch (error) {
+        console.error('Error updating grouped notification:', error.message);
+        return notification;
+    }
 };
+
 
 /**
  * Build grouped notification title
@@ -258,13 +340,17 @@ const buildGroupedMessage = (type, actors, data) => {
         };
         const emoji = reactionEmojis[data.reactionType] || '👍';
         const commentText = data.commentText || 'your comment';
-        const preview = commentText.length > 50 ? commentText.substring(0, 50) + '...' : commentText;
+        const preview = commentText.length > TRUNCATION_LIMITS.COMMENT_TEXT
+            ? commentText.substring(0, TRUNCATION_LIMITS.COMMENT_TEXT) + '...'
+            : commentText;
         return `${emoji} "${preview}"`;
     }
 
     if (type === 'comment_reply') {
         const replyText = data.replyText || 'replied to your comment';
-        const preview = replyText.length > 100 ? replyText.substring(0, 100) + '...' : replyText;
+        const preview = replyText.length > TRUNCATION_LIMITS.REPLY_TEXT
+            ? replyText.substring(0, TRUNCATION_LIMITS.REPLY_TEXT) + '...'
+            : replyText;
         return `💬 ${preview}`;
     }
 

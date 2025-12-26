@@ -81,10 +81,19 @@ const notificationSchema = new mongoose.Schema({
 
 // Indexes for efficient querying
 notificationSchema.index({ user: 1, createdAt: -1 });
-notificationSchema.index({ user: 1, isRead: 1 });
+// Optimized for the common query pattern in routes/notifications.js:
+// .find({ user: req.user._id }).sort({ isRead: 1, createdAt: -1 })
+// This index supports sorting by isRead first (better selectivity for unread filtering) then createdAt
+notificationSchema.index({ user: 1, isRead: 1, createdAt: -1 });
 notificationSchema.index({ user: 1, type: 1 });
-// Index for grouping queries
+
+// Compound indexes for grouping queries (findGroupableNotification)
+// These support queries with user + type + data field + createdAt
 notificationSchema.index({ user: 1, type: 1, 'data.commentId': 1, createdAt: -1 });
 notificationSchema.index({ user: 1, type: 1, 'data.parentCommentId': 1, createdAt: -1 });
+
+// TTL Index: Auto-delete notifications older than 90 days to prevent DB bloat
+// 90 days = 90 * 24 * 60 * 60 = 7,776,000 seconds
+notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 7776000 });
 
 module.exports = mongoose.model('Notification', notificationSchema);

@@ -236,7 +236,7 @@ export default function FoodItemsPage() {
                             <label className="text-sm font-medium mb-2 block">Availability</label>
                             <Select
                                 value={availabilityFilter}
-                                onValueChange={(v) => setAvailabilityFilter(v as any)}
+                                onValueChange={(v) => setAvailabilityFilter(v as unknown as "all" | "in-stock" | "out-of-stock")}
                             >
                                 <SelectTrigger className="w-full h-10 border-input bg-background px-3 text-sm">
                                     <SelectValue placeholder="All Items" />

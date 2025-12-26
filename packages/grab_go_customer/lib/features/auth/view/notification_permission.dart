@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -6,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/shared/services/storage_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_shared/shared/services/device_id_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_customer/shared/services/notification_handler.dart';
@@ -63,7 +65,12 @@ class _NotificationPermissionState extends State<NotificationPermission> with Si
         onTokenRefresh: (token) async {
           try {
             if (UserService().isLoggedIn) {
-              await UserService().registerFcmToken(token);
+              final deviceId = await DeviceIdService().getDeviceId();
+              await UserService().registerFcmToken(
+                token,
+                platform: Platform.isIOS ? 'ios' : 'android',
+                deviceId: deviceId,
+              );
             }
           } catch (_) {}
         },
@@ -74,7 +81,8 @@ class _NotificationPermissionState extends State<NotificationPermission> with Si
       if (initialized) {
         final token = await PushNotificationService().getToken();
         if (token != null && UserService().isLoggedIn) {
-          await UserService().registerFcmToken(token);
+          final deviceId = await DeviceIdService().getDeviceId();
+          await UserService().registerFcmToken(token, platform: Platform.isIOS ? 'ios' : 'android', deviceId: deviceId);
         }
       }
 

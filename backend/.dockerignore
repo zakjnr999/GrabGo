@@ -1,13 +1,12 @@
 node_modules
-npm-debug.log
-.env
-.env.local
-.env.*.local
+npm - debug.log
+    .env
+    .env.local
 uploads
-.git
-.gitignore
+    .git
+    .gitignore
 README.md
-.DS_Store
-.vscode
-.idea
+    .DS_Store
+    .vscode
+    .idea
 

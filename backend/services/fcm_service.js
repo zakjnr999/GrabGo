@@ -1,5 +1,38 @@
 const admin = require('firebase-admin');
 const User = require('../models/User');
+const { validateFCMToken, validatePlatform, validateDeviceId } = require('../utils/validation');
+
+// Text truncation limits (shared with notification_service.js)
+const TRUNCATION_LIMITS = {
+    COMMENT_TEXT: 50,
+    REPLY_TEXT: 100,
+    MESSAGE_PREVIEW: 100,
+    TITLE: 200,
+    MESSAGE: 1000
+};
+
+/**
+ * Get appropriate notification channel for a notification type
+ * @param {string} type - Notification type
+ * @returns {string} - Channel ID
+ */
+const getNotificationChannel = (type) => {
+    const channelMap = {
+        'chat_message': 'chat_messages',
+        'order': 'order_updates',
+        'order_update': 'order_updates',
+        'delivery_arriving': 'order_updates',
+        'comment_reply': 'social',
+        'comment_reaction': 'social',
+        'promo': 'promotions',
+        'referral_completed': 'referrals',
+        'milestone_bonus': 'referrals',
+        'payment_confirmed': 'payments',
+        'system': 'system_updates',
+        'update': 'system_updates',
+    };
+    return channelMap[type] || 'default';
+};
 
 // Initialize Firebase Admin SDK
 let firebaseInitialized = false;
@@ -43,6 +76,21 @@ initializeFirebase();
  */
 const registerToken = async (userId, token, deviceId = null, platform = 'android') => {
     try {
+        // SECURITY: Validate FCM token format
+        if (!validateFCMToken(token)) {
+            throw new Error('Invalid FCM token format');
+        }
+
+        // SECURITY: Validate platform
+        if (!validatePlatform(platform)) {
+            throw new Error(`Invalid platform: ${platform}. Must be 'android', 'ios', or 'web'`);
+        }
+
+        // SECURITY: Validate device ID if provided
+        if (deviceId && !validateDeviceId(deviceId)) {
+            throw new Error('Invalid device ID format');
+        }
+
         const user = await User.findById(userId);
         if (!user) {
             throw new Error('User not found');
@@ -68,10 +116,10 @@ const registerToken = async (userId, token, deviceId = null, platform = 'android
         }
 
         await user.save();
-        console.log(`FCM token registered for user ${userId}`);
+        console.log(`✅ FCM token registered for user ${userId} (platform: ${platform}, deviceId: ${deviceId || 'none'})`);
         return true;
     } catch (error) {
-        console.error('Error registering FCM token:', error.message);
+        console.error('❌ Error registering FCM token:', error.message);
         return false;
     }
 };
@@ -135,22 +183,24 @@ const sendToUser = async (userId, notification, data = {}) => {
         const tokens = user.fcmTokens.map(t => t.token);
         const invalidTokens = [];
 
-        // Send to all user's devices
-        const message = {
+        // Build message with payload size validation
+        const FCM_PAYLOAD_LIMIT = 4000; // 4KB with safety margin
+
+        let message = {
             notification: {
-                title: notification.title,
-                body: notification.body,
+                title: notification.title.substring(0, 100), // Truncate title
+                body: notification.body.substring(0, 200),   // Truncate body
                 ...(notification.imageUrl && { imageUrl: notification.imageUrl }),
             },
-            data: {
+            data: prepareFCMData({
                 ...data,
                 click_action: 'FLUTTER_NOTIFICATION_CLICK',
                 timestamp: new Date().toISOString(),
-            },
+            }),
             android: {
                 priority: 'high',
                 notification: {
-                    channelId: data.type === 'chat_message' ? 'chat_messages' : 'default',
+                    channelId: getNotificationChannel(data.type),
                     priority: 'high',
                     defaultSound: true,
                     defaultVibrateTimings: true,
@@ -166,6 +216,38 @@ const sendToUser = async (userId, notification, data = {}) => {
                 },
             },
         };
+
+        // Check payload size
+        const payloadSize = JSON.stringify(message).length;
+        if (payloadSize > FCM_PAYLOAD_LIMIT) {
+            console.warn(`⚠️ FCM payload too large (${payloadSize} bytes), truncating data`);
+
+            // Strategy 1: Truncate long text fields first
+            if (message.data.commentText && message.data.commentText.length > 50) {
+                message.data.commentText = message.data.commentText.substring(0, 50) + '...';
+            }
+            if (message.data.replyText && message.data.replyText.length > 100) {
+                message.data.replyText = message.data.replyText.substring(0, 100) + '...';
+            }
+
+            // Strategy 2: Remove avatar URLs (can be fetched on tap)
+            if (JSON.stringify(message).length > FCM_PAYLOAD_LIMIT) {
+                delete message.data.actorAvatar;
+            }
+
+            // Strategy 3: Only if still too large, remove preview text
+            if (JSON.stringify(message).length > FCM_PAYLOAD_LIMIT) {
+                delete message.data.commentText;
+                delete message.data.replyText;
+            }
+
+            // Final check
+            const finalSize = JSON.stringify(message).length;
+            if (finalSize > FCM_PAYLOAD_LIMIT) {
+                console.error(`❌ FCM payload still too large after truncation (${finalSize} bytes)`);
+                return { success: false, reason: 'payload_too_large' };
+            }
+        }
 
         const response = await admin.messaging().sendEachForMulticast({
             tokens,
@@ -223,8 +305,8 @@ const sendChatNotification = async (recipientId, senderName, messagePreview, cha
         body = '🎤 Voice message';
     } else if (messageType === 'image') {
         body = '📷 Photo';
-    } else if (messagePreview && messagePreview.length > 100) {
-        body = messagePreview.substring(0, 100) + '...';
+    } else if (messagePreview && messagePreview.length > TRUNCATION_LIMITS.MESSAGE_PREVIEW) {
+        body = messagePreview.substring(0, TRUNCATION_LIMITS.MESSAGE_PREVIEW) + '...';
     }
 
     return sendToUser(
@@ -302,7 +384,9 @@ const sendCommentReplyNotification = async (
     restaurantId,
     restaurantName
 ) => {
-    const body = replyText.length > 100 ? replyText.substring(0, 100) + '...' : replyText;
+    const body = replyText.length > TRUNCATION_LIMITS.REPLY_TEXT
+        ? replyText.substring(0, TRUNCATION_LIMITS.REPLY_TEXT) + '...'
+        : replyText;
 
     return sendToUser(
         recipientId,
@@ -360,7 +444,9 @@ const sendCommentReactionNotification = async (
     };
 
     const emoji = reactionEmojis[reactionType] || '👍';
-    const preview = commentText.length > 50 ? commentText.substring(0, 50) + '...' : commentText;
+    const preview = commentText.length > TRUNCATION_LIMITS.COMMENT_TEXT
+        ? commentText.substring(0, TRUNCATION_LIMITS.COMMENT_TEXT) + '...'
+        : commentText;
 
     return sendToUser(
         recipientId,

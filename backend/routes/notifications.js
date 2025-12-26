@@ -15,12 +15,21 @@ const {
 // @access  Private
 router.get('/', protect, async (req, res) => {
     try {
+        // Configurable max limit via environment variable
+        const MAX_LIMIT = parseInt(process.env.NOTIFICATION_MAX_LIMIT) || 100;
+
         // Validate and sanitize pagination parameters
         const page = Math.max(1, parseInt(req.query.page) || 1);
-        const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+        const limit = Math.min(MAX_LIMIT, Math.max(1, parseInt(req.query.limit) || 20));
         const skip = (page - 1) * limit;
 
-        const notifications = await getUserNotifications(req.user._id, limit, skip);
+        // Fetch notifications with sorting on backend (unread first, then newest)
+        const notifications = await Notification.find({ user: req.user._id })
+            .sort({ isRead: 1, createdAt: -1 }) // 1 = ascending (false/unread first), -1 = descending (newest first)
+            .skip(skip)
+            .limit(limit)
+            .lean(); // Use lean() for better performance (returns plain JS objects)
+
         const total = await Notification.countDocuments({ user: req.user._id });
         const hasMore = skip + notifications.length < total;
 
@@ -134,6 +143,52 @@ router.delete('/', protect, async (req, res) => {
             error: error.message
         });
     }
+});
+
+// @route   GET /api/notifications/health
+// @desc    Health check for notification system
+// @access  Public (for monitoring)
+router.get('/health', async (req, res) => {
+    const health = {
+        database: 'unknown',
+        firebase: 'unknown',
+        socketio: 'unknown',
+        timestamp: new Date().toISOString()
+    };
+
+    try {
+        // Check database connectivity
+        await Notification.findOne().limit(1);
+        health.database = 'healthy';
+    } catch (e) {
+        health.database = 'unhealthy';
+        health.databaseError = e.message;
+    }
+
+    // Check Firebase (FCM service)
+    const { initializeFirebase } = require('../services/fcm_service');
+    try {
+        // Firebase initialization status is tracked in fcm_service
+        const admin = require('firebase-admin');
+        if (admin.apps.length > 0) {
+            health.firebase = 'healthy';
+        } else {
+            health.firebase = 'not_initialized';
+        }
+    } catch (e) {
+        health.firebase = 'error';
+        health.firebaseError = e.message;
+    }
+
+    // Check Socket.IO (passed via req.app.get('io'))
+    const io = req.app.get('io');
+    health.socketio = io ? 'healthy' : 'not_initialized';
+
+    const isHealthy = health.database === 'healthy' &&
+        health.firebase === 'healthy' &&
+        health.socketio === 'healthy';
+
+    res.status(isHealthy ? 200 : 503).json(health);
 });
 
 module.exports = router;

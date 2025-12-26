@@ -241,9 +241,39 @@ io.on("connection", (socket) => {
       });
     }
 
+    // SECURITY: Clean up notification room
+    if (userId) {
+      const userRoom = `user:${userId}`;
+      socket.leave(userRoom);
+
+      // Check if room is now empty
+      const room = io.sockets.adapter.rooms.get(userRoom);
+      if (!room || room.size === 0) {
+        console.log(`🧹 Cleaned up empty notification room for user ${userId}`);
+      }
+    }
+
     console.log("🔌 WebSocket disconnected", socket.id);
   });
 });
+
+// SECURITY: Periodic cleanup of empty rooms (every hour)
+setInterval(() => {
+  const rooms = io.sockets.adapter.rooms;
+  let cleanedCount = 0;
+
+  rooms.forEach((sockets, roomName) => {
+    // Clean up user notification rooms with no connections
+    if (roomName.startsWith('user:') && sockets.size === 0) {
+      rooms.delete(roomName);
+      cleanedCount++;
+    }
+  });
+
+  if (cleanedCount > 0) {
+    console.log(`🧹 Periodic cleanup: removed ${cleanedCount} empty notification rooms`);
+  }
+}, 3600000); // Every hour
 
 // Middleware
 app.use(helmet());

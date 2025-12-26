@@ -90,10 +90,39 @@ class NotificationModel {
     };
   }
 
-  static NotificationType _parseNotificationType(String? type) {
-    final cleanType = type?.replaceAll('NotificationType.', '') ?? 'system';
+  /// Create a copy of this notification with updated fields
+  NotificationModel copyWith({
+    String? id,
+    String? title,
+    String? message,
+    DateTime? timestamp,
+    NotificationType? type,
+    bool? isRead,
+    Map<String, dynamic>? data,
+    List<Actor>? actors,
+    int? actorCount,
+  }) {
+    return NotificationModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      message: message ?? this.message,
+      timestamp: timestamp ?? this.timestamp,
+      type: type ?? this.type,
+      isRead: isRead ?? this.isRead,
+      data: data ?? this.data,
+      actors: actors ?? this.actors,
+      actorCount: actorCount ?? this.actorCount,
+    );
+  }
 
-    switch (cleanType) {
+  static NotificationType _parseNotificationType(String? type) {
+    if (type == null) {
+      debugPrint('⚠️ Null notification type, defaulting to system');
+      return NotificationType.system;
+    }
+
+    // Backend sends snake_case only
+    switch (type) {
       case 'order':
         return NotificationType.order;
       case 'promo':
@@ -102,13 +131,12 @@ class NotificationModel {
         return NotificationType.update;
       case 'system':
         return NotificationType.system;
-      case 'commentReply':
       case 'comment_reply':
         return NotificationType.commentReply;
-      case 'commentReaction':
       case 'comment_reaction':
         return NotificationType.commentReaction;
       default:
+        debugPrint('⚠️ Unknown notification type: $type, defaulting to system');
         return NotificationType.system;
     }
   }
@@ -133,10 +161,12 @@ class _NotificationState extends State<Notification> {
   String? _error;
   final ScrollController _scrollController = ScrollController();
   bool isSocketConnected = false;
+  late final void Function(dynamic) _notificationListener;
 
   @override
   void initState() {
     super.initState();
+    _notificationListener = _handleNewNotification;
     _loadInitialData();
     _scrollController.addListener(_onScroll);
     _setupSocketListener();
@@ -159,7 +189,7 @@ class _NotificationState extends State<Notification> {
   @override
   void dispose() {
     _scrollController.dispose();
-    SocketService().removeNotificationListener(_handleNewNotification);
+    SocketService().removeNotificationListener(_notificationListener);
     super.dispose();
   }
 
@@ -174,7 +204,8 @@ class _NotificationState extends State<Notification> {
   void _setupSocketListener() {
     final socketService = SocketService();
 
-    socketService.addNotificationListener(_handleNewNotification);
+    // Add the notification listener using the late final field
+    socketService.addNotificationListener(_notificationListener);
 
     socketService.addConnectionListener((state) {
       if (!mounted) return;
@@ -215,13 +246,8 @@ class _NotificationState extends State<Notification> {
       final result = await NotificationService().getNotifications(limit: _pageSize, page: 1);
       if (mounted) {
         setState(() {
-          _notifications = (result['notifications'] as List<NotificationModel>)
-            ..sort((a, b) {
-              if (a.isRead != b.isRead) {
-                return a.isRead ? 1 : -1;
-              }
-              return b.timestamp.compareTo(a.timestamp);
-            });
+          // Backend now handles sorting (unread first, newest first)
+          _notifications = result['notifications'] as List<NotificationModel>;
           _hasMore = result['hasMore'] as bool;
           _isLoading = false;
           _currentPage = 1;
@@ -250,13 +276,8 @@ class _NotificationState extends State<Notification> {
 
       if (mounted) {
         setState(() {
+          // Backend returns sorted data, just append
           _notifications.addAll(result['notifications'] as List<NotificationModel>);
-          _notifications.sort((a, b) {
-            if (a.isRead != b.isRead) {
-              return a.isRead ? 1 : -1;
-            }
-            return b.timestamp.compareTo(a.timestamp);
-          });
           _hasMore = result['hasMore'] as bool;
           _currentPage = nextPage;
           _isLoadingMore = false;
@@ -277,15 +298,7 @@ class _NotificationState extends State<Notification> {
       setState(() {
         final index = _notifications.indexWhere((n) => n.id == id);
         if (index != -1) {
-          _notifications[index] = NotificationModel(
-            id: _notifications[index].id,
-            title: _notifications[index].title,
-            message: _notifications[index].message,
-            timestamp: _notifications[index].timestamp,
-            type: _notifications[index].type,
-            isRead: true,
-            data: _notifications[index].data,
-          );
+          _notifications[index] = _notifications[index].copyWith(isRead: true);
         }
       });
     }
@@ -295,17 +308,7 @@ class _NotificationState extends State<Notification> {
     final success = await NotificationService().markAllAsRead();
     if (success) {
       setState(() {
-        _notifications = _notifications.map((notification) {
-          return NotificationModel(
-            id: notification.id,
-            title: notification.title,
-            message: notification.message,
-            timestamp: notification.timestamp,
-            type: notification.type,
-            isRead: true,
-            data: notification.data,
-          );
-        }).toList();
+        _notifications = _notifications.map((notification) => notification.copyWith(isRead: true)).toList();
       });
     }
   }
@@ -334,6 +337,10 @@ class _NotificationState extends State<Notification> {
     } else {
       return DateFormat('MMM d').format(timestamp);
     }
+  }
+
+  void _showNavigationError(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Unable to open notification: $message')));
   }
 
   Widget _buildNotificationIcon(NotificationType type, AppColorsExtension colors) {
@@ -634,31 +641,59 @@ class _NotificationState extends State<Notification> {
       onTap: () {
         _markAsRead(notification.id);
 
-        if (notification.type == NotificationType.commentReply ||
-            notification.type == NotificationType.commentReaction) {
-          final data = notification.data;
-          if (data != null && data['restaurantId'] != null) {
-            final restaurantId = data['restaurantId'] as String;
-            final restaurantName = data['restaurantName'] as String? ?? 'Restaurant';
-            final commentId = data['commentId'] as String?;
-            final statusId = data['statusId'] as String?;
-            final parentCommentId = data['parentCommentId'] as String?;
-            final isReply = data['isReply'] as bool? ?? false;
+        try {
+          if (notification.type == NotificationType.commentReply ||
+              notification.type == NotificationType.commentReaction) {
+            final data = notification.data;
+            if (data != null && data['restaurantId'] != null) {
+              // Safe type conversion with validation
+              final restaurantId = data['restaurantId']?.toString();
+              final statusId = data['statusId']?.toString();
 
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => StoryViewer(
-                  restaurantId: restaurantId,
-                  restaurantName: restaurantName,
-                  targetCommentId: commentId,
-                  targetStatusId: statusId,
-                  parentCommentId: parentCommentId,
-                  isReply: isReply,
-                  highlightComment: true,
+              if (restaurantId == null || restaurantId.isEmpty) {
+                debugPrint('Invalid restaurantId in notification');
+                _showNavigationError(context, 'Invalid restaurant ID');
+                return;
+              }
+
+              if (statusId == null || statusId.isEmpty) {
+                debugPrint('Invalid statusId in notification');
+                _showNavigationError(context, 'Invalid status ID');
+                return;
+              }
+
+              final restaurantName = data['restaurantName']?.toString() ?? 'Restaurant';
+              final commentId = data['commentId']?.toString();
+              final parentCommentId = data['parentCommentId']?.toString();
+              final isReply = data['isReply'] == 'true' || data['isReply'] == true;
+
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => StoryViewer(
+                    restaurantId: restaurantId,
+                    restaurantName: restaurantName,
+                    targetCommentId: commentId,
+                    targetStatusId: statusId,
+                    parentCommentId: parentCommentId,
+                    isReply: isReply,
+                    highlightComment: true,
+                  ),
                 ),
-              ),
-            );
+              );
+            }
+          } else if (notification.type == NotificationType.order) {
+            final data = notification.data;
+            if (data != null && data['orderId'] != null) {
+              final orderId = data['orderId']?.toString();
+              if (orderId != null && orderId.isNotEmpty) {
+                context.push('/order-tracking/$orderId');
+              }
+            }
           }
+        } catch (e, stackTrace) {
+          debugPrint('Error handling notification tap: $e');
+          debugPrint('Stack trace: $stackTrace');
+          _showNavigationError(context, 'Failed to open notification');
         }
       },
       child: Container(

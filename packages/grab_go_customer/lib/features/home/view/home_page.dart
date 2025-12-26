@@ -54,7 +54,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool _isFabVisible = true;
   double _lastScrollOffset = 0.0;
   FilterModel _activeFilter = FilterModel();
-  int _recommendedDisplayedCount = 10; // Pagination for Recommended section
+  int _recommendedDisplayedCount = 10;
   int _previousCartCount = 0;
 
   @override
@@ -144,11 +144,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final foodProvider = Provider.of<FoodProvider>(context, listen: false);
       if (foodProvider.categories.isEmpty) {
         foodProvider.fetchCategories();
-        foodProvider.fetchOrderHistory(); // Fetch order history for Order Again
+        foodProvider.fetchOrderHistory();
         foodProvider.fetchPromotionalBanners();
         foodProvider.fetchDeals();
-        foodProvider.fetchPopularItems(); // Fetch popular items from backend
-        foodProvider.fetchTopRatedItems(); // Fetch top rated items from backend
+        foodProvider.fetchPopularItems();
+        foodProvider.fetchTopRatedItems();
       } else {
         if (foodProvider.categories.isNotEmpty) {
           setState(() {
@@ -160,7 +160,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       // Initialize Grocery provider
       final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
       if (groceryProvider.items.isEmpty) {
-        groceryProvider.refreshAll(); // This now includes popular and top-rated
+        groceryProvider.refreshAll();
       }
     });
   }
@@ -173,11 +173,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final provider = Provider.of<FoodProvider>(context, listen: false);
       await Future.wait([
         provider.refreshCategories(),
-        provider.fetchOrderHistory(), // Refresh order history
+        provider.fetchOrderHistory(),
         provider.fetchPromotionalBanners(),
         provider.fetchDeals(),
-        provider.fetchPopularItems(), // Refresh popular items
-        provider.fetchTopRatedItems(), // Refresh top rated items
+        provider.fetchPopularItems(),
+        provider.fetchTopRatedItems(),
       ]);
     } else if (serviceProvider.isGroceryService) {
       // Refresh grocery data

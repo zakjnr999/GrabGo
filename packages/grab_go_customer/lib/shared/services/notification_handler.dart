@@ -3,6 +3,21 @@ import 'package:grab_go_customer/features/chat/view/chats_details.dart';
 import 'package:grab_go_customer/features/status/view/story_viewer.dart';
 import 'package:grab_go_customer/main.dart';
 
+/// Navigate to a route with error handling
+void _navigateToRoute(BuildContext context, String route) {
+  try {
+    Navigator.of(context).pushNamed(route);
+  } catch (e) {
+    debugPrint('❌ Navigation failed for route $route: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Unable to open this notification'),
+        action: SnackBarAction(label: 'Dismiss', onPressed: () {}),
+      ),
+    );
+  }
+}
+
 void handleNotificationTap(Map<String, dynamic> data) {
   final type = data['type'];
   final chatId = data['chatId'];
@@ -29,6 +44,7 @@ void handleNotificationTap(Map<String, dynamic> data) {
         );
       } else if (type == 'order_update' && orderId != null) {
         debugPrint('Navigate to order: $orderId');
+        _navigateToRoute(context, '/orders/$orderId');
       } else if ((type == 'comment_reply' || type == 'comment_reaction') && statusId != null && restaurantId != null) {
         // Navigate to status viewer for comment notifications
         debugPrint('📲 Comment notification data:');
@@ -48,34 +64,30 @@ void handleNotificationTap(Map<String, dynamic> data) {
               targetCommentId: data['commentId'],
               targetStatusId: statusId,
               parentCommentId: data['parentCommentId'],
-              isReply: data['isReply'] ?? false,
+              isReply: data['isReply'] == 'true' || data['isReply'] == true,
               highlightComment: true,
             ),
           ),
         );
       } else if (type == 'referral_completed' || type == 'milestone_bonus') {
-        // Navigate to referral page
         debugPrint('Navigate to referral page');
-        Navigator.of(context).pushNamed('/referral');
+        _navigateToRoute(context, '/referral');
       } else if (type == 'payment_confirmed' && orderId != null) {
-        // Navigate to order details
         debugPrint('Navigate to order: $orderId');
-        Navigator.of(context).pushNamed('/orders/$orderId');
+        _navigateToRoute(context, '/orders/$orderId');
       } else if (type == 'delivery_arriving' && orderId != null) {
-        // Navigate to order tracking
         debugPrint('Navigate to order tracking: $orderId');
-        Navigator.of(context).pushNamed('/orders/$orderId');
+        _navigateToRoute(context, '/orders/$orderId');
       } else if (type == 'promo') {
-        // Navigate to promos page
         debugPrint('Navigate to promos');
-        Navigator.of(context).pushNamed('/promos');
+        _navigateToRoute(context, '/promos');
       } else if (type == 'system' || type == 'update') {
-        // Navigate to notifications page
         debugPrint('Navigate to notifications');
-        Navigator.of(context).pushNamed('/notifications');
+        _navigateToRoute(context, '/notifications');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('❌ Error handling notification tap: $e');
+      debugPrint('Stack trace: $stackTrace');
     }
   });
 }
