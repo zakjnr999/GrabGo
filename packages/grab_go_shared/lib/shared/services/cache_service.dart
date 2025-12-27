@@ -301,7 +301,7 @@ class CacheService {
       await _instance.remove('food_categories');
       await _instance.remove('food_categories_cache_timestamp');
       if (kDebugMode) {
-        print('✅ Food categories cache cleared');
+        print('Food categories cache cleared');
       }
     } catch (e) {
       if (kDebugMode) {

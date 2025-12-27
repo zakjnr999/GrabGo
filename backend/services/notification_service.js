@@ -5,7 +5,7 @@ const { checkRateLimit, validateNotificationInput } = require('../utils/validati
 // Grouping configuration
 const GROUPING_CONFIG = {
     enabled: true,
-    timeWindow: 24 * 60 * 60 * 1000, // 24 hours
+    timeWindow: 12 * 60 * 60 * 1000, // 12 hours (reduced from 24h for better UX)
     groupableTypes: ['comment_reaction', 'comment_reply'],
     maxActorsInList: 50
 };
@@ -31,6 +31,9 @@ const prepareFCMData = (data) => {
         if (value !== null && value !== undefined) {
             if (typeof value === 'object' && !Array.isArray(value)) {
                 fcmData[key] = JSON.stringify(value);
+            } else if (typeof value === 'boolean') {
+                // Explicitly convert booleans to strings for consistency
+                fcmData[key] = value ? 'true' : 'false';
             } else {
                 fcmData[key] = String(value);
             }

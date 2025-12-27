@@ -39,7 +39,6 @@ class _ReferralBannerState extends State<ReferralBanner> with SingleTickerProvid
 
     return GestureDetector(
       onTap: () {
-        // Navigate to referral page
         context.push('/referral');
       },
       child: Container(
@@ -59,23 +58,17 @@ class _ReferralBannerState extends State<ReferralBanner> with SingleTickerProvid
           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
           child: Stack(
             children: [
-              // Gradient Background
               Container(
                 height: 80.h,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [
-                      colors.accentOrange,
-                      colors.accentOrange.withValues(alpha: 0.85),
-                      Color(0xFFFFB800), // Golden yellow
-                    ],
+                    colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.85), const Color(0xFFFFB800)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                 ),
               ),
 
-              // Shimmer Effect Overlay
               AnimatedBuilder(
                 animation: _shimmerAnimation,
                 builder: (context, child) {
@@ -97,7 +90,6 @@ class _ReferralBannerState extends State<ReferralBanner> with SingleTickerProvid
                 },
               ),
 
-              // Decorative Circles
               Positioned(
                 right: -20.w,
                 top: -20.h,
@@ -117,12 +109,10 @@ class _ReferralBannerState extends State<ReferralBanner> with SingleTickerProvid
                 ),
               ),
 
-              // Content
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
                 child: Row(
                   children: [
-                    // Gift Icon
                     Container(
                       width: 52.w,
                       height: 52.h,
@@ -150,7 +140,6 @@ class _ReferralBannerState extends State<ReferralBanner> with SingleTickerProvid
 
                     SizedBox(width: 14.w),
 
-                    // Text Content
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -179,7 +168,6 @@ class _ReferralBannerState extends State<ReferralBanner> with SingleTickerProvid
                       ),
                     ),
 
-                    // Arrow Icon
                     Container(
                       width: 32.w,
                       height: 32.h,

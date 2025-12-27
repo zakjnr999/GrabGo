@@ -12,7 +12,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  debugPrint('📩 Background message: ${message.messageId}');
+  debugPrint('Background message: ${message.messageId}');
 
   // Handle background message
   await PushNotificationService._handleBackgroundMessage(message);
@@ -76,7 +76,7 @@ class PushNotificationService {
       // Check permission first
       final settings = await _messaging.getNotificationSettings();
       if (settings.authorizationStatus != AuthorizationStatus.authorized) {
-        debugPrint('⚠️ Notification permission not granted, skipping FCM initialization');
+        debugPrint('Notification permission not granted, skipping FCM initialization');
         return;
       }
 
@@ -86,15 +86,15 @@ class PushNotificationService {
       // Get FCM token with retry
       _fcmToken = await _getTokenWithRetry();
       if (_fcmToken != null) {
-        debugPrint('🔑 FCM Token: $_fcmToken');
+        debugPrint('FCM Token: $_fcmToken');
       } else {
-        debugPrint('⚠️ Could not get FCM token - notifications may not work');
+        debugPrint('Could not get FCM token - notifications may not work');
       }
 
       // Listen for token refresh
       _messaging.onTokenRefresh.listen((token) {
         _fcmToken = token;
-        debugPrint('🔄 FCM Token refreshed: $token');
+        debugPrint('FCM Token refreshed: $token');
         _onTokenRefresh?.call(token);
       });
 
@@ -111,9 +111,9 @@ class PushNotificationService {
       }
 
       _isInitialized = true;
-      debugPrint('✅ Push notification service initialized');
+      debugPrint('Push notification service initialized');
     } catch (e) {
-      debugPrint('❌ Failed to initialize push notifications: $e');
+      debugPrint('Failed to initialize push notifications: $e');
     }
   }
 
@@ -124,7 +124,7 @@ class PushNotificationService {
         final token = await _messaging.getToken();
         if (token != null) return token;
       } catch (e) {
-        debugPrint('⚠️ FCM token attempt ${i + 1}/$maxRetries failed: $e');
+        debugPrint('FCM token attempt ${i + 1}/$maxRetries failed: $e');
         if (i < maxRetries - 1) {
           await Future.delayed(Duration(seconds: 2 * (i + 1)));
         }
@@ -221,7 +221,7 @@ class PushNotificationService {
   /// This prevents notifications from showing for the chat user is viewing
   void setCurrentChatId(String? chatId) {
     _currentChatId = chatId;
-    debugPrint('📱 Current chat set to: $chatId');
+    debugPrint('Current chat set to: $chatId');
   }
 
   /// Get the current chat ID
@@ -263,14 +263,14 @@ class PushNotificationService {
 
   /// Handle foreground messages - show local notification
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
-    debugPrint('📩 Foreground message: ${message.messageId}');
+    debugPrint('Foreground message: ${message.messageId}');
 
     final notification = message.notification;
     final data = message.data;
 
     // Skip notification if user is currently viewing this chat
     if (data['type'] == 'chat_message' && data['chatId'] == _currentChatId) {
-      debugPrint('📩 Skipping notification - user is viewing this chat');
+      debugPrint('Skipping notification - user is viewing this chat');
       return;
     }
 
@@ -347,19 +347,19 @@ class PushNotificationService {
   Future<void> deleteToken() async {
     await _messaging.deleteToken();
     _fcmToken = null;
-    debugPrint('🗑️ FCM token deleted');
+    debugPrint('FCM token deleted');
   }
 
   /// Subscribe to a topic
   Future<void> subscribeToTopic(String topic) async {
     await _messaging.subscribeToTopic(topic);
-    debugPrint('📌 Subscribed to topic: $topic');
+    debugPrint('Subscribed to topic: $topic');
   }
 
   /// Unsubscribe from a topic
   Future<void> unsubscribeFromTopic(String topic) async {
     await _messaging.unsubscribeFromTopic(topic);
-    debugPrint('📌 Unsubscribed from topic: $topic');
+    debugPrint('Unsubscribed from topic: $topic');
   }
 
   /// Set the notification tap callback
@@ -381,13 +381,13 @@ class PushNotificationService {
       _badgeCount = count;
       if (count > 0) {
         await FlutterAppBadgeControl.updateBadgeCount(count);
-        debugPrint('🔔 Badge count updated to: $count');
+        debugPrint('Badge count updated to: $count');
       } else {
         await FlutterAppBadgeControl.removeBadge();
-        debugPrint('🔔 Badge removed');
+        debugPrint('Badge removed');
       }
     } catch (e) {
-      debugPrint('⚠️ Error updating badge: $e');
+      debugPrint('Error updating badge: $e');
     }
   }
 

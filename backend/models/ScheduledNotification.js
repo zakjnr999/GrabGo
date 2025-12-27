@@ -94,7 +94,11 @@ const scheduledNotificationSchema = new mongoose.Schema({
         type: Number,
         default: 3
     },
-    processingStartedAt: Date // For race condition prevention
+    processingStartedAt: Date, // For race condition prevention
+    version: {
+        type: Number,
+        default: 0
+    } // For optimistic locking to prevent duplicate processing
 }, {
     timestamps: true
 });

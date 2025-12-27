@@ -12,6 +12,29 @@ const TRUNCATION_LIMITS = {
 };
 
 /**
+ * Prepare FCM data payload by converting all values to strings
+ * FCM requires all data values to be strings, otherwise notifications fail silently
+ * @param {object} data - Data object to prepare
+ * @returns {object} - Data object with all values as strings
+ */
+const prepareFCMData = (data) => {
+    const fcmData = {};
+    for (const [key, value] of Object.entries(data)) {
+        if (value !== null && value !== undefined) {
+            if (typeof value === 'object' && !Array.isArray(value)) {
+                fcmData[key] = JSON.stringify(value);
+            } else if (typeof value === 'boolean') {
+                // Explicitly convert booleans to strings for consistency
+                fcmData[key] = value ? 'true' : 'false';
+            } else {
+                fcmData[key] = String(value);
+            }
+        }
+    }
+    return fcmData;
+};
+
+/**
  * Get appropriate notification channel for a notification type
  * @param {string} type - Notification type
  * @returns {string} - Channel ID
@@ -96,26 +119,40 @@ const registerToken = async (userId, token, deviceId = null, platform = 'android
             throw new Error('User not found');
         }
 
-        // Remove any existing token with the same deviceId or token value
-        user.fcmTokens = user.fcmTokens.filter(t =>
-            t.token !== token && (deviceId ? t.deviceId !== deviceId : true)
-        );
-
-        // Add the new token
-        user.fcmTokens.push({
-            token,
-            deviceId,
-            platform,
-            createdAt: new Date(),
-            updatedAt: new Date(),
+        // Use atomic operations to prevent race conditions
+        // First, remove any existing token with the same deviceId or token value
+        await User.findByIdAndUpdate(userId, {
+            $pull: {
+                fcmTokens: {
+                    $or: [
+                        { token: token },
+                        ...(deviceId ? [{ deviceId: deviceId }] : [])
+                    ]
+                }
+            }
         });
 
-        // Keep only the last 5 tokens per user (multiple devices)
-        if (user.fcmTokens.length > 5) {
-            user.fcmTokens = user.fcmTokens.slice(-5);
-        }
+        // Then add the new token
+        await User.findByIdAndUpdate(
+            userId,
+            {
+                $push: {
+                    fcmTokens: {
+                        $each: [{
+                            token,
+                            deviceId,
+                            platform,
+                            createdAt: new Date(),
+                            updatedAt: new Date(),
+                        }],
+                        $position: 0, // Add to the beginning
+                        $slice: 5 // Keep only the last 5 tokens
+                    }
+                }
+            },
+            { new: true }
+        );
 
-        await user.save();
         console.log(`✅ FCM token registered for user ${userId} (platform: ${platform}, deviceId: ${deviceId || 'none'})`);
         return true;
     } catch (error) {
@@ -210,7 +247,7 @@ const sendToUser = async (userId, notification, data = {}) => {
                 payload: {
                     aps: {
                         sound: 'default',
-                        badge: 1,
+                        ...(data.badgeCount ? { badge: parseInt(data.badgeCount) } : {}),
                         contentAvailable: true,
                     },
                 },

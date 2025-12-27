@@ -30,7 +30,6 @@ import 'package:grab_go_customer/shared/widgets/top_rated_section.dart';
 import 'package:grab_go_customer/shared/widgets/fresh_arrivals_section.dart';
 import 'package:grab_go_customer/shared/widgets/browse_all_groceries_section.dart';
 import 'package:grab_go_customer/shared/widgets/referral_banner.dart';
-import 'package:grab_go_customer/features/restaurant/model/restaurants_model.dart';
 import 'package:grab_go_customer/shared/viewmodels/service_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -219,8 +218,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                SizedBox(height: KSpacing.lg.h),
                 _buildHomeHeader(context, size, colors, isDark, locationProvider),
-                SizedBox(height: 8.h),
+                SizedBox(height: KSpacing.lg.h),
                 _buildHomeSearch(foodProvider),
                 SizedBox(height: KSpacing.lg.h),
                 _buildServiceSelector(),
@@ -254,9 +254,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         _buildGroceryCategories(groceryProvider, isDark, size, colors),
 
                       SizedBox(height: KSpacing.xl.h),
-
-                      // ========== GROCERIES SECTIONS (OPTIMIZED ORDER) ==========
-
                       // 3. Deals & Offers (Unified for both Food & Grocery)
                       Builder(
                         builder: (context) {
@@ -278,7 +275,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               DealsSection(
                                 dealItems: deals,
                                 originalItems: originalDeals,
-                                onSeeAll: () {},
+                                onSeeAll: () {
+                                  //TODO
+                                },
                                 onItemTap: (item) {
                                   if (serviceProvider.isGroceryService) {
                                     final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
@@ -753,10 +752,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           }
         }
 
-        if (_activeFilter.isActive && allFoods.isNotEmpty) {
-          allFoods = _applyFilter(allFoods, itemsProvider.categories, _activeFilter);
-        }
-
         if (allFoods.isNotEmpty) {
           recommendedFoods = allFoods.take(_recommendedDisplayedCount.clamp(0, allFoods.length)).toList();
         }
@@ -986,14 +981,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
     final foodProvider = Provider.of<FoodProvider>(context, listen: false);
 
-    /*
-    // Uncomment if you need skeleton loading state
-    final colors = context.appColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    if (itemsProvider.isLoading) {
-       return ServiceSelectorSkeleton(colors: colors, isDark: isDark);
-    }
-    */
+    // // Uncomment if you need skeleton loading state
+    // final colors = context.appColors;
+    // final isDark = Theme.of(context).brightness == Brightness.dark;
+    // if (itemsProvider.isLoading) {
+    //    return ServiceSelectorSkeleton(colors: colors, isDark: isDark);
+    // }
 
     return ServiceSelector(
       services: AppServices.all,
@@ -1031,7 +1024,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     LocationProvider locationProvider,
   ) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
       child: Row(
         children: [
           Expanded(
@@ -1172,124 +1165,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ],
       ),
     );
-  }
-
-  /// Apply filter to food items
-  /// This applies price, rating, and restaurant filters
-  /// Category filtering is handled separately when collecting items
-  List<FoodItem> _applyFilter(List<FoodItem> items, List<FoodCategoryModel> categories, FilterModel filter) {
-    if (items.isEmpty) return [];
-
-    // Validate filter values
-    final validMinPrice = filter.minPrice.isNaN || filter.minPrice.isInfinite || filter.minPrice < 0
-        ? 0.0
-        : filter.minPrice;
-    final validMaxPrice = filter.maxPrice.isNaN || filter.maxPrice.isInfinite || filter.maxPrice < validMinPrice
-        ? 10000.0
-        : filter.maxPrice;
-    final validMinRating =
-        filter.minRating != null &&
-            (filter.minRating!.isNaN || filter.minRating!.isInfinite || filter.minRating! < 0 || filter.minRating! > 5)
-        ? null
-        : filter.minRating;
-
-    // Get all available restaurant names for validation
-    final availableRestaurants = <String>{};
-    for (var category in categories) {
-      for (var item in category.items) {
-        if (item.sellerName.isNotEmpty) {
-          availableRestaurants.add(item.sellerName);
-        }
-      }
-    }
-
-    // Filter out invalid restaurant selections
-    final validSelectedRestaurants = filter.selectedRestaurants
-        .where((restaurant) => restaurant.isNotEmpty && availableRestaurants.contains(restaurant))
-        .toList();
-
-    return items.where((item) {
-      // Price filter - check if price is within range
-      // Only apply if price range is different from default (0-10000)
-      final isPriceFilterActive = validMinPrice != 0 || validMaxPrice != 10000;
-      if (isPriceFilterActive) {
-        // Ensure price is valid and within range
-        if (item.price.isNaN || item.price.isInfinite || item.price < 0) return false;
-        if (item.price < validMinPrice || item.price > validMaxPrice) {
-          return false;
-        }
-      }
-
-      // Rating filter - check if rating meets minimum requirement
-      if (validMinRating != null) {
-        // Ensure rating is valid (0-5 range)
-        if (item.rating.isNaN || item.rating.isInfinite || item.rating < 0 || item.rating > 5) return false;
-        if (item.rating < validMinRating) {
-          return false;
-        }
-      }
-
-      // Restaurant filter - check if restaurant is selected
-      if (validSelectedRestaurants.isNotEmpty) {
-        // Ensure sellerName is not empty and matches
-        if (item.sellerName.isEmpty || !validSelectedRestaurants.contains(item.sellerName)) {
-          return false;
-        }
-      }
-
-      // Note: Category filtering is handled earlier when collecting items
-      // to avoid processing items from unselected categories
-
-      return true;
-    }).toList();
-  }
-
-  /// Create mock restaurants from food items for Nearby section
-  /// This extracts unique restaurants from food items
-  List<RestaurantModel> createMockRestaurants(FoodProvider itemsProvider) {
-    if (itemsProvider.categories.isEmpty) {
-      return [];
-    }
-
-    // Collect unique restaurants from food items
-    final Map<String, RestaurantModel> restaurantMap = {};
-
-    for (var category in itemsProvider.categories) {
-      for (var item in category.items) {
-        if (item.restaurantId.isNotEmpty && !restaurantMap.containsKey(item.restaurantId)) {
-          // Create mock restaurant from food item data
-          restaurantMap[item.restaurantId] = RestaurantModel(
-            id: item.sellerId,
-            backendId: item.restaurantId,
-            name: item.sellerName.isNotEmpty ? item.sellerName : 'Restaurant ${item.sellerId}',
-            city: 'Accra',
-            foodType: category.name,
-            imageUrl: item.restaurantImage.isNotEmpty ? item.restaurantImage : item.image,
-            bannerImages: [],
-            distance: (restaurantMap.length * 0.5) + 0.5, // Mock distance: 0.5, 1.0, 1.5, etc.
-            rating: item.rating,
-            totalReviews: 120,
-            averageDeliveryTime: '${20 + (restaurantMap.length * 5)}-${30 + (restaurantMap.length * 5)}',
-            deliveryFee: 5.0,
-            minOrder: 15.0,
-            description: 'Delicious ${category.name} and more',
-            phone: '+233 XX XXX XXXX',
-            email: 'contact@restaurant.com',
-            address: 'Accra, Ghana',
-            latitude: 5.6037,
-            longitude: -0.1870,
-            openingHours: '9:00 AM - 10:00 PM',
-            isOpen: true,
-            paymentMethods: ['Cash', 'Mobile Money'],
-            socials: Socials(instagram: '', facebook: ''),
-            foods: [],
-          );
-        }
-      }
-    }
-
-    // Return up to 6 restaurants
-    return restaurantMap.values.take(6).toList();
   }
 
   /// Build service selector (Food, Groceries, Pharmacy, Stores)

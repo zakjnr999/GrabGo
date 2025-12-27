@@ -63,10 +63,26 @@ class NotificationModel {
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
+    // Validate required fields
+    final id = json['_id']?.toString() ?? json['id']?.toString() ?? '';
+    if (id.isEmpty) {
+      throw const FormatException('Notification ID cannot be empty');
+    }
+
+    final title = json['title']?.toString() ?? '';
+    if (title.isEmpty) {
+      throw const FormatException('Notification title cannot be empty');
+    }
+
+    final message = json['message']?.toString() ?? '';
+    if (message.isEmpty) {
+      throw const FormatException('Notification message cannot be empty');
+    }
+
     return NotificationModel(
-      id: json['_id'] ?? json['id'] ?? '',
-      title: json['title'] ?? '',
-      message: json['message'] ?? '',
+      id: id,
+      title: title,
+      message: message,
       timestamp: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
       type: _parseNotificationType(json['type']),
       isRead: json['isRead'] ?? false,
@@ -137,6 +153,8 @@ class NotificationModel {
         return NotificationType.commentReaction;
       default:
         debugPrint('⚠️ Unknown notification type: $type, defaulting to system');
+        // TODO: Add crash reporting (Sentry/Firebase Crashlytics) for production
+        // FirebaseCrashlytics.instance.log('Unknown notification type: $type');
         return NotificationType.system;
     }
   }

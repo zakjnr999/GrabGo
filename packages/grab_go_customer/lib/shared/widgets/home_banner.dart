@@ -59,8 +59,8 @@ class _HomeBannerState extends State<HomeBanner> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final itemsProvider = Provider.of<FoodProvider>(context);
-    final groceryProvider = Provider.of<GroceryProvider>(context); // Added
-    final serviceProvider = Provider.of<ServiceProvider>(context); // Added
+    final groceryProvider = Provider.of<GroceryProvider>(context);
+    final serviceProvider = Provider.of<ServiceProvider>(context);
 
     // Determine loading state and error state based on service
     bool isLoading = false;

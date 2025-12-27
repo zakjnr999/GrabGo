@@ -3,6 +3,26 @@ import 'package:grab_go_customer/features/chat/view/chats_details.dart';
 import 'package:grab_go_customer/features/status/view/story_viewer.dart';
 import 'package:grab_go_customer/main.dart';
 
+/// Parse boolean value from dynamic data (handles both string and boolean)
+bool _parseBool(dynamic value) {
+  if (value == null) return false;
+  if (value is bool) return value;
+  if (value is String) return value.toLowerCase() == 'true';
+  return false;
+}
+
+/// Validate required deep link data fields
+bool _validateDeepLinkData(Map<String, dynamic> data, List<String> requiredFields) {
+  for (final field in requiredFields) {
+    final value = data[field]?.toString();
+    if (value == null || value.isEmpty) {
+      debugPrint('❌ Missing or empty required field: $field');
+      return false;
+    }
+  }
+  return true;
+}
+
 /// Navigate to a route with error handling
 void _navigateToRoute(BuildContext context, String route) {
   try {
@@ -37,15 +57,24 @@ void handleNotificationTap(Map<String, dynamic> data) {
       }
 
       if (type == 'chat_message' && chatId != null) {
+        // Validate chat data
+        if (!_validateDeepLinkData(data, ['chatId', 'senderName'])) return;
+
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => ChatDetail(chatId: chatId, senderName: data['senderName'] ?? 'Chat'),
           ),
         );
       } else if (type == 'order_update' && orderId != null) {
+        // Validate order data
+        if (!_validateDeepLinkData(data, ['orderId'])) return;
+
         debugPrint('Navigate to order: $orderId');
         _navigateToRoute(context, '/orders/$orderId');
       } else if ((type == 'comment_reply' || type == 'comment_reaction') && statusId != null && restaurantId != null) {
+        // Validate comment data
+        if (!_validateDeepLinkData(data, ['restaurantId', 'statusId'])) return;
+
         // Navigate to status viewer for comment notifications
         debugPrint('📲 Comment notification data:');
         debugPrint('   - type: $type');
@@ -64,7 +93,7 @@ void handleNotificationTap(Map<String, dynamic> data) {
               targetCommentId: data['commentId'],
               targetStatusId: statusId,
               parentCommentId: data['parentCommentId'],
-              isReply: data['isReply'] == 'true' || data['isReply'] == true,
+              isReply: _parseBool(data['isReply']),
               highlightComment: true,
             ),
           ),

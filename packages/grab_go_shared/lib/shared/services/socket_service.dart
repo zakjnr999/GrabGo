@@ -84,7 +84,7 @@ class SocketService {
 
   Timer? _reconnectTimer;
   int _reconnectAttempts = 0;
-  static const int _maxReconnectAttempts = 5;
+  static const int _maxReconnectAttempts = 10; // Increased from 5 for better reliability
 
   int get totalUnread => _totalUnread;
   SocketConnectionState get connectionState => _connectionState;
@@ -242,7 +242,19 @@ class SocketService {
 
   void _setConnectionState(SocketConnectionState state) {
     if (_connectionState == state) return;
+
+    final previousState = _connectionState;
     _connectionState = state;
+
+    // Log state transitions for debugging
+    debugPrint('Socket state transition: ${previousState.name} -> ${state.name}');
+    // TODO: Add analytics logging for production monitoring
+    // FirebaseAnalytics.instance.logEvent(name: 'socket_state_change', parameters: {
+    //   'from': previousState.name,
+    //   'to': state.name,
+    //   'timestamp': DateTime.now().toIso8601String(),
+    // });
+
     for (final listener in _connectionListeners) {
       try {
         listener(state);
@@ -729,8 +741,8 @@ class SocketService {
       _joinedChats.clear();
       _unreadByChatId.clear();
       _messageQueue.clear();
-      _notificationIdQueue.clear();
-      _notificationIdSet.clear();
+      // Fix #4: Clear notification cache to prevent memory leak
+      clearNotificationCache();
       _totalUnread = 0;
       _notifyUnreadChanged();
       _setConnectionState(SocketConnectionState.disconnected);

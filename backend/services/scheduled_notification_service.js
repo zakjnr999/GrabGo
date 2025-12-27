@@ -98,7 +98,8 @@ const processScheduledNotifications = async (io = null) => {
                     ]
                 },
                 {
-                    $set: { processingStartedAt: processingStartTime }
+                    $set: { processingStartedAt: processingStartTime },
+                    $inc: { version: 1 } // Increment version for optimistic locking
                 },
                 {
                     new: false, // Return original document

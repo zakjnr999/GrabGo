@@ -30,21 +30,21 @@ class SecureStorageService {
   /// Initialize secure storage and perform migration if needed
   static Future<void> initialize() async {
     try {
-      debugPrint('🔐 Initializing SecureStorageService...');
+      debugPrint('Initializing SecureStorageService...');
 
       // Check if migration is needed
       final migrationComplete = await _secureStorage.read(key: _migrationCompleteKey);
 
       if (migrationComplete != 'true') {
-        debugPrint('🔄 Starting migration from SharedPreferences to SecureStorage...');
+        debugPrint('Starting migration from SharedPreferences to SecureStorage...');
         await _migrateFromSharedPreferences();
         await _secureStorage.write(key: _migrationCompleteKey, value: 'true');
-        debugPrint('✅ Migration completed successfully');
+        debugPrint('Migration completed successfully');
       } else {
-        debugPrint('✅ SecureStorageService already initialized');
+        debugPrint('SecureStorageService already initialized');
       }
     } catch (e) {
-      debugPrint('❌ Error initializing SecureStorageService: $e');
+      debugPrint('Error initializing SecureStorageService: $e');
     }
   }
 
@@ -58,7 +58,7 @@ class SecureStorageService {
       if (authToken != null && authToken.isNotEmpty) {
         await _secureStorage.write(key: _authTokenKey, value: authToken);
         await prefs.remove('auth_token');
-        debugPrint('✅ Migrated auth_token to secure storage');
+        debugPrint('Migrated auth_token to secure storage');
       }
 
       // Migrate token expiry
@@ -66,7 +66,7 @@ class SecureStorageService {
       if (tokenExpiry != null) {
         await _secureStorage.write(key: _tokenExpiryKey, value: tokenExpiry.toString());
         await prefs.remove('token_expiry');
-        debugPrint('✅ Migrated token_expiry to secure storage');
+        debugPrint('Migrated token_expiry to secure storage');
       }
 
       // Migrate saved credentials
@@ -74,28 +74,26 @@ class SecureStorageService {
       if (savedEmail != null && savedEmail.isNotEmpty) {
         await _secureStorage.write(key: _savedEmailKey, value: savedEmail);
         await prefs.remove('saved_email');
-        debugPrint('✅ Migrated saved_email to secure storage');
+        debugPrint('Migrated saved_email to secure storage');
       }
 
       final savedPassword = prefs.getString('saved_password');
       if (savedPassword != null && savedPassword.isNotEmpty) {
         await _secureStorage.write(key: _savedPasswordKey, value: savedPassword);
         await prefs.remove('saved_password');
-        debugPrint('✅ Migrated saved_password to secure storage');
+        debugPrint('Migrated saved_password to secure storage');
       }
 
       final rememberMe = prefs.getBool('remember_me');
       if (rememberMe != null) {
         await _secureStorage.write(key: _rememberMeKey, value: rememberMe.toString());
         await prefs.remove('remember_me');
-        debugPrint('✅ Migrated remember_me to secure storage');
+        debugPrint('Migrated remember_me to secure storage');
       }
     } catch (e) {
-      debugPrint('❌ Error during migration: $e');
+      debugPrint('Error during migration: $e');
     }
   }
-
-  // ==================== AUTH TOKEN METHODS ====================
 
   /// Save authentication token securely
   static Future<bool> saveAuthToken(String token, {int? expiryMillis}) async {
@@ -106,10 +104,10 @@ class SecureStorageService {
         await _secureStorage.write(key: _tokenExpiryKey, value: expiryMillis.toString());
       }
 
-      debugPrint('🔐 Auth token saved securely');
+      debugPrint('Auth token saved securely');
       return true;
     } catch (e) {
-      debugPrint('❌ Error saving auth token: $e');
+      debugPrint('Error saving auth token: $e');
       return false;
     }
   }
@@ -123,18 +121,18 @@ class SecureStorageService {
         // Check if token is expired
         final isExpired = await isTokenExpired();
         if (isExpired) {
-          debugPrint('⚠️ Token has expired');
+          debugPrint('Token has expired');
           await clearAuthToken();
           return null;
         }
 
-        debugPrint('🔐 Auth token retrieved from secure storage');
+        debugPrint('Auth token retrieved from secure storage');
         return token;
       }
 
       return null;
     } catch (e) {
-      debugPrint('❌ Error retrieving auth token: $e');
+      debugPrint('Error retrieving auth token: $e');
       return null;
     }
   }
@@ -154,7 +152,7 @@ class SecureStorageService {
       final now = DateTime.now().millisecondsSinceEpoch;
       return now >= expiryMillis;
     } catch (e) {
-      debugPrint('❌ Error checking token expiry: $e');
+      debugPrint('Error checking token expiry: $e');
       return true; // Assume expired on error
     }
   }
@@ -164,15 +162,13 @@ class SecureStorageService {
     try {
       await _secureStorage.delete(key: _authTokenKey);
       await _secureStorage.delete(key: _tokenExpiryKey);
-      debugPrint('🗑️ Auth token cleared from secure storage');
+      debugPrint('Auth token cleared from secure storage');
       return true;
     } catch (e) {
-      debugPrint('❌ Error clearing auth token: $e');
+      debugPrint('Error clearing auth token: $e');
       return false;
     }
   }
-
-  // ==================== CREDENTIALS METHODS ====================
 
   /// Save user credentials securely (for "Remember Me" feature)
   static Future<bool> saveCredentials({
@@ -186,14 +182,14 @@ class SecureStorageService {
       if (rememberMe) {
         await _secureStorage.write(key: _savedEmailKey, value: email);
         await _secureStorage.write(key: _savedPasswordKey, value: password);
-        debugPrint('🔐 Credentials saved securely');
+        debugPrint('Credentials saved securely');
       } else {
         await clearCredentials();
       }
 
       return true;
     } catch (e) {
-      debugPrint('❌ Error saving credentials: $e');
+      debugPrint('Error saving credentials: $e');
       return false;
     }
   }
@@ -213,7 +209,7 @@ class SecureStorageService {
 
       return {'rememberMe': rememberMe, 'email': email, 'password': password};
     } catch (e) {
-      debugPrint('❌ Error getting credentials: $e');
+      debugPrint('Error getting credentials: $e');
       return {'rememberMe': false, 'email': '', 'password': ''};
     }
   }
@@ -224,24 +220,22 @@ class SecureStorageService {
       await _secureStorage.delete(key: _savedEmailKey);
       await _secureStorage.delete(key: _savedPasswordKey);
       await _secureStorage.delete(key: _rememberMeKey);
-      debugPrint('🗑️ Credentials cleared from secure storage');
+      debugPrint('Credentials cleared from secure storage');
       return true;
     } catch (e) {
-      debugPrint('❌ Error clearing credentials: $e');
+      debugPrint('Error clearing credentials: $e');
       return false;
     }
   }
-
-  // ==================== UTILITY METHODS ====================
 
   /// Clear all secure storage (use with caution)
   static Future<bool> clearAll() async {
     try {
       await _secureStorage.deleteAll();
-      debugPrint('🗑️ All secure storage cleared');
+      debugPrint('All secure storage cleared');
       return true;
     } catch (e) {
-      debugPrint('❌ Error clearing all secure storage: $e');
+      debugPrint('Error clearing all secure storage: $e');
       return false;
     }
   }
@@ -269,7 +263,7 @@ class SecureStorageService {
         'isTokenExpired': await isTokenExpired(),
       };
     } catch (e) {
-      debugPrint('❌ Error getting debug info: $e');
+      debugPrint('Error getting debug info: $e');
       return {'error': e.toString()};
     }
   }
