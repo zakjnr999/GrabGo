@@ -225,7 +225,7 @@ const validateFCMToken = (token) => {
     }
 
     // Should contain only alphanumeric, hyphens, underscores, colons, dots
-    if (!/^[A-Za-z0-9_:-.]+$/.test(token)) {
+    if (!/^[A-Za-z0-9_:. -]+$/.test(token)) {
         return false;
     }
 
@@ -257,7 +257,7 @@ const validateDeviceId = (deviceId) => {
     }
 
     // Should contain only safe characters (allowing dots, colons, and etc for broad compatibility)
-    if (!/^[A-Za-z0-9_:\-.]+$/.test(deviceId)) {
+    if (!/^[A-Za-z0-9_:. -]+$/.test(deviceId)) {
         return false;
     }
 
