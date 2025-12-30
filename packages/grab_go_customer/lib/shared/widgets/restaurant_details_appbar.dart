@@ -7,7 +7,8 @@ import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurants_model.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
 
 class RestaurantDetailsAppBar extends StatelessWidget {
   const RestaurantDetailsAppBar({super.key, required this.restaurant});
@@ -36,10 +37,12 @@ class RestaurantDetailsAppBar extends StatelessWidget {
         background: Stack(
           fit: StackFit.expand,
           children: [
-            CachedImageWidget(
-              imageUrl: restaurant.imageUrl,
+            CachedNetworkImage(
+              imageUrl: ImageOptimizer.getFullUrl(restaurant.imageUrl, width: 1200),
               fit: BoxFit.cover,
-              placeholder: Container(
+              memCacheWidth: 800,
+              maxHeightDiskCache: 600,
+              placeholder: (context, url) => Container(
                 height: size.height * 0.40,
                 width: double.infinity,
                 color: colors.inputBorder,
@@ -50,7 +53,7 @@ class RestaurantDetailsAppBar extends StatelessWidget {
                   colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                 ),
               ),
-              errorWidget: Container(
+              errorWidget: (context, url, error) => Container(
                 height: size.height * 0.40,
                 width: double.infinity,
                 color: colors.inputBorder,

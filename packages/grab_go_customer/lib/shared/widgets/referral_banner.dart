@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ReferralBanner extends StatefulWidget {
   const ReferralBanner({super.key});
@@ -15,16 +16,38 @@ class ReferralBanner extends StatefulWidget {
 class _ReferralBannerState extends State<ReferralBanner> with SingleTickerProviderStateMixin {
   late AnimationController _shimmerController;
   late Animation<double> _shimmerAnimation;
+  bool _isDismissed = false;
 
   @override
   void initState() {
     super.initState();
+    _checkDismissalStatus();
     _shimmerController = AnimationController(duration: const Duration(milliseconds: 2000), vsync: this)..repeat();
 
     _shimmerAnimation = Tween<double>(
       begin: -2,
       end: 2,
     ).animate(CurvedAnimation(parent: _shimmerController, curve: Curves.easeInOut));
+  }
+
+  Future<void> _checkDismissalStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final dismissed = prefs.getBool('referral_banner_dismissed') ?? false;
+    if (mounted) {
+      setState(() {
+        _isDismissed = dismissed;
+      });
+    }
+  }
+
+  Future<void> _dismissBanner() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('referral_banner_dismissed', true);
+    if (mounted) {
+      setState(() {
+        _isDismissed = true;
+      });
+    }
   }
 
   @override
@@ -37,12 +60,17 @@ class _ReferralBannerState extends State<ReferralBanner> with SingleTickerProvid
   Widget build(BuildContext context) {
     final colors = context.appColors;
 
+    // Don't show banner if dismissed
+    if (_isDismissed) {
+      return const SizedBox.shrink();
+    }
+
     return GestureDetector(
       onTap: () {
         context.push('/referral');
       },
       child: Container(
-        margin: EdgeInsets.symmetric(horizontal: 20.w),
+        margin: EdgeInsets.only(left: 20.w, right: 20.w, bottom: KSpacing.lg.h),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
           boxShadow: [
@@ -168,17 +196,17 @@ class _ReferralBannerState extends State<ReferralBanner> with SingleTickerProvid
                       ),
                     ),
 
-                    Container(
-                      width: 32.w,
-                      height: 32.h,
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
-                      child: Center(
-                        child: SvgPicture.asset(
-                          Assets.icons.navArrowRight,
-                          package: 'grab_go_shared',
-                          width: 16.w,
-                          height: 16.h,
-                          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                    // Close button
+                    GestureDetector(
+                      onTap: () {
+                        _dismissBanner();
+                      },
+                      child: Container(
+                        width: 32.w,
+                        height: 32.h,
+                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+                        child: Center(
+                          child: Icon(Icons.close, size: 18.sp, color: Colors.white),
                         ),
                       ),
                     ),

@@ -2,14 +2,6 @@ import 'package:flutter/foundation.dart';
 
 /// Utility class for optimizing image URLs
 class ImageOptimizer {
-  /// Optimize image URL with size and quality parameters
-  ///
-  /// This assumes your backend supports query parameters for image optimization.
-  /// Common formats:
-  /// - ?w=400&q=80 (width=400px, quality=80%)
-  /// - ?width=400&height=600&quality=80
-  ///
-  /// Adjust the format based on your backend implementation.
   static String optimizeUrl(String imageUrl, {int? width, int? height, int quality = 80}) {
     if (imageUrl.isEmpty) return imageUrl;
 

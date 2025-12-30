@@ -3,7 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurants_model.dart';
-import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 
@@ -62,12 +63,14 @@ class _RestaurantListState extends State<RestaurantList> {
                       topLeft: Radius.circular(KBorderSize.borderMedium),
                       topRight: Radius.circular(KBorderSize.borderMedium),
                     ),
-                    child: CachedImageWidget(
-                      imageUrl: restaurant.imageUrl,
+                    child: CachedNetworkImage(
+                      imageUrl: ImageOptimizer.getPreviewUrl(restaurant.imageUrl, width: 600),
                       height: size.height * 0.18,
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      placeholder: Container(
+                      memCacheWidth: 600,
+                      maxHeightDiskCache: 400,
+                      placeholder: (context, url) => Container(
                         height: size.height * 0.18,
                         width: double.infinity,
                         color: colors.inputBorder,
@@ -78,7 +81,7 @@ class _RestaurantListState extends State<RestaurantList> {
                           colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                         ),
                       ),
-                      errorWidget: Container(
+                      errorWidget: (context, url, error) => Container(
                         height: size.height * 0.18,
                         width: double.infinity,
                         color: colors.inputBorder,

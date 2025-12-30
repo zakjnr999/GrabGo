@@ -47,7 +47,13 @@ class GroceryDetailsAppBar extends StatelessWidget {
                 color: colors.inputBorder,
                 padding: EdgeInsets.all(45.r),
                 child: Center(
-                  child: Icon(Icons.shopping_basket_outlined, color: colors.textSecondary, size: 50.sp),
+                  child: SvgPicture.asset(
+                    Assets.icons.cart,
+                    package: 'grab_go_shared',
+                    width: 50.w,
+                    height: 50.h,
+                    colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                  ),
                 ),
               ),
               errorWidget: Container(

@@ -52,8 +52,8 @@ class FoodItemCard extends StatelessWidget {
                 height: size.height * 0.14,
                 width: size.width * 0.32,
                 fit: BoxFit.cover,
-                memCacheWidth: 400, // Optimize memory usage
-                maxHeightDiskCache: 800, // Limit disk cache size
+                memCacheWidth: 400,
+                maxHeightDiskCache: 800,
                 placeholder: (context, url) => Container(
                   height: size.height * 0.14,
                   width: size.width * 0.32,

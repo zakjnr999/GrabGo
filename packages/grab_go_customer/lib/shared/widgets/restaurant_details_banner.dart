@@ -3,7 +3,8 @@ import 'package:flutter_image_slideshow/flutter_image_slideshow.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurants_model.dart';
-import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:shimmer/shimmer.dart';
@@ -111,12 +112,14 @@ class _RestaurantDetailsBannerState extends State<RestaurantDetailsBanner> {
               },
               children: bannerImages
                   .map(
-                    (imageUrl) => CachedImageWidget(
-                      imageUrl: imageUrl,
+                    (imageUrl) => CachedNetworkImage(
+                      imageUrl: ImageOptimizer.getFullUrl(imageUrl, width: 1200),
                       width: double.infinity,
                       height: size.height * 0.18,
                       fit: BoxFit.cover,
-                      placeholder: Shimmer.fromColors(
+                      memCacheWidth: 800,
+                      maxHeightDiskCache: 400,
+                      placeholder: (context, url) => Shimmer.fromColors(
                         baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
                         highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
                         child: Container(
@@ -125,7 +128,7 @@ class _RestaurantDetailsBannerState extends State<RestaurantDetailsBanner> {
                           color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
                         ),
                       ),
-                      errorWidget: Container(
+                      errorWidget: (context, url, error) => Container(
                         width: double.infinity,
                         height: size.height * 0.18,
                         color: colors.backgroundSecondary,

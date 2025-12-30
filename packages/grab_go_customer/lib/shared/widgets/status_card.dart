@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
+import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:grab_go_customer/features/status/model/status_model.dart';
@@ -54,12 +54,14 @@ class StatusCardNew extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(KBorderSize.borderMedium)),
-                  child: CachedImageWidget(
-                    imageUrl: status.mediaUrl,
+                  child: CachedNetworkImage(
+                    imageUrl: ImageOptimizer.getPreviewUrl(status.mediaUrl, width: 600),
                     height: 180.h,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    placeholder: Container(
+                    memCacheWidth: 600,
+                    maxHeightDiskCache: 400,
+                    placeholder: (context, url) => Container(
                       height: 180.h,
                       width: double.infinity,
                       padding: EdgeInsets.all(40.r),
@@ -70,7 +72,7 @@ class StatusCardNew extends StatelessWidget {
                         colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                       ),
                     ),
-                    errorWidget: Container(
+                    errorWidget: (context, url, error) => Container(
                       height: 180.h,
                       width: double.infinity,
                       padding: EdgeInsets.all(40.r),

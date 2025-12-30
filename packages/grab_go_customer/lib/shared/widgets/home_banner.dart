@@ -10,15 +10,14 @@ import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
-import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart'; // Added
-import 'package:grab_go_customer/shared/viewmodels/service_provider.dart'; // Added
+import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart';
+import 'package:grab_go_customer/shared/viewmodels/service_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:visibility_detector/visibility_detector.dart';
-
 import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
 
 class HomeBanner extends StatefulWidget {

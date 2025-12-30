@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_customer/shared/widgets/curved_side_clipper.dart';
 
 class PromoBannerCard extends StatelessWidget {
   final String title;
@@ -89,13 +90,10 @@ class PromoBannerCard extends StatelessWidget {
                 flex: 4,
                 child: Stack(
                   children: [
-                    // Image
+                    // Image with curved left edge
                     Positioned.fill(
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.only(
-                          topRight: Radius.circular(KBorderSize.borderMedium),
-                          bottomRight: Radius.circular(KBorderSize.borderMedium),
-                        ),
+                      child: ClipPath(
+                        clipper: CurvedSideClipper(),
                         child: CachedNetworkImage(
                           imageUrl: ImageOptimizer.getFullUrl(imageUrl, width: 600),
                           fit: BoxFit.cover,

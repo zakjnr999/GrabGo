@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurants_model.dart';
-import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
@@ -36,7 +37,21 @@ class NearbyRestaurantCard extends StatelessWidget {
                 topLeft: Radius.circular(KBorderSize.borderMedium),
                 bottomLeft: Radius.circular(KBorderSize.borderMedium),
               ),
-              child: CachedImageWidget(imageUrl: restaurant.imageUrl, height: 120.h, width: 100.w, fit: BoxFit.cover),
+              child: CachedNetworkImage(
+                imageUrl: ImageOptimizer.getPreviewUrl(restaurant.imageUrl, width: 300),
+                height: 120.h,
+                width: 100.w,
+                fit: BoxFit.cover,
+                memCacheWidth: 300,
+                maxHeightDiskCache: 600,
+                placeholder: (context, url) => Container(height: 120.h, width: 100.w, color: colors.inputBorder),
+                errorWidget: (context, url, error) => Container(
+                  height: 120.h,
+                  width: 100.w,
+                  color: colors.inputBorder,
+                  child: Icon(Icons.restaurant, color: colors.textSecondary),
+                ),
+              ),
             ),
             // Content
             Expanded(

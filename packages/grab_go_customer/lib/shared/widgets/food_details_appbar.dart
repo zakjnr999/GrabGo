@@ -8,7 +8,8 @@ import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
-import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
 import 'package:grab_go_customer/shared/services/food_share_link.dart';
 import 'package:provider/provider.dart';
 
@@ -39,10 +40,12 @@ class FoodDetailsAppBar extends StatelessWidget {
         background: Stack(
           fit: StackFit.expand,
           children: [
-            CachedImageWidget(
-              imageUrl: foodItem.image,
+            CachedNetworkImage(
+              imageUrl: ImageOptimizer.getFullUrl(foodItem.image, width: 1200),
               fit: BoxFit.cover,
-              placeholder: Container(
+              memCacheWidth: 800,
+              maxHeightDiskCache: 600,
+              placeholder: (context, url) => Container(
                 height: size.height * 0.40,
                 width: double.infinity,
                 color: colors.inputBorder,
@@ -53,7 +56,7 @@ class FoodDetailsAppBar extends StatelessWidget {
                   colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                 ),
               ),
-              errorWidget: Container(
+              errorWidget: (context, url, error) => Container(
                 height: size.height * 0.40,
                 width: double.infinity,
                 color: colors.inputBorder,

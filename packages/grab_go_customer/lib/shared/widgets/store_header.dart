@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_store.dart';
-import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
 
@@ -23,7 +24,6 @@ class StoreHeader extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
         child: Row(
           children: [
-            // Store Logo
             Container(
               width: 40.w,
               height: 40.h,
@@ -32,14 +32,32 @@ class StoreHeader extends StatelessWidget {
                 border: Border.all(color: colors.border.withValues(alpha: 0.1), width: 1),
               ),
               child: ClipOval(
-                child: CachedImageWidget(
-                  imageUrl: store.logo,
+                child: CachedNetworkImage(
+                  imageUrl: ImageOptimizer.getPreviewUrl(store.logo, width: 100),
                   width: 40.w,
                   height: 40.h,
                   fit: BoxFit.cover,
-                  errorWidget: Container(
+                  memCacheWidth: 100,
+                  maxHeightDiskCache: 200,
+                  placeholder: (context, url) => Container(
                     color: colors.backgroundSecondary,
-                    child: Icon(Icons.store, size: 20.sp, color: colors.textSecondary),
+                    child: SvgPicture.asset(
+                      Assets.icons.store,
+                      package: 'grab_go_shared',
+                      width: 20.w,
+                      height: 20.h,
+                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    color: colors.backgroundSecondary,
+                    child: SvgPicture.asset(
+                      Assets.icons.store,
+                      package: 'grab_go_shared',
+                      width: 20.w,
+                      height: 20.h,
+                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                    ),
                   ),
                 ),
               ),

@@ -1,9 +1,10 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurants_model.dart';
-import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
+import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:shimmer/shimmer.dart';
@@ -220,12 +221,14 @@ class _RestaurantListState extends State<RestaurantsNear> {
                       topLeft: Radius.circular(KBorderSize.borderRadius15),
                       bottomLeft: Radius.circular(KBorderSize.borderRadius15),
                     ),
-                    child: CachedImageWidget(
-                      imageUrl: restaurant.imageUrl,
+                    child: CachedNetworkImage(
+                      imageUrl: ImageOptimizer.getPreviewUrl(restaurant.imageUrl, width: 400),
                       height: size.height * 0.14,
                       width: size.width * 0.32,
                       fit: BoxFit.cover,
-                      placeholder: Container(
+                      memCacheWidth: 400,
+                      maxHeightDiskCache: 600,
+                      placeholder: (context, url) => Container(
                         height: size.height * 0.14,
                         width: size.width * 0.32,
                         color: colors.inputBorder,
@@ -236,7 +239,7 @@ class _RestaurantListState extends State<RestaurantsNear> {
                           colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                         ),
                       ),
-                      errorWidget: Container(
+                      errorWidget: (context, url, error) => Container(
                         height: size.height * 0.14,
                         width: size.width * 0.32,
                         color: colors.inputBorder,

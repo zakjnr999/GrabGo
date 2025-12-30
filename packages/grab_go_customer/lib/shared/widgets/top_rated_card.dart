@@ -51,31 +51,11 @@ class TopRatedCard extends StatelessWidget {
                     fit: BoxFit.cover,
                     memCacheWidth: 400,
                     maxHeightDiskCache: 800,
-                    placeholder: (context, url) => Container(
-                      height: 120.h,
-                      color: colors.inputBorder,
-                      child: Center(
-                        child: SvgPicture.asset(
-                          Assets.icons.utensilsCrossed,
-                          package: 'grab_go_shared',
-                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                          width: 30.w,
-                          height: 30.h,
-                        ),
-                      ),
-                    ),
+                    placeholder: (context, url) => Container(height: 120.h, color: colors.inputBorder),
                     errorWidget: (context, url, error) => Container(
                       height: 120.h,
                       color: colors.inputBorder,
-                      child: Center(
-                        child: SvgPicture.asset(
-                          Assets.icons.utensilsCrossed,
-                          package: 'grab_go_shared',
-                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                          width: 30.w,
-                          height: 30.h,
-                        ),
-                      ),
+                      child: Icon(Icons.error, color: colors.textSecondary),
                     ),
                   ),
                 ),
@@ -85,7 +65,7 @@ class TopRatedCard extends StatelessWidget {
                   child: Container(
                     padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                     decoration: BoxDecoration(
-                      color: Colors.amber,
+                      color: AppColors.accentGreen,
                       borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                     ),
                     child: Row(

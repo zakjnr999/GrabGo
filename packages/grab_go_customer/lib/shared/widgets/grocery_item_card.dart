@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
-import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
@@ -51,12 +52,14 @@ class GroceryItemCard extends StatelessWidget {
               ),
               child: Stack(
                 children: [
-                  CachedImageWidget(
-                    imageUrl: item.image,
+                  CachedNetworkImage(
+                    imageUrl: ImageOptimizer.getPreviewUrl(item.image, width: 300),
                     height: 110.h,
                     width: 110.w,
                     fit: BoxFit.cover,
-                    placeholder: Container(
+                    memCacheWidth: 300,
+                    maxHeightDiskCache: 600,
+                    placeholder: (context, url) => Container(
                       height: 110.h,
                       width: 110.w,
                       color: colors.inputBorder,
@@ -64,7 +67,7 @@ class GroceryItemCard extends StatelessWidget {
                         child: Icon(Icons.shopping_basket_outlined, color: colors.textSecondary, size: 30.sp),
                       ),
                     ),
-                    errorWidget: Container(
+                    errorWidget: (context, url, error) => Container(
                       height: 110.h,
                       width: 110.w,
                       color: colors.inputBorder,

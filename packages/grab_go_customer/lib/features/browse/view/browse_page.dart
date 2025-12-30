@@ -24,7 +24,7 @@ class BrowsePage extends StatefulWidget {
   State<BrowsePage> createState() => _BrowsePageState();
 }
 
-class _BrowsePageState extends State<BrowsePage> {
+class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMixin {
   String _selectedCategoryId = 'all'; // Use 'all' for All category
   final Set<String> _selectedQuickFilters = {}; // Support multiple filter selection
   String _sortBy = 'Recommended';
@@ -69,7 +69,11 @@ class _BrowsePageState extends State<BrowsePage> {
   ];
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
     final colors = context.appColors;
     final serviceProvider = Provider.of<ServiceProvider>(context);
 
@@ -218,7 +222,6 @@ class _BrowsePageState extends State<BrowsePage> {
               decoration: BoxDecoration(
                 color: colors.accentOrange.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20.r),
-                border: Border.all(color: colors.accentOrange.withValues(alpha: 0.3), width: 1),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -696,6 +699,12 @@ class _BrowsePageState extends State<BrowsePage> {
               setState(() {
                 _selectedQuickFilters.clear();
                 _selectedCategoryId = 'all';
+                _selectedPriceRange = null;
+                _selectedRating = null;
+                _selectedDeliveryTime = null;
+                _selectedDietary = null;
+                _selectedDistance = null;
+                _comprehensiveFilter.reset();
               });
             },
             child: Text(

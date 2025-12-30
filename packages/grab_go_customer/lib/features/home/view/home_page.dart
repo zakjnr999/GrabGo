@@ -226,7 +226,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 _buildServiceSelector(),
                 SizedBox(height: KSpacing.lg.h),
                 const ReferralBanner(),
-                SizedBox(height: KSpacing.lg.h),
                 HomeBanner(size: size),
                 SizedBox(height: KSpacing.lg.h),
 
