@@ -9,10 +9,13 @@ const {
   getFileUrl,
   uploadToCloudinary,
 } = require("../middleware/upload");
+const { cacheMiddleware, invalidateCache } = require("../middleware/cache");
+const cache = require("../utils/cache");
 
 const router = express.Router();
 
-router.get("/", async (req, res) => {
+// Get all foods with caching (5 minutes)
+router.get("/", cacheMiddleware(cache.CACHE_KEYS.FOOD_CATEGORIES, 300), async (req, res) => {
   try {
     const { restaurant, category, isAvailable } = req.query;
     let query = {};
@@ -52,7 +55,8 @@ router.get("/", async (req, res) => {
  * @desc    Get foods with active discounts
  * @access  Public
  */
-router.get("/deals", async (req, res) => {
+// Get deals with caching (2 minutes - more dynamic)
+router.get("/deals", cacheMiddleware(cache.CACHE_KEYS.FOOD_DEALS, 120), async (req, res) => {
   try {
     const now = new Date();
 
@@ -88,7 +92,8 @@ router.get("/deals", async (req, res) => {
 
 // Get popular food items (sorted by order count)
 // IMPORTANT: This must come BEFORE /:foodId route
-router.get("/popular", async (req, res) => {
+// Get popular items with caching (5 minutes)
+router.get("/popular", cacheMiddleware(cache.CACHE_KEYS.FOOD_POPULAR, 300), async (req, res) => {
   try {
     // Validate and sanitize limit parameter
     let { limit = 10 } = req.query;
@@ -128,7 +133,8 @@ router.get("/popular", async (req, res) => {
 
 // Get top-rated food items (sorted by rating)
 // IMPORTANT: This must come BEFORE /:foodId route
-router.get("/top-rated", async (req, res) => {
+// Get top-rated items with caching (10 minutes - stable data)
+router.get("/top-rated", cacheMiddleware(cache.CACHE_KEYS.FOOD_TOP_RATED, 600), async (req, res) => {
   try {
     // Validate and sanitize limit parameter
     let { limit = 10, minRating = 4.5 } = req.query;
@@ -355,6 +361,13 @@ router.post(
       await food.populate("category", "name");
       await food.populate("restaurant", "restaurant_name logo");
 
+      // Invalidate related caches
+      await invalidateCache([
+        cache.CACHE_KEYS.FOOD_CATEGORIES,
+        cache.CACHE_KEYS.FOOD_POPULAR,
+        cache.CACHE_KEYS.FOOD_DEALS,
+      ]);
+
       res.status(201).json({
         success: true,
         message: "Food created successfully",
@@ -371,7 +384,8 @@ router.post(
   }
 );
 
-router.get("/:foodId", async (req, res) => {
+// Get single food item with caching (10 minutes)
+router.get("/:foodId", cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM, 600), async (req, res) => {
   try {
     const food = await Food.findById(req.params.foodId)
       .populate("category", "name")
@@ -456,6 +470,15 @@ router.put(
       await food.populate("category", "name");
       await food.populate("restaurant", "restaurant_name logo");
 
+      // Invalidate all food caches
+      await invalidateCache([
+        cache.CACHE_KEYS.FOOD_CATEGORIES,
+        cache.CACHE_KEYS.FOOD_ITEM,
+        cache.CACHE_KEYS.FOOD_POPULAR,
+        cache.CACHE_KEYS.FOOD_TOP_RATED,
+        cache.CACHE_KEYS.FOOD_DEALS,
+      ]);
+
       res.json({
         success: true,
         message: "Food updated successfully",
@@ -471,43 +494,5 @@ router.put(
     }
   });
 
-// ==================== POPULAR ITEMS ====================
-
-// Get popular food items (sorted by order count)
-router.get("/popular", async (req, res) => {
-  try {
-    // Validate and sanitize limit parameter
-    let { limit = 10 } = req.query;
-    limit = parseInt(limit);
-
-    // Handle invalid input
-    if (isNaN(limit) || limit < 1) {
-      limit = 10;
-    }
-    // Cap at maximum 50 items
-    if (limit > 50) {
-      limit = 50;
-    }
-
-    const popularItems = await Food.find({ isAvailable: true })
-      .sort({ orderCount: -1, rating: -1 }) // Sort by order count, then rating
-      .limit(limit)
-      .populate('category', 'name')
-      .populate('restaurant', 'restaurant_name logo rating');
-
-    res.json({
-      success: true,
-      message: "Popular items retrieved successfully",
-      data: popularItems
-    });
-  } catch (error) {
-    console.error("Get popular items error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message
-    });
-  }
-});
 
 module.exports = router;

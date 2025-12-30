@@ -224,6 +224,13 @@ const close = async () => {
 const CACHE_KEYS = {
     STORIES: 'grabgo:stories',
     STATUS: 'grabgo:status',
+    // Food service cache keys
+    FOOD_CATEGORIES: 'grabgo:food:categories',
+    FOOD_DEALS: 'grabgo:food:deals',
+    FOOD_POPULAR: 'grabgo:food:popular',
+    FOOD_TOP_RATED: 'grabgo:food:toprated',
+    FOOD_BANNERS: 'grabgo:food:banners',
+    FOOD_ITEM: 'grabgo:food:item',
 };
 
 /**

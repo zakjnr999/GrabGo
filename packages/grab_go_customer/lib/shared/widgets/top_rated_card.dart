@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
-import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
+import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:provider/provider.dart';
@@ -43,11 +44,39 @@ class TopRatedCard extends StatelessWidget {
                     topLeft: Radius.circular(KBorderSize.borderMedium),
                     topRight: Radius.circular(KBorderSize.borderMedium),
                   ),
-                  child: CachedImageWidget(
-                    imageUrl: item.image,
+                  child: CachedNetworkImage(
+                    imageUrl: ImageOptimizer.getPreviewUrl(item.image, width: 400),
                     height: 120.h,
                     width: double.infinity,
                     fit: BoxFit.cover,
+                    memCacheWidth: 400,
+                    maxHeightDiskCache: 800,
+                    placeholder: (context, url) => Container(
+                      height: 120.h,
+                      color: colors.inputBorder,
+                      child: Center(
+                        child: SvgPicture.asset(
+                          Assets.icons.utensilsCrossed,
+                          package: 'grab_go_shared',
+                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                          width: 30.w,
+                          height: 30.h,
+                        ),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      height: 120.h,
+                      color: colors.inputBorder,
+                      child: Center(
+                        child: SvgPicture.asset(
+                          Assets.icons.utensilsCrossed,
+                          package: 'grab_go_shared',
+                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                          width: 30.w,
+                          height: 30.h,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
                 Positioned(

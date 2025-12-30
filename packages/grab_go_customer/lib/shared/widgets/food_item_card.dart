@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
-import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
+import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
@@ -46,12 +47,14 @@ class FoodItemCard extends StatelessWidget {
                 topLeft: Radius.circular(KBorderSize.borderRadius15),
                 bottomLeft: Radius.circular(KBorderSize.borderRadius15),
               ),
-              child: CachedImageWidget(
-                imageUrl: item.image,
+              child: CachedNetworkImage(
+                imageUrl: ImageOptimizer.getPreviewUrl(item.image, width: 400),
                 height: size.height * 0.14,
                 width: size.width * 0.32,
                 fit: BoxFit.cover,
-                placeholder: Container(
+                memCacheWidth: 400, // Optimize memory usage
+                maxHeightDiskCache: 800, // Limit disk cache size
+                placeholder: (context, url) => Container(
                   height: size.height * 0.14,
                   width: size.width * 0.32,
                   color: colors.inputBorder,
@@ -65,7 +68,7 @@ class FoodItemCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                errorWidget: Container(
+                errorWidget: (context, url, error) => Container(
                   height: size.height * 0.14,
                   width: size.width * 0.32,
                   color: colors.inputBorder,

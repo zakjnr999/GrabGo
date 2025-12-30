@@ -19,7 +19,7 @@ import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
-import 'cached_image_widget.dart';
+import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
 
 class HomeBanner extends StatefulWidget {
   const HomeBanner({super.key, required this.size});
@@ -74,7 +74,7 @@ class _HomeBannerState extends State<HomeBanner> {
       hasError = itemsProvider.error != null;
     }
 
-    if (isLoading) {
+    if (isLoading && itemsProvider.categories.isEmpty && groceryProvider.items.isEmpty) {
       return Shimmer.fromColors(
         baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
         highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
@@ -233,28 +233,14 @@ class _HomeBannerState extends State<HomeBanner> {
                         },
                         child: Stack(
                           children: [
-                            CachedImageWidget(
-                              imageUrl: food.image,
+                            CachedNetworkImage(
+                              imageUrl: ImageOptimizer.getFullUrl(food.image, width: 1200),
                               fit: BoxFit.cover,
                               width: double.infinity,
-                              overlay: Container(
-                                width: double.infinity,
-                                height: widget.size.height * 0.28,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      Colors.black.withOpacity(0.4),
-                                      Colors.transparent,
-                                      Colors.transparent,
-                                      Colors.black.withOpacity(0.7),
-                                    ],
-                                    stops: const [0.0, 0.25, 0.6, 1.0],
-                                  ),
-                                ),
-                              ),
-                              placeholder: Shimmer.fromColors(
+                              height: widget.size.height * 0.28,
+                              memCacheWidth: 800,
+                              maxHeightDiskCache: 600,
+                              placeholder: (context, url) => Shimmer.fromColors(
                                 baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
                                 highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
                                 child: Container(
@@ -266,12 +252,39 @@ class _HomeBannerState extends State<HomeBanner> {
                                   ),
                                 ),
                               ),
-                              errorWidget: Container(
+                              errorWidget: (context, url, error) => Container(
                                 width: double.infinity,
                                 height: widget.size.height * 0.28,
                                 decoration: BoxDecoration(
                                   color: isDark ? Colors.grey.shade800 : Colors.grey.shade600,
                                   borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                                ),
+                                child: Center(
+                                  child: SvgPicture.asset(
+                                    Assets.icons.utensilsCrossed,
+                                    package: 'grab_go_shared',
+                                    colorFilter: ColorFilter.mode(Colors.white.withOpacity(0.5), BlendMode.srcIn),
+                                    width: 40.w,
+                                    height: 40.h,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            // Gradient overlay for text readability
+                            Container(
+                              width: double.infinity,
+                              height: widget.size.height * 0.28,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.black.withOpacity(0.4),
+                                    Colors.transparent,
+                                    Colors.transparent,
+                                    Colors.black.withOpacity(0.7),
+                                  ],
+                                  stops: const [0.0, 0.25, 0.6, 1.0],
                                 ),
                               ),
                             ),

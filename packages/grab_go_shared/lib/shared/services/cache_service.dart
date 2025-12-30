@@ -7,9 +7,48 @@ class CacheService {
   static SharedPreferences? _prefs;
   static const Duration _defaultCacheExpiry = Duration(hours: 24);
 
+  /// Cache version - increment this when data structure changes
+  static const int CACHE_VERSION = 1;
+  static const String _cacheVersionKey = 'cache_version';
+
   /// Initialize the cache service
   static Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();
+    await _checkCacheVersion();
+  }
+
+  /// Check cache version and clear if mismatch
+  static Future<void> _checkCacheVersion() async {
+    try {
+      final storedVersion = _instance.getInt(_cacheVersionKey) ?? 0;
+
+      if (storedVersion != CACHE_VERSION) {
+        if (kDebugMode) {
+          print('⚠️ Cache version mismatch (stored: $storedVersion, current: $CACHE_VERSION)');
+          print('🗑️ Clearing all cache data...');
+        }
+
+        // Clear all cache data
+        await clearFoodCategoriesCache();
+        await clearRestaurantsCache();
+        await clearChatList();
+
+        // Update version
+        await _instance.setInt(_cacheVersionKey, CACHE_VERSION);
+
+        if (kDebugMode) {
+          print('✅ Cache cleared and version updated to $CACHE_VERSION');
+        }
+      } else {
+        if (kDebugMode) {
+          print('✅ Cache version $CACHE_VERSION is current');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error checking cache version: $e');
+      }
+    }
   }
 
   /// Get SharedPreferences instance
@@ -247,6 +286,170 @@ class CacheService {
       return now.difference(cacheTime) < _defaultCacheExpiry;
     } catch (e) {
       debugPrint('Error checking food categories cache validity: $e');
+      return false;
+    }
+  }
+
+  /// Save food deals
+  static Future<bool> saveFoodDeals(List<Map<String, dynamic>> deals) async {
+    try {
+      final dealsJson = jsonEncode(deals);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      await _instance.setString('food_deals', dealsJson);
+      await _instance.setInt('food_deals_cache_timestamp', timestamp);
+      return true;
+    } catch (e) {
+      debugPrint('Error saving food deals: $e');
+      return false;
+    }
+  }
+
+  /// Get food deals
+  static List<Map<String, dynamic>> getFoodDeals() {
+    try {
+      final dealsJson = _instance.getString('food_deals');
+      if (dealsJson != null) {
+        final List<dynamic> dealsList = jsonDecode(dealsJson);
+        return dealsList.cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting food deals: $e');
+      return [];
+    }
+  }
+
+  /// Check if food deals cache is valid
+  static bool isFoodDealsCacheValid() {
+    try {
+      final timestamp = _instance.getInt('food_deals_cache_timestamp') ?? 0;
+      final cacheTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
+      final now = DateTime.now();
+      return now.difference(cacheTime) < _defaultCacheExpiry;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Save popular items
+  static Future<bool> savePopularItems(List<Map<String, dynamic>> items) async {
+    try {
+      final itemsJson = jsonEncode(items);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      await _instance.setString('popular_items', itemsJson);
+      await _instance.setInt('popular_items_cache_timestamp', timestamp);
+      return true;
+    } catch (e) {
+      debugPrint('Error saving popular items: $e');
+      return false;
+    }
+  }
+
+  /// Get popular items
+  static List<Map<String, dynamic>> getPopularItems() {
+    try {
+      final itemsJson = _instance.getString('popular_items');
+      if (itemsJson != null) {
+        final List<dynamic> itemsList = jsonDecode(itemsJson);
+        return itemsList.cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting popular items: $e');
+      return [];
+    }
+  }
+
+  /// Check if popular items cache is valid
+  static bool isPopularItemsCacheValid() {
+    try {
+      final timestamp = _instance.getInt('popular_items_cache_timestamp') ?? 0;
+      final cacheTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
+      final now = DateTime.now();
+      return now.difference(cacheTime) < _defaultCacheExpiry;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Save top rated items
+  static Future<bool> saveTopRatedItems(List<Map<String, dynamic>> items) async {
+    try {
+      final itemsJson = jsonEncode(items);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      await _instance.setString('top_rated_items', itemsJson);
+      await _instance.setInt('top_rated_items_cache_timestamp', timestamp);
+      return true;
+    } catch (e) {
+      debugPrint('Error saving top rated items: $e');
+      return false;
+    }
+  }
+
+  /// Get top rated items
+  static List<Map<String, dynamic>> getTopRatedItems() {
+    try {
+      final itemsJson = _instance.getString('top_rated_items');
+      if (itemsJson != null) {
+        final List<dynamic> itemsList = jsonDecode(itemsJson);
+        return itemsList.cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting top rated items: $e');
+      return [];
+    }
+  }
+
+  /// Check if top rated items cache is valid
+  static bool isTopRatedItemsCacheValid() {
+    try {
+      final timestamp = _instance.getInt('top_rated_items_cache_timestamp') ?? 0;
+      final cacheTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
+      final now = DateTime.now();
+      return now.difference(cacheTime) < _defaultCacheExpiry;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Save promotional banners
+  static Future<bool> savePromotionalBanners(List<Map<String, dynamic>> banners) async {
+    try {
+      final bannersJson = jsonEncode(banners);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      await _instance.setString('promotional_banners', bannersJson);
+      await _instance.setInt('promotional_banners_cache_timestamp', timestamp);
+      return true;
+    } catch (e) {
+      debugPrint('Error saving promotional banners: $e');
+      return false;
+    }
+  }
+
+  /// Get promotional banners
+  static List<Map<String, dynamic>> getPromotionalBanners() {
+    try {
+      final bannersJson = _instance.getString('promotional_banners');
+      if (bannersJson != null) {
+        final List<dynamic> bannersList = jsonDecode(bannersJson);
+        return bannersList.cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting promotional banners: $e');
+      return [];
+    }
+  }
+
+  /// Check if promotional banners cache is valid
+  static bool isPromotionalBannersCacheValid() {
+    try {
+      final timestamp = _instance.getInt('promotional_banners_cache_timestamp') ?? 0;
+      final cacheTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
+      final now = DateTime.now();
+      return now.difference(cacheTime) < _defaultCacheExpiry;
+    } catch (e) {
       return false;
     }
   }

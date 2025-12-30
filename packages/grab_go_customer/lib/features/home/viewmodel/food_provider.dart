@@ -276,38 +276,88 @@ class FoodProvider with ChangeNotifier {
 
   /// Fetch promotional banners
   Future<void> fetchPromotionalBanners() async {
+    // Try loading from cache first
+    if (_promotionalBanners.isEmpty && CacheService.isPromotionalBannersCacheValid()) {
+      _loadPromotionalBannersFromCache();
+      if (_promotionalBanners.isNotEmpty) {
+        notifyListeners();
+        return;
+      }
+    }
+
     _isLoadingBanners = true;
     notifyListeners();
 
     try {
       _promotionalBanners = await FoodRepository().fetchPromotionalBanners();
+      _savePromotionalBannersToCache();
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error fetching promotional banners: $e');
       }
-      _promotionalBanners = [];
+      // Try loading from cache on error
+      _loadPromotionalBannersFromCache();
     } finally {
       _isLoadingBanners = false;
       notifyListeners();
     }
   }
 
+  void _loadPromotionalBannersFromCache() {
+    try {
+      final cached = CacheService.getPromotionalBanners();
+      _promotionalBanners = cached.map((json) => PromotionalBanner.fromJson(json)).toList();
+    } catch (e) {
+      _promotionalBanners = [];
+    }
+  }
+
+  void _savePromotionalBannersToCache() {
+    final bannersJson = _promotionalBanners.map((banner) => banner.toJson()).toList();
+    CacheService.savePromotionalBanners(bannersJson);
+  }
+
   /// Fetch food deals
   Future<void> fetchDeals() async {
+    // Try loading from cache first
+    if (_dealItems.isEmpty && CacheService.isFoodDealsCacheValid()) {
+      _loadDealsFromCache();
+      if (_dealItems.isNotEmpty) {
+        notifyListeners();
+        return;
+      }
+    }
+
     _isLoadingDeals = true;
     notifyListeners();
 
     try {
       _dealItems = await FoodRepository().fetchDeals();
+      _saveDealsToCache();
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error fetching deals: $e');
       }
-      _dealItems = [];
+      // Try loading from cache on error
+      _loadDealsFromCache();
     } finally {
       _isLoadingDeals = false;
       notifyListeners();
     }
+  }
+
+  void _loadDealsFromCache() {
+    try {
+      final cached = CacheService.getFoodDeals();
+      _dealItems = cached.map((json) => FoodItem.fromJson(json)).toList();
+    } catch (e) {
+      _dealItems = [];
+    }
+  }
+
+  void _saveDealsToCache() {
+    final dealsJson = _dealItems.map((deal) => deal.toJson()).toList();
+    CacheService.saveFoodDeals(dealsJson);
   }
 
   /// Fetch order history for Order Again section
@@ -347,37 +397,87 @@ class FoodProvider with ChangeNotifier {
 
   /// Fetch popular food items sorted by order count
   Future<void> fetchPopularItems() async {
+    // Try loading from cache first
+    if (_popularItems.isEmpty && CacheService.isPopularItemsCacheValid()) {
+      _loadPopularItemsFromCache();
+      if (_popularItems.isNotEmpty) {
+        notifyListeners();
+        return;
+      }
+    }
+
     _isLoadingPopular = true;
     notifyListeners();
 
     try {
       _popularItems = await FoodRepository().fetchPopularItems(limit: 10);
+      _savePopularItemsToCache();
     } catch (e) {
       if (kDebugMode) {
         print('Error fetching popular items: $e');
       }
-      _popularItems = [];
+      // Try loading from cache on error
+      _loadPopularItemsFromCache();
     } finally {
       _isLoadingPopular = false;
       notifyListeners();
     }
   }
 
+  void _loadPopularItemsFromCache() {
+    try {
+      final cached = CacheService.getPopularItems();
+      _popularItems = cached.map((json) => FoodItem.fromJson(json)).toList();
+    } catch (e) {
+      _popularItems = [];
+    }
+  }
+
+  void _savePopularItemsToCache() {
+    final itemsJson = _popularItems.map((item) => item.toJson()).toList();
+    CacheService.savePopularItems(itemsJson);
+  }
+
   /// Fetch top-rated food items sorted by rating
   Future<void> fetchTopRatedItems() async {
+    // Try loading from cache first
+    if (_topRatedItems.isEmpty && CacheService.isTopRatedItemsCacheValid()) {
+      _loadTopRatedItemsFromCache();
+      if (_topRatedItems.isNotEmpty) {
+        notifyListeners();
+        return;
+      }
+    }
+
     _isLoadingTopRated = true;
     notifyListeners();
 
     try {
       _topRatedItems = await FoodRepository().fetchTopRatedItems(limit: 10, minRating: 4.5);
+      _saveTopRatedItemsToCache();
     } catch (e) {
       if (kDebugMode) {
         print('Error fetching top rated items: $e');
       }
-      _topRatedItems = [];
+      // Try loading from cache on error
+      _loadTopRatedItemsFromCache();
     } finally {
       _isLoadingTopRated = false;
       notifyListeners();
     }
+  }
+
+  void _loadTopRatedItemsFromCache() {
+    try {
+      final cached = CacheService.getTopRatedItems();
+      _topRatedItems = cached.map((json) => FoodItem.fromJson(json)).toList();
+    } catch (e) {
+      _topRatedItems = [];
+    }
+  }
+
+  void _saveTopRatedItemsToCache() {
+    final itemsJson = _topRatedItems.map((item) => item.toJson()).toList();
+    CacheService.saveTopRatedItems(itemsJson);
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class PromoBannerCard extends StatelessWidget {
@@ -95,7 +96,17 @@ class PromoBannerCard extends StatelessWidget {
                           topRight: Radius.circular(KBorderSize.borderMedium),
                           bottomRight: Radius.circular(KBorderSize.borderMedium),
                         ),
-                        child: CachedImageWidget(imageUrl: imageUrl, fit: BoxFit.cover),
+                        child: CachedNetworkImage(
+                          imageUrl: ImageOptimizer.getFullUrl(imageUrl, width: 600),
+                          fit: BoxFit.cover,
+                          memCacheWidth: 600,
+                          maxHeightDiskCache: 400,
+                          placeholder: (context, url) => Container(color: Colors.grey.shade200),
+                          errorWidget: (context, url, error) => Container(
+                            color: Colors.grey.shade200,
+                            child: Icon(Icons.error, color: Colors.grey),
+                          ),
+                        ),
                       ),
                     ),
                     // Discount badge (only show if discount is not empty)
