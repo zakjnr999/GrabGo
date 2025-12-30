@@ -219,13 +219,13 @@ const validateFCMToken = (token) => {
         return false;
     }
 
-    // FCM tokens are typically 152-163 characters
-    if (token.length < 100 || token.length > 200) {
+    // FCM tokens can be long (especially V1 tokens)
+    if (token.length < 100 || token.length > 500) {
         return false;
     }
 
-    // Should contain only alphanumeric, hyphens, underscores, colons
-    if (!/^[A-Za-z0-9_:-]+$/.test(token)) {
+    // Should contain only alphanumeric, hyphens, underscores, colons, dots
+    if (!/^[A-Za-z0-9_:-.]+$/.test(token)) {
         return false;
     }
 
@@ -251,13 +251,13 @@ const validateDeviceId = (deviceId) => {
         return false;
     }
 
-    // Device IDs should be reasonable length
-    if (deviceId.length < 10 || deviceId.length > 100) {
+    // Device IDs should be reasonable length (some platform IDs can be long)
+    if (deviceId.length < 3 || deviceId.length > 255) {
         return false;
     }
 
-    // Should contain only safe characters
-    if (!/^[A-Za-z0-9_-]+$/.test(deviceId)) {
+    // Should contain only safe characters (allowing dots, colons, and etc for broad compatibility)
+    if (!/^[A-Za-z0-9_:\-.]+$/.test(deviceId)) {
         return false;
     }
 
