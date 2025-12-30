@@ -116,7 +116,12 @@ cartSchema.index({
 cartSchema.pre('save', function (next) {
     this.itemCount = this.items.reduce((sum, item) => sum + item.quantity, 0);
     this.totalAmount = this.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    this.lastUpdatedAt = new Date();
+
+    // Only update lastUpdatedAt if items were modified (not when just updating metadata like abandonmentNotificationSent)
+    if (this.isModified('items')) {
+        this.lastUpdatedAt = new Date();
+    }
+
     next();
 });
 
