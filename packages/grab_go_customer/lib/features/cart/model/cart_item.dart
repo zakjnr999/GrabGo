@@ -10,7 +10,8 @@ import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
 
 class CartItem extends StatefulWidget {
   const CartItem({super.key});
@@ -194,12 +195,14 @@ class _CartItemState extends State<CartItem> {
                           topLeft: Radius.circular(KBorderSize.borderRadius15),
                           bottomLeft: Radius.circular(KBorderSize.borderRadius15),
                         ),
-                        child: CachedImageWidget(
-                          imageUrl: cartItem.image,
+                        child: CachedNetworkImage(
+                          imageUrl: ImageOptimizer.getPreviewUrl(cartItem.image, width: 300),
                           height: size.height * 0.14,
                           width: size.width * 0.32,
                           fit: BoxFit.cover,
-                          placeholder: Container(
+                          memCacheWidth: 300,
+                          maxHeightDiskCache: 400,
+                          placeholder: (context, url) => Container(
                             height: size.height * 0.14,
                             width: size.width * 0.32,
                             color: colors.inputBorder,
@@ -211,6 +214,14 @@ class _CartItemState extends State<CartItem> {
                                 width: 30.w,
                                 height: 30.h,
                               ),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            height: size.height * 0.14,
+                            width: size.width * 0.32,
+                            color: colors.inputBorder,
+                            child: Center(
+                              child: Icon(Icons.broken_image, color: colors.textSecondary, size: 30.sp),
                             ),
                           ),
                         ),

@@ -4,19 +4,20 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
-import 'package:grab_go_customer/shared/widgets/food_details_appbar.dart';
-import 'package:grab_go_customer/shared/widgets/grocery_item_card.dart';
+import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
 import 'package:provider/provider.dart';
 import 'package:readmore/readmore.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
+import 'package:grab_go_customer/shared/widgets/food_details_appbar.dart';
+import 'package:grab_go_customer/shared/widgets/grocery_item_card.dart';
 
 class FoodDetails extends StatefulWidget {
   const FoodDetails({super.key, this.foodItem, this.groceryItem})
@@ -378,12 +379,17 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                               border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 2),
                                             ),
                                             child: ClipOval(
-                                              child: CachedImageWidget(
-                                                imageUrl: widget.foodItem!.restaurantImage,
+                                              child: CachedNetworkImage(
+                                                imageUrl: ImageOptimizer.getPreviewUrl(
+                                                  widget.foodItem!.restaurantImage,
+                                                  width: 200,
+                                                ),
                                                 width: size.width * 0.14,
                                                 height: size.width * 0.14,
                                                 fit: BoxFit.cover,
-                                                placeholder: Container(
+                                                memCacheWidth: 200,
+                                                maxHeightDiskCache: 200,
+                                                placeholder: (context, url) => Container(
                                                   width: size.width * 0.14,
                                                   height: size.width * 0.14,
                                                   decoration: BoxDecoration(
@@ -403,7 +409,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                                     ),
                                                   ),
                                                 ),
-                                                errorWidget: Container(
+                                                errorWidget: (context, url, error) => Container(
                                                   width: size.width * 0.14,
                                                   height: size.width * 0.14,
                                                   decoration: BoxDecoration(
@@ -986,11 +992,13 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
               child: SizedBox(
                 height: 100.h,
                 width: double.infinity,
-                child: CachedImageWidget(
-                  imageUrl: item.image,
+                child: CachedNetworkImage(
+                  imageUrl: ImageOptimizer.getPreviewUrl(item.image, width: 400),
                   height: 100.h,
                   fit: BoxFit.cover,
-                  placeholder: Container(
+                  memCacheWidth: 400,
+                  maxHeightDiskCache: 400,
+                  placeholder: (context, url) => Container(
                     color: colors.inputBorder,
                     child: Center(
                       child: SvgPicture.asset(
@@ -1000,6 +1008,12 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                         width: 30.w,
                         height: 30.h,
                       ),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    color: colors.inputBorder,
+                    child: Center(
+                      child: Icon(Icons.broken_image, color: colors.textSecondary, size: 30.sp),
                     ),
                   ),
                 ),

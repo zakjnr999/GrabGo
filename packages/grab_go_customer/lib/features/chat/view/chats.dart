@@ -629,105 +629,49 @@ class _ChatsState extends State<Chats> {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: isDark ? Brightness.dark : Brightness.light,
-        systemNavigationBarColor: colors.backgroundPrimary,
-        systemNavigationBarDividerColor: Colors.transparent,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-      ),
-      child: Scaffold(
-        backgroundColor: colors.backgroundSecondary,
-        appBar: AppBar(
-          backgroundColor: colors.backgroundSecondary,
-          elevation: 0,
-          leading: SizedBox(width: 44.w),
-          title: Container(
-            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-            decoration: BoxDecoration(
-              color: colors.backgroundPrimary,
-              borderRadius: BorderRadius.circular(20.r),
-              border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-              boxShadow: [
-                BoxShadow(
-                  color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                  spreadRadius: 0,
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: EdgeInsets.all(6.r),
-                  decoration: BoxDecoration(color: colors.accentGreen.withValues(alpha: 0.1), shape: BoxShape.circle),
-                  child: SvgPicture.asset(
-                    Assets.icons.chatBubble,
-                    package: 'grab_go_shared',
-                    height: 16.h,
-                    width: 16.w,
-                    colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
-                  ),
-                ),
-                SizedBox(width: 8.w),
-                Text(
-                  "Chats",
-                  style: TextStyle(
-                    fontFamily: "Lato",
-                    package: 'grab_go_shared',
-                    color: colors.textPrimary,
-                    fontSize: 17.sp,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          centerTitle: true,
-        ),
-        body: Column(
+    final systemUiOverlayStyle = SystemUiOverlayStyle(
+      statusBarColor: Theme.of(context).scaffoldBackgroundColor,
+      statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      systemNavigationBarColor: colors.backgroundPrimary,
+      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+    );
+
+    SystemChrome.setSystemUIOverlayStyle(systemUiOverlayStyle);
+
+    return Scaffold(
+      backgroundColor: colors.backgroundSecondary,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: colors.backgroundPrimary,
-                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                  border: Border.all(color: colors.border, width: 1),
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: "Search conversations...",
-                    hintStyle: TextStyle(color: colors.textSecondary.withValues(alpha: 0.6), fontSize: 14.sp),
-                    prefixIcon: Padding(
-                      padding: EdgeInsets.all(12.w),
-                      child: SvgPicture.asset(
-                        Assets.icons.search,
-                        package: 'grab_go_shared',
-                        width: 20.w,
-                        height: 20.w,
-                        colorFilter: ColorFilter.mode(colors.textSecondary.withValues(alpha: 0.6), BlendMode.srcIn),
-                      ),
-                    ),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: Icon(Icons.clear, size: 20.w, color: colors.textSecondary),
-                            onPressed: () {
-                              _searchController.clear();
-                            },
-                          )
-                        : null,
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
-                  ),
-                  style: TextStyle(color: colors.textPrimary, fontSize: 14.sp),
+            SizedBox(height: 16.h),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.w),
+              child: Text(
+                "Chats",
+                style: TextStyle(
+                  fontFamily: "Lato",
+                  package: 'grab_go_shared',
+                  color: colors.textPrimary,
+                  fontSize: 24.sp,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.w),
+              child: Text(
+                "Message your rider about your delivery.",
+                style: TextStyle(
+                  fontFamily: "Lato",
+                  package: 'grab_go_shared',
+                  color: colors.textSecondary,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ),
+            SizedBox(height: 16.h),
 
             if (_connectionState == SocketConnectionState.reconnecting ||
                 _connectionState == SocketConnectionState.connecting)

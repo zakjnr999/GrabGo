@@ -208,9 +208,24 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
         children: [
           // Browse Title
           Expanded(
-            child: Text(
-              'Browse',
-              style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Browse',
+                  style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                ),
+                Text(
+                  "What are you craving today?",
+                  style: TextStyle(
+                    fontFamily: "Lato",
+                    package: 'grab_go_shared',
+                    color: colors.textSecondary,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
             ),
           ),
           SizedBox(width: 12.w),

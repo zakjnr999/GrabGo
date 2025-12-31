@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:photo_view/photo_view.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ViewProfile extends StatelessWidget {
   final User user;
@@ -22,7 +23,7 @@ class ViewProfile extends StatelessWidget {
         child: SafeArea(
           child: Center(
             child: PhotoView(
-              imageProvider: NetworkImage(user.profilePicture.toString()),
+              imageProvider: CachedNetworkImageProvider(user.profilePicture.toString()),
               minScale: PhotoViewComputedScale.contained,
               maxScale: PhotoViewComputedScale.contained * 4,
               initialScale: PhotoViewComputedScale.contained,
@@ -36,21 +37,3 @@ class ViewProfile extends StatelessWidget {
     );
   }
 }
-
-
-// child: CachedImageWidget(
-//                 imageUrl: user.profilePicture.toString(),
-//                 width: double.infinity,
-//                 height: size.height * 0.5,
-//                 fit: BoxFit.cover,
-//                 placeholder: Container(
-//                   width: double.infinity,
-//                   height: size.height * 0.5,
-//                   child: SvgPicture.asset(Assets.icons.noProfile.path),
-//                 ),
-//                 errorWidget: Assets.icons.noProfile.image(
-//                   width: double.infinity,
-//                   height: size.height * 0.5,
-//                   fit: BoxFit.cover,
-//                 ),
-//               ),

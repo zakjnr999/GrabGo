@@ -6,7 +6,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
-import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
@@ -185,17 +186,20 @@ class _EditProfileState extends State<EditProfile> {
                     child: Padding(
                       padding: EdgeInsets.all(size.width * 0.01),
                       child: ClipOval(
-                        child: CachedImageWidget(
+                        child: CachedNetworkImage(
                           height: size.width * 0.35,
                           width: size.width * 0.35,
-                          imageUrl: _user?.profilePicture ?? "",
-                          placeholder: Assets.icons.noProfile.image(
+                          imageUrl: ImageOptimizer.getPreviewUrl(_user?.profilePicture ?? "", width: 400),
+                          fit: BoxFit.cover,
+                          memCacheWidth: 400,
+                          maxHeightDiskCache: 400,
+                          placeholder: (context, url) => Assets.icons.noProfile.image(
                             height: size.width * 0.35,
                             width: size.width * 0.35,
                             fit: BoxFit.cover,
                             package: 'grab_go_shared',
                           ),
-                          errorWidget: Assets.icons.noProfile.image(
+                          errorWidget: (context, url, error) => Assets.icons.noProfile.image(
                             height: size.width * 0.35,
                             width: size.width * 0.35,
                             fit: BoxFit.cover,

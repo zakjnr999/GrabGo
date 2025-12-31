@@ -61,61 +61,34 @@ class _RestaurantsState extends State<Restaurants> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              SizedBox(height: 16.h),
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(10.r),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [colors.accentViolet, colors.accentViolet.withOpacity(0.8)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: colors.accentViolet.withOpacity(0.3),
-                            spreadRadius: 0,
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: SvgPicture.asset(
-                        Assets.icons.chefHat,
-                        package: 'grab_go_shared',
-                        height: 24.h,
-                        width: 24.w,
-                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                      ),
-                    ),
-                    SizedBox(width: 12.w),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "$greeting!",
-                            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
-                          ),
-                          SizedBox(height: 2.h),
-                          Text(
-                            "Find Your Restaurant",
-                            style: TextStyle(
-                              fontFamily: "Lato",
-                              color: colors.textPrimary,
-                              fontSize: 20.sp,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                padding: EdgeInsets.symmetric(horizontal: 20.w),
+                child: Text(
+                  "Vendors",
+                  style: TextStyle(
+                    fontFamily: "Lato",
+                    package: 'grab_go_shared',
+                    color: colors.textPrimary,
+                    fontSize: 24.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20.w),
+                child: Text(
+                  "Order from trusted local food vendors near you.",
+                  style: TextStyle(
+                    fontFamily: "Lato",
+                    package: 'grab_go_shared',
+                    color: colors.textSecondary,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ),
+              SizedBox(height: 12.h),
               RestaurantSearch(
                 onSearchChanged: (query) {
                   setState(() {

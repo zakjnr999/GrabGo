@@ -5,11 +5,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:intl/intl.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/features/order/viewmodel/order_provider.dart';
-import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
 import 'package:provider/provider.dart';
 
 class OrderModel {
@@ -592,13 +593,22 @@ class _OrdersState extends State<Orders> {
           SizedBox(height: 16.h),
           Row(
             children: [
-              CachedImageWidget(
-                imageUrl: order.restaurantLogo ?? '',
+              CachedNetworkImage(
+                imageUrl: ImageOptimizer.getPreviewUrl(order.restaurantLogo ?? '', width: 200),
                 width: 60.w,
                 height: 60.h,
                 fit: BoxFit.cover,
-                borderRadius: BorderRadius.circular(12.r),
-                placeholder: Container(
+                memCacheWidth: 200,
+                maxHeightDiskCache: 200,
+                imageBuilder: (context, imageProvider) => Container(
+                  width: 60.w,
+                  height: 60.h,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12.r),
+                    image: DecorationImage(image: imageProvider, fit: BoxFit.cover),
+                  ),
+                ),
+                placeholder: (context, url) => Container(
                   width: 60.w,
                   height: 60.h,
                   padding: EdgeInsets.all(10.r),
@@ -612,7 +622,7 @@ class _OrdersState extends State<Orders> {
                     colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                   ),
                 ),
-                errorWidget: ClipRRect(
+                errorWidget: (context, url, error) => ClipRRect(
                   borderRadius: BorderRadius.circular(12.r),
                   child: Assets.images.sampleOne.image(
                     width: 60.w,

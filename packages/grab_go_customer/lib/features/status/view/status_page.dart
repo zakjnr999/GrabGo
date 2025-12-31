@@ -3,7 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:grab_go_customer/shared/widgets/cached_image_widget.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:grab_go_customer/features/status/model/status_model.dart';
@@ -322,10 +323,12 @@ class _StatusPageState extends State<StatusPage> {
             color: ringColor,
             backgroundColor: colors.backgroundPrimary,
             child: story.logo != null
-                ? CachedImageWidget(
-                    imageUrl: story.logo!,
+                ? CachedNetworkImage(
+                    imageUrl: ImageOptimizer.getPreviewUrl(story.logo!, width: 200),
                     fit: BoxFit.cover,
-                    placeholder: Container(
+                    memCacheWidth: 200,
+                    maxHeightDiskCache: 200,
+                    placeholder: (context, url) => Container(
                       height: 20.h,
                       width: 20.w,
                       padding: EdgeInsets.all(20.r),
@@ -335,7 +338,7 @@ class _StatusPageState extends State<StatusPage> {
                         colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                       ),
                     ),
-                    errorWidget: Container(
+                    errorWidget: (context, url, error) => Container(
                       height: 20.h,
                       width: 20.w,
                       padding: EdgeInsets.all(20.r),
@@ -469,12 +472,14 @@ class _StatusPageState extends State<StatusPage> {
                 topLeft: Radius.circular(KBorderSize.borderRadius15),
                 topRight: Radius.circular(KBorderSize.borderRadius15),
               ),
-              child: CachedImageWidget(
-                imageUrl: status.mediaUrl,
+              child: CachedNetworkImage(
+                imageUrl: ImageOptimizer.getPreviewUrl(status.mediaUrl, width: 400),
                 height: 90.h,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                placeholder: Container(
+                memCacheWidth: 400,
+                maxHeightDiskCache: 400,
+                placeholder: (context, url) => Container(
                   height: 90.h,
                   width: double.infinity,
                   color: colors.inputBorder,
@@ -487,7 +492,7 @@ class _StatusPageState extends State<StatusPage> {
                     colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                   ),
                 ),
-                errorWidget: Container(
+                errorWidget: (context, url, error) => Container(
                   height: 90.h,
                   width: double.infinity,
                   color: colors.inputBorder,
