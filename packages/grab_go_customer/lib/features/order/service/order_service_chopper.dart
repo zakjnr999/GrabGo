@@ -18,7 +18,7 @@ abstract class OrderServiceChopper extends ChopperService {
   static OrderServiceChopper create([ChopperClient? client]) => _$OrderServiceChopper(client);
 }
 
-@JsonSerializable()
+@JsonSerializable(explicitToJson: true)
 class CreateOrderRequest {
   final String orderNumber;
   final String restaurant;
@@ -62,8 +62,9 @@ class OrderItem {
   final String food;
   final int quantity;
   final double price;
+  final String itemType; // 'food' or 'grocery'
 
-  OrderItem({required this.food, required this.quantity, required this.price});
+  OrderItem({required this.food, required this.quantity, required this.price, required this.itemType});
 
   Map<String, dynamic> toJson() => _$OrderItemToJson(this);
   factory OrderItem.fromJson(Map<String, dynamic> json) => _$OrderItemFromJson(json);

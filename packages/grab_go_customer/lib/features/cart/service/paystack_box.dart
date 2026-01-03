@@ -27,18 +27,13 @@ class PaystackService {
       customerEmail: email.trim(),
       reference: reference,
       currency: currency,
-      amount: amount,
+      amount: amount * 100, // Convert to pesewas (kobo) - Paystack requires smallest currency unit
       callbackUrl: "https://google.com",
       transactionCompleted: (paymentData) {
         debugPrint("✅ Transaction completed: $paymentData");
         context.go(
           "/paymentComplete",
-          extra: {
-            "method": method,
-            "total": total,
-            "subTotal": subTotal,
-            "deliveryFee": deliveryFee,
-          },
+          extra: {"method": method, "total": total, "subTotal": subTotal, "deliveryFee": deliveryFee},
         );
       },
       transactionNotCompleted: (reason) {
@@ -48,5 +43,3 @@ class PaystackService {
     );
   }
 }
-
-

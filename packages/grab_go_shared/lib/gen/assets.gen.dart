@@ -130,6 +130,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/cart.svg
   String get cart => 'lib/assets/icons/cart.svg';
 
+  /// File path: lib/assets/icons/cash.svg
+  String get cash => 'lib/assets/icons/cash.svg';
+
   /// File path: lib/assets/icons/cc.png
   AssetGenImage get cc => const AssetGenImage('lib/assets/icons/cc.png');
 
@@ -249,6 +252,9 @@ class $LibAssetsIconsGen {
 
   /// File path: lib/assets/icons/half-moon.svg
   String get halfMoon => 'lib/assets/icons/half-moon.svg';
+
+  /// File path: lib/assets/icons/hand-cash.svg
+  String get handCash => 'lib/assets/icons/hand-cash.svg';
 
   /// File path: lib/assets/icons/headset-help.svg
   String get headsetHelp => 'lib/assets/icons/headset-help.svg';
@@ -523,6 +529,7 @@ class $LibAssetsIconsGen {
     calendar,
     camera,
     cart,
+    cash,
     cc,
     chatBubbleSolid,
     chatBubble,
@@ -561,6 +568,7 @@ class $LibAssetsIconsGen {
     google,
     group,
     halfMoon,
+    handCash,
     headsetHelp,
     heartSolid,
     heart,

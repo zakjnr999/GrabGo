@@ -169,7 +169,7 @@ class Notification extends StatefulWidget {
   State<Notification> createState() => _NotificationState();
 }
 
-class _NotificationState extends State<Notification> {
+class _NotificationState extends State<Notification> with SingleTickerProviderStateMixin {
   List<NotificationModel> _notifications = [];
   bool _isLoading = false;
   bool _isLoadingMore = false;
@@ -180,10 +180,21 @@ class _NotificationState extends State<Notification> {
   final ScrollController _scrollController = ScrollController();
   bool isSocketConnected = false;
   late final void Function(dynamic) _notificationListener;
+  late TabController _tabController;
+  int _selectedTabIndex = 0;
+  final List<String> _notificationTabs = ["All", "Orders", "Promos", "Updates"];
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {
+          _selectedTabIndex = _tabController.index;
+        });
+      }
+    });
     _notificationListener = _handleNewNotification;
     _loadInitialData();
     _scrollController.addListener(_onScroll);
@@ -206,6 +217,7 @@ class _NotificationState extends State<Notification> {
 
   @override
   void dispose() {
+    _tabController.dispose();
     _scrollController.dispose();
     SocketService().removeNotificationListener(_notificationListener);
     super.dispose();
@@ -340,6 +352,24 @@ class _NotificationState extends State<Notification> {
     }
   }
 
+  List<NotificationModel> _getFilteredNotifications() {
+    if (_selectedTabIndex == 0) {
+      // All notifications
+      return _notifications;
+    } else if (_selectedTabIndex == 1) {
+      // Orders
+      return _notifications.where((n) => n.type == NotificationType.order).toList();
+    } else if (_selectedTabIndex == 2) {
+      // Promos
+      return _notifications.where((n) => n.type == NotificationType.promo).toList();
+    } else {
+      // Updates
+      return _notifications
+          .where((n) => n.type == NotificationType.update || n.type == NotificationType.system)
+          .toList();
+    }
+  }
+
   String _getTimeAgo(DateTime timestamp) {
     final now = DateTime.now();
     final difference = now.difference(timestamp);
@@ -436,184 +466,148 @@ class _NotificationState extends State<Notification> {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final padding = MediaQuery.paddingOf(context);
+
+    final systemUiOverlayStyle = SystemUiOverlayStyle(
+      statusBarColor: colors.backgroundSecondary,
+      statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      systemNavigationBarColor: colors.backgroundSecondary,
+      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+    );
+
+    SystemChrome.setSystemUIOverlayStyle(systemUiOverlayStyle);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
-        statusBarColor: colors.backgroundSecondary,
-        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-        systemNavigationBarColor: colors.backgroundPrimary,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-      ),
-      child: SafeArea(
-        child: Scaffold(
-          appBar: AppBar(
-            elevation: 0,
-            scrolledUnderElevation: 0,
-            automaticallyImplyLeading: false,
-            backgroundColor: colors.backgroundSecondary,
-            title: Row(
-              children: [
-                Container(
-                  height: 44.h,
-                  width: 44.w,
-                  decoration: BoxDecoration(
-                    color: colors.backgroundPrimary,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                        spreadRadius: 0,
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => context.pop(),
-                      customBorder: const CircleBorder(),
-                      child: Padding(
-                        padding: EdgeInsets.all(10.r),
-                        child: SvgPicture.asset(
-                          Assets.icons.navArrowLeft,
-                          package: 'grab_go_shared',
-                          colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+      value: systemUiOverlayStyle,
+      child: Scaffold(
+        backgroundColor: colors.backgroundSecondary,
+        body: Column(
+          children: [
+            Container(
+              padding: EdgeInsets.only(bottom: 10.h),
+              color: colors.backgroundPrimary,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(top: padding.top, left: 10.w, right: 20.w),
+                    child: Row(
+                      children: [
+                        // Back button
+                        Container(
+                          height: 44.h,
+                          width: 44.w,
+                          decoration: BoxDecoration(
+                            color: colors.backgroundPrimary,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () => context.pop(),
+                              customBorder: const CircleBorder(),
+                              child: Padding(
+                                padding: EdgeInsets.all(10.r),
+                                child: SvgPicture.asset(
+                                  Assets.icons.navArrowLeft,
+                                  package: 'grab_go_shared',
+                                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                  decoration: BoxDecoration(
-                    color: colors.backgroundPrimary,
-                    borderRadius: BorderRadius.circular(20.r),
-                    border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                        spreadRadius: 0,
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(6.r),
-                        decoration: BoxDecoration(
-                          color: colors.accentViolet.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: SvgPicture.asset(
-                          Assets.icons.bell,
-                          package: 'grab_go_shared',
-                          height: 16.h,
-                          width: 16.w,
-                          colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
-                        ),
-                      ),
-                      SizedBox(width: 8.w),
-                      Text(
-                        AppStrings.notificationsTitle,
-                        style: TextStyle(
-                          fontFamily: "Lato",
-                          package: 'grab_go_shared',
-                          color: colors.textPrimary,
-                          fontSize: 17.sp,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                PopupMenuButton<String>(
-                  icon: Container(
-                    height: 44.h,
-                    width: 44.w,
-                    decoration: BoxDecoration(
-                      color: colors.backgroundPrimary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                          spreadRadius: 0,
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
+                        SizedBox(width: 16.w),
+                        Text(
+                          "Notifications",
+                          style: TextStyle(
+                            fontFamily: "Lato",
+                            package: 'grab_go_shared',
+                            color: colors.textPrimary,
+                            fontSize: 24.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ],
                     ),
-                    child: Icon(Icons.more_vert, size: 20, color: colors.textPrimary),
                   ),
-                  onSelected: (value) {
-                    if (value == 'mark_all_read') {
-                      _markAllAsRead();
-                    } else if (value == 'clear_all') {
-                      _clearAll();
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: 'mark_all_read',
-                      child: Text(
-                        AppStrings.notificationsMarkAllRead,
-                        style: TextStyle(fontSize: 14.sp, color: colors.textPrimary),
-                      ),
+                  SizedBox(height: 16.h),
+                  Container(
+                    margin: EdgeInsets.symmetric(horizontal: 20.w),
+                    padding: EdgeInsets.all(4.r),
+                    decoration: BoxDecoration(
+                      color: colors.backgroundSecondary,
+                      borderRadius: BorderRadius.circular(14.r),
                     ),
-                    PopupMenuItem(
-                      value: 'clear_all',
-                      child: Text(
-                        AppStrings.notificationsClearAll,
-                        style: TextStyle(fontSize: 14.sp, color: colors.error),
+                    child: TabBar(
+                      controller: _tabController,
+                      indicator: BoxDecoration(color: colors.accentOrange, borderRadius: BorderRadius.circular(10.r)),
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      dividerColor: Colors.transparent,
+                      labelColor: Colors.white,
+                      unselectedLabelColor: colors.textSecondary,
+                      labelStyle: TextStyle(
+                        fontFamily: "Lato",
+                        package: 'grab_go_shared',
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w700,
                       ),
+                      unselectedLabelStyle: TextStyle(
+                        fontFamily: "Lato",
+                        package: 'grab_go_shared',
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      tabs: const [
+                        Tab(text: "All"),
+                        Tab(text: "Orders"),
+                        Tab(text: "Promos"),
+                        Tab(text: "Updates"),
+                      ],
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          backgroundColor: colors.backgroundSecondary,
-          body: _isLoading && _notifications.isEmpty
-              ? ListView.separated(
-                  padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                  itemCount: 8,
-                  separatorBuilder: (context, index) => SizedBox(height: 12.h),
-                  itemBuilder: (context, index) => NotificationSkeleton(colors: colors, isDark: isDark),
-                )
-              : _error != null
-              ? NotificationSkeleton(colors: colors, isDark: isDark)
-              : _notifications.isEmpty
-              ? _buildEmptyState(colors)
-              : AppRefreshIndicator(
-                  onRefresh: _loadNotifications,
-                  bgColor: colors.accentOrange,
-                  iconPath: Assets.icons.bellNotification,
-                  child: ListView.separated(
-                    controller: _scrollController,
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                    itemCount: _notifications.length + (_isLoadingMore ? 1 : 0),
-                    separatorBuilder: (context, index) => SizedBox(height: 12.h),
-                    itemBuilder: (context, index) {
-                      if (index == _notifications.length) {
-                        return LoadingMore(
-                          colors: colors,
-                          spinnerColor: colors.accentOrange,
-                          borderColor: colors.accentOrange,
-                        );
-                      }
-                      final notification = _notifications[index];
-                      return _buildNotificationCard(notification, colors, isDark);
-                    },
-                  ),
-                ),
+            Expanded(
+              child: _isLoading && _notifications.isEmpty
+                  ? ListView.separated(
+                      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                      itemCount: 8,
+                      separatorBuilder: (context, index) => SizedBox(height: 12.h),
+                      itemBuilder: (context, index) => NotificationSkeleton(colors: colors, isDark: isDark),
+                    )
+                  : _error != null
+                  ? NotificationSkeleton(colors: colors, isDark: isDark)
+                  : _getFilteredNotifications().isEmpty
+                  ? _buildEmptyState(colors)
+                  : AppRefreshIndicator(
+                      onRefresh: _loadNotifications,
+                      bgColor: colors.accentOrange,
+                      iconPath: Assets.icons.bellNotification,
+                      child: ListView.separated(
+                        controller: _scrollController,
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                        itemCount: _getFilteredNotifications().length + (_isLoadingMore ? 1 : 0),
+                        separatorBuilder: (context, index) => SizedBox(height: 12.h),
+                        itemBuilder: (context, index) {
+                          final filteredNotifications = _getFilteredNotifications();
+                          if (index == filteredNotifications.length) {
+                            return LoadingMore(
+                              colors: colors,
+                              spinnerColor: colors.accentOrange,
+                              borderColor: colors.accentOrange,
+                            );
+                          }
+                          final notification = filteredNotifications[index];
+                          return _buildNotificationCard(notification, colors, isDark);
+                        },
+                      ),
+                    ),
+            ),
+          ],
         ),
       ),
     );
@@ -626,13 +620,13 @@ class _NotificationState extends State<Notification> {
         children: [
           Container(
             padding: EdgeInsets.all(30.r),
-            decoration: BoxDecoration(color: colors.accentViolet.withValues(alpha: 0.1), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: colors.accentOrange.withValues(alpha: 0.1), shape: BoxShape.circle),
             child: SvgPicture.asset(
               Assets.icons.bell,
               package: 'grab_go_shared',
               height: 80.h,
               width: 80.w,
-              colorFilter: ColorFilter.mode(colors.accentViolet.withValues(alpha: 0.5), BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(colors.accentOrange.withValues(alpha: 0.5), BlendMode.srcIn),
             ),
           ),
           SizedBox(height: 24.h),
@@ -717,14 +711,8 @@ class _NotificationState extends State<Notification> {
       child: Container(
         padding: EdgeInsets.all(16.r),
         decoration: BoxDecoration(
-          color: notification.isRead ? colors.backgroundPrimary : colors.accentViolet.withValues(alpha: 0.05),
+          color: notification.isRead ? colors.backgroundSecondary : colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-          border: Border.all(
-            color: notification.isRead
-                ? colors.inputBorder.withValues(alpha: 0.3)
-                : colors.accentViolet.withValues(alpha: 0.2),
-            width: 0.5,
-          ),
           boxShadow: [
             BoxShadow(
               color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),

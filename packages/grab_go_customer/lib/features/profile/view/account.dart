@@ -150,7 +150,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                     child: Row(
                       children: [
                         Container(
-                          padding: EdgeInsets.all(4.r),
+                          padding: EdgeInsets.all(02.r),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: colors.textPrimary.withValues(alpha: 0.1),
@@ -163,6 +163,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                 child: CachedNetworkImage(
                                   height: size.width * 0.15,
                                   width: size.width * 0.15,
+                                  fit: BoxFit.cover,
                                   imageUrl: ImageOptimizer.getPreviewUrl(_user?.profilePicture ?? "", width: 200),
                                   memCacheWidth: 200,
                                   maxHeightDiskCache: 200,
@@ -301,7 +302,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                         itemTile("My Orders", Assets.icons.boxIso, context, () {
                           context.push("/orders");
                         }),
-                        itemTile("Payment Methods", Assets.icons.creditCard, context, () {
+                        itemTile("Payment Methods", Assets.icons.cash, context, () {
                           context.push("/paymentMethod");
                         }),
                         itemTile("Refer & Earn", Assets.icons.gift, context, () {
@@ -458,8 +459,11 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                       // Favorites count badge
                       if (favoritesProvider.favoritesCount > 0)
                         Container(
-                          padding: EdgeInsets.all(6.r),
-                          decoration: BoxDecoration(color: colors.accentOrange, shape: BoxShape.circle),
+                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                          decoration: BoxDecoration(
+                            color: colors.accentOrange,
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
                           child: Text(
                             "${favoritesProvider.favoritesCount}",
                             style: TextStyle(fontSize: 12.sp, color: Colors.white, fontWeight: FontWeight.w700),
@@ -489,7 +493,10 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                             margin: EdgeInsets.only(right: 8.w),
                             width: 60.w,
                             height: 60.h,
-                            color: colors.inputBorder.withValues(alpha: 0.5),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius12),
+                              color: colors.inputBorder.withValues(alpha: 0.5),
+                            ),
                             child: ClipRRect(
                               borderRadius: const BorderRadius.all(Radius.circular(KBorderSize.borderRadius12)),
                               child: CachedNetworkImage(

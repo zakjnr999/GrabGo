@@ -731,7 +731,6 @@ class _ChatsState extends State<Chats> {
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-        border: Border.all(color: colors.border, width: 1),
       ),
       child: Row(
         children: [
@@ -789,7 +788,6 @@ class _ChatsState extends State<Chats> {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-          border: Border.all(color: colors.border, width: 1),
         ),
         child: Row(
           children: [
@@ -969,7 +967,6 @@ class _ChatsState extends State<Chats> {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-          border: Border.all(color: colors.border, width: 1),
         ),
         child: Row(
           children: [

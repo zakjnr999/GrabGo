@@ -705,11 +705,26 @@ final GoRouter appRouter = GoRouter(
         final extra = state.extra as Map<String, dynamic>?;
 
         final selectedAddress = extra?['address'] as String? ?? 'N/A';
+        final selectedAddressDetails = extra?['addressDetails'] as String? ?? '';
         final selectedPayment = extra?['payment'] as String? ?? 'N/A';
+        final selectedInstructions = extra?['selectedInstructions'] as List<String>? ?? [];
+        final customRestaurantInstruction = extra?['customRestaurantInstruction'] as String? ?? '';
+        final selectedDeliveryInstructions = extra?['selectedDeliveryInstructions'] as List<String>? ?? [];
+        final customDeliveryInstruction = extra?['customDeliveryInstruction'] as String? ?? '';
+        final tipAmount = extra?['tipAmount'] as double? ?? 0.0;
 
         return CustomTransitionPage(
           key: state.pageKey,
-          child: OrderSummaryPage(selectedAddress: selectedAddress, selectedPaymentMethod: selectedPayment),
+          child: OrderSummaryPage(
+            selectedAddress: selectedAddress,
+            selectedAddressDetails: selectedAddressDetails,
+            selectedPaymentMethod: selectedPayment,
+            selectedInstructions: selectedInstructions,
+            customRestaurantInstruction: customRestaurantInstruction,
+            selectedDeliveryInstructions: selectedDeliveryInstructions,
+            customDeliveryInstruction: customDeliveryInstruction,
+            tipAmount: tipAmount,
+          ),
           transitionDuration: const Duration(milliseconds: 400),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(

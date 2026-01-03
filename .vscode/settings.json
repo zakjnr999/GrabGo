@@ -1,5 +1,5 @@
 {
-  "dart.flutterSdkPath": "C:/sdk/flutter",
+  "dart.flutterSdkPath": "/home/zakjnr/flutter",
   "dart.enableSdkFormatter": true,
   "dart.lineLength": 120,
   "editor.rulers": [

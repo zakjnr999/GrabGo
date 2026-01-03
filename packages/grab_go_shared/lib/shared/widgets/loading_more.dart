@@ -16,11 +16,7 @@ class LoadingMore extends StatelessWidget {
       child: Center(
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
-          decoration: BoxDecoration(
-            color: colors.backgroundPrimary,
-            borderRadius: BorderRadius.circular(20.r),
-            border: Border.all(color: borderColor.withValues(alpha: 0.3), width: 1),
-          ),
+          decoration: BoxDecoration(color: colors.backgroundPrimary, borderRadius: BorderRadius.circular(20.r)),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [

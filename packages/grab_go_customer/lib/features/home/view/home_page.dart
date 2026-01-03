@@ -218,7 +218,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(height: KSpacing.lg.h),
+                SizedBox(height: 10.h),
                 _buildHomeHeader(context, size, colors, isDark, locationProvider),
                 SizedBox(height: KSpacing.lg.h),
                 _buildHomeSearch(foodProvider),

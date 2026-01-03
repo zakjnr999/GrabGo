@@ -46,7 +46,7 @@ class OrderServiceWrapper {
           throw Exception('Missing identifier for item ${entry.key.name}. Please refresh your menu data.');
         }
 
-        return OrderItem(food: foodId, quantity: entry.value, price: entry.key.price);
+        return OrderItem(food: foodId, quantity: entry.value, price: entry.key.price, itemType: 'food');
       }).toList();
 
       final request = CreateOrderRequest(
@@ -58,6 +58,9 @@ class OrderServiceWrapper {
         notes: notes,
         pricing: OrderPricing(subtotal: subtotal, deliveryFee: deliveryFee, total: total),
       );
+
+      // Debug: Print the request JSON to verify itemType is included
+      debugPrint('📦 Order Request JSON: ${request.toJson()}');
 
       final response = await _orderService.createOrder(request);
 

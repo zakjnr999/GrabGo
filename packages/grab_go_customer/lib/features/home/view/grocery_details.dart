@@ -22,7 +22,7 @@ extension GroceryItemToFood on GroceryItem {
       image: image,
       description: description,
       sellerName: storeName ?? brand,
-      sellerId: storeId.hashCode, // Temporary int conversion
+      sellerId: storeId.hashCode,
       restaurantId: storeId,
       restaurantImage: storeLogo ?? '',
       price: price,
@@ -83,7 +83,6 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    Size size = MediaQuery.sizeOf(context);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
