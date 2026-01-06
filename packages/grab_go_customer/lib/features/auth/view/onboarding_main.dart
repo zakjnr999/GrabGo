@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart' show SizeExtension;
@@ -107,10 +105,9 @@ class _OnboardingMain extends State<OnboardingMain> {
                 child: Container(
                   padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
+                    color: colors.backgroundSecondary,
                     borderRadius: BorderRadius.circular(20.r),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, spreadRadius: 2)],
+                    border: Border.all(color: colors.inputBorder, width: 1),
                   ),
                   child: ValueListenableBuilder<int>(
                     valueListenable: _currentPage,
@@ -119,7 +116,7 @@ class _OnboardingMain extends State<OnboardingMain> {
                         controller: _controller,
                         count: 3,
                         effect: ExpandingDotsEffect(
-                          dotColor: Colors.white.withValues(alpha: 0.4),
+                          dotColor: Colors.white,
                           activeDotColor: colors.accentOrange,
                           dotHeight: 10.h,
                           dotWidth: 10.w,

@@ -104,7 +104,6 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
         LoadingDialog.instance().hide();
         AppToastMessage.show(
           context: context,
-          icon: Icons.error_outline,
           message: "User ID not found. Please register again.",
           backgroundColor: context.appColors.error,
         );
@@ -129,7 +128,6 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
           LoadingDialog.instance().hide();
           AppToastMessage.show(
             context: context,
-            icon: Icons.error_outline,
             message: "Failed to send OTP: $error",
             backgroundColor: context.appColors.error,
           );

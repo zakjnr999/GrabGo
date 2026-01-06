@@ -114,7 +114,6 @@ class _VerifyEmailState extends State<VerifyEmail> with SingleTickerProviderStat
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.wifi_off,
           message: "No internet connection. Please check your network settings.",
           backgroundColor: context.appColors.error,
         );
@@ -152,7 +151,6 @@ class _VerifyEmailState extends State<VerifyEmail> with SingleTickerProviderStat
 
         AppToastMessage.show(
           context: context,
-          icon: Icons.error_outline,
           message: errorMessage,
           backgroundColor: context.appColors.error,
         );
@@ -160,21 +158,18 @@ class _VerifyEmailState extends State<VerifyEmail> with SingleTickerProviderStat
     } on SocketException {
       AppToastMessage.show(
         context: context,
-        icon: Icons.cloud_off,
         message: "Cannot connect to server. Please try again.",
         backgroundColor: context.appColors.error,
       );
     } on TimeoutException {
       AppToastMessage.show(
         context: context,
-        icon: Icons.timer_off,
         message: "Request timeout. Please try again.",
         backgroundColor: context.appColors.error,
       );
     } catch (e) {
       AppToastMessage.show(
         context: context,
-        icon: Icons.error,
         message: "An unexpected error occurred. Please try again.",
         backgroundColor: context.appColors.error,
       );

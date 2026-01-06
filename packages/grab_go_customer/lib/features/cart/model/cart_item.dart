@@ -95,7 +95,6 @@ class _CartItemState extends State<CartItem> {
                             provider.removeItemCompletely(cartItem);
                             AppToastMessage.show(
                               context: context,
-                              icon: Icons.check,
                               message: AppStrings.cartRemoveItem,
                               backgroundColor: colors.error,
                             );

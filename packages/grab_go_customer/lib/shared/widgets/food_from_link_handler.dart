@@ -163,7 +163,6 @@ class _FoodFromLinkHandlerState extends State<FoodFromLinkHandler> {
       message: message,
       backgroundColor: Colors.red,
       duration: const Duration(seconds: 4),
-      icon: Icons.error_outline,
     );
 
     Future.delayed(const Duration(seconds: 3), () {

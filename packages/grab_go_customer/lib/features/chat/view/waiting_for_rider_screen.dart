@@ -81,7 +81,6 @@ class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with Sing
           context.pop();
           AppToastMessage.show(
             context: context,
-            icon: Icons.check,
             message: "A rider has accepted your order! You can now chat with them.",
             maxLines: 2,
             backgroundColor: AppColors.accentGreen,

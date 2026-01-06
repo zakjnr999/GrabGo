@@ -311,7 +311,6 @@ class _HomeBannerState extends State<HomeBanner> {
                           final bool isFavorite = favoriteProvider.isFavorite(effectiveFoods[safeIndex]);
                           return GestureDetector(
                             onTap: () {
-                              HapticFeedback.mediumImpact();
                               if (isFavorite) {
                                 favoriteProvider.removeFromFavorites(effectiveFoods[safeIndex]);
                               } else {

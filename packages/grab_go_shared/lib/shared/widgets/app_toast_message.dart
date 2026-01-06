@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:grab_go_shared/gen/assets.gen.dart';
 import '../utils/constants.dart';
 import '../utils/app_colors_extension.dart';
 
 class AppToastMessage {
   static void show({
     required BuildContext context,
-    required IconData icon,
     required String message,
     Color? backgroundColor,
     int? maxLines,
@@ -29,14 +29,24 @@ class AppToastMessage {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(KBorderSize.border),
         color: backgroundColor ?? colors.accentViolet,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: IntrinsicWidth(
         child: Row(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: colors.backgroundPrimary, size: 20.sp),
+            Container(
+              padding: EdgeInsets.all(5.r),
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+              child: Image.asset(
+                Assets.icons.appIconCustomer.path,
+                package: "grab_go_shared",
+                height: 20.h,
+                width: 20.w,
+                fit: BoxFit.cover,
+              ),
+            ),
             SizedBox(width: 12.w),
             Flexible(
               child: Text(

@@ -11,6 +11,7 @@ export 'shared/widgets/app_button.dart';
 export 'shared/widgets/app_dialog.dart';
 export 'shared/widgets/app_drawer_tile.dart';
 export 'shared/widgets/app_popup_menu.dart';
+export 'shared/widgets/custom_popup_menu.dart';
 export 'shared/widgets/app_text_input.dart';
 export 'shared/widgets/app_toast_message.dart';
 export 'shared/widgets/blur_circle_widget.dart';

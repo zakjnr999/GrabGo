@@ -106,7 +106,6 @@ class NotificationModel {
     };
   }
 
-  /// Create a copy of this notification with updated fields
   NotificationModel copyWith({
     String? id,
     String? title,
@@ -137,7 +136,6 @@ class NotificationModel {
       return NotificationType.system;
     }
 
-    // Backend sends snake_case only
     switch (type) {
       case 'order':
         return NotificationType.order;
@@ -153,8 +151,6 @@ class NotificationModel {
         return NotificationType.commentReaction;
       default:
         debugPrint('⚠️ Unknown notification type: $type, defaulting to system');
-        // TODO: Add crash reporting (Sentry/Firebase Crashlytics) for production
-        // FirebaseCrashlytics.instance.log('Unknown notification type: $type');
         return NotificationType.system;
     }
   }
@@ -618,18 +614,6 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: EdgeInsets.all(30.r),
-            decoration: BoxDecoration(color: colors.accentOrange.withValues(alpha: 0.1), shape: BoxShape.circle),
-            child: SvgPicture.asset(
-              Assets.icons.bell,
-              package: 'grab_go_shared',
-              height: 80.h,
-              width: 80.w,
-              colorFilter: ColorFilter.mode(colors.accentOrange.withValues(alpha: 0.5), BlendMode.srcIn),
-            ),
-          ),
-          SizedBox(height: 24.h),
           Text(
             AppStrings.notificationsEmpty,
             style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),

@@ -111,7 +111,6 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.wifi_off,
           message: "No internet connection. Please check your network settings.",
           backgroundColor: context.appColors.error,
         );
@@ -188,7 +187,6 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
           String errorMessage = response.body!['message'] as String? ?? "Invalid verification code. Please try again.";
           AppToastMessage.show(
             context: context,
-            icon: Icons.error_outline,
             message: errorMessage,
             backgroundColor: context.appColors.error,
           );
@@ -203,7 +201,6 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
 
         AppToastMessage.show(
           context: context,
-          icon: Icons.error_outline,
           message: errorMessage,
           backgroundColor: context.appColors.error,
         );
@@ -212,7 +209,6 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.cloud_off,
           message: "Cannot connect to server. Please try again.",
           backgroundColor: context.appColors.error,
         );
@@ -221,7 +217,6 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.timer_off,
           message: "Request timeout. Please try again.",
           backgroundColor: context.appColors.error,
         );
@@ -230,7 +225,6 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.error,
           message: "An unexpected error occurred. Please try again.",
           backgroundColor: context.appColors.error,
         );
@@ -252,7 +246,6 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.wifi_off,
           message: "No internet connection. Please check your network settings.",
           backgroundColor: context.appColors.error,
         );
@@ -293,7 +286,6 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
 
         AppToastMessage.show(
           context: context,
-          icon: Icons.error_outline,
           message: errorMessage,
           backgroundColor: context.appColors.error,
         );
@@ -305,7 +297,6 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.cloud_off,
           message: "Cannot connect to server. Please try again.",
           backgroundColor: context.appColors.error,
         );
@@ -317,7 +308,6 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.timer_off,
           message: "Request timeout. Please try again.",
           backgroundColor: context.appColors.error,
         );
@@ -329,7 +319,6 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.error,
           message: "An unexpected error occurred. Please try again.",
           backgroundColor: context.appColors.error,
         );

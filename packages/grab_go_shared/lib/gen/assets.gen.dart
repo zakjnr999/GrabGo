@@ -328,6 +328,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/more-vert.svg
   String get moreVert => 'lib/assets/icons/more-vert.svg';
 
+  /// File path: lib/assets/icons/more-vertical.svg
+  String get moreVertical => 'lib/assets/icons/more-vertical.svg';
+
   /// File path: lib/assets/icons/nav-arrow-down.svg
   String get navArrowDown => 'lib/assets/icons/nav-arrow-down.svg';
 
@@ -427,6 +430,9 @@ class $LibAssetsIconsGen {
 
   /// File path: lib/assets/icons/sliders-horizontal.svg
   String get slidersHorizontal => 'lib/assets/icons/sliders-horizontal.svg';
+
+  /// File path: lib/assets/icons/sort.svg
+  String get sort => 'lib/assets/icons/sort.svg';
 
   /// File path: lib/assets/icons/sound-high.svg
   String get soundHigh => 'lib/assets/icons/sound-high.svg';
@@ -593,6 +599,7 @@ class $LibAssetsIconsGen {
     microphone,
     mom,
     moreVert,
+    moreVertical,
     navArrowDown,
     navArrowLeft,
     navArrowRight,
@@ -624,6 +631,7 @@ class $LibAssetsIconsGen {
     shareAndroid,
     shieldCheck,
     slidersHorizontal,
+    sort,
     soundHigh,
     sparkles,
     squareMenu,

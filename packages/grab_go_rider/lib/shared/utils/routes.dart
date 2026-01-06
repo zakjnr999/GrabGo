@@ -43,6 +43,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const OnboardingMain(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -61,6 +62,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const Login(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -79,6 +81,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const Register(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -97,6 +100,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const OtpVerification(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -115,6 +119,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const ForgotPassword(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -133,6 +138,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const VerifyEmail(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -151,6 +157,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const AccountCreated(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -169,6 +176,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const VerifyPhone(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -187,6 +195,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const VerifyEmail(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -206,6 +215,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: EmailOtpVerification(email: email),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -224,6 +234,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const RiderVerification(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -242,6 +253,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const VehicleDetails(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -260,6 +272,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const RiderAccountTracking(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -278,6 +291,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const BottomNavigator(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -296,6 +310,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const OrdersPage(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -314,6 +329,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const NotificationsPage(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -332,6 +348,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const EarningsHistoryPage(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -350,6 +367,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const PerformancePage(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -368,6 +386,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const BonusesPage(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -386,6 +405,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const SettingsPage(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -404,6 +424,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const SupportPage(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -422,6 +443,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const FAQPage(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -440,6 +462,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const SafetyGuidelinesPage(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -458,6 +481,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const VehicleDetailsPage(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -476,6 +500,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const PersonalInformationPage(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -494,6 +519,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const BankAccountPage(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -512,6 +538,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const WithdrawalPage(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -530,6 +557,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const DocumentsPage(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -548,6 +576,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: const TransactionHistoryPage(),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -579,6 +608,7 @@ final GoRouter appRouter = GoRouter(
             specialInstructions: extra?['specialInstructions'],
           ),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -612,6 +642,7 @@ final GoRouter appRouter = GoRouter(
             hasPickedUp: extra?['hasPickedUp'],
           ),
           transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,

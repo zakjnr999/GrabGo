@@ -19,219 +19,306 @@ class FavoritesPage extends StatefulWidget {
   State<FavoritesPage> createState() => _FavoritesPageState();
 }
 
-class _FavoritesPageState extends State<FavoritesPage> {
+class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
+  late TabController _tabController;
+  late AnimationController _searchAnimationController;
+  final FocusNode _searchFocus = FocusNode();
+  int selectedTabIndex = 0;
   String _searchQuery = '';
+  bool _isSearchActive = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {
+          selectedTabIndex = _tabController.index;
+        });
+      }
+    });
+    _searchAnimationController = AnimationController(duration: const Duration(milliseconds: 300), vsync: this);
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _tabController.dispose();
+    _searchAnimationController.dispose();
+    _searchFocus.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleClearAllFavorites() async {
+    final shouldClearAll = await AppDialog.show(
+      context: context,
+      title: 'Clear Favorites',
+      message: 'Are you sure you want to clear all favorites?',
+      type: AppDialogType.warning,
+      primaryButtonText: 'Clear All',
+      secondaryButtonText: 'Cancel',
+      primaryButtonColor: Colors.red,
+      onPrimaryPressed: () => Navigator.of(context).pop(true),
+      onSecondaryPressed: () => Navigator.of(context).pop(false),
+    );
+
+    if (shouldClearAll == true) {
+      debugPrint("clear favorites");
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final padding = MediaQuery.paddingOf(context);
     Size size = MediaQuery.sizeOf(context);
 
+    final systemUiOverlayStyle = SystemUiOverlayStyle(
+      statusBarColor: colors.backgroundSecondary,
+      statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      systemNavigationBarColor: colors.backgroundSecondary,
+      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+    );
+
+    SystemChrome.setSystemUIOverlayStyle(systemUiOverlayStyle);
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
-        systemNavigationBarColor: colors.backgroundSecondary,
-        systemNavigationBarDividerColor: Colors.transparent,
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-      ),
+      value: systemUiOverlayStyle,
       child: Scaffold(
         backgroundColor: colors.backgroundSecondary,
-        appBar: AppBar(
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          automaticallyImplyLeading: false,
-          backgroundColor: colors.backgroundSecondary,
-          title: Row(
-            children: [
-              Container(
-                height: 44.h,
-                width: 44.w,
-                decoration: BoxDecoration(
-                  color: colors.backgroundPrimary,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                      spreadRadius: 0,
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => context.pop(),
-                    customBorder: const CircleBorder(),
-                    child: Padding(
-                      padding: EdgeInsets.all(10.r),
-                      child: SvgPicture.asset(
-                        Assets.icons.navArrowLeft,
-                        package: 'grab_go_shared',
-                        colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                      ),
+        body: Column(
+          children: [
+            Container(
+              padding: EdgeInsets.only(bottom: 10.h),
+              color: colors.backgroundPrimary,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(top: padding.top, left: 10.w, right: 10.w),
+                    child: Row(
+                      children: [
+                        Container(
+                          height: 44.h,
+                          width: 44.w,
+                          decoration: BoxDecoration(
+                            color: colors.backgroundPrimary,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () => context.pop(),
+                              customBorder: const CircleBorder(),
+                              child: Padding(
+                                padding: EdgeInsets.all(10.r),
+                                child: SvgPicture.asset(
+                                  Assets.icons.navArrowLeft,
+                                  package: 'grab_go_shared',
+                                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 16.w),
+                        Text(
+                          "Favorites",
+                          style: TextStyle(
+                            fontFamily: "Lato",
+                            package: 'grab_go_shared',
+                            color: colors.textPrimary,
+                            fontSize: 24.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const Spacer(),
+                        Container(
+                          height: 44.h,
+                          width: 44.w,
+                          decoration: BoxDecoration(
+                            color: _isSearchActive
+                                ? colors.accentOrange.withValues(alpha: 0.1)
+                                : colors.backgroundPrimary,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: colors.inputBorder.withValues(alpha: 0.3),
+                              width: _isSearchActive ? 1.5 : 0.5,
+                            ),
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                setState(() {
+                                  _isSearchActive = !_isSearchActive;
+                                  if (_isSearchActive) {
+                                    _searchAnimationController.forward();
+                                    _searchFocus.requestFocus();
+                                  } else {
+                                    _searchAnimationController.reverse();
+                                    _searchController.clear();
+                                    _searchQuery = '';
+                                  }
+                                });
+                              },
+                              splashColor: _isSearchActive
+                                  ? colors.accentOrange.withValues(alpha: 0.4)
+                                  : colors.backgroundSecondary,
+                              customBorder: const CircleBorder(),
+                              child: Padding(
+                                padding: EdgeInsets.all(10.r),
+                                child: SvgPicture.asset(
+                                  _isSearchActive ? Assets.icons.xmark : Assets.icons.search,
+                                  package: 'grab_go_shared',
+                                  colorFilter: ColorFilter.mode(
+                                    _isSearchActive ? colors.accentOrange : colors.textPrimary,
+                                    BlendMode.srcIn,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        CustomPopupMenu(
+                          menuWidth: 280.w,
+                          showArrow: false,
+                          items: [
+                            CustomPopupMenuItem(
+                              value: 'sort',
+                              label: 'Sort Favorites',
+                              icon: Assets.icons.sort,
+                              iconColor: colors.textSecondary,
+                            ),
+                            CustomPopupMenuItem(
+                              value: 'clear',
+                              label: 'Clear All Favorites',
+                              icon: Assets.icons.brushCleaning,
+                              iconColor: colors.textSecondary,
+                            ),
+                          ],
+                          onSelected: (value) {
+                            switch (value) {
+                              case "sort":
+                                debugPrint("sort");
+                                _showSortOptions(colors);
+                              case "clear":
+                                _handleClearAllFavorites();
+                            }
+                          },
+                          child: Container(
+                            height: 44.h,
+                            width: 44.w,
+                            decoration: BoxDecoration(
+                              color: colors.backgroundPrimary,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                            ),
+                            child: Padding(
+                              padding: EdgeInsets.all(12.r),
+                              child: SvgPicture.asset(
+                                Assets.icons.moreVertical,
+                                package: 'grab_go_shared',
+                                colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
+                  SizedBox(height: 16.h),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    switchInCurve: Curves.easeInOut,
+                    switchOutCurve: Curves.easeInOut,
+                    transitionBuilder: (Widget child, Animation<double> animation) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(begin: const Offset(0, -0.1), end: Offset.zero).animate(animation),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: _isSearchActive
+                        ? _buildSearchBar(colors)
+                        : Container(
+                            key: const ValueKey('tabs'),
+                            margin: EdgeInsets.symmetric(horizontal: 20.w),
+                            padding: EdgeInsets.all(4.r),
+                            decoration: BoxDecoration(
+                              color: colors.backgroundSecondary,
+                              borderRadius: BorderRadius.circular(14.r),
+                            ),
+                            child: TabBar(
+                              controller: _tabController,
+                              indicator: BoxDecoration(
+                                color: colors.accentOrange,
+                                borderRadius: BorderRadius.circular(10.r),
+                              ),
+                              indicatorSize: TabBarIndicatorSize.tab,
+                              dividerColor: Colors.transparent,
+                              labelColor: Colors.white,
+                              unselectedLabelColor: colors.textSecondary,
+                              labelStyle: TextStyle(
+                                fontFamily: "Lato",
+                                package: "grab_go_shared",
+                                fontSize: 13.sp,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              unselectedLabelStyle: TextStyle(
+                                fontFamily: "Lato",
+                                package: 'grab_go_shared',
+                                fontSize: 13.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              tabs: const [
+                                Tab(text: "Items"),
+                                Tab(text: "Vendors"),
+                              ],
+                            ),
+                          ),
+                  ),
+                ],
               ),
-
-              const Spacer(),
-
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                decoration: BoxDecoration(
-                  color: colors.backgroundPrimary,
-                  borderRadius: BorderRadius.circular(20.r),
-                  border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                      spreadRadius: 0,
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(6.r),
-                      decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), shape: BoxShape.circle),
-                      child: SvgPicture.asset(
-                        Assets.icons.heart,
-                        package: 'grab_go_shared',
-                        height: 16.h,
-                        width: 16.w,
-                        colorFilter: const ColorFilter.mode(Colors.red, BlendMode.srcIn),
-                      ),
-                    ),
-                    SizedBox(width: 8.w),
-                    Text(
-                      "My Favorites",
-                      style: TextStyle(
-                        fontFamily: "Lato",
-                        package: 'grab_go_shared',
-                        color: colors.textPrimary,
-                        fontSize: 17.sp,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const Spacer(),
-
-              Consumer<FavoritesProvider>(
+            ),
+            Expanded(
+              child: Consumer<FavoritesProvider>(
                 builder: (context, favoritesProvider, child) {
                   if (favoritesProvider.favoriteItems.isEmpty) {
-                    return SizedBox(width: 44.w);
+                    return _buildEmptyState(colors, size);
                   }
 
-                  return AppPopupMenu(
-                    items: [
-                      AppPopupMenuItem(
-                        value: 'sort',
-                        label: 'Sort Favorites',
-                        icon: Assets.icons.slidersHorizontal,
-                        iconColor: colors.accentOrange,
-                        backgroundColor: colors.accentOrange.withValues(alpha: 0.1),
-                      ),
-                      AppPopupMenuItem(
-                        value: 'clear_all',
-                        label: 'Clear All Favorites',
-                        icon: Assets.icons.binMinusIn,
-                        isDanger: true,
-                      ),
-                    ],
-                    onSelected: (value) {
-                      switch (value) {
-                        case 'sort':
-                          _showSortOptions(colors);
-                          break;
-                        case 'clear_all':
-                          _showClearAllDialog(colors);
-                          break;
-                      }
-                    },
-                    child: Container(
-                      height: 44.h,
-                      width: 44.w,
-                      decoration: BoxDecoration(
-                        color: colors.backgroundPrimary,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                            spreadRadius: 0,
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.all(10.r),
-                        child: Icon(Icons.more_vert, size: 20.sp, color: colors.textPrimary),
-                      ),
-                    ),
-                  );
+                  final filteredItems = _searchQuery.isEmpty
+                      ? favoritesProvider.favoriteItems.toList()
+                      : favoritesProvider.searchFavorites(_searchQuery);
+
+                  if (filteredItems.isEmpty) {
+                    return Expanded(child: _buildNoResultsState(colors, size));
+                  }
+
+                  return Expanded(child: _buildFavoritesList(colors, filteredItems));
                 },
               ),
-            ],
-          ),
-        ),
-        body: SafeArea(
-          child: Consumer<FavoritesProvider>(
-            builder: (context, favoritesProvider, child) {
-              if (favoritesProvider.favoriteItems.isEmpty) {
-                return _buildEmptyState(colors, size);
-              }
-
-              final filteredItems = _searchQuery.isEmpty
-                  ? favoritesProvider.favoriteItems.toList()
-                  : favoritesProvider.searchFavorites(_searchQuery);
-
-              if (filteredItems.isEmpty) {
-                return Column(
-                  children: [
-                    _buildSearchBar(colors),
-                    Expanded(child: _buildNoResultsState(colors, size)),
-                  ],
-                );
-              }
-
-              return Column(
-                children: [
-                  SizedBox(height: 12.h),
-                  _buildSearchBar(colors),
-                  Expanded(child: _buildFavoritesList(colors, filteredItems)),
-                ],
-              );
-            },
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildSearchBar(colors) {
+  Widget _buildSearchBar(AppColorsExtension colors) {
     return Container(
+      key: const ValueKey('search'),
       margin: EdgeInsets.symmetric(horizontal: 20.w),
       decoration: BoxDecoration(
-        color: colors.backgroundPrimary,
+        color: colors.backgroundSecondary,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-        border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
         boxShadow: [
           BoxShadow(color: Colors.black.withAlpha(5), spreadRadius: 0, blurRadius: 8, offset: const Offset(0, 2)),
         ],
@@ -252,7 +339,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
             child: SvgPicture.asset(
               Assets.icons.search,
               package: 'grab_go_shared',
-              colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
             ),
           ),
           suffixIcon: _searchQuery.isNotEmpty
@@ -263,7 +350,13 @@ class _FavoritesPageState extends State<FavoritesPage> {
                       _searchQuery = '';
                     });
                   },
-                  icon: Icon(Icons.close, color: colors.textSecondary, size: 20.sp),
+                  icon: SvgPicture.asset(
+                    Assets.icons.xmark,
+                    height: 20.h,
+                    width: 20.w,
+                    package: "grab_go_shared",
+                    colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                  ),
                 )
               : null,
           border: InputBorder.none,
@@ -273,7 +366,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
     );
   }
 
-  Widget _buildEmptyState(colors, size) {
+  Widget _buildEmptyState(AppColorsExtension colors, size) {
     return Center(
       child: Padding(
         padding: EdgeInsets.all(40.w),
@@ -366,27 +459,13 @@ class _FavoritesPageState extends State<FavoritesPage> {
     );
   }
 
-  Widget _buildNoResultsState(colors, size) {
+  Widget _buildNoResultsState(AppColorsExtension colors, size) {
     return Center(
       child: Padding(
         padding: EdgeInsets.all(40.w),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: EdgeInsets.all(24.r),
-              decoration: BoxDecoration(color: colors.accentOrange.withValues(alpha: 0.1), shape: BoxShape.circle),
-              child: SvgPicture.asset(
-                Assets.icons.search,
-                package: 'grab_go_shared',
-                width: 60.w,
-                height: 60.w,
-                colorFilter: ColorFilter.mode(colors.accentOrange.withOpacity(0.5), BlendMode.srcIn),
-              ),
-            ),
-
-            SizedBox(height: 28.h),
-
             Text(
               "No Results Found",
               style: TextStyle(color: colors.textPrimary, fontSize: 22.sp, fontWeight: FontWeight.w800),
@@ -408,10 +487,11 @@ class _FavoritesPageState extends State<FavoritesPage> {
     );
   }
 
-  Widget _buildFavoritesList(colors, List<FoodItem> items) {
+  Widget _buildFavoritesList(AppColorsExtension colors, List<FoodItem> items) {
     return ListView.builder(
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       itemCount: items.length,
+      physics: const AlwaysScrollableScrollPhysics(),
       itemBuilder: (context, index) {
         final item = items[index];
         return _buildFavoriteItem(colors, item);
@@ -419,7 +499,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
     );
   }
 
-  Widget _buildFavoriteItem(colors, FoodItem item) {
+  Widget _buildFavoriteItem(AppColorsExtension colors, FoodItem item) {
     return FoodItemCard(
       item: item,
       margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 6.h),
@@ -439,7 +519,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
                   padding: EdgeInsets.all(8.r),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: colors.error.withOpacity(0.1),
+                    color: colors.error.withValues(alpha: 0.1),
                     border: Border.all(color: colors.error, width: 1),
                   ),
                   child: SvgPicture.asset(
@@ -489,7 +569,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
     );
   }
 
-  void _showSortOptions(colors) {
+  void _showSortOptions(AppColorsExtension colors) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -507,13 +587,16 @@ class _FavoritesPageState extends State<FavoritesPage> {
           ),
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              margin: EdgeInsets.only(top: 12.h, bottom: 8.h),
-              width: 40.w,
-              height: 4.h,
-              decoration: BoxDecoration(color: colors.inputBorder, borderRadius: BorderRadius.circular(2.r)),
+            Center(
+              child: Container(
+                margin: EdgeInsets.only(top: 12.h, bottom: 8.h),
+                width: 40.w,
+                height: 4.h,
+                decoration: BoxDecoration(color: colors.inputBorder, borderRadius: BorderRadius.circular(2.r)),
+              ),
             ),
 
             Padding(
@@ -533,7 +616,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
                   _buildSortOption(
                     colors: colors,
                     svgIcon: Assets.icons.arrowUpAZ,
-                    iconColor: colors.accentViolet,
+                    iconColor: colors.textSecondary,
                     title: 'Name (A-Z)',
                     subtitle: 'Sort alphabetically',
                     onTap: () {
@@ -544,8 +627,8 @@ class _FavoritesPageState extends State<FavoritesPage> {
 
                   _buildSortOption(
                     colors: colors,
-                    svgIcon: Assets.icons.dollar,
-                    iconColor: colors.accentGreen,
+                    svgIcon: Assets.icons.cash,
+                    iconColor: colors.textSecondary,
                     title: 'Price (Low to High)',
                     subtitle: 'Cheapest first',
                     onTap: () {
@@ -556,8 +639,8 @@ class _FavoritesPageState extends State<FavoritesPage> {
 
                   _buildSortOption(
                     colors: colors,
-                    svgIcon: Assets.icons.starSolid,
-                    iconColor: colors.accentOrange,
+                    svgIcon: Assets.icons.star,
+                    iconColor: colors.textSecondary,
                     title: 'Rating (High to Low)',
                     subtitle: 'Best rated first',
                     onTap: () {
@@ -576,7 +659,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
   }
 
   Widget _buildSortOption({
-    required colors,
+    required AppColorsExtension colors,
     IconData? icon,
     String? svgIcon,
     required Color iconColor,
@@ -584,22 +667,19 @@ class _FavoritesPageState extends State<FavoritesPage> {
     required String subtitle,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.all(14.r),
-        decoration: BoxDecoration(
-          color: colors.backgroundSecondary,
-          borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-          border: Border.all(color: colors.inputBorder, width: 1),
-        ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        splashColor: colors.backgroundPrimary,
+        borderRadius: BorderRadius.circular(KBorderSize.borderRadius12),
+        onTap: onTap,
         child: Row(
           children: [
             Container(
               height: 48.h,
               width: 48.h,
               decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
+                color: colors.backgroundSecondary,
                 borderRadius: BorderRadius.circular(KBorderSize.borderRadius12),
               ),
               child: Center(
@@ -632,36 +712,16 @@ class _FavoritesPageState extends State<FavoritesPage> {
                 ],
               ),
             ),
-
-            Icon(Icons.arrow_forward_ios, size: 16.h, color: colors.textSecondary.withOpacity(0.5)),
+            SvgPicture.asset(
+              Assets.icons.navArrowRight,
+              package: "grab_go_shared",
+              height: 18.h,
+              width: 18.w,
+              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+            ),
           ],
         ),
       ),
     );
-  }
-
-  void _showClearAllDialog(colors) async {
-    final shouldClear = await AppDialog.show(
-      context: context,
-      title: 'Clear All Favorites',
-      message: 'Are you sure you want to remove all items from your favorites? This action cannot be undone.',
-      type: AppDialogType.warning,
-      icon: Assets.icons.heart,
-      primaryButtonText: 'Clear All',
-      secondaryButtonText: 'Cancel',
-      primaryButtonColor: Colors.red,
-      onPrimaryPressed: () => Navigator.of(context).pop(true),
-      onSecondaryPressed: () => Navigator.of(context).pop(false),
-    );
-
-    if (shouldClear == true) {
-      context.read<FavoritesProvider>().clearFavorites();
-      AppToastMessage.show(
-        context: context,
-        icon: Icons.delete_sweep,
-        message: 'All favorites cleared',
-        backgroundColor: colors.accentGreen,
-      );
-    }
   }
 }

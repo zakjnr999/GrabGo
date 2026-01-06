@@ -24,7 +24,7 @@ class FoodDetailsAppBar extends StatelessWidget {
     Size size = MediaQuery.sizeOf(context);
 
     return SliverAppBar(
-      expandedHeight: size.height * 0.40,
+      expandedHeight: size.height * 0.30,
       backgroundColor: const Color(0xFF121212),
       surfaceTintColor: colors.backgroundPrimary,
       systemOverlayStyle: const SystemUiOverlayStyle(
@@ -46,10 +46,10 @@ class FoodDetailsAppBar extends StatelessWidget {
               memCacheWidth: 800,
               maxHeightDiskCache: 600,
               placeholder: (context, url) => Container(
-                height: size.height * 0.40,
+                height: size.height * 0.30,
                 width: double.infinity,
                 color: colors.inputBorder,
-                padding: EdgeInsets.all(45.r),
+                padding: EdgeInsets.all(60.r),
                 child: SvgPicture.asset(
                   Assets.icons.utensilsCrossed,
                   package: 'grab_go_shared',
@@ -57,10 +57,10 @@ class FoodDetailsAppBar extends StatelessWidget {
                 ),
               ),
               errorWidget: (context, url, error) => Container(
-                height: size.height * 0.40,
+                height: size.height * 0.30,
                 width: double.infinity,
                 color: colors.inputBorder,
-                padding: EdgeInsets.all(45.r),
+                padding: EdgeInsets.all(60.r),
                 child: SvgPicture.asset(
                   Assets.icons.utensilsCrossed,
                   package: 'grab_go_shared',
@@ -96,14 +96,6 @@ class FoodDetailsAppBar extends StatelessWidget {
           decoration: BoxDecoration(
             color: colors.backgroundSecondary,
             borderRadius: BorderRadius.only(topLeft: Radius.circular(20.r), topRight: Radius.circular(20.r)),
-            boxShadow: [
-              BoxShadow(
-                color: isDark ? Colors.black.withAlpha(50) : Colors.black.withAlpha(10),
-                blurRadius: 10,
-                spreadRadius: 0,
-                offset: const Offset(0, -2),
-              ),
-            ],
           ),
           child: Container(
             margin: EdgeInsets.only(top: 8.h),

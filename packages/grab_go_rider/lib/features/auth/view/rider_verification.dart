@@ -479,7 +479,6 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
     if (!agreedToTerms || !agreedToLocationAccess || !agreedToAccuracy) {
       AppToastMessage.show(
         context: context,
-        icon: Icons.error_outline,
         message: "Please agree to all terms and conditions",
         backgroundColor: context.appColors.error,
       );
@@ -549,7 +548,6 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
 
         AppToastMessage.show(
           context: context,
-          icon: Icons.error_outline,
           message: errorMessage,
           backgroundColor: context.appColors.error,
         );
@@ -575,7 +573,6 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.error,
           message: errorMessage,
           backgroundColor: context.appColors.error,
         );

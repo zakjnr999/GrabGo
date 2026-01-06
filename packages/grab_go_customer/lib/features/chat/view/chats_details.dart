@@ -3521,7 +3521,6 @@ class _ChatDetailState extends State<ChatDetail> {
       });
       _cacheMessages();
 
-      AppToastMessage.show(context: context, icon: Icons.error_outline, message: "Failed to delete message");
     }
   }
 
@@ -3568,7 +3567,6 @@ class _ChatDetailState extends State<ChatDetail> {
       });
       _cacheMessages();
 
-      AppToastMessage.show(context: context, icon: Icons.error_outline, message: "Failed to edit message");
     }
   }
 
@@ -3797,7 +3795,6 @@ class _ChatDetailState extends State<ChatDetail> {
       });
       _cacheMessages();
 
-      AppToastMessage.show(context: context, icon: Icons.error_outline, message: "Failed to delete photos");
     }
   }
 

@@ -10,6 +10,7 @@ import 'package:grab_go_customer/features/home/model/filter_model.dart';
 import 'package:grab_go_customer/features/home/model/service_model.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/service_provider.dart';
+import 'package:grab_go_customer/shared/widgets/browse_category_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/browse_grid_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/home_search.dart';
 import 'package:grab_go_customer/shared/widgets/popular_item_card.dart';
@@ -124,6 +125,7 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
                                   return HomeSearch(
                                     categories: foodProvider.categories,
                                     activeFilter: _comprehensiveFilter,
+                                    hintText: "Search by name or category...",
                                     onFilterApplied: (FilterModel filter) {
                                       setState(() {
                                         _comprehensiveFilter = filter.copyWith();
@@ -169,6 +171,7 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
                                   return HomeSearch(
                                     categories: groceryCategories,
                                     activeFilter: _comprehensiveFilter,
+                                    hintText: "Search by name or category...",
                                     onFilterApplied: (FilterModel filter) {
                                       setState(() {
                                         _comprehensiveFilter = filter.copyWith();
@@ -313,7 +316,19 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
                       color: isSelected ? colors.accentOrange : colors.textPrimary,
                     ),
                   ),
-                  trailing: isSelected ? Icon(Icons.check_circle, color: colors.accentOrange, size: 24.sp) : null,
+                  trailing: isSelected
+                      ? Container(
+                          height: 25.h,
+                          width: 25.w,
+                          padding: EdgeInsets.all(4.r),
+                          decoration: BoxDecoration(color: colors.accentOrange, shape: BoxShape.circle),
+                          child: SvgPicture.asset(
+                            Assets.icons.check,
+                            package: "grab_go_shared",
+                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                          ),
+                        )
+                      : null,
                   onTap: () {
                     serviceProvider.selectService(service);
 
@@ -419,7 +434,10 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
                       package: 'grab_go_shared',
                       height: 16.h,
                       width: 16.w,
-                      colorFilter: ColorFilter.mode(isSelected ? Colors.white : colors.textPrimary, BlendMode.srcIn),
+                      colorFilter: ColorFilter.mode(
+                        isSelected ? colors.backgroundSecondary : colors.textPrimary,
+                        BlendMode.srcIn,
+                      ),
                     ),
                     SizedBox(width: 6.w),
                     AnimatedDefaultTextStyle(
@@ -501,6 +519,16 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Center(
+                child: Container(
+                  margin: EdgeInsets.only(bottom: 8.h),
+                  width: 40.w,
+                  height: 4.h,
+                  decoration: BoxDecoration(color: colors.inputBorder, borderRadius: BorderRadius.circular(2.r)),
+                ),
+              ),
+              SizedBox(height: KSpacing.md.h),
+
               Text(
                 'Select $filterType',
                 style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
@@ -583,7 +611,8 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
             selector: (_, provider) => provider.categories,
             builder: (context, categories, _) {
               if (categories.isEmpty) {
-                return const Center(child: CircularProgressIndicator());
+                final isDark = Theme.of(context).brightness == Brightness.dark;
+                return BrowseCategorySkeleton(colors: colors, isDark: isDark);
               }
 
               return _buildVerticalCategoryCards(
@@ -598,7 +627,8 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
             selector: (_, provider) => provider.categories,
             builder: (context, categories, child) {
               if (categories.isEmpty) {
-                return const Center(child: CircularProgressIndicator());
+                final isDark = Theme.of(context).brightness == Brightness.dark;
+                return BrowseCategorySkeleton(colors: colors, isDark: isDark);
               }
 
               final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
@@ -1343,7 +1373,10 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
         selector: (_, provider) => provider.categories,
         builder: (context, categories, _) {
           if (categories.isEmpty) {
-            return const SliverFillRemaining(child: Center(child: CircularProgressIndicator()));
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            return SliverFillRemaining(
+              child: BrowseCategorySkeleton(colors: colors, isDark: isDark),
+            );
           }
 
           final categoryData = categories
@@ -1351,7 +1384,7 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
               .toList();
 
           return SliverPadding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 4.h),
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
                 (context, index) => _buildCategoryCard(categoryData[index], colors),
@@ -1366,7 +1399,10 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
         selector: (_, provider) => provider.categories,
         builder: (context, categories, child) {
           if (categories.isEmpty) {
-            return const SliverFillRemaining(child: Center(child: CircularProgressIndicator()));
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            return SliverFillRemaining(
+              child: BrowseCategorySkeleton(colors: colors, isDark: isDark),
+            );
           }
 
           final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
@@ -1376,7 +1412,7 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
           }).toList();
 
           return SliverPadding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 4.h),
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
                 (context, index) => _buildCategoryCard(categoryData[index], colors),
@@ -1398,9 +1434,16 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
 
     return GestureDetector(
       onTap: () {
-        setState(() {
-          _selectedCategoryId = categoryId;
-        });
+        final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
+        context.push(
+          '/categoryItems',
+          extra: {
+            'categoryId': categoryId,
+            'categoryName': categoryName,
+            'categoryEmoji': categoryEmoji,
+            'isFood': serviceProvider.isFoodService,
+          },
+        );
       },
       child: Container(
         margin: EdgeInsets.only(bottom: 12.h),

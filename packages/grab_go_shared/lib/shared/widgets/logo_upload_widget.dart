@@ -78,7 +78,6 @@ class _ImageUploadWidgetState extends State<ImageUploadWidget> {
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.error_outline,
           message: "Failed to pick image. Please try again.",
           backgroundColor: Colors.red,
         );

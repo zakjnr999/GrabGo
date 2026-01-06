@@ -261,14 +261,12 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
       Clipboard.setData(ClipboardData(text: _referralCode));
       AppToastMessage.show(
         context: context,
-        icon: Icons.check,
         message: "Referral code $_referralCode copied!",
         backgroundColor: Colors.green,
       );
     } catch (e) {
       AppToastMessage.show(
         context: context,
-        icon: Icons.error,
         message: "Failed to copy code. Please try again.",
         backgroundColor: AppColors.errorRed,
       );
@@ -282,7 +280,6 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
       if (!mounted) return;
       AppToastMessage.show(
         context: context,
-        icon: Icons.error,
         message: "Failed to copy code. Please try again.",
         backgroundColor: AppColors.errorRed,
       );
@@ -293,146 +290,107 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final padding = MediaQuery.paddingOf(context);
 
     return Scaffold(
       backgroundColor: colors.backgroundSecondary,
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        backgroundColor: colors.backgroundSecondary,
-        title: Row(
-          children: [
-            Container(
-              height: 44.h,
-              width: 44.w,
-              decoration: BoxDecoration(
-                color: colors.backgroundPrimary,
-                shape: BoxShape.circle,
-                border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                    spreadRadius: 0,
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+      body: Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.only(top: padding.top, left: 20.w, right: 20.w, bottom: 16.h),
+            child: Row(
+              children: [
+                Container(
+                  height: 44.h,
+                  width: 44.w,
+                  decoration: BoxDecoration(
+                    color: colors.backgroundPrimary,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
+                        spreadRadius: 0,
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => context.pop(),
-                  customBorder: const CircleBorder(),
-                  child: Padding(
-                    padding: EdgeInsets.all(10.r),
-                    child: SvgPicture.asset(
-                      Assets.icons.navArrowLeft,
-                      package: 'grab_go_shared',
-                      colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => context.pop(),
+                      customBorder: const CircleBorder(),
+                      child: Padding(
+                        padding: EdgeInsets.all(10.r),
+                        child: SvgPicture.asset(
+                          Assets.icons.navArrowLeft,
+                          package: 'grab_go_shared',
+                          colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
-
-            const Spacer(),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-              decoration: BoxDecoration(
-                color: colors.backgroundPrimary,
-                borderRadius: BorderRadius.circular(20.r),
-                border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                    spreadRadius: 0,
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+                SizedBox(width: 16.w),
+                Text(
+                  "Refer & Earn",
+                  style: TextStyle(
+                    fontFamily: "Lato",
+                    package: 'grab_go_shared',
+                    color: colors.textPrimary,
+                    fontSize: 24.sp,
+                    fontWeight: FontWeight.w700,
                   ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(6.r),
-                    decoration: BoxDecoration(
-                      color: colors.accentOrange.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: SvgPicture.asset(
-                      Assets.icons.gift,
-                      package: 'grab_go_shared',
-                      height: 16.h,
-                      width: 16.w,
-                      colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                    ),
-                  ),
-                  SizedBox(width: 8.w),
-                  Text(
-                    "Refer & Earn",
-                    style: TextStyle(
-                      fontFamily: "Lato",
-                      package: 'grab_go_shared',
-                      color: colors.textPrimary,
-                      fontSize: 17.sp,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const Spacer(),
-            SizedBox(height: 44.h, width: 44.w),
-          ],
-        ),
-      ),
-      body: SafeArea(
-        top: false,
-        child: AppRefreshIndicator(
-          onRefresh: _loadReferralData,
-          iconPath: Assets.icons.gift,
-          bgColor: colors.accentOrange,
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Referral Code Card
-                _buildReferralCodeCard(colors, isDark),
-                SizedBox(height: 20.h),
-
-                // Stats Cards
-                _buildStatsSection(colors, isDark),
-                SizedBox(height: 24.h),
-
-                // Milestone Tracker
-                _buildMilestoneTracker(colors, isDark),
-                SizedBox(height: 24.h),
-
-                // Referral History
-                _buildSectionHeader('Recent Referrals', colors),
-                SizedBox(height: 12.h),
-                _buildReferralHistory(colors, isDark),
-                SizedBox(height: 24.h),
-
-                // How it Works
-                _buildSectionHeader('How It Works', colors),
-                SizedBox(height: 12.h),
-                _buildHowItWorksSection(colors, isDark),
-                SizedBox(height: 24.h),
-
-                // Terms
-                _buildSectionHeader('Terms & Conditions', colors),
-                SizedBox(height: 12.h),
-                _buildTermsSection(colors, isDark),
+                ),
               ],
             ),
           ),
-        ),
+          Expanded(
+            child: AppRefreshIndicator(
+              onRefresh: _loadReferralData,
+              iconPath: Assets.icons.gift,
+              bgColor: colors.accentOrange,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.symmetric(horizontal: 20.w),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Referral Code Card
+                    _buildReferralCodeCard(colors, isDark),
+                    SizedBox(height: 20.h),
+
+                    // Stats Cards
+                    _buildStatsSection(colors, isDark),
+                    SizedBox(height: 24.h),
+
+                    // Milestone Tracker
+                    _buildMilestoneTracker(colors, isDark),
+                    SizedBox(height: 24.h),
+
+                    // Referral History
+                    _buildSectionHeader('Recent Referrals', colors),
+                    SizedBox(height: 12.h),
+                    _buildReferralHistory(colors, isDark),
+                    SizedBox(height: 24.h),
+
+                    // How it Works
+                    _buildSectionHeader('How It Works', colors),
+                    SizedBox(height: 12.h),
+                    _buildHowItWorksSection(colors, isDark),
+                    SizedBox(height: 24.h),
+
+                    // Terms
+                    _buildSectionHeader('Terms & Conditions', colors),
+                    SizedBox(height: 12.h),
+                    _buildTermsSection(colors, isDark),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -451,7 +409,7 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
           BoxShadow(
             color: colors.accentOrange.withOpacity(0.3),
             spreadRadius: 0,
-            blurRadius: 20,
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],

@@ -110,7 +110,6 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
           });
           AppToastMessage.show(
             context: context,
-            icon: Icons.error_outline,
             message: "Invalid OTP. Please try again.",
             backgroundColor: context.appColors.error,
           );
@@ -131,7 +130,6 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
             LoadingDialog.instance().hide();
             AppToastMessage.show(
               context: context,
-              icon: Icons.error_outline,
               message: "User ID not found. Please restart the registration process.",
               backgroundColor: context.appColors.error,
             );
@@ -158,7 +156,6 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
             LoadingDialog.instance().hide();
             AppToastMessage.show(
               context: context,
-              icon: Icons.error_outline,
               message: "Authentication token missing. Please register or login again.",
               backgroundColor: context.appColors.error,
             );
@@ -217,7 +214,6 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
             LoadingDialog.instance().hide();
             AppToastMessage.show(
               context: context,
-              icon: Icons.check_circle,
               message: "Phone verified successfully!",
               backgroundColor: Colors.green,
             );
@@ -243,7 +239,6 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
             LoadingDialog.instance().hide();
             AppToastMessage.show(
               context: context,
-              icon: Icons.error_outline,
               message: errorMessage,
               backgroundColor: context.appColors.error,
             );
@@ -255,7 +250,6 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
           LoadingDialog.instance().hide();
           AppToastMessage.show(
             context: context,
-            icon: Icons.error,
             message: "Failed to update phone verification. Please try again.",
             backgroundColor: context.appColors.error,
           );
@@ -273,7 +267,6 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
     if (storedPhoneNumber == null) {
       AppToastMessage.show(
         context: context,
-        icon: Icons.error_outline,
         message: "Phone number not found. Please restart verification.",
         backgroundColor: context.appColors.error,
       );
@@ -296,7 +289,6 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
           LoadingDialog.instance().hide();
           AppToastMessage.show(
             context: context,
-            icon: Icons.check_circle,
             message: "OTP resent successfully!",
             backgroundColor: Colors.green,
           );
@@ -309,7 +301,6 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
           LoadingDialog.instance().hide();
           AppToastMessage.show(
             context: context,
-            icon: Icons.error_outline,
             message: "Failed to resend OTP: $error",
             backgroundColor: context.appColors.error,
           );

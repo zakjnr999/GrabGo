@@ -97,7 +97,6 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.error_outline,
           message: "Image size must be less than 5MB",
           backgroundColor: context.appColors.error,
         );
@@ -110,7 +109,6 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.error_outline,
           message: "Please select a different image format",
           backgroundColor: context.appColors.error,
         );
@@ -127,7 +125,6 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
     if (_selectedImage == null) {
       AppToastMessage.show(
         context: context,
-        icon: Icons.error_outline,
         message: "Please select an image first",
         backgroundColor: context.appColors.error,
       );
@@ -138,7 +135,6 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
     if (userId == null) {
       AppToastMessage.show(
         context: context,
-        icon: Icons.error_outline,
         message: "User ID not found. Please restart the registration process.",
         backgroundColor: context.appColors.error,
       );
@@ -213,7 +209,6 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
           LoadingDialog.instance().hide();
           AppToastMessage.show(
             context: context,
-            icon: Icons.error_outline,
             message: errorMessage,
             backgroundColor: context.appColors.error,
           );
@@ -224,7 +219,6 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
         LoadingDialog.instance().hide();
         AppToastMessage.show(
           context: context,
-          icon: Icons.error,
           message: "Failed to upload profile image. Please try again.",
           backgroundColor: context.appColors.error,
         );

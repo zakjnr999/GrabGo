@@ -106,7 +106,6 @@ class _ReviewPageState extends State<ReviewPage> with SingleTickerProviderStateM
         LoadingDialog.instance().hide();
         AppToastMessage.show(
           context: context,
-          icon: Icons.wifi_off,
           message: AppStrings.restaurantRegistrationNoInternet,
           backgroundColor: context.appColors.error,
         );
@@ -120,7 +119,6 @@ class _ReviewPageState extends State<ReviewPage> with SingleTickerProviderStateM
         LoadingDialog.instance().hide();
         AppToastMessage.show(
           context: context,
-          icon: Icons.cloud_off,
           message: AppStrings.restaurantRegistrationCannotReachServer,
           backgroundColor: context.appColors.error,
         );
@@ -177,7 +175,6 @@ class _ReviewPageState extends State<ReviewPage> with SingleTickerProviderStateM
 
           AppToastMessage.show(
             context: context,
-            icon: Icons.check_circle_outline,
             message: response.body?.message ?? AppStrings.restaurantRegistrationSuccess,
             backgroundColor: Colors.green,
           );
@@ -205,7 +202,6 @@ class _ReviewPageState extends State<ReviewPage> with SingleTickerProviderStateM
 
           AppToastMessage.show(
             context: context,
-            icon: Icons.error_outline,
             message: "$errorMessage\n\n(${response.statusCode})",
             backgroundColor: context.appColors.error,
           );
@@ -224,7 +220,6 @@ class _ReviewPageState extends State<ReviewPage> with SingleTickerProviderStateM
 
         AppToastMessage.show(
           context: context,
-          icon: Icons.error,
           message: errorMessage,
           backgroundColor: context.appColors.error,
         );
@@ -629,7 +624,6 @@ class _ReviewPageState extends State<ReviewPage> with SingleTickerProviderStateM
                                         : () {
                                             AppToastMessage.show(
                                               context: context,
-                                              icon: Icons.error_outline,
                                               message: "Please complete all required fields",
                                               backgroundColor: Colors.red,
                                             );

@@ -12,14 +12,16 @@ class HomeSearch extends StatefulWidget {
   final List<FoodCategoryModel> categories;
   final FilterModel? activeFilter;
   final void Function(FilterModel)? onFilterApplied;
-  final bool isFood; // True for Food service, false for Groceries
+  final bool isFood;
+  final String hintText;
 
   const HomeSearch({
     super.key,
     required this.categories,
     this.activeFilter,
     this.onFilterApplied,
-    this.isFood = true, // Default to Food service
+    this.isFood = true,
+    required this.hintText,
   });
 
   @override
@@ -129,7 +131,7 @@ class _HomeSearchState extends State<HomeSearch> {
             ),
             SizedBox(width: 5.w),
             Text(
-              "Search by name or category...",
+              widget.hintText,
               style: TextStyle(color: colors.textTertiary, fontSize: 12.sp, fontWeight: FontWeight.w400),
             ),
             const Spacer(),

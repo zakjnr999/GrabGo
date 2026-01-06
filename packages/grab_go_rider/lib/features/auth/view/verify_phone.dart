@@ -108,7 +108,6 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
           LoadingDialog.instance().hide();
           AppToastMessage.show(
             context: context,
-            icon: Icons.check_circle,
             message: "OTP sent successfully!",
             backgroundColor: Colors.green,
           );
@@ -121,7 +120,6 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
           LoadingDialog.instance().hide();
           AppToastMessage.show(
             context: context,
-            icon: Icons.error_outline,
             message: "Failed to send OTP: $error",
             backgroundColor: context.appColors.error,
           );
@@ -133,7 +131,6 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
           LoadingDialog.instance().hide();
           AppToastMessage.show(
             context: context,
-            icon: Icons.timer_off,
             message: "Request timeout. Please try again.",
             backgroundColor: context.appColors.error,
           );

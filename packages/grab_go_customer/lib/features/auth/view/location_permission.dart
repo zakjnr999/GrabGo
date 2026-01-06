@@ -108,7 +108,6 @@ class _LocationPermissionState extends State<LocationPermission> with SingleTick
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.error_outline,
           message: "An error occurred while requesting location permission. Please try again.",
           backgroundColor: colors.error,
           duration: const Duration(seconds: 3),

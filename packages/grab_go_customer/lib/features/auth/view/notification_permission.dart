@@ -145,7 +145,6 @@ class _NotificationPermissionState extends State<NotificationPermission> with Si
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.error_outline,
           message: "An error occurred while requesting notication permission. Please try again.",
           backgroundColor: AppColors.errorRed,
           duration: const Duration(seconds: 3),

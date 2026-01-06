@@ -228,7 +228,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.info_outline,
           message: "Please agree to the Terms & Conditions to continue",
           backgroundColor: context.appColors.error,
         );
@@ -244,7 +243,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         if (mounted) {
           AppToastMessage.show(
             context: context,
-            icon: Icons.lock_clock,
             message: "Too many registration attempts. Please wait $remainingMinutes minute(s) before trying again.",
             backgroundColor: context.appColors.error,
           );
@@ -267,7 +265,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         LoadingDialog.instance().hide();
         AppToastMessage.show(
           context: context,
-          icon: Icons.wifi_off,
           message: "No internet connection. Please check your network settings.",
           backgroundColor: context.appColors.error,
         );
@@ -281,7 +278,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         LoadingDialog.instance().hide();
         AppToastMessage.show(
           context: context,
-          icon: Icons.cloud_off,
           message: "Cannot reach server. Please try again later.",
           backgroundColor: context.appColors.error,
         );
@@ -338,12 +334,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         _lastRegistrationAttempt = null;
 
         if (mounted) {
-          AppToastMessage.show(
-            context: context,
-            icon: Icons.check_circle,
-            message: message,
-            backgroundColor: Colors.green,
-          );
+          AppToastMessage.show(context: context, message: message, backgroundColor: Colors.green);
 
           context.go("/verifyPhone");
         }
@@ -360,12 +351,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         }
 
         if (mounted) {
-          AppToastMessage.show(
-            context: context,
-            icon: Icons.error_outline,
-            message: errorMessage,
-            backgroundColor: context.appColors.error,
-          );
+          AppToastMessage.show(context: context, message: errorMessage, backgroundColor: context.appColors.error);
         }
       }
     } on SocketException {
@@ -375,18 +361,15 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       final hasInternet = await _checkInternetConnection();
 
       String message;
-      IconData icon;
 
       if (!hasInternet) {
         message = "No internet connection detected. Please check your network.";
-        icon = Icons.wifi_off;
       } else {
         message = "Cannot connect to server. Please try again.";
-        icon = Icons.cloud_off;
       }
 
       if (mounted) {
-        AppToastMessage.show(context: context, icon: icon, message: message, backgroundColor: context.appColors.error);
+        AppToastMessage.show(context: context, message: message, backgroundColor: context.appColors.error);
       }
     } on TimeoutException {
       if (mounted) {
@@ -396,7 +379,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.timer_off,
           message: "Request timeout. Server is taking too long. Please try again.",
           backgroundColor: context.appColors.error,
         );
@@ -408,7 +390,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.error,
           message: "An unexpected error occurred. Please try again.",
           backgroundColor: context.appColors.error,
         );
@@ -459,7 +440,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         if (mounted) {
           AppToastMessage.show(
             context: context,
-            icon: Icons.check_circle,
             message: "Referral code applied! You'll get GHS ${data['discount']} off your first order.",
             backgroundColor: Colors.green,
           );
@@ -504,7 +484,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         LoadingDialog.instance().hide();
         AppToastMessage.show(
           context: context,
-          icon: Icons.wifi_off,
           message: "No internet connection. Please check your network settings.",
           backgroundColor: context.appColors.error,
         );
@@ -518,7 +497,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         LoadingDialog.instance().hide();
         AppToastMessage.show(
           context: context,
-          icon: Icons.cloud_off,
           message: "Cannot reach server. Please try again later.",
           backgroundColor: context.appColors.error,
         );
@@ -599,12 +577,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         }
 
         if (mounted) {
-          AppToastMessage.show(
-            context: context,
-            icon: Icons.error_outline,
-            message: errorMessage,
-            backgroundColor: context.appColors.error,
-          );
+          AppToastMessage.show(context: context, message: errorMessage, backgroundColor: context.appColors.error);
         }
       }
     } on SocketException {
@@ -614,18 +587,15 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
 
       final hasInternet = await _checkInternetConnection();
       String message;
-      IconData icon;
 
       if (!hasInternet) {
         message = "No internet connection detected. Please check your network.";
-        icon = Icons.wifi_off;
       } else {
         message = "Cannot connect to server. Please try again.";
-        icon = Icons.cloud_off;
       }
 
       if (mounted) {
-        AppToastMessage.show(context: context, icon: icon, message: message, backgroundColor: context.appColors.error);
+        AppToastMessage.show(context: context, message: message, backgroundColor: context.appColors.error);
       }
     } on TimeoutException {
       if (mounted) {
@@ -635,7 +605,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.timer_off,
           message: "Request timeout. Server is taking too long. Please try again.",
           backgroundColor: context.appColors.error,
         );
@@ -648,7 +617,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.error,
           message: "An unexpected error occurred. Please try again.",
           backgroundColor: context.appColors.error,
         );
@@ -1055,7 +1023,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
 
                           SizedBox(height: KSpacing.sm.h),
 
-                          // GRABGO10 Welcome Code Suggestion - Only show if not applied
                           if (!isReferralCodeValid || referralCodeController.text.toUpperCase() != 'GRABGO10')
                             GestureDetector(
                               onTap: () {
@@ -1066,12 +1033,11 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
-                                    colors: [colors.accentGreen.withOpacity(0.1), colors.accentGreen.withOpacity(0.05)],
+                                    colors: [colors.accentGreen.withOpacity(0.2), colors.accentGreen.withOpacity(0.12)],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                   ),
                                   borderRadius: BorderRadius.circular(12.r),
-                                  border: Border.all(color: colors.accentGreen.withOpacity(0.3), width: 1.5),
                                 ),
                                 child: Row(
                                   children: [
@@ -1100,7 +1066,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                                           ),
                                           children: [
                                             TextSpan(
-                                              text: "New user? Tap to use ",
+                                              text: "New user? Tap to use  ",
                                               style: TextStyle(
                                                 fontFamily: "Lato",
                                                 package: "grab_go_shared",
@@ -1120,7 +1086,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                                               ),
                                             ),
                                             TextSpan(
-                                              text: " for ",
+                                              text: "  for  ",
                                               style: TextStyle(
                                                 fontFamily: "Lato",
                                                 package: "grab_go_shared",
@@ -1134,7 +1100,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                                               style: TextStyle(fontWeight: FontWeight.w700, color: colors.accentGreen),
                                             ),
                                             TextSpan(
-                                              text: " your first order!",
+                                              text: "  your first order!",
                                               style: TextStyle(
                                                 fontFamily: "Lato",
                                                 package: "grab_go_shared",
@@ -1355,7 +1321,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                             onTap: () {
                               AppToastMessage.show(
                                 context: context,
-                                icon: Icons.info,
                                 message: "Facebook sign-up coming soon!",
                                 backgroundColor: context.appColors.accentOrange,
                               );

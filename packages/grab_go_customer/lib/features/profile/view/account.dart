@@ -377,8 +377,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        splashColor: colors.accentOrange.withValues(alpha: 0.1),
-        highlightColor: colors.accentOrange.withValues(alpha: 0.05),
+        splashColor: colors.backgroundSecondary,
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
           child: Row(
@@ -426,8 +425,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
             onTap: () {
               context.push("/favorites");
             },
-            splashColor: colors.accentOrange.withValues(alpha: 0.1),
-            highlightColor: colors.accentOrange.withValues(alpha: 0.05),
+            splashColor: colors.backgroundSecondary,
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
               child: Column(

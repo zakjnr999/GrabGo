@@ -7,6 +7,8 @@ import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
+import 'package:grab_go_customer/shared/widgets/app_refresh_indicator.dart';
+import 'package:grab_go_customer/shared/widgets/order_skeleton.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:intl/intl.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -61,8 +63,9 @@ class Orders extends StatefulWidget {
   State<Orders> createState() => _OrdersState();
 }
 
-class _OrdersState extends State<Orders> {
+class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
   int selectedTabIndex = 0;
+  late TabController _tabController;
   final List<String> orderTabs = [
     "Pending",
     AppStrings.ordersOngoing,
@@ -73,6 +76,14 @@ class _OrdersState extends State<Orders> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {
+          selectedTabIndex = _tabController.index;
+        });
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<OrderProvider>(context, listen: false).fetchOrders();
     });
@@ -202,6 +213,7 @@ class _OrdersState extends State<Orders> {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final padding = MediaQuery.paddingOf(context);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
@@ -211,139 +223,152 @@ class _OrdersState extends State<Orders> {
         systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       ),
       child: Scaffold(
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          backgroundColor: colors.backgroundSecondary,
-          title: Row(
-            children: [
-              Container(
-                height: 44.h,
-                width: 44.w,
-                decoration: BoxDecoration(
-                  color: colors.backgroundPrimary,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                      spreadRadius: 0,
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => context.pop(),
-                    customBorder: const CircleBorder(),
-                    child: Padding(
-                      padding: EdgeInsets.all(10.r),
-                      child: SvgPicture.asset(
-                        Assets.icons.navArrowLeft,
-                        package: 'grab_go_shared',
-                        colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              const Spacer(),
-
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                decoration: BoxDecoration(
-                  color: colors.backgroundPrimary,
-                  borderRadius: BorderRadius.circular(20.r),
-                  border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                      spreadRadius: 0,
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(6.r),
-                      decoration: BoxDecoration(color: colors.accentViolet.withOpacity(0.1), shape: BoxShape.circle),
-                      child: SvgPicture.asset(
-                        Assets.icons.cart,
-                        package: 'grab_go_shared',
-                        height: 16.h,
-                        width: 16.w,
-                        colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
-                      ),
-                    ),
-                    SizedBox(width: 8.w),
-                    Text(
-                      AppStrings.ordersMyOrders,
-                      style: TextStyle(
-                        fontFamily: "Lato",
-                        package: 'grab_go_shared',
-                        color: colors.textPrimary,
-                        fontSize: 17.sp,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const Spacer(),
-
-              Container(
-                height: 44.h,
-                width: 44.w,
-                decoration: BoxDecoration(
-                  color: colors.backgroundPrimary,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                      spreadRadius: 0,
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {},
-                    customBorder: const CircleBorder(),
-                    child: Padding(
-                      padding: EdgeInsets.all(10.r),
-                      child: Icon(Icons.more_vert, size: 20.sp, color: colors.textPrimary),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
         backgroundColor: colors.backgroundSecondary,
         body: Column(
           children: [
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-              child: AnimatedTabBar(
-                tabs: orderTabs,
-                padding: EdgeInsets.zero,
-                selectedIndex: selectedTabIndex,
-                onTabChanged: (index) {
-                  setState(() {
-                    selectedTabIndex = index;
-                  });
-                },
+            Container(
+              padding: EdgeInsets.only(bottom: 10.h),
+              color: colors.backgroundPrimary,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(top: padding.top, left: 10.w, right: 10.w),
+                    child: Row(
+                      children: [
+                        Container(
+                          height: 44.h,
+                          width: 44.w,
+                          decoration: BoxDecoration(
+                            color: colors.backgroundPrimary,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () => context.pop(),
+                              customBorder: const CircleBorder(),
+                              child: Padding(
+                                padding: EdgeInsets.all(10.r),
+                                child: SvgPicture.asset(
+                                  Assets.icons.navArrowLeft,
+                                  package: 'grab_go_shared',
+                                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 16.w),
+                        Text(
+                          "My Orders",
+                          style: TextStyle(
+                            fontFamily: "Lato",
+                            package: 'grab_go_shared',
+                            color: colors.textPrimary,
+                            fontSize: 24.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const Spacer(),
+
+                        CustomPopupMenu(
+                          menuWidth: 280.w,
+                          showArrow: false,
+                          items: [
+                            CustomPopupMenuItem(
+                              value: 'sort',
+                              label: 'Sort Favorites',
+                              icon: Assets.icons.sort,
+                              iconColor: colors.textSecondary,
+                            ),
+                            CustomPopupMenuItem(
+                              value: 'clear',
+                              label: 'Clear All Favorites',
+                              icon: Assets.icons.brushCleaning,
+                              iconColor: colors.textSecondary,
+                            ),
+                          ],
+                          onSelected: (value) {
+                            switch (value) {
+                              case "sort":
+                                debugPrint("sort");
+                              case "clear":
+                            }
+                          },
+                          child: Container(
+                            height: 44.h,
+                            width: 44.w,
+                            decoration: BoxDecoration(
+                              color: colors.backgroundPrimary,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                            ),
+                            child: Padding(
+                              padding: EdgeInsets.all(12.r),
+                              child: SvgPicture.asset(
+                                Assets.icons.moreVertical,
+                                package: 'grab_go_shared',
+                                colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 16.h),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    switchInCurve: Curves.easeInOut,
+                    switchOutCurve: Curves.easeInOut,
+                    transitionBuilder: (Widget child, Animation<double> animation) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(begin: const Offset(0, -0.1), end: Offset.zero).animate(animation),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: Container(
+                      key: const ValueKey('tabs'),
+                      margin: EdgeInsets.symmetric(horizontal: 20.w),
+                      padding: EdgeInsets.all(4.r),
+                      decoration: BoxDecoration(
+                        color: colors.backgroundSecondary,
+                        borderRadius: BorderRadius.circular(14.r),
+                      ),
+                      child: TabBar(
+                        controller: _tabController,
+                        indicator: BoxDecoration(color: colors.accentOrange, borderRadius: BorderRadius.circular(10.r)),
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        dividerColor: Colors.transparent,
+                        labelColor: Colors.white,
+                        unselectedLabelColor: colors.textSecondary,
+                        labelStyle: TextStyle(
+                          fontFamily: "Lato",
+                          package: "grab_go_shared",
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        unselectedLabelStyle: TextStyle(
+                          fontFamily: "Lato",
+                          package: 'grab_go_shared',
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        tabs: const [
+                          Tab(text: "Pending"),
+                          Tab(text: AppStrings.ordersOngoing),
+                          Tab(text: AppStrings.ordersCompleted),
+                          Tab(text: AppStrings.ordersCancelled),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             Expanded(
@@ -351,19 +376,7 @@ class _OrdersState extends State<Orders> {
                 builder: (context, orderProvider, _) {
                   if (orderProvider.isLoading && orderProvider.orders.isEmpty) {
                     //when orders are loading..
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CircularProgressIndicator(color: colors.accentViolet),
-                          SizedBox(height: 16.h),
-                          Text(
-                            "Loading your orders...",
-                            style: TextStyle(fontSize: 16.sp, color: colors.textSecondary, fontWeight: FontWeight.w500),
-                          ),
-                        ],
-                      ),
-                    );
+                    return OrderSkeleton(colors: colors, isDark: isDark);
                   }
 
                   if (orderProvider.error != null && orderProvider.orders.isEmpty) {
@@ -414,11 +427,12 @@ class _OrdersState extends State<Orders> {
                     return _buildEmptyState(colors);
                   }
 
-                  return RefreshIndicator(
-                    color: colors.accentViolet,
+                  return AppRefreshIndicator(
+                    iconPath: Assets.icons.boxIso,
+                    bgColor: colors.accentOrange,
                     onRefresh: () => orderProvider.refreshOrders(),
                     child: ListView.separated(
-                      physics: const BouncingScrollPhysics(),
+                      physics: const AlwaysScrollableScrollPhysics(),
                       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
                       itemCount: filteredOrders.length,
                       separatorBuilder: (context, index) => SizedBox(height: 16.h),
@@ -467,18 +481,6 @@ class _OrdersState extends State<Orders> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: EdgeInsets.all(30.r),
-            decoration: BoxDecoration(color: colors.accentViolet.withOpacity(0.1), shape: BoxShape.circle),
-            child: SvgPicture.asset(
-              Assets.icons.cart,
-              package: 'grab_go_shared',
-              height: 80.h,
-              width: 80.w,
-              colorFilter: ColorFilter.mode(colors.accentViolet.withOpacity(0.5), BlendMode.srcIn),
-            ),
-          ),
-          SizedBox(height: 24.h),
           Text(
             title,
             style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),

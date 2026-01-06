@@ -169,7 +169,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         LoadingDialog.instance().hide();
         AppToastMessage.show(
           context: context,
-          icon: Icons.wifi_off,
           message: "No internet connection. Please check your network settings.",
           backgroundColor: context.appColors.error,
         );
@@ -183,7 +182,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         LoadingDialog.instance().hide();
         AppToastMessage.show(
           context: context,
-          icon: Icons.cloud_off,
           message: "Cannot reach server. Please try again later.",
           backgroundColor: context.appColors.error,
         );
@@ -250,7 +248,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
             if (mounted) {
               AppToastMessage.show(
                 context: context,
-                icon: Icons.error,
                 message: "Could not navigate. Please try again.",
                 backgroundColor: context.appColors.error,
               );
@@ -270,12 +267,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         }
 
         if (mounted) {
-          AppToastMessage.show(
-            context: context,
-            icon: Icons.error_outline,
-            message: errorMessage,
-            backgroundColor: context.appColors.error,
-          );
+          AppToastMessage.show(context: context, message: errorMessage, backgroundColor: context.appColors.error);
         }
       }
     } on SocketException {
@@ -285,18 +277,15 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       final hasInternet = await _checkInternetConnection();
 
       String message;
-      IconData icon;
 
       if (!hasInternet) {
         message = "No internet connection detected. Please check your network.";
-        icon = Icons.wifi_off;
       } else {
         message = "Cannot connect to server. Please try again.";
-        icon = Icons.cloud_off;
       }
 
       if (mounted) {
-        AppToastMessage.show(context: context, icon: icon, message: message, backgroundColor: context.appColors.error);
+        AppToastMessage.show(context: context, message: message, backgroundColor: context.appColors.error);
       }
     } on TimeoutException {
       if (mounted) {
@@ -306,7 +295,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.timer_off,
           message: "Request timeout. Server is taking too long. Please try again.",
           backgroundColor: context.appColors.error,
         );
@@ -318,7 +306,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.error,
           message: "An unexpected error occurred. Please try again.",
           backgroundColor: context.appColors.error,
         );
@@ -336,7 +323,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         LoadingDialog.instance().hide();
         AppToastMessage.show(
           context: context,
-          icon: Icons.wifi_off,
           message: "No internet connection. Please check your network settings.",
           backgroundColor: context.appColors.error,
         );
@@ -350,7 +336,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         LoadingDialog.instance().hide();
         AppToastMessage.show(
           context: context,
-          icon: Icons.cloud_off,
           message: "Cannot reach server. Please try again later.",
           backgroundColor: context.appColors.error,
         );
@@ -442,12 +427,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         }
 
         if (mounted) {
-          AppToastMessage.show(
-            context: context,
-            icon: Icons.error_outline,
-            message: errorMessage,
-            backgroundColor: context.appColors.error,
-          );
+          AppToastMessage.show(context: context, message: errorMessage, backgroundColor: context.appColors.error);
         }
       }
     } on SocketException {
@@ -457,18 +437,15 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
 
       final hasInternet = await _checkInternetConnection();
       String message;
-      IconData icon;
 
       if (!hasInternet) {
         message = "No internet connection detected. Please check your network.";
-        icon = Icons.wifi_off;
       } else {
         message = "Cannot connect to server. Please try again.";
-        icon = Icons.cloud_off;
       }
 
       if (mounted) {
-        AppToastMessage.show(context: context, icon: icon, message: message, backgroundColor: context.appColors.error);
+        AppToastMessage.show(context: context, message: message, backgroundColor: context.appColors.error);
       }
     } on TimeoutException {
       if (mounted) {
@@ -478,7 +455,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.timer_off,
           message: "Request timeout. Server is taking too long. Please try again.",
           backgroundColor: context.appColors.error,
         );
@@ -491,7 +467,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.error,
           message: "An unexpected error occurred. Please try again.",
           backgroundColor: context.appColors.error,
         );
@@ -961,7 +936,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                             onTap: () {
                               AppToastMessage.show(
                                 context: context,
-                                icon: Icons.info,
                                 message: "Facebook sign-up coming soon!",
                                 backgroundColor: context.appColors.accentOrange,
                               );

@@ -144,7 +144,6 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         LoadingDialog.instance().hide();
         AppToastMessage.show(
           context: context,
-          icon: Icons.wifi_off,
           message: "No internet connection. Please check your network settings.",
           backgroundColor: context.appColors.error,
         );
@@ -248,12 +247,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         }
 
         if (mounted) {
-          AppToastMessage.show(
-            context: context,
-            icon: Icons.error_outline,
-            message: errorMessage,
-            backgroundColor: context.appColors.error,
-          );
+          AppToastMessage.show(context: context, message: errorMessage, backgroundColor: context.appColors.error);
         }
       }
     } on SocketException {
@@ -274,7 +268,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
       }
 
       if (mounted) {
-        AppToastMessage.show(context: context, icon: icon, message: message, backgroundColor: context.appColors.error);
+        AppToastMessage.show(context: context, message: message, backgroundColor: context.appColors.error);
       }
     } on TimeoutException {
       if (mounted) {
@@ -284,7 +278,6 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.timer_off,
           message: "Request timeout. Server is taking too long. Please try again.",
           backgroundColor: context.appColors.error,
         );
@@ -297,7 +290,6 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.error,
           message: "An unexpected error occurred. Please try again.",
           backgroundColor: context.appColors.error,
         );
@@ -338,7 +330,6 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         if (mounted) {
           AppToastMessage.show(
             context: context,
-            icon: Icons.lock_clock,
             message: "Too many login attempts. Please wait $remainingMinutes minute(s) before trying again.",
             backgroundColor: context.appColors.error,
           );
@@ -361,7 +352,6 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         LoadingDialog.instance().hide();
         AppToastMessage.show(
           context: context,
-          icon: Icons.wifi_off,
           message: "No internet connection. Please check your network settings.",
           backgroundColor: context.appColors.error,
         );
@@ -452,12 +442,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         }
 
         if (mounted) {
-          AppToastMessage.show(
-            context: context,
-            icon: Icons.error_outline,
-            message: errorMessage,
-            backgroundColor: context.appColors.error,
-          );
+          AppToastMessage.show(context: context, message: errorMessage, backgroundColor: context.appColors.error);
         }
       }
     } on SocketException {
@@ -479,7 +464,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
       }
 
       if (mounted) {
-        AppToastMessage.show(context: context, icon: icon, message: message, backgroundColor: context.appColors.error);
+        AppToastMessage.show(context: context, message: message, backgroundColor: context.appColors.error);
       }
     } on TimeoutException {
       if (mounted) {
@@ -489,7 +474,6 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.timer_off,
           message: "Request timeout. Server is taking too long. Please try again.",
           backgroundColor: context.appColors.error,
         );
@@ -502,7 +486,6 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.error,
           message: "An unexpected error occurred. Please try again.",
           backgroundColor: context.appColors.error,
         );

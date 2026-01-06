@@ -6,6 +6,7 @@ import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
+import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:provider/provider.dart';
@@ -48,45 +49,74 @@ class PopularItemCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Image
-            ClipRRect(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(KBorderSize.borderMedium),
-                topRight: Radius.circular(KBorderSize.borderMedium),
-              ),
-              child: CachedNetworkImage(
-                imageUrl: ImageOptimizer.getPreviewUrl(item.image, width: 400),
-                height: 120.h,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                memCacheWidth: 400,
-                maxHeightDiskCache: 800,
-                placeholder: (context, url) => Container(
-                  height: 120.h,
-                  color: colors.inputBorder,
-                  child: Center(
-                    child: SvgPicture.asset(
-                      Assets.icons.utensilsCrossed,
-                      package: 'grab_go_shared',
-                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                      width: 30.w,
-                      height: 30.h,
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(KBorderSize.borderMedium),
+                    topRight: Radius.circular(KBorderSize.borderMedium),
+                  ),
+                  child: CachedNetworkImage(
+                    imageUrl: ImageOptimizer.getPreviewUrl(item.image, width: 400),
+                    height: 120.h,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    memCacheWidth: 400,
+                    maxHeightDiskCache: 800,
+                    placeholder: (context, url) => Container(
+                      height: 120.h,
+                      color: colors.inputBorder,
+                      child: Center(
+                        child: SvgPicture.asset(
+                          Assets.icons.utensilsCrossed,
+                          package: 'grab_go_shared',
+                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                          width: 30.w,
+                          height: 30.h,
+                        ),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      height: 120.h,
+                      color: colors.inputBorder,
+                      child: Center(
+                        child: SvgPicture.asset(
+                          Assets.icons.utensilsCrossed,
+                          package: 'grab_go_shared',
+                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                          width: 30.w,
+                          height: 30.h,
+                        ),
+                      ),
                     ),
                   ),
                 ),
-                errorWidget: (context, url, error) => Container(
-                  height: 120.h,
-                  color: colors.inputBorder,
-                  child: Center(
-                    child: SvgPicture.asset(
-                      Assets.icons.utensilsCrossed,
-                      package: 'grab_go_shared',
-                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                      width: 30.w,
-                      height: 30.h,
-                    ),
-                  ),
+                Consumer<FavoritesProvider>(
+                  builder: (context, favoriteProvider, child) {
+                    final bool isFavorite = favoriteProvider.isFavorite(item);
+                    return Positioned(
+                      right: 12.r,
+                      top: 12.r,
+                      child: GestureDetector(
+                        onTap: () {
+                          if (isFavorite) {
+                            favoriteProvider.removeFromFavorites(item);
+                          } else {
+                            favoriteProvider.addToFavorites(item);
+                          }
+                        },
+                        child: SvgPicture.asset(
+                          isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
+                          package: 'grab_go_shared',
+                          height: 24.h,
+                          width: 24.w,
+                          colorFilter: ColorFilter.mode(isFavorite ? colors.error : Colors.white, BlendMode.srcIn),
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              ),
+              ],
             ),
             // Content
             Padding(
@@ -96,7 +126,7 @@ class PopularItemCard extends StatelessWidget {
                 children: [
                   Text(
                     item.name,
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                   ),

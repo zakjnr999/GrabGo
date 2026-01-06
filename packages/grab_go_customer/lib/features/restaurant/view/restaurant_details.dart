@@ -927,7 +927,6 @@ class _RestaurantDetailsState extends State<RestaurantDetails> with TickerProvid
         if (mounted) {
           AppToastMessage.show(
             context: context,
-            icon: Icons.error_outline,
             message: 'Unable to open phone dialer. Please try again.',
             backgroundColor: context.appColors.error,
           );
@@ -937,7 +936,6 @@ class _RestaurantDetailsState extends State<RestaurantDetails> with TickerProvid
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.error_outline,
           message: 'Error opening phone dialer: $e',
           backgroundColor: context.appColors.error,
         );
@@ -959,7 +957,6 @@ class _RestaurantDetailsState extends State<RestaurantDetails> with TickerProvid
           await Clipboard.setData(ClipboardData(text: email));
           AppToastMessage.show(
             context: context,
-            icon: Icons.check_circle,
             message: 'Email copied to clipboard: $email',
             backgroundColor: context.appColors.accentOrange,
           );
@@ -969,7 +966,6 @@ class _RestaurantDetailsState extends State<RestaurantDetails> with TickerProvid
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.error_outline,
           message: 'Error opening email client: $e',
           backgroundColor: context.appColors.error,
         );

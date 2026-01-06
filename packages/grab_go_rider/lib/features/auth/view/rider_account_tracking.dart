@@ -333,7 +333,6 @@ class _RiderAccountTrackingState extends State<RiderAccountTracking> {
       case 'complete_setup':
         AppToastMessage.show(
           context: context,
-          icon: Icons.check_circle_outline,
           message: 'Completing account setup...',
           backgroundColor: context.appColors.success,
         );
@@ -373,7 +372,6 @@ class _RiderAccountTrackingState extends State<RiderAccountTracking> {
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.info_outline,
           message: 'No email app found. Please contact zakjnr165@gmail.com directly for support.',
           backgroundColor: context.appColors.accentOrange,
         );
@@ -382,7 +380,6 @@ class _RiderAccountTrackingState extends State<RiderAccountTracking> {
       if (mounted) {
         AppToastMessage.show(
           context: context,
-          icon: Icons.error_outline,
           message: 'Unable to open email client. Please contact zakjnr165@gmail.com directly.',
           backgroundColor: context.appColors.error,
         );

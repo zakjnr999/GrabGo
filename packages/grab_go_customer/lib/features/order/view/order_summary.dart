@@ -782,7 +782,7 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
 
                 // Sticky button at bottom
                 Container(
-                  padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 16.h, bottom: padding.bottom),
+                  padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 16.h, bottom: padding.bottom + 16.h),
                   decoration: BoxDecoration(
                     color: colors.backgroundSecondary,
                     border: Border(top: BorderSide(color: colors.textPrimary.withValues(alpha: 0.1), width: 0.5)),

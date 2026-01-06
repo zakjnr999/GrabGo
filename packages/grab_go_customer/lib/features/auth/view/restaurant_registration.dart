@@ -1023,7 +1023,6 @@ class _RestaurantRegistrationState extends State<RestaurantRegistration> with Si
                         if (hasPendingApplication) {
                           AppToastMessage.show(
                             context: context,
-                            icon: Icons.info_outline,
                             message:
                                 "You already have a pending restaurant application. Please wait for it to be reviewed before submitting another.",
                             backgroundColor: colors.accentOrange,
@@ -1055,7 +1054,6 @@ class _RestaurantRegistrationState extends State<RestaurantRegistration> with Si
                         } else if (!isTermsAccepted) {
                           AppToastMessage.show(
                             context: context,
-                            icon: Icons.error_outline,
                             message: "Please accept the Terms & Conditions",
                             backgroundColor: colors.error,
                           );

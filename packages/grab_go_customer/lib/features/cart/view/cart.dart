@@ -107,313 +107,272 @@ class Cart extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Scrollable content
-                Expanded(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Cart items or empty state
-                        if (provider.cartItems.isEmpty)
-                          SizedBox(
-                            height: MediaQuery.of(context).size.height * 0.5,
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    padding: EdgeInsets.all(30.r),
-                                    decoration: BoxDecoration(
-                                      color: colors.accentOrange.withOpacity(0.1),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: SvgPicture.asset(
-                                      Assets.icons.cart,
-                                      package: 'grab_go_shared',
-                                      height: 80.h,
-                                      width: 80.w,
-                                      colorFilter: ColorFilter.mode(
-                                        colors.accentOrange.withOpacity(0.5),
-                                        BlendMode.srcIn,
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(height: 24.h),
-                                  Text(
-                                    AppStrings.cartEmpty,
-                                    style: TextStyle(
-                                      fontSize: 20.sp,
-                                      fontWeight: FontWeight.w800,
-                                      color: colors.textPrimary,
-                                    ),
-                                  ),
-                                  SizedBox(height: 8.h),
-                                  Padding(
-                                    padding: EdgeInsets.symmetric(horizontal: 40.w),
-                                    child: Text(
-                                      AppStrings.cartEmptyMessage,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 13.sp,
-                                        fontWeight: FontWeight.w500,
-                                        color: colors.textSecondary,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                        else
+                if (provider.cartItems.isEmpty)
+                  _buildEmptyCart(context, colors)
+                else
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           const CartItem(),
-
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(8.r),
-                                decoration: BoxDecoration(
-                                  color: colors.accentOrange.withValues(alpha: 0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: SvgPicture.asset(
-                                  Assets.icons.squareMenu,
-                                  package: 'grab_go_shared',
-                                  height: 18.h,
-                                  width: 18.w,
-                                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                                ),
-                              ),
-                              SizedBox(width: 12.w),
-                              Text(
-                                "Order Summary",
-                                style: TextStyle(
-                                  fontFamily: "Lato",
-                                  package: 'grab_go_shared',
-                                  color: colors.textPrimary,
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20.w),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              GestureDetector(
-                                onTap: () async {
-                                  final promoCode = await PromoCodeDialog.show(
-                                    context: context,
-                                    onApply: (code) {
-                                      AppToastMessage.show(
-                                        context: context,
-                                        icon: Icons.check_circle,
-                                        message: 'Promo code "$code" applied successfully!',
-                                        backgroundColor: colors.accentGreen,
-                                      );
-                                    },
-                                  );
-
-                                  if (promoCode != null) {
-                                    debugPrint('Promo code applied: $promoCode');
-                                  }
-                                },
-                                child: Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(8.r),
                                   decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        colors.accentViolet.withOpacity(0.1),
-                                        colors.accentOrange.withOpacity(0.1),
-                                      ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                    borderRadius: BorderRadius.circular(12.r),
+                                    color: colors.accentOrange.withValues(alpha: 0.1),
+                                    shape: BoxShape.circle,
                                   ),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        padding: EdgeInsets.all(8.r),
-                                        decoration: BoxDecoration(
-                                          color: colors.accentViolet.withOpacity(0.15),
-                                          borderRadius: BorderRadius.circular(8.r),
+                                  child: SvgPicture.asset(
+                                    Assets.icons.squareMenu,
+                                    package: 'grab_go_shared',
+                                    height: 18.h,
+                                    width: 18.w,
+                                    colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                  ),
+                                ),
+                                SizedBox(width: 12.w),
+                                Text(
+                                  "Order Summary",
+                                  style: TextStyle(
+                                    fontFamily: "Lato",
+                                    package: 'grab_go_shared',
+                                    color: colors.textPrimary,
+                                    fontSize: 16.sp,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 20.w),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                GestureDetector(
+                                  onTap: () async {
+                                    final promoCode = await PromoCodeDialog.show(
+                                      context: context,
+                                      onApply: (code) {
+                                        AppToastMessage.show(
+                                          context: context,
+                                          message: 'Promo code "$code" applied successfully!',
+                                          backgroundColor: colors.accentGreen,
+                                        );
+                                      },
+                                    );
+
+                                    if (promoCode != null) {
+                                      debugPrint('Promo code applied: $promoCode');
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          colors.accentViolet.withOpacity(0.1),
+                                          colors.accentOrange.withOpacity(0.1),
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(12.r),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: EdgeInsets.all(8.r),
+                                          decoration: BoxDecoration(
+                                            color: colors.accentViolet.withOpacity(0.15),
+                                            borderRadius: BorderRadius.circular(8.r),
+                                          ),
+                                          child: SvgPicture.asset(
+                                            Assets.icons.badgePercent,
+                                            package: 'grab_go_shared',
+                                            height: 20.h,
+                                            width: 20.w,
+                                            colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                                          ),
                                         ),
-                                        child: SvgPicture.asset(
-                                          Assets.icons.badgePercent,
+                                        SizedBox(width: 12.w),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                AppStrings.cartPromoCode,
+                                                style: TextStyle(
+                                                  color: colors.textPrimary,
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 13.sp,
+                                                ),
+                                              ),
+                                              SizedBox(height: 2.h),
+                                              Text(
+                                                AppStrings.cartPromoCodeSub,
+                                                style: TextStyle(
+                                                  color: colors.textSecondary,
+                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: 11.sp,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        SvgPicture.asset(
+                                          Assets.icons.navArrowRight,
                                           package: 'grab_go_shared',
-                                          height: 20.h,
-                                          width: 20.w,
+                                          height: 18.h,
+                                          width: 18.w,
                                           colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
                                         ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(height: 16.h),
+
+                                Container(
+                                  padding: EdgeInsets.all(14.r),
+                                  decoration: BoxDecoration(
+                                    color: colors.backgroundPrimary,
+                                    borderRadius: BorderRadius.circular(12.r),
+                                    border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      _buildPriceRowWithIcon(
+                                        AppStrings.cartSubtotal,
+                                        subtotal,
+                                        colors,
+                                        Assets.icons.cash,
+                                        false,
                                       ),
-                                      SizedBox(width: 12.w),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                      SizedBox(height: 10.h),
+                                      _buildPriceRowWithIcon(
+                                        AppStrings.cartDeliveryFee,
+                                        deliveryFee,
+                                        colors,
+                                        Assets.icons.deliveryTruck,
+                                        false,
+                                      ),
+                                      SizedBox(height: 12.h),
+                                      DottedLine(
+                                        direction: Axis.horizontal,
+                                        lineLength: double.infinity,
+                                        lineThickness: 1.5,
+                                        dashLength: 6,
+                                        dashColor: colors.inputBorder.withOpacity(0.5),
+                                        dashGapLength: 4,
+                                      ),
+                                      SizedBox(height: 12.h),
+                                      Container(
+                                        padding: EdgeInsets.all(12.r),
+                                        decoration: BoxDecoration(
+                                          color: colors.accentOrange.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(8.r),
+                                        ),
+                                        child: Row(
                                           children: [
                                             Text(
-                                              AppStrings.cartPromoCode,
+                                              AppStrings.cartTotalAmount,
                                               style: TextStyle(
                                                 color: colors.textPrimary,
+                                                fontSize: 14.sp,
                                                 fontWeight: FontWeight.w700,
-                                                fontSize: 13.sp,
                                               ),
                                             ),
-                                            SizedBox(height: 2.h),
+                                            const Spacer(),
                                             Text(
-                                              AppStrings.cartPromoCodeSub,
+                                              "${AppStrings.currencySymbol} ${total.toStringAsFixed(2)}",
                                               style: TextStyle(
-                                                color: colors.textSecondary,
-                                                fontWeight: FontWeight.w500,
-                                                fontSize: 11.sp,
+                                                color: colors.accentOrange,
+                                                fontSize: 18.sp,
+                                                fontWeight: FontWeight.w800,
                                               ),
                                             ),
                                           ],
                                         ),
                                       ),
-                                      SvgPicture.asset(
-                                        Assets.icons.navArrowRight,
-                                        package: 'grab_go_shared',
-                                        height: 18.h,
-                                        width: 18.w,
-                                        colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
-                                      ),
                                     ],
                                   ),
                                 ),
-                              ),
-                              SizedBox(height: 16.h),
-
-                              Container(
-                                padding: EdgeInsets.all(14.r),
-                                decoration: BoxDecoration(
-                                  color: colors.backgroundPrimary,
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
-                                ),
-                                child: Column(
-                                  children: [
-                                    _buildPriceRowWithIcon(
-                                      AppStrings.cartSubtotal,
-                                      subtotal,
-                                      colors,
-                                      Assets.icons.cash,
-                                      false,
+                                SizedBox(height: 12.h),
+                                // Estimated delivery time
+                                Padding(
+                                  padding: EdgeInsets.only(bottom: 8.h),
+                                  child: Text(
+                                    "Est. Delivery: 30-45 mins",
+                                    style: TextStyle(
+                                      color: colors.textSecondary,
+                                      fontSize: 12.sp,
+                                      fontWeight: FontWeight.w500,
                                     ),
-                                    SizedBox(height: 10.h),
-                                    _buildPriceRowWithIcon(
-                                      AppStrings.cartDeliveryFee,
-                                      deliveryFee,
-                                      colors,
-                                      Assets.icons.deliveryTruck,
-                                      false,
-                                    ),
-                                    SizedBox(height: 12.h),
-                                    DottedLine(
-                                      direction: Axis.horizontal,
-                                      lineLength: double.infinity,
-                                      lineThickness: 1.5,
-                                      dashLength: 6,
-                                      dashColor: colors.inputBorder.withOpacity(0.5),
-                                      dashGapLength: 4,
-                                    ),
-                                    SizedBox(height: 12.h),
-                                    Container(
-                                      padding: EdgeInsets.all(12.r),
-                                      decoration: BoxDecoration(
-                                        color: colors.accentOrange.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(8.r),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Text(
-                                            AppStrings.cartTotalAmount,
-                                            style: TextStyle(
-                                              color: colors.textPrimary,
-                                              fontSize: 14.sp,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                          const Spacer(),
-                                          Text(
-                                            "${AppStrings.currencySymbol} ${total.toStringAsFixed(2)}",
-                                            style: TextStyle(
-                                              color: colors.accentOrange,
-                                              fontSize: 18.sp,
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              SizedBox(height: 12.h),
-                              // Estimated delivery time
-                              Padding(
-                                padding: EdgeInsets.only(bottom: 8.h),
-                                child: Text(
-                                  "Est. Delivery: 30-45 mins",
-                                  style: TextStyle(
-                                    color: colors.textSecondary,
-                                    fontSize: 12.sp,
-                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                // Sticky checkout button at bottom
-                Container(
-                  padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 16.h, bottom: padding.bottom),
-                  decoration: BoxDecoration(
-                    color: colors.backgroundSecondary,
-                    border: Border(top: BorderSide(color: colors.textPrimary.withOpacity(0.1), width: 0.5)),
-                  ),
-                  child: GestureDetector(
-                    onTap: () {
-                      if (provider.cartItems.isEmpty) {
-                        AppToastMessage.show(
-                          context: context,
-                          icon: Icons.close,
-                          message: AppStrings.cartEmpty,
-                          backgroundColor: colors.error,
-                        );
-                      } else {
-                        context.push("/checkout");
-                      }
-                    },
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        splashColor: Colors.white.withOpacity(0.2),
-                        child: Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.symmetric(vertical: 16.h),
-                          decoration: BoxDecoration(
-                            color: provider.cartItems.isEmpty ? colors.inputBorder : colors.accentOrange,
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          child: Center(
-                            child: Text(
-                              AppStrings.cartProceedToCheckout,
-                              style: TextStyle(
-                                color: provider.cartItems.isEmpty ? colors.textSecondary : Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15.sp,
+
+                if (provider.cartItems.isEmpty)
+                  const SizedBox.shrink()
+                else
+                  Container(
+                    padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 16.h, bottom: padding.bottom + 16.h),
+                    decoration: BoxDecoration(
+                      color: colors.backgroundSecondary,
+                      border: Border(top: BorderSide(color: colors.textPrimary.withOpacity(0.1), width: 0.5)),
+                    ),
+                    child: GestureDetector(
+                      onTap: () {
+                        if (provider.cartItems.isEmpty) {
+                          AppToastMessage.show(
+                            context: context,
+                            message: AppStrings.cartEmpty,
+                            backgroundColor: colors.error,
+                          );
+                        } else {
+                          context.push("/checkout");
+                        }
+                      },
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          splashColor: Colors.white.withOpacity(0.2),
+                          child: Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.symmetric(vertical: 16.h),
+                            decoration: BoxDecoration(
+                              color: provider.cartItems.isEmpty ? colors.inputBorder : colors.accentOrange,
+                              borderRadius: BorderRadius.circular(12.r),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: colors.accentOrange.withValues(alpha: 0.3),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                  spreadRadius: 0,
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Text(
+                                AppStrings.cartProceedToCheckout,
+                                style: TextStyle(
+                                  color: provider.cartItems.isEmpty ? colors.textSecondary : Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15.sp,
+                                ),
                               ),
                             ),
                           ),
@@ -421,10 +380,71 @@ class Cart extends StatelessWidget {
                       ),
                     ),
                   ),
-                ),
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyCart(BuildContext context, AppColorsExtension colors) {
+    return Expanded(
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              AppStrings.cartEmpty,
+              style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+            ),
+            SizedBox(height: 8.h),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 40.w),
+              child: Text(
+                AppStrings.cartEmptyMessage,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+              ),
+            ),
+            SizedBox(height: KSpacing.xl.h),
+
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 20.w),
+              decoration: BoxDecoration(color: colors.backgroundSecondary),
+              child: GestureDetector(
+                onTap: context.pop,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    splashColor: Colors.white.withOpacity(0.2),
+                    child: Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(vertical: 16.h),
+                      decoration: BoxDecoration(
+                        color: colors.accentOrange,
+                        borderRadius: BorderRadius.circular(12.r),
+                        boxShadow: [
+                          BoxShadow(
+                            color: colors.accentOrange.withValues(alpha: 0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                            spreadRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          "Browse offers",
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15.sp),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

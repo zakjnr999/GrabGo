@@ -3718,7 +3718,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
       });
       _cacheMessages();
 
-      AppToastMessage.show(context: context, icon: Icons.error_outline, message: "Failed to delete photos");
+      AppToastMessage.show(context: context, message: "Failed to delete photos");
     }
   }
 

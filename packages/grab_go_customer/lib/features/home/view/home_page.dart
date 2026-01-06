@@ -936,6 +936,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return HomeSearch(
       categories: itemsProvider.categories,
       activeFilter: _activeFilter,
+      hintText: "Search by name or category...",
       onFilterApplied: (FilterModel filter) {
         setState(() {
           _activeFilter = filter.copyWith();
