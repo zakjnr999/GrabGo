@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
@@ -11,7 +12,9 @@ import 'package:grab_go_customer/shared/viewmodels/location_provider.dart';
 import 'package:grab_go_customer/shared/widgets/app_refresh_indicator.dart';
 import 'package:grab_go_customer/shared/widgets/category_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_skeleton.dart';
+import 'package:grab_go_customer/shared/widgets/section_header.dart';
 import 'package:grab_go_customer/shared/widgets/store_specials_section.dart';
+import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/widgets/service_category_list.dart';
@@ -56,11 +59,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   int _recommendedDisplayedCount = 10;
   int _previousCartCount = 0;
 
+  // Scroll tracking for collapsing header
+  late final ValueNotifier<double> _scrollOffsetNotifier;
+  static const double _collapsedHeight = 70.0;
+  static const double _scrollThreshold = 150.0;
+
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
+    _scrollOffsetNotifier = ValueNotifier<double>(0.0);
 
     _fabAnimationController = AnimationController(duration: const Duration(milliseconds: 300), vsync: this);
 
@@ -92,6 +101,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _scrollOffsetNotifier.dispose();
     _fabAnimationController.dispose();
     _badgePulseController.dispose();
     super.dispose();
@@ -101,6 +111,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     if (!_scrollController.hasClients) return;
 
     final currentOffset = _scrollController.offset;
+
+    // Update scroll offset for collapsing header WITHOUT setState to avoid lagging
+    _scrollOffsetNotifier.value = currentOffset;
+
     final scrollDelta = currentOffset - _lastScrollOffset;
 
     if (currentOffset <= 0) {
@@ -196,6 +210,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final serviceProvider = Provider.of<ServiceProvider>(context);
     final groceryProvider = Provider.of<GroceryProvider>(context);
 
+    final systemUiOverlayStyle = SystemUiOverlayStyle(
+      statusBarColor: colors.accentOrange,
+      statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: colors.backgroundSecondary,
+      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+    );
+
     if (foodProvider.categories.isNotEmpty && _selectedCategory == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -206,463 +227,452 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       });
     }
 
-    return Scaffold(
-      body: SafeArea(
-        child: AppRefreshIndicator(
-          onRefresh: _refreshData,
-          iconPath: serviceProvider.isFoodService ? Assets.icons.utensilsCrossed : Assets.icons.cart,
-          bgColor: colors.accentOrange,
-          child: SingleChildScrollView(
-            controller: _scrollController,
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: systemUiOverlayStyle,
+      child: Scaffold(
+        body: SafeArea(
+          top: false,
+          child: ClipRect(
+            child: Stack(
               children: [
-                SizedBox(height: 10.h),
-                _buildHomeHeader(context, size, colors, isDark, locationProvider),
-                SizedBox(height: KSpacing.lg.h),
-                _buildHomeSearch(foodProvider),
-                SizedBox(height: KSpacing.lg.h),
-                _buildServiceSelector(),
-                SizedBox(height: KSpacing.lg.h),
-                const ReferralBanner(),
-                HomeBanner(size: size),
-                SizedBox(height: KSpacing.lg.h),
-
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  switchInCurve: Curves.easeInOut,
-                  switchOutCurve: Curves.easeInOut,
-                  transitionBuilder: (Widget child, Animation<double> animation) {
-                    return FadeTransition(
-                      opacity: animation,
-                      child: SlideTransition(
-                        position: Tween<Offset>(begin: const Offset(0.0, 0.02), end: Offset.zero).animate(animation),
-                        child: child,
-                      ),
-                    );
-                  },
-                  child: Column(
-                    key: ValueKey<bool>(serviceProvider.isFoodService),
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Categories
-                      if (serviceProvider.isFoodService)
-                        _buildFoodCategories(foodProvider, isDark, size, colors)
-                      else if (serviceProvider.isGroceryService)
-                        _buildGroceryCategories(groceryProvider, isDark, size, colors),
-
-                      SizedBox(height: KSpacing.xl.h),
-                      // 3. Deals & Offers (Unified for both Food & Grocery)
-                      Builder(
-                        builder: (context) {
-                          final groceryProvider = Provider.of<GroceryProvider>(context);
-                          final deals = serviceProvider.isFoodService
-                              ? foodProvider.dealItems.take(10).toList()
-                              : groceryProvider.deals.take(10).map((e) => e.toFoodItem()).toList();
-
-                          final originalDeals = serviceProvider.isGroceryService
-                              ? groceryProvider.deals.take(10).toList()
-                              : null;
-
-                          final isLoading = serviceProvider.isFoodService
-                              ? foodProvider.isLoadingDeals
-                              : groceryProvider.isLoadingDeals;
-
-                          return Column(
-                            children: [
-                              DealsSection(
-                                dealItems: deals,
-                                originalItems: originalDeals,
-                                onSeeAll: () {
-                                  //TODO
-                                },
-                                onItemTap: (item) {
-                                  if (serviceProvider.isGroceryService) {
-                                    final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
-                                    // Try to find original item, fallback to converted item if not found
-                                    GroceryItem? originalItem;
-                                    try {
-                                      originalItem = groceryProvider.deals.firstWhere((g) => g.id == item.id);
-                                    } catch (_) {
-                                      try {
-                                        originalItem = groceryProvider.items.firstWhere((g) => g.id == item.id);
-                                      } catch (_) {
-                                        // Item not found, use the converted item as-is
-                                      }
-                                    }
-                                    context.push('/grocery-details', extra: originalItem ?? item);
-                                  } else {
-                                    context.push('/food-details', extra: item);
-                                  }
-                                },
-                                isLoading: isLoading,
-                              ),
-                              SizedBox(height: KSpacing.xl.h),
-                            ],
-                          );
-                        },
-                      ),
-
-                      // 4. Fresh Arrivals (Grocery only)
-                      if (serviceProvider.isGroceryService) ...[
-                        Column(
-                          children: [
-                            FreshArrivalsSection(
-                              items: groceryProvider.freshArrivals.take(10).toList(),
-                              onSeeAll: () {},
-                              onItemTap: (item) {
-                                context.push('/grocery-details', extra: item);
-                              },
-                              isLoading: groceryProvider.isLoadingFreshArrivals,
-                            ),
-                            SizedBox(height: KSpacing.xl.h),
-                          ],
-                        ),
-                      ],
-
-                      // Order Again (Food only - CONDITIONAL: only show if user has order history)
-                      if (serviceProvider.isFoodService && foodProvider.orderHistoryItems.isNotEmpty) ...[
-                        Column(
-                          children: [
-                            OrderAgainSection(
-                              recentOrders: foodProvider.orderHistoryItems.take(10).toList(),
-                              onSeeAll: () {},
-                              onItemTap: (item) {
-                                context.push('/food-details', extra: item);
-                              },
-                              isLoading: foodProvider.isLoadingOrderHistory,
-                            ),
-                            SizedBox(height: KSpacing.xl.h),
-                          ],
-                        ),
-                      ],
-
-                      // 5. Popular Right Now (Unified for both Food & Grocery)
-                      Builder(
-                        builder: (context) {
-                          List<FoodItem> popularItems = [];
-                          List<dynamic>? originalPopularItems;
-                          bool isLoading = false;
-
-                          if (serviceProvider.isFoodService) {
-                            // Use backend popular items (sorted by orderCount)
-                            popularItems = foodProvider.popularItems;
-                            isLoading = foodProvider.isLoadingPopular;
-                          } else {
-                            final groceryProvider = Provider.of<GroceryProvider>(context);
-                            // Use backend popular items (sorted by orderCount)
-                            popularItems = groceryProvider.popularItems.map((e) => e.toFoodItem()).toList();
-                            originalPopularItems = groceryProvider.popularItems;
-                            isLoading = groceryProvider.isLoadingPopular;
-                          }
-
-                          return PopularSection(
-                            popularItems: popularItems,
-                            originalItems: originalPopularItems,
-                            onSeeAll: () {},
-                            onItemTap: (item) {
-                              if (serviceProvider.isGroceryService) {
-                                final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
-                                // Safely find original item or use converted item
-                                GroceryItem? originalItem;
-                                try {
-                                  originalItem = groceryProvider.popularItems.firstWhere((g) => g.id == item.id);
-                                } catch (_) {
-                                  // Item not found in popular, use converted item
-                                }
-                                context.push('/grocery-details', extra: originalItem ?? item);
-                              } else {
-                                context.push('/food-details', extra: item);
-                              }
-                            },
-                            isLoading: isLoading,
-                          );
-                        },
-                      ),
-                      SizedBox(height: KSpacing.xl.h),
-
-                      // 6. Buy Again (Grocery only - CONDITIONAL: only show if user has order history)
-                      if (serviceProvider.isGroceryService && groceryProvider.buyAgainItems.isNotEmpty) ...[
-                        Column(
-                          children: [
-                            OrderAgainSection(
-                              recentOrders: groceryProvider.buyAgainItems
-                                  .take(10)
-                                  .map((item) => item.toFoodItem())
-                                  .toList(),
-                              originalItems: groceryProvider.buyAgainItems.take(10).toList(),
-                              onSeeAll: () {},
-                              onItemTap: (foodItem) {
-                                // Safely find original grocery item
-                                GroceryItem? groceryItem;
-                                try {
-                                  groceryItem = groceryProvider.buyAgainItems.firstWhere(
-                                    (item) => item.id == foodItem.id,
-                                  );
-                                } catch (_) {
-                                  // Item not found, use converted item
-                                }
-                                context.push('/grocery-details', extra: groceryItem ?? foodItem);
-                              },
-                              isLoading: groceryProvider.isLoadingBuyAgain,
-                            ),
-                            SizedBox(height: KSpacing.xl.h),
-                          ],
-                        ),
-                      ],
-
-                      // Unified Banners (Promo Section - Food only)
-                      if (serviceProvider.isFoodService) ...[
-                        PromoSection(
-                          banners: foodProvider.promotionalBanners,
-                          onSeeAll: () {},
-                          isLoading: foodProvider.isLoadingBanners,
-                        ),
-                        SizedBox(height: KSpacing.xl.h),
-                      ],
-
-                      // 7. Top Rated This Week (Unified for both Food & Grocery)
-                      Builder(
-                        builder: (context) {
-                          List<FoodItem> topRatedItems = [];
-                          List<dynamic>? originalTopRatedItems;
-                          bool isLoading = false;
-
-                          if (serviceProvider.isFoodService) {
-                            // Use backend top-rated items (sorted by rating)
-                            topRatedItems = foodProvider.topRatedItems;
-                            isLoading = foodProvider.isLoadingTopRated;
-                          } else {
-                            final groceryProvider = Provider.of<GroceryProvider>(context);
-                            // Use backend top-rated items (sorted by rating)
-                            topRatedItems = groceryProvider.topRatedItems.map((e) => e.toFoodItem()).toList();
-                            originalTopRatedItems = groceryProvider.topRatedItems;
-                            isLoading = groceryProvider.isLoadingTopRated;
-                          }
-
-                          return TopRatedSection(
-                            topRatedItems: topRatedItems,
-                            originalItems: originalTopRatedItems,
-                            onSeeAll: () {},
-                            onItemTap: (item) {
-                              if (serviceProvider.isGroceryService) {
-                                // Safely find original grocery item by ID
-                                final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
-                                GroceryItem? originalItem;
-                                try {
-                                  originalItem = groceryProvider.topRatedItems.firstWhere((g) => g.id == item.id);
-                                } catch (_) {
-                                  // Item not found in top rated, use converted item
-                                }
-                                context.push('/grocery-details', extra: originalItem ?? item);
-                              } else {
-                                context.push('/food-details', extra: item);
-                              }
-                            },
-                            isLoading: isLoading,
-                          );
-                        },
-                      ),
-                      SizedBox(height: KSpacing.xl.h),
-
-                      // 8. Store Specials (Grocery only)
-                      if (serviceProvider.isGroceryService) ...[
-                        Column(
-                          children: [
-                            StoreSpecialsSection(
-                              storeSpecials: groceryProvider.storeSpecials,
-                              isLoading: groceryProvider.isLoadingStoreSpecials,
-                              onSeeAll: () {
-                                // TODO: Navigate to all store specials
-                              },
-                              onItemTap: (item) {
-                                context.push('/grocery-details', extra: item);
-                              },
-                              onStoreTap: (store) {
-                                // TODO: Navigate to store page
-                              },
-                            ),
-                            SizedBox(height: KSpacing.xl.h),
-                          ],
-                        ),
-                      ],
-
-                      // 9. Browse All Groceries (Grocery only)
-                      if (serviceProvider.isGroceryService) ...[
-                        Builder(
-                          builder: (context) {
-                            final groceryProvider = Provider.of<GroceryProvider>(context);
-
-                            return BrowseAllGroceriesSection(
-                              items: groceryProvider.items,
-                              onItemTap: (item) {
-                                context.push('/grocery-details', extra: item);
-                              },
-                              isLoading: groceryProvider.isLoadingItems,
-                            );
-                          },
-                        ),
-                        SizedBox(height: KSpacing.xl.h),
-                      ],
-                    ],
-                  ),
-                ),
-
-                // Recommended (Food Specific or Generic)
-                if (serviceProvider.isFoodService) ...[
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20.w),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                AppRefreshIndicator(
+                  onRefresh: _refreshData,
+                  iconPath: serviceProvider.isFoodService ? Assets.icons.utensilsCrossed : Assets.icons.cart,
+                  bgColor: colors.accentOrange,
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.only(top: size.height * 0.20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(8.r),
-                              decoration: BoxDecoration(
-                                color: colors.accentViolet.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(KBorderSize.border),
-                              ),
-                              child: SvgPicture.asset(
-                                Assets.icons.sparkles,
-                                package: 'grab_go_shared',
-                                height: 20.h,
-                                width: 20.w,
-                                colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
-                              ),
-                            ),
-                            SizedBox(width: 10.w),
-                            Text(
-                              "Recommended For You",
-                              style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
-                            ),
-                          ],
-                        ),
                         Container(
-                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                          decoration: BoxDecoration(
-                            color: colors.accentViolet.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(20.r),
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () {},
-                              borderRadius: BorderRadius.circular(20.r),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    "See All",
-                                    style: TextStyle(
-                                      fontSize: 12.sp,
-                                      fontWeight: FontWeight.w700,
-                                      color: colors.accentViolet,
+                          color: colors.backgroundSecondary,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(height: KSpacing.lg.h),
+                              _buildServiceSelector(),
+                              SizedBox(height: KSpacing.lg.h),
+                              _buildHomeSearch(foodProvider),
+                              SizedBox(height: KSpacing.lg.h),
+                              const ReferralBanner(),
+                              HomeBanner(size: size),
+                              SizedBox(height: KSpacing.lg.h),
+
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 300),
+                                switchInCurve: Curves.easeInOut,
+                                switchOutCurve: Curves.easeInOut,
+                                transitionBuilder: (Widget child, Animation<double> animation) {
+                                  return FadeTransition(
+                                    opacity: animation,
+                                    child: SlideTransition(
+                                      position: Tween<Offset>(
+                                        begin: const Offset(0.0, 0.02),
+                                        end: Offset.zero,
+                                      ).animate(animation),
+                                      child: child,
                                     ),
-                                  ),
-                                  SizedBox(width: 4.w),
-                                  SvgPicture.asset(
-                                    Assets.icons.navArrowRight,
-                                    package: 'grab_go_shared',
-                                    height: 12.h,
-                                    width: 12.w,
-                                    colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
-                                  ),
-                                ],
+                                  );
+                                },
+                                child: Column(
+                                  key: ValueKey<bool>(serviceProvider.isFoodService),
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Categories
+                                    if (serviceProvider.isFoodService)
+                                      _buildFoodCategories(foodProvider, isDark, size, colors)
+                                    else if (serviceProvider.isGroceryService)
+                                      _buildGroceryCategories(groceryProvider, isDark, size, colors),
+
+                                    SizedBox(height: KSpacing.md.h),
+                                    // 3. Deals & Offers (Unified for both Food & Grocery)
+                                    Builder(
+                                      builder: (context) {
+                                        final groceryProvider = Provider.of<GroceryProvider>(context);
+                                        final deals = serviceProvider.isFoodService
+                                            ? foodProvider.dealItems.take(10).toList()
+                                            : groceryProvider.deals.take(10).map((e) => e.toFoodItem()).toList();
+
+                                        final originalDeals = serviceProvider.isGroceryService
+                                            ? groceryProvider.deals.take(10).toList()
+                                            : null;
+
+                                        final isLoading = serviceProvider.isFoodService
+                                            ? foodProvider.isLoadingDeals
+                                            : groceryProvider.isLoadingDeals;
+
+                                        return Column(
+                                          children: [
+                                            DealsSection(
+                                              dealItems: deals,
+                                              originalItems: originalDeals,
+                                              onSeeAll: () {
+                                                //TODO
+                                              },
+                                              onItemTap: (item) {
+                                                if (serviceProvider.isGroceryService) {
+                                                  final groceryProvider = Provider.of<GroceryProvider>(
+                                                    context,
+                                                    listen: false,
+                                                  );
+                                                  // Try to find original item, fallback to converted item if not found
+                                                  GroceryItem? originalItem;
+                                                  try {
+                                                    originalItem = groceryProvider.deals.firstWhere(
+                                                      (g) => g.id == item.id,
+                                                    );
+                                                  } catch (_) {
+                                                    try {
+                                                      originalItem = groceryProvider.items.firstWhere(
+                                                        (g) => g.id == item.id,
+                                                      );
+                                                    } catch (_) {
+                                                      // Item not found, use the converted item as-is
+                                                    }
+                                                  }
+                                                  context.push('/grocery-details', extra: originalItem ?? item);
+                                                } else {
+                                                  context.push('/food-details', extra: item);
+                                                }
+                                              },
+                                              isLoading: isLoading,
+                                            ),
+                                            SizedBox(height: KSpacing.lg.h),
+                                          ],
+                                        );
+                                      },
+                                    ),
+
+                                    // 4. Fresh Arrivals (Grocery only)
+                                    if (serviceProvider.isGroceryService) ...[
+                                      Column(
+                                        children: [
+                                          FreshArrivalsSection(
+                                            items: groceryProvider.freshArrivals.take(10).toList(),
+                                            onSeeAll: () {},
+                                            onItemTap: (item) {
+                                              context.push('/grocery-details', extra: item);
+                                            },
+                                            isLoading: groceryProvider.isLoadingFreshArrivals,
+                                          ),
+                                          SizedBox(height: KSpacing.lg.h),
+                                        ],
+                                      ),
+                                    ],
+
+                                    // Order Again (Food only - CONDITIONAL: only show if user has order history)
+                                    if (serviceProvider.isFoodService && foodProvider.orderHistoryItems.isNotEmpty) ...[
+                                      Column(
+                                        children: [
+                                          OrderAgainSection(
+                                            recentOrders: foodProvider.orderHistoryItems.take(10).toList(),
+                                            onSeeAll: () {},
+                                            onItemTap: (item) {
+                                              context.push('/food-details', extra: item);
+                                            },
+                                            isLoading: foodProvider.isLoadingOrderHistory,
+                                          ),
+                                          SizedBox(height: KSpacing.lg.h),
+                                        ],
+                                      ),
+                                    ],
+
+                                    // 5. Popular Right Now (Unified for both Food & Grocery)
+                                    Builder(
+                                      builder: (context) {
+                                        List<FoodItem> popularItems = [];
+                                        List<dynamic>? originalPopularItems;
+                                        bool isLoading = false;
+
+                                        if (serviceProvider.isFoodService) {
+                                          // Use backend popular items (sorted by orderCount)
+                                          popularItems = foodProvider.popularItems;
+                                          isLoading = foodProvider.isLoadingPopular;
+                                        } else {
+                                          final groceryProvider = Provider.of<GroceryProvider>(context);
+                                          // Use backend popular items (sorted by orderCount)
+                                          popularItems = groceryProvider.popularItems
+                                              .map((e) => e.toFoodItem())
+                                              .toList();
+                                          originalPopularItems = groceryProvider.popularItems;
+                                          isLoading = groceryProvider.isLoadingPopular;
+                                        }
+
+                                        return PopularSection(
+                                          popularItems: popularItems,
+                                          originalItems: originalPopularItems,
+                                          onSeeAll: () {},
+                                          onItemTap: (item) {
+                                            if (serviceProvider.isGroceryService) {
+                                              final groceryProvider = Provider.of<GroceryProvider>(
+                                                context,
+                                                listen: false,
+                                              );
+                                              // Safely find original item or use converted item
+                                              GroceryItem? originalItem;
+                                              try {
+                                                originalItem = groceryProvider.popularItems.firstWhere(
+                                                  (g) => g.id == item.id,
+                                                );
+                                              } catch (_) {
+                                                // Item not found in popular, use converted item
+                                              }
+                                              context.push('/grocery-details', extra: originalItem ?? item);
+                                            } else {
+                                              context.push('/food-details', extra: item);
+                                            }
+                                          },
+                                          isLoading: isLoading,
+                                        );
+                                      },
+                                    ),
+                                    SizedBox(height: KSpacing.lg.h),
+
+                                    // 6. Buy Again (Grocery only - CONDITIONAL: only show if user has order history)
+                                    if (serviceProvider.isGroceryService &&
+                                        groceryProvider.buyAgainItems.isNotEmpty) ...[
+                                      Column(
+                                        children: [
+                                          OrderAgainSection(
+                                            recentOrders: groceryProvider.buyAgainItems
+                                                .take(10)
+                                                .map((item) => item.toFoodItem())
+                                                .toList(),
+                                            originalItems: groceryProvider.buyAgainItems.take(10).toList(),
+                                            onSeeAll: () {},
+                                            onItemTap: (foodItem) {
+                                              // Safely find original grocery item
+                                              GroceryItem? groceryItem;
+                                              try {
+                                                groceryItem = groceryProvider.buyAgainItems.firstWhere(
+                                                  (item) => item.id == foodItem.id,
+                                                );
+                                              } catch (_) {
+                                                // Item not found, use converted item
+                                              }
+                                              context.push('/grocery-details', extra: groceryItem ?? foodItem);
+                                            },
+                                            isLoading: groceryProvider.isLoadingBuyAgain,
+                                          ),
+                                          SizedBox(height: KSpacing.lg.h),
+                                        ],
+                                      ),
+                                    ],
+
+                                    // Unified Banners (Promo Section - Food only)
+                                    if (serviceProvider.isFoodService) ...[
+                                      PromoSection(
+                                        banners: foodProvider.promotionalBanners,
+                                        onSeeAll: () {},
+                                        isLoading: foodProvider.isLoadingBanners,
+                                      ),
+                                      SizedBox(height: KSpacing.xl.h),
+                                    ],
+
+                                    // 7. Top Rated Dishes (Unified for both Food & Grocery)
+                                    Builder(
+                                      builder: (context) {
+                                        List<FoodItem> topRatedItems = [];
+                                        List<dynamic>? originalTopRatedItems;
+                                        bool isLoading = false;
+
+                                        if (serviceProvider.isFoodService) {
+                                          // Use backend top-rated items (sorted by rating)
+                                          topRatedItems = foodProvider.topRatedItems;
+                                          isLoading = foodProvider.isLoadingTopRated;
+                                        } else {
+                                          final groceryProvider = Provider.of<GroceryProvider>(context);
+                                          // Use backend top-rated items (sorted by rating)
+                                          topRatedItems = groceryProvider.topRatedItems
+                                              .map((e) => e.toFoodItem())
+                                              .toList();
+                                          originalTopRatedItems = groceryProvider.topRatedItems;
+                                          isLoading = groceryProvider.isLoadingTopRated;
+                                        }
+
+                                        return TopRatedSection(
+                                          topRatedItems: topRatedItems,
+                                          originalItems: originalTopRatedItems,
+                                          onSeeAll: () {},
+                                          onItemTap: (item) {
+                                            if (serviceProvider.isGroceryService) {
+                                              // Safely find original grocery item by ID
+                                              final groceryProvider = Provider.of<GroceryProvider>(
+                                                context,
+                                                listen: false,
+                                              );
+                                              GroceryItem? originalItem;
+                                              try {
+                                                originalItem = groceryProvider.topRatedItems.firstWhere(
+                                                  (g) => g.id == item.id,
+                                                );
+                                              } catch (_) {
+                                                // Item not found in top rated, use converted item
+                                              }
+                                              context.push('/grocery-details', extra: originalItem ?? item);
+                                            } else {
+                                              context.push('/food-details', extra: item);
+                                            }
+                                          },
+                                          isLoading: isLoading,
+                                        );
+                                      },
+                                    ),
+                                    SizedBox(height: KSpacing.lg.h),
+
+                                    // 8. Store Specials (Grocery only)
+                                    if (serviceProvider.isGroceryService) ...[
+                                      Column(
+                                        children: [
+                                          StoreSpecialsSection(
+                                            storeSpecials: groceryProvider.storeSpecials,
+                                            isLoading: groceryProvider.isLoadingStoreSpecials,
+                                            onSeeAll: () {
+                                              // TODO: Navigate to all store specials
+                                            },
+                                            onItemTap: (item) {
+                                              context.push('/grocery-details', extra: item);
+                                            },
+                                            onStoreTap: (store) {
+                                              // TODO: Navigate to store page
+                                            },
+                                          ),
+                                          SizedBox(height: KSpacing.lg.h),
+                                        ],
+                                      ),
+                                    ],
+
+                                    // 9. Browse All Groceries (Grocery only)
+                                    if (serviceProvider.isGroceryService) ...[
+                                      Builder(
+                                        builder: (context) {
+                                          final groceryProvider = Provider.of<GroceryProvider>(context);
+
+                                          return BrowseAllGroceriesSection(
+                                            items: groceryProvider.items,
+                                            onItemTap: (item) {
+                                              context.push('/grocery-details', extra: item);
+                                            },
+                                            isLoading: groceryProvider.isLoadingItems,
+                                          );
+                                        },
+                                      ),
+                                      SizedBox(height: KSpacing.lg.h),
+                                    ],
+                                  ],
+                                ),
                               ),
-                            ),
+
+                              // Recommended (Food Specific or Generic)
+                              if (serviceProvider.isFoodService) ...[
+                                SectionHeader(
+                                  title: "Recommended For You",
+                                  sectionIcon: Assets.icons.sparkles,
+                                  sectionTotal: 1,
+                                  accentColor: colors.accentOrange,
+                                  onSeeAll: () {},
+                                ),
+                                SizedBox(height: KSpacing.lg.h),
+                                _buildRecommendedFoodItems(foodProvider, size, colors, isDark),
+                              ],
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                  SizedBox(height: KSpacing.lg.h),
-                  _buildRecommendedFoodItems(foodProvider, size, colors, isDark),
-                ],
+                ),
+
+                // Positioned umbrella header layer (collapsible)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: _buildCollapsibleHomeHeader(context, size, colors, isDark, locationProvider),
+                ),
               ],
             ),
           ),
         ),
-      ),
+        floatingActionButton: Provider.of<CartProvider>(context, listen: true).cartItems.isNotEmpty
+            ? SlideTransition(
+                position: _fabSlideAnimation,
+                child: ScaleTransition(
+                  scale: _fabScaleAnimation,
+                  child: Consumer<CartProvider>(
+                    builder: (context, cartProvider, child) {
+                      final currentCount = cartProvider.cartItems.length;
 
-      floatingActionButton: Provider.of<CartProvider>(context, listen: true).cartItems.isNotEmpty
-          ? SlideTransition(
-              position: _fabSlideAnimation,
-              child: ScaleTransition(
-                scale: _fabScaleAnimation,
-                child: Consumer<CartProvider>(
-                  builder: (context, cartProvider, child) {
-                    final currentCount = cartProvider.cartItems.length;
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (!mounted) return;
 
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (!mounted) return;
-
-                      if (currentCount != _previousCartCount && _previousCartCount > 0) {
-                        _badgePulseController.forward(from: 0);
-                      }
-
-                      if (currentCount > _previousCartCount) {
-                        if (!_isFabVisible || _previousCartCount == 0) {
-                          setState(() {
-                            _isFabVisible = true;
-                          });
-                          _fabAnimationController.forward();
+                        if (currentCount != _previousCartCount && _previousCartCount > 0) {
+                          _badgePulseController.forward(from: 0);
                         }
-                      }
 
-                      _previousCartCount = currentCount;
-                    });
+                        if (currentCount > _previousCartCount) {
+                          if (!_isFabVisible || _previousCartCount == 0) {
+                            setState(() {
+                              _isFabVisible = true;
+                            });
+                            _fabAnimationController.forward();
+                          }
+                        }
 
-                    return ScaleTransition(
-                      scale: _badgePulseAnimation,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(KBorderSize.border),
-                          boxShadow: [
-                            BoxShadow(
-                              color: colors.accentOrange.withValues(alpha: 0.4),
-                              blurRadius: 16,
-                              spreadRadius: 0,
-                              offset: const Offset(0, 4),
+                        _previousCartCount = currentCount;
+                      });
+
+                      return ScaleTransition(
+                        scale: _badgePulseAnimation,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(KBorderSize.border),
+                            boxShadow: [
+                              BoxShadow(
+                                color: colors.accentOrange.withValues(alpha: 0.4),
+                                blurRadius: 16,
+                                spreadRadius: 0,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: FloatingActionButton.extended(
+                            onPressed: () => context.push("/cart"),
+                            extendedPadding: EdgeInsets.all(10.r),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.border)),
+                            backgroundColor: colors.accentOrange,
+                            elevation: 0,
+                            label: Text(
+                              "${cartProvider.cartItems.length} ${cartProvider.cartItems.length > 1 ? "items in cart" : "item in cart"}",
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w600,
+                                color: colors.backgroundPrimary,
+                              ),
                             ),
-                          ],
-                        ),
-                        child: FloatingActionButton.extended(
-                          onPressed: () => context.push("/cart"),
-                          extendedPadding: EdgeInsets.all(10.r),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.border)),
-                          backgroundColor: colors.accentOrange,
-                          elevation: 0,
-                          label: Text(
-                            "${cartProvider.cartItems.length} ${cartProvider.cartItems.length > 1 ? "items in cart" : "item in cart"}",
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              fontWeight: FontWeight.w600,
-                              color: colors.backgroundPrimary,
+                            icon: Container(
+                              padding: EdgeInsets.all(8.r),
+                              decoration: BoxDecoration(color: colors.backgroundPrimary, shape: BoxShape.circle),
+                              child: SvgPicture.asset(
+                                Assets.icons.cart,
+                                height: 20.h,
+                                width: 20.w,
+                                package: 'grab_go_shared',
+                                colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                              ),
                             ),
                           ),
-                          icon: Container(
-                            padding: EdgeInsets.all(8.r),
-                            decoration: BoxDecoration(color: colors.backgroundPrimary, shape: BoxShape.circle),
-                            child: SvgPicture.asset(
-                              Assets.icons.cart,
-                              height: 20.h,
-                              width: 20.w,
-                              package: 'grab_go_shared',
-                              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                            ),
-                          ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
-              ),
-            )
-          : const SizedBox.shrink(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+              )
+            : const SizedBox.shrink(),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      ),
     );
   }
 
@@ -789,6 +799,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         return Column(
           children: [
             ListView.builder(
+              padding: EdgeInsets.zero,
               physics: const NeverScrollableScrollPhysics(),
               shrinkWrap: true,
               itemCount: recommendedFoods.length,
@@ -916,17 +927,30 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           }
         }
 
-        return ServiceCategoryList<FoodCategoryModel>(
-          categories: categoriesToShow,
-          getName: (cat) => cat.name,
-          getEmoji: (cat) => cat.emoji,
-          getId: (cat) => cat.id,
-          initialSelectedCategory: _selectedCategory,
-          onCategorySelected: (FoodCategoryModel category) {
-            setState(() {
-              _selectedCategory = category;
-            });
-          },
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(
+              title: "Categories",
+              sectionIcon: Assets.icons.viewGrid,
+              accentColor: colors.accentOrange,
+              sectionTotal: categoriesToShow.length.toInt(),
+              onSeeAll: () {},
+            ),
+            SizedBox(height: 10.h),
+            ServiceCategoryList<FoodCategoryModel>(
+              categories: categoriesToShow,
+              getName: (cat) => cat.name,
+              getEmoji: (cat) => cat.emoji,
+              getId: (cat) => cat.id,
+              initialSelectedCategory: _selectedCategory,
+              onCategorySelected: (FoodCategoryModel category) {
+                setState(() {
+                  _selectedCategory = category;
+                });
+              },
+            ),
+          ],
         );
       },
     );
@@ -1016,153 +1040,169 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Padding _buildHomeHeader(
+  Widget _buildCollapsibleHomeHeader(
     BuildContext context,
     Size size,
     AppColorsExtension colors,
     bool isDark,
     LocationProvider locationProvider,
   ) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
-      child: Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                context.push("/location-picker");
-              },
-              child: Container(
-                height: size.height * 0.08,
-                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-                decoration: BoxDecoration(
-                  color: colors.backgroundPrimary,
-                  borderRadius: BorderRadius.circular(12.r),
-                  border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                      spreadRadius: 0,
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(6.r),
-                      decoration: BoxDecoration(
-                        color: colors.accentOrange.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: SvgPicture.asset(
+    return ValueListenableBuilder<double>(
+      valueListenable: _scrollOffsetNotifier,
+      builder: (context, scrollOffset, _) {
+        // Calculate collapse progress (0.0 = fully expanded, 1.0 = fully collapsed)
+        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
+
+        // Use 20% of screen height for expanded state
+        final expandedHeight = size.height * 0.20;
+
+        // Interpolate header height based on scroll
+        final currentHeight = expandedHeight - ((expandedHeight - _collapsedHeight) * collapseProgress);
+
+        // Calculate content opacity (fade out as we scroll)
+        final contentOpacity = (1.0 - collapseProgress).clamp(0.0, 1.0);
+
+        return SizedBox(
+          height: currentHeight,
+          child: UmbrellaHeaderWithShadow(
+            curveDepth: 25.h,
+            numberOfCurves: 10,
+            height: currentHeight,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 100),
+              opacity: contentOpacity,
+              child: _buildHomeHeader(context, size, colors, isDark, locationProvider),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHomeHeader(
+    BuildContext context,
+    Size size,
+    AppColorsExtension colors,
+    bool isDark,
+    LocationProvider locationProvider,
+  ) {
+    return SizedBox.expand(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20.w, MediaQuery.of(context).padding.top + 10.h, 20.w, 20.h),
+        child: Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  context.push("/location-picker");
+                },
+                child: Container(
+                  height: size.height * 0.08,
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                  decoration: BoxDecoration(
+                    color: colors.backgroundPrimary.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Row(
+                    children: [
+                      SvgPicture.asset(
                         Assets.icons.mapPin,
                         package: 'grab_go_shared',
-                        height: 14.h,
-                        width: 14.w,
-                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                        height: 16.h,
+                        width: 16.w,
+                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                       ),
-                    ),
-                    SizedBox(width: 10.w),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Deliver to",
-                            style: TextStyle(
-                              fontFamily: "Lato",
-                              package: 'grab_go_shared',
-                              fontSize: 10.sp,
-                              fontWeight: FontWeight.w500,
-                              color: colors.textSecondary,
+                      SizedBox(width: 10.w),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Let's deliver to",
+                              style: TextStyle(
+                                fontFamily: "Lato",
+                                package: 'grab_go_shared',
+                                fontSize: 10.sp,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withValues(alpha: 0.8),
+                              ),
                             ),
-                          ),
-                          SizedBox(height: 2.h),
-                          Text(
-                            locationProvider.address.isEmpty ? "Fetching location..." : locationProvider.address,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
-                          ),
-                        ],
+                            SizedBox(height: 2.h),
+                            Text(
+                              locationProvider.address.isEmpty ? "Fetching location..." : locationProvider.address,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: Colors.white),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    SizedBox(width: 6.w),
-                    SvgPicture.asset(
-                      Assets.icons.navArrowDown,
-                      package: 'grab_go_shared',
-                      height: 16.h,
-                      width: 16.w,
-                      colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                    ),
-                  ],
+                      SizedBox(width: 6.w),
+                      SvgPicture.asset(
+                        Assets.icons.navArrowDown,
+                        package: 'grab_go_shared',
+                        height: 16.h,
+                        width: 16.w,
+                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-          SizedBox(width: 12.w),
+            SizedBox(width: 12.w),
 
-          Container(
-            height: size.height * 0.08,
-            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-            decoration: BoxDecoration(
-              color: colors.backgroundPrimary,
-              borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-              boxShadow: [
-                BoxShadow(
-                  color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                  spreadRadius: 0,
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      context.push("/notification");
-                    },
-                    customBorder: const CircleBorder(),
-                    child: Padding(
-                      padding: EdgeInsets.all(10.r),
-                      child: SvgPicture.asset(
-                        Assets.icons.bellNotification,
-                        package: 'grab_go_shared',
-                        colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                      ),
-                    ),
-                  ),
-                ),
-
-                Material(
-                  color: Colors.transparent,
-                  child: Builder(
-                    builder: (context) => InkWell(
+            Container(
+              height: size.height * 0.08,
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+              decoration: BoxDecoration(
+                color: colors.backgroundPrimary.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              child: Row(
+                children: [
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
                       onTap: () {
-                        context.push("/status");
+                        context.push("/notification");
                       },
                       customBorder: const CircleBorder(),
                       child: Padding(
                         padding: EdgeInsets.all(10.r),
                         child: SvgPicture.asset(
-                          Assets.icons.styleBorder,
+                          Assets.icons.bellNotification,
                           package: 'grab_go_shared',
-                          colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
+
+                  Material(
+                    color: Colors.transparent,
+                    child: Builder(
+                      builder: (context) => InkWell(
+                        onTap: () {
+                          context.push("/status");
+                        },
+                        customBorder: const CircleBorder(),
+                        child: Padding(
+                          padding: EdgeInsets.all(10.r),
+                          child: SvgPicture.asset(
+                            Assets.icons.styleBorder,
+                            package: 'grab_go_shared',
+                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1212,17 +1252,62 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
 
     if (groceryProvider.categories.isNotEmpty) {
-      return ServiceCategoryList<GroceryCategory>(
-        categories: categoriesWithType,
-        getName: (cat) => cat.name,
-        getEmoji: (cat) => cat.emoji,
-        getId: (cat) => cat.id,
-        initialSelectedCategory: _selectedGroceryCategory,
-        onCategorySelected: (category) {
-          setState(() {
-            _selectedGroceryCategory = category;
-          });
-        },
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  "Categories",
+                  style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                ),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      // Navigate to browse page or all categories
+                    },
+                    borderRadius: BorderRadius.circular(20.r),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          "See All",
+                          style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.accentOrange),
+                        ),
+                        SizedBox(width: 4.w),
+                        SvgPicture.asset(
+                          Assets.icons.navArrowRight,
+                          package: 'grab_go_shared',
+                          height: 14.h,
+                          width: 14.w,
+                          colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: KSpacing.md.h),
+          ServiceCategoryList<GroceryCategory>(
+            categories: categoriesWithType,
+            getName: (cat) => cat.name,
+            getEmoji: (cat) => cat.emoji,
+            getId: (cat) => cat.id,
+            initialSelectedCategory: _selectedGroceryCategory,
+            onCategorySelected: (category) {
+              setState(() {
+                _selectedGroceryCategory = category;
+              });
+            },
+          ),
+        ],
       );
     }
 

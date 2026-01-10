@@ -10,7 +10,7 @@ import 'package:grab_go_shared/grub_go_shared.dart';
 
 class DealsSection extends StatelessWidget {
   final List<FoodItem> dealItems;
-  final List<dynamic>? originalItems; // Original GroceryItem list for cart operations
+  final List<dynamic>? originalItems;
   final VoidCallback onSeeAll;
   final Function(FoodItem) onItemTap;
   final bool isLoading;
@@ -33,18 +33,19 @@ class DealsSection extends StatelessWidget {
       children: [
         SectionHeader(
           title: "Deals & Offers",
-          icon: Assets.icons.tag,
+          sectionIcon: Assets.icons.tag,
           accentColor: colors.accentOrange,
+          sectionTotal: dealItems.length,
           onSeeAll: onSeeAll,
         ),
-        SizedBox(height: 16.h),
+        SizedBox(height: 10.h),
         if (isLoading)
-          HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 230.h, itemCount: 5)
+          HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 220.h, itemCount: 5)
         else if (dealItems.isEmpty)
           _buildEmptyState(colors)
         else
           SizedBox(
-            height: 230.h,
+            height: 220.h,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.only(left: 20.w),

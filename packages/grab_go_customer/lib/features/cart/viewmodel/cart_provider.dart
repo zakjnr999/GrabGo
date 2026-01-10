@@ -83,9 +83,7 @@ class CartProvider extends ChangeNotifier {
               continue; // Skip unknown types
             }
 
-            if (cartItem != null) {
-              _cartItems[cartItem] = item['quantity'] as int;
-            }
+            _cartItems[cartItem] = item['quantity'] as int;
           }
 
           await _saveCart();

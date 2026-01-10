@@ -106,10 +106,8 @@ class _ServiceSelectorState extends State<ServiceSelector> {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    Size size = MediaQuery.sizeOf(context);
-
     return SizedBox(
-      height: 95.h,
+      height: 50.h,
       child: ListView.builder(
         padding: EdgeInsets.only(left: 20.w),
         scrollDirection: Axis.horizontal,
@@ -133,7 +131,7 @@ class _ServiceSelectorState extends State<ServiceSelector> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 250),
                 curve: Curves.easeInOut,
-                width: size.width * 0.22,
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: isSelected
@@ -148,41 +146,34 @@ class _ServiceSelectorState extends State<ServiceSelector> {
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
-                    BoxShadow(
-                      color: Colors.black.withAlpha(5),
-                      spreadRadius: -1,
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
                   ],
                 ),
-                child: Column(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     AnimatedDefaultTextStyle(
                       duration: const Duration(milliseconds: 300),
                       curve: Curves.easeInOut,
-                      style: TextStyle(fontSize: 30, color: isSelected ? colors.backgroundPrimary : colors.textPrimary),
+                      style: TextStyle(fontSize: 20, color: isSelected ? colors.backgroundPrimary : colors.textPrimary),
                       child: Text(service.emoji),
                     ),
-                    SizedBox(height: KSpacing.md.h),
+                    SizedBox(width: 8.w),
                     AnimatedDefaultTextStyle(
                       duration: const Duration(milliseconds: 250),
                       curve: Curves.easeInOut,
                       style: TextStyle(
                         color: isSelected ? colors.backgroundPrimary : colors.textPrimary,
-                        fontWeight: FontWeight.w400,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14.sp,
                       ),
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 5.w),
-                        child: Text(
-                          service.name,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w400,
-                            fontFamily: "Lato",
-                            package: 'grab_go_shared',
-                          ),
+                      child: Text(
+                        service.name,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontFamily: "Lato",
+                          package: 'grab_go_shared',
                         ),
                       ),
                     ),

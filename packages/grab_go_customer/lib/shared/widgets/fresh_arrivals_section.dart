@@ -32,8 +32,9 @@ class FreshArrivalsSection extends StatelessWidget {
       children: [
         SectionHeader(
           title: 'Fresh Arrivals',
-          icon: Assets.icons.sparkles,
-          accentColor: const Color(0xFF4CAF50),
+          sectionIcon: Assets.icons.sparkles,
+          sectionTotal: items.length,
+          accentColor: colors.accentGreen,
           onSeeAll: onSeeAll,
         ),
         SizedBox(height: 16.h),

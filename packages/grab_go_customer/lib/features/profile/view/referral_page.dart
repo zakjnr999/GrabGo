@@ -14,6 +14,8 @@ import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
+import 'package:flutter/services.dart';
 
 class ReferralPage extends StatefulWidget {
   const ReferralPage({super.key});
@@ -44,9 +46,15 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
   int _previousCompletedReferrals = 0;
   double _previousTotalEarned = 0.0;
 
+  final ScrollController _scrollController = ScrollController();
+  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
+  static const double _collapsedHeight = 80.0;
+  static const double _scrollThreshold = 100.0;
+
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
 
     // Stats animation controller
     _animationController = AnimationController(duration: const Duration(milliseconds: 1500), vsync: this);
@@ -84,12 +92,20 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    _scrollOffsetNotifier.dispose();
     // Stop and dispose animation controllers
     _animationController.stop();
     _progressAnimationController.stop();
     _animationController.dispose();
     _progressAnimationController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    _scrollOffsetNotifier.value = _scrollController.offset;
   }
 
   Future<void> _loadReferralData() async {
@@ -290,107 +306,167 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final padding = MediaQuery.paddingOf(context);
+    final size = MediaQuery.sizeOf(context);
 
-    return Scaffold(
-      backgroundColor: colors.backgroundSecondary,
-      body: Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.only(top: padding.top, left: 20.w, right: 20.w, bottom: 16.h),
-            child: Row(
+    final systemUiOverlayStyle = SystemUiOverlayStyle(
+      statusBarColor: colors.accentOrange,
+      statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: colors.backgroundSecondary,
+      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+    );
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: systemUiOverlayStyle,
+      child: Scaffold(
+        backgroundColor: colors.backgroundSecondary,
+        body: SafeArea(
+          top: false,
+          child: ClipRect(
+            child: Stack(
               children: [
-                Container(
-                  height: 44.h,
-                  width: 44.w,
-                  decoration: BoxDecoration(
-                    color: colors.backgroundPrimary,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                        spreadRadius: 0,
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => context.pop(),
-                      customBorder: const CircleBorder(),
-                      child: Padding(
-                        padding: EdgeInsets.all(10.r),
-                        child: SvgPicture.asset(
-                          Assets.icons.navArrowLeft,
-                          package: 'grab_go_shared',
-                          colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                        ),
-                      ),
+                AppRefreshIndicator(
+                  onRefresh: _loadReferralData,
+                  iconPath: Assets.icons.gift,
+                  bgColor: colors.accentOrange,
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.symmetric(horizontal: 20.w),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(height: size.height * 0.22),
+
+                        // Referral Code Card
+                        _buildReferralCodeCard(colors, isDark),
+                        SizedBox(height: 20.h),
+
+                        // Stats Cards
+                        _buildStatsSection(colors, isDark),
+                        SizedBox(height: 24.h),
+
+                        // Milestone Tracker
+                        _buildMilestoneTracker(colors, isDark),
+                        SizedBox(height: 24.h),
+
+                        // Referral History
+                        _buildSectionHeader('Recent Referrals', colors), // Referral Code Card
+
+                        SizedBox(height: 12.h),
+                        _buildReferralHistory(colors, isDark),
+                        SizedBox(height: 24.h),
+
+                        // How it Works
+                        _buildSectionHeader('How It Works', colors),
+                        SizedBox(height: 12.h),
+                        _buildHowItWorksSection(colors, isDark),
+                        SizedBox(height: 24.h),
+
+                        // Terms
+                        _buildSectionHeader('Terms & Conditions', colors),
+                        SizedBox(height: 12.h),
+                        _buildTermsSection(colors, isDark),
+                        SizedBox(height: 40.h),
+                      ],
                     ),
                   ),
                 ),
-                SizedBox(width: 16.w),
-                Text(
-                  "Refer & Earn",
-                  style: TextStyle(
-                    fontFamily: "Lato",
-                    package: 'grab_go_shared',
-                    color: colors.textPrimary,
-                    fontSize: 24.sp,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+
+                Positioned(top: 0, left: 0, right: 0, child: _buildCollapsibleReferralHeader(colors, size)),
               ],
             ),
           ),
-          Expanded(
-            child: AppRefreshIndicator(
-              onRefresh: _loadReferralData,
-              iconPath: Assets.icons.gift,
-              bgColor: colors.accentOrange,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.symmetric(horizontal: 20.w),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Referral Code Card
-                    _buildReferralCodeCard(colors, isDark),
-                    SizedBox(height: 20.h),
+        ),
+      ),
+    );
+  }
 
-                    // Stats Cards
-                    _buildStatsSection(colors, isDark),
-                    SizedBox(height: 24.h),
+  Widget _buildCollapsibleReferralHeader(AppColorsExtension colors, Size size) {
+    return ValueListenableBuilder<double>(
+      valueListenable: _scrollOffsetNotifier,
+      builder: (context, scrollOffset, _) {
+        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
+        final expandedHeight = size.height * 0.20;
+        final currentHeight = expandedHeight - ((expandedHeight - _collapsedHeight) * collapseProgress);
+        final contentOpacity = (1.0 - collapseProgress).clamp(0.0, 1.0);
 
-                    // Milestone Tracker
-                    _buildMilestoneTracker(colors, isDark),
-                    SizedBox(height: 24.h),
+        return SizedBox(
+          height: currentHeight,
+          child: UmbrellaHeaderWithShadow(
+            curveDepth: 25.h,
+            numberOfCurves: 10,
+            height: currentHeight,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 100),
+              opacity: contentOpacity,
+              child: _buildReferralHeader(colors),
+            ),
+          ),
+        );
+      },
+    );
+  }
 
-                    // Referral History
-                    _buildSectionHeader('Recent Referrals', colors),
-                    SizedBox(height: 12.h),
-                    _buildReferralHistory(colors, isDark),
-                    SizedBox(height: 24.h),
+  Widget _buildReferralHeader(AppColorsExtension colors) {
+    final statusBarHeight = MediaQuery.of(context).padding.top;
 
-                    // How it Works
-                    _buildSectionHeader('How It Works', colors),
-                    SizedBox(height: 12.h),
-                    _buildHowItWorksSection(colors, isDark),
-                    SizedBox(height: 24.h),
-
-                    // Terms
-                    _buildSectionHeader('Terms & Conditions', colors),
-                    SizedBox(height: 12.h),
-                    _buildTermsSection(colors, isDark),
-                  ],
+    return SizedBox.expand(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20.w, statusBarHeight.h, 20.w, 16.h),
+        child: Row(
+          children: [
+            Container(
+              height: 44.h,
+              width: 44.w,
+              decoration: BoxDecoration(color: colors.backgroundPrimary.withValues(alpha: 0.2), shape: BoxShape.circle),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => context.pop(),
+                  customBorder: const CircleBorder(),
+                  child: Center(
+                    child: SvgPicture.asset(
+                      Assets.icons.navArrowLeft,
+                      package: 'grab_go_shared',
+                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                      width: 24.w,
+                      height: 24.h,
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+            SizedBox(width: 16.w),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Refer & Earn",
+                    style: TextStyle(
+                      fontFamily: "Lato",
+                      package: 'grab_go_shared',
+                      fontSize: 24.sp,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    "Share the love and get rewarded",
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

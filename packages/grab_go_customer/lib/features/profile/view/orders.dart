@@ -14,6 +14,7 @@ import 'package:intl/intl.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/features/order/viewmodel/order_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
 
 class OrderModel {
   final String id;
@@ -73,9 +74,15 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
     AppStrings.ordersCancelled,
   ];
 
+  final ScrollController _scrollController = ScrollController();
+  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
+  static const double _collapsedHeight = 140.0; // Increased to show tabs when collapsed
+  static const double _scrollThreshold = 100.0;
+
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
@@ -87,6 +94,20 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<OrderProvider>(context, listen: false).fetchOrders();
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    _scrollOffsetNotifier.dispose();
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    _scrollOffsetNotifier.value = _scrollController.offset;
   }
 
   OrderModel _convertAPIOrderToOrderModel(Map<String, dynamic> apiOrder) {

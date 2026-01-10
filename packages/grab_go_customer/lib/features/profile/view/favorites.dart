@@ -11,6 +11,7 @@ import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
+import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
 
 class FavoritesPage extends StatefulWidget {
   const FavoritesPage({super.key});
@@ -28,9 +29,15 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
   String _searchQuery = '';
   bool _isSearchActive = false;
 
+  final ScrollController _scrollController = ScrollController();
+  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
+  static const double _collapsedHeight = 140.0; // Increased to show tabs when collapsed
+  static const double _scrollThreshold = 100.0;
+
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
@@ -44,11 +51,19 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    _scrollOffsetNotifier.dispose();
     _searchController.dispose();
     _tabController.dispose();
     _searchAnimationController.dispose();
     _searchFocus.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    _scrollOffsetNotifier.value = _scrollController.offset;
   }
 
   Future<void> _handleClearAllFavorites() async {
@@ -77,236 +92,235 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
     Size size = MediaQuery.sizeOf(context);
 
     final systemUiOverlayStyle = SystemUiOverlayStyle(
-      statusBarColor: colors.backgroundSecondary,
-      statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      statusBarColor: colors.accentOrange,
+      statusBarIconBrightness: Brightness.light,
       systemNavigationBarColor: colors.backgroundSecondary,
       systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
-
-    SystemChrome.setSystemUIOverlayStyle(systemUiOverlayStyle);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: systemUiOverlayStyle,
       child: Scaffold(
         backgroundColor: colors.backgroundSecondary,
-        body: Column(
-          children: [
-            Container(
-              padding: EdgeInsets.only(bottom: 10.h),
-              color: colors.backgroundPrimary,
+        body: SafeArea(
+          top: false,
+          child: ClipRect(
+            child: Stack(
+              children: [
+                // Main Content
+                Column(
+                  children: [
+                    Expanded(
+                      child: Consumer<FavoritesProvider>(
+                        builder: (context, favoritesProvider, child) {
+                          if (favoritesProvider.favoriteItems.isEmpty) {
+                            return _buildEmptyState(colors, size);
+                          }
+
+                          final filteredItems = _searchQuery.isEmpty
+                              ? favoritesProvider.favoriteItems.toList()
+                              : favoritesProvider.searchFavorites(_searchQuery);
+
+                          if (filteredItems.isEmpty) {
+                            return _buildNoResultsState(colors, size);
+                          }
+
+                          return _buildFavoritesList(colors, filteredItems, size);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Collapsible Header
+                Positioned(top: 0, left: 0, right: 0, child: _buildCollapsibleFavoritesHeader(colors, size)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCollapsibleFavoritesHeader(AppColorsExtension colors, Size size) {
+    final statusBarHeight = MediaQuery.of(context).padding.top;
+    final dynamicCollapsedHeight = _collapsedHeight + statusBarHeight; // Add status bar height
+
+    return ValueListenableBuilder<double>(
+      valueListenable: _scrollOffsetNotifier,
+      builder: (context, scrollOffset, _) {
+        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
+        final expandedHeight = size.height * 0.26;
+        final currentHeight = expandedHeight - ((expandedHeight - dynamicCollapsedHeight) * collapseProgress);
+        final contentOpacity = (1.0 - collapseProgress).clamp(0.0, 1.0);
+
+        return SizedBox(
+          height: currentHeight,
+          child: UmbrellaHeaderWithShadow(
+            curveDepth: 25.h,
+            numberOfCurves: 10,
+            height: currentHeight,
+            child: Padding(
+              padding: EdgeInsets.only(bottom: 50.h), // Add padding to keep tabs above curves
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  Padding(
-                    padding: EdgeInsets.only(top: padding.top, left: 10.w, right: 10.w),
-                    child: Row(
-                      children: [
-                        Container(
-                          height: 44.h,
-                          width: 44.w,
-                          decoration: BoxDecoration(
-                            color: colors.backgroundPrimary,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () => context.pop(),
-                              customBorder: const CircleBorder(),
-                              child: Padding(
-                                padding: EdgeInsets.all(10.r),
-                                child: SvgPicture.asset(
-                                  Assets.icons.navArrowLeft,
-                                  package: 'grab_go_shared',
-                                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 16.w),
-                        Text(
-                          "Favorites",
-                          style: TextStyle(
-                            fontFamily: "Lato",
-                            package: 'grab_go_shared',
-                            color: colors.textPrimary,
-                            fontSize: 24.sp,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const Spacer(),
-                        Container(
-                          height: 44.h,
-                          width: 44.w,
-                          decoration: BoxDecoration(
-                            color: _isSearchActive
-                                ? colors.accentOrange.withValues(alpha: 0.1)
-                                : colors.backgroundPrimary,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: colors.inputBorder.withValues(alpha: 0.3),
-                              width: _isSearchActive ? 1.5 : 0.5,
-                            ),
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () {
-                                setState(() {
-                                  _isSearchActive = !_isSearchActive;
-                                  if (_isSearchActive) {
-                                    _searchAnimationController.forward();
-                                    _searchFocus.requestFocus();
-                                  } else {
-                                    _searchAnimationController.reverse();
-                                    _searchController.clear();
-                                    _searchQuery = '';
-                                  }
-                                });
-                              },
-                              splashColor: _isSearchActive
-                                  ? colors.accentOrange.withValues(alpha: 0.4)
-                                  : colors.backgroundSecondary,
-                              customBorder: const CircleBorder(),
-                              child: Padding(
-                                padding: EdgeInsets.all(10.r),
-                                child: SvgPicture.asset(
-                                  _isSearchActive ? Assets.icons.xmark : Assets.icons.search,
-                                  package: 'grab_go_shared',
-                                  colorFilter: ColorFilter.mode(
-                                    _isSearchActive ? colors.accentOrange : colors.textPrimary,
-                                    BlendMode.srcIn,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        CustomPopupMenu(
-                          menuWidth: 280.w,
-                          showArrow: false,
-                          items: [
-                            CustomPopupMenuItem(
-                              value: 'sort',
-                              label: 'Sort Favorites',
-                              icon: Assets.icons.sort,
-                              iconColor: colors.textSecondary,
-                            ),
-                            CustomPopupMenuItem(
-                              value: 'clear',
-                              label: 'Clear All Favorites',
-                              icon: Assets.icons.brushCleaning,
-                              iconColor: colors.textSecondary,
-                            ),
-                          ],
-                          onSelected: (value) {
-                            switch (value) {
-                              case "sort":
-                                debugPrint("sort");
-                                _showSortOptions(colors);
-                              case "clear":
-                                _handleClearAllFavorites();
-                            }
-                          },
-                          child: Container(
-                            height: 44.h,
-                            width: 44.w,
-                            decoration: BoxDecoration(
-                              color: colors.backgroundPrimary,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-                            ),
-                            child: Padding(
-                              padding: EdgeInsets.all(12.r),
-                              child: SvgPicture.asset(
-                                Assets.icons.moreVertical,
-                                package: 'grab_go_shared',
-                                colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                  Expanded(
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 100),
+                      opacity: contentOpacity,
+                      child: _buildFavoritesHeader(colors),
                     ),
                   ),
-                  SizedBox(height: 16.h),
                   AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    switchInCurve: Curves.easeInOut,
-                    switchOutCurve: Curves.easeInOut,
-                    transitionBuilder: (Widget child, Animation<double> animation) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: SlideTransition(
-                          position: Tween<Offset>(begin: const Offset(0, -0.1), end: Offset.zero).animate(animation),
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: _isSearchActive
-                        ? _buildSearchBar(colors)
-                        : Container(
-                            key: const ValueKey('tabs'),
-                            margin: EdgeInsets.symmetric(horizontal: 20.w),
-                            padding: EdgeInsets.all(4.r),
-                            decoration: BoxDecoration(
-                              color: colors.backgroundSecondary,
-                              borderRadius: BorderRadius.circular(14.r),
-                            ),
-                            child: TabBar(
-                              controller: _tabController,
-                              indicator: BoxDecoration(
-                                color: colors.accentOrange,
-                                borderRadius: BorderRadius.circular(10.r),
-                              ),
-                              indicatorSize: TabBarIndicatorSize.tab,
-                              dividerColor: Colors.transparent,
-                              labelColor: Colors.white,
-                              unselectedLabelColor: colors.textSecondary,
-                              labelStyle: TextStyle(
-                                fontFamily: "Lato",
-                                package: "grab_go_shared",
-                                fontSize: 13.sp,
-                                fontWeight: FontWeight.w700,
-                              ),
-                              unselectedLabelStyle: TextStyle(
-                                fontFamily: "Lato",
-                                package: 'grab_go_shared',
-                                fontSize: 13.sp,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              tabs: const [
-                                Tab(text: "Items"),
-                                Tab(text: "Vendors"),
-                              ],
-                            ),
-                          ),
+                    duration: const Duration(milliseconds: 200),
+                    child: _isSearchActive ? _buildSearchBar(colors) : _buildStickyTabs(colors, contentOpacity),
                   ),
                 ],
               ),
             ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStickyTabs(AppColorsExtension colors, double opacity) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 20.w),
+      padding: EdgeInsets.all(4.r),
+      decoration: BoxDecoration(
+        color: colors.backgroundPrimary.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(14.r),
+      ),
+      child: TabBar(
+        controller: _tabController,
+        indicator: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10.r)),
+        indicatorSize: TabBarIndicatorSize.tab,
+        dividerColor: Colors.transparent,
+        labelColor: colors.accentOrange,
+        unselectedLabelColor: Colors.white.withValues(alpha: 0.8),
+        labelStyle: TextStyle(
+          fontFamily: "Lato",
+          package: "grab_go_shared",
+          fontSize: 13.sp,
+          fontWeight: FontWeight.w700,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontFamily: "Lato",
+          package: 'grab_go_shared',
+          fontSize: 13.sp,
+          fontWeight: FontWeight.w600,
+        ),
+        tabs: const [
+          Tab(text: "My Items"),
+          Tab(text: "Vendors"),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFavoritesHeader(AppColorsExtension colors) {
+    final statusBarHeight = MediaQuery.of(context).padding.top;
+
+    return SizedBox.expand(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20.w, statusBarHeight.h, 20.w, 10.h),
+        child: Row(
+          children: [
+            _buildHeaderButton(icon: Assets.icons.navArrowLeft, onTap: () => context.pop(), colors: colors),
+            SizedBox(width: 16.w),
             Expanded(
-              child: Consumer<FavoritesProvider>(
-                builder: (context, favoritesProvider, child) {
-                  if (favoritesProvider.favoriteItems.isEmpty) {
-                    return _buildEmptyState(colors, size);
-                  }
-
-                  final filteredItems = _searchQuery.isEmpty
-                      ? favoritesProvider.favoriteItems.toList()
-                      : favoritesProvider.searchFavorites(_searchQuery);
-
-                  if (filteredItems.isEmpty) {
-                    return Expanded(child: _buildNoResultsState(colors, size));
-                  }
-
-                  return Expanded(child: _buildFavoritesList(colors, filteredItems));
-                },
+              child: Text(
+                "Favorites",
+                style: TextStyle(
+                  fontFamily: "Lato",
+                  package: 'grab_go_shared',
+                  color: Colors.white,
+                  fontSize: 24.sp,
+                  fontWeight: FontWeight.w800,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
+            _buildHeaderButton(
+              icon: _isSearchActive ? Assets.icons.xmark : Assets.icons.search,
+              onTap: () {
+                setState(() {
+                  _isSearchActive = !_isSearchActive;
+                  if (_isSearchActive) {
+                    _searchAnimationController.forward();
+                    _searchFocus.requestFocus();
+                  } else {
+                    _searchAnimationController.reverse();
+                    _searchController.clear();
+                    _searchQuery = '';
+                  }
+                });
+              },
+              colors: colors,
+              isActive: _isSearchActive,
+            ),
+            SizedBox(width: 8.w),
+            CustomPopupMenu(
+              menuWidth: 280.w,
+              showArrow: false,
+              items: [
+                CustomPopupMenuItem(
+                  value: 'sort',
+                  label: 'Sort Favorites',
+                  icon: Assets.icons.sort,
+                  iconColor: colors.textSecondary,
+                ),
+                CustomPopupMenuItem(
+                  value: 'clear',
+                  label: 'Clear All Favorites',
+                  icon: Assets.icons.brushCleaning,
+                  iconColor: colors.textSecondary,
+                ),
+              ],
+              onSelected: (value) {
+                switch (value) {
+                  case "sort":
+                    _showSortOptions(colors);
+                  case "clear":
+                    _handleClearAllFavorites();
+                }
+              },
+              child: _buildHeaderButton(icon: Assets.icons.moreVertical, colors: colors),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderButton({
+    required String icon,
+    VoidCallback? onTap,
+    required AppColorsExtension colors,
+    bool isActive = false,
+  }) {
+    return Container(
+      height: 44.h,
+      width: 44.w,
+      decoration: BoxDecoration(
+        color: colors.backgroundPrimary.withValues(alpha: 0.2),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: isActive ? 1.5 : 0.0),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: Padding(
+            padding: EdgeInsets.all(10.r),
+            child: SvgPicture.asset(
+              icon,
+              package: 'grab_go_shared',
+              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+            ),
+          ),
         ),
       ),
     );
@@ -317,29 +331,33 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
       key: const ValueKey('search'),
       margin: EdgeInsets.symmetric(horizontal: 20.w),
       decoration: BoxDecoration(
-        color: colors.backgroundSecondary,
-        borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withAlpha(5), spreadRadius: 0, blurRadius: 8, offset: const Offset(0, 2)),
-        ],
+        color: colors.backgroundPrimary.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 0.5),
       ),
       child: TextField(
         controller: _searchController,
+        focusNode: _searchFocus,
         onChanged: (value) {
           setState(() {
             _searchQuery = value;
           });
         },
-        style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+        style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w500),
+        cursorColor: Colors.white,
         decoration: InputDecoration(
           hintText: "Search your favorites...",
-          hintStyle: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+          hintStyle: TextStyle(
+            color: Colors.white.withValues(alpha: 0.6),
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w500,
+          ),
           prefixIcon: Padding(
-            padding: EdgeInsets.all(14.r),
+            padding: EdgeInsets.all(12.r),
             child: SvgPicture.asset(
               Assets.icons.search,
               package: 'grab_go_shared',
-              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
             ),
           ),
           suffixIcon: _searchQuery.isNotEmpty
@@ -352,24 +370,26 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                   },
                   icon: SvgPicture.asset(
                     Assets.icons.xmark,
-                    height: 20.h,
-                    width: 20.w,
+                    height: 18.h,
+                    width: 18.w,
                     package: "grab_go_shared",
-                    colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                   ),
                 )
               : null,
           border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
         ),
       ),
     );
   }
 
-  Widget _buildEmptyState(AppColorsExtension colors, size) {
-    return Center(
+  Widget _buildEmptyState(AppColorsExtension colors, Size size) {
+    return SingleChildScrollView(
+      controller: _scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
       child: Padding(
-        padding: EdgeInsets.all(40.w),
+        padding: EdgeInsets.only(top: size.height * 0.26 + 40.h, left: 40.w, right: 40.w, bottom: 40.h),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -459,10 +479,12 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
     );
   }
 
-  Widget _buildNoResultsState(AppColorsExtension colors, size) {
-    return Center(
+  Widget _buildNoResultsState(AppColorsExtension colors, Size size) {
+    return SingleChildScrollView(
+      controller: _scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
       child: Padding(
-        padding: EdgeInsets.all(40.w),
+        padding: EdgeInsets.only(top: size.height * 0.26 + 40.h, left: 40.w, right: 40.w, bottom: 40.h),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -487,9 +509,15 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
     );
   }
 
-  Widget _buildFavoritesList(AppColorsExtension colors, List<FoodItem> items) {
+  Widget _buildFavoritesList(AppColorsExtension colors, List<FoodItem> items, Size size) {
     return ListView.builder(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+      controller: _scrollController,
+      padding: EdgeInsets.only(
+        left: 16.w,
+        right: 16.w,
+        top: size.height * 0.26 + 10.h, // Space for expanded header
+        bottom: 8.h,
+      ),
       itemCount: items.length,
       physics: const AlwaysScrollableScrollPhysics(),
       itemBuilder: (context, index) {

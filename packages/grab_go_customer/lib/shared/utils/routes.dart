@@ -335,7 +335,7 @@ final GoRouter appRouter = GoRouter(
             return SharedAxisTransition(
               animation: animation,
               secondaryAnimation: secondaryAnimation,
-              transitionType: SharedAxisTransitionType.vertical,
+              transitionType: SharedAxisTransitionType.horizontal,
               child: child,
             );
           },
@@ -463,8 +463,8 @@ final GoRouter appRouter = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: const Orders(),
-          transitionDuration: const Duration(milliseconds: 800),
-          reverseTransitionDuration: const Duration(milliseconds: 800),
+          transitionDuration: const Duration(milliseconds: 400),
+          reverseTransitionDuration: const Duration(milliseconds: 400),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SharedAxisTransition(
               animation: animation,
@@ -670,7 +670,7 @@ final GoRouter appRouter = GoRouter(
             return SharedAxisTransition(
               animation: animation,
               secondaryAnimation: secondaryAnimation,
-              transitionType: SharedAxisTransitionType.scaled,
+              transitionType: SharedAxisTransitionType.horizontal,
               child: child,
             );
           },
@@ -689,7 +689,7 @@ final GoRouter appRouter = GoRouter(
             return SharedAxisTransition(
               animation: animation,
               secondaryAnimation: secondaryAnimation,
-              transitionType: SharedAxisTransitionType.scaled,
+              transitionType: SharedAxisTransitionType.horizontal,
               child: child,
             );
           },
@@ -708,7 +708,7 @@ final GoRouter appRouter = GoRouter(
             return SharedAxisTransition(
               animation: animation,
               secondaryAnimation: secondaryAnimation,
-              transitionType: SharedAxisTransitionType.scaled,
+              transitionType: SharedAxisTransitionType.horizontal,
               child: child,
             );
           },
@@ -875,7 +875,7 @@ final GoRouter appRouter = GoRouter(
             return SharedAxisTransition(
               animation: animation,
               secondaryAnimation: secondaryAnimation,
-              transitionType: SharedAxisTransitionType.scaled,
+              transitionType: SharedAxisTransitionType.horizontal,
               child: child,
             );
           },

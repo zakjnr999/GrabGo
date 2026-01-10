@@ -26,7 +26,8 @@ class NearbySection extends StatelessWidget {
       children: [
         SectionHeader(
           title: "Nearby You",
-          icon: Assets.icons.mapPin,
+          sectionIcon: Assets.icons.tag,
+          sectionTotal: 1,
           accentColor: colors.accentGreen,
           onSeeAll: onSeeAll,
         ),

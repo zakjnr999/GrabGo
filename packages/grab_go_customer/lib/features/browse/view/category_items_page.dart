@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
@@ -11,6 +12,7 @@ import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/shared/widgets/browse_grid_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/home_search.dart';
 import 'package:grab_go_customer/shared/widgets/popular_item_card.dart';
+import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:provider/provider.dart';
@@ -52,6 +54,10 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
   bool _isFabVisible = true;
   double _lastScrollOffset = 0.0;
   int _previousCartCount = 0;
+
+  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
+  static const double _collapsedHeight = 80.0;
+  static const double _scrollThreshold = 100.0;
 
   final List<Map<String, dynamic>> _quickFilters = [
     {'icon': Assets.icons.dollar, 'label': 'Price', 'hasOptions': true},
@@ -106,6 +112,7 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _scrollOffsetNotifier.dispose();
     _fabAnimationController.dispose();
     _badgePulseController.dispose();
     super.dispose();
@@ -115,6 +122,9 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
     if (!_scrollController.hasClients) return;
 
     final currentOffset = _scrollController.offset;
+
+    _scrollOffsetNotifier.value = currentOffset;
+
     final scrollDelta = currentOffset - _lastScrollOffset;
 
     if (currentOffset <= 0) {
@@ -153,302 +163,202 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final size = MediaQuery.sizeOf(context);
 
-    return Scaffold(
-      backgroundColor: colors.backgroundSecondary,
-      body: SafeArea(
-        bottom: false,
-        child: CustomScrollView(
-          controller: _scrollController,
-          slivers: [
-            // Header (scrolls away)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.only(left: 20.w, right: 16.w, bottom: 16.h),
-                child: Row(
-                  children: [
-                    Container(
-                      height: 44.h,
-                      width: 44.w,
-                      decoration: BoxDecoration(
-                        color: colors.backgroundPrimary,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                            spreadRadius: 0,
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () => context.pop(),
-                          customBorder: const CircleBorder(),
-                          child: Padding(
-                            padding: EdgeInsets.all(10.r),
-                            child: SvgPicture.asset(
-                              Assets.icons.navArrowLeft,
-                              package: 'grab_go_shared',
-                              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 16.w),
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Text(
-                            widget.categoryName,
-                            style: TextStyle(
-                              fontFamily: "Lato",
-                              package: 'grab_go_shared',
-                              fontSize: 20.sp,
-                              fontWeight: FontWeight.w700,
-                              color: colors.textPrimary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          SizedBox(width: 8.w),
-                          widget.isFood
-                              ? Consumer<FoodProvider>(
-                                  builder: (context, provider, _) {
-                                    final items = _getFilteredFoodItems(provider);
-                                    return Container(
-                                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-                                      decoration: BoxDecoration(
-                                        color: colors.accentOrange,
-                                        borderRadius: BorderRadius.circular(12.r),
-                                      ),
-                                      child: Text(
-                                        '${items.length}',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 12.sp,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                )
-                              : Consumer<GroceryProvider>(
-                                  builder: (context, provider, _) {
-                                    final items = _getFilteredGroceryItems(provider);
-                                    return Container(
-                                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-                                      decoration: BoxDecoration(
-                                        color: colors.accentOrange,
-                                        borderRadius: BorderRadius.circular(12.r),
-                                      ),
-                                      child: Text(
-                                        '${items.length}',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 12.sp,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                        ],
-                      ),
-                    ),
-                    if (_selectedQuickFilters.isNotEmpty)
-                      TextButton(
-                        onPressed: () {
-                          setState(() {
-                            _selectedQuickFilters.clear();
-                            _selectedPriceRange = null;
-                            _selectedRating = null;
-                            _selectedDeliveryTime = null;
-                            _selectedDietary = null;
-                          });
-                        },
-                        child: Text(
-                          'Reset',
-                          style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.accentOrange),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
+    final systemUiOverlayStyle = SystemUiOverlayStyle(
+      statusBarColor: colors.accentOrange,
+      statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: colors.backgroundSecondary,
+      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+    );
 
-            // Sticky Search and Filters
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _StickyHeaderDelegate(
-                minHeight: _calculateStickyHeaderHeight(),
-                maxHeight: _calculateStickyHeaderHeight(),
-                child: Container(
-                  color: colors.backgroundSecondary,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      widget.isFood
-                          ? Consumer<FoodProvider>(
-                              builder: (context, foodProvider, _) {
-                                final categoryList = foodProvider.categories
-                                    .where((cat) => cat.id == widget.categoryId)
-                                    .toList();
-                                return HomeSearch(
-                                  categories: categoryList,
-                                  activeFilter: _comprehensiveFilter,
-                                  hintText: "Find your food item...",
-                                  onFilterApplied: (FilterModel filter) {
-                                    setState(() {
-                                      _comprehensiveFilter = filter.copyWith();
-                                    });
-                                  },
-                                  isFood: true,
-                                );
-                              },
-                            )
-                          : Consumer<GroceryProvider>(
-                              builder: (context, groceryProvider, _) {
-                                final groceryCategories = groceryProvider.categories
-                                    .where((cat) => cat.id == widget.categoryId)
-                                    .map(
-                                      (cat) => FoodCategoryModel(
-                                        id: cat.id,
-                                        name: cat.name,
-                                        emoji: cat.emoji,
-                                        description: cat.description,
-                                        isActive: cat.isActive,
-                                        items: groceryProvider.items
-                                            .where((item) => item.categoryId == cat.id)
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: systemUiOverlayStyle,
+      child: Scaffold(
+        backgroundColor: colors.backgroundSecondary,
+        body: SafeArea(
+          top: false,
+          child: ClipRect(
+            child: Stack(
+              children: [
+                CustomScrollView(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(child: SizedBox(height: size.height * 0.20)),
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _StickyHeaderDelegate(
+                        minHeight: _calculateStickyHeaderHeight(),
+                        maxHeight: _calculateStickyHeaderHeight(),
+                        child: Container(
+                          color: colors.backgroundSecondary,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              widget.isFood
+                                  ? Consumer<FoodProvider>(
+                                      builder: (context, foodProvider, _) {
+                                        final categoryList = foodProvider.categories
+                                            .where((cat) => cat.id == widget.categoryId)
+                                            .toList();
+                                        return HomeSearch(
+                                          categories: categoryList,
+                                          activeFilter: _comprehensiveFilter,
+                                          hintText: "Find your food item...",
+                                          onFilterApplied: (FilterModel filter) {
+                                            setState(() {
+                                              _comprehensiveFilter = filter.copyWith();
+                                            });
+                                          },
+                                          isFood: true,
+                                        );
+                                      },
+                                    )
+                                  : Consumer<GroceryProvider>(
+                                      builder: (context, groceryProvider, _) {
+                                        final groceryCategories = groceryProvider.categories
+                                            .where((cat) => cat.id == widget.categoryId)
                                             .map(
-                                              (item) => FoodItem(
-                                                id: item.id,
-                                                name: item.name,
-                                                image: item.image,
-                                                description: item.description,
-                                                sellerName: 'Grocery Store',
-                                                sellerId: 0,
-                                                restaurantId: '',
-                                                restaurantImage: '',
-                                                price: item.price,
-                                                rating: item.rating,
-                                                prepTimeMinutes: 15,
-                                                calories: 100,
-                                                dietaryTags: [],
-                                                deliveryTimeMinutes: 30,
-                                                isAvailable: item.isAvailable,
-                                                discountPercentage: item.discountPercentage,
-                                                orderCount: item.orderCount,
+                                              (cat) => FoodCategoryModel(
+                                                id: cat.id,
+                                                name: cat.name,
+                                                emoji: cat.emoji,
+                                                description: cat.description,
+                                                isActive: cat.isActive,
+                                                items: groceryProvider.items
+                                                    .where((item) => item.categoryId == cat.id)
+                                                    .map(
+                                                      (item) => FoodItem(
+                                                        id: item.id,
+                                                        name: item.name,
+                                                        image: item.image,
+                                                        description: item.description,
+                                                        sellerName: 'Grocery Store',
+                                                        sellerId: 0,
+                                                        restaurantId: '',
+                                                        restaurantImage: '',
+                                                        price: item.price,
+                                                        rating: item.rating,
+                                                        prepTimeMinutes: 15,
+                                                        calories: 100,
+                                                        dietaryTags: [],
+                                                        deliveryTimeMinutes: 30,
+                                                        isAvailable: item.isAvailable,
+                                                        discountPercentage: item.discountPercentage,
+                                                        orderCount: item.orderCount,
+                                                      ),
+                                                    )
+                                                    .toList(),
                                               ),
                                             )
-                                            .toList(),
-                                      ),
-                                    )
-                                    .toList();
-                                return HomeSearch(
-                                  categories: groceryCategories,
-                                  activeFilter: _comprehensiveFilter,
-                                  hintText: "Find your grocery item...",
-                                  onFilterApplied: (FilterModel filter) {
-                                    setState(() {
-                                      _comprehensiveFilter = filter.copyWith();
-                                    });
-                                  },
-                                  isFood: false,
-                                );
-                              },
-                            ),
-                      _buildQuickFilters(colors),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            // Items Grid
-            widget.isFood ? _buildFoodItemsSliver(colors, isDark) : _buildGroceryItemsSliver(colors, isDark),
-          ],
-        ),
-      ),
-      floatingActionButton: Provider.of<CartProvider>(context, listen: true).cartItems.isNotEmpty
-          ? SlideTransition(
-              position: _fabSlideAnimation,
-              child: ScaleTransition(
-                scale: _fabScaleAnimation,
-                child: Consumer<CartProvider>(
-                  builder: (context, cartProvider, child) {
-                    final currentCount = cartProvider.cartItems.length;
-
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (!mounted) return;
-
-                      if (currentCount != _previousCartCount && _previousCartCount > 0) {
-                        _badgePulseController.forward(from: 0);
-                      }
-
-                      if (currentCount > _previousCartCount) {
-                        if (!_isFabVisible || _previousCartCount == 0) {
-                          setState(() {
-                            _isFabVisible = true;
-                          });
-                          _fabAnimationController.forward();
-                        }
-                      }
-
-                      _previousCartCount = currentCount;
-                    });
-
-                    return ScaleTransition(
-                      scale: _badgePulseAnimation,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(KBorderSize.border),
-                          boxShadow: [
-                            BoxShadow(
-                              color: colors.accentOrange.withValues(alpha: 0.4),
-                              blurRadius: 16,
-                              spreadRadius: 0,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: FloatingActionButton.extended(
-                          onPressed: () => context.push("/cart"),
-                          extendedPadding: EdgeInsets.all(10.r),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.border)),
-                          backgroundColor: colors.accentOrange,
-                          elevation: 0,
-                          label: Text(
-                            "${cartProvider.cartItems.length} ${cartProvider.cartItems.length > 1 ? "items in cart" : "item in cart"}",
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              fontWeight: FontWeight.w600,
-                              color: colors.backgroundPrimary,
-                            ),
-                          ),
-                          icon: Container(
-                            padding: EdgeInsets.all(8.r),
-                            decoration: BoxDecoration(color: colors.backgroundPrimary, shape: BoxShape.circle),
-                            child: SvgPicture.asset(
-                              Assets.icons.cart,
-                              height: 20.h,
-                              width: 20.w,
-                              package: 'grab_go_shared',
-                              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                            ),
+                                            .toList();
+                                        return HomeSearch(
+                                          categories: groceryCategories,
+                                          activeFilter: _comprehensiveFilter,
+                                          hintText: "Find your grocery item...",
+                                          onFilterApplied: (FilterModel filter) {
+                                            setState(() {
+                                              _comprehensiveFilter = filter.copyWith();
+                                            });
+                                          },
+                                          isFood: false,
+                                        );
+                                      },
+                                    ),
+                              _buildQuickFilters(colors),
+                            ],
                           ),
                         ),
                       ),
-                    );
-                  },
+                    ),
+
+                    widget.isFood ? _buildFoodItemsSliver(colors, isDark) : _buildGroceryItemsSliver(colors, isDark),
+                  ],
                 ),
-              ),
-            )
-          : const SizedBox.shrink(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+
+                Positioned(top: 0, left: 0, right: 0, child: _buildCollapsibleCategoryHeader(colors, size, isDark)),
+              ],
+            ),
+          ),
+        ),
+        floatingActionButton: Provider.of<CartProvider>(context, listen: true).cartItems.isNotEmpty
+            ? SlideTransition(
+                position: _fabSlideAnimation,
+                child: ScaleTransition(
+                  scale: _fabScaleAnimation,
+                  child: Consumer<CartProvider>(
+                    builder: (context, cartProvider, child) {
+                      final currentCount = cartProvider.cartItems.length;
+
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (!mounted) return;
+
+                        if (currentCount != _previousCartCount && _previousCartCount > 0) {
+                          _badgePulseController.forward(from: 0);
+                        }
+
+                        if (currentCount > _previousCartCount) {
+                          if (!_isFabVisible || _previousCartCount == 0) {
+                            setState(() {
+                              _isFabVisible = true;
+                            });
+                            _fabAnimationController.forward();
+                          }
+                        }
+
+                        _previousCartCount = currentCount;
+                      });
+
+                      return ScaleTransition(
+                        scale: _badgePulseAnimation,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(KBorderSize.border),
+                            boxShadow: [
+                              BoxShadow(
+                                color: colors.accentOrange.withValues(alpha: 0.4),
+                                blurRadius: 16,
+                                spreadRadius: 0,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: FloatingActionButton.extended(
+                            onPressed: () => context.push("/cart"),
+                            extendedPadding: EdgeInsets.all(10.r),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.border)),
+                            backgroundColor: colors.accentOrange,
+                            elevation: 0,
+                            label: Text(
+                              "${cartProvider.cartItems.length} ${cartProvider.cartItems.length > 1 ? "items in cart" : "item in cart"}",
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w600,
+                                color: colors.backgroundPrimary,
+                              ),
+                            ),
+                            icon: Container(
+                              padding: EdgeInsets.all(8.r),
+                              decoration: BoxDecoration(color: colors.backgroundPrimary, shape: BoxShape.circle),
+                              child: SvgPicture.asset(
+                                Assets.icons.cart,
+                                height: 20.h,
+                                width: 20.w,
+                                package: 'grab_go_shared',
+                                colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              )
+            : const SizedBox.shrink(),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      ),
     );
   }
 
@@ -610,7 +520,7 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
           sliver: SliverGrid(
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: _isGridView ? 2 : 1,
-              childAspectRatio: _isGridView ? 0.615 : 1.8,
+              childAspectRatio: _isGridView ? 0.700 : 1.8,
               crossAxisSpacing: 12.w,
               mainAxisSpacing: 16.h,
             ),
@@ -1114,6 +1024,113 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
     double height = 54.h;
     height += 40.h + 16.h;
     return height;
+  }
+
+  Widget _buildCollapsibleCategoryHeader(AppColorsExtension colors, Size size, bool isDark) {
+    return ValueListenableBuilder<double>(
+      valueListenable: _scrollOffsetNotifier,
+      builder: (context, scrollOffset, _) {
+        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
+        final expandedHeight = size.height * 0.18;
+        final currentHeight = expandedHeight - ((expandedHeight - _collapsedHeight) * collapseProgress);
+        final contentOpacity = (1.0 - collapseProgress).clamp(0.0, 1.0);
+
+        return SizedBox(
+          height: currentHeight,
+          child: UmbrellaHeaderWithShadow(
+            curveDepth: 25.h,
+            numberOfCurves: 10,
+            height: currentHeight,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 100),
+              opacity: contentOpacity,
+              child: _buildCategoryHeader(colors, isDark),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCategoryHeader(AppColorsExtension colors, bool isDark) {
+    return SizedBox.expand(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20.w, MediaQuery.of(context).padding.top.h, 20.w, 16.h),
+        child: Row(
+          children: [
+            Container(
+              height: 40.h,
+              width: 40.w,
+              decoration: BoxDecoration(color: colors.backgroundPrimary.withValues(alpha: 0.2), shape: BoxShape.circle),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => context.pop(),
+                  customBorder: const CircleBorder(),
+                  child: Center(
+                    child: SvgPicture.asset(
+                      Assets.icons.navArrowLeft,
+                      package: 'grab_go_shared',
+                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                      width: 24.w,
+                      height: 24.h,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(width: 16.w),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.categoryName,
+                    style: TextStyle(
+                      fontFamily: "Lato",
+                      package: 'grab_go_shared',
+                      fontSize: 20.sp,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 2.h),
+                  widget.isFood
+                      ? Consumer<FoodProvider>(
+                          builder: (context, provider, _) {
+                            final items = _getFilteredFoodItems(provider);
+                            return Text(
+                              '${items.length} options available',
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withValues(alpha: 0.8),
+                              ),
+                            );
+                          },
+                        )
+                      : Consumer<GroceryProvider>(
+                          builder: (context, provider, _) {
+                            final items = _getFilteredGroceryItems(provider);
+                            return Text(
+                              '${items.length} options available',
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withValues(alpha: 0.8),
+                              ),
+                            );
+                          },
+                        ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

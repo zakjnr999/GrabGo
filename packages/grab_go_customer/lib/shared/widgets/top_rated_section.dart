@@ -32,19 +32,20 @@ class TopRatedSection extends StatelessWidget {
     return Column(
       children: [
         SectionHeader(
-          title: "Top Rated This Week",
-          icon: Assets.icons.star,
-          accentColor: AppColors.accentGreen,
+          title: "Top Rated Dishes",
+          sectionIcon: Assets.icons.star,
+          sectionTotal: topRatedItems.length,
+          accentColor: AppColors.accentOrange,
           onSeeAll: onSeeAll,
         ),
         SizedBox(height: 16.h),
         if (isLoading)
-          HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 260.h, itemCount: 6)
+          HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 220.h, itemCount: 6)
         else if (topRatedItems.isEmpty)
           _buildEmptyState(colors)
         else
           SizedBox(
-            height: 225.h,
+            height: 220.h,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.only(left: 20.w),

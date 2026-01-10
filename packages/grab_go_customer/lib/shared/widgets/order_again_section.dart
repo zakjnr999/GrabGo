@@ -34,18 +34,19 @@ class OrderAgainSection extends StatelessWidget {
       children: [
         SectionHeader(
           title: "Order Again",
-          icon: Assets.icons.history,
-          accentColor: colors.accentViolet,
+          sectionIcon: Assets.icons.cart,
+          sectionTotal: recentOrders.length,
+          accentColor: colors.accentOrange,
           onSeeAll: onSeeAll,
         ),
-        SizedBox(height: 16.h),
+        SizedBox(height: 10.h),
         if (isLoading)
-          HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 230.h)
+          HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 220.h)
         else if (recentOrders.isEmpty)
           _buildEmptyState(colors)
         else
           SizedBox(
-            height: 230.h,
+            height: 220.h,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.only(left: 20.w),

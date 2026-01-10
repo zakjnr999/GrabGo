@@ -23,15 +23,12 @@ class _PromoSectionState extends State<PromoSection> {
   late PageController _pageController;
   int _currentPage = 0;
   bool _autoScrollStarted = false;
-  Timer? _autoScrollTimer; // Timer for auto-scroll
+  Timer? _autoScrollTimer;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(
-      viewportFraction: 0.85, // Show parts of adjacent cards
-      initialPage: 0,
-    );
+    _pageController = PageController(viewportFraction: 0.85, initialPage: 0);
   }
 
   @override
@@ -67,7 +64,7 @@ class _PromoSectionState extends State<PromoSection> {
 
   @override
   void dispose() {
-    _autoScrollTimer?.cancel(); // Cancel timer to prevent memory leak
+    _autoScrollTimer?.cancel();
     _pageController.dispose();
     super.dispose();
   }
@@ -82,7 +79,8 @@ class _PromoSectionState extends State<PromoSection> {
         children: [
           SectionHeader(
             title: "Special Offers",
-            icon: Assets.icons.tag,
+            sectionIcon: Assets.icons.tag,
+            sectionTotal: widget.banners.length,
             accentColor: colors.accentOrange,
             onSeeAll: widget.onSeeAll,
           ),
@@ -101,7 +99,8 @@ class _PromoSectionState extends State<PromoSection> {
       children: [
         SectionHeader(
           title: "Special Offers",
-          icon: Assets.icons.tag,
+          sectionIcon: Assets.icons.tag,
+          sectionTotal: widget.banners.length,
           accentColor: colors.accentOrange,
           onSeeAll: widget.onSeeAll,
         ),

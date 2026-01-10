@@ -35,7 +35,13 @@ class StoreSpecialsSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Section Header
-        SectionHeader(title: 'Store Specials', icon: Assets.icons.tag, accentColor: colors.error, onSeeAll: onSeeAll),
+        SectionHeader(
+          title: 'Store Specials',
+          sectionIcon: Assets.icons.tag,
+          sectionTotal: storeSpecials.length,
+          accentColor: colors.error,
+          onSeeAll: onSeeAll,
+        ),
         SizedBox(height: 16.h),
 
         // Loading State
@@ -188,7 +194,8 @@ class StoreSpecialsSection extends StatelessWidget {
                   return SizedBox(
                     width: 160.w,
                     child: PopularItemCard(
-                      item: item.toFoodItem(), cartItem: item,
+                      item: item.toFoodItem(),
+                      cartItem: item,
                       orderCount: item.orderCount,
                       onTap: () => onItemTap(item),
                     ),

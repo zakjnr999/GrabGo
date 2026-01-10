@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
@@ -14,6 +15,8 @@ import 'package:grab_go_customer/shared/widgets/browse_category_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/browse_grid_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/home_search.dart';
 import 'package:grab_go_customer/shared/widgets/popular_item_card.dart';
+import 'package:grab_go_customer/shared/widgets/section_header.dart';
+import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:provider/provider.dart';
@@ -37,6 +40,11 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
   String? _selectedDietary;
   String? _selectedDistance;
   FilterModel _comprehensiveFilter = FilterModel(); // Comprehensive filter from bottom sheet
+
+  // Scroll tracking for collapsing header
+  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
+  static const double _collapsedHeight = 70.0;
+  static const double _scrollThreshold = 150.0;
 
   final List<Map<String, dynamic>> _quickFilters = [
     {'icon': Assets.icons.dollar, 'label': 'Price', 'hasOptions': true},
@@ -73,131 +81,185 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
   bool get wantKeepAlive => true;
 
   @override
+  void dispose() {
+    _scrollOffsetNotifier.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     super.build(context); // Required for AutomaticKeepAliveClientMixin
     final colors = context.appColors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final serviceProvider = Provider.of<ServiceProvider>(context);
+    Size size = MediaQuery.sizeOf(context);
 
-    // Reset category when service changes
+    final systemUiOverlayStyle = SystemUiOverlayStyle(
+      statusBarColor: colors.accentOrange,
+      statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: colors.backgroundSecondary,
+      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+    );
+
     if (_previousServiceId != null && _previousServiceId != serviceProvider.currentService.id) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           setState(() {
             _selectedCategoryId = 'all';
-            // Clear all filters when switching services for better UX
             _selectedQuickFilters.clear();
             _selectedPriceRange = null;
             _selectedRating = null;
             _selectedDeliveryTime = null;
             _selectedDietary = null;
             _selectedDistance = null;
-            _comprehensiveFilter.reset(); // Reset comprehensive filter too
+            _comprehensiveFilter.reset();
           });
         }
       });
     }
     _previousServiceId = serviceProvider.currentService.id;
 
-    return Scaffold(
-      backgroundColor: colors.backgroundSecondary,
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            // Scrollable header (will scroll away)
-            SliverToBoxAdapter(child: _buildHeader(colors)),
-
-            // Sticky search and chips (pinned at top)
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _StickyHeaderDelegate(
-                minHeight: _calculateStickyHeaderHeight(),
-                maxHeight: _calculateStickyHeaderHeight(),
-                child: Container(
-                  color: colors.backgroundSecondary,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8.h),
-                        child: serviceProvider.isFoodService
-                            ? Consumer<FoodProvider>(
-                                builder: (context, foodProvider, _) {
-                                  return HomeSearch(
-                                    categories: foodProvider.categories,
-                                    activeFilter: _comprehensiveFilter,
-                                    hintText: "Search by name or category...",
-                                    onFilterApplied: (FilterModel filter) {
-                                      setState(() {
-                                        _comprehensiveFilter = filter.copyWith();
-                                      });
-                                    },
-                                    isFood: true,
-                                  );
-                                },
-                              )
-                            : Consumer<GroceryProvider>(
-                                builder: (context, groceryProvider, _) {
-                                  final groceryCategories = groceryProvider.categories
-                                      .map(
-                                        (cat) => FoodCategoryModel(
-                                          id: cat.id,
-                                          name: cat.name,
-                                          emoji: cat.emoji,
-                                          description: cat.description,
-                                          isActive: cat.isActive,
-                                          items: groceryProvider.items
-                                              .where((item) => item.categoryId == cat.id)
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: systemUiOverlayStyle,
+      child: Scaffold(
+        backgroundColor: colors.backgroundSecondary,
+        body: SafeArea(
+          top: false,
+          child: ClipRect(
+            child: Stack(
+              children: [
+                NotificationListener<ScrollNotification>(
+                  onNotification: (notification) {
+                    _scrollOffsetNotifier.value = notification.metrics.pixels;
+                    return false;
+                  },
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.only(top: size.height * 0.20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Search and chips
+                        Container(
+                          color: colors.backgroundSecondary,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Padding(
+                                padding: EdgeInsets.only(top: 20.h, bottom: 8.h),
+                                child: serviceProvider.isFoodService
+                                    ? Consumer<FoodProvider>(
+                                        builder: (context, foodProvider, _) {
+                                          return HomeSearch(
+                                            categories: foodProvider.categories,
+                                            activeFilter: _comprehensiveFilter,
+                                            hintText: "Search by name or category...",
+                                            onFilterApplied: (FilterModel filter) {
+                                              setState(() {
+                                                _comprehensiveFilter = filter.copyWith();
+                                              });
+                                            },
+                                            isFood: true,
+                                          );
+                                        },
+                                      )
+                                    : Consumer<GroceryProvider>(
+                                        builder: (context, groceryProvider, _) {
+                                          final groceryCategories = groceryProvider.categories
                                               .map(
-                                                (item) => FoodItem(
-                                                  id: item.id,
-                                                  name: item.name,
-                                                  description: item.description,
-                                                  price: item.price,
-                                                  discountPercentage: item.discountPercentage,
-                                                  image: item.image,
-                                                  rating: item.rating,
-                                                  deliveryTimeMinutes: 30,
-                                                  sellerName: item.storeName ?? 'Unknown Store',
-                                                  sellerId: item.storeId.hashCode % 1000000,
-                                                  restaurantId: item.storeId,
-                                                  restaurantImage: '',
-                                                  orderCount: item.orderCount,
+                                                (cat) => FoodCategoryModel(
+                                                  id: cat.id,
+                                                  name: cat.name,
+                                                  emoji: cat.emoji,
+                                                  description: cat.description,
+                                                  isActive: cat.isActive,
+                                                  items: groceryProvider.items
+                                                      .where((item) => item.categoryId == cat.id)
+                                                      .map(
+                                                        (item) => FoodItem(
+                                                          id: item.id,
+                                                          name: item.name,
+                                                          description: item.description,
+                                                          price: item.price,
+                                                          discountPercentage: item.discountPercentage,
+                                                          image: item.image,
+                                                          rating: item.rating,
+                                                          deliveryTimeMinutes: 30,
+                                                          sellerName: item.storeName ?? 'Unknown Store',
+                                                          sellerId: item.storeId.hashCode % 1000000,
+                                                          restaurantId: item.storeId,
+                                                          restaurantImage: '',
+                                                          orderCount: item.orderCount,
+                                                        ),
+                                                      )
+                                                      .toList(),
                                                 ),
                                               )
-                                              .toList(),
-                                        ),
-                                      )
-                                      .toList();
-                                  return HomeSearch(
-                                    categories: groceryCategories,
-                                    activeFilter: _comprehensiveFilter,
-                                    hintText: "Search by name or category...",
-                                    onFilterApplied: (FilterModel filter) {
-                                      setState(() {
-                                        _comprehensiveFilter = filter.copyWith();
-                                      });
-                                    },
-                                    isFood: false,
-                                  );
-                                },
+                                              .toList();
+                                          return HomeSearch(
+                                            categories: groceryCategories,
+                                            activeFilter: _comprehensiveFilter,
+                                            hintText: "Search by name or category...",
+                                            onFilterApplied: (FilterModel filter) {
+                                              setState(() {
+                                                _comprehensiveFilter = filter.copyWith();
+                                              });
+                                            },
+                                            isFood: false,
+                                          );
+                                        },
+                                      ),
                               ),
-                      ),
-                      _buildQuickFilters(colors),
-                      // Show result bar when filter is active
-                      if (_selectedQuickFilters.isNotEmpty || _comprehensiveFilter.isActive) _buildResultsBar(colors),
-                    ],
+                              _buildQuickFilters(colors),
+                              if (_selectedQuickFilters.isNotEmpty || _comprehensiveFilter.isActive)
+                                _buildResultsBar(colors),
+                            ],
+                          ),
+                        ),
+
+                        SizedBox(height: 16.h),
+                        _selectedQuickFilters.isNotEmpty || _comprehensiveFilter.isActive
+                            ? _buildItemGrid(colors, serviceProvider)
+                            : _buildCategoryList(colors, serviceProvider),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ),
 
-            // Scrollable content
-            _selectedQuickFilters.isNotEmpty || _comprehensiveFilter.isActive
-                ? _buildItemGridSliver(colors, serviceProvider)
-                : _buildCategoryListSliver(colors, serviceProvider),
-          ],
+                Positioned(top: 0, left: 0, right: 0, child: _buildCollapsibleUmbrellaHeader(colors, size)),
+              ],
+            ),
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCollapsibleUmbrellaHeader(AppColorsExtension colors, Size size) {
+    return ValueListenableBuilder<double>(
+      valueListenable: _scrollOffsetNotifier,
+      builder: (context, scrollOffset, _) {
+        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
+
+        final expandedHeight = size.height * 0.20;
+
+        final currentHeight = expandedHeight - ((expandedHeight - _collapsedHeight) * collapseProgress);
+
+        final contentOpacity = (1.0 - collapseProgress).clamp(0.0, 1.0);
+
+        return SizedBox(
+          height: currentHeight,
+          child: UmbrellaHeaderWithShadow(
+            curveDepth: 25.h,
+            numberOfCurves: 10,
+            height: currentHeight,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 100),
+              opacity: contentOpacity,
+              child: _buildHeader(colors),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -206,8 +268,9 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
     final currentService = serviceProvider.currentService;
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 12.h),
+      padding: EdgeInsets.fromLTRB(20.w, MediaQuery.of(context).padding.top + 10.h, 20.w, 16.h),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Browse Title
           Expanded(
@@ -216,14 +279,14 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
               children: [
                 Text(
                   'Browse',
-                  style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                  style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.w700, color: Colors.white),
                 ),
                 Text(
                   "What are you craving today?",
                   style: TextStyle(
                     fontFamily: "Lato",
                     package: 'grab_go_shared',
-                    color: colors.textSecondary,
+                    color: Colors.white.withValues(alpha: 0.8),
                     fontSize: 14.sp,
                     fontWeight: FontWeight.w400,
                   ),
@@ -231,14 +294,13 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
               ],
             ),
           ),
-          SizedBox(width: 12.w),
           // Service Indicator Badge
           GestureDetector(
             onTap: _showServiceSwitcher,
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
               decoration: BoxDecoration(
-                color: colors.accentOrange.withValues(alpha: 0.1),
+                color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(20.r),
               ),
               child: Row(
@@ -249,7 +311,7 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
                   Flexible(
                     child: Text(
                       currentService.name,
-                      style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: colors.accentOrange),
+                      style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: Colors.white),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -258,7 +320,7 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
                   SvgPicture.asset(
                     Assets.icons.navArrowDown,
                     package: 'grab_go_shared',
-                    colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                     width: 16.w,
                     height: 16.h,
                   ),
@@ -370,7 +432,7 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
 
     return Container(
       height: 40.h,
-      margin: EdgeInsets.only(top: 12.h),
+      margin: EdgeInsets.only(top: 8.h),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.only(left: 20.w),
@@ -416,12 +478,6 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
                       spreadRadius: 1,
                       blurRadius: 12,
                       offset: const Offset(0, 4),
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withAlpha(5),
-                      spreadRadius: -1,
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
@@ -603,47 +659,6 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
     );
   }
 
-  Widget _buildCategoryList(AppColorsExtension colors, ServiceProvider serviceProvider) {
-    final isFood = serviceProvider.isFoodService;
-
-    return isFood
-        ? Selector<FoodProvider, List<FoodCategoryModel>>(
-            selector: (_, provider) => provider.categories,
-            builder: (context, categories, _) {
-              if (categories.isEmpty) {
-                final isDark = Theme.of(context).brightness == Brightness.dark;
-                return BrowseCategorySkeleton(colors: colors, isDark: isDark);
-              }
-
-              return _buildVerticalCategoryCards(
-                colors,
-                categories
-                    .map((cat) => {'id': cat.id, 'name': cat.name, 'emoji': cat.emoji, 'itemCount': cat.items.length})
-                    .toList(),
-              );
-            },
-          )
-        : Selector<GroceryProvider, List<GroceryCategory>>(
-            selector: (_, provider) => provider.categories,
-            builder: (context, categories, child) {
-              if (categories.isEmpty) {
-                final isDark = Theme.of(context).brightness == Brightness.dark;
-                return BrowseCategorySkeleton(colors: colors, isDark: isDark);
-              }
-
-              final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
-
-              return _buildVerticalCategoryCards(
-                colors,
-                categories.map((cat) {
-                  final itemCount = groceryProvider.items.where((item) => item.categoryId == cat.id).length;
-                  return {'id': cat.id, 'name': cat.name, 'emoji': cat.emoji, 'itemCount': itemCount};
-                }).toList(),
-              );
-            },
-          );
-  }
-
   Widget _buildVerticalCategoryCards(AppColorsExtension colors, List<Map<String, dynamic>> categories) {
     return ListView.builder(
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
@@ -760,113 +775,6 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
         ],
       ),
     );
-  }
-
-  Widget _buildItemGrid(AppColorsExtension colors, ServiceProvider serviceProvider) {
-    if (serviceProvider.isFoodService) {
-      return Consumer<FoodProvider>(
-        builder: (context, provider, _) {
-          if (provider.isLoading) {
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            return BrowseGridSkeleton(colors: colors, isDark: isDark, isGridView: _isGridView);
-          }
-
-          final items = _getFilteredFoodItems(provider);
-
-          if (items.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.search_off, size: 64.sp, color: colors.textSecondary),
-                  SizedBox(height: 16.h),
-                  Text(
-                    'No items found',
-                    style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
-                  ),
-                  SizedBox(height: 8.h),
-                  Text(
-                    'Try adjusting your filters',
-                    style: TextStyle(fontSize: 14.sp, color: colors.textSecondary),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return GridView.builder(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: _isGridView ? 2 : 1,
-              childAspectRatio: _isGridView ? 0.615 : 1.8,
-              crossAxisSpacing: 12.w,
-              mainAxisSpacing: 16.h,
-            ),
-            itemCount: items.length,
-            itemBuilder: (context, index) {
-              final item = items[index];
-              return PopularItemCard(
-                item: item,
-                orderCount: item.orderCount,
-                onTap: () => context.push('/food-details', extra: item),
-              );
-            },
-          );
-        },
-      );
-    } else {
-      return Consumer<GroceryProvider>(
-        builder: (context, provider, _) {
-          if (provider.isLoadingItems) {
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            return BrowseGridSkeleton(colors: colors, isDark: isDark, isGridView: _isGridView);
-          }
-
-          final items = _getFilteredGroceryItems(provider);
-
-          if (items.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.search_off, size: 64.sp, color: colors.textSecondary),
-                  SizedBox(height: 16.h),
-                  Text(
-                    'No items found',
-                    style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
-                  ),
-                  SizedBox(height: 8.h),
-                  Text(
-                    'Try adjusting your filters',
-                    style: TextStyle(fontSize: 14.sp, color: colors.textSecondary),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return GridView.builder(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: _isGridView ? 2 : 1,
-              childAspectRatio: _isGridView ? 0.615 : 1.8,
-              crossAxisSpacing: 12.w,
-              mainAxisSpacing: 16.h,
-            ),
-            itemCount: items.length,
-            itemBuilder: (context, index) {
-              final item = items[index];
-              return PopularItemCard(
-                item: item.toFoodItem(),
-                cartItem: item,
-                orderCount: item.orderCount,
-                onTap: () => context.push('/grocery-details', extra: item),
-              );
-            },
-          );
-        },
-      );
-    }
   }
 
   List<FoodItem> _getFilteredFoodItems(FoodProvider provider) {
@@ -1223,149 +1131,8 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
     );
   }
 
-  // Calculate sticky header height dynamically (excludes header which scrolls away)
-  double _calculateStickyHeaderHeight() {
-    double height = 80.h; // HomeSearch height (approximate)
-    height += 40.h + 12.h; // Quick filters height + margin
-    if (_selectedQuickFilters.isNotEmpty || _comprehensiveFilter.isActive) {
-      height += 50.h; // Results bar height
-    }
-    return height;
-  }
-
-  // Convert _buildItemGrid to Sliver
-  Widget _buildItemGridSliver(AppColorsExtension colors, ServiceProvider serviceProvider) {
-    if (serviceProvider.isFoodService) {
-      return Consumer<FoodProvider>(
-        builder: (context, provider, _) {
-          if (provider.isLoading) {
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            return SliverFillRemaining(
-              child: BrowseGridSkeleton(colors: colors, isDark: isDark, isGridView: _isGridView),
-            );
-          }
-
-          final items = _getFilteredFoodItems(provider);
-
-          if (items.isEmpty) {
-            return SliverFillRemaining(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.search_off, size: 64.sp, color: colors.textSecondary),
-                    SizedBox(height: 16.h),
-                    Text(
-                      'No items found',
-                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
-                    ),
-                    SizedBox(height: 8.h),
-                    Text(
-                      'Try adjusting your filters',
-                      style: TextStyle(fontSize: 14.sp, color: colors.textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          return SliverPadding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            sliver: SliverGrid(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: _isGridView ? 2 : 1,
-                childAspectRatio: _isGridView ? 0.615 : 1.8,
-                crossAxisSpacing: 12.w,
-                mainAxisSpacing: 16.h,
-              ),
-              delegate: SliverChildBuilderDelegate((context, index) {
-                final item = items[index];
-                return PopularItemCard(
-                  item: item,
-                  orderCount: item.orderCount,
-                  onTap: () => context.push('/food-details', extra: item),
-                );
-              }, childCount: items.length),
-            ),
-          );
-        },
-      );
-    } else {
-      return Consumer<GroceryProvider>(
-        builder: (context, provider, _) {
-          if (provider.isLoadingItems) {
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            return SliverFillRemaining(
-              child: BrowseGridSkeleton(colors: colors, isDark: isDark, isGridView: _isGridView),
-            );
-          }
-
-          final items = _getFilteredGroceryItems(provider);
-
-          if (items.isEmpty) {
-            return SliverFillRemaining(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.search_off, size: 64.sp, color: colors.textSecondary),
-                    SizedBox(height: 16.h),
-                    Text(
-                      'No items found',
-                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
-                    ),
-                    SizedBox(height: 8.h),
-                    Text(
-                      'Try adjusting your filters',
-                      style: TextStyle(fontSize: 14.sp, color: colors.textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          return SliverPadding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            sliver: SliverGrid(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: _isGridView ? 2 : 1,
-                childAspectRatio: _isGridView ? 0.75 : 1.8,
-                crossAxisSpacing: 12.w,
-                mainAxisSpacing: 16.h,
-              ),
-              delegate: SliverChildBuilderDelegate((context, index) {
-                final item = items[index];
-                return PopularItemCard(
-                  item: FoodItem(
-                    id: item.id,
-                    name: item.name,
-                    description: item.description,
-                    price: item.price,
-                    discountPercentage: item.discountPercentage,
-                    image: item.image,
-                    rating: item.rating,
-                    deliveryTimeMinutes: 30,
-                    sellerName: item.storeName ?? 'Unknown Store',
-                    sellerId: item.storeId.hashCode % 1000000,
-                    restaurantId: item.storeId,
-                    restaurantImage: '',
-                    orderCount: item.orderCount,
-                  ),
-                  orderCount: item.orderCount,
-                  onTap: () => context.push('/grocery-details', extra: item),
-                );
-              }, childCount: items.length),
-            ),
-          );
-        },
-      );
-    }
-  }
-
-  // Convert _buildCategoryList to Sliver
-  Widget _buildCategoryListSliver(AppColorsExtension colors, ServiceProvider serviceProvider) {
+  // Non-sliver version for SingleChildScrollView
+  Widget _buildCategoryList(AppColorsExtension colors, ServiceProvider serviceProvider) {
     final isFood = serviceProvider.isFoodService;
 
     if (isFood) {
@@ -1374,23 +1141,16 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
         builder: (context, categories, _) {
           if (categories.isEmpty) {
             final isDark = Theme.of(context).brightness == Brightness.dark;
-            return SliverFillRemaining(
-              child: BrowseCategorySkeleton(colors: colors, isDark: isDark),
-            );
+            return BrowseCategorySkeleton(colors: colors, isDark: isDark);
           }
 
           final categoryData = categories
               .map((cat) => {'id': cat.id, 'name': cat.name, 'emoji': cat.emoji, 'itemCount': cat.items.length})
               .toList();
 
-          return SliverPadding(
+          return Padding(
             padding: EdgeInsets.symmetric(horizontal: 20.w),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) => _buildCategoryCard(categoryData[index], colors),
-                childCount: categoryData.length,
-              ),
-            ),
+            child: Column(children: categoryData.map((cat) => _buildCategoryCard(cat, colors)).toList()),
           );
         },
       );
@@ -1400,9 +1160,7 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
         builder: (context, categories, child) {
           if (categories.isEmpty) {
             final isDark = Theme.of(context).brightness == Brightness.dark;
-            return SliverFillRemaining(
-              child: BrowseCategorySkeleton(colors: colors, isDark: isDark),
-            );
+            return BrowseCategorySkeleton(colors: colors, isDark: isDark);
           }
 
           final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
@@ -1411,13 +1169,125 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
             return {'id': cat.id, 'name': cat.name, 'emoji': cat.emoji, 'itemCount': itemCount};
           }).toList();
 
-          return SliverPadding(
+          return Padding(
             padding: EdgeInsets.symmetric(horizontal: 20.w),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) => _buildCategoryCard(categoryData[index], colors),
-                childCount: categoryData.length,
+            child: Column(children: categoryData.map((cat) => _buildCategoryCard(cat, colors)).toList()),
+          );
+        },
+      );
+    }
+  }
+
+  Widget _buildItemGrid(AppColorsExtension colors, ServiceProvider serviceProvider) {
+    if (serviceProvider.isFoodService) {
+      return Consumer<FoodProvider>(
+        builder: (context, provider, _) {
+          if (provider.isLoading) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            return BrowseGridSkeleton(colors: colors, isDark: isDark, isGridView: _isGridView);
+          }
+
+          final items = _getFilteredFoodItems(provider);
+
+          if (items.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.search_off, size: 64.sp, color: colors.textSecondary),
+                  SizedBox(height: 16.h),
+                  Text(
+                    'No items found',
+                    style: TextStyle(fontSize: 16.sp, color: colors.textSecondary),
+                  ),
+                ],
               ),
+            );
+          }
+
+          return Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.75,
+                crossAxisSpacing: 12.w,
+                mainAxisSpacing: 12.h,
+              ),
+              itemCount: items.length,
+              itemBuilder: (context, index) {
+                return PopularItemCard(
+                  item: items[index],
+                  orderCount: items[index].orderCount,
+                  onTap: () => context.push('/food-details', extra: items[index]),
+                );
+              },
+            ),
+          );
+        },
+      );
+    } else {
+      return Consumer<GroceryProvider>(
+        builder: (context, provider, _) {
+          if (provider.isLoadingItems) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            return BrowseGridSkeleton(colors: colors, isDark: isDark, isGridView: _isGridView);
+          }
+
+          final items = _getFilteredGroceryItems(provider);
+
+          if (items.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.search_off, size: 64.sp, color: colors.textSecondary),
+                  SizedBox(height: 16.h),
+                  Text(
+                    'No items found',
+                    style: TextStyle(fontSize: 16.sp, color: colors.textSecondary),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.75,
+                crossAxisSpacing: 12.w,
+                mainAxisSpacing: 12.h,
+              ),
+              itemCount: items.length,
+              itemBuilder: (context, index) {
+                final groceryItem = items[index];
+                return PopularItemCard(
+                  item: FoodItem(
+                    id: groceryItem.id,
+                    name: groceryItem.name,
+                    description: groceryItem.description,
+                    price: groceryItem.price,
+                    discountPercentage: groceryItem.discountPercentage,
+                    image: groceryItem.image,
+                    rating: groceryItem.rating,
+                    deliveryTimeMinutes: 30,
+                    sellerName: groceryItem.storeName ?? 'Unknown Store',
+                    sellerId: groceryItem.storeId.hashCode % 1000000,
+                    restaurantId: groceryItem.storeId,
+                    restaurantImage: '',
+                    orderCount: groceryItem.orderCount,
+                  ),
+                  orderCount: groceryItem.orderCount,
+                  onTap: () => context.push('/grocery-details', extra: groceryItem),
+                );
+              },
             ),
           );
         },
@@ -1425,7 +1295,6 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
     }
   }
 
-  // Build individual category card
   Widget _buildCategoryCard(Map<String, dynamic> category, AppColorsExtension colors) {
     final categoryId = category['id'] as String;
     final categoryName = category['name'] as String;
@@ -1497,30 +1366,5 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
         ),
       ),
     );
-  }
-}
-
-// Custom delegate for sticky header
-class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final double minHeight;
-  final double maxHeight;
-  final Widget child;
-
-  _StickyHeaderDelegate({required this.minHeight, required this.maxHeight, required this.child});
-
-  @override
-  double get minExtent => minHeight;
-
-  @override
-  double get maxExtent => maxHeight;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return SizedBox.expand(child: child);
-  }
-
-  @override
-  bool shouldRebuild(_StickyHeaderDelegate oldDelegate) {
-    return maxHeight != oldDelegate.maxHeight || minHeight != oldDelegate.minHeight || child != oldDelegate.child;
   }
 }

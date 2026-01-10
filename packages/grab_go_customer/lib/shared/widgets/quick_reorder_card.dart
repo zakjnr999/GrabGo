@@ -4,8 +4,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
+import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:provider/provider.dart';
 
 class QuickReorderCard extends StatelessWidget {
   final FoodItem item;
@@ -26,11 +28,12 @@ class QuickReorderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    Size size = MediaQuery.sizeOf(context);
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 260.w,
+        width: size.width * 0.5,
         padding: EdgeInsets.all(2.r),
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
@@ -43,35 +46,88 @@ class QuickReorderCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Image
-            ClipRRect(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(KBorderSize.borderMedium),
-                topRight: Radius.circular(KBorderSize.borderMedium),
-              ),
-              child: CachedNetworkImage(
-                imageUrl: ImageOptimizer.getPreviewUrl(item.image, width: 400),
-                height: 120.h,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                memCacheWidth: 400,
-                maxHeightDiskCache: 800,
-                placeholder: (context, url) => Container(height: 120.h, color: colors.inputBorder),
-                errorWidget: (context, url, error) => Container(
-                  height: 120.h,
-                  color: colors.inputBorder,
-                  child: Icon(Icons.error, color: colors.textSecondary),
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(KBorderSize.borderMedium),
+                    topRight: Radius.circular(KBorderSize.borderMedium),
+                    bottomLeft: Radius.circular(KBorderSize.borderRadius4),
+                    bottomRight: Radius.circular(KBorderSize.borderRadius4),
+                  ),
+                  child: CachedNetworkImage(
+                    imageUrl: ImageOptimizer.getPreviewUrl(item.image, width: 400),
+                    height: 120.h,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    memCacheWidth: 400,
+                    maxHeightDiskCache: 800,
+                    placeholder: (context, url) => Container(
+                      height: 120.h,
+                      color: colors.inputBorder,
+                      child: Center(
+                        child: SvgPicture.asset(
+                          Assets.icons.utensilsCrossed,
+                          package: 'grab_go_shared',
+                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                          width: 30.w,
+                          height: 30.h,
+                        ),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      height: 120.h,
+                      color: colors.inputBorder,
+                      child: Center(
+                        child: SvgPicture.asset(
+                          Assets.icons.utensilsCrossed,
+                          package: 'grab_go_shared',
+                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                          width: 30.w,
+                          height: 30.h,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+                Consumer<FavoritesProvider>(
+                  builder: (context, favoriteProvider, child) {
+                    final bool isFavorite = favoriteProvider.isFavorite(item);
+                    return Positioned(
+                      right: 6.r,
+                      top: 6.r,
+                      child: GestureDetector(
+                        onTap: () {
+                          if (isFavorite) {
+                            favoriteProvider.removeFromFavorites(item);
+                          } else {
+                            favoriteProvider.addToFavorites(item);
+                          }
+                        },
+                        child: SvgPicture.asset(
+                          isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
+                          package: 'grab_go_shared',
+                          height: 24.h,
+                          width: 24.w,
+                          colorFilter: ColorFilter.mode(
+                            isFavorite ? colors.accentOrange : Colors.white,
+                            BlendMode.srcIn,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
             // Content
             Padding(
-              padding: EdgeInsets.only(left: 10.r, right: 10.r, top: 8.r, bottom: 6.r),
+              padding: EdgeInsets.only(left: 10.r, right: 10.r, top: 8.r),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     item.name,
-                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                   ),
@@ -86,9 +142,16 @@ class QuickReorderCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Text(
-                        "GHS ${item.price.toStringAsFixed(2)}",
-                        style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                        decoration: BoxDecoration(
+                          color: colors.accentOrange.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                        child: Text(
+                          "GHS ${item.price.toStringAsFixed(2)}",
+                          style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800, color: colors.accentOrange),
+                        ),
                       ),
                       // Quick add button
                       GestureDetector(

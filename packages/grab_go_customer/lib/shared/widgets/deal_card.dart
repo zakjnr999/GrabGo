@@ -6,13 +6,14 @@ import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
+import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:provider/provider.dart';
 
 class DealCard extends StatelessWidget {
   final FoodItem item;
-  final CartItem? cartItem; // Original item for cart operations
+  final CartItem? cartItem;
   final int discountPercent;
   final VoidCallback onTap;
 
@@ -45,6 +46,8 @@ class DealCard extends StatelessWidget {
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(KBorderSize.borderMedium),
                     topRight: Radius.circular(KBorderSize.borderMedium),
+                    bottomLeft: Radius.circular(KBorderSize.borderRadius4),
+                    bottomRight: Radius.circular(KBorderSize.borderRadius4),
                   ),
                   child: CachedNetworkImage(
                     imageUrl: ImageOptimizer.getPreviewUrl(item.image, width: 400),
@@ -81,14 +84,46 @@ class DealCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                Consumer<FavoritesProvider>(
+                  builder: (context, favoriteProvider, child) {
+                    final bool isFavorite = favoriteProvider.isFavorite(item);
+                    return Positioned(
+                      right: 6.r,
+                      top: 6.r,
+                      child: GestureDetector(
+                        onTap: () {
+                          if (isFavorite) {
+                            favoriteProvider.removeFromFavorites(item);
+                          } else {
+                            favoriteProvider.addToFavorites(item);
+                          }
+                        },
+                        child: SvgPicture.asset(
+                          isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
+                          package: 'grab_go_shared',
+                          height: 24.h,
+                          width: 24.w,
+                          colorFilter: ColorFilter.mode(isFavorite ? colors.error : Colors.white, BlendMode.srcIn),
+                        ),
+                      ),
+                    );
+                  },
+                ),
                 Positioned(
-                  top: 8.h,
-                  right: 8.w,
+                  top: 0.h,
+                  left: 0.w,
                   child: Container(
                     padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                     decoration: BoxDecoration(
-                      color: colors.accentOrange,
-                      borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                      gradient: LinearGradient(
+                        colors: [colors.error, colors.accentOrange],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: const BorderRadius.only(
+                        bottomRight: Radius.circular(KBorderSize.borderMedium),
+                        topLeft: Radius.circular(KBorderSize.borderMedium),
+                      ),
                     ),
                     child: Text(
                       "$discountPercent% OFF",
@@ -100,7 +135,7 @@ class DealCard extends StatelessWidget {
             ),
             // Content
             Padding(
-              padding: EdgeInsets.all(10.r),
+              padding: EdgeInsets.only(left: 10.r, right: 10.r, top: 10.r),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -157,12 +192,19 @@ class DealCard extends StatelessWidget {
                         SizedBox(height: 8.h),
                         Row(
                           children: [
-                            Text(
-                              "GHS ${item.price.toStringAsFixed(2)}",
-                              style: TextStyle(
-                                fontSize: 16.sp,
-                                fontWeight: FontWeight.w700,
-                                color: colors.accentOrange,
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                              decoration: BoxDecoration(
+                                color: colors.accentOrange.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8.r),
+                              ),
+                              child: Text(
+                                "GHS ${item.price.toStringAsFixed(2)}",
+                                style: TextStyle(
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: colors.accentOrange,
+                                ),
                               ),
                             ),
                             SizedBox(width: 8.w),

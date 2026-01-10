@@ -128,19 +128,12 @@ class _CheckoutState extends State<Checkout> {
                           padding: EdgeInsets.symmetric(horizontal: 20.w),
                           child: Row(
                             children: [
-                              Container(
-                                padding: EdgeInsets.all(8.r),
-                                decoration: BoxDecoration(
-                                  color: colors.accentOrange.withValues(alpha: 0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: SvgPicture.asset(
-                                  Assets.icons.mapPin,
-                                  package: 'grab_go_shared',
-                                  height: 18.h,
-                                  width: 18.w,
-                                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                                ),
+                              SvgPicture.asset(
+                                Assets.icons.mapPin,
+                                package: 'grab_go_shared',
+                                height: 18.h,
+                                width: 18.w,
+                                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                               ),
                               SizedBox(width: 12.w),
                               Text(
@@ -181,19 +174,12 @@ class _CheckoutState extends State<Checkout> {
                           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
                           child: Row(
                             children: [
-                              Container(
-                                padding: EdgeInsets.all(8.r),
-                                decoration: BoxDecoration(
-                                  color: colors.accentOrange.withValues(alpha: 0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: SvgPicture.asset(
-                                  Assets.icons.cash,
-                                  package: 'grab_go_shared',
-                                  height: 18.h,
-                                  width: 18.w,
-                                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                                ),
+                              SvgPicture.asset(
+                                Assets.icons.cash,
+                                package: 'grab_go_shared',
+                                height: 18.h,
+                                width: 18.w,
+                                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                               ),
                               SizedBox(width: 12.w),
                               Text(
@@ -244,19 +230,12 @@ class _CheckoutState extends State<Checkout> {
                           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
                           child: Row(
                             children: [
-                              Container(
-                                padding: EdgeInsets.all(8.r),
-                                decoration: BoxDecoration(
-                                  color: colors.accentOrange.withValues(alpha: 0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: SvgPicture.asset(
-                                  Assets.icons.squareMenu,
-                                  package: 'grab_go_shared',
-                                  height: 18.h,
-                                  width: 18.w,
-                                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                                ),
+                              SvgPicture.asset(
+                                Assets.icons.squareMenu,
+                                package: 'grab_go_shared',
+                                height: 18.h,
+                                width: 18.w,
+                                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                               ),
                               SizedBox(width: 12.w),
                               Text(
@@ -333,19 +312,12 @@ class _CheckoutState extends State<Checkout> {
                           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
                           child: Row(
                             children: [
-                              Container(
-                                padding: EdgeInsets.all(8.r),
-                                decoration: BoxDecoration(
-                                  color: colors.accentOrange.withValues(alpha: 0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: SvgPicture.asset(
-                                  Assets.icons.deliveryTruck,
-                                  package: 'grab_go_shared',
-                                  height: 18.h,
-                                  width: 18.w,
-                                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                                ),
+                              SvgPicture.asset(
+                                Assets.icons.deliveryTruck,
+                                package: 'grab_go_shared',
+                                height: 18.h,
+                                width: 18.w,
+                                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                               ),
                               SizedBox(width: 12.w),
                               Text(
@@ -418,19 +390,12 @@ class _CheckoutState extends State<Checkout> {
                           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
                           child: Row(
                             children: [
-                              Container(
-                                padding: EdgeInsets.all(8.r),
-                                decoration: BoxDecoration(
-                                  color: colors.accentOrange.withValues(alpha: 0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: SvgPicture.asset(
-                                  Assets.icons.handCash,
-                                  package: 'grab_go_shared',
-                                  height: 18.h,
-                                  width: 18.w,
-                                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                                ),
+                              SvgPicture.asset(
+                                Assets.icons.handCash,
+                                package: 'grab_go_shared',
+                                height: 18.h,
+                                width: 18.w,
+                                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                               ),
                               SizedBox(width: 12.w),
                               Text(
@@ -512,19 +477,12 @@ class _CheckoutState extends State<Checkout> {
                           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
                           child: Row(
                             children: [
-                              Container(
-                                padding: EdgeInsets.all(8.r),
-                                decoration: BoxDecoration(
-                                  color: colors.accentOrange.withValues(alpha: 0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: SvgPicture.asset(
-                                  Assets.icons.squareMenu,
-                                  package: 'grab_go_shared',
-                                  height: 18.h,
-                                  width: 18.w,
-                                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                                ),
+                              SvgPicture.asset(
+                                Assets.icons.squareMenu,
+                                package: 'grab_go_shared',
+                                height: 18.h,
+                                width: 18.w,
+                                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                               ),
                               SizedBox(width: 12.w),
                               Text(

@@ -33,18 +33,19 @@ class PopularSection extends StatelessWidget {
       children: [
         SectionHeader(
           title: "Popular Right Now",
-          icon: Assets.icons.flame,
-          accentColor: AppColors.errorRed,
+          sectionIcon: Assets.icons.flame,
+          sectionTotal: popularItems.length,
+          accentColor: AppColors.accentOrange,
           onSeeAll: onSeeAll,
         ),
-        SizedBox(height: 16.h),
+        SizedBox(height: 10.h),
         if (isLoading)
-          HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 260.h, itemCount: 6)
+          HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 220.h, itemCount: 6)
         else if (popularItems.isEmpty)
           _buildEmptyState(colors)
         else
           SizedBox(
-            height: 260.h,
+            height: 220.h,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.only(left: 20.w),

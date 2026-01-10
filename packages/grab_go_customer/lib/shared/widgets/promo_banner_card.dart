@@ -110,20 +110,20 @@ class PromoBannerCard extends StatelessWidget {
                     // Discount badge (only show if discount is not empty)
                     if (discount.isNotEmpty)
                       Positioned(
-                        right: 8.w,
-                        top: 8.h,
+                        right: 0.w,
+                        top: 0.h,
                         child: Container(
                           padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [Colors.pink.shade400, Colors.pink.shade600],
+                              colors: [colors.error, colors.accentOrange],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
-                            borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                            boxShadow: [
-                              BoxShadow(color: Colors.pink.withAlpha(80), blurRadius: 8, offset: const Offset(0, 2)),
-                            ],
+                            borderRadius: const BorderRadius.only(
+                              bottomLeft: Radius.circular(KBorderSize.borderMedium),
+                              topRight: Radius.circular(KBorderSize.borderMedium),
+                            ),
                           ),
                           child: Text(
                             discount,

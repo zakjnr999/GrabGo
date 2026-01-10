@@ -245,11 +245,11 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
     final colors = context.appColors;
 
     return SizedBox(
-      height: 50.h,
+      height: 110.h,
       child: ListView.builder(
-        padding: EdgeInsets.only(left: 20.w),
+        padding: EdgeInsets.symmetric(horizontal: 20.w),
         scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
+        physics: const AlwaysScrollableScrollPhysics(),
         itemCount: widget.categories.length,
         itemBuilder: (context, index) {
           final category = widget.categories[index];
@@ -258,7 +258,7 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
           return GestureDetector(
             onTap: () => _onCategoryTap(index),
             child: Padding(
-              padding: EdgeInsets.only(right: 20.w),
+              padding: EdgeInsets.only(right: index == widget.categories.length - 1 ? 0 : 16.w),
               child: _buildCategoryChip(category, isSelected, colors),
             ),
           );
@@ -269,31 +269,19 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
 
   /// Build individual category chip with animations
   Widget _buildCategoryChip(T category, bool isSelected, AppColorsExtension colors) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeInOut,
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isSelected
-              ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
-              : [colors.backgroundPrimary, colors.backgroundPrimary.withValues(alpha: 0.8)],
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
+          padding: EdgeInsets.all(20.r),
+          decoration: BoxDecoration(color: colors.accentOrange.withValues(alpha: 0.1), shape: BoxShape.circle),
+          child: _buildEmoji(category, isSelected, colors),
         ),
-        borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withAlpha(10), spreadRadius: 1, blurRadius: 12, offset: const Offset(0, 4)),
-          BoxShadow(color: Colors.black.withAlpha(5), spreadRadius: -1, blurRadius: 6, offset: const Offset(0, 2)),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _buildEmoji(category, isSelected, colors),
-          SizedBox(width: 8.w),
-          _buildName(category, isSelected, colors),
-        ],
-      ),
+        SizedBox(height: 8.h),
+        _buildName(category, isSelected, colors),
+      ],
     );
   }
 
@@ -302,7 +290,7 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
     return AnimatedDefaultTextStyle(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
-      style: TextStyle(fontSize: 20, color: isSelected ? colors.backgroundPrimary : colors.textPrimary),
+      style: TextStyle(fontSize: 28, color: colors.textPrimary),
       child: Text(widget.getEmoji(category)),
     );
   }
@@ -312,15 +300,11 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
     return AnimatedDefaultTextStyle(
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeInOut,
-      style: TextStyle(
-        color: isSelected ? colors.backgroundPrimary : colors.textPrimary,
-        fontWeight: FontWeight.w500,
-        fontSize: 14.sp,
-      ),
+      style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w500, fontSize: 12.sp),
       child: Text(
         widget.getName(category),
         textAlign: TextAlign.center,
-        style: const TextStyle(fontWeight: FontWeight.w500, fontFamily: "Lato", package: 'grab_go_shared'),
+        style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, fontFamily: "Lato", package: 'grab_go_shared'),
       ),
     );
   }
