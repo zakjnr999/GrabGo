@@ -6,7 +6,7 @@ const Restaurant = require("../models/Restaurant");
 const { protect, authorize } = require("../middleware/auth");
 const { sendOrderNotification } = require("../services/fcm_service");
 const { createNotification } = require("../services/notification_service");
-const ReferralService = require("../services/ReferralService");
+const ReferralService = require("../services/referral_service");
 const { getIO } = require("../utils/socket");
 
 const router = express.Router();

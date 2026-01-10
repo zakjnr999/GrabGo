@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const ReferralService = require('../services/ReferralService');
+const ReferralService = require('../services/referral_service');
 
 /**
  * Schedule cleanup of expired referrals and credits

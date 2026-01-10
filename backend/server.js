@@ -27,6 +27,11 @@ const io = new Server(server, {
 // Initialize Socket.IO singleton for global access
 initIO(io);
 
+// Initialize socket service for tracking
+const socketService = require('./services/socket_service');
+socketService.initialize(io);
+
+
 // Track per-chat presence across all sockets so that a user only appears
 // offline for a chat when all of their sockets for that chat have
 // disconnected.
@@ -310,7 +315,8 @@ app.use("/api/promotions", require("./routes/promotions"));
 app.use("/api/cart", require("./routes/cart"));
 app.use("/api/favorites", require("./routes/favorites"));
 app.use("/api/promo", require("./routes/promo"));
-app.use("/api/test", require("./routes/test")); // Test endpoints
+app.use("/api/test", require("./routes/test"));
+app.use("/api/tracking", require("./routes/tracking_routes"));
 
 // Health check
 app.get("/api/health", (req, res) => {

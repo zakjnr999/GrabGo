@@ -350,10 +350,89 @@ flutter build ios --release --obfuscate --split-debug-info=build/debug-info
 
 ---
 
+## Live Order Tracking
+
+### Overview
+
+Live order tracking is a critical feature that allows customers to see real-time location updates of their delivery rider on a map. This feature includes:
+
+- **Real-time GPS tracking** of rider location
+- **Accurate ETA calculations** using Google Maps API
+- **Route visualization** with polylines on the map
+- **Status updates** as the order progresses
+- **Socket.IO integration** for instant updates
+
+### Documentation
+
+We provide three comprehensive guides to help you implement live order tracking:
+
+#### 🚀 [Quick Start Guide](./TRACKING_QUICK_START.md)
+**Get started in 30 minutes!**
+
+Perfect for getting a basic working implementation quickly. This guide covers:
+- Simple backend tracking API
+- Rider app location updates
+- Customer app map display
+- Basic ETA calculation
+
+**Use this if:** You want to see tracking working as fast as possible.
+
+#### 📚 [Complete Implementation Guide](./LIVE_ORDER_TRACKING.md)
+**Production-ready implementation**
+
+Comprehensive guide covering all aspects of live tracking:
+- Full architecture overview
+- Backend implementation with Google Maps integration
+- Mobile app integration (Rider & Customer)
+- Real-time updates with Socket.IO
+- Map visualization with routes
+- Testing and optimization strategies
+- Production deployment checklist
+
+**Use this if:** You want to build a production-ready tracking system.
+
+#### ✅ [Implementation Checklist](./TRACKING_IMPLEMENTATION_CHECKLIST.md)
+**Step-by-step implementation plan**
+
+A detailed 5-week implementation plan with:
+- Phase-by-phase breakdown
+- Daily task checklists
+- Configuration files
+- Testing procedures
+- Common issues and solutions
+- Go-live checklist
+
+**Use this if:** You want a structured implementation plan with clear milestones.
+
+### Key Features
+
+- **Backend**: Node.js + MongoDB with geospatial queries
+- **Real-time**: Socket.IO for instant location updates
+- **Maps**: Google Maps Platform integration
+- **Mobile**: Geolocator package for GPS tracking
+- **Optimization**: Battery-efficient location updates
+- **Accuracy**: Distance Matrix API for precise ETA
+
+### Quick Links
+
+- [Backend Tracking Service](./LIVE_ORDER_TRACKING.md#backend-implementation)
+- [Rider App Integration](./LIVE_ORDER_TRACKING.md#mobile-app-integration)
+- [Customer App Map View](./LIVE_ORDER_TRACKING.md#mobile-app-integration)
+- [Socket.IO Events](./LIVE_ORDER_TRACKING.md#real-time-updates)
+- [Testing Guide](./TRACKING_IMPLEMENTATION_CHECKLIST.md#testing--optimization)
+
+---
+
 ## Additional Resources
 
-- [Secure Storage Guide](./SECURE_STORAGE.md)
-- [Security Best Practices](./SECURITY.md)
+### Project Documentation
+- [Secure Storage Guide](./SECURE_STORAGE.md) - Best practices for storing sensitive data
+- [Security Best Practices](./SECURITY.md) - Comprehensive security guidelines
+- [Live Order Tracking Quick Start](./TRACKING_QUICK_START.md) - Get tracking working in 30 minutes
+- [Live Order Tracking Complete Guide](./LIVE_ORDER_TRACKING.md) - Production-ready implementation
+- [Tracking Implementation Checklist](./TRACKING_IMPLEMENTATION_CHECKLIST.md) - Step-by-step plan
+
+### External Documentation
 - [Flutter Documentation](https://flutter.dev/docs)
 - [Dart Documentation](https://dart.dev/guides)
 
