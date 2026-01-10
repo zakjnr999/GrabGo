@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const trackingService = require('../services/tracking_service');
-const auth = require('../middleware/auth');
+const { protect } = require('../middleware/auth');
 
 // Initialize tracking (called when rider accepts order)
-router.post('/initialize', auth, async (req, res) => {
+router.post('/initialize', protect, async (req, res) => {
     try {
         const { orderId, riderId, customerId, pickupLocation, destination } = req.body;
 
@@ -29,7 +29,7 @@ router.post('/initialize', auth, async (req, res) => {
 });
 
 // Update rider location (called by rider app every 5-10 seconds)
-router.post('/location', auth, async (req, res) => {
+router.post('/location', protect, async (req, res) => {
     try {
         const { orderId, latitude, longitude, speed, accuracy } = req.body;
 
@@ -58,7 +58,7 @@ router.post('/location', auth, async (req, res) => {
 });
 
 // Update order status
-router.patch('/status', auth, async (req, res) => {
+router.patch('/status', protect, async (req, res) => {
     try {
         const { orderId, status } = req.body;
 
@@ -77,9 +77,9 @@ router.patch('/status', auth, async (req, res) => {
 });
 
 // Get tracking info (called by customer app)
-router.get('/:orderId', auth, async (req, res) => {
+router.get('/:orderId', protect, async (req, res) => {
     try {
-        const  tracking = await trackingService.getTrackingInfo(req.params.orderId);
+        const tracking = await trackingService.getTrackingInfo(req.params.orderId);
 
         res.json({
             success: true,
