@@ -176,6 +176,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/credit-card.svg
   String get creditCard => 'lib/assets/icons/credit-card.svg';
 
+  /// File path: lib/assets/icons/crosshair.svg
+  String get crosshair => 'lib/assets/icons/crosshair.svg';
+
   /// File path: lib/assets/icons/delivery-truck.svg
   String get deliveryTruck => 'lib/assets/icons/delivery-truck.svg';
 
@@ -550,6 +553,7 @@ class $LibAssetsIconsGen {
     cooking,
     copy,
     creditCard,
+    crosshair,
     deliveryTruck,
     deliveryGuyIcon,
     dollar,

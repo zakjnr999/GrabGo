@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: grabgo-admin
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: ./web/apps/admin/render-build.sh
+    startCommand: cd web/apps/admin && node .next/standalone/web/apps/admin/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Add your environment variables in Render dashboard
+      # Examples (uncomment and set in Render):
+      # - key: NEXT_PUBLIC_API_URL
+      #   sync: false
+      # - key: NEXT_PUBLIC_FIREBASE_API_KEY
+      #   sync: false

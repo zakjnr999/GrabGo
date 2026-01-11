@@ -385,28 +385,12 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
   }
 
   Widget _buildEmptyState(AppColorsExtension colors, Size size) {
-    return SingleChildScrollView(
-      controller: _scrollController,
-      physics: const AlwaysScrollableScrollPhysics(),
-      child: Padding(
-        padding: EdgeInsets.only(top: size.height * 0.26 + 40.h, left: 40.w, right: 40.w, bottom: 40.h),
+    return Padding(
+      padding: EdgeInsets.only(top: size.height * 0.20 + 40.h, left: 40.w, right: 40.w),
+      child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: EdgeInsets.all(30.r),
-              decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), shape: BoxShape.circle),
-              child: SvgPicture.asset(
-                Assets.icons.heart,
-                package: 'grab_go_shared',
-                width: 40.w,
-                height: 40.w,
-                colorFilter: ColorFilter.mode(Colors.red.withValues(alpha: 0.5), BlendMode.srcIn),
-              ),
-            ),
-
-            SizedBox(height: 32.h),
-
             Text(
               "No Favorites Yet",
               style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w800),
@@ -417,7 +401,7 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 20.w),
               child: Text(
-                "Start adding your favorite foods by tapping the heart icon on any food item",
+                "Start adding your favorite items by tapping the heart icon on any item",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: colors.textSecondary,
@@ -428,51 +412,51 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
               ),
             ),
 
-            SizedBox(height: 40.h),
+            // SizedBox(height: 40.h),
 
-            GestureDetector(
-              onTap: () {
-                context.pop();
-                context.go('/homepage');
-                Provider.of<NavigationProvider>(context, listen: false).navigateToMenu();
-              },
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 16.h),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                  boxShadow: [
-                    BoxShadow(
-                      color: colors.accentOrange.withValues(alpha: 0.3),
-                      spreadRadius: 0,
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SvgPicture.asset(
-                      Assets.icons.utensilsCrossed,
-                      package: 'grab_go_shared',
-                      height: 20.h,
-                      width: 20.w,
-                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                    ),
-                    SizedBox(width: 10.w),
-                    Text(
-                      "Browse Foods",
-                      style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w800),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            // GestureDetector(
+            //   onTap: () {
+            //     context.pop();
+            //     context.go('/homepage');
+            //     Provider.of<NavigationProvider>(context, listen: false).navigateToMenu();
+            //   },
+            //   child: Container(
+            //     padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 16.h),
+            //     decoration: BoxDecoration(
+            //       gradient: LinearGradient(
+            //         colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
+            //         begin: Alignment.centerLeft,
+            //         end: Alignment.centerRight,
+            //       ),
+            //       borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+            //       boxShadow: [
+            //         BoxShadow(
+            //           color: colors.accentOrange.withValues(alpha: 0.3),
+            //           spreadRadius: 0,
+            //           blurRadius: 12,
+            //           offset: const Offset(0, 4),
+            //         ),
+            //       ],
+            //     ),
+            //     child: Row(
+            //       mainAxisSize: MainAxisSize.min,
+            //       children: [
+            //         SvgPicture.asset(
+            //           Assets.icons.utensilsCrossed,
+            //           package: 'grab_go_shared',
+            //           height: 20.h,
+            //           width: 20.w,
+            //           colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+            //         ),
+            //         SizedBox(width: 10.w),
+            //         Text(
+            //           "Browse Foods",
+            //           style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w800),
+            //         ),
+            //       ],
+            //     ),
+            //   ),
+            // ),
           ],
         ),
       ),
