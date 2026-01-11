@@ -4,8 +4,8 @@ services:
     runtime: node
     region: oregon
     plan: free
-    buildCommand: ./web/apps/admin/render-build.sh
-    startCommand: cd web/apps/admin && node .next/standalone/web/apps/admin/server.js
+    buildCommand: npm install -g pnpm && pnpm install && cd web/apps/admin && pnpm build
+    startCommand: cd web/apps/admin && pnpm start
     envVars:
       - key: NODE_ENV
         value: production
