@@ -8,15 +8,15 @@
 ![Database](https://img.shields.io/badge/Database-MongoDB-brightgreen)
 ![License](https://img.shields.io/badge/License-Proprietary-red)
 
-## ✨ Features
+## Features
 
-### 🛍️ Multi-Service Platform
+### Multi-Service Platform
 
 - **Food Delivery** - Browse restaurants, order meals, track deliveries in real-time
 - **Grocery Shopping** - Shop for groceries from local stores with quick delivery
 - **Ride-Hailing** - Request rides with real-time driver tracking (coming soon)
 
-### 📱 Customer App (Mobile)
+### Customer App (Mobile)
 
 - Multi-service browsing with category-based navigation
 - Advanced search and filtering capabilities
@@ -28,7 +28,7 @@
 - Location-based service discovery
 - Push notifications for order updates
 
-### 🏪 Restaurant/Vendor Panel (Web)
+### Restaurant/Vendor Panel (Web)
 
 - Comprehensive menu management
 - Real-time order processing
@@ -37,7 +37,7 @@
 - Inventory management
 - Customer reviews and ratings
 
-### 🚴 Rider App (Mobile)
+### Rider App (Mobile)
 
 - Real-time delivery assignment notifications
 - Turn-by-turn navigation integration
@@ -47,7 +47,7 @@
 - Delivery status updates
 - Performance metrics dashboard
 
-### 👨‍💼 Admin Dashboard (Web)
+### Admin Dashboard (Web)
 
 - Platform-wide analytics and insights
 - User and vendor management
@@ -56,7 +56,7 @@
 - System configuration and settings
 - Promotional campaign management
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 GrabGo/
@@ -118,7 +118,7 @@ GrabGo/
 └── .env.local                    # Environment configuration
 ```
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Backend
 
@@ -178,7 +178,7 @@ GrabGo/
 - **SMS Service**: Twilio
 - **Maps**: Google Maps API
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -311,7 +311,7 @@ melos run lint
 melos run clean
 ```
 
-## 📱 Application Features
+## Application Features
 
 ### Customer App Highlights
 
@@ -354,7 +354,7 @@ melos run clean
 - **Dispute Resolution**: Handle customer complaints and issues
 - **System Configuration**: Platform settings and parameters
 
-## 🏗️ Architecture
+## Architecture
 
 ### Backend Architecture
 
@@ -382,7 +382,7 @@ User Action → Provider → Service → API/Socket → Backend
             UI Update ← Provider ← Response ← Database
 ```
 
-## 🔐 Security
+## Security
 
 ### Authentication & Authorization
 
@@ -407,9 +407,9 @@ User Action → Provider → Service → API/Socket → Backend
 - Sanitization of user-generated content
 - Secure file upload validation
 
-📖 **See [docs/SECURITY.md](docs/SECURITY.md) for comprehensive security guidelines**
+**See [docs/SECURITY.md](docs/SECURITY.md) for comprehensive security guidelines**
 
-## 📝 API Documentation
+## API Documentation
 
 ### Available Endpoints
 
@@ -440,7 +440,7 @@ npm run docs:serve
 
 Access documentation at `http://localhost:8080`
 
-## 🚢 Deployment
+## Deployment
 
 ### Backend Deployment
 
@@ -492,7 +492,7 @@ cd packages/grab_go_admin
 flutter build web --release --dart-define-from-file=../../.env.production
 ```
 
-## 📚 Additional Resources
+## Additional Resources
 
 ### Documentation
 
@@ -508,7 +508,7 @@ flutter build web --release --dart-define-from-file=../../.env.production
 - [MongoDB Documentation](https://docs.mongodb.com/)
 - [Melos Documentation](https://melos.invertase.dev/)
 
-## 🐛 Known Issues & Roadmap
+## Known Issues & Roadmap
 
 ### Current Limitations
 
@@ -525,7 +525,7 @@ flutter build web --release --dart-define-from-file=../../.env.production
 - [ ] Subscription-based delivery passes
 - [ ] AI-powered restaurant recommendations
 
-## 📄 License
+## License
 
 **Proprietary License** - All rights reserved.
 
@@ -551,9 +551,9 @@ This software is proprietary and confidential. Unauthorized copying, distributio
 
 <div align="center">
 
-**GrabGo** - Delivering happiness, one service at a time 🍔🛒🚗
+**GrabGo** - Delivering happiness, one service at a time.
 
-Made with ❤️ using Flutter & Node.js
+Made with LOVE using Flutter & Node.js
 
 _Last Updated: January 2026_
 
