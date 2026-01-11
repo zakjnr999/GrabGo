@@ -4,7 +4,7 @@ services:
     runtime: node
     region: oregon
     plan: free
-    buildCommand: npm install -g pnpm && cd web && pnpm install && cd apps/admin && pnpm build
+    buildCommand: npm install -g pnpm && cd web && NODE_ENV= pnpm install && cd apps/admin && pnpm build
     startCommand: cd web/apps/admin && pnpm start
     envVars:
       - key: NODE_ENV
