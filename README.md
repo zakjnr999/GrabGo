@@ -2,7 +2,7 @@
 
 > A comprehensive multi-service delivery platform built with Flutter and Node.js, featuring food delivery, grocery shopping, and ride-hailing services across multiple client applications with a robust backend API.
 
-![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20Web-blue)
+![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20)
 ![Flutter](https://img.shields.io/badge/Flutter-3.10+-02569B?logo=flutter)
 ![Backend](https://img.shields.io/badge/Backend-Node.js%20%7C%20Express-green)
 ![Database](https://img.shields.io/badge/Database-MongoDB-brightgreen)
