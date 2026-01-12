@@ -20,6 +20,9 @@ flutter_*.png
 # IDE
 .idea/
 .vscode/
+.agent/
+.idea/
+.dart_tool/
 *.swp
 *.swo
 *~
