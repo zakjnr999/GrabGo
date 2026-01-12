@@ -308,7 +308,7 @@ User Action → Provider → Service → API/Socket → Backend
 
 This software is proprietary and confidential. Unauthorized copying, distribution, or use of this software, via any medium, is strictly prohibited.
 
-## 👥 Team & Support
+## Team & Support
 
 ### Development Team
 
