@@ -25,6 +25,7 @@
         "cached_network_image",
         "change_app_package_name",
         "chopper",
+        "confetti",
         "crypto",
         "cupertino_icons",
         "custom_refresh_indicator",
@@ -43,6 +44,7 @@
         "flutter_launcher_icons",
         "flutter_local_notifications",
         "flutter_otp_text_field",
+        "flutter_polyline_points",
         "flutter_screenutil",
         "flutter_slidable",
         "flutter_spinkit",
@@ -54,6 +56,7 @@
         "geolocator",
         "get_it",
         "go_router",
+        "google_maps_flutter",
         "google_places_flutter",
         "google_sign_in",
         "grab_go_shared",
@@ -195,6 +198,7 @@
         "get_it",
         "go_router",
         "google_fonts",
+        "google_maps_flutter",
         "google_sign_in",
         "http",
         "image_picker",
@@ -524,6 +528,17 @@
       "version": "6.0.0",
       "dependencies": [
         "lints"
+      ]
+    },
+    {
+      "name": "google_maps_flutter",
+      "version": "2.14.0",
+      "dependencies": [
+        "flutter",
+        "google_maps_flutter_android",
+        "google_maps_flutter_ios",
+        "google_maps_flutter_platform_interface",
+        "google_maps_flutter_web"
       ]
     },
     {
@@ -1121,6 +1136,22 @@
       "dependencies": []
     },
     {
+      "name": "confetti",
+      "version": "0.8.0",
+      "dependencies": [
+        "flutter",
+        "vector_math"
+      ]
+    },
+    {
+      "name": "flutter_polyline_points",
+      "version": "2.1.0",
+      "dependencies": [
+        "flutter",
+        "http"
+      ]
+    },
+    {
       "name": "google_places_flutter",
       "version": "2.1.1",
       "dependencies": [
@@ -1657,6 +1688,49 @@
       "name": "lints",
       "version": "6.0.0",
       "dependencies": []
+    },
+    {
+      "name": "google_maps_flutter_web",
+      "version": "0.5.14+3",
+      "dependencies": [
+        "collection",
+        "flutter",
+        "flutter_web_plugins",
+        "google_maps",
+        "google_maps_flutter_platform_interface",
+        "sanitize_html",
+        "stream_transform",
+        "web"
+      ]
+    },
+    {
+      "name": "google_maps_flutter_platform_interface",
+      "version": "2.14.1",
+      "dependencies": [
+        "collection",
+        "flutter",
+        "plugin_platform_interface",
+        "stream_transform"
+      ]
+    },
+    {
+      "name": "google_maps_flutter_ios",
+      "version": "2.16.0",
+      "dependencies": [
+        "flutter",
+        "google_maps_flutter_platform_interface",
+        "stream_transform"
+      ]
+    },
+    {
+      "name": "google_maps_flutter_android",
+      "version": "2.18.6",
+      "dependencies": [
+        "flutter",
+        "flutter_plugin_android_lifecycle",
+        "google_maps_flutter_platform_interface",
+        "stream_transform"
+      ]
     },
     {
       "name": "fixnum",
@@ -2674,6 +2748,22 @@
       ]
     },
     {
+      "name": "sanitize_html",
+      "version": "2.1.0",
+      "dependencies": [
+        "html",
+        "meta"
+      ]
+    },
+    {
+      "name": "google_maps",
+      "version": "8.2.0",
+      "dependencies": [
+        "meta",
+        "web"
+      ]
+    },
+    {
       "name": "xdg_directories",
       "version": "1.1.0",
       "dependencies": [
@@ -2827,6 +2917,14 @@
       ]
     },
     {
+      "name": "html",
+      "version": "0.15.6",
+      "dependencies": [
+        "csslib",
+        "source_span"
+      ]
+    },
+    {
       "name": "sqflite_common",
       "version": "2.5.6",
       "dependencies": [
@@ -2874,6 +2972,13 @@
         "flutter",
         "meta",
         "plugin_platform_interface"
+      ]
+    },
+    {
+      "name": "csslib",
+      "version": "1.0.2",
+      "dependencies": [
+        "source_span"
       ]
     }
   ],

@@ -88,6 +88,11 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_color"
             android:resource="@color/notification_color" />
+            
+        <!-- Google Maps API Key -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyBvSX6emxtbMNjweHsnetgASW7vCmBysGQ" />
     </application>
 
     <queries>

@@ -75,6 +75,9 @@ dependencies:
   visibility_detector: ^0.4.0+2
   google_places_flutter: ^2.0.11
   device_info_plus: ^11.2.0
+  google_maps_flutter: ^2.10.0
+  flutter_polyline_points: ^2.1.0
+  confetti: ^0.8.0
 
 dev_dependencies:
   flutter_test:

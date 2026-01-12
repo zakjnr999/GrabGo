@@ -813,7 +813,7 @@ class _CheckoutState extends State<Checkout> {
       onTap: () {
         setState(() {
           _tipAmount = amount;
-          _showCustomTip = false; // Hide custom field when selecting preset
+          _showCustomTip = false;
         });
       },
       child: AnimatedContainer(

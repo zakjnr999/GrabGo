@@ -2,7 +2,6 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_customer/features/order/service/order_service_chopper.dart';
-import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
 

@@ -2,40 +2,224 @@
 
 import 'dart:ui';
 
+import 'package:dotted_line/dotted_line.dart';
 import 'package:easy_stepper/easy_stepper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:grab_go_customer/features/order/view/rating_onboarding.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../providers/tracking_provider.dart';
+import '../providers/mock_tracking_provider.dart';
+import '../providers/base_tracking_provider.dart';
+import '../config/tracking_service_locator.dart';
+import 'delivery_success_screen.dart';
+import 'rider_rating.dart';
+
 
 class MapTracking extends StatefulWidget {
-  const MapTracking({super.key});
+  final String orderId;
+  final bool useTestMode;
+
+  const MapTracking({super.key, required this.orderId, this.useTestMode = false});
 
   @override
   State<MapTracking> createState() => _MapTrackingState();
 }
 
 class _MapTrackingState extends State<MapTracking> {
+  bool _isInitialized = false;
+  bool _hasShownSuccessScreen = false;
+  String? _previousStatus;
+  bool _isSheetCollapsed = true;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.useTestMode) {
+      _isInitialized = true;
+    }
+  }
+
+  void _checkDeliveryStatus(BaseTrackingProvider provider) {
+    final currentStatus = provider.trackingData?.status;
+
+    if (currentStatus == 'delivered' && _previousStatus != 'delivered' && !_hasShownSuccessScreen) {
+      _hasShownSuccessScreen = true;
+
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => DeliverySuccessScreen(
+            orderId: widget.orderId,
+            onComplete: () {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (context) => RatingOnboarding(
+                    orderId: widget.orderId,
+                    riderName: provider.trackingData?.rider?.name,
+                    riderImage: provider.trackingData?.rider?.profileImage,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    }
+
+    _previousStatus = currentStatus;
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    int activeStep = 2;
     final colors = context.appColors;
     final Size size = MediaQuery.sizeOf(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    return ChangeNotifierProvider<BaseTrackingProvider>(
+      create: (_) {
+        if (widget.useTestMode) {
+          final mockProvider = MockTrackingProvider();
+          mockProvider.initializeTracking(widget.orderId);
+          return mockProvider;
+        } else {
+          final provider = trackingLocator<TrackingProvider>();
+
+          Future.microtask(() async {
+            try {
+              final prefs = await SharedPreferences.getInstance();
+              final token = prefs.getString('authToken') ?? '';
+
+              if (token.isNotEmpty) {
+                setupTrackingServices(baseUrl: 'https://grabgo-backend.onrender.com', token: token);
+                await provider.initializeTracking(widget.orderId);
+
+                if (mounted) {
+                  setState(() => _isInitialized = true);
+                }
+              } else {
+                debugPrint('Auth token not found for real tracking');
+              }
+            } catch (e) {
+              debugPrint('Async init error: $e');
+            }
+          });
+
+          return provider;
+        }
+      },
+      child: Consumer<BaseTrackingProvider>(
+        builder: (context, provider, child) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _checkDeliveryStatus(provider);
+          });
+
+          if ((provider.isLoading && !_isInitialized) || (provider.trackingData == null && provider.error == null)) {
+            return Scaffold(
+              backgroundColor: colors.backgroundPrimary,
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(color: colors.accentOrange),
+                    SizedBox(height: 16.h),
+                    Text(
+                      'Connecting to tracking...',
+                      style: TextStyle(color: colors.textPrimary, fontSize: 16.sp),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          // Error state
+          if (provider.error != null && provider.trackingData == null) {
+            return Scaffold(
+              backgroundColor: colors.backgroundPrimary,
+              appBar: AppBar(
+                backgroundColor: colors.backgroundPrimary,
+                leading: IconButton(
+                  icon: Icon(Icons.arrow_back, color: colors.textPrimary),
+                  onPressed: () => context.pop(),
+                ),
+              ),
+              body: Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20.w),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 64.sp, color: colors.error),
+                      SizedBox(height: 16.h),
+                      Text(
+                        'Failed to load tracking',
+                        style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
+                      ),
+                      SizedBox(height: 8.h),
+                      Text(
+                        provider.error!,
+                        style: TextStyle(color: colors.textSecondary, fontSize: 14.sp),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 24.h),
+                      ElevatedButton(
+                        onPressed: () => provider.refreshTracking(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colors.accentOrange,
+                          padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 12.h),
+                        ),
+                        child: Text(
+                          'Retry',
+                          style: TextStyle(color: Colors.white, fontSize: 16.sp),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
+
+          // Main tracking UI
+          final activeStep = provider.trackingData?.activeStep ?? 0;
+
+          return _buildTrackingUI(context, provider, colors, size, isDark, activeStep);
+        },
+      ),
+    );
+  }
+
+  Widget _buildTrackingUI(
+    BuildContext context,
+    BaseTrackingProvider provider,
+    AppColorsExtension colors,
+    Size size,
+    bool isDark,
+    int activeStep,
+  ) {
     return Scaffold(
       extendBodyBehindAppBar: true,
       extendBody: true,
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        systemOverlayStyle: const SystemUiOverlayStyle(
+        systemOverlayStyle: SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
           systemNavigationBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.dark,
-          systemNavigationBarIconBrightness: Brightness.light,
+          statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+          statusBarBrightness: isDark ? Brightness.light : Brightness.dark,
+          systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         ),
         automaticallyImplyLeading: false,
         elevation: 0,
@@ -84,374 +268,742 @@ class _MapTrackingState extends State<MapTracking> {
       ),
       body: Stack(
         children: [
+          // Google Map
           Positioned.fill(
-            child: Stack(
-              children: [
-                Assets.images.trackingSample.image(fit: BoxFit.cover, package: 'grab_go_shared'),
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.black.withOpacity(0.1), Colors.transparent, Colors.black.withOpacity(0.3)],
-                      stops: const [0.0, 0.5, 1.0],
-                    ),
-                  ),
-                ),
-              ],
+            child: GoogleMap(
+              initialCameraPosition: CameraPosition(
+                target: provider.trackingData?.currentLocation?.toLatLng() ?? const LatLng(5.6037, -0.1870),
+                zoom: 14,
+              ),
+              markers: provider.markers,
+              polylines: provider.polylines,
+              myLocationEnabled: false,
+              myLocationButtonEnabled: false,
+              zoomControlsEnabled: false,
+              mapToolbarEnabled: false,
+              compassEnabled: false,
+              onMapCreated: (GoogleMapController controller) {
+                provider.setMapController(controller);
+              },
+              style: isDark ? _darkMapStyle : null,
             ),
           ),
 
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: ClipRRect(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(KBorderSize.border),
-                topRight: Radius.circular(KBorderSize.border),
-              ),
-              child: Container(
-                height: size.height * 0.36,
-                color: colors.accentOrange,
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 20.w),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            ClipOval(
-                              child: Assets.icons.noProfile.image(
-                                fit: BoxFit.cover,
-                                height: 50.h,
-                                width: 50.w,
-                                package: 'grab_go_shared',
-                              ),
-                            ),
-                            SizedBox(width: 16.w),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    "Kwame Atta",
-                                    style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w700),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  SizedBox(height: 4.h),
-                                  Row(
-                                    children: [
-                                      SvgPicture.asset(
-                                        Assets.icons.starSolid,
-                                        package: "grab_go_shared",
-                                        height: 14.h,
-                                        width: 14.w,
-                                        colorFilter: const ColorFilter.mode(Colors.yellow, BlendMode.srcIn),
-                                      ),
-                                      SizedBox(width: 6.w),
-                                      Text(
-                                        "4.6",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 13.sp,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Row(
-                              children: [
-                                _buildActionButton(icon: Assets.icons.chatBubbleSolid, colors: colors, onTap: () {}),
-                                SizedBox(width: 12.w),
-                                _buildActionButton(icon: Assets.icons.phoneSolid, colors: colors, onTap: () {}),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
+          // Draggable Bottom Sheet
+          DraggableScrollableSheet(
+            initialChildSize: 0.38,
+            minChildSize: 0.38,
+            maxChildSize: 0.85,
+            snap: true,
+            snapSizes: const [0.38, 0.6, 0.85],
+            builder: (BuildContext context, ScrollController scrollController) {
+              return NotificationListener<DraggableScrollableNotification>(
+                onNotification: (notification) {
+                  setState(() {
+                    _isSheetCollapsed = notification.extent <= 0.4;
+                  });
+                  return true;
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: colors.accentOrange,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(KBorderSize.border),
+                      topRight: Radius.circular(KBorderSize.border),
                     ),
-
-                    Expanded(
-                      flex: 3,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
-                        width: double.infinity,
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
                         decoration: BoxDecoration(
-                          color: colors.backgroundPrimary,
+                          color: colors.accentOrange,
                           borderRadius: const BorderRadius.only(
                             topLeft: Radius.circular(KBorderSize.border),
                             topRight: Radius.circular(KBorderSize.border),
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
-                              spreadRadius: 2,
-                              blurRadius: 20,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "On The Way",
-                              style: TextStyle(color: colors.textPrimary, fontSize: 20.sp, fontWeight: FontWeight.w800),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              "The rider is on the way to you. Your order will arrive soon.",
-                              style: TextStyle(
-                                color: colors.textSecondary,
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w400,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ClipOval(
+                                child: Container(
+                                  height: 50.h,
+                                  width: 50.w,
+                                  padding: EdgeInsets.all(12.r),
+                                  decoration: BoxDecoration(shape: BoxShape.circle, color: colors.backgroundPrimary),
+                                  child: SvgPicture.asset(
+                                    Assets.icons.deliveryGuyIcon,
+                                    package: "grab_go_shared",
+                                    colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                  ),
+                                ),
                               ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            SizedBox(height: 20.h),
-
-                            EasyStepper(
-                              activeStep: activeStep,
-                              stepRadius: 25.r,
-                              enableStepTapping: false,
-                              showTitle: true,
-                              disableScroll: true,
-                              lineStyle: LineStyle(
-                                lineLength: 60.w,
-                                lineSpace: 0,
-                                lineThickness: 4,
-                                lineType: LineType.normal,
-                                defaultLineColor: colors.inputBorder,
-                                finishedLineColor: colors.accentOrange,
-                              ),
-                              showStepBorder: false,
-                              unreachedStepBackgroundColor: colors.inputBorder,
-                              activeStepBackgroundColor: colors.inputBorder,
-                              finishedStepBackgroundColor: colors.accentOrange,
-                              stepShape: StepShape.circle,
-                              showLoadingAnimation: false,
-                              steps: [
-                                EasyStep(
-                                  customTitle: Text(
-                                    "Accepted",
-                                    style: TextStyle(
-                                      color: colors.textPrimary,
-                                      fontSize: 14.sp,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  customStep: Container(
-                                    width: 50.w,
-                                    height: 50.h,
-                                    decoration: BoxDecoration(color: colors.accentOrange, shape: BoxShape.circle),
-                                    child: Center(
-                                      child: SvgPicture.asset(
-                                        Assets.icons.check,
-                                        package: 'grab_go_shared',
-                                        width: 24.w,
-                                        height: 24.h,
-                                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                              SizedBox(width: 16.w),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      provider.trackingData?.rider?.name ?? "Rider",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16.sp,
+                                        fontWeight: FontWeight.w700,
                                       ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                  ),
-                                ),
-                                EasyStep(
-                                  customTitle: Text(
-                                    "Preparing",
-                                    style: TextStyle(
-                                      color: colors.textPrimary,
-                                      fontSize: 14.sp,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  customStep: Container(
-                                    width: 50.w,
-                                    height: 50.h,
-                                    decoration: BoxDecoration(color: colors.accentOrange, shape: BoxShape.circle),
-                                    child: Center(
-                                      child: SvgPicture.asset(
-                                        Assets.icons.store,
-                                        package: 'grab_go_shared',
-                                        width: 24.w,
-                                        height: 24.h,
-                                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                EasyStep(
-                                  customTitle: Text(
-                                    "On The Way",
-                                    style: TextStyle(
-                                      color: colors.textPrimary,
-                                      fontSize: 14.sp,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  customStep: Container(
-                                    width: 50.w,
-                                    height: 50.h,
-                                    decoration: BoxDecoration(color: colors.accentOrange, shape: BoxShape.circle),
-                                    child: Center(
-                                      child: SvgPicture.asset(
-                                        Assets.icons.deliveryTruck,
-                                        package: 'grab_go_shared',
-                                        height: 24.h,
-                                        width: 24.w,
-                                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                EasyStep(
-                                  customStep: Container(
-                                    width: 50.w,
-                                    height: 50.h,
-                                    decoration: BoxDecoration(color: colors.inputBorder, shape: BoxShape.circle),
-                                    child: Center(
-                                      child: Icon(Icons.handshake, color: colors.textSecondary, size: 24.sp),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                              onStepReached: (index) {
-                                setState(() {
-                                  activeStep = index;
-                                });
-                              },
-                            ),
-                            SizedBox(height: 20.h),
-
-                            // ETA and Distance Row
-                            Row(
-                              children: [
-                                // ETA
-                                Expanded(
-                                  child: Row(
-                                    children: [
-                                      SvgPicture.asset(
-                                        Assets.icons.timer,
-                                        package: 'grab_go_shared',
-                                        width: 18.w,
-                                        height: 18.h,
-                                        colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                                      ),
-                                      SizedBox(width: 6.w),
-                                      Flexible(
-                                        child: RichText(
-                                          text: TextSpan(
-                                            text: "Delivery:  ",
-                                            style: TextStyle(
-                                              fontFamily: "Lato",
-                                              package: 'grab_go_shared',
-                                              color: colors.textSecondary,
-                                              fontSize: 12.sp,
-                                            ),
-                                            children: [
-                                              TextSpan(
-                                                text: "28 min",
-                                                style: TextStyle(
-                                                  fontFamily: "Lato",
-                                                  package: 'grab_go_shared',
-                                                  fontWeight: FontWeight.w800,
-                                                  color: colors.textPrimary,
-                                                  fontSize: 13.sp,
-                                                ),
-                                              ),
-                                            ],
+                                    SizedBox(height: 2.h),
+                                    Row(
+                                      children: [
+                                        SvgPicture.asset(
+                                          Assets.icons.starSolid,
+                                          package: "grab_go_shared",
+                                          height: 14.h,
+                                          width: 14.w,
+                                          colorFilter: const ColorFilter.mode(Colors.yellow, BlendMode.srcIn),
+                                        ),
+                                        SizedBox(width: 6.w),
+                                        Text(
+                                          "${provider.trackingData?.rider?.formattedRating ?? "N/A"} rated rider",
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 13.sp,
+                                            fontWeight: FontWeight.w700,
                                           ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
-
-                                // Distance
-                                Expanded(
-                                  child: Row(
-                                    children: [
-                                      SvgPicture.asset(
-                                        Assets.icons.mapPin,
-                                        package: 'grab_go_shared',
-                                        width: 18.w,
-                                        height: 18.h,
-                                        colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                                      ),
-                                      SizedBox(width: 6.w),
-                                      Flexible(
-                                        child: RichText(
-                                          text: TextSpan(
-                                            text: "Distance:  ",
-                                            style: TextStyle(
-                                              fontFamily: "Lato",
-                                              package: 'grab_go_shared',
-                                              color: colors.textSecondary,
-                                              fontSize: 12.sp,
-                                            ),
-                                            children: [
-                                              TextSpan(
-                                                text: "1.2 km",
-                                                style: TextStyle(
-                                                  fontFamily: "Lato",
-                                                  package: 'grab_go_shared',
-                                                  fontWeight: FontWeight.w800,
-                                                  color: colors.textPrimary,
-                                                  fontSize: 13.sp,
+                              ),
+                              Row(
+                                children: [
+                                  _buildActionButton(
+                                    icon: Assets.icons.chatBubbleSolid,
+                                    colors: colors,
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (context) => DeliverySuccessScreen(
+                                            orderId: widget.orderId,
+                                            onComplete: () {
+                                              Navigator.of(context).pushReplacement(
+                                                MaterialPageRoute(
+                                                  builder: (context) => RatingOnboarding(
+                                                    orderId: widget.orderId,
+                                                    riderName: provider.trackingData?.rider?.name,
+                                                    riderImage: provider.trackingData?.rider?.profileImage,
+                                                  ),
                                                 ),
-                                              ),
-                                            ],
+                                              );
+                                            },
                                           ),
                                         ),
-                                      ),
-                                    ],
+                                      );
+                                    },
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
+                                  SizedBox(width: 12.w),
+                                  _buildActionButton(icon: Assets.icons.phoneSolid, colors: colors, onTap: () {}),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+
+                      // Scrollable White Section
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: colors.backgroundPrimary,
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(KBorderSize.border),
+                              topRight: Radius.circular(KBorderSize.border),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                spreadRadius: 2,
+                                blurRadius: 20,
+                                offset: const Offset(0, -4),
+                              ),
+                            ],
+                          ),
+                          child: SafeArea(
+                            top: false,
+                            child: ListView(
+                              controller: scrollController,
+                              padding: EdgeInsets.zero,
+                              children: [
+                                // Drag Handle on White Background
+                                Center(
+                                  child: Container(
+                                    width: 40.w,
+                                    height: 4.h,
+                                    margin: EdgeInsets.only(top: 12.h, bottom: 16.h),
+                                    decoration: BoxDecoration(
+                                      color: colors.textSecondary.withOpacity(0.3),
+                                      borderRadius: BorderRadius.circular(2.r),
+                                    ),
+                                  ),
+                                ),
+
+                                Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 20.w),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // Status Text
+                                      Text(
+                                        provider.trackingData?.statusText ?? "Preparing Order",
+                                        style: TextStyle(
+                                          color: colors.textPrimary,
+                                          fontSize: 20.sp,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      SizedBox(height: 4.h),
+                                      Text(
+                                        "The rider is on the way to you. Your order will arrive soon.",
+                                        style: TextStyle(
+                                          color: colors.textSecondary,
+                                          fontSize: 12.sp,
+                                          fontWeight: FontWeight.w400,
+                                        ),
+                                      ),
+                                      SizedBox(height: 20.h),
+
+                                      // Stepper
+                                      EasyStepper(
+                                        activeStep: activeStep,
+                                        stepRadius: 25.r,
+                                        enableStepTapping: false,
+                                        showTitle: true,
+                                        disableScroll: true,
+                                        lineStyle: LineStyle(
+                                          lineLength: 60.w,
+                                          lineSpace: 0,
+                                          lineThickness: 4,
+                                          lineType: LineType.normal,
+                                          defaultLineColor: colors.inputBorder,
+                                          finishedLineColor: colors.accentOrange,
+                                        ),
+                                        showStepBorder: false,
+                                        unreachedStepBackgroundColor: colors.inputBorder,
+                                        activeStepBackgroundColor: colors.accentOrange,
+                                        finishedStepBackgroundColor: colors.accentOrange,
+                                        stepShape: StepShape.circle,
+                                        showLoadingAnimation: false,
+                                        steps: [
+                                          EasyStep(
+                                            customTitle: Text(
+                                              "Accepted",
+                                              style: TextStyle(
+                                                color: colors.textPrimary,
+                                                fontSize: 14.sp,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            customStep: Container(
+                                              width: 50.w,
+                                              height: 50.h,
+                                              decoration: BoxDecoration(
+                                                color: activeStep >= 0 ? colors.accentOrange : colors.inputBorder,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Center(
+                                                child: SvgPicture.asset(
+                                                  Assets.icons.check,
+                                                  package: 'grab_go_shared',
+                                                  width: 24.w,
+                                                  height: 24.h,
+                                                  colorFilter: ColorFilter.mode(
+                                                    activeStep >= 0 ? Colors.white : colors.textSecondary,
+                                                    BlendMode.srcIn,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          EasyStep(
+                                            customTitle: Text(
+                                              "Preparing",
+                                              style: TextStyle(
+                                                color: colors.textPrimary,
+                                                fontSize: 14.sp,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            customStep: Container(
+                                              width: 50.w,
+                                              height: 50.h,
+                                              decoration: BoxDecoration(
+                                                color: activeStep >= 1 ? colors.accentOrange : colors.inputBorder,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Center(
+                                                child: SvgPicture.asset(
+                                                  Assets.icons.store,
+                                                  package: 'grab_go_shared',
+                                                  width: 24.w,
+                                                  height: 24.h,
+                                                  colorFilter: ColorFilter.mode(
+                                                    activeStep >= 1 ? Colors.white : colors.textSecondary,
+                                                    BlendMode.srcIn,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          EasyStep(
+                                            customTitle: Text(
+                                              "On The Way",
+                                              style: TextStyle(
+                                                color: colors.textPrimary,
+                                                fontSize: 14.sp,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            customStep: Container(
+                                              width: 50.w,
+                                              height: 50.h,
+                                              decoration: BoxDecoration(
+                                                color: activeStep >= 2 ? colors.accentOrange : colors.inputBorder,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Center(
+                                                child: SvgPicture.asset(
+                                                  Assets.icons.deliveryTruck,
+                                                  package: 'grab_go_shared',
+                                                  height: 24.h,
+                                                  width: 24.w,
+                                                  colorFilter: ColorFilter.mode(
+                                                    activeStep >= 2 ? Colors.white : colors.textSecondary,
+                                                    BlendMode.srcIn,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          EasyStep(
+                                            customTitle: Text(
+                                              "Delivered",
+                                              style: TextStyle(
+                                                color: colors.textPrimary,
+                                                fontSize: 14.sp,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            customStep: Container(
+                                              width: 50.w,
+                                              height: 50.h,
+                                              decoration: BoxDecoration(
+                                                color: activeStep >= 3 ? colors.accentOrange : colors.inputBorder,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Center(
+                                                child: Icon(
+                                                  Icons.handshake,
+                                                  color: activeStep >= 3 ? Colors.white : colors.textSecondary,
+                                                  size: 24.sp,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: 20.h),
+
+                                      // ETA and Distance Row
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Row(
+                                              children: [
+                                                SvgPicture.asset(
+                                                  Assets.icons.timer,
+                                                  package: 'grab_go_shared',
+                                                  width: 18.w,
+                                                  height: 18.h,
+                                                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                                ),
+                                                SizedBox(width: 6.w),
+                                                Flexible(
+                                                  child: RichText(
+                                                    text: TextSpan(
+                                                      text: "Delivery:  ",
+                                                      style: TextStyle(
+                                                        fontFamily: "Lato",
+                                                        package: 'grab_go_shared',
+                                                        color: colors.textSecondary,
+                                                        fontSize: 12.sp,
+                                                      ),
+                                                      children: [
+                                                        TextSpan(
+                                                          text: provider.trackingData?.formattedEta ?? "Calculating...",
+                                                          style: TextStyle(
+                                                            fontFamily: "Lato",
+                                                            package: 'grab_go_shared',
+                                                            fontWeight: FontWeight.w800,
+                                                            color: colors.textPrimary,
+                                                            fontSize: 13.sp,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: Row(
+                                              children: [
+                                                SvgPicture.asset(
+                                                  Assets.icons.mapPin,
+                                                  package: 'grab_go_shared',
+                                                  width: 18.w,
+                                                  height: 18.h,
+                                                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                                ),
+                                                SizedBox(width: 6.w),
+                                                Flexible(
+                                                  child: RichText(
+                                                    text: TextSpan(
+                                                      text: "Distance:  ",
+                                                      style: TextStyle(
+                                                        fontFamily: "Lato",
+                                                        package: 'grab_go_shared',
+                                                        color: colors.textSecondary,
+                                                        fontSize: 12.sp,
+                                                      ),
+                                                      children: [
+                                                        TextSpan(
+                                                          text: "${provider.trackingData?.distanceInKm ?? '0.0'} km",
+                                                          style: TextStyle(
+                                                            fontFamily: "Lato",
+                                                            package: 'grab_go_shared',
+                                                            fontWeight: FontWeight.w800,
+                                                            color: colors.textPrimary,
+                                                            fontSize: 13.sp,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+
+                                      SizedBox(height: 24.h),
+                                      DottedLine(
+                                        dashLength: 6,
+                                        dashGapLength: 4,
+                                        lineThickness: 1,
+                                        dashColor: colors.textSecondary.withAlpha(50),
+                                      ),
+                                      SizedBox(height: 20.h),
+
+                                      // Order Details Section
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            "Order Details",
+                                            style: TextStyle(
+                                              color: colors.textPrimary,
+                                              fontSize: 18.sp,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                          Container(
+                                            height: 38.h,
+                                            width: 38.w,
+                                            decoration: BoxDecoration(
+                                              color: colors.backgroundSecondary,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Material(
+                                              color: Colors.transparent,
+                                              child: InkWell(
+                                                onTap: () {},
+                                                customBorder: const CircleBorder(),
+                                                child: Padding(
+                                                  padding: EdgeInsets.all(10.r),
+                                                  child: SvgPicture.asset(
+                                                    Assets.icons.headsetHelp,
+                                                    package: 'grab_go_shared',
+                                                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Text(
+                                        "Order #${widget.orderId}",
+                                        style: TextStyle(
+                                          color: colors.textSecondary,
+                                          fontSize: 12.sp,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      SizedBox(height: 16.h),
+
+                                      // Items Section
+                                      Row(
+                                        children: [
+                                          SvgPicture.asset(
+                                            Assets.icons.squareMenu,
+                                            package: 'grab_go_shared',
+                                            height: 18.h,
+                                            width: 18.w,
+                                            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                          ),
+                                          SizedBox(width: 12.w),
+                                          Text(
+                                            "Items",
+                                            style: TextStyle(
+                                              color: colors.textPrimary,
+                                              fontSize: 16.sp,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: 12.h),
+
+                                      Container(
+                                        padding: EdgeInsets.all(16.r),
+                                        decoration: BoxDecoration(
+                                          color: colors.backgroundSecondary,
+                                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            _buildOrderItem(
+                                              colors: colors,
+                                              itemName: "Jollof Rice with Chicken",
+                                              quantity: 2,
+                                              price: "GHS 45.00",
+                                            ),
+                                            Divider(color: colors.inputBorder.withOpacity(0.3), height: 24.h),
+                                            _buildOrderItem(
+                                              colors: colors,
+                                              itemName: "Fried Plantain",
+                                              quantity: 1,
+                                              price: "GHS 15.00",
+                                            ),
+                                            Divider(color: colors.inputBorder.withOpacity(0.3), height: 24.h),
+                                            _buildOrderItem(
+                                              colors: colors,
+                                              itemName: "Coca Cola (500ml)",
+                                              quantity: 1,
+                                              price: "GHS 5.00",
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+
+                                      SizedBox(height: 20.h),
+
+                                      // Delivery location section
+                                      Row(
+                                        children: [
+                                          SvgPicture.asset(
+                                            Assets.icons.mapPin,
+                                            package: 'grab_go_shared',
+                                            height: 18.h,
+                                            width: 18.w,
+                                            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                          ),
+                                          SizedBox(width: 12.w),
+                                          Text(
+                                            "Delivery Location",
+                                            style: TextStyle(
+                                              color: colors.textPrimary,
+                                              fontSize: 16.sp,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: 12.h),
+
+                                      Container(
+                                        padding: EdgeInsets.all(16.r),
+                                        decoration: BoxDecoration(
+                                          color: colors.backgroundSecondary,
+                                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Container(
+                                                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                                                  decoration: BoxDecoration(
+                                                    color: colors.accentOrange.withValues(alpha: 0.15),
+                                                    borderRadius: BorderRadius.circular(6.r),
+                                                  ),
+                                                  child: Text(
+                                                    "Home",
+                                                    style: TextStyle(
+                                                      fontSize: 12.sp,
+                                                      fontWeight: FontWeight.w700,
+                                                      color: colors.accentOrange,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            SizedBox(height: 8.h),
+                                            Row(
+                                              children: [
+                                                SvgPicture.asset(
+                                                  Assets.icons.phone,
+                                                  package: 'grab_go_shared',
+                                                  height: 12.h,
+                                                  width: 12.w,
+                                                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                                ),
+                                                SizedBox(width: 6.w),
+                                                Text(
+                                                  "+233 53 369 97662",
+                                                  style: TextStyle(
+                                                    fontSize: 13.sp,
+                                                    color: colors.textPrimary,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            SizedBox(height: 4.h),
+                                            Row(
+                                              children: [
+                                                SvgPicture.asset(
+                                                  Assets.icons.mapPin,
+                                                  package: 'grab_go_shared',
+                                                  height: 12.h,
+                                                  width: 12.w,
+                                                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                                ),
+                                                SizedBox(width: 6.w),
+                                                Expanded(
+                                                  child: Text(
+                                                    "Madina, Adenta",
+                                                    style: TextStyle(
+                                                      fontSize: 13.sp,
+                                                      color: colors.textPrimary,
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+
+                                      SizedBox(height: 20.h),
+
+                                      // Delivery instructions
+                                      Row(
+                                        children: [
+                                          SvgPicture.asset(
+                                            Assets.icons.deliveryTruck,
+                                            package: 'grab_go_shared',
+                                            height: 18.h,
+                                            width: 18.w,
+                                            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                          ),
+                                          SizedBox(width: 12.w),
+                                          Text(
+                                            "Delivery Instructions",
+                                            style: TextStyle(
+                                              color: colors.textPrimary,
+                                              fontSize: 16.sp,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: 12.h),
+
+                                      Container(
+                                        width: double.infinity,
+                                        padding: EdgeInsets.all(16.r),
+                                        decoration: BoxDecoration(
+                                          color: colors.backgroundSecondary,
+                                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                                        ),
+                                        child: Text(
+                                          "Call me when you arrive.",
+                                          style: TextStyle(
+                                            fontSize: 13.sp,
+                                            color: colors.textPrimary,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(height: 20.h),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
           Positioned(
-            bottom: size.height * 0.38,
+            bottom: size.height * 0.40,
             right: 20.w,
-            child: Container(
-              height: 32.h,
-              width: 32.w,
-              decoration: BoxDecoration(
-                color: colors.backgroundPrimary,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                    spreadRadius: 0,
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+            child: AnimatedOpacity(
+              opacity: _isSheetCollapsed ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              child: IgnorePointer(
+                ignoring: !_isSheetCollapsed,
+                child: Container(
+                  height: 32.h,
+                  width: 32.w,
+                  decoration: BoxDecoration(
+                    color: colors.backgroundPrimary,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
+                        spreadRadius: 0,
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => context.pop(),
-                  customBorder: const CircleBorder(),
-                  child: Padding(
-                    padding: EdgeInsets.all(6.r),
-                    child: SvgPicture.asset(
-                      Assets.icons.crosshair,
-                      package: 'grab_go_shared',
-                      colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => provider.reCenterCamera(),
+                      customBorder: const CircleBorder(),
+                      child: Padding(
+                        padding: EdgeInsets.all(6.r),
+                        child: SvgPicture.asset(
+                          Assets.icons.crosshair,
+                          package: 'grab_go_shared',
+                          colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -459,164 +1011,6 @@ class _MapTrackingState extends State<MapTracking> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  void _showOrderDetailsModal(BuildContext context, AppColorsExtension colors) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.6,
-        decoration: BoxDecoration(
-          color: colors.backgroundPrimary,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(KBorderSize.border),
-            topRight: Radius.circular(KBorderSize.border),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              spreadRadius: 2,
-              blurRadius: 20,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            // Handle bar
-            Container(
-              width: 40.w,
-              height: 4.h,
-              margin: EdgeInsets.only(top: 12.h, bottom: 8.h),
-              decoration: BoxDecoration(
-                color: colors.textSecondary.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(2.r),
-              ),
-            ),
-
-            // Header
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
-              child: Row(
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(10.r),
-                    decoration: BoxDecoration(
-                      color: colors.accentOrange.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10.r),
-                    ),
-                    child: Icon(Icons.receipt_long, color: colors.accentOrange, size: 24.sp),
-                  ),
-                  SizedBox(width: 12.w),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Order Details",
-                          style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w800),
-                        ),
-                        Text(
-                          "Order #12345",
-                          style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: Icon(Icons.close, color: colors.textSecondary, size: 24.sp),
-                  ),
-                ],
-              ),
-            ),
-
-            Divider(color: colors.inputBorder.withOpacity(0.3), height: 1),
-
-            // Order Items List
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.all(20.w),
-                children: [
-                  // Items Section
-                  Text(
-                    "Items",
-                    style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w700),
-                  ),
-                  SizedBox(height: 12.h),
-
-                  Container(
-                    padding: EdgeInsets.all(16.r),
-                    decoration: BoxDecoration(
-                      color: colors.backgroundSecondary.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                      border: Border.all(color: colors.inputBorder.withOpacity(0.2), width: 1),
-                    ),
-                    child: Column(
-                      children: [
-                        _buildOrderItem(
-                          colors: colors,
-                          itemName: "Jollof Rice with Chicken",
-                          quantity: 2,
-                          price: "GHS 45.00",
-                        ),
-                        Divider(color: colors.inputBorder.withOpacity(0.3), height: 24.h),
-                        _buildOrderItem(colors: colors, itemName: "Fried Plantain", quantity: 1, price: "GHS 15.00"),
-                        Divider(color: colors.inputBorder.withOpacity(0.3), height: 24.h),
-                        _buildOrderItem(colors: colors, itemName: "Coca Cola (500ml)", quantity: 1, price: "GHS 5.00"),
-                      ],
-                    ),
-                  ),
-
-                  SizedBox(height: 20.h),
-
-                  // Summary Section
-                  Container(
-                    padding: EdgeInsets.all(16.r),
-                    decoration: BoxDecoration(
-                      color: colors.accentOrange.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                      border: Border.all(color: colors.accentOrange.withOpacity(0.2), width: 1),
-                    ),
-                    child: Column(
-                      children: [
-                        _buildSummaryRow(colors, "Subtotal", "GHS 65.00"),
-                        SizedBox(height: 8.h),
-                        _buildSummaryRow(colors, "Delivery Fee", "GHS 5.00"),
-                        SizedBox(height: 8.h),
-                        _buildSummaryRow(colors, "Service Fee", "GHS 2.00"),
-                        Divider(color: colors.accentOrange.withOpacity(0.3), height: 20.h),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              "Total",
-                              style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w800),
-                            ),
-                            Text(
-                              "GHS 72.00",
-                              style: TextStyle(
-                                color: colors.accentOrange,
-                                fontSize: 20.sp,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -668,7 +1062,7 @@ class _MapTrackingState extends State<MapTracking> {
         Expanded(
           child: Text(
             itemName,
-            style: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w600),
+            style: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w500),
           ),
         ),
         Text(
@@ -678,20 +1072,46 @@ class _MapTrackingState extends State<MapTracking> {
       ],
     );
   }
-
-  Widget _buildSummaryRow(AppColorsExtension colors, String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w500),
-        ),
-        Text(
-          value,
-          style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
-        ),
-      ],
-    );
-  }
 }
+
+// Dark map style for Google Maps
+const String _darkMapStyle = '''
+[
+  {
+    "elementType": "geometry",
+    "stylers": [{"color": "#212121"}]
+  },
+  {
+    "elementType": "labels.icon",
+    "stylers": [{"visibility": "off"}]
+  },
+  {
+    "elementType": "labels.text.fill",
+    "stylers": [{"color": "#757575"}]
+  },
+  {
+    "elementType": "labels.text.stroke",
+    "stylers": [{"color": "#212121"}]
+  },
+  {
+    "featureType": "administrative",
+    "elementType": "geometry",
+    "stylers": [{"color": "#757575"}]
+  },
+  {
+    "featureType": "road",
+    "elementType": "geometry.fill",
+    "stylers": [{"color": "#2c2c2c"}]
+  },
+  {
+    "featureType": "road",
+    "elementType": "labels.text.fill",
+    "stylers": [{"color": "#8a8a8a"}]
+  },
+  {
+    "featureType": "water",
+    "elementType": "geometry",
+    "stylers": [{"color": "#000000"}]
+  }
+]
+''';
