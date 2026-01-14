@@ -28,6 +28,7 @@ class CallScreen extends StatefulWidget {
 class _CallScreenState extends State<CallScreen> {
   Timer? _durationTimer;
   int _callDuration = 0;
+  WebRTCService? _webrtcService;
 
   @override
   void initState() {
@@ -45,8 +46,8 @@ class _CallScreenState extends State<CallScreen> {
   }
 
   void _setupCallListener() {
-    final webrtcService = context.read<WebRTCService>();
-    webrtcService.addListener(_onCallStateChanged);
+    _webrtcService = context.read<WebRTCService>();
+    _webrtcService!.addListener(_onCallStateChanged);
   }
 
   void _onCallStateChanged() {
@@ -104,8 +105,7 @@ class _CallScreenState extends State<CallScreen> {
   @override
   void dispose() {
     _durationTimer?.cancel();
-    final webrtcService = context.read<WebRTCService>();
-    webrtcService.removeListener(_onCallStateChanged);
+    _webrtcService?.removeListener(_onCallStateChanged);
     super.dispose();
   }
 

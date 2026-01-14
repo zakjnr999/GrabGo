@@ -153,6 +153,9 @@ class WebRTCSignalingService {
         // Get callee socket
         const calleeSocketId = await this.getUserSocket(calleeId);
 
+        console.log(`WebRTC: Looking for callee ${calleeId}`);
+        console.log(`WebRTC: Callee socket ID: ${calleeSocketId}`);
+
         if (!calleeSocketId) {
             // User is OFFLINE - send push notification
             console.log(`WebRTC: User ${calleeId} is offline, sending push notification`);

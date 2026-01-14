@@ -11,10 +11,11 @@ You have **2 options** to test the WebRTC calling feature without the rider app:
 ### Setup (30 seconds)
 
 1. **Open the test client**:
+
    ```bash
    # Navigate to the test file
    cd /home/zakjnr/Documents/Project/GrabGo/backend/test
-   
+
    # Open in browser (choose one):
    google-chrome webrtc-test-client.html
    # OR
@@ -23,6 +24,7 @@ You have **2 options** to test the WebRTC calling feature without the rider app:
    ```
 
 2. **Configure the test client**:
+
    - **Backend URL**: `https://grabgo-backend.onrender.com`
    - **Rider ID**: `test-rider-123` (or any ID)
    - **JWT Token**: Leave empty for testing OR paste a real rider token
@@ -44,6 +46,7 @@ You have **2 options** to test the WebRTC calling feature without the rider app:
 ### Test 1: Basic Call Flow
 
 **Step 1**: Start the browser test client
+
 ```
 1. Open webrtc-test-client.html
 2. Click "Connect as Rider"
@@ -51,6 +54,7 @@ You have **2 options** to test the WebRTC calling feature without the rider app:
 ```
 
 **Step 2**: Start your customer app
+
 ```
 1. Run: flutter run
 2. Navigate to map tracking page
@@ -58,13 +62,15 @@ You have **2 options** to test the WebRTC calling feature without the rider app:
 ```
 
 **Step 3**: In the browser test client
+
 ```
-1. You'll see "INCOMING CALL!" 
+1. You'll see "INCOMING CALL!"
 2. Click "Answer Call"
 3. Wait for "Call Active"
 ```
 
 **Step 4**: Verify in customer app
+
 ```
 ✅ Call screen should show "Active"
 ✅ Duration timer should start
@@ -74,6 +80,7 @@ You have **2 options** to test the WebRTC calling feature without the rider app:
 ```
 
 **Step 5**: End the call
+
 ```
 Option A: Click "End Call" in customer app
 Option B: Click "End Call" in browser test client
@@ -84,10 +91,12 @@ Option B: Click "End Call" in browser test client
 ### Test 2: Call Rejection
 
 **In browser test client**:
+
 1. Wait for incoming call
 2. Click "Reject Call"
 
 **In customer app**:
+
 - ✅ Should show "Call rejected"
 - ✅ Should close call screen
 
@@ -96,11 +105,13 @@ Option B: Click "End Call" in browser test client
 ### Test 3: Call Timeout
 
 **In customer app**:
+
 1. Initiate call
 2. Don't answer in test client
 3. Wait 30 seconds
 
 **Expected**:
+
 - ✅ Call should timeout
 - ✅ Call screen should close
 - ✅ Backend should log timeout
@@ -110,6 +121,7 @@ Option B: Click "End Call" in browser test client
 ### Test 4: Multiple Calls
 
 **Test blocking**:
+
 1. Start a call
 2. Try to start another call
 3. Should be blocked with message
@@ -119,6 +131,7 @@ Option B: Click "End Call" in browser test client
 ## 📊 What to Check
 
 ### In Customer App
+
 - [ ] Call screen opens
 - [ ] Shows "Connecting..."
 - [ ] Shows "Ringing..."
@@ -130,6 +143,7 @@ Option B: Click "End Call" in browser test client
 - [ ] Audio works (if using real mic)
 
 ### In Browser Test Client
+
 - [ ] Connects to backend
 - [ ] Receives incoming call
 - [ ] Shows caller info
@@ -140,6 +154,7 @@ Option B: Click "End Call" in browser test client
 - [ ] Connection state updates
 
 ### In Backend Logs
+
 - [ ] Socket connections
 - [ ] WebRTC events
 - [ ] Call state changes
@@ -155,6 +170,7 @@ Option B: Click "End Call" in browser test client
 **Problem**: "Connection Failed"
 
 **Solutions**:
+
 1. Check backend is running
 2. Check backend URL is correct
 3. Check CORS settings
@@ -168,6 +184,7 @@ Option B: Click "End Call" in browser test client
 **Problem**: Customer app calls but test client doesn't receive
 
 **Solutions**:
+
 1. Check test client shows "Connected"
 2. Check rider ID matches
 3. Check backend logs for events
@@ -181,6 +198,7 @@ Option B: Click "End Call" in browser test client
 **Problem**: Call is active but can't hear anything
 
 **Solutions**:
+
 1. Check microphone permissions in browser
 2. Check microphone permissions in Flutter app
 3. Check speaker is not muted
@@ -194,6 +212,7 @@ Option B: Click "End Call" in browser test client
 **Problem**: Stuck on "Connecting..."
 
 **Solutions**:
+
 1. Check TURN server credentials
 2. Check ICE candidates in logs
 3. Check firewall settings
@@ -205,6 +224,7 @@ Option B: Click "End Call" in browser test client
 ## 📱 Testing on Real Devices
 
 ### Android
+
 ```bash
 # Connect device
 adb devices
@@ -217,6 +237,7 @@ flutter logs
 ```
 
 ### iOS
+
 ```bash
 # Run on simulator
 flutter run
@@ -232,16 +253,19 @@ flutter run -d <device-id>
 ### Enable Verbose Logging
 
 **In Flutter**:
+
 ```dart
 // In webrtc_service.dart, all debugPrint statements are already there
 // Just watch the console
 ```
 
 **In Browser Test Client**:
+
 - All logs appear in the UI
 - Also check browser DevTools console (F12)
 
 **In Backend**:
+
 ```javascript
 // Already has console.log for all events
 // Just watch the terminal
@@ -252,10 +276,11 @@ flutter run -d <device-id>
 ### Check WebRTC Stats
 
 **In Browser (F12 Console)**:
+
 ```javascript
 // Get peer connection stats
-peerConnection.getStats().then(stats => {
-  stats.forEach(report => {
+peerConnection.getStats().then((stats) => {
+  stats.forEach((report) => {
     console.log(report);
   });
 });
@@ -266,6 +291,7 @@ peerConnection.getStats().then(stats => {
 ### Monitor Network Traffic
 
 **In Browser**:
+
 1. Open DevTools (F12)
 2. Go to Network tab
 3. Filter by "WS" (WebSocket)
@@ -278,31 +304,37 @@ peerConnection.getStats().then(stats => {
 Your implementation is working if:
 
 ✅ **Connection**
+
 - Test client connects to backend
 - Customer app connects to backend
 - Both show "Connected" status
 
 ✅ **Call Initiation**
+
 - Customer can tap call button
 - Test client receives incoming call
 - Call ID is generated
 
 ✅ **Call Answering**
+
 - Test client can answer
 - Customer app shows "Active"
 - Duration timer starts
 
 ✅ **Audio**
+
 - Can hear audio (if using real mic)
 - Mute button works
 - Speaker button works
 
 ✅ **Call Ending**
+
 - Either party can end call
 - Call screen closes
 - Resources cleaned up
 
 ✅ **Error Handling**
+
 - Rejection works
 - Timeout works
 - Network errors handled
@@ -313,6 +345,7 @@ Your implementation is working if:
 ## 📝 Test Checklist
 
 ### Before Testing
+
 - [ ] Backend server running
 - [ ] Redis running (optional)
 - [ ] Flutter app compiled
@@ -320,6 +353,7 @@ Your implementation is working if:
 - [ ] Microphone available
 
 ### During Testing
+
 - [ ] Test all call states
 - [ ] Test all buttons
 - [ ] Test error scenarios
@@ -327,6 +361,7 @@ Your implementation is working if:
 - [ ] Monitor performance
 
 ### After Testing
+
 - [ ] Review logs
 - [ ] Check database
 - [ ] Verify cleanup
@@ -338,6 +373,7 @@ Your implementation is working if:
 ## 🚀 Next Steps After Testing
 
 ### If Everything Works
+
 1. ✅ Mark feature as complete
 2. 📝 Document any quirks
 3. 🎨 Polish UI if needed
@@ -345,6 +381,7 @@ Your implementation is working if:
 5. 🚀 Deploy to production
 
 ### If Issues Found
+
 1. 🐛 Document the bug
 2. 📊 Check logs
 3. 🔍 Debug step by step
@@ -356,23 +393,27 @@ Your implementation is working if:
 ## 💡 Pro Tips
 
 ### Tip 1: Use Two Browsers
+
 - Open test client in Chrome
 - Open another in Firefox
 - Test multiple calls
 
 ### Tip 2: Use Browser DevTools
+
 - Monitor WebRTC stats
 - Check ICE candidates
 - View network traffic
 - Debug JavaScript
 
 ### Tip 3: Test on Mobile
+
 - Use Chrome Remote Debugging
 - Test on real devices
 - Check mobile networks
 - Test with poor connection
 
 ### Tip 4: Monitor Backend
+
 - Watch backend logs in real-time
 - Check Redis (if using)
 - Monitor database

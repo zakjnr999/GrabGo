@@ -410,12 +410,19 @@ class _MapTrackingState extends State<MapTracking> {
                                     icon: Assets.icons.phoneSolid,
                                     colors: colors,
                                     onTap: () async {
+                                      // DEBUG: Print rider ID
+                                      final mockRiderId = provider.trackingData?.rider?.id;
+                                      final actualRiderId = '691159180f7a5a0143d12d33';
+                                      print('🔍 Mock rider ID: $mockRiderId');
+                                      print('🔍 Using actual rider ID: $actualRiderId');
+
                                       // Navigate to call screen
                                       Navigator.of(context).push(
                                         MaterialPageRoute(
                                           builder: (context) => CallScreen(
-                                            otherUserId: provider.trackingData?.rider?.id ?? '',
-                                            otherUserName: provider.trackingData?.rider?.name,
+                                            // ALWAYS use actual rider ID (ignore mock)
+                                            otherUserId: actualRiderId,
+                                            otherUserName: provider.trackingData?.rider?.name ?? 'Test Rider',
                                             otherUserAvatar: provider.trackingData?.rider?.profileImage,
                                             orderId: widget.orderId,
                                             isIncoming: false,
