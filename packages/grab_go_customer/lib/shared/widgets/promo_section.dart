@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:grab_go_customer/features/home/model/promotional_banner.dart';
+import 'package:grab_go_customer/features/home/model/promo_banner.dart';
 import 'package:grab_go_customer/shared/widgets/promo_banner_card.dart';
 import 'package:grab_go_customer/shared/widgets/promo_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
@@ -9,7 +9,7 @@ import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class PromoSection extends StatefulWidget {
-  final List<PromotionalBanner> banners;
+  final List<PromoBanner> banners;
   final VoidCallback onSeeAll;
   final bool isLoading;
 
@@ -73,8 +73,8 @@ class _PromoSectionState extends State<PromoSection> {
   Widget build(BuildContext context) {
     final colors = context.appColors;
 
-    // Show skeleton while loading
-    if (widget.isLoading) {
+    // Show skeleton ONLY if loading AND no banners
+    if (widget.isLoading && widget.banners.isEmpty) {
       return Column(
         children: [
           SectionHeader(
@@ -133,9 +133,9 @@ class _PromoSectionState extends State<PromoSection> {
                   padding: EdgeInsets.symmetric(horizontal: 8.w),
                   child: PromoBannerCard(
                     title: banner.title,
-                    subtitle: banner.subtitle ?? '',
+                    subtitle: banner.subtitle,
                     imageUrl: banner.imageUrl,
-                    discount: banner.discount ?? '',
+                    discount: banner.discount,
                     backgroundColor: _parseColor(banner.backgroundColor),
                     onTap: () {
                       debugPrint('Tapped banner: ${banner.title}');
@@ -147,6 +147,7 @@ class _PromoSectionState extends State<PromoSection> {
             },
           ),
         ),
+        SizedBox(height: KSpacing.lg.h),
       ],
     );
   }
@@ -155,7 +156,7 @@ class _PromoSectionState extends State<PromoSection> {
     try {
       return Color(int.parse(hexColor.substring(1, 7), radix: 16) + 0xFF000000);
     } catch (e) {
-      return Colors.white;
+      return Colors.orange;
     }
   }
 }

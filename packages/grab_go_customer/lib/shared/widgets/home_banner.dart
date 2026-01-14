@@ -73,42 +73,9 @@ class _HomeBannerState extends State<HomeBanner> {
       hasError = itemsProvider.error != null;
     }
 
-    if (isLoading && itemsProvider.categories.isEmpty && groceryProvider.items.isEmpty) {
-      return Shimmer.fromColors(
-        baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-        highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
-        child: Container(
-          height: widget.size.height * 0.28,
-          padding: EdgeInsets.all(14.r),
-          margin: EdgeInsets.symmetric(horizontal: 20.w),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-            borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-          ),
-        ),
-      );
-    }
-
-    if (hasError) {
-      return Shimmer.fromColors(
-        baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-        highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
-        child: Container(
-          height: widget.size.height * 0.28,
-          padding: EdgeInsets.all(14.r),
-          margin: EdgeInsets.symmetric(horizontal: 20.w),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-            borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-          ),
-        ),
-      );
-    }
-
-    // Determine items to show
+    // Determine items to show early to check for empty state
     List<dynamic> allFoods = [];
     if (serviceProvider.isGroceryService) {
-      // Prioritize items, then deals. Convert to FoodItem
       if (groceryProvider.items.isNotEmpty) {
         allFoods = groceryProvider.items.map((e) => e.toFoodItem()).toList();
       } else if (groceryProvider.deals.isNotEmpty) {
@@ -117,6 +84,24 @@ class _HomeBannerState extends State<HomeBanner> {
     } else {
       allFoods = itemsProvider.categories.expand((cat) => cat.items).toList();
     }
+
+    if (isLoading && allFoods.isEmpty) {
+      return Shimmer.fromColors(
+        baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+        highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
+        child: Container(
+          height: widget.size.height * 0.28,
+          padding: EdgeInsets.all(14.r),
+          margin: EdgeInsets.symmetric(horizontal: 20.w),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+            borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+          ),
+        ),
+      );
+    }
+
+    // We already determined allFoods above for the loading check
 
     if (allFoods.isEmpty) {
       return Shimmer.fromColors(

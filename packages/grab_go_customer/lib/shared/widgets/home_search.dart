@@ -113,9 +113,6 @@ class _HomeSearchState extends State<HomeSearch> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(KBorderSize.border),
           color: colors.backgroundPrimary,
-          boxShadow: [
-            BoxShadow(color: Colors.black.withAlpha(10), spreadRadius: 1, blurRadius: 12, offset: const Offset(0, 4)),
-          ],
         ),
         child: Row(
           children: [
@@ -126,13 +123,13 @@ class _HomeSearchState extends State<HomeSearch> {
                 package: 'grab_go_shared',
                 height: KIconSize.md,
                 width: KIconSize.md,
-                colorFilter: ColorFilter.mode(colors.textTertiary, BlendMode.srcIn),
+                colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
               ),
             ),
             SizedBox(width: 5.w),
             Text(
               widget.hintText,
-              style: TextStyle(color: colors.textTertiary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+              style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
             ),
             const Spacer(),
             Container(

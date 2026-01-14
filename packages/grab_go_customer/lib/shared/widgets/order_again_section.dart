@@ -40,7 +40,7 @@ class OrderAgainSection extends StatelessWidget {
           onSeeAll: onSeeAll,
         ),
         SizedBox(height: 10.h),
-        if (isLoading)
+        if (isLoading && recentOrders.isEmpty)
           HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 220.h)
         else if (recentOrders.isEmpty)
           _buildEmptyState(colors)

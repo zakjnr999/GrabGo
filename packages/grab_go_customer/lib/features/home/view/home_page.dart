@@ -3,10 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_category.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart';
+import 'package:grab_go_customer/features/home/viewmodel/food_banner_provider.dart';
+import 'package:grab_go_customer/features/home/viewmodel/food_deals_provider.dart';
+import 'package:grab_go_customer/features/home/viewmodel/food_discovery_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/location_provider.dart';
 import 'package:grab_go_customer/shared/widgets/app_refresh_indicator.dart';
@@ -20,7 +24,6 @@ import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/widgets/service_category_list.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/shared/widgets/home_search.dart';
-import 'package:grab_go_customer/shared/widgets/home_banner.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
 import 'package:grab_go_customer/features/home/model/filter_model.dart';
 import 'package:grab_go_customer/features/home/model/service_model.dart';
@@ -32,7 +35,8 @@ import 'package:grab_go_customer/shared/widgets/promo_section.dart';
 import 'package:grab_go_customer/shared/widgets/top_rated_section.dart';
 import 'package:grab_go_customer/shared/widgets/fresh_arrivals_section.dart';
 import 'package:grab_go_customer/shared/widgets/browse_all_groceries_section.dart';
-import 'package:grab_go_customer/shared/widgets/referral_banner.dart';
+import 'package:grab_go_customer/shared/widgets/promotional_banner_carousel.dart';
+import 'package:grab_go_customer/features/home/model/promotional_banner.dart';
 import 'package:grab_go_customer/shared/viewmodels/service_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -182,16 +186,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
 
     if (serviceProvider.isFoodService) {
-      // Refresh food data
+      // Refresh all food data using the new refreshAll() method
       final provider = Provider.of<FoodProvider>(context, listen: false);
-      await Future.wait([
-        provider.refreshCategories(),
-        provider.fetchOrderHistory(),
-        provider.fetchPromotionalBanners(),
-        provider.fetchDeals(),
-        provider.fetchPopularItems(),
-        provider.fetchTopRatedItems(),
-      ]);
+      await provider.refreshAll();
     } else if (serviceProvider.isGroceryService) {
       // Refresh grocery data
       final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
@@ -242,24 +239,32 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   child: SingleChildScrollView(
                     controller: _scrollController,
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: EdgeInsets.only(top: size.height * 0.20),
+                    padding: EdgeInsets.only(top: size.height * 0.16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
                           color: colors.backgroundSecondary,
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               SizedBox(height: KSpacing.lg.h),
                               _buildServiceSelector(),
                               SizedBox(height: KSpacing.lg.h),
-                              _buildHomeSearch(foodProvider),
+                              PromotionalBannerCarousel(
+                                banners: AppPromotionalBanners.getDefaultBanners(
+                                  onReferralTap: () => context.push('/referral'),
+                                  onWelcomeTap: () {
+                                    // Handle welcome offer tap
+                                  },
+                                  onFlashDealTap: () {
+                                    // Handle flash deal tap
+                                  },
+                                  onGrabMartTap: () {
+                                    // Handle GrabMart tap
+                                  },
+                                ),
+                              ),
                               SizedBox(height: KSpacing.lg.h),
-                              const ReferralBanner(),
-                              HomeBanner(size: size),
-                              SizedBox(height: KSpacing.lg.h),
-
                               AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 300),
                                 switchInCurve: Curves.easeInOut,
@@ -291,54 +296,40 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                     Builder(
                                       builder: (context) {
                                         final groceryProvider = Provider.of<GroceryProvider>(context);
-                                        final deals = serviceProvider.isFoodService
-                                            ? foodProvider.dealItems.take(10).toList()
-                                            : groceryProvider.deals.take(10).map((e) => e.toFoodItem()).toList();
-
-                                        final originalDeals = serviceProvider.isGroceryService
-                                            ? groceryProvider.deals.take(10).toList()
-                                            : null;
-
-                                        final isLoading = serviceProvider.isFoodService
-                                            ? foodProvider.isLoadingDeals
-                                            : groceryProvider.isLoadingDeals;
 
                                         return Column(
                                           children: [
-                                            DealsSection(
-                                              dealItems: deals,
-                                              originalItems: originalDeals,
-                                              onSeeAll: () {
-                                                //TODO
-                                              },
-                                              onItemTap: (item) {
-                                                if (serviceProvider.isGroceryService) {
-                                                  final groceryProvider = Provider.of<GroceryProvider>(
-                                                    context,
-                                                    listen: false,
+                                            if (serviceProvider.isFoodService)
+                                              Consumer<FoodDealsProvider>(
+                                                builder: (context, provider, _) {
+                                                  return DealsSection(
+                                                    dealItems: provider.dealItems.take(10).toList(),
+                                                    onSeeAll: () {},
+                                                    onItemTap: (item) {
+                                                      context.push('/food-details', extra: item);
+                                                    },
+                                                    isLoading: provider.isLoadingDeals,
                                                   );
-                                                  // Try to find original item, fallback to converted item if not found
+                                                },
+                                              )
+                                            else
+                                              DealsSection(
+                                                dealItems: groceryProvider.deals
+                                                    .take(10)
+                                                    .map((e) => e.toFoodItem())
+                                                    .toList(),
+                                                originalItems: groceryProvider.deals.take(10).toList(),
+                                                onSeeAll: () {},
+                                                onItemTap: (item) {
+                                                  final gp = Provider.of<GroceryProvider>(context, listen: false);
                                                   GroceryItem? originalItem;
                                                   try {
-                                                    originalItem = groceryProvider.deals.firstWhere(
-                                                      (g) => g.id == item.id,
-                                                    );
-                                                  } catch (_) {
-                                                    try {
-                                                      originalItem = groceryProvider.items.firstWhere(
-                                                        (g) => g.id == item.id,
-                                                      );
-                                                    } catch (_) {
-                                                      // Item not found, use the converted item as-is
-                                                    }
-                                                  }
+                                                    originalItem = gp.deals.firstWhere((g) => g.id == item.id);
+                                                  } catch (_) {}
                                                   context.push('/grocery-details', extra: originalItem ?? item);
-                                                } else {
-                                                  context.push('/food-details', extra: item);
-                                                }
-                                              },
-                                              isLoading: isLoading,
-                                            ),
+                                                },
+                                                isLoading: groceryProvider.isLoadingDeals,
+                                              ),
                                             SizedBox(height: KSpacing.lg.h),
                                           ],
                                         );
@@ -363,19 +354,24 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                     ],
 
                                     // Order Again (Food only - CONDITIONAL: only show if user has order history)
-                                    if (serviceProvider.isFoodService && foodProvider.orderHistoryItems.isNotEmpty) ...[
-                                      Column(
-                                        children: [
-                                          OrderAgainSection(
-                                            recentOrders: foodProvider.orderHistoryItems.take(10).toList(),
-                                            onSeeAll: () {},
-                                            onItemTap: (item) {
-                                              context.push('/food-details', extra: item);
-                                            },
-                                            isLoading: foodProvider.isLoadingOrderHistory,
-                                          ),
-                                          SizedBox(height: KSpacing.lg.h),
-                                        ],
+                                    if (serviceProvider.isFoodService) ...[
+                                      Consumer<FoodDiscoveryProvider>(
+                                        builder: (context, provider, _) {
+                                          if (provider.orderHistoryItems.isEmpty) return const SizedBox.shrink();
+                                          return Column(
+                                            children: [
+                                              OrderAgainSection(
+                                                recentOrders: provider.orderHistoryItems.take(10).toList(),
+                                                onSeeAll: () {},
+                                                onItemTap: (item) {
+                                                  context.push('/food-details', extra: item);
+                                                },
+                                                isLoading: provider.isLoadingOrderHistory,
+                                              ),
+                                              SizedBox(height: KSpacing.lg.h),
+                                            ],
+                                          );
+                                        },
                                       ),
                                     ],
 
@@ -463,12 +459,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
                                     // Unified Banners (Promo Section - Food only)
                                     if (serviceProvider.isFoodService) ...[
-                                      PromoSection(
-                                        banners: foodProvider.promotionalBanners,
-                                        onSeeAll: () {},
-                                        isLoading: foodProvider.isLoadingBanners,
+                                      Consumer<FoodBannerProvider>(
+                                        builder: (context, provider, _) {
+                                          return PromoSection(
+                                            banners: provider.promotionalBanners,
+                                            onSeeAll: () {},
+                                            isLoading: provider.isLoadingBanners,
+                                          );
+                                        },
                                       ),
-                                      SizedBox(height: KSpacing.xl.h),
                                     ],
 
                                     // 7. Top Rated Dishes (Unified for both Food & Grocery)
@@ -590,7 +589,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   top: 0,
                   left: 0,
                   right: 0,
-                  child: _buildCollapsibleHomeHeader(context, size, colors, isDark, locationProvider),
+                  child: _buildCollapsibleHomeHeader(context, size, colors, isDark, locationProvider, foodProvider),
                 ),
               ],
             ),
@@ -683,8 +682,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
         List<FoodItem> allFoods = [];
 
-        // Show skeleton when loading OR when categories are empty
-        if (itemsProvider.isLoading || itemsProvider.categories.isEmpty) {
+        // Show skeleton only when categories are empty (initial load or empty state)
+        if (itemsProvider.categories.isEmpty) {
           return FoodItemSkeleton(colors: colors, isDark: isDark, size: size);
         }
 
@@ -877,9 +876,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Builder _buildFoodCategories(FoodProvider itemsProvider, bool isDark, Size size, AppColorsExtension colors) {
     return Builder(
       builder: (context) {
-        if (itemsProvider.isLoading) {
-          return CategorySkeleton(colors: colors, isDark: isDark, size: size);
-        } else if (itemsProvider.error != null) {
+        if (itemsProvider.isLoading && itemsProvider.categories.isEmpty) {
           return CategorySkeleton(colors: colors, isDark: isDark, size: size);
         } else if (itemsProvider.categories.isEmpty) {
           return CategorySkeleton(colors: colors, isDark: isDark, size: size);
@@ -960,7 +957,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return HomeSearch(
       categories: itemsProvider.categories,
       activeFilter: _activeFilter,
-      hintText: "Search by name or category...",
+      hintText: "Search & Explore GrabGo... ",
       onFilterApplied: (FilterModel filter) {
         setState(() {
           _activeFilter = filter.copyWith();
@@ -1046,20 +1043,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     AppColorsExtension colors,
     bool isDark,
     LocationProvider locationProvider,
+    FoodProvider foodProvider,
   ) {
     return ValueListenableBuilder<double>(
       valueListenable: _scrollOffsetNotifier,
       builder: (context, scrollOffset, _) {
-        // Calculate collapse progress (0.0 = fully expanded, 1.0 = fully collapsed)
         final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
 
-        // Use 20% of screen height for expanded state
-        final expandedHeight = size.height * 0.20;
+        final expandedHeight = size.height * 0.22;
 
-        // Interpolate header height based on scroll
         final currentHeight = expandedHeight - ((expandedHeight - _collapsedHeight) * collapseProgress);
 
-        // Calculate content opacity (fade out as we scroll)
         final contentOpacity = (1.0 - collapseProgress).clamp(0.0, 1.0);
 
         return SizedBox(
@@ -1071,7 +1065,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             child: AnimatedOpacity(
               duration: const Duration(milliseconds: 100),
               opacity: contentOpacity,
-              child: _buildHomeHeader(context, size, colors, isDark, locationProvider),
+              child: _buildHomeHeader(context, size, colors, isDark, locationProvider, foodProvider),
             ),
           ),
         );
@@ -1085,124 +1079,97 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     AppColorsExtension colors,
     bool isDark,
     LocationProvider locationProvider,
+    FoodProvider foodProvider,
   ) {
     return SizedBox.expand(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(20.w, MediaQuery.of(context).padding.top + 10.h, 20.w, 20.h),
-        child: Row(
-          children: [
-            Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  context.push("/location-picker");
-                },
-                child: Container(
-                  height: size.height * 0.08,
-                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-                  decoration: BoxDecoration(
-                    color: colors.backgroundPrimary.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                  child: Row(
-                    children: [
-                      SvgPicture.asset(
-                        Assets.icons.mapPin,
-                        package: 'grab_go_shared',
-                        height: 16.h,
-                        width: 16.w,
-                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                      ),
-                      SizedBox(width: 10.w),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Let's deliver to",
-                              style: TextStyle(
-                                fontFamily: "Lato",
-                                package: 'grab_go_shared',
-                                fontSize: 10.sp,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white.withValues(alpha: 0.8),
-                              ),
-                            ),
-                            SizedBox(height: 2.h),
-                            Text(
-                              locationProvider.address.isEmpty ? "Fetching location..." : locationProvider.address,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: Colors.white),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: 6.w),
-                      SvgPicture.asset(
-                        Assets.icons.navArrowDown,
-                        package: 'grab_go_shared',
-                        height: 16.h,
-                        width: 16.w,
-                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(width: 12.w),
-
-            Container(
-              height: size.height * 0.08,
-              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-              decoration: BoxDecoration(
-                color: colors.backgroundPrimary.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12.r),
-              ),
-              child: Row(
-                children: [
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        context.push("/notification");
-                      },
-                      customBorder: const CircleBorder(),
-                      child: Padding(
-                        padding: EdgeInsets.all(10.r),
-                        child: SvgPicture.asset(
-                          Assets.icons.bellNotification,
+      child: Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(20.w, MediaQuery.of(context).padding.top + 10.h, 20.w, 6.h),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      context.push("/location-picker");
+                    },
+                    child: Row(
+                      children: [
+                        SvgPicture.asset(
+                          Assets.icons.mapPin,
                           package: 'grab_go_shared',
+                          height: 16.h,
+                          width: 16.w,
                           colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                         ),
-                      ),
+                        SizedBox(width: 10.w),
+                        Text(
+                          locationProvider.address.isEmpty ? "Fetching location..." : locationProvider.address,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: Colors.white),
+                        ),
+                        SizedBox(width: 6.w),
+                        SvgPicture.asset(
+                          Assets.icons.navArrowDown,
+                          package: 'grab_go_shared',
+                          height: 16.h,
+                          width: 16.w,
+                          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                        ),
+                      ],
                     ),
                   ),
+                ),
+                SizedBox(width: 12.w),
 
-                  Material(
-                    color: Colors.transparent,
-                    child: Builder(
-                      builder: (context) => InkWell(
+                Row(
+                  children: [
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
                         onTap: () {
-                          context.push("/status");
+                          context.push("/notification");
                         },
                         customBorder: const CircleBorder(),
                         child: Padding(
                           padding: EdgeInsets.all(10.r),
                           child: SvgPicture.asset(
-                            Assets.icons.styleBorder,
+                            Assets.icons.bellNotification,
                             package: 'grab_go_shared',
                             colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+
+                    Material(
+                      color: Colors.transparent,
+                      child: Builder(
+                        builder: (context) => InkWell(
+                          onTap: () {
+                            context.push("/status");
+                          },
+                          customBorder: const CircleBorder(),
+                          child: Padding(
+                            padding: EdgeInsets.all(10.r),
+                            child: SvgPicture.asset(
+                              Assets.icons.styleBorder,
+                              package: 'grab_go_shared',
+                              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+
+          _buildHomeSearch(foodProvider),
+        ],
       ),
     );
   }

@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:grab_go_customer/features/home/viewmodel/food_banner_provider.dart';
+import 'package:grab_go_customer/features/home/viewmodel/food_category_provider.dart';
+import 'package:grab_go_customer/features/home/viewmodel/food_deals_provider.dart';
+import 'package:grab_go_customer/features/home/viewmodel/food_discovery_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/settings_provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/shared/services/secure_storage_service.dart';
@@ -49,7 +53,25 @@ void main() async {
         ChangeNotifierProvider(create: (context) => ThemeProvider()),
         ChangeNotifierProvider(create: (context) => CartProvider()),
         ChangeNotifierProvider(create: (context) => LocationProvider()),
-        ChangeNotifierProvider(create: (context) => FoodProvider()),
+        ChangeNotifierProvider(create: (context) => FoodCategoryProvider()),
+        ChangeNotifierProvider(create: (context) => FoodBannerProvider()),
+        ChangeNotifierProvider(create: (context) => FoodDealsProvider()),
+        ChangeNotifierProvider(create: (context) => FoodDiscoveryProvider()),
+        ChangeNotifierProxyProvider4<
+          FoodCategoryProvider,
+          FoodBannerProvider,
+          FoodDealsProvider,
+          FoodDiscoveryProvider,
+          FoodProvider
+        >(
+          create: (context) => FoodProvider(
+            categoryProvider: Provider.of<FoodCategoryProvider>(context, listen: false),
+            bannerProvider: Provider.of<FoodBannerProvider>(context, listen: false),
+            dealsProvider: Provider.of<FoodDealsProvider>(context, listen: false),
+            discoveryProvider: Provider.of<FoodDiscoveryProvider>(context, listen: false),
+          ),
+          update: (context, cat, ban, deal, disc, food) => food!,
+        ),
         ChangeNotifierProvider(create: (context) => RestaurantProvider()),
         ChangeNotifierProvider(create: (context) => OrderProvider()),
         ChangeNotifierProvider(create: (context) => NavigationProvider()),
@@ -58,6 +80,7 @@ void main() async {
         ChangeNotifierProvider(create: (context) => SettingsProvider()),
         ChangeNotifierProvider(create: (context) => ServiceProvider()),
         ChangeNotifierProvider(create: (context) => GroceryProvider()),
+        ChangeNotifierProvider(create: (context) => WebRTCService()),
       ],
       child: const GrabGoCustomerApp(),
     ),
@@ -86,6 +109,28 @@ class _MyAppState extends State<GrabGoCustomerApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    // Initialize WebRTC service after frame is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeWebRTC();
+    });
+  }
+
+  Future<void> _initializeWebRTC() async {
+    try {
+      final socketService = SocketService();
+      final webrtcService = context.read<WebRTCService>();
+      final user = UserService().currentUser;
+
+      if (socketService.isConnected && socketService.socket != null && user != null) {
+        await webrtcService.initialize(socketService.socket!, user.id!);
+        debugPrint('✅ WebRTC service initialized');
+      } else {
+        debugPrint('⚠️ Cannot initialize WebRTC: Socket not connected or user not logged in');
+      }
+    } catch (e) {
+      debugPrint('Error initializing WebRTC: $e');
+    }
   }
 
   @override

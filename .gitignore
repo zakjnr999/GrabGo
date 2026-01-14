@@ -73,6 +73,3 @@ dist/
 # Coverage
 coverage/
 lcov.info
-
-# Docs
-docs/

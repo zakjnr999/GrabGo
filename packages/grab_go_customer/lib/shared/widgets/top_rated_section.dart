@@ -39,7 +39,7 @@ class TopRatedSection extends StatelessWidget {
           onSeeAll: onSeeAll,
         ),
         SizedBox(height: 16.h),
-        if (isLoading)
+        if (isLoading && topRatedItems.isEmpty)
           HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 220.h, itemCount: 6)
         else if (topRatedItems.isEmpty)
           _buildEmptyState(colors)

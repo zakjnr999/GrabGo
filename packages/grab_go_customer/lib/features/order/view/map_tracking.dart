@@ -21,7 +21,7 @@ import '../providers/base_tracking_provider.dart';
 import '../config/tracking_service_locator.dart';
 import 'delivery_success_screen.dart';
 import 'rider_rating.dart';
-
+import 'call_screen.dart';
 
 class MapTracking extends StatefulWidget {
   final String orderId;
@@ -406,7 +406,25 @@ class _MapTrackingState extends State<MapTracking> {
                                     },
                                   ),
                                   SizedBox(width: 12.w),
-                                  _buildActionButton(icon: Assets.icons.phoneSolid, colors: colors, onTap: () {}),
+                                  _buildActionButton(
+                                    icon: Assets.icons.phoneSolid,
+                                    colors: colors,
+                                    onTap: () async {
+                                      // Navigate to call screen
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (context) => CallScreen(
+                                            otherUserId: provider.trackingData?.rider?.id ?? '',
+                                            otherUserName: provider.trackingData?.rider?.name,
+                                            otherUserAvatar: provider.trackingData?.rider?.profileImage,
+                                            orderId: widget.orderId,
+                                            isIncoming: false,
+                                          ),
+                                          fullscreenDialog: true,
+                                        ),
+                                      );
+                                    },
+                                  ),
                                 ],
                               ),
                             ],

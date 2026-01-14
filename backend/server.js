@@ -1,4 +1,3 @@
-// For review purpose
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -7,10 +6,12 @@ const morgan = require("morgan");
 const compression = require("compression");
 const http = require("http");
 const { Server } = require("socket.io");
+const WebRTCSignalingService = require("./services/webrtcSignalingService");
 const jwt = require("jsonwebtoken");
 const User = require("./models/User");
 const Chat = require("./models/Chat");
 const { initIO } = require("./utils/socket");
+const callRoutes = require("./routes/calls");
 require("dotenv").config();
 
 const app = express();
@@ -26,6 +27,11 @@ const io = new Server(server, {
 
 // Initialize Socket.IO singleton for global access
 initIO(io);
+
+// Initialize WebRTC signaling
+const webrtcSignaling = new WebRTCSignalingService(io);
+
+console.log("✅ WebRTC signaling service initialized");
 
 // Initialize socket service for tracking
 const socketService = require('./services/socket_service');
@@ -317,6 +323,9 @@ app.use("/api/favorites", require("./routes/favorites"));
 app.use("/api/promo", require("./routes/promo"));
 app.use("/api/test", require("./routes/test"));
 app.use("/api/tracking", require("./routes/tracking_routes"));
+app.use('/api/calls', callRoutes);
+
+app.set('webrtcSignaling', webrtcSignaling);
 
 // Health check
 app.get("/api/health", (req, res) => {

@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebRTC Test Client - Rider Simulator</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .status.disconnected {
+            background: #fee;
+            color: #c33;
+            border: 2px solid #fcc;
+        }
+
+        .status.connected {
+            background: #efe;
+            color: #3c3;
+            border: 2px solid #cfc;
+        }
+
+        .status.calling {
+            background: #ffeaa7;
+            color: #d63031;
+            border: 2px solid #fdcb6e;
+        }
+
+        .status.active {
+            background: #74b9ff;
+            color: #0984e3;
+            border: 2px solid #0984e3;
+        }
+
+        .config-section {
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: #00b894;
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background: #00a383;
+        }
+
+        .btn-danger {
+            background: #d63031;
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #c2292a;
+        }
+
+        .call-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .call-info h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .info-value {
+            color: #333;
+            font-weight: 600;
+        }
+
+        .logs {
+            background: #2d3436;
+            color: #dfe6e9;
+            padding: 15px;
+            border-radius: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 3px 0;
+        }
+
+        .log-success {
+            color: #00b894;
+        }
+
+        .log-error {
+            color: #d63031;
+        }
+
+        .log-info {
+            color: #74b9ff;
+        }
+
+        .log-warning {
+            color: #fdcb6e;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .pulsing {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎧 WebRTC Test Client</h1>
+        <p class="subtitle">Simulates a rider to test customer app calling</p>
+
+        <!-- Status -->
+        <div id="status" class="status disconnected">
+            ⚫ Disconnected
+        </div>
+
+        <!-- Configuration -->
+        <div id="configSection" class="config-section">
+            <div class="form-group">
+                <label for="backendUrl">Backend URL</label>
+                <input type="text" id="backendUrl" value="https://grabgo-backend.onrender.com" placeholder="https://your-backend.com">
+            </div>
+            <div class="form-group">
+                <label for="riderId">Rider ID (for testing)</label>
+                <input type="text" id="riderId" value="test-rider-123" placeholder="test-rider-123">
+            </div>
+            <div class="form-group">
+                <label for="riderToken">Rider JWT Token</label>
+                <input type="password" id="riderToken" placeholder="Paste your rider JWT token here">
+            </div>
+            <button id="connectBtn" class="btn-primary">🚀 Connect as Rider</button>
+        </div>
+
+        <!-- Call Info (hidden initially) -->
+        <div id="callInfo" class="call-info hidden">
+            <h3>📞 Incoming Call</h3>
+            <div class="info-row">
+                <span class="info-label">Caller ID:</span>
+                <span class="info-value" id="callerId">-</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Order ID:</span>
+                <span class="info-value" id="orderId">-</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Call ID:</span>
+                <span class="info-value" id="callId">-</span>
+            </div>
+        </div>
+
+        <!-- Call Controls (hidden initially) -->
+        <div id="callControls" class="hidden">
+            <button id="answerBtn" class="btn-success">✅ Answer Call</button>
+            <button id="rejectBtn" class="btn-danger">❌ Reject Call</button>
+        </div>
+
+        <!-- Active Call Controls (hidden initially) -->
+        <div id="activeCallControls" class="hidden">
+            <button id="endBtn" class="btn-danger">📴 End Call</button>
+        </div>
+
+        <!-- Logs -->
+        <div class="logs" id="logs">
+            <div class="log-entry log-info">💡 Ready to connect...</div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let peerConnection = null;
+        let currentCallId = null;
+        let localStream = null;
+
+        const iceServers = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                {
+                    urls: 'turn:34.136.2.17:3478',
+                    username: 'testuser',
+                    credential: 'testpass'
+                }
+            ]
+        };
+
+        // UI Elements
+        const statusEl = document.getElementById('status');
+        const configSection = document.getElementById('configSection');
+        const callInfo = document.getElementById('callInfo');
+        const callControls = document.getElementById('callControls');
+        const activeCallControls = document.getElementById('activeCallControls');
+        const logsEl = document.getElementById('logs');
+
+        // Buttons
+        const connectBtn = document.getElementById('connectBtn');
+        const answerBtn = document.getElementById('answerBtn');
+        const rejectBtn = document.getElementById('rejectBtn');
+        const endBtn = document.getElementById('endBtn');
+
+        // Inputs
+        const backendUrlInput = document.getElementById('backendUrl');
+        const riderIdInput = document.getElementById('riderId');
+        const riderTokenInput = document.getElementById('riderToken');
+
+        // Logging
+        function log(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            logsEl.appendChild(entry);
+            logsEl.scrollTop = logsEl.scrollHeight;
+        }
+
+        function updateStatus(text, className) {
+            statusEl.textContent = text;
+            statusEl.className = `status ${className}`;
+        }
+
+        // Connect to backend
+        connectBtn.addEventListener('click', () => {
+            const backendUrl = backendUrlInput.value.trim();
+            const riderId = riderIdInput.value.trim();
+            const token = riderTokenInput.value.trim();
+
+            if (!backendUrl || !riderId) {
+                log('❌ Please fill in Backend URL and Rider ID', 'error');
+                return;
+            }
+
+            log('🚀 Connecting to backend...', 'info');
+            updateStatus('🔄 Connecting...', 'disconnected pulsing');
+
+            socket = io(backendUrl, {
+                transports: ['websocket'],
+                auth: token ? { token } : {}
+            });
+
+            setupSocketListeners(riderId);
+        });
+
+        function setupSocketListeners(riderId) {
+            socket.on('connect', () => {
+                log('✅ Connected to backend!', 'success');
+                updateStatus('🟢 Connected - Waiting for calls', 'connected');
+                configSection.classList.add('hidden');
+                
+                // Register as rider
+                socket.emit('webrtc:register', riderId);
+                log(`👤 Registered as rider: ${riderId}`, 'info');
+            });
+
+            socket.on('disconnect', () => {
+                log('❌ Disconnected from backend', 'error');
+                updateStatus('⚫ Disconnected', 'disconnected');
+                configSection.classList.remove('hidden');
+                hideCallUI();
+            });
+
+            socket.on('connect_error', (error) => {
+                log(`❌ Connection error: ${error.message}`, 'error');
+                updateStatus('⚫ Connection Failed', 'disconnected');
+            });
+
+            // WebRTC Events
+            socket.on('webrtc:incoming-call', handleIncomingCall);
+            socket.on('webrtc:call-answered', handleCallAnswered);
+            socket.on('webrtc:ice-candidate', handleIceCandidate);
+            socket.on('webrtc:call-ended', handleCallEnded);
+            socket.on('webrtc:call-rejected', handleCallRejected);
+            socket.on('webrtc:error', handleError);
+        }
+
+        async function handleIncomingCall(data) {
+            log('📞 INCOMING CALL!', 'warning');
+            log(`   Caller: ${data.callerId}`, 'info');
+            log(`   Order: ${data.orderId}`, 'info');
+            
+            currentCallId = data.callId;
+            
+            // Update UI
+            updateStatus('📞 Incoming Call...', 'calling pulsing');
+            document.getElementById('callerId').textContent = data.callerId;
+            document.getElementById('orderId').textContent = data.orderId;
+            document.getElementById('callId').textContent = data.callId;
+            
+            callInfo.classList.remove('hidden');
+            callControls.classList.remove('hidden');
+
+            // Store offer for later
+            window.incomingOffer = data.offer;
+        }
+
+        answerBtn.addEventListener('click', async () => {
+            try {
+                log('📱 Answering call...', 'info');
+                updateStatus('🔄 Connecting call...', 'calling pulsing');
+                
+                // Create peer connection
+                await createPeerConnection();
+
+                // Get user media (microphone)
+                try {
+                    localStream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: true, 
+                        video: false 
+                    });
+                    
+                    localStream.getTracks().forEach(track => {
+                        peerConnection.addTrack(track, localStream);
+                    });
+                    
+                    log('🎙️ Microphone access granted', 'success');
+                } catch (err) {
+                    log('⚠️ Microphone access denied, using silent audio', 'warning');
+                }
+
+                // Set remote description (offer)
+                await peerConnection.setRemoteDescription(
+                    new RTCSessionDescription(window.incomingOffer)
+                );
+
+                // Create answer
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+
+                // Send answer to backend
+                socket.emit('webrtc:answer', {
+                    callId: currentCallId,
+                    answer: {
+                        sdp: answer.sdp,
+                        type: answer.type
+                    }
+                });
+
+                log('✅ Call answered!', 'success');
+                updateStatus('🟢 Call Active', 'active');
+                
+                // Update UI
+                callControls.classList.add('hidden');
+                activeCallControls.classList.remove('hidden');
+                
+            } catch (error) {
+                log(`❌ Error answering call: ${error.message}`, 'error');
+            }
+        });
+
+        rejectBtn.addEventListener('click', () => {
+            log('🚫 Rejecting call...', 'warning');
+            socket.emit('webrtc:reject', { callId: currentCallId });
+            cleanup();
+            hideCallUI();
+            updateStatus('🟢 Connected - Waiting for calls', 'connected');
+        });
+
+        endBtn.addEventListener('click', () => {
+            log('📴 Ending call...', 'warning');
+            socket.emit('webrtc:end-call', { callId: currentCallId });
+            cleanup();
+            hideCallUI();
+            updateStatus('🟢 Connected - Waiting for calls', 'connected');
+        });
+
+        async function createPeerConnection() {
+            peerConnection = new RTCPeerConnection(iceServers);
+
+            // Handle ICE candidates
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('webrtc:ice-candidate', {
+                        callId: currentCallId,
+                        candidate: {
+                            candidate: event.candidate.candidate,
+                            sdpMid: event.candidate.sdpMid,
+                            sdpMLineIndex: event.candidate.sdpMLineIndex
+                        },
+                        targetUserId: 'customer'
+                    });
+                    log('🧊 ICE candidate sent', 'info');
+                }
+            };
+
+            // Handle remote stream
+            peerConnection.ontrack = (event) => {
+                log('🎵 Receiving remote audio stream', 'success');
+                const audio = new Audio();
+                audio.srcObject = event.streams[0];
+                audio.play();
+            };
+
+            // Handle connection state
+            peerConnection.onconnectionstatechange = () => {
+                log(`📡 Connection state: ${peerConnection.connectionState}`, 'info');
+                if (peerConnection.connectionState === 'connected') {
+                    log('✅ P2P connection established!', 'success');
+                }
+            };
+        }
+
+        async function handleCallAnswered(data) {
+            log('✅ Call answered by customer!', 'success');
+            await peerConnection.setRemoteDescription(
+                new RTCSessionDescription(data.answer)
+            );
+        }
+
+        async function handleIceCandidate(data) {
+            if (peerConnection) {
+                await peerConnection.addCandidate(
+                    new RTCIceCandidate(data.candidate)
+                );
+                log('🧊 ICE candidate added', 'info');
+            }
+        }
+
+        function handleCallEnded(data) {
+            log('📴 Call ended by customer', 'warning');
+            cleanup();
+            hideCallUI();
+            updateStatus('🟢 Connected - Waiting for calls', 'connected');
+        }
+
+        function handleCallRejected(data) {
+            log('🚫 Call rejected by customer', 'warning');
+            cleanup();
+            hideCallUI();
+            updateStatus('🟢 Connected - Waiting for calls', 'connected');
+        }
+
+        function handleError(data) {
+            log(`❌ WebRTC Error: ${data.error}`, 'error');
+        }
+
+        function cleanup() {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            currentCallId = null;
+        }
+
+        function hideCallUI() {
+            callInfo.classList.add('hidden');
+            callControls.classList.add('hidden');
+            activeCallControls.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

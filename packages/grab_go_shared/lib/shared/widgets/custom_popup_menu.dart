@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
@@ -122,7 +120,7 @@ class _CustomPopupMenuState extends State<CustomPopupMenu> with SingleTickerProv
                   decoration: BoxDecoration(
                     color: widget.backgroundColor ?? colors.backgroundPrimary,
                     borderRadius: widget.borderRadius ?? BorderRadius.circular(KBorderSize.borderRadius15),
-                    border: Border.all(color: colors.border.withOpacity(0.3), width: 1),
+                    border: Border.all(color: colors.border.withValues(alpha: 0.3), width: 1),
                     boxShadow: [
                       BoxShadow(
                         color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
@@ -168,7 +166,7 @@ class _CustomPopupMenuState extends State<CustomPopupMenu> with SingleTickerProv
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
         child: Row(
           children: [
-            Expanded(child: Divider(color: colors.divider.withOpacity(0.5), thickness: 1, height: 1)),
+            Expanded(child: Divider(color: colors.divider.withValues(alpha: 0.5), thickness: 1, height: 1)),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 8.w),
               child: Text(
@@ -181,7 +179,7 @@ class _CustomPopupMenuState extends State<CustomPopupMenu> with SingleTickerProv
                 ),
               ),
             ),
-            Expanded(child: Divider(color: colors.divider.withOpacity(0.5), thickness: 1, height: 1)),
+            Expanded(child: Divider(color: colors.divider.withValues(alpha: 0.5), thickness: 1, height: 1)),
           ],
         ),
       );
@@ -189,7 +187,7 @@ class _CustomPopupMenuState extends State<CustomPopupMenu> with SingleTickerProv
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
-      child: Divider(color: colors.divider.withOpacity(0.5), thickness: 1, height: 1),
+      child: Divider(color: colors.divider.withValues(alpha: 0.5), thickness: 1, height: 1),
     );
   }
 
@@ -197,10 +195,6 @@ class _CustomPopupMenuState extends State<CustomPopupMenu> with SingleTickerProv
     final effectiveIconColor = item.isDanger || item.isDestructive
         ? colors.error
         : (item.iconColor ?? colors.textPrimary);
-
-    final effectiveBackgroundColor = item.isDanger || item.isDestructive
-        ? colors.error.withOpacity(0.1)
-        : (item.backgroundColor ?? colors.backgroundSecondary);
 
     final textColor = item.isDanger || item.isDestructive ? colors.error : colors.textPrimary;
 

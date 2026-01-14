@@ -39,7 +39,7 @@ class PopularSection extends StatelessWidget {
           onSeeAll: onSeeAll,
         ),
         SizedBox(height: 10.h),
-        if (isLoading)
+        if (isLoading && popularItems.isEmpty)
           HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 220.h, itemCount: 6)
         else if (popularItems.isEmpty)
           _buildEmptyState(colors)

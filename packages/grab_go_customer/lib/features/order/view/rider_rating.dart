@@ -1,7 +1,9 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:go_router/go_router.dart';
@@ -21,17 +23,13 @@ class RiderRating extends StatefulWidget {
 
 class RiderRatingState extends State<RiderRating> {
   int _riderRating = 0;
-  int _foodRating = 0;
+  final int _foodRating = 0;
   final TextEditingController _commentController = TextEditingController();
-  int? _selectedTip;
-  bool _isSubmitting = false;
+  bool isSubmitting = false;
   bool _showCustomTip = false;
   double _tipAmount = 0.0;
 
   final List<String> _selectedComment = [];
-  bool _showCustomInstruction = false;
-
-  final List<int> _tipOptions = [0, 5, 10, 20, 50];
 
   // Get dynamic description based on rating
   String _getRatingDescription(int rating) {
@@ -95,7 +93,7 @@ class RiderRatingState extends State<RiderRating> {
       return;
     }
 
-    setState(() => _isSubmitting = true);
+    setState(() => isSubmitting = true);
 
     try {
       // TODO: Submit rating to backend
@@ -113,7 +111,7 @@ class RiderRatingState extends State<RiderRating> {
       }
     } finally {
       if (mounted) {
-        setState(() => _isSubmitting = false);
+        setState(() => isSubmitting = false);
       }
     }
   }
@@ -121,6 +119,7 @@ class RiderRatingState extends State<RiderRating> {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    Size size = MediaQuery.sizeOf(context);
     final feedbackChips = _getFeedbackChips(_riderRating);
 
     return Scaffold(
@@ -137,11 +136,11 @@ class RiderRatingState extends State<RiderRating> {
                   title: 'How was your order with ${widget.riderName} ?',
                   starDescription: _getRatingDescription(_riderRating),
                   image: widget.riderImage,
+                  size: size,
                   rating: _riderRating,
                   onRatingChanged: (rating) {
                     setState(() {
                       _riderRating = rating;
-                      // Clear selected comments when rating changes
                       _selectedComment.clear();
                     });
                   },
@@ -269,8 +268,8 @@ class RiderRatingState extends State<RiderRating> {
   Widget _buildRatingSection({
     required String title,
     required String starDescription,
-    String? image,
-    IconData? icon,
+    required String? image,
+    required Size size,
     required int rating,
     required Function(int) onRatingChanged,
     required AppColorsExtension colors,
@@ -279,26 +278,31 @@ class RiderRatingState extends State<RiderRating> {
       color: colors.backgroundPrimary,
       child: Column(
         children: [
-          if (image != null)
-            ClipOval(
-              child: Image.network(
-                image,
-                width: 60.w,
-                height: 60.h,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => CircleAvatar(
-                  radius: 25.r,
-                  backgroundColor: colors.accentOrange,
-                  child: Icon(Icons.person, color: Colors.white, size: 30.sp),
+          ClipOval(
+            child: CachedNetworkImage(
+              height: size.width * 0.15,
+              width: size.width * 0.15,
+              fit: BoxFit.cover,
+              imageUrl: ImageOptimizer.getPreviewUrl(image!, width: 200),
+              memCacheWidth: 200,
+              maxHeightDiskCache: 200,
+              placeholder: (context, url) => Container(
+                height: size.width * 0.15,
+                width: size.width * 0.15,
+                decoration: BoxDecoration(color: colors.backgroundPrimary, shape: BoxShape.circle),
+              ),
+              errorWidget: (context, url, error) => Container(
+                height: size.width * 0.15,
+                width: size.width * 0.15,
+                padding: EdgeInsets.all(12.r),
+                child: SvgPicture.asset(
+                  Assets.icons.user,
+                  package: "grab_go_shared",
+                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                 ),
               ),
-            )
-          else if (icon != null)
-            CircleAvatar(
-              radius: 25.r,
-              backgroundColor: colors.accentOrange.withValues(alpha: 0.1),
-              child: Icon(icon, color: colors.accentOrange, size: 30.sp),
             ),
+          ),
 
           SizedBox(height: 20.h),
 

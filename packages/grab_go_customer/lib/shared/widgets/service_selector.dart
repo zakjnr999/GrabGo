@@ -106,75 +106,72 @@ class _ServiceSelectorState extends State<ServiceSelector> {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    return SizedBox(
-      height: 50.h,
-      child: ListView.builder(
-        padding: EdgeInsets.only(left: 20.w),
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
         itemCount: widget.services.length,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12.w,
+          mainAxisSpacing: 12.h,
+          childAspectRatio: 2.1,
+        ),
         itemBuilder: (context, index) {
           final service = widget.services[index];
-          final bool isSelected = selectedIndex == index;
 
-          return GestureDetector(
-            onTap: () {
-              if (index >= 0 && index < widget.services.length) {
-                setState(() {
-                  selectedIndex = index;
-                });
-                widget.onServiceSelected(service);
-              }
-            },
-            child: Padding(
-              padding: EdgeInsets.only(right: 20.w),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeInOut,
-                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                if (index >= 0 && index < widget.services.length) {
+                  widget.onServiceSelected(service);
+                }
+              },
+              borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+              child: Ink(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: isSelected
-                        ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
-                        : [colors.backgroundPrimary, colors.backgroundPrimary.withValues(alpha: 0.8)],
+                    colors: [colors.accentOrange.withValues(alpha: 0.12), colors.accentOrange.withValues(alpha: 0.08)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha(10),
-                      spreadRadius: 1,
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
+                child: Stack(
                   children: [
-                    AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                      style: TextStyle(fontSize: 20, color: isSelected ? colors.backgroundPrimary : colors.textPrimary),
-                      child: Text(service.emoji),
-                    ),
-                    SizedBox(width: 8.w),
-                    AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeInOut,
-                      style: TextStyle(
-                        color: isSelected ? colors.backgroundPrimary : colors.textPrimary,
-                        fontWeight: FontWeight.w500,
-                        fontSize: 14.sp,
+                    // Decorative background emoji
+                    Positioned(
+                      right: -8,
+                      bottom: -8,
+                      child: Opacity(
+                        opacity: 0.12,
+                        child: Text(service.emoji, style: TextStyle(fontSize: 50.sp)),
                       ),
-                      child: Text(
-                        service.name,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontFamily: "Lato",
-                          package: 'grab_go_shared',
-                        ),
+                    ),
+                    Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(service.emoji, style: TextStyle(fontSize: 26.sp)),
+                          SizedBox(width: 10.w),
+                          Flexible(
+                            child: Text(
+                              service.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: colors.textPrimary,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15.sp,
+                                fontFamily: "Lato",
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],

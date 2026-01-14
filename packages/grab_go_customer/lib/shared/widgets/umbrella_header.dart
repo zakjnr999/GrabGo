@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'dart:math' as math;
 
 /// Custom clipper that creates an umbrella/scalloped bottom shape with multiple small curves
 class UmbrellaClipper extends CustomClipper<Path> {

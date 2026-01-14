@@ -39,7 +39,7 @@ class DealsSection extends StatelessWidget {
           onSeeAll: onSeeAll,
         ),
         SizedBox(height: 10.h),
-        if (isLoading)
+        if (isLoading && dealItems.isEmpty)
           HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 220.h, itemCount: 5)
         else if (dealItems.isEmpty)
           _buildEmptyState(colors)

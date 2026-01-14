@@ -643,6 +643,49 @@ const sendMilestoneBonusNotification = async (userId, milestone, bonusAmount) =>
     );
 };
 
+/**
+ * Send incoming call notification
+ * @param {string} recipientId - User ID to receive call
+ * @param {string} callerName - Name of the caller
+ * @param {string} callId - Call ID for answering
+ * @param {string} callType - 'audio' or 'video'
+ * @param {string} orderId - Order ID
+ * @param {string} callerAvatar - Caller's profile picture URL
+ */
+const sendCallNotification = async (
+    recipientId,
+    callerName,
+    callId,
+    callType = 'audio',
+    orderId = null,
+    callerAvatar = null,
+    callerId = null
+) => {
+    const callIcon = callType === 'video' ? '📹' : '📞';
+
+    return sendToUser(
+        recipientId,
+        {
+            title: `${callIcon} Incoming ${callType} call`,
+            body: `${callerName} is calling you...`,
+            ...(callerAvatar && { imageUrl: callerAvatar }),
+        },
+        {
+            type: 'incoming_call',
+            callId,
+            callType,
+            callerId: callerId || '', // Actual caller's ID
+            callerName,
+            callerAvatar: callerAvatar || '',
+            orderId: orderId || '',
+            // High priority for call notifications
+            priority: 'high',
+            // Time-sensitive
+            ttl: '30', // 30 seconds TTL
+        }
+    );
+};
+
 module.exports = {
     initializeFirebase,
     registerToken,
@@ -657,5 +700,6 @@ module.exports = {
     sendPaymentConfirmation,
     sendDeliveryArrivingNotification,
     sendSystemUpdate,
-    sendMilestoneBonusNotification
+    sendMilestoneBonusNotification,
+    sendCallNotification,
 };

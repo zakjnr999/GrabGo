@@ -20,7 +20,7 @@ class ServiceModel {
 class AppServices {
   static const ServiceModel food = ServiceModel(
     id: 'food',
-    name: 'Food',
+    name: 'Foods',
     emoji: '🍔',
     colorHex: '#FE6132', // Orange
   );
@@ -41,7 +41,7 @@ class AppServices {
 
   static const ServiceModel convenience = ServiceModel(
     id: 'convenience',
-    name: 'Stores',
+    name: 'GrabMart',
     emoji: '🏪',
     colorHex: '#9C27B0', // Purple
   );

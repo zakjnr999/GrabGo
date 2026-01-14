@@ -523,6 +523,32 @@ class CacheService {
     }
   }
 
+  /// Save recent order items (different from full history)
+  static Future<bool> saveRecentOrderItems(List<Map<String, dynamic>> items) async {
+    try {
+      final itemsJson = jsonEncode(items);
+      return await _instance.setString('recent_order_items', itemsJson);
+    } catch (e) {
+      debugPrint('Error saving recent order items: $e');
+      return false;
+    }
+  }
+
+  /// Get recent order items
+  static List<Map<String, dynamic>> getRecentOrderItems() {
+    try {
+      final itemsJson = _instance.getString('recent_order_items');
+      if (itemsJson != null) {
+        final List<dynamic> itemsList = jsonDecode(itemsJson);
+        return itemsList.cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting recent order items: $e');
+      return [];
+    }
+  }
+
   /// Save per-chat text draft
   static Future<bool> saveChatDraft(String chatId, String text) async {
     try {

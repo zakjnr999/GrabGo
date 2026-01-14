@@ -81,6 +81,7 @@ class SocketService {
   final List<void Function(String chatId, String tempId, bool success, String? newId)> _retryListeners = [];
 
   bool get isConnected => _socket != null && _socket!.connected;
+  IO.Socket? get socket => _socket;
 
   Timer? _reconnectTimer;
   int _reconnectAttempts = 0;

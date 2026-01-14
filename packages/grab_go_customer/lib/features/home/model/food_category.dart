@@ -169,6 +169,8 @@ class FoodItem implements CartItem {
     'deliveryTimeMinutes': deliveryTimeMinutes,
     'isAvailable': isAvailable,
     'discountPercentage': discountPercentage,
+    'orderCount': orderCount,
+    'lastOrderedAt': lastOrderedAt?.toIso8601String(),
   };
 
   @override

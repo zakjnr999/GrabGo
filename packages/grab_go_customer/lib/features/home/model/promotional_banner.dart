@@ -1,63 +1,81 @@
+import 'package:flutter/material.dart';
+
+/// Model for promotional banners
 class PromotionalBanner {
   final String id;
   final String title;
-  final String? subtitle;
-  final String imageUrl;
-  final String? discount;
-  final String backgroundColor;
-  final String? targetUrl;
-  final DateTime startDate;
-  final DateTime endDate;
-  final bool isActive;
-  final int priority;
-  final String targetAudience;
+  final String subtitle;
+  final String actionText;
+  final List<Color> gradientColors;
+  final String emoji;
+  final VoidCallback? onTap;
+  final bool isDismissible;
 
-  PromotionalBanner({
+  const PromotionalBanner({
     required this.id,
     required this.title,
-    this.subtitle,
-    required this.imageUrl,
-    this.discount,
-    required this.backgroundColor,
-    this.targetUrl,
-    required this.startDate,
-    required this.endDate,
-    required this.isActive,
-    required this.priority,
-    required this.targetAudience,
+    required this.subtitle,
+    required this.actionText,
+    required this.gradientColors,
+    required this.emoji,
+    this.onTap,
+    this.isDismissible = true,
   });
+}
 
-  factory PromotionalBanner.fromJson(Map<String, dynamic> json) {
-    return PromotionalBanner(
-      id: json['_id'] as String,
-      title: json['title'] as String,
-      subtitle: json['subtitle'] as String?,
-      imageUrl: json['imageUrl'] as String,
-      discount: json['discount'] as String?,
-      backgroundColor: json['backgroundColor'] as String? ?? '#FFFFFF',
-      targetUrl: json['targetUrl'] as String?,
-      startDate: DateTime.parse(json['startDate'] as String),
-      endDate: DateTime.parse(json['endDate'] as String),
-      isActive: json['isActive'] as bool? ?? true,
-      priority: json['priority'] as int? ?? 0,
-      targetAudience: json['targetAudience'] as String? ?? 'all',
-    );
-  }
+/// Predefined promotional banners
+class AppPromotionalBanners {
+  static PromotionalBanner welcomeOffer({VoidCallback? onTap}) => PromotionalBanner(
+    id: 'welcome_offer',
+    title: '50% Off First Order',
+    subtitle: 'New here? Get half off your first meal!',
+    actionText: 'Claim Offer',
+    gradientColors: [const Color(0xFFFFB800), const Color(0xFFFE6132)],
+    emoji: '🎉',
+    onTap: onTap,
+  );
 
-  Map<String, dynamic> toJson() {
-    return {
-      '_id': id,
-      'title': title,
-      'subtitle': subtitle,
-      'imageUrl': imageUrl,
-      'discount': discount,
-      'backgroundColor': backgroundColor,
-      'targetUrl': targetUrl,
-      'startDate': startDate.toIso8601String(),
-      'endDate': endDate.toIso8601String(),
-      'isActive': isActive,
-      'priority': priority,
-      'targetAudience': targetAudience,
-    };
+  static PromotionalBanner referralBoost({VoidCallback? onTap}) => PromotionalBanner(
+    id: 'referral_boost',
+    title: 'Refer & Earn GH₵20',
+    subtitle: 'Share with friends and get rewarded',
+    actionText: 'Invite Now',
+    gradientColors: [const Color(0xFF9C27B0), const Color(0xFF673AB7)],
+    emoji: '🎁',
+    onTap: onTap,
+  );
+
+  static PromotionalBanner flashDeal({VoidCallback? onTap}) => PromotionalBanner(
+    id: 'flash_deal',
+    title: '20% Off Burgers',
+    subtitle: 'Limited time! Ends in 2 hours',
+    actionText: 'Order Now',
+    gradientColors: [const Color(0xFFE91E63), const Color(0xFFF44336)],
+    emoji: '⚡',
+    onTap: onTap,
+  );
+
+  static PromotionalBanner grabMartHighlight({VoidCallback? onTap}) => PromotionalBanner(
+    id: 'grabmart_highlight',
+    title: 'Try GrabMart',
+    subtitle: 'Groceries delivered in 20 minutes',
+    actionText: 'Shop Now',
+    gradientColors: [const Color(0xFF00BCD4), const Color(0xFF4CAF50)],
+    emoji: '🏪',
+    onTap: onTap,
+  );
+
+  static List<PromotionalBanner> getDefaultBanners({
+    VoidCallback? onWelcomeTap,
+    VoidCallback? onReferralTap,
+    VoidCallback? onFlashDealTap,
+    VoidCallback? onGrabMartTap,
+  }) {
+    return [
+      welcomeOffer(onTap: onWelcomeTap),
+      referralBoost(onTap: onReferralTap),
+      flashDeal(onTap: onFlashDealTap),
+      grabMartHighlight(onTap: onGrabMartTap),
+    ];
   }
 }

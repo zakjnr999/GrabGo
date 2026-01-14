@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:grab_go_customer/features/order/view/item_rating.dart';
+import 'package:grab_go_customer/features/order/view/vendor_rating.dart';
 import 'package:grab_go_customer/features/order/view/rider_rating.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -12,7 +12,7 @@ class RatingOnboarding extends StatefulWidget {
   final String orderId;
   final String? riderName;
   final String? riderImage;
-  const RatingOnboarding({super.key, required this.orderId, this.riderName, this.riderImage});
+  const RatingOnboarding({super.key, required this.orderId, this.riderName, required this.riderImage});
 
   @override
   State<RatingOnboarding> createState() => RatingOnboardingState();
@@ -75,7 +75,7 @@ class RatingOnboardingState extends State<RatingOnboarding> with SingleTickerPro
                   },
                   children: [
                     RiderRating(orderId: widget.orderId, riderName: widget.riderName, riderImage: widget.riderImage),
-                    const ItemRating(),
+                    VendorRating(),
                   ],
                 ),
 
@@ -116,19 +116,22 @@ class RatingOnboardingState extends State<RatingOnboarding> with SingleTickerPro
                   ),
                 ),
 
-                Positioned(
-                  right: 10,
-                  top: padding.top + 20.h,
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => context.pop(),
-                      customBorder: const CircleBorder(),
-                      child: Padding(
-                        padding: EdgeInsets.all(10.r),
-                        child: Text(
-                          'Skip',
-                          style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.bold),
+                Visibility(
+                  visible: _index == 0 ? true : false,
+                  child: Positioned(
+                    right: 10,
+                    top: padding.top + 20.h,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => context.pop(),
+                        customBorder: const CircleBorder(),
+                        child: Padding(
+                          padding: EdgeInsets.all(10.r),
+                          child: Text(
+                            'Skip',
+                            style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ),
                     ),
@@ -140,7 +143,7 @@ class RatingOnboardingState extends State<RatingOnboarding> with SingleTickerPro
                   right: 20.w,
                   bottom: padding.bottom + 20.h,
                   child: AppButton(
-                    buttonText: _index < 2 ? AppStrings.cont : AppStrings.getStarted,
+                    buttonText: _index == 0 ? "Continue" : "Done",
                     onPressed: next,
                     backgroundColor: colors.accentOrange,
                     borderRadius: KBorderSize.borderRadius15,
