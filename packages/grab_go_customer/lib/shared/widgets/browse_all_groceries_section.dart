@@ -88,7 +88,7 @@ class _BrowseAllGroceriesSectionState extends State<BrowseAllGroceriesSection> {
         padding: EdgeInsets.symmetric(horizontal: 20.w),
         child: GridView.builder(
           shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             childAspectRatio: 0.65,

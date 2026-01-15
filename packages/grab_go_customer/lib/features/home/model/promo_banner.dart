@@ -1,43 +1,63 @@
 class PromoBanner {
   final String id;
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final String imageUrl;
-  final String discount;
+  final String? discount;
   final String backgroundColor;
   final String? targetUrl;
+  final DateTime startDate;
+  final DateTime endDate;
+  final bool isActive;
+  final int priority;
+  final String targetAudience;
 
-  const PromoBanner({
+  PromoBanner({
     required this.id,
     required this.title,
-    required this.subtitle,
+    this.subtitle,
     required this.imageUrl,
-    required this.discount,
+    this.discount,
     required this.backgroundColor,
     this.targetUrl,
+    required this.startDate,
+    required this.endDate,
+    required this.isActive,
+    required this.priority,
+    required this.targetAudience,
   });
 
   factory PromoBanner.fromJson(Map<String, dynamic> json) {
     return PromoBanner(
-      id: json['id']?.toString() ?? '',
-      title: json['title']?.toString() ?? '',
-      subtitle: json['subtitle']?.toString() ?? '',
-      imageUrl: json['imageUrl']?.toString() ?? json['image_url']?.toString() ?? '',
-      discount: json['discount']?.toString() ?? '',
-      backgroundColor: json['backgroundColor']?.toString() ?? json['background_color']?.toString() ?? '#FE6132',
-      targetUrl: json['targetUrl']?.toString() ?? json['target_url']?.toString(),
+      id: json['_id'] as String,
+      title: json['title'] as String,
+      subtitle: json['subtitle'] as String?,
+      imageUrl: json['imageUrl'] as String,
+      discount: json['discount'] as String?,
+      backgroundColor: json['backgroundColor'] as String? ?? '#FFFFFF',
+      targetUrl: json['targetUrl'] as String?,
+      startDate: DateTime.parse(json['startDate'] as String),
+      endDate: DateTime.parse(json['endDate'] as String),
+      isActive: json['isActive'] as bool? ?? true,
+      priority: json['priority'] as int? ?? 0,
+      targetAudience: json['targetAudience'] as String? ?? 'all',
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      '_id': id,
       'title': title,
       'subtitle': subtitle,
       'imageUrl': imageUrl,
       'discount': discount,
       'backgroundColor': backgroundColor,
       'targetUrl': targetUrl,
+      'startDate': startDate.toIso8601String(),
+      'endDate': endDate.toIso8601String(),
+      'isActive': isActive,
+      'priority': priority,
+      'targetAudience': targetAudience,
     };
   }
 }

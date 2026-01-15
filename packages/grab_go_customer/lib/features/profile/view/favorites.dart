@@ -4,7 +4,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
-import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
@@ -88,7 +87,6 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final padding = MediaQuery.paddingOf(context);
     Size size = MediaQuery.sizeOf(context);
 
     final systemUiOverlayStyle = SystemUiOverlayStyle(
@@ -303,11 +301,7 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
     return Container(
       height: 44.h,
       width: 44.w,
-      decoration: BoxDecoration(
-        color: colors.backgroundPrimary.withValues(alpha: 0.2),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: isActive ? 1.5 : 0.0),
-      ),
+      decoration: BoxDecoration(color: colors.backgroundPrimary.withValues(alpha: 0.2), shape: BoxShape.circle),
       child: Material(
         color: Colors.transparent,
         child: InkWell(

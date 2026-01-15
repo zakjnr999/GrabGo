@@ -15,7 +15,6 @@ import 'package:grab_go_customer/shared/widgets/browse_category_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/browse_grid_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/home_search.dart';
 import 'package:grab_go_customer/shared/widgets/popular_item_card.dart';
-import 'package:grab_go_customer/shared/widgets/section_header.dart';
 import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';

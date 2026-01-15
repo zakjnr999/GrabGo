@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_category.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
@@ -63,7 +62,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   int _recommendedDisplayedCount = 10;
   int _previousCartCount = 0;
 
-  // Scroll tracking for collapsing header
   late final ValueNotifier<double> _scrollOffsetNotifier;
   static const double _collapsedHeight = 70.0;
   static const double _scrollThreshold = 150.0;

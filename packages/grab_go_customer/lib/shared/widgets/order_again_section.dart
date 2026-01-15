@@ -50,7 +50,7 @@ class OrderAgainSection extends StatelessWidget {
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.only(left: 20.w),
-              physics: const BouncingScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(),
               itemCount: recentOrders.length,
               itemBuilder: (context, index) {
                 final item = recentOrders[index];

@@ -1,7 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
-import 'dart:ui';
-
 import 'package:dotted_line/dotted_line.dart';
 import 'package:easy_stepper/easy_stepper.dart';
 import 'package:flutter/material.dart';
@@ -20,7 +16,6 @@ import '../providers/mock_tracking_provider.dart';
 import '../providers/base_tracking_provider.dart';
 import '../config/tracking_service_locator.dart';
 import 'delivery_success_screen.dart';
-import 'rider_rating.dart';
 import 'call_screen.dart';
 
 class MapTracking extends StatefulWidget {
@@ -819,14 +814,14 @@ class _MapTrackingState extends State<MapTracking> {
                                               quantity: 2,
                                               price: "GHS 45.00",
                                             ),
-                                            Divider(color: colors.inputBorder.withOpacity(0.3), height: 24.h),
+                                            Divider(color: colors.inputBorder.withValues(alpha: 0.3), height: 24.h),
                                             _buildOrderItem(
                                               colors: colors,
                                               itemName: "Fried Plantain",
                                               quantity: 1,
                                               price: "GHS 15.00",
                                             ),
-                                            Divider(color: colors.inputBorder.withOpacity(0.3), height: 24.h),
+                                            Divider(color: colors.inputBorder.withValues(alpha: 0.3), height: 24.h),
                                             _buildOrderItem(
                                               colors: colors,
                                               itemName: "Coca Cola (500ml)",
@@ -1075,7 +1070,7 @@ class _MapTrackingState extends State<MapTracking> {
         Container(
           padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
           decoration: BoxDecoration(
-            color: colors.accentOrange.withOpacity(0.1),
+            color: colors.accentOrange.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(6.r),
           ),
           child: Text(

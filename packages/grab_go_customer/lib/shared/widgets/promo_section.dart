@@ -133,9 +133,9 @@ class _PromoSectionState extends State<PromoSection> {
                   padding: EdgeInsets.symmetric(horizontal: 8.w),
                   child: PromoBannerCard(
                     title: banner.title,
-                    subtitle: banner.subtitle,
+                    subtitle: banner.subtitle!,
                     imageUrl: banner.imageUrl,
-                    discount: banner.discount,
+                    discount: banner.discount!,
                     backgroundColor: _parseColor(banner.backgroundColor),
                     onTap: () {
                       debugPrint('Tapped banner: ${banner.title}');

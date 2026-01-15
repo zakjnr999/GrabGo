@@ -118,15 +118,27 @@ class _MyAppState extends State<GrabGoCustomerApp> with WidgetsBindingObserver {
 
   Future<void> _initializeWebRTC() async {
     try {
+      debugPrint('🔧 Attempting to initialize WebRTC...');
       final socketService = SocketService();
       final webrtcService = context.read<WebRTCService>();
       final user = UserService().currentUser;
+
+      debugPrint('   Socket connected: ${socketService.isConnected}');
+      debugPrint('   Socket exists: ${socketService.socket != null}');
+      debugPrint('   User exists: ${user != null}');
+      debugPrint('   User ID: ${user?.id}');
 
       if (socketService.isConnected && socketService.socket != null && user != null) {
         await webrtcService.initialize(socketService.socket!, user.id!);
         debugPrint('✅ WebRTC service initialized');
       } else {
         debugPrint('⚠️ Cannot initialize WebRTC: Socket not connected or user not logged in');
+        debugPrint('   Will retry in 2 seconds...');
+        
+        // Retry after a delay
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) _initializeWebRTC();
+        });
       }
     } catch (e) {
       debugPrint('Error initializing WebRTC: $e');

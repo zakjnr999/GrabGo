@@ -54,7 +54,7 @@ class FreshArrivalsSection extends StatelessWidget {
       child: ListView.builder(
         padding: EdgeInsets.only(left: 20.w),
         scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
+        physics: const AlwaysScrollableScrollPhysics(),
         itemCount: items.length,
         itemBuilder: (context, index) {
           final item = items[index];

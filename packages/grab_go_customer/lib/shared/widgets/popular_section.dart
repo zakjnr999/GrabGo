@@ -49,7 +49,7 @@ class PopularSection extends StatelessWidget {
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.only(left: 20.w),
-              physics: const BouncingScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(),
               itemCount: popularItems.length,
               itemBuilder: (context, index) {
                 final item = popularItems[index];

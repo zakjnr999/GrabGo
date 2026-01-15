@@ -311,6 +311,8 @@ app.use("/api/payments", require("./routes/payments"));
 app.use("/api/categories", require("./routes/categories"));
 app.use("/api/foods", require("./routes/foods"));
 app.use("/api/groceries", require("./routes/groceries"));
+app.use("/api/pharmacies", require("./routes/pharmacies"));
+app.use("/api/grabmart", require("./routes/grabmart"));
 app.use("/api/riders", require("./routes/riders"));
 app.use("/api/chats", require("./routes/chats"));
 app.use("/api/statuses", require("./routes/statuses"));

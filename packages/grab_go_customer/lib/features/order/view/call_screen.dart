@@ -148,7 +148,7 @@ class _CallScreenState extends State<CallScreen> {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [colors.accentViolet.withOpacity(0.8), colors.backgroundPrimary.withOpacity(0)],
+          colors: [colors.accentViolet.withValues(alpha: 0.8), colors.backgroundPrimary.withValues(alpha: 0)],
         ),
       ),
       padding: EdgeInsets.all(20.w),
@@ -225,7 +225,7 @@ class _CallScreenState extends State<CallScreen> {
         Container(
           width: 80.w,
           height: 80.w,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange.withOpacity(0.2)),
+          decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange.withValues(alpha: 0.2)),
           child: Icon(statusIcon, size: 40.sp, color: colors.accentOrange),
         ),
 
@@ -311,7 +311,7 @@ class _CallScreenState extends State<CallScreen> {
               color: color ?? colors.cardBackground,
               boxShadow: [
                 BoxShadow(
-                  color: (color ?? colors.cardBackground).withOpacity(0.3),
+                  color: (color ?? colors.cardBackground).withValues(alpha: 0.3),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),

@@ -186,6 +186,7 @@ class StoreSpecialsSection extends StatelessWidget {
               height: 260.h,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: EdgeInsets.symmetric(horizontal: 20.w),
                 itemCount: storeSpecial.items.length,
                 separatorBuilder: (context, index) => SizedBox(width: 12.w),

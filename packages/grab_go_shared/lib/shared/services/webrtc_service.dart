@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
-import 'package:grab_go_shared/shared/services/user_service.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 enum CallState { idle, ringing, connecting, active, ended }
@@ -20,6 +19,7 @@ class WebRTCService extends ChangeNotifier {
 
   // Socket
   IO.Socket? _socket;
+  String? _userId;
 
   // State
   CallState _callState = CallState.idle;
@@ -42,11 +42,30 @@ class WebRTCService extends ChangeNotifier {
   bool get isSpeakerOn => _isSpeakerOn;
   bool get isIncoming => _isIncoming;
 
-  // STUN/TURN servers configuration
+  // STUN  // ICE servers configuration - Using Metered.ca for reliable TURN
   final Map<String, dynamic> _iceServers = {
     'iceServers': [
-      {'urls': 'stun:stun.l.google.com:19302'},
-      {'urls': 'turn:34.136.2.17:3478', 'username': 'testuser', 'credential': 'testpass'},
+      {'urls': 'stun:stun.relay.metered.ca:80'},
+      {
+        'urls': 'turn:global.relay.metered.ca:80',
+        'username': '391f82e16b189f1a5fc1e628',
+        'credential': 'T0cC8/w3OJ4F3hVD'
+      },
+      {
+        'urls': 'turn:global.relay.metered.ca:80?transport=tcp',
+        'username': '391f82e16b189f1a5fc1e628',
+        'credential': 'T0cC8/w3OJ4F3hVD'
+      },
+      {
+        'urls': 'turn:global.relay.metered.ca:443',
+        'username': '391f82e16b189f1a5fc1e628',
+        'credential': 'T0cC8/w3OJ4F3hVD'
+      },
+      {
+        'urls': 'turns:global.relay.metered.ca:443?transport=tcp',
+        'username': '391f82e16b189f1a5fc1e628',
+        'credential': 'T0cC8/w3OJ4F3hVD'
+      }
     ],
   };
 
@@ -61,6 +80,7 @@ class WebRTCService extends ChangeNotifier {
   /// Initialize WebRTC service with socket
   Future<void> initialize(IO.Socket socket, String userId) async {
     _socket = socket;
+    _userId = userId;
     _setupSocketListeners();
 
     // Register user for WebRTC signaling
@@ -127,9 +147,16 @@ class WebRTCService extends ChangeNotifier {
       await _peerConnection!.setLocalDescription(offer);
 
       // Send offer to server
+      debugPrint('📡 Socket connected: ${_socket?.connected}');
+      debugPrint('📡 Socket ID: ${_socket?.id}');
+      debugPrint('📞 Emitting webrtc:call event...');
+      debugPrint('   Callee ID: $calleeId');
+      debugPrint('   Caller ID: $_userId');
+      debugPrint('   Order ID: $orderId');
+
       _socket?.emit('webrtc:call', {
         'calleeId': calleeId,
-        'callerId': UserService().currentUser?.id,
+        'callerId': _userId,
         'orderId': orderId,
         'offer': offer.toMap(),
         'callType': 'audio',
@@ -232,11 +259,13 @@ class WebRTCService extends ChangeNotifier {
 
     // Handle ICE candidates
     _peerConnection!.onIceCandidate = (candidate) {
+      debugPrint('🧊 Sending ICE candidate to remote');
       _socket?.emit('webrtc:ice-candidate', {
         'callId': _currentCallId,
         'candidate': candidate.toMap(),
         'targetUserId': _otherUserId,
       });
+      debugPrint('✅ ICE candidate sent');
     };
 
     // Handle remote stream
@@ -250,14 +279,26 @@ class WebRTCService extends ChangeNotifier {
 
     // Handle connection state changes
     _peerConnection!.onConnectionState = (state) {
-      debugPrint('Connection state: $state');
+      debugPrint('📡 Connection state: $state');
       if (state == RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
+        debugPrint('✅ Call is now ACTIVE!');
         _callState = CallState.active;
         notifyListeners();
       } else if (state == RTCPeerConnectionState.RTCPeerConnectionStateFailed ||
           state == RTCPeerConnectionState.RTCPeerConnectionStateDisconnected) {
+        debugPrint('❌ Connection failed or disconnected');
         endCall();
       }
+    };
+
+    // Handle ICE gathering state
+    _peerConnection!.onIceGatheringState = (state) {
+      debugPrint('🧊 ICE gathering state: $state');
+    };
+
+    // Handle ICE connection state
+    _peerConnection!.onIceConnectionState = (state) {
+      debugPrint('🧊 ICE connection state: $state');
     };
   }
 
@@ -288,6 +329,9 @@ class WebRTCService extends ChangeNotifier {
 
   /// Handle call answered
   void _handleCallAnswered(dynamic data) async {
+    debugPrint('📞 Received call-answered event');
+    debugPrint('   Data: $data');
+
     final answer = data['answer'];
 
     if (_peerConnection == null) {
@@ -295,13 +339,26 @@ class WebRTCService extends ChangeNotifier {
       return;
     }
 
+    debugPrint('📞 Setting remote description (answer)...');
     await _peerConnection!.setRemoteDescription(RTCSessionDescription(answer['sdp'], answer['type']));
 
-    debugPrint('WebRTC: Call answered');
+    debugPrint('✅ WebRTC: Call answered - remote description set');
+
+    // Check connection state immediately
+    final connectionState = await _peerConnection!.getConnectionState();
+    debugPrint('📡 Current connection state: $connectionState');
+
+    // If already connected, update state immediately
+    if (connectionState == RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
+      debugPrint('✅ Already connected! Setting state to active');
+      _callState = CallState.active;
+      notifyListeners();
+    }
   }
 
   /// Handle ICE candidate
   void _handleIceCandidate(dynamic data) async {
+    debugPrint('🧊 Received ICE candidate from remote');
     final candidate = data['candidate'];
 
     if (_peerConnection == null) {
@@ -313,7 +370,7 @@ class WebRTCService extends ChangeNotifier {
       RTCIceCandidate(candidate['candidate'], candidate['sdpMid'], candidate['sdpMLineIndex']),
     );
 
-    debugPrint('WebRTC: ICE candidate added');
+    debugPrint('✅ WebRTC: ICE candidate added');
   }
 
   /// Handle call ended

@@ -69,7 +69,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         await AuthGuard.checkAuthAndRedirect(context);
       }
     } catch (e) {
-      debugPrint('❌ Splash screen initialization error: $e');
+      debugPrint('Splash screen initialization error: $e');
       if (mounted) {
         context.go("/onboarding");
       }
@@ -80,7 +80,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     try {
       await Future.wait([CacheService.initialize()]);
     } catch (e) {
-      debugPrint('⚠️ Initialization warning: $e');
+      debugPrint('Initialization warning: $e');
     }
   }
 
@@ -299,13 +299,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                                   package: "grab_go_shared",
                                   fontWeight: FontWeight.w900,
                                   fontSize: 38.sp,
-                                  shadows: [
-                                    Shadow(
-                                      color: Colors.black.withValues(alpha: 0.3),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
                                 ),
                               ),
                               SizedBox(height: 10.h),

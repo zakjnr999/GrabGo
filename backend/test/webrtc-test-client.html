@@ -314,11 +314,26 @@
 
         const iceServers = {
             iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun.relay.metered.ca:80' },
                 {
-                    urls: 'turn:34.136.2.17:3478',
-                    username: 'testuser',
-                    credential: 'testpass'
+                    urls: 'turn:global.relay.metered.ca:80',
+                    username: '391f82e16b189f1a5fc1e628',
+                    credential: 'T0cC8/w3OJ4F3hVD'
+                },
+                {
+                    urls: 'turn:global.relay.metered.ca:80?transport=tcp',
+                    username: '391f82e16b189f1a5fc1e628',
+                    credential: 'T0cC8/w3OJ4F3hVD'
+                },
+                {
+                    urls: 'turn:global.relay.metered.ca:443',
+                    username: '391f82e16b189f1a5fc1e628',
+                    credential: 'T0cC8/w3OJ4F3hVD'
+                },
+                {
+                    urls: 'turns:global.relay.metered.ca:443?transport=tcp',
+                    username: '391f82e16b189f1a5fc1e628',
+                    credential: 'T0cC8/w3OJ4F3hVD'
                 }
             ]
         };
@@ -450,6 +465,7 @@
             log(`   Order: ${data.orderId}`, 'info');
 
             currentCallId = data.callId;
+            window.callerUserId = data.callerId; // Store for ICE candidates
 
             // Update UI
             updateStatus('📞 Incoming Call...', 'calling pulsing');
@@ -540,6 +556,7 @@
             // Handle ICE candidates
             peerConnection.onicecandidate = (event) => {
                 if (event.candidate) {
+                    log(`🧊 Sending ICE candidate to ${window.callerUserId}`, 'info');
                     socket.emit('webrtc:ice-candidate', {
                         callId: currentCallId,
                         candidate: {
@@ -547,9 +564,9 @@
                             sdpMid: event.candidate.sdpMid,
                             sdpMLineIndex: event.candidate.sdpMLineIndex
                         },
-                        targetUserId: 'customer'
+                        targetUserId: window.callerUserId // Use actual caller ID
                     });
-                    log('🧊 ICE candidate sent', 'info');
+                    log('✅ ICE candidate sent', 'success');
                 }
             };
 
