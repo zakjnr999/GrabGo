@@ -23,7 +23,7 @@ const pharmacyItemSchema = new mongoose.Schema(
         unit: {
             type: String,
             required: [true, 'Unit is required'],
-            enum: ['piece', 'pack', 'bottle', 'box', 'tube', 'strip', 'ml', 'gram'],
+            enum: ['piece', 'pack', 'bottle', 'box', 'tube', 'strip', 'ml', 'gram', 'can'],
         },
         category: {
             type: mongoose.Schema.Types.ObjectId,
