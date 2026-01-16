@@ -7,6 +7,8 @@ import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_category.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart';
+import 'package:grab_go_customer/features/pharmacy/viewmodel/pharmacy_provider.dart';
+import 'package:grab_go_customer/features/grabmart/viewmodel/grabmart_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_banner_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_deals_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_discovery_provider.dart';
@@ -286,15 +288,24 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                         colors,
                                       ),
                                       SizedBox(height: KSpacing.md.h),
-                                      _buildDealsSection(serviceProvider, groceryProvider),
-                                      _buildFreshArrivalsSection(serviceProvider, groceryProvider),
-                                      _buildOrderAgainSection(serviceProvider),
-                                      _buildPopularSection(serviceProvider, foodProvider),
-                                      _buildBuyAgainSection(serviceProvider, groceryProvider),
-                                      _buildPromoBanners(serviceProvider),
-                                      _buildTopRatedSection(serviceProvider, foodProvider),
-                                      _buildStoreSpecialsSection(serviceProvider, groceryProvider),
-                                      _buildBrowseAllGroceriesSection(serviceProvider, groceryProvider),
+                                      // Service-specific sections
+                                      if (serviceProvider.isFoodService || serviceProvider.isGroceryService) ...[
+                                        _buildDealsSection(serviceProvider, groceryProvider),
+                                        _buildFreshArrivalsSection(serviceProvider, groceryProvider),
+                                        _buildOrderAgainSection(serviceProvider),
+                                        _buildPopularSection(serviceProvider, foodProvider),
+                                        _buildBuyAgainSection(serviceProvider, groceryProvider),
+                                        _buildPromoBanners(serviceProvider),
+                                        _buildTopRatedSection(serviceProvider, foodProvider),
+                                        _buildStoreSpecialsSection(serviceProvider, groceryProvider),
+                                        _buildBrowseAllGroceriesSection(serviceProvider, groceryProvider),
+                                      ] else if (serviceProvider.isPharmacyService) ...[
+                                        _buildPharmacyInfoSection(colors),
+                                        _buildPharmacyServicesSection(colors),
+                                      ] else if (serviceProvider.isStoresService) ...[
+                                        _buildGrabMartInfoSection(colors),
+                                        _buildGrabMartQuickPicksSection(colors),
+                                      ],
                                     ],
                                   ),
                                 ),
@@ -530,6 +541,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final serviceProvider = Provider.of<ServiceProvider>(context);
     final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
     final foodProvider = Provider.of<FoodProvider>(context, listen: false);
+    final pharmacyProvider = Provider.of<PharmacyProvider>(context, listen: false);
+    final grabMartProvider = Provider.of<GrabMartProvider>(context, listen: false);
 
     // // Uncomment if you need skeleton loading state
     // final colors = context.appColors;
@@ -560,6 +573,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             foodProvider.fetchRecentOrderItems();
             foodProvider.fetchPromotionalBanners();
             foodProvider.fetchDeals();
+          }
+        } else if (service.id == 'pharmacy') {
+          // Load pharmacy data
+          if (pharmacyProvider.categories.isEmpty) {
+            pharmacyProvider.fetchCategories();
+          }
+        } else if (service.id == 'convenience') {
+          // Load GrabMart data
+          if (grabMartProvider.categories.isEmpty) {
+            grabMartProvider.fetchCategories();
           }
         }
       },
@@ -810,6 +833,146 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return const SizedBox.shrink();
   }
 
+  Widget _buildPharmacyCategories(bool isDark, Size size, AppColorsExtension colors) {
+    return Consumer<PharmacyProvider>(
+      builder: (context, pharmacyProvider, _) {
+        if (pharmacyProvider.isLoadingCategories) {
+          return CategorySkeleton(colors: colors, isDark: isDark, size: size);
+        }
+
+        if (pharmacyProvider.categories.isNotEmpty) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20.w),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Health Categories",
+                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                    ),
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          // Navigate to browse page
+                        },
+                        borderRadius: BorderRadius.circular(20.r),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              "See All",
+                              style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.accentOrange),
+                            ),
+                            SizedBox(width: 4.w),
+                            SvgPicture.asset(
+                              Assets.icons.navArrowRight,
+                              package: 'grab_go_shared',
+                              height: 14.h,
+                              width: 14.w,
+                              colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: KSpacing.md.h),
+              ServiceCategoryList<PharmacyCategory>(
+                categories: pharmacyProvider.categories,
+                getName: (cat) => cat.name,
+                getEmoji: (cat) => cat.emoji,
+                getId: (cat) => cat.id,
+                initialSelectedCategory: null,
+                onCategorySelected: (category) {
+                  // Handle category selection
+                },
+              ),
+            ],
+          );
+        }
+
+        return const SizedBox.shrink();
+      },
+    );
+  }
+
+  Widget _buildGrabMartCategories(bool isDark, Size size, AppColorsExtension colors) {
+    return Consumer<GrabMartProvider>(
+      builder: (context, grabMartProvider, _) {
+        if (grabMartProvider.isLoadingCategories) {
+          return CategorySkeleton(colors: colors, isDark: isDark, size: size);
+        }
+
+        if (grabMartProvider.categories.isNotEmpty) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20.w),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Shop by Category",
+                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                    ),
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          // Navigate to browse page
+                        },
+                        borderRadius: BorderRadius.circular(20.r),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              "See All",
+                              style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.accentOrange),
+                            ),
+                            SizedBox(width: 4.w),
+                            SvgPicture.asset(
+                              Assets.icons.navArrowRight,
+                              package: 'grab_go_shared',
+                              height: 14.h,
+                              width: 14.w,
+                              colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: KSpacing.md.h),
+              ServiceCategoryList<GrabMartCategory>(
+                categories: grabMartProvider.categories,
+                getName: (cat) => cat.name,
+                getEmoji: (cat) => cat.emoji,
+                getId: (cat) => cat.id,
+                initialSelectedCategory: null,
+                onCategorySelected: (category) {
+                  // Handle category selection
+                },
+              ),
+            ],
+          );
+        }
+
+        return const SizedBox.shrink();
+      },
+    );
+  }
+
   Widget _buildCategories(
     ServiceProvider serviceProvider,
     FoodProvider foodProvider,
@@ -822,6 +985,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       return _buildFoodCategories(foodProvider, isDark, size, colors);
     } else if (serviceProvider.isGroceryService) {
       return _buildGroceryCategories(groceryProvider, isDark, size, colors);
+    } else if (serviceProvider.isPharmacyService) {
+      return _buildPharmacyCategories(isDark, size, colors);
+    } else if (serviceProvider.isStoresService) {
+      return _buildGrabMartCategories(isDark, size, colors);
     }
     return const SizedBox.shrink();
   }
@@ -1234,5 +1401,255 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
         ),
     ];
+  }
+
+  // ==================== PHARMACY SECTIONS ====================
+
+  Widget _buildPharmacyInfoSection(AppColorsExtension colors) {
+    return Column(
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.w),
+          child: Container(
+            padding: EdgeInsets.all(16.w),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF2196F3).withOpacity(0.1), Color(0xFF2196F3).withOpacity(0.05)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16.r),
+              border: Border.all(color: Color(0xFF2196F3).withOpacity(0.2)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(12.w),
+                  decoration: BoxDecoration(
+                    color: Color(0xFF2196F3).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Text('💊', style: TextStyle(fontSize: 24.sp)),
+                ),
+                SizedBox(width: 16.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Health & Wellness',
+                        style: TextStyle(
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.w700,
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                      SizedBox(height: 4.h),
+                      Text(
+                        'Browse medicines, vitamins, and health products',
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: KSpacing.lg.h),
+      ],
+    );
+  }
+
+  Widget _buildPharmacyServicesSection(AppColorsExtension colors) {
+    final services = [
+      {'icon': '🩺', 'title': 'Prescription', 'subtitle': 'Upload & order'},
+      {'icon': '🚑', 'title': '24/7 Service', 'subtitle': 'Always available'},
+      {'icon': '🏥', 'title': 'Verified', 'subtitle': 'Licensed pharmacies'},
+      {'icon': '🚚', 'title': 'Fast Delivery', 'subtitle': 'Quick & safe'},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.w),
+          child: Text(
+            'Our Services',
+            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+          ),
+        ),
+        SizedBox(height: KSpacing.md.h),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.w),
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 1.5,
+              crossAxisSpacing: 12.w,
+              mainAxisSpacing: 12.h,
+            ),
+            itemCount: services.length,
+            itemBuilder: (context, index) {
+              final service = services[index];
+              return Container(
+                padding: EdgeInsets.all(16.w),
+                decoration: BoxDecoration(
+                  color: colors.backgroundSecondary,
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(color: colors.borderColor),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(service['icon']!, style: TextStyle(fontSize: 32.sp)),
+                    SizedBox(height: 8.h),
+                    Text(
+                      service['title']!,
+                      style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                    ),
+                    Text(
+                      service['subtitle']!,
+                      style: TextStyle(fontSize: 11.sp, color: colors.textSecondary),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        SizedBox(height: KSpacing.lg.h),
+      ],
+    );
+  }
+
+  // ==================== GRABMART SECTIONS ====================
+
+  Widget _buildGrabMartInfoSection(AppColorsExtension colors) {
+    return Column(
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.w),
+          child: Container(
+            padding: EdgeInsets.all(16.w),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF9C27B0).withOpacity(0.1), Color(0xFF9C27B0).withOpacity(0.05)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16.r),
+              border: Border.all(color: Color(0xFF9C27B0).withOpacity(0.2)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(12.w),
+                  decoration: BoxDecoration(
+                    color: Color(0xFF9C27B0).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Text('🏪', style: TextStyle(fontSize: 24.sp)),
+                ),
+                SizedBox(width: 16.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Convenience Store',
+                        style: TextStyle(
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.w700,
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                      SizedBox(height: 4.h),
+                      Text(
+                        'Snacks, drinks, and everyday essentials',
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: KSpacing.lg.h),
+      ],
+    );
+  }
+
+  Widget _buildGrabMartQuickPicksSection(AppColorsExtension colors) {
+    final quickPicks = [
+      {'icon': '🍿', 'title': 'Snacks', 'subtitle': 'Quick bites'},
+      {'icon': '🥤', 'title': 'Beverages', 'subtitle': 'Cold drinks'},
+      {'icon': '🍦', 'title': 'Ice Cream', 'subtitle': 'Frozen treats'},
+      {'icon': '🔌', 'title': 'Electronics', 'subtitle': 'Gadgets & more'},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.w),
+          child: Text(
+            'Quick Picks',
+            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+          ),
+        ),
+        SizedBox(height: KSpacing.md.h),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.w),
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 1.5,
+              crossAxisSpacing: 12.w,
+              mainAxisSpacing: 12.h,
+            ),
+            itemCount: quickPicks.length,
+            itemBuilder: (context, index) {
+              final pick = quickPicks[index];
+              return Container(
+                padding: EdgeInsets.all(16.w),
+                decoration: BoxDecoration(
+                  color: colors.backgroundSecondary,
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(color: colors.borderColor),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(pick['icon']!, style: TextStyle(fontSize: 32.sp)),
+                    SizedBox(height: 8.h),
+                    Text(
+                      pick['title']!,
+                      style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                    ),
+                    Text(
+                      pick['subtitle']!,
+                      style: TextStyle(fontSize: 11.sp, color: colors.textSecondary),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        SizedBox(height: KSpacing.lg.h),
+      ],
+    );
   }
 }

@@ -1466,4 +1466,96 @@ class CacheService {
       debugPrint('Error clearing grocery cache: $e');
     }
   }
+
+  // ==================== PHARMACY CACHE ====================
+
+  /// Save pharmacy categories
+  static Future<bool> savePharmacyCategories(List<Map<String, dynamic>> categories) async {
+    try {
+      final categoriesJson = jsonEncode(categories);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      await _instance.setString('pharmacy_categories', categoriesJson);
+      await _instance.setInt('pharmacy_categories_cache_timestamp', timestamp);
+      return true;
+    } catch (e) {
+      debugPrint('Error saving pharmacy categories: $e');
+      return false;
+    }
+  }
+
+  /// Get pharmacy categories
+  static List<Map<String, dynamic>> getPharmacyCategories() {
+    try {
+      final categoriesJson = _instance.getString('pharmacy_categories');
+      if (categoriesJson != null) {
+        final List<dynamic> categoriesList = jsonDecode(categoriesJson);
+        return categoriesList.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting pharmacy categories: $e');
+      return [];
+    }
+  }
+
+  /// Clear pharmacy cache
+  static Future<void> clearPharmacyCache() async {
+    try {
+      final keys = [
+        'pharmacy_categories',
+        'pharmacy_categories_cache_timestamp'
+      ];
+      for (final key in keys) {
+        await _instance.remove(key);
+      }
+    } catch (e) {
+      debugPrint('Error clearing pharmacy cache: $e');
+    }
+  }
+
+  // ==================== GRABMART CACHE ====================
+
+  /// Save GrabMart categories
+  static Future<bool> saveGrabMartCategories(List<Map<String, dynamic>> categories) async {
+    try {
+      final categoriesJson = jsonEncode(categories);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      await _instance.setString('grabmart_categories', categoriesJson);
+      await _instance.setInt('grabmart_categories_cache_timestamp', timestamp);
+      return true;
+    } catch (e) {
+      debugPrint('Error saving GrabMart categories: $e');
+      return false;
+    }
+  }
+
+  /// Get GrabMart categories
+  static List<Map<String, dynamic>> getGrabMartCategories() {
+    try {
+      final categoriesJson = _instance.getString('grabmart_categories');
+      if (categoriesJson != null) {
+        final List<dynamic> categoriesList = jsonDecode(categoriesJson);
+        return categoriesList.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting GrabMart categories: $e');
+      return [];
+    }
+  }
+
+  /// Clear GrabMart cache
+  static Future<void> clearGrabMartCache() async {
+    try {
+      final keys = [
+        'grabmart_categories',
+        'grabmart_categories_cache_timestamp'
+      ];
+      for (final key in keys) {
+        await _instance.remove(key);
+      }
+    } catch (e) {
+      debugPrint('Error clearing GrabMart cache: $e');
+    }
+  }
 }

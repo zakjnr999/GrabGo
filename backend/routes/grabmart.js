@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const GrabMartStore = require('../models/GrabMartStore');
 const GrabMartCategory = require('../models/GrabMartCategory');
+const GrabMartItem = require('../models/GrabMartItem');
 const { protect } = require('../middleware/auth');
 
 // ==================== STORES ====================
@@ -141,6 +142,64 @@ router.get("/categories", async (req, res) => {
         });
     } catch (error) {
         console.error("Get GrabMart categories error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Server error",
+            error: error.message
+        });
+    }
+});
+
+// ==================== ITEMS ====================
+
+/**
+ * @route   GET /api/grabmart/items
+ * @desc    Get GrabMart items with optional filters
+ * @access  Public
+ */
+router.get("/items", async (req, res) => {
+    try {
+        const { category, store, minPrice, maxPrice, tags } = req.query;
+
+        let query = { isAvailable: true };
+
+        // Filter by category
+        if (category) {
+            query.category = category;
+        }
+
+        // Filter by store
+        if (store) {
+            query.store = store;
+        }
+
+        // Filter by price range
+        if (minPrice || maxPrice) {
+            query.price = {};
+            if (minPrice) query.price.$gte = parseFloat(minPrice);
+            if (maxPrice) query.price.$lte = parseFloat(maxPrice);
+        }
+
+        // Filter by tags
+        if (tags) {
+            const tagArray = tags.split(',');
+            query.tags = { $in: tagArray };
+        }
+
+        const items = await GrabMartItem.find(query)
+            .populate('category', 'name emoji')
+            .populate('store', 'store_name logo')
+            .sort({ orderCount: -1 })
+            .limit(50);
+
+        res.json({
+            success: true,
+            message: "GrabMart items retrieved successfully",
+            count: items.length,
+            data: items
+        });
+    } catch (error) {
+        console.error("Get GrabMart items error:", error);
         res.status(500).json({
             success: false,
             message: "Server error",

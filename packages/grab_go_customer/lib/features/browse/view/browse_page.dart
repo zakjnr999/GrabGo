@@ -6,6 +6,10 @@ import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_category.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart';
+import 'package:grab_go_customer/features/pharmacy/model/pharmacy_category.dart';
+import 'package:grab_go_customer/features/pharmacy/viewmodel/pharmacy_provider.dart';
+import 'package:grab_go_customer/features/grabmart/model/grabmart_category.dart';
+import 'package:grab_go_customer/features/grabmart/viewmodel/grabmart_provider.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/features/home/model/filter_model.dart';
 import 'package:grab_go_customer/features/home/model/service_model.dart';
@@ -222,6 +226,25 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
     final currentService = serviceProvider.currentService;
     final statusBarHeight = MediaQuery.of(context).padding.top;
 
+    // Dynamic subtitle based on service
+    String subtitle;
+    switch (currentService.id) {
+      case 'food':
+        subtitle = "What are you craving today?";
+        break;
+      case 'groceries':
+        subtitle = "Stock up on fresh essentials";
+        break;
+      case 'pharmacy':
+        subtitle = "Health & wellness products";
+        break;
+      case 'convenience':
+        subtitle = "Quick picks for everyday needs";
+        break;
+      default:
+        subtitle = "Discover what you need";
+    }
+
     return SizedBox.expand(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -241,7 +264,7 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
                         style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.w700, color: Colors.white),
                       ),
                       Text(
-                        "What are you craving today?",
+                        subtitle,
                         style: TextStyle(
                           fontFamily: "Lato",
                           package: 'grab_go_shared',
@@ -274,7 +297,7 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
                 );
               },
             )
-          else
+          else if (serviceProvider.isGroceryService)
             Consumer<GroceryProvider>(
               builder: (context, groceryProvider, _) {
                 final groceryCategories = groceryProvider.categories
@@ -312,6 +335,62 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
                   categories: groceryCategories,
                   activeFilter: _comprehensiveFilter,
                   hintText: "Search by name or category...",
+                  onFilterApplied: (FilterModel filter) {
+                    setState(() {
+                      _comprehensiveFilter = filter.copyWith();
+                    });
+                  },
+                  isFood: false,
+                );
+              },
+            )
+          else if (serviceProvider.isPharmacyService)
+            Consumer<PharmacyProvider>(
+              builder: (context, pharmacyProvider, _) {
+                final pharmacyCategories = pharmacyProvider.categories
+                    .map(
+                      (cat) => FoodCategoryModel(
+                        id: cat.id,
+                        name: cat.name,
+                        emoji: cat.emoji,
+                        description: cat.description,
+                        isActive: cat.isActive,
+                        items: [], // No items for now
+                      ),
+                    )
+                    .toList();
+                return HomeSearch(
+                  categories: pharmacyCategories,
+                  activeFilter: _comprehensiveFilter,
+                  hintText: "Search medicines & products...",
+                  onFilterApplied: (FilterModel filter) {
+                    setState(() {
+                      _comprehensiveFilter = filter.copyWith();
+                    });
+                  },
+                  isFood: false,
+                );
+              },
+            )
+          else if (serviceProvider.isStoresService)
+            Consumer<GrabMartProvider>(
+              builder: (context, grabMartProvider, _) {
+                final grabMartCategories = grabMartProvider.categories
+                    .map(
+                      (cat) => FoodCategoryModel(
+                        id: cat.id,
+                        name: cat.name,
+                        emoji: cat.emoji,
+                        description: cat.description,
+                        isActive: cat.isActive,
+                        items: [], // No items for now
+                      ),
+                    )
+                    .toList();
+                return HomeSearch(
+                  categories: grabMartCategories,
+                  activeFilter: _comprehensiveFilter,
+                  hintText: "Search snacks & essentials...",
                   onFilterApplied: (FilterModel filter) {
                     setState(() {
                       _comprehensiveFilter = filter.copyWith();
@@ -1041,6 +1120,9 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
   // Non-sliver version for SingleChildScrollView
   Widget _buildCategoryList(AppColorsExtension colors, ServiceProvider serviceProvider) {
     final isFood = serviceProvider.isFoodService;
+    final isGrocery = serviceProvider.isGroceryService;
+    final isPharmacy = serviceProvider.isPharmacyService;
+    final isGrabMart = serviceProvider.isStoresService;
 
     if (isFood) {
       return Selector<FoodProvider, List<FoodCategoryModel>>(
@@ -1061,7 +1143,7 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
           );
         },
       );
-    } else {
+    } else if (isGrocery) {
       return Selector<GroceryProvider, List<GroceryCategory>>(
         selector: (_, provider) => provider.categories,
         builder: (context, categories, child) {
@@ -1082,7 +1164,48 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
           );
         },
       );
+    } else if (isPharmacy) {
+      return Selector<PharmacyProvider, List<PharmacyCategory>>(
+        selector: (_, provider) => provider.categories,
+        builder: (context, categories, child) {
+          if (categories.isEmpty) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            return BrowseCategorySkeleton(colors: colors, isDark: isDark);
+          }
+
+          final categoryData = categories.map((cat) {
+            return {'id': cat.id, 'name': cat.name, 'emoji': cat.emoji, 'itemCount': 0};
+          }).toList();
+
+          return Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Column(children: categoryData.map((cat) => _buildCategoryCard(cat, colors)).toList()),
+          );
+        },
+      );
+    } else if (isGrabMart) {
+      return Selector<GrabMartProvider, List<GrabMartCategory>>(
+        selector: (_, provider) => provider.categories,
+        builder: (context, categories, child) {
+          if (categories.isEmpty) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            return BrowseCategorySkeleton(colors: colors, isDark: isDark);
+          }
+
+          final categoryData = categories.map((cat) {
+            return {'id': cat.id, 'name': cat.name, 'emoji': cat.emoji, 'itemCount': 0};
+          }).toList();
+
+          return Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Column(children: categoryData.map((cat) => _buildCategoryCard(cat, colors)).toList()),
+          );
+        },
+      );
     }
+
+    // Fallback
+    return const SizedBox.shrink();
   }
 
   Widget _buildItemGrid(AppColorsExtension colors, ServiceProvider serviceProvider) {

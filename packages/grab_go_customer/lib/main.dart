@@ -23,6 +23,8 @@ import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/theme_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/service_provider.dart';
 import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart';
+import 'package:grab_go_customer/features/pharmacy/viewmodel/pharmacy_provider.dart';
+import 'package:grab_go_customer/features/grabmart/viewmodel/grabmart_provider.dart';
 import 'package:grab_go_customer/features/vendors/viewmodel/vendor_provider.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:provider/provider.dart';
@@ -82,6 +84,8 @@ void main() async {
         ChangeNotifierProvider(create: (context) => SettingsProvider()),
         ChangeNotifierProvider(create: (context) => ServiceProvider()),
         ChangeNotifierProvider(create: (context) => GroceryProvider()),
+        ChangeNotifierProvider(create: (context) => PharmacyProvider()),
+        ChangeNotifierProvider(create: (context) => GrabMartProvider()),
         ChangeNotifierProvider(create: (context) => VendorProvider(vendorService)),
         ChangeNotifierProvider(create: (context) => WebRTCService()),
       ],
