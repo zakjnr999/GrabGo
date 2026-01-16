@@ -234,104 +234,80 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   onRefresh: _refreshData,
                   iconPath: serviceProvider.isFoodService ? Assets.icons.utensilsCrossed : Assets.icons.cart,
                   bgColor: colors.accentOrange,
-                  child: SingleChildScrollView(
+                  child: CustomScrollView(
                     controller: _scrollController,
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: EdgeInsets.only(top: size.height * 0.16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          color: colors.backgroundSecondary,
-                          child: Column(
-                            children: [
-                              SizedBox(height: KSpacing.lg.h),
-                              _buildServiceSelector(),
-                              SizedBox(height: KSpacing.lg.h),
-                              PromotionalBannerCarousel(
-                                banners: AppPromotionalBanners.getDefaultBanners(
-                                  onReferralTap: () => context.push('/referral'),
-                                  onWelcomeTap: () {
-                                    // Handle welcome offer tap
-                                  },
-                                  onFlashDealTap: () {
-                                    // Handle flash deal tap
-                                  },
-                                  onGrabMartTap: () {
-                                    // Handle GrabMart tap
-                                  },
+                    slivers: [
+                      SliverPadding(
+                        padding: EdgeInsets.only(top: size.height * 0.16),
+                        sliver: SliverToBoxAdapter(
+                          child: Container(
+                            color: colors.backgroundSecondary,
+                            child: Column(
+                              children: [
+                                SizedBox(height: KSpacing.lg.h),
+                                _buildServiceSelector(),
+                                SizedBox(height: KSpacing.lg.h),
+                                PromotionalBannerCarousel(
+                                  banners: AppPromotionalBanners.getDefaultBanners(
+                                    onReferralTap: () => context.push('/referral'),
+                                    onWelcomeTap: () {},
+                                    onFlashDealTap: () {},
+                                    onGrabMartTap: () {},
+                                  ),
                                 ),
-                              ),
-                              SizedBox(height: KSpacing.lg.h),
-                              AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 300),
-                                switchInCurve: Curves.easeInOut,
-                                switchOutCurve: Curves.easeInOut,
-                                transitionBuilder: (Widget child, Animation<double> animation) {
-                                  return FadeTransition(
-                                    opacity: animation,
-                                    child: SlideTransition(
-                                      position: Tween<Offset>(
-                                        begin: const Offset(0.0, 0.02),
-                                        end: Offset.zero,
-                                      ).animate(animation),
-                                      child: child,
-                                    ),
-                                  );
-                                },
-                                child: Column(
-                                  key: ValueKey<bool>(serviceProvider.isFoodService),
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // Categories
-                                    _buildCategories(
-                                      serviceProvider,
-                                      foodProvider,
-                                      groceryProvider,
-                                      isDark,
-                                      size,
-                                      colors,
-                                    ),
-
-                                    SizedBox(height: KSpacing.md.h),
-
-                                    // 3. Deals & Offers (Unified for both Food & Grocery)
-                                    _buildDealsSection(serviceProvider, groceryProvider),
-
-                                    // 4. Fresh Arrivals (Grocery only)
-                                    _buildFreshArrivalsSection(serviceProvider, groceryProvider),
-
-                                    // Order Again (Food only)
-                                    _buildOrderAgainSection(serviceProvider),
-
-                                    // 5. Popular Right Now (Unified for both Food & Grocery)
-                                    _buildPopularSection(serviceProvider, foodProvider),
-
-                                    // 6. Buy Again (Grocery only)
-                                    _buildBuyAgainSection(serviceProvider, groceryProvider),
-
-                                    // Unified Banners (Promo Section - Food only)
-                                    _buildPromoBanners(serviceProvider),
-
-                                    // 7. Top Rated Dishes (Unified for both Food & Grocery)
-                                    _buildTopRatedSection(serviceProvider, foodProvider),
-
-                                    // 8. Store Specials (Grocery only)
-                                    _buildStoreSpecialsSection(serviceProvider, groceryProvider),
-
-                                    // 9. Browse All Groceries (Grocery only)
-                                    _buildBrowseAllGroceriesSection(serviceProvider, groceryProvider),
-                                  ],
+                                SizedBox(height: KSpacing.lg.h),
+                                AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 300),
+                                  switchInCurve: Curves.easeInOut,
+                                  switchOutCurve: Curves.easeInOut,
+                                  transitionBuilder: (Widget child, Animation<double> animation) {
+                                    return FadeTransition(
+                                      opacity: animation,
+                                      child: SlideTransition(
+                                        position: Tween<Offset>(
+                                          begin: const Offset(0.0, 0.02),
+                                          end: Offset.zero,
+                                        ).animate(animation),
+                                        child: child,
+                                      ),
+                                    );
+                                  },
+                                  child: Column(
+                                    key: ValueKey<bool>(serviceProvider.isFoodService),
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildCategories(
+                                        serviceProvider,
+                                        foodProvider,
+                                        groceryProvider,
+                                        isDark,
+                                        size,
+                                        colors,
+                                      ),
+                                      SizedBox(height: KSpacing.md.h),
+                                      _buildDealsSection(serviceProvider, groceryProvider),
+                                      _buildFreshArrivalsSection(serviceProvider, groceryProvider),
+                                      _buildOrderAgainSection(serviceProvider),
+                                      _buildPopularSection(serviceProvider, foodProvider),
+                                      _buildBuyAgainSection(serviceProvider, groceryProvider),
+                                      _buildPromoBanners(serviceProvider),
+                                      _buildTopRatedSection(serviceProvider, foodProvider),
+                                      _buildStoreSpecialsSection(serviceProvider, groceryProvider),
+                                      _buildBrowseAllGroceriesSection(serviceProvider, groceryProvider),
+                                    ],
+                                  ),
                                 ),
-                              ),
-
-                              // Recommended (Food Specific or Generic)
-                              _buildRecommendedSection(serviceProvider, foodProvider, colors, size, isDark),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      // Lazy-loaded Recommended Section
+                      ..._buildRecommendedSectionSlivers(serviceProvider, foodProvider, colors, size, isDark),
+
+                      SliverToBoxAdapter(child: SizedBox(height: KSpacing.lg.h)),
+                    ],
                   ),
                 ),
 
@@ -423,204 +399,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             : const SizedBox.shrink(),
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       ),
-    );
-  }
-
-  Builder _buildRecommendedFoodItems(FoodProvider itemsProvider, Size size, AppColorsExtension colors, bool isDark) {
-    return Builder(
-      builder: (context) {
-        List<FoodItem> recommendedFoods = [];
-
-        List<FoodItem> allFoods = [];
-
-        // Show skeleton only when categories are empty (initial load or empty state)
-        if (itemsProvider.categories.isEmpty) {
-          return FoodItemSkeleton(colors: colors, isDark: isDark, size: size);
-        }
-
-        List<FoodCategoryModel> categoriesToProcess = itemsProvider.categories;
-
-        if (_selectedCategory != null) {
-          final categoryExists = categoriesToProcess.any((cat) => cat.id == _selectedCategory!.id);
-          if (categoryExists) {
-            categoriesToProcess = categoriesToProcess
-                .where((category) => category.id == _selectedCategory!.id)
-                .toList();
-          } else {
-            if (categoriesToProcess.isNotEmpty) {
-              final firstCategory = categoriesToProcess.first;
-              categoriesToProcess = [firstCategory];
-              if (_selectedCategory?.id != firstCategory.id) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) {
-                    setState(() {
-                      _selectedCategory = firstCategory;
-                    });
-                  }
-                });
-              }
-            }
-          }
-        } else if (_activeFilter.isActive && _activeFilter.selectedCategories.isNotEmpty) {
-          final validCategoryIds = itemsProvider.categories.map((cat) => cat.id).where((id) => id.isNotEmpty).toSet();
-
-          final validSelectedCategories = _activeFilter.selectedCategories
-              .where((id) => id.isNotEmpty && validCategoryIds.contains(id))
-              .toList();
-
-          if (validSelectedCategories.isNotEmpty) {
-            categoriesToProcess = itemsProvider.categories
-                .where((category) => validSelectedCategories.contains(category.id))
-                .toList();
-          } else {
-            if (categoriesToProcess.isNotEmpty) {
-              categoriesToProcess = [categoriesToProcess.first];
-            }
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                setState(() {
-                  _activeFilter.selectedCategories.clear();
-                });
-              }
-            });
-          }
-        } else if (categoriesToProcess.isNotEmpty) {
-          final firstCategory = categoriesToProcess.first;
-          categoriesToProcess = [firstCategory];
-          if (_selectedCategory?.id != firstCategory.id) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                setState(() {
-                  _selectedCategory = firstCategory;
-                });
-              }
-            });
-          }
-        }
-
-        final Set<String> seenItemKeys = {};
-        for (var category in categoriesToProcess) {
-          if (category.items.isNotEmpty) {
-            for (var item in category.items) {
-              final key = '${item.id}_${item.sellerId}';
-              if (!seenItemKeys.contains(key)) {
-                seenItemKeys.add(key);
-                allFoods.add(item);
-              }
-            }
-          }
-        }
-
-        if (allFoods.isNotEmpty) {
-          recommendedFoods = allFoods.take(_recommendedDisplayedCount.clamp(0, allFoods.length)).toList();
-        }
-
-        if (recommendedFoods.isEmpty) {
-          return _activeFilter.isActive
-              ? Container(
-                  height: size.height * 0.15,
-                  margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
-                  decoration: BoxDecoration(
-                    color: colors.backgroundPrimary,
-                    borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          "No items match your filters",
-                          style: TextStyle(color: colors.textSecondary, fontSize: 16.sp, fontWeight: FontWeight.w500),
-                        ),
-                        if (_activeFilter.isActive) ...[
-                          SizedBox(height: 8.h),
-                          Text(
-                            "Try adjusting your filter criteria",
-                            style: TextStyle(color: colors.textTertiary, fontSize: 12.sp),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                )
-              : FoodItemSkeleton(colors: colors, isDark: isDark, size: size);
-        }
-
-        return Column(
-          children: [
-            ListView.builder(
-              padding: EdgeInsets.zero,
-              physics: const NeverScrollableScrollPhysics(),
-              shrinkWrap: true,
-              itemCount: recommendedFoods.length,
-              itemBuilder: (context, index) {
-                final item = recommendedFoods[index];
-
-                return Consumer<CartProvider>(
-                  builder: (context, provider, _) {
-                    final bool isInCart = provider.cartItems.containsKey(item);
-
-                    return FoodItemCard(
-                      item: item,
-                      onTap: () => context.push("/foodDetails", extra: item),
-                      trailing: GestureDetector(
-                        onTap: () {
-                          if (isInCart) {
-                            provider.removeItemCompletely(item);
-                          } else {
-                            provider.addToCart(item, context: context);
-                          }
-                        },
-                        child: Container(
-                          padding: EdgeInsets.all(8.r),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
-                            border: Border.all(color: isInCart ? colors.accentOrange : colors.inputBorder, width: 1),
-                          ),
-                          child: SvgPicture.asset(
-                            Assets.icons.cart,
-                            package: 'grab_go_shared',
-                            height: 16.h,
-                            width: 16.w,
-                            colorFilter: ColorFilter.mode(
-                              isInCart ? Colors.white : colors.textPrimary,
-                              BlendMode.srcIn,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-
-            // Loading more indicator
-            if (allFoods.length > _recommendedDisplayedCount) ...[
-              Builder(
-                builder: (context) {
-                  // Auto-load more items after a delay
-                  Future.delayed(const Duration(milliseconds: 500), () {
-                    if (mounted && allFoods.length > _recommendedDisplayedCount) {
-                      setState(() {
-                        _recommendedDisplayedCount = (_recommendedDisplayedCount + 10).clamp(0, allFoods.length);
-                      });
-                    }
-                  });
-
-                  return LoadingMore(
-                    colors: colors,
-                    spinnerColor: colors.accentOrange,
-                    borderColor: colors.accentOrange,
-                  );
-                },
-              ),
-              SizedBox(height: 16.h),
-            ],
-          ],
-        );
-      },
     );
   }
 
@@ -1276,27 +1054,185 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildRecommendedSection(
+  List<Widget> _buildRecommendedSectionSlivers(
     ServiceProvider serviceProvider,
     FoodProvider foodProvider,
     AppColorsExtension colors,
     Size size,
     bool isDark,
   ) {
-    if (!serviceProvider.isFoodService) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionHeader(
-          title: "Recommended For You",
-          sectionIcon: Assets.icons.sparkles,
-          sectionTotal: 1,
-          accentColor: colors.accentOrange,
-          onSeeAll: () {},
+    if (!serviceProvider.isFoodService) return [];
+
+    return [
+      SliverToBoxAdapter(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(
+              title: "Recommended For You",
+              sectionIcon: Assets.icons.sparkles,
+              sectionTotal: 1,
+              accentColor: colors.accentOrange,
+              onSeeAll: () {},
+            ),
+            SizedBox(height: KSpacing.lg.h),
+          ],
         ),
-        SizedBox(height: KSpacing.lg.h),
-        _buildRecommendedFoodItems(foodProvider, size, colors, isDark),
-      ],
-    );
+      ),
+      ..._buildRecommendedFoodItemsSliver(foodProvider, size, colors, isDark),
+    ];
+  }
+
+  List<Widget> _buildRecommendedFoodItemsSliver(
+    FoodProvider itemsProvider,
+    Size size,
+    AppColorsExtension colors,
+    bool isDark,
+  ) {
+    List<FoodItem> allFoods = [];
+
+    // Show skeleton only when categories are empty (initial load or empty state)
+    if (itemsProvider.categories.isEmpty) {
+      return [
+        SliverToBoxAdapter(
+          child: FoodItemSkeleton(colors: colors, isDark: isDark, size: size),
+        ),
+      ];
+    }
+
+    List<FoodCategoryModel> categoriesToProcess = itemsProvider.categories;
+
+    if (_selectedCategory != null) {
+      final categoryExists = categoriesToProcess.any((cat) => cat.id == _selectedCategory!.id);
+      if (categoryExists) {
+        categoriesToProcess = categoriesToProcess.where((category) => category.id == _selectedCategory!.id).toList();
+      } else if (categoriesToProcess.isNotEmpty) {
+        categoriesToProcess = [categoriesToProcess.first];
+      }
+    } else if (_activeFilter.isActive && _activeFilter.selectedCategories.isNotEmpty) {
+      final validCategoryIds = itemsProvider.categories.map((cat) => cat.id).where((id) => id.isNotEmpty).toSet();
+      final validSelectedCategories = _activeFilter.selectedCategories
+          .where((id) => id.isNotEmpty && validCategoryIds.contains(id))
+          .toList();
+
+      if (validSelectedCategories.isNotEmpty) {
+        categoriesToProcess = itemsProvider.categories
+            .where((category) => validSelectedCategories.contains(category.id))
+            .toList();
+      } else if (categoriesToProcess.isNotEmpty) {
+        categoriesToProcess = [categoriesToProcess.first];
+      }
+    } else if (categoriesToProcess.isNotEmpty) {
+      categoriesToProcess = [categoriesToProcess.first];
+    }
+
+    final Set<String> seenItemKeys = {};
+    for (var category in categoriesToProcess) {
+      if (category.items.isNotEmpty) {
+        for (var item in category.items) {
+          final key = '${item.id}_${item.sellerId}';
+          if (!seenItemKeys.contains(key)) {
+            seenItemKeys.add(key);
+            allFoods.add(item);
+          }
+        }
+      }
+    }
+
+    if (allFoods.isEmpty) {
+      return [
+        SliverToBoxAdapter(
+          child: _activeFilter.isActive
+              ? Container(
+                  height: size.height * 0.15,
+                  margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
+                  decoration: BoxDecoration(
+                    color: colors.backgroundPrimary,
+                    borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "No items match your filters",
+                          style: TextStyle(color: colors.textSecondary, fontSize: 16.sp, fontWeight: FontWeight.w500),
+                        ),
+                        if (_activeFilter.isActive) ...[
+                          SizedBox(height: 8.h),
+                          Text(
+                            "Try adjusting your filter criteria",
+                            style: TextStyle(color: colors.textTertiary, fontSize: 12.sp),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                )
+              : FoodItemSkeleton(colors: colors, isDark: isDark, size: size),
+        ),
+      ];
+    }
+
+    final recommendedFoods = allFoods.take(_recommendedDisplayedCount.clamp(0, allFoods.length)).toList();
+
+    return [
+      SliverList(
+        delegate: SliverChildBuilderDelegate((context, index) {
+          final item = recommendedFoods[index];
+          return Consumer<CartProvider>(
+            builder: (context, provider, _) {
+              final bool isInCart = provider.cartItems.containsKey(item);
+              return FoodItemCard(
+                item: item,
+                onTap: () => context.push("/foodDetails", extra: item),
+                trailing: GestureDetector(
+                  onTap: () {
+                    if (isInCart) {
+                      provider.removeItemCompletely(item);
+                    } else {
+                      provider.addToCart(item, context: context);
+                    }
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(8.r),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
+                      border: Border.all(color: isInCart ? colors.accentOrange : colors.inputBorder, width: 1),
+                    ),
+                    child: SvgPicture.asset(
+                      Assets.icons.cart,
+                      package: 'grab_go_shared',
+                      height: 16.h,
+                      width: 16.w,
+                      colorFilter: ColorFilter.mode(isInCart ? Colors.white : colors.textPrimary, BlendMode.srcIn),
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        }, childCount: recommendedFoods.length),
+      ),
+      if (allFoods.length > _recommendedDisplayedCount)
+        SliverToBoxAdapter(
+          child: Builder(
+            builder: (context) {
+              Future.delayed(const Duration(milliseconds: 500), () {
+                if (mounted && allFoods.length > _recommendedDisplayedCount) {
+                  setState(() {
+                    _recommendedDisplayedCount = (_recommendedDisplayedCount + 10).clamp(0, allFoods.length);
+                  });
+                }
+              });
+              return Padding(
+                padding: EdgeInsets.only(bottom: 16.h),
+                child: LoadingMore(colors: colors, spinnerColor: colors.accentOrange, borderColor: colors.accentOrange),
+              );
+            },
+          ),
+        ),
+    ];
   }
 }

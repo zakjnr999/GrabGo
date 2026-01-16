@@ -226,6 +226,7 @@ class _VendorsPageState extends State<VendorsPage> {
                 isLoading: provider.isLoading,
                 accentColor: colors.accentOrange,
               ),
+              SizedBox(height: KSpacing.lg.h),
 
               // 4. Budget Friendly
               VendorHorizontalSection(

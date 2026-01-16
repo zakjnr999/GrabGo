@@ -150,19 +150,19 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
 
   /// Fetch popular items
   Future<void> fetchPopularItems({bool forceRefresh = false}) async {
-    // Skip if already loading
     if (_state.isLoadingPopular) return;
 
-    // Try loading from cache ONLY if we have no data yet and not force refreshing
+    // 1. Try loading from cache first if we have no data
     if (!forceRefresh && _state.popularItems.isEmpty) {
-      if (CacheService.isPopularItemsCacheValid()) {
-        await _loadPopularFromCache();
-        if (_state.popularItems.isNotEmpty) {
-          return; // Cache hit, we're done
-        }
-      }
+      await _loadPopularFromCache();
     }
 
+    // 2. Fetch fresh data from API
+    await _fetchFromApiPopular();
+  }
+
+  /// Private: Internal fetch for popular items
+  Future<void> _fetchFromApiPopular() async {
     _updateState(_state.copyWith(isLoadingPopular: true));
 
     try {
@@ -173,12 +173,6 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
       if (kDebugMode) {
         print('Error fetching popular items: $e');
       }
-
-      // If we have existing data, keep it. Otherwise try cache
-      if (_state.popularItems.isEmpty) {
-        await _loadPopularFromCache();
-      }
-
       _updateState(_state.copyWith(isLoadingPopular: false));
     }
   }
@@ -190,19 +184,19 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
 
   /// Fetch top-rated items
   Future<void> fetchTopRatedItems({bool forceRefresh = false}) async {
-    // Skip if already loading
     if (_state.isLoadingTopRated) return;
 
-    // Try loading from cache ONLY if we have no data yet and not force refreshing
+    // 1. Try loading from cache first if we have no data
     if (!forceRefresh && _state.topRatedItems.isEmpty) {
-      if (CacheService.isTopRatedItemsCacheValid()) {
-        await _loadTopRatedFromCache();
-        if (_state.topRatedItems.isNotEmpty) {
-          return; // Cache hit, we're done
-        }
-      }
+      await _loadTopRatedFromCache();
     }
 
+    // 2. Fetch fresh data from API
+    await _fetchFromApiTopRated();
+  }
+
+  /// Private: Internal fetch for top-rated items
+  Future<void> _fetchFromApiTopRated() async {
     _updateState(_state.copyWith(isLoadingTopRated: true));
 
     try {
@@ -213,12 +207,6 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
       if (kDebugMode) {
         print('Error fetching top rated items: $e');
       }
-
-      // If we have existing data, keep it. Otherwise try cache
-      if (_state.topRatedItems.isEmpty) {
-        await _loadTopRatedFromCache();
-      }
-
       _updateState(_state.copyWith(isLoadingTopRated: false));
     }
   }

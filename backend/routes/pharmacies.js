@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const PharmacyStore = require('../models/PharmacyStore');
+const PharmacyCategory = require('../models/PharmacyCategory');
 const { protect } = require('../middleware/auth');
 
 // ==================== STORES ====================
@@ -135,6 +136,34 @@ router.get("/emergency", async (req, res) => {
         });
     } catch (error) {
         console.error("Get emergency pharmacies error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Server error",
+            error: error.message
+        });
+    }
+});
+
+// ==================== CATEGORIES ====================
+
+/**
+ * @route   GET /api/pharmacies/categories
+ * @desc    Get all pharmacy categories
+ * @access  Public
+ */
+router.get("/categories", async (req, res) => {
+    try {
+        const categories = await PharmacyCategory.find({ isActive: true })
+            .sort({ sortOrder: 1 });
+
+        res.json({
+            success: true,
+            message: "Pharmacy categories retrieved successfully",
+            count: categories.length,
+            data: categories
+        });
+    } catch (error) {
+        console.error("Get pharmacy categories error:", error);
         res.status(500).json({
             success: false,
             message: "Server error",

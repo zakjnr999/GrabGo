@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const GrabMartStore = require('../models/GrabMartStore');
+const GrabMartCategory = require('../models/GrabMartCategory');
 const { protect } = require('../middleware/auth');
 
 // ==================== STORES ====================
@@ -112,6 +113,34 @@ router.get("/search", async (req, res) => {
         });
     } catch (error) {
         console.error("Search GrabMart stores error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Server error",
+            error: error.message
+        });
+    }
+});
+
+// ==================== CATEGORIES ====================
+
+/**
+ * @route   GET /api/grabmart/categories
+ * @desc    Get all GrabMart categories
+ * @access  Public
+ */
+router.get("/categories", async (req, res) => {
+    try {
+        const categories = await GrabMartCategory.find({ isActive: true })
+            .sort({ sortOrder: 1 });
+
+        res.json({
+            success: true,
+            message: "GrabMart categories retrieved successfully",
+            count: categories.length,
+            data: categories
+        });
+    } catch (error) {
+        console.error("Get GrabMart categories error:", error);
         res.status(500).json({
             success: false,
             message: "Server error",

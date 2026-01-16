@@ -46,19 +46,18 @@ class FoodCategoryProvider extends ChangeNotifier with CacheMixin {
   bool get isLoading => _state.isLoading;
   String? get error => _state.error;
 
-  /// Fetch categories with caching
+  /// Fetch categories with caching (Offline-First pattern)
   Future<void> fetchCategories() async {
-    // Return if already loaded or loading
-    if (_state.categories.isNotEmpty || _state.isLoading) return;
+    // If already loading, don't start another request
+    if (_state.isLoading) return;
 
-    // Try loading from cache first
-    if (_state.categories.isEmpty && CacheService.isFoodCategoriesCacheValid()) {
+    // 1. Try loading from cache first (regardless of validity for immediate UI)
+    if (_state.categories.isEmpty) {
       await _loadFromCache();
-      if (_state.categories.isNotEmpty) {
-        return;
-      }
+      // If we found cached data, we continue to fetch fresh data in background
     }
 
+    // 2. Fetch fresh data from API
     await _fetchFromApi();
   }
 

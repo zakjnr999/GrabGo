@@ -18,6 +18,7 @@ import 'package:grab_go_customer/shared/widgets/popular_item_card.dart';
 import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_customer/features/vendors/model/vendor_type.dart';
 import 'package:provider/provider.dart';
 
 class BrowsePage extends StatefulWidget {
@@ -99,6 +100,21 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
     super.dispose();
   }
 
+  VendorType _getVendorTypeFromService(String serviceId) {
+    switch (serviceId) {
+      case 'food':
+        return VendorType.food;
+      case 'groceries':
+        return VendorType.grocery;
+      case 'pharmacy':
+        return VendorType.pharmacy;
+      case 'convenience':
+        return VendorType.grabmart;
+      default:
+        return VendorType.food;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context); // Required for AutomaticKeepAliveClientMixin
@@ -107,8 +123,11 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
     final serviceProvider = Provider.of<ServiceProvider>(context);
     Size size = MediaQuery.sizeOf(context);
 
+    final vendorType = _getVendorTypeFromService(serviceProvider.currentService.id);
+    final accentColor = Color(vendorType.color);
+
     final systemUiOverlayStyle = SystemUiOverlayStyle(
-      statusBarColor: colors.accentOrange,
+      statusBarColor: accentColor,
       statusBarIconBrightness: Brightness.light,
       systemNavigationBarColor: colors.backgroundSecondary,
       systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
@@ -144,95 +163,21 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
                 SingleChildScrollView(
                   controller: _scrollController,
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.only(top: size.height * 0.20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Search and chips
-                        Container(
-                          color: colors.backgroundSecondary,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Padding(
-                                padding: EdgeInsets.only(top: 20.h, bottom: 8.h),
-                                child: serviceProvider.isFoodService
-                                    ? Consumer<FoodProvider>(
-                                        builder: (context, foodProvider, _) {
-                                          return HomeSearch(
-                                            categories: foodProvider.categories,
-                                            activeFilter: _comprehensiveFilter,
-                                            hintText: "Search by name or category...",
-                                            onFilterApplied: (FilterModel filter) {
-                                              setState(() {
-                                                _comprehensiveFilter = filter.copyWith();
-                                              });
-                                            },
-                                            isFood: true,
-                                          );
-                                        },
-                                      )
-                                    : Consumer<GroceryProvider>(
-                                        builder: (context, groceryProvider, _) {
-                                          final groceryCategories = groceryProvider.categories
-                                              .map(
-                                                (cat) => FoodCategoryModel(
-                                                  id: cat.id,
-                                                  name: cat.name,
-                                                  emoji: cat.emoji,
-                                                  description: cat.description,
-                                                  isActive: cat.isActive,
-                                                  items: groceryProvider.items
-                                                      .where((item) => item.categoryId == cat.id)
-                                                      .map(
-                                                        (item) => FoodItem(
-                                                          id: item.id,
-                                                          name: item.name,
-                                                          description: item.description,
-                                                          price: item.price,
-                                                          discountPercentage: item.discountPercentage,
-                                                          image: item.image,
-                                                          rating: item.rating,
-                                                          deliveryTimeMinutes: 30,
-                                                          sellerName: item.storeName ?? 'Unknown Store',
-                                                          sellerId: item.storeId.hashCode % 1000000,
-                                                          restaurantId: item.storeId,
-                                                          restaurantImage: '',
-                                                          orderCount: item.orderCount,
-                                                        ),
-                                                      )
-                                                      .toList(),
-                                                ),
-                                              )
-                                              .toList();
-                                          return HomeSearch(
-                                            categories: groceryCategories,
-                                            activeFilter: _comprehensiveFilter,
-                                            hintText: "Search by name or category...",
-                                            onFilterApplied: (FilterModel filter) {
-                                              setState(() {
-                                                _comprehensiveFilter = filter.copyWith();
-                                              });
-                                            },
-                                            isFood: false,
-                                          );
-                                        },
-                                      ),
-                              ),
-                              _buildQuickFilters(colors),
-                              if (_selectedQuickFilters.isNotEmpty || _comprehensiveFilter.isActive)
-                                _buildResultsBar(colors),
-                            ],
-                          ),
-                        ),
+                  padding: EdgeInsets.only(top: size.height * 0.26),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Quick Filters
+                      _buildQuickFilters(colors),
+                      if (_selectedQuickFilters.isNotEmpty || _comprehensiveFilter.isActive) _buildResultsBar(colors),
 
-                        SizedBox(height: 16.h),
-                        _selectedQuickFilters.isNotEmpty || _comprehensiveFilter.isActive
-                            ? _buildItemGrid(colors, serviceProvider)
-                            : _buildCategoryList(colors, serviceProvider),
-                      ],
-                    ),
+                      SizedBox(height: 16.h),
+                      _selectedQuickFilters.isNotEmpty || _comprehensiveFilter.isActive
+                          ? _buildItemGrid(colors, serviceProvider)
+                          : _buildCategoryList(colors, serviceProvider),
+                    ],
                   ),
+                ),
 
                 Positioned(top: 0, left: 0, right: 0, child: _buildCollapsibleUmbrellaHeader(colors, size)),
               ],
@@ -249,7 +194,7 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
       builder: (context, scrollOffset, _) {
         final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
 
-        final expandedHeight = size.height * 0.20;
+        final expandedHeight = size.height * 0.24;
 
         final currentHeight = expandedHeight - ((expandedHeight - _collapsedHeight) * collapseProgress);
 
@@ -275,155 +220,109 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
   Widget _buildHeader(AppColorsExtension colors) {
     final serviceProvider = Provider.of<ServiceProvider>(context);
     final currentService = serviceProvider.currentService;
+    final statusBarHeight = MediaQuery.of(context).padding.top;
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(20.w, MediaQuery.of(context).padding.top + 10.h, 20.w, 16.h),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+    return SizedBox.expand(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Browse Title
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Padding(
+            padding: EdgeInsets.fromLTRB(20.w, statusBarHeight + 10.h, 20.w, 8.h),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(
-                  'Browse',
-                  style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.w700, color: Colors.white),
-                ),
-                Text(
-                  "What are you craving today?",
-                  style: TextStyle(
-                    fontFamily: "Lato",
-                    package: 'grab_go_shared',
-                    color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w400,
+                // Browse Title
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Browse ${currentService.name}',
+                        style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.w700, color: Colors.white),
+                      ),
+                      Text(
+                        "What are you craving today?",
+                        style: TextStyle(
+                          fontFamily: "Lato",
+                          package: 'grab_go_shared',
+                          color: Colors.white.withValues(alpha: 0.8),
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-          // Service Indicator Badge
-          GestureDetector(
-            onTap: _showServiceSwitcher,
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(20.r),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(currentService.emoji, style: TextStyle(fontSize: 14.sp)),
-                  SizedBox(width: 6.w),
-                  Flexible(
-                    child: Text(
-                      currentService.name,
-                      style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: Colors.white),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  SizedBox(width: 4.w),
-
-                  SvgPicture.asset(
-                    Assets.icons.navArrowDown,
-                    package: 'grab_go_shared',
-                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                    width: 16.w,
-                    height: 16.h,
-                  ),
-                ],
-              ),
+          SizedBox(height: 4.h),
+          // Search Bar integrated in header
+          if (serviceProvider.isFoodService)
+            Consumer<FoodProvider>(
+              builder: (context, foodProvider, _) {
+                return HomeSearch(
+                  categories: foodProvider.categories,
+                  activeFilter: _comprehensiveFilter,
+                  hintText: "Search by name or category...",
+                  onFilterApplied: (FilterModel filter) {
+                    setState(() {
+                      _comprehensiveFilter = filter.copyWith();
+                    });
+                  },
+                  isFood: true,
+                );
+              },
+            )
+          else
+            Consumer<GroceryProvider>(
+              builder: (context, groceryProvider, _) {
+                final groceryCategories = groceryProvider.categories
+                    .map(
+                      (cat) => FoodCategoryModel(
+                        id: cat.id,
+                        name: cat.name,
+                        emoji: cat.emoji,
+                        description: cat.description,
+                        isActive: cat.isActive,
+                        items: groceryProvider.items
+                            .where((item) => item.categoryId == cat.id)
+                            .map(
+                              (item) => FoodItem(
+                                id: item.id,
+                                name: item.name,
+                                description: item.description,
+                                price: item.price,
+                                discountPercentage: item.discountPercentage,
+                                image: item.image,
+                                rating: item.rating,
+                                deliveryTimeMinutes: 30,
+                                sellerName: item.storeName ?? 'Unknown Store',
+                                sellerId: item.storeId.hashCode % 1000000,
+                                restaurantId: item.storeId,
+                                restaurantImage: '',
+                                orderCount: item.orderCount,
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    )
+                    .toList();
+                return HomeSearch(
+                  categories: groceryCategories,
+                  activeFilter: _comprehensiveFilter,
+                  hintText: "Search by name or category...",
+                  onFilterApplied: (FilterModel filter) {
+                    setState(() {
+                      _comprehensiveFilter = filter.copyWith();
+                    });
+                  },
+                  isFood: false,
+                );
+              },
             ),
-          ),
         ],
       ),
-    );
-  }
-
-  void _showServiceSwitcher() {
-    final colors = context.appColors;
-    final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
-    final foodProvider = Provider.of<FoodProvider>(context, listen: false);
-    final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: colors.backgroundPrimary,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20.r))),
-      builder: (context) {
-        return Container(
-          padding: EdgeInsets.all(20.r),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Switch Service',
-                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
-              ),
-              SizedBox(height: 16.h),
-              ...AppServices.all.map((service) {
-                final isSelected = serviceProvider.currentService.id == service.id;
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Container(
-                    width: 40.w,
-                    height: 40.h,
-                    decoration: BoxDecoration(
-                      color: isSelected ? colors.accentOrange.withValues(alpha: 0.1) : colors.backgroundSecondary,
-                      borderRadius: BorderRadius.circular(8.r),
-                    ),
-                    child: Center(
-                      child: Text(service.emoji, style: TextStyle(fontSize: 20.sp)),
-                    ),
-                  ),
-                  title: Text(
-                    service.name,
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                      color: isSelected ? colors.accentOrange : colors.textPrimary,
-                    ),
-                  ),
-                  trailing: isSelected
-                      ? Container(
-                          height: 25.h,
-                          width: 25.w,
-                          padding: EdgeInsets.all(4.r),
-                          decoration: BoxDecoration(color: colors.accentOrange, shape: BoxShape.circle),
-                          child: SvgPicture.asset(
-                            Assets.icons.check,
-                            package: "grab_go_shared",
-                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                          ),
-                        )
-                      : null,
-                  onTap: () {
-                    serviceProvider.selectService(service);
-
-                    // Load data for the selected service if needed
-                    if (service.id == 'groceries' && groceryProvider.categories.isEmpty) {
-                      groceryProvider.fetchCategories();
-                      groceryProvider.fetchStores();
-                      groceryProvider.fetchItems();
-                      groceryProvider.fetchDeals();
-                    } else if (service.id == 'food' && foodProvider.categories.isEmpty) {
-                      foodProvider.fetchCategories();
-                      foodProvider.fetchRecentOrderItems();
-                      foodProvider.fetchPromotionalBanners();
-                      foodProvider.fetchDeals();
-                    }
-
-                    Navigator.pop(context);
-                  },
-                );
-              }),
-            ],
-          ),
-        );
-      },
     );
   }
 
@@ -439,13 +338,12 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
       return true;
     }).toList();
 
-    return Container(
+    return SizedBox(
       height: 40.h,
-      margin: EdgeInsets.only(top: 8.h),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.only(left: 20.w),
-        physics: const BouncingScrollPhysics(),
+        physics: const AlwaysScrollableScrollPhysics(),
         itemCount: visibleFilters.length,
         itemBuilder: (context, index) {
           final filter = visibleFilters[index];

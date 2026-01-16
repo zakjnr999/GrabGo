@@ -33,6 +33,7 @@ class CacheService {
         await clearRestaurantsCache();
         await clearChatList();
         await clearAllVendorsCache();
+        await clearGroceryCache();
 
         // Update version
         await _instance.setInt(_cacheVersionKey, CACHE_VERSION);
@@ -1327,5 +1328,142 @@ class CacheService {
   /// Check if cache is available
   static bool isCacheAvailable() {
     return _prefs != null;
+  }
+
+  /// Save grocery categories
+  static Future<bool> saveGroceryCategories(List<Map<String, dynamic>> categories) async {
+    try {
+      final categoriesJson = jsonEncode(categories);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      await _instance.setString('grocery_categories', categoriesJson);
+      await _instance.setInt('grocery_categories_cache_timestamp', timestamp);
+      return true;
+    } catch (e) {
+      debugPrint('Error saving grocery categories: $e');
+      return false;
+    }
+  }
+
+  /// Get grocery categories
+  static List<Map<String, dynamic>> getGroceryCategories() {
+    try {
+      final categoriesJson = _instance.getString('grocery_categories');
+      if (categoriesJson != null) {
+        final List<dynamic> categoriesList = jsonDecode(categoriesJson);
+        return categoriesList.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting grocery categories: $e');
+      return [];
+    }
+  }
+
+  /// Save grocery stores
+  static Future<bool> saveGroceryStores(List<Map<String, dynamic>> stores) async {
+    try {
+      final storesJson = jsonEncode(stores);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      await _instance.setString('grocery_stores', storesJson);
+      await _instance.setInt('grocery_stores_cache_timestamp', timestamp);
+      return true;
+    } catch (e) {
+      debugPrint('Error saving grocery stores: $e');
+      return false;
+    }
+  }
+
+  /// Get grocery stores
+  static List<Map<String, dynamic>> getGroceryStores() {
+    try {
+      final storesJson = _instance.getString('grocery_stores');
+      if (storesJson != null) {
+        final List<dynamic> storesList = jsonDecode(storesJson);
+        return storesList.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting grocery stores: $e');
+      return [];
+    }
+  }
+
+  /// Save grocery items
+  static Future<bool> saveGroceryItems(List<Map<String, dynamic>> items) async {
+    try {
+      final itemsJson = jsonEncode(items);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      await _instance.setString('grocery_items', itemsJson);
+      await _instance.setInt('grocery_items_cache_timestamp', timestamp);
+      return true;
+    } catch (e) {
+      debugPrint('Error saving grocery items: $e');
+      return false;
+    }
+  }
+
+  /// Get grocery items
+  static List<Map<String, dynamic>> getGroceryItems() {
+    try {
+      final itemsJson = _instance.getString('grocery_items');
+      if (itemsJson != null) {
+        final List<dynamic> itemsList = jsonDecode(itemsJson);
+        return itemsList.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting grocery items: $e');
+      return [];
+    }
+  }
+
+  /// Save grocery deals
+  static Future<bool> saveGroceryDeals(List<Map<String, dynamic>> deals) async {
+    try {
+      final dealsJson = jsonEncode(deals);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      await _instance.setString('grocery_deals', dealsJson);
+      await _instance.setInt('grocery_deals_cache_timestamp', timestamp);
+      return true;
+    } catch (e) {
+      debugPrint('Error saving grocery deals: $e');
+      return false;
+    }
+  }
+
+  /// Get grocery deals
+  static List<Map<String, dynamic>> getGroceryDeals() {
+    try {
+      final dealsJson = _instance.getString('grocery_deals');
+      if (dealsJson != null) {
+        final List<dynamic> dealsList = jsonDecode(dealsJson);
+        return dealsList.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting grocery deals: $e');
+      return [];
+    }
+  }
+
+  /// Clear all grocery cache
+  static Future<void> clearGroceryCache() async {
+    try {
+      final keys = [
+        'grocery_categories',
+        'grocery_categories_cache_timestamp',
+        'grocery_stores',
+        'grocery_stores_cache_timestamp',
+        'grocery_items',
+        'grocery_items_cache_timestamp',
+        'grocery_deals',
+        'grocery_deals_cache_timestamp'
+      ];
+      for (final key in keys) {
+        await _instance.remove(key);
+      }
+    } catch (e) {
+      debugPrint('Error clearing grocery cache: $e');
+    }
   }
 }
