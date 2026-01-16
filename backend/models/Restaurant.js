@@ -1,12 +1,30 @@
 const mongoose = require('mongoose');
 
+const dayScheduleSchema = new mongoose.Schema({
+  open: { type: String, default: '09:00' },
+  close: { type: String, default: '21:00' },
+  isClosed: { type: Boolean, default: false }
+}, { _id: false });
+
+const openingHoursSchema = new mongoose.Schema({
+  monday: { type: dayScheduleSchema, default: () => ({}) },
+  tuesday: { type: dayScheduleSchema, default: () => ({}) },
+  wednesday: { type: dayScheduleSchema, default: () => ({}) },
+  thursday: { type: dayScheduleSchema, default: () => ({}) },
+  friday: { type: dayScheduleSchema, default: () => ({}) },
+  saturday: { type: dayScheduleSchema, default: () => ({}) },
+  sunday: { type: dayScheduleSchema, default: () => ({}) }
+}, { _id: false });
+
 const socialsSchema = new mongoose.Schema({
   facebook: { type: String, default: null },
-  instagram: { type: String, default: null }
+  instagram: { type: String, default: null },
+  twitter: { type: String, default: null },
+  website: { type: String, default: null }
 }, { _id: false });
 
 const restaurantSchema = new mongoose.Schema({
-  restaurant_name: {
+  restaurantName: {
     type: String,
     required: [true, 'Please provide restaurant name'],
     trim: true
@@ -21,23 +39,38 @@ const restaurantSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Please provide phone number']
   },
-  address: {
-    type: String,
-    required: [true, 'Please provide address']
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      required: [true, 'Coordinates are required']
+    },
+    address: {
+      type: String,
+      required: [true, 'Please provide address']
+    },
+    city: {
+      type: String,
+      required: [true, 'Please provide city']
+    },
+    area: {
+      type: String,
+      required: [true, 'Please provide area/neighborhood']
+    }
   },
-  city: {
-    type: String,
-    required: [true, 'Please provide city']
-  },
-  owner_full_name: {
+  ownerFullName: {
     type: String,
     required: [true, 'Please provide owner full name']
   },
-  owner_contact_number: {
+  ownerContactNumber: {
     type: String,
     required: [true, 'Please provide owner contact number']
   },
-  business_id_number: {
+  businessIdNumber: {
     type: String,
     required: [true, 'Please provide business ID number'],
     unique: true
@@ -52,15 +85,15 @@ const restaurantSchema = new mongoose.Schema({
     type: String,
     default: null
   },
-  business_id_photo: {
+  businessIdPhoto: {
     type: String,
     default: null
   },
-  owner_photo: {
+  ownerPhoto: {
     type: String,
     default: null
   },
-  food_type: {
+  foodType: {
     type: String,
     default: null
   },
@@ -68,34 +101,32 @@ const restaurantSchema = new mongoose.Schema({
     type: String,
     default: null
   },
-  latitude: {
-    type: Number,
-    default: null
+  averageDeliveryTime: {
+    type: Number, // In minutes
+    default: 30
   },
-  longitude: {
-    type: Number,
-    default: null
+  averagePreparationTime: {
+    type: Number, // In minutes
+    default: 15,
+    min: [0, 'Preparation time cannot be negative']
   },
-  average_delivery_time: {
-    type: String,
-    default: null
-  },
-  delivery_fee: {
+  deliveryFee: {
     type: Number,
     default: 0
   },
-  min_order: {
+  minOrder: {
     type: Number,
     default: 0
   },
-  opening_hours: {
-    type: String,
-    default: null
+  openingHours: {
+    type: openingHoursSchema,
+    default: () => ({})
   },
-  payment_methods: [{
-    type: String
+  paymentMethods: [{
+    type: String,
+    enum: ['cash', 'card', 'mobile_money']
   }],
-  banner_images: [{
+  bannerImages: [{
     type: String
   }],
   status: {
@@ -105,35 +136,24 @@ const restaurantSchema = new mongoose.Schema({
   },
   rating: {
     type: Number,
-    default: 1.0,
-    validate: {
-      validator: function (value) {
-        // Allow 0 (no rating) or values between 1.0 and 5.0
-        return value === 0 || (value >= 1.0 && value <= 5.0);
-      },
-      message: 'Rating must be 0 (no rating) or between 1.0 and 5.0'
-    }
+    default: 0,
+    min: 0,
+    max: 5
   },
-  is_open: {
-    type: Boolean,
-    default: false
-  },
-  total_reviews: {
+  totalReviews: {
     type: Number,
     default: 0
   },
-  // High-Priority Production Fields
-  averagePreparationTime: {
-    type: Number,
-    default: null,
-    min: [0, 'Preparation time cannot be negative']
+  isOpen: {
+    type: Boolean,
+    default: false
   },
   isAcceptingOrders: {
     type: Boolean,
     default: true
   },
   deliveryRadius: {
-    type: Number,
+    type: Number, // In km
     default: 5,
     min: [0, 'Delivery radius cannot be negative']
   },
@@ -170,13 +190,38 @@ const restaurantSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  isGrabGoExclusiveUntil: {
+    type: Date,
+    default: null
+  },
   socials: {
     type: socialsSchema,
-    default: null
+    default: () => ({})
+  },
+  vendorType: {
+    type: String,
+    enum: ['restaurant', 'grocery', 'pharmacy', 'grabmart'],
+    default: 'restaurant'
+  },
+  isDeleted: {
+    type: Boolean,
+    default: false
+  },
+  lastOnlineAt: {
+    type: Date,
+    default: Date.now
   }
 }, {
   timestamps: true
 });
+
+// Production Indexes
+restaurantSchema.index({ "location.coordinates": "2dsphere" });
+restaurantSchema.index({ status: 1, isOpen: 1, isDeleted: 1, rating: -1 });
+restaurantSchema.index({ vendorType: 1, status: 1, isDeleted: 1 });
+restaurantSchema.index({ "location.city": 1, "location.area": 1 });
+restaurantSchema.index({ email: 1 });
+restaurantSchema.index({ businessIdNumber: 1 });
 
 restaurantSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {
@@ -193,4 +238,3 @@ restaurantSchema.methods.matchPassword = async function (enteredPassword) {
 };
 
 module.exports = mongoose.model('Restaurant', restaurantSchema);
-

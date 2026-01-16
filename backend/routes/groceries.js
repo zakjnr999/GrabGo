@@ -7,10 +7,10 @@ const { protect } = require('../middleware/auth');
 
 // ==================== STORES ====================
 
-// Get all grocery stores
+// Get grocery stores
 router.get("/stores", async (req, res) => {
     try {
-        const stores = await GroceryStore.find({ isOpen: true })
+        const stores = await GroceryStore.find({ isOpen: true, status: 'approved' })
             .sort({ rating: -1 })
             .limit(20);
 
@@ -21,6 +21,57 @@ router.get("/stores", async (req, res) => {
         });
     } catch (error) {
         console.error("Get grocery stores error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Server error",
+            error: error.message
+        });
+    }
+});
+
+// Get nearby grocery stores
+router.get("/nearby", async (req, res) => {
+    try {
+        const { lat, lng, radius = 5 } = req.query;
+
+        if (!lat || !lng) {
+            return res.status(400).json({
+                success: false,
+                message: "Latitude and longitude are required"
+            });
+        }
+
+        const latitude = parseFloat(lat);
+        const longitude = parseFloat(lng);
+        const radiusInKm = parseFloat(radius);
+
+        const nearbyStores = await GroceryStore.aggregate([
+            {
+                $geoNear: {
+                    near: { type: "Point", coordinates: [longitude, latitude] },
+                    distanceField: "distance",
+                    maxDistance: radiusInKm * 1000,
+                    query: { isOpen: true, status: 'approved' },
+                    spherical: true
+                }
+            },
+            { $limit: 20 },
+            {
+                $addFields: {
+                    id: "$_id",
+                    distance: { $divide: ["$distance", 1000] }
+                }
+            }
+        ]);
+
+        res.json({
+            success: true,
+            message: "Nearby grocery stores retrieved successfully",
+            count: nearbyStores.length,
+            data: nearbyStores
+        });
+    } catch (error) {
+        console.error("Get nearby grocery stores error:", error);
         res.status(500).json({
             success: false,
             message: "Server error",
@@ -113,7 +164,7 @@ router.get("/items", async (req, res) => {
 
         const items = await GroceryItem.find(query)
             .populate('category', 'name emoji')
-            .populate('store', 'store_name logo')
+            .populate('store', 'storeName logo location')
             .sort({ rating: -1 })
             .limit(50);
 
@@ -137,7 +188,7 @@ router.get("/items/:id", async (req, res) => {
     try {
         const item = await GroceryItem.findById(req.params.id)
             .populate('category', 'name emoji')
-            .populate('store', 'store_name logo address phone');
+            .populate('store', 'storeName logo location phone');
 
         if (!item) {
             return res.status(404).json({
@@ -178,7 +229,7 @@ router.get("/search", async (req, res) => {
             isAvailable: true
         })
             .populate('category', 'name emoji')
-            .populate('store', 'store_name logo')
+            .populate('store', 'storeName logo location')
             .limit(30);
 
         res.json({

@@ -15,7 +15,7 @@ const foodSchema = new mongoose.Schema({
     required: [true, 'Please provide price'],
     min: 0
   },
-  food_image: {
+  foodImage: {
     type: String,
     default: null
   },

@@ -26,7 +26,7 @@ router.get("/", async (req, res, next) => {
         if (user && user.isAdmin) {
           isAdmin = true;
         }
-      } catch (err) {}
+      } catch (err) { }
     }
 
     const query = isAdmin ? {} : { status: "approved" };
@@ -63,11 +63,11 @@ router.post(
   body("phone").notEmpty().withMessage("Phone number is required"),
   body("address").notEmpty().withMessage("Address is required"),
   body("city").notEmpty().withMessage("City is required"),
-  body("owner_full_name").notEmpty().withMessage("Owner full name is required"),
-  body("owner_contact_number")
+  body("ownerFullName").notEmpty().withMessage("Owner full name is required"),
+  body("ownerContactNumber")
     .notEmpty()
     .withMessage("Owner contact number is required"),
-  body("business_id_number")
+  body("businessIdNumber")
     .notEmpty()
     .withMessage("Business ID number is required"),
   body("password")
@@ -90,9 +90,10 @@ router.post(
         phone,
         address,
         city,
-        owner_full_name,
-        owner_contact_number,
-        business_id_number,
+        area,
+        ownerFullName,
+        ownerContactNumber,
+        businessIdNumber,
         password,
       } = req.body;
 
@@ -122,56 +123,64 @@ router.post(
           : null);
 
       const restaurant = await Restaurant.create({
-        restaurant_name: name,
+        restaurantName: name,
         email,
         phone,
-        address,
-        city,
-        owner_full_name,
-        owner_contact_number,
-        business_id_number,
+        location: {
+          type: "Point",
+          coordinates: [
+            req.body.lng ? parseFloat(req.body.lng) : 0,
+            req.body.lat ? parseFloat(req.body.lat) : 0
+          ],
+          address,
+          city,
+          area: area || "",
+        },
+        ownerFullName,
+        ownerContactNumber,
+        businessIdNumber,
         password,
         logo,
-        business_id_photo: businessIdPhoto,
-        owner_photo: ownerPhoto,
+        businessIdPhoto: businessIdPhoto,
+        ownerPhoto: ownerPhoto,
         status: "pending",
+        vendorType: "restaurant"
       });
 
       const restaurantData = restaurant.toObject();
 
       const formattedData = {
         _id: restaurantData._id.toString(),
-        restaurant_name: restaurantData.restaurant_name || "",
+        restaurantName: restaurantData.restaurantName || "",
         email: restaurantData.email || "",
         phone: restaurantData.phone || "",
-        address: restaurantData.address || "",
-        city: restaurantData.city || "",
-        owner_full_name: restaurantData.owner_full_name || "",
-        owner_contact_number: restaurantData.owner_contact_number || "",
-        business_id_number: restaurantData.business_id_number || "",
+        ownerFullName: restaurantData.ownerFullName || "",
+        ownerContactNumber: restaurantData.ownerContactNumber || "",
+        businessIdNumber: restaurantData.businessIdNumber || "",
         password: "",
         logo: restaurantData.logo || null,
-        business_id_photo: restaurantData.business_id_photo || null,
-        owner_photo: restaurantData.owner_photo || null,
-        food_type: restaurantData.food_type || null,
+        businessIdPhoto: restaurantData.businessIdPhoto || null,
+        ownerPhoto: restaurantData.ownerPhoto || null,
+        foodType: restaurantData.foodType || null,
         description: restaurantData.description || null,
-        latitude: restaurantData.latitude || null,
-        longitude: restaurantData.longitude || null,
-        average_delivery_time: restaurantData.average_delivery_time || null,
-        delivery_fee: restaurantData.delivery_fee || 0,
-        min_order: restaurantData.min_order || 0,
-        opening_hours: restaurantData.opening_hours || null,
-        payment_methods: restaurantData.payment_methods || null,
-        banner_images: restaurantData.banner_images || null,
+        location: {
+          coordinates: restaurantData.location?.coordinates || [0, 0],
+          address: restaurantData.location?.address || "",
+          city: restaurantData.location?.city || "",
+          area: restaurantData.location?.area || "",
+        },
+        averageDeliveryTime: restaurantData.averageDeliveryTime || 30,
+        averagePreparationTime: restaurantData.averagePreparationTime || 15,
+        deliveryFee: restaurantData.deliveryFee || 0,
+        minOrder: restaurantData.minOrder || 0,
+        openingHours: restaurantData.openingHours || {},
+        paymentMethods: restaurantData.paymentMethods || [],
+        bannerImages: restaurantData.bannerImages || [],
         status: restaurantData.status || "pending",
         rating: restaurantData.rating || 0,
-        is_open: restaurantData.is_open || false,
-        total_reviews: restaurantData.total_reviews || 0,
-        created_at: restaurantData.createdAt
-          ? restaurantData.createdAt.toISOString()
-          : new Date().toISOString(),
-        __v: restaurantData.__v || 0,
-        socials: restaurantData.socials || null,
+        isOpen: restaurantData.isOpen || false,
+        totalReviews: restaurantData.totalReviews || 0,
+        createdAt: restaurantData.createdAt
       };
 
       res.status(201).json({
@@ -189,6 +198,244 @@ router.post(
     }
   }
 );
+
+
+// Standardized endpoints to match other vendor types
+
+// Get all restaurants (alias for /)
+router.get("/stores", async (req, res) => {
+  try {
+    let isAdmin = false;
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer")
+    ) {
+      try {
+        const jwt = require("jsonwebtoken");
+        const User = require("../models/User");
+        const token = req.headers.authorization.split(" ")[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id).select("-password");
+        if (user && user.isAdmin) {
+          isAdmin = true;
+        }
+      } catch (err) { }
+    }
+
+    const query = isAdmin ? {} : { status: "approved", isOpen: true };
+
+    const restaurants = await Restaurant.find(query)
+      .select("-password")
+      .sort({ rating: -1 })
+      .limit(20);
+
+    res.json({
+      success: true,
+      message: "Restaurants retrieved successfully",
+      data: restaurants,
+    });
+  } catch (error) {
+    console.error("Get restaurants error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
+// Get restaurant by ID (alias for /:restaurantId)
+router.get("/stores/:id", async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findById(req.params.id).select(
+      "-password"
+    );
+
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: "Restaurant not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Restaurant retrieved successfully",
+      data: restaurant,
+    });
+  } catch (error) {
+    console.error("Get restaurant error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
+// Search restaurants
+router.get("/search", async (req, res) => {
+  try {
+    const { q, lat, lng, radius = 5 } = req.query;
+
+    let query = { status: "approved" };
+
+    // Text search
+    if (q) {
+      query.$or = [
+        { restaurantName: { $regex: q, $options: "i" } },
+        { description: { $regex: q, $options: "i" } },
+        { foodType: { $regex: q, $options: "i" } },
+        { 'location.address': { $regex: q, $options: "i" } },
+        { 'location.city': { $regex: q, $options: "i" } },
+        { 'location.area': { $regex: q, $options: "i" } },
+      ];
+    }
+
+    // Location-based search
+    if (lat && lng) {
+      const latitude = parseFloat(lat);
+      const longitude = parseFloat(lng);
+      const radiusInKm = parseFloat(radius);
+
+      query['location.coordinates'] = {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [longitude, latitude],
+          },
+          $maxDistance: radiusInKm * 1000,
+        },
+      };
+    }
+
+    const restaurants = await Restaurant.find(query)
+      .select("-password")
+      .sort({ rating: -1 })
+      .limit(50);
+
+    res.json({
+      success: true,
+      message: "Search results retrieved successfully",
+      data: restaurants,
+    });
+  } catch (error) {
+    console.error("Search restaurants error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
+// Get nearby restaurants
+router.get("/nearby", async (req, res) => {
+  try {
+    const { lat, lng, radius = 5 } = req.query;
+
+    if (!lat || !lng) {
+      return res.status(400).json({
+        success: false,
+        message: "Latitude and longitude are required",
+      });
+    }
+
+    const latitude = parseFloat(lat);
+    const longitude = parseFloat(lng);
+    const radiusInKm = parseFloat(radius);
+
+    // Use aggregation for $geoNear which provides the distance in the output
+    const restaurants = await Restaurant.aggregate([
+      {
+        $geoNear: {
+          near: { type: "Point", coordinates: [longitude, latitude] },
+          distanceField: "distance",
+          maxDistance: radiusInKm * 1000,
+          query: { status: "approved" },
+          spherical: true,
+        },
+      },
+      {
+        $project: {
+          password: 0,
+        },
+      },
+      {
+        $addFields: {
+          id: "$_id",
+          // Convert distance from meters to kilometers
+          distance: { $divide: ["$distance", 1000] },
+        },
+      },
+    ]);
+
+    res.json({
+      success: true,
+      message: "Nearby restaurants retrieved successfully",
+      data: restaurants,
+    });
+  } catch (error) {
+    console.error("Get nearby restaurants error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
+// Get food categories
+router.get("/categories", async (req, res) => {
+  try {
+    const Category = require("../models/Category");
+    const categories = await Category.find().sort({ sortOrder: 1 });
+
+    res.json({
+      success: true,
+      message: "Categories retrieved successfully",
+      data: categories,
+    });
+  } catch (error) {
+    console.error("Get categories error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
+// Get food items
+router.get("/items", async (req, res) => {
+  try {
+    const Food = require("../models/Food");
+    const { category, restaurant } = req.query;
+
+    let query = {};
+    if (category) query.category = category;
+    if (restaurant) query.restaurant = restaurant;
+
+    const items = await Food.find(query)
+      .populate("restaurant", "restaurant_name logo")
+      .populate("category", "name emoji")
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    res.json({
+      success: true,
+      message: "Food items retrieved successfully",
+      data: items,
+    });
+  } catch (error) {
+    console.error("Get food items error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
 
 router.put("/:restaurantId", protect, admin, verifyApiKey, async (req, res) => {
   try {
@@ -258,5 +505,6 @@ router.get("/:restaurantId", async (req, res) => {
     });
   }
 });
+
 
 module.exports = router;

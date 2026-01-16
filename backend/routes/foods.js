@@ -32,7 +32,7 @@ router.get("/", cacheMiddleware(cache.CACHE_KEYS.FOOD_CATEGORIES, 300), async (r
 
     const foods = await Food.find(query)
       .populate("category", "name")
-      .populate("restaurant", "restaurant_name logo")
+      .populate("restaurant", "restaurantName logo location")
       .sort({ createdAt: -1 });
 
     res.json({
@@ -69,7 +69,7 @@ router.get("/deals", cacheMiddleware(cache.CACHE_KEYS.FOOD_DEALS, 120), async (r
       ]
     })
       .populate("category", "name")
-      .populate("restaurant", "restaurant_name logo")
+      .populate("restaurant", "restaurantName logo location")
       .sort({ discountPercentage: -1 })
       .limit(10);
 
@@ -112,7 +112,7 @@ router.get("/popular", cacheMiddleware(cache.CACHE_KEYS.FOOD_POPULAR, 300), asyn
       .sort({ orderCount: -1, rating: -1 }) // Sort by order count, then rating
       .limit(limit)
       .populate('category', 'name')
-      .populate('restaurant', 'restaurant_name logo rating');
+      .populate('restaurant', 'restaurantName logo rating location');
 
     res.json({
       success: true,
@@ -161,7 +161,7 @@ router.get("/top-rated", cacheMiddleware(cache.CACHE_KEYS.FOOD_TOP_RATED, 600), 
       .sort({ rating: -1, totalReviews: -1 }) // Sort by rating, then review count
       .limit(limit)
       .populate('category', 'name')
-      .populate('restaurant', 'restaurant_name logo rating');
+      .populate('restaurant', 'restaurantName logo rating location');
 
     res.json({
       success: true,
@@ -334,7 +334,7 @@ router.post(
         });
       }
 
-      const food_image =
+      const foodImage =
         req.file?.cloudinaryUrl ||
         (req.file ? getFileUrl(req.file.filename) : null);
 
@@ -344,7 +344,7 @@ router.post(
         price: parseFloat(price),
         category,
         restaurant,
-        food_image,
+        foodImage,
         isAvailable:
           isAvailable !== undefined
             ? isAvailable === "true" || isAvailable === true
@@ -359,7 +359,7 @@ router.post(
       });
 
       await food.populate("category", "name");
-      await food.populate("restaurant", "restaurant_name logo");
+      await food.populate("restaurant", "restaurantName logo");
 
       // Invalidate related caches
       await invalidateCache([
@@ -389,7 +389,7 @@ router.get("/:foodId", cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM, 600), async (
   try {
     const food = await Food.findById(req.params.foodId)
       .populate("category", "name")
-      .populate("restaurant", "restaurant_name logo address phone");
+      .populate("restaurant", "restaurantName logo location phone");
 
     if (!food) {
       return res.status(404).json({
@@ -453,22 +453,22 @@ router.put(
       if (totalReviews !== undefined)
         food.totalReviews = parseInt(totalReviews);
       if (req.file) {
-        if (food.food_image && food.food_image.includes("cloudinary.com")) {
+        if (food.foodImage && food.foodImage.includes("cloudinary.com")) {
           try {
             const { deleteFromCloudinary } = require("../config/cloudinary");
-            const oldPublicId = food.food_image.split("/").pop().split(".")[0];
+            const oldPublicId = food.foodImage.split("/").pop().split(".")[0];
             await deleteFromCloudinary(`grabgo/foods/${oldPublicId}`);
           } catch (error) {
             console.error("Error deleting old food image:", error);
           }
         }
-        food.food_image =
+        food.foodImage =
           req.file.cloudinaryUrl || getFileUrl(req.file.filename);
       }
 
       await food.save();
       await food.populate("category", "name");
-      await food.populate("restaurant", "restaurant_name logo");
+      await food.populate("restaurant", "restaurantName logo location");
 
       // Invalidate all food caches
       await invalidateCache([

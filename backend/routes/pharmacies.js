@@ -40,7 +40,7 @@ router.get("/stores", async (req, res) => {
             limitValue = 100;
         }
 
-        const stores = await PharmacyStore.find(query)
+        const stores = await PharmacyStore.find({ ...query, status: 'approved' })
             .sort({ rating: -1, totalReviews: -1 })
             .limit(limitValue);
 
@@ -78,10 +78,14 @@ router.get("/search", async (req, res) => {
         }
 
         let query = {
+            status: 'approved',
             $or: [
-                { store_name: { $regex: q, $options: 'i' } },
+                { storeName: { $regex: q, $options: 'i' } },
                 { description: { $regex: q, $options: 'i' } },
-                { categories: { $in: [new RegExp(q, 'i')] } }
+                { categories: { $in: [new RegExp(q, 'i')] } },
+                { 'location.address': { $regex: q, $options: 'i' } },
+                { 'location.city': { $regex: q, $options: 'i' } },
+                { 'location.area': { $regex: q, $options: 'i' } }
             ]
         };
 
@@ -303,27 +307,27 @@ router.get("/nearby", async (req, res) => {
             });
         }
 
-        // Get stores with valid coordinates
-        const stores = await PharmacyStore.find({
-            isOpen: true,
-            latitude: { $exists: true, $ne: null, $ne: 0 },
-            longitude: { $exists: true, $ne: null, $ne: 0 }
-        });
-
-        // Calculate distance and filter
-        const nearbyStores = stores
-            .map(store => {
-                const distance = calculateDistance(
-                    latitude,
-                    longitude,
-                    store.latitude,
-                    store.longitude
-                );
-                return { ...store.toObject(), distance };
-            })
-            .filter(store => store.distance <= radiusInKm)
-            .sort((a, b) => a.distance - b.distance)
-            .slice(0, 20);
+        // Use aggregation for $geoNear which provides the distance in the output
+        const nearbyStores = await PharmacyStore.aggregate([
+            {
+                $geoNear: {
+                    near: { type: "Point", coordinates: [longitude, latitude] },
+                    distanceField: "distance",
+                    maxDistance: radiusInKm * 1000,
+                    query: { isOpen: true, status: 'approved' },
+                    spherical: true
+                }
+            },
+            { $limit: 20 },
+            // Add _id back to id if frontend expects it, or use toObject in mapping
+            {
+                $addFields: {
+                    id: "$_id",
+                    // Convert distance from meters to kilometers
+                    distance: { $divide: ["$distance", 1000] }
+                }
+            }
+        ]);
 
         res.json({
             success: true,

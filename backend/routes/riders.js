@@ -23,7 +23,7 @@ router.get(
         .populate("customer", "username email phone")
         .populate(
           "restaurant",
-          "restaurant_name logo address latitude longitude"
+          "restaurantName logo location"
         )
         .sort({ createdAt: -1 })
         .limit(50);

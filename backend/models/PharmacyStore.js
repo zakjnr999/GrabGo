@@ -1,8 +1,31 @@
 const mongoose = require('mongoose');
 
+const dayScheduleSchema = new mongoose.Schema({
+    open: { type: String, default: '09:00' },
+    close: { type: String, default: '21:00' },
+    isClosed: { type: Boolean, default: false }
+}, { _id: false });
+
+const openingHoursSchema = new mongoose.Schema({
+    monday: { type: dayScheduleSchema, default: () => ({}) },
+    tuesday: { type: dayScheduleSchema, default: () => ({}) },
+    wednesday: { type: dayScheduleSchema, default: () => ({}) },
+    thursday: { type: dayScheduleSchema, default: () => ({}) },
+    friday: { type: dayScheduleSchema, default: () => ({}) },
+    saturday: { type: dayScheduleSchema, default: () => ({}) },
+    sunday: { type: dayScheduleSchema, default: () => ({}) }
+}, { _id: false });
+
+const socialsSchema = new mongoose.Schema({
+    facebook: { type: String, default: null },
+    instagram: { type: String, default: null },
+    twitter: { type: String, default: null },
+    website: { type: String, default: null }
+}, { _id: false });
+
 const pharmacyStoreSchema = new mongoose.Schema(
     {
-        store_name: {
+        storeName: {
             type: String,
             required: [true, 'Pharmacy name is required'],
             trim: true,
@@ -15,10 +38,6 @@ const pharmacyStoreSchema = new mongoose.Schema(
             type: String,
             default: '',
         },
-        address: {
-            type: String,
-            required: [true, 'Address is required'],
-        },
         phone: {
             type: String,
             required: [true, 'Phone number is required'],
@@ -27,33 +46,63 @@ const pharmacyStoreSchema = new mongoose.Schema(
             type: String,
             required: [true, 'Email is required'],
             lowercase: true,
+            unique: true
         },
-        owner_full_name: {
+        location: {
+            type: {
+                type: String,
+                enum: ['Point'],
+                default: 'Point'
+            },
+            coordinates: {
+                type: [Number], // [longitude, latitude]
+                required: [true, 'Coordinates are required']
+            },
+            address: {
+                type: String,
+                required: [true, 'Address is required'],
+            },
+            city: {
+                type: String,
+                required: [true, 'City is required'],
+            },
+            area: {
+                type: String,
+                required: [true, 'Area/neighborhood is required'],
+            }
+        },
+        ownerFullName: {
             type: String,
             default: null,
         },
-        owner_contact_number: {
+        ownerContactNumber: {
             type: String,
             default: null,
         },
-        business_id_number: {
+        businessIdNumber: {
             type: String,
             default: null,
+            unique: true,
+            sparse: true
         },
         password: {
             type: String,
             minlength: 6,
             select: false,
         },
-        business_id_photo: {
+        businessIdPhoto: {
             type: String,
             default: null,
         },
-        owner_photo: {
+        ownerPhoto: {
             type: String,
             default: null,
         },
         isOpen: {
+            type: Boolean,
+            default: true,
+        },
+        isAcceptingOrders: {
             type: Boolean,
             default: true,
         },
@@ -80,14 +129,6 @@ const pharmacyStoreSchema = new mongoose.Schema(
         categories: [{
             type: String,
         }],
-        latitude: {
-            type: Number,
-            default: 0,
-        },
-        longitude: {
-            type: Number,
-            default: 0,
-        },
         licenseNumber: {
             type: String,
             required: [true, 'Pharmacy license number is required'],
@@ -101,10 +142,6 @@ const pharmacyStoreSchema = new mongoose.Schema(
             type: String,
             required: [true, 'Pharmacist license is required'],
         },
-        operatingHours: {
-            type: String,
-            default: '24/7',
-        },
         prescriptionRequired: {
             type: Boolean,
             default: false,
@@ -116,37 +153,17 @@ const pharmacyStoreSchema = new mongoose.Schema(
         insuranceAccepted: [{
             type: String,
         }],
-        city: {
-            type: String,
-            default: null,
-        },
-        average_delivery_time: {
-            type: String,
-            default: null,
-        },
-        payment_methods: [{
-            type: String,
-        }],
-        banner_images: [{
-            type: String,
-        }],
-        status: {
-            type: String,
-            enum: ['pending', 'approved', 'rejected', 'suspended'],
-            default: 'approved',
-        },
-        // High-Priority Production Fields
         averagePreparationTime: {
-            type: Number,
-            default: null,
+            type: Number, // In minutes
+            default: 15,
             min: [0, 'Preparation time cannot be negative'],
         },
-        isAcceptingOrders: {
-            type: Boolean,
-            default: true,
+        averageDeliveryTime: {
+            type: Number, // In minutes
+            default: 30,
         },
         deliveryRadius: {
-            type: Number,
+            type: Number, // In km
             default: 5,
             min: [0, 'Delivery radius cannot be negative'],
         },
@@ -179,13 +196,46 @@ const pharmacyStoreSchema = new mongoose.Schema(
             type: String,
             default: null,
         },
+        paymentMethods: [{
+            type: String,
+            enum: ['cash', 'card', 'mobile_money']
+        }],
+        bannerImages: [{
+            type: String,
+        }],
+        status: {
+            type: String,
+            enum: ['pending', 'approved', 'rejected', 'suspended'],
+            default: 'approved',
+        },
+        openingHours: {
+            type: openingHoursSchema,
+            default: () => ({})
+        },
         isGrabGoExclusive: {
             type: Boolean,
             default: false,
         },
+        isGrabGoExclusiveUntil: {
+            type: Date,
+            default: null,
+        },
         socials: {
-            facebook: { type: String, default: null },
-            instagram: { type: String, default: null },
+            type: socialsSchema,
+            default: () => ({})
+        },
+        vendorType: {
+            type: String,
+            enum: ['restaurant', 'grocery', 'pharmacy', 'grabmart'],
+            default: 'pharmacy'
+        },
+        isDeleted: {
+            type: Boolean,
+            default: false
+        },
+        lastOnlineAt: {
+            type: Date,
+            default: Date.now
         },
     },
     {
@@ -195,10 +245,12 @@ const pharmacyStoreSchema = new mongoose.Schema(
     }
 );
 
-// Indexes for better query performance
-pharmacyStoreSchema.index({ store_name: 1 });
-pharmacyStoreSchema.index({ isOpen: 1 });
-pharmacyStoreSchema.index({ rating: -1 });
+// Production Indexes
+pharmacyStoreSchema.index({ "location.coordinates": "2dsphere" });
+pharmacyStoreSchema.index({ status: 1, isOpen: 1, isDeleted: 1, rating: -1 });
+pharmacyStoreSchema.index({ vendorType: 1, status: 1, isDeleted: 1 });
+pharmacyStoreSchema.index({ storeName: 1 });
+pharmacyStoreSchema.index({ email: 1 });
 pharmacyStoreSchema.index({ licenseNumber: 1 });
 
 const PharmacyStore = mongoose.model('PharmacyStore', pharmacyStoreSchema);

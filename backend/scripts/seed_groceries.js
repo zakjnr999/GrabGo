@@ -27,74 +27,104 @@ const categories = [
 // Sample grocery stores
 const stores = [
     {
-        store_name: 'Fresh Market',
+        storeName: 'Fresh Market',
         logo: 'https://images.unsplash.com/photo-1534723452862-4c874018d66d?w=400',
         description: 'Your neighborhood grocery store with fresh produce and quality products',
-        address: 'Accra Mall, Accra',
+        location: {
+            type: 'Point',
+            coordinates: [-0.1870, 5.6037],
+            address: 'Accra Mall, Accra',
+            city: 'Accra',
+            area: 'Airport Residential Area'
+        },
         phone: '+233 24 123 4567',
         email: 'info@freshmarket.com',
         deliveryFee: 5.00,
         minOrder: 20.00,
         rating: 4.5,
         categories: ['Fresh Produce', 'Dairy & Eggs', 'Bakery'],
-        latitude: 5.6037,
-        longitude: -0.1870,
+        vendorType: 'grocery',
+        status: 'approved'
     },
     {
-        store_name: 'SuperMart',
+        storeName: 'SuperMart',
         logo: 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=400',
         description: 'One-stop shop for all your grocery needs',
-        address: 'Osu, Accra',
+        location: {
+            type: 'Point',
+            coordinates: [-0.1969, 5.5560],
+            address: 'Osu, Accra',
+            city: 'Accra',
+            area: 'Osu'
+        },
         phone: '+233 24 234 5678',
         email: 'contact@supermart.com',
         deliveryFee: 7.00,
         minOrder: 25.00,
         rating: 4.3,
         categories: ['Pantry Staples', 'Snacks & Sweets', 'Beverages'],
-        latitude: 5.5560,
-        longitude: -0.1969,
+        vendorType: 'grocery',
+        status: 'approved'
     },
     {
-        store_name: 'Organic Haven',
+        storeName: 'Organic Haven',
         logo: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400',
         description: 'Premium organic and natural products',
-        address: 'East Legon, Accra',
+        location: {
+            type: 'Point',
+            coordinates: [-0.1500, 5.6500],
+            address: 'East Legon, Accra',
+            city: 'Accra',
+            area: 'East Legon'
+        },
         phone: '+233 24 345 6789',
         email: 'hello@organichaven.com',
         deliveryFee: 10.00,
         minOrder: 30.00,
         rating: 4.8,
         categories: ['Fresh Produce', 'Dairy & Eggs', 'Personal Care'],
-        latitude: 5.6500,
-        longitude: -0.1500,
+        vendorType: 'grocery',
+        status: 'approved'
     },
     {
-        store_name: 'Quick Stop',
+        storeName: 'Quick Stop',
         logo: 'https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?w=400',
         description: 'Fast delivery of everyday essentials',
-        address: 'Tema, Accra',
+        location: {
+            type: 'Point',
+            coordinates: [-0.0166, 5.6698],
+            address: 'Tema, Accra',
+            city: 'Accra',
+            area: 'Tema Community 1'
+        },
         phone: '+233 24 456 7890',
         email: 'support@quickstop.com',
         deliveryFee: 3.00,
         minOrder: 15.00,
         rating: 4.2,
         categories: ['Snacks & Sweets', 'Beverages', 'Personal Care'],
-        latitude: 5.6698,
-        longitude: -0.0166,
+        vendorType: 'grocery',
+        status: 'approved'
     },
     {
-        store_name: 'Family Grocers',
+        storeName: 'Family Grocers',
         logo: 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=400',
         description: 'Quality groceries for the whole family',
-        address: 'Madina, Accra',
+        location: {
+            type: 'Point',
+            coordinates: [-0.1677, 5.6812],
+            address: 'Madina, Accra',
+            city: 'Accra',
+            area: 'Madina'
+        },
         phone: '+233 24 567 8901',
         email: 'info@familygrocers.com',
         deliveryFee: 6.00,
         minOrder: 20.00,
         rating: 4.6,
         categories: ['Meat & Seafood', 'Bakery', 'Pantry Staples'],
-        latitude: 5.6812,
-        longitude: -0.1677,
+        vendorType: 'grocery',
+        status: 'approved'
     },
 ];
 
@@ -176,7 +206,7 @@ async function seedGroceries() {
         // Create store map
         const storeMap = {};
         insertedStores.forEach(store => {
-            storeMap[store.store_name] = store._id;
+            storeMap[store.storeName] = store._id;
         });
 
         // Insert items
