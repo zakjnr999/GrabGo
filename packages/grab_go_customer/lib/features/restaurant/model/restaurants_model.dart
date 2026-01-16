@@ -65,35 +65,44 @@ class RestaurantModel {
       restaurantId = int.tryParse(tail) ?? backendId.hashCode % 1000000;
     }
 
+    final location = json['location'] as Map<String, dynamic>?;
+    final List<dynamic>? coordinates = location?['coordinates'] as List<dynamic>?;
+
     return RestaurantModel(
       id: restaurantId,
       backendId: backendId,
-      name: json['restaurant_name']?.toString() ?? json['name']?.toString() ?? '',
-      city: json['city']?.toString() ?? '',
-      foodType: json['food_type']?.toString() ?? '',
-      imageUrl: json['logo']?.toString() ?? json['image_url']?.toString() ?? '',
+      name: json['restaurantName']?.toString() ?? json['restaurant_name']?.toString() ?? json['name']?.toString() ?? '',
+      city: location?['city']?.toString() ?? json['city']?.toString() ?? '',
+      foodType: json['foodType']?.toString() ?? json['food_type']?.toString() ?? '',
+      imageUrl: json['logo']?.toString() ?? json['imageUrl']?.toString() ?? json['image_url']?.toString() ?? '',
       bannerImages:
-          (json['banner_images'] as List<dynamic>?)
+          (json['bannerImages'] as List<dynamic>? ?? json['banner_images'] as List<dynamic>?)
               ?.map((e) => e?.toString() ?? '')
               .where((e) => e.isNotEmpty)
               .toList() ??
           [],
       distance: (json['distance'] as num?)?.toDouble() ?? 0.0,
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
-      totalReviews: (json['total_reviews'] as num?)?.toInt() ?? 0,
-      averageDeliveryTime: json['average_delivery_time']?.toString() ?? '',
-      deliveryFee: (json['delivery_fee'] as num?)?.toDouble() ?? 0.0,
-      minOrder: (json['min_order'] as num?)?.toDouble() ?? 0.0,
+      totalReviews: (json['totalReviews'] as num? ?? json['total_reviews'] as num?)?.toInt() ?? 0,
+      averageDeliveryTime: json['averageDeliveryTime']?.toString() ?? json['average_delivery_time']?.toString() ?? '',
+      deliveryFee: (json['deliveryFee'] as num? ?? json['delivery_fee'] as num?)?.toDouble() ?? 0.0,
+      minOrder: (json['minOrder'] as num? ?? json['min_order'] as num?)?.toDouble() ?? 0.0,
       description: json['description']?.toString() ?? '',
       phone: json['phone']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
-      address: json['address']?.toString() ?? '',
-      latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
-      longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
-      openingHours: json['opening_hours']?.toString() ?? '',
-      isOpen: json['is_open'] is bool ? json['is_open'] as bool : (json['is_open']?.toString().toLowerCase() == 'true'),
+      address: location?['address']?.toString() ?? json['address']?.toString() ?? '',
+      latitude: coordinates != null && coordinates.length >= 2
+          ? (coordinates[1] as num).toDouble()
+          : (location?['lat'] as num? ?? json['latitude'] as num?)?.toDouble() ?? 0.0,
+      longitude: coordinates != null && coordinates.length >= 2
+          ? (coordinates[0] as num).toDouble()
+          : (location?['lng'] as num? ?? json['longitude'] as num?)?.toDouble() ?? 0.0,
+      openingHours: json['openingHours']?.toString() ?? json['opening_hours']?.toString() ?? '',
+      isOpen: (json['isOpen'] ?? json['is_open']) is bool
+          ? (json['isOpen'] ?? json['is_open']) as bool
+          : (json['isOpen'] ?? json['is_open'])?.toString().toLowerCase() == 'true',
       paymentMethods:
-          (json['payment_methods'] as List<dynamic>?)
+          (json['paymentMethods'] as List<dynamic>? ?? json['payment_methods'] as List<dynamic>?)
               ?.map((e) => e?.toString() ?? '')
               .where((e) => e.isNotEmpty)
               .toList() ??
@@ -178,7 +187,7 @@ class Food {
       id: foodId,
       name: json['name']?.toString() ?? json['food_name']?.toString() ?? '',
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
-      imageUrl: json['imageUrl']?.toString() ?? json['image_url']?.toString() ?? json['image']?.toString() ?? '',
+      imageUrl: json['foodImage']?.toString() ?? json['imageUrl']?.toString() ?? json['image_url']?.toString() ?? json['image']?.toString() ?? '',
       category: json['category']?.toString() ?? json['category_name']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
       sellerId:

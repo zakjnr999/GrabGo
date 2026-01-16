@@ -253,6 +253,17 @@ pharmacyStoreSchema.index({ storeName: 1 });
 pharmacyStoreSchema.index({ email: 1 });
 pharmacyStoreSchema.index({ licenseNumber: 1 });
 
+// Virtuals for legacy support (snake_case and top-level location)
+pharmacyStoreSchema.virtual('store_name').get(function () { return this.storeName; });
+pharmacyStoreSchema.virtual('is_open').get(function () { return this.isOpen; });
+pharmacyStoreSchema.virtual('total_reviews').get(function () { return this.totalReviews; });
+pharmacyStoreSchema.virtual('delivery_fee').get(function () { return this.deliveryFee; });
+pharmacyStoreSchema.virtual('min_order').get(function () { return this.minOrder; });
+pharmacyStoreSchema.virtual('latitude').get(function () { return this.location.coordinates[1]; });
+pharmacyStoreSchema.virtual('longitude').get(function () { return this.location.coordinates[0]; });
+pharmacyStoreSchema.virtual('address').get(function () { return this.location.address; });
+pharmacyStoreSchema.virtual('city').get(function () { return this.location.city; });
+
 const PharmacyStore = mongoose.model('PharmacyStore', pharmacyStoreSchema);
 
 module.exports = PharmacyStore;

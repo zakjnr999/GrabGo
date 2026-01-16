@@ -215,6 +215,20 @@ const restaurantSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Virtuals for legacy support (snake_case and top-level location)
+restaurantSchema.virtual('restaurant_name').get(function () { return this.restaurantName; });
+restaurantSchema.virtual('is_open').get(function () { return this.isOpen; });
+restaurantSchema.virtual('total_reviews').get(function () { return this.totalReviews; });
+restaurantSchema.virtual('average_delivery_time').get(function () { return this.averageDeliveryTime; });
+restaurantSchema.virtual('delivery_fee').get(function () { return this.deliveryFee; });
+restaurantSchema.virtual('min_order').get(function () { return this.minOrder; });
+restaurantSchema.virtual('opening_hours').get(function () { return this.openingHours; });
+restaurantSchema.virtual('payment_methods').get(function () { return this.paymentMethods; });
+restaurantSchema.virtual('latitude').get(function () { return this.location.coordinates[1]; });
+restaurantSchema.virtual('longitude').get(function () { return this.location.coordinates[0]; });
+restaurantSchema.virtual('address').get(function () { return this.location.address; });
+restaurantSchema.virtual('city').get(function () { return this.location.city; });
+
 // Production Indexes
 restaurantSchema.index({ "location.coordinates": "2dsphere" });
 restaurantSchema.index({ status: 1, isOpen: 1, isDeleted: 1, rating: -1 });

@@ -232,6 +232,17 @@ groceryStoreSchema.index({ vendorType: 1, status: 1, isDeleted: 1 });
 groceryStoreSchema.index({ storeName: 1 });
 groceryStoreSchema.index({ email: 1 });
 
+// Virtuals for legacy support (snake_case and top-level location)
+groceryStoreSchema.virtual('store_name').get(function () { return this.storeName; });
+groceryStoreSchema.virtual('is_open').get(function () { return this.isOpen; });
+groceryStoreSchema.virtual('total_reviews').get(function () { return this.totalReviews; });
+groceryStoreSchema.virtual('delivery_fee').get(function () { return this.deliveryFee; });
+groceryStoreSchema.virtual('min_order').get(function () { return this.minOrder; });
+groceryStoreSchema.virtual('latitude').get(function () { return this.location.coordinates[1]; });
+groceryStoreSchema.virtual('longitude').get(function () { return this.location.coordinates[0]; });
+groceryStoreSchema.virtual('address').get(function () { return this.location.address; });
+groceryStoreSchema.virtual('city').get(function () { return this.location.city; });
+
 const GroceryStore = mongoose.model('GroceryStore', groceryStoreSchema);
 
 module.exports = GroceryStore;

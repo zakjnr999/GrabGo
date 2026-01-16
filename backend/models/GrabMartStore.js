@@ -245,6 +245,17 @@ grabMartStoreSchema.index({ storeName: 1 });
 grabMartStoreSchema.index({ email: 1 });
 grabMartStoreSchema.index({ is24Hours: 1 });
 
+// Virtuals for legacy support (snake_case and top-level location)
+grabMartStoreSchema.virtual('store_name').get(function () { return this.storeName; });
+grabMartStoreSchema.virtual('is_open').get(function () { return this.isOpen; });
+grabMartStoreSchema.virtual('total_reviews').get(function () { return this.totalReviews; });
+grabMartStoreSchema.virtual('delivery_fee').get(function () { return this.deliveryFee; });
+grabMartStoreSchema.virtual('min_order').get(function () { return this.minOrder; });
+grabMartStoreSchema.virtual('latitude').get(function () { return this.location.coordinates[1]; });
+grabMartStoreSchema.virtual('longitude').get(function () { return this.location.coordinates[0]; });
+grabMartStoreSchema.virtual('address').get(function () { return this.location.address; });
+grabMartStoreSchema.virtual('city').get(function () { return this.location.city; });
+
 const GrabMartStore = mongoose.model('GrabMartStore', grabMartStoreSchema);
 
 module.exports = GrabMartStore;

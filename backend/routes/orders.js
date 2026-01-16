@@ -160,7 +160,7 @@ router.post(
         });
       }
 
-      const deliveryFee = restaurantDoc.delivery_fee || 0;
+      const deliveryFee = restaurantDoc.deliveryFee || 0;
       const tax = subtotal * 0.05;
       let totalAmount = subtotal + deliveryFee + tax;
 
@@ -186,7 +186,7 @@ router.post(
         status: "pending",
       });
 
-      await order.populate("restaurant", "restaurant_name logo");
+      await order.populate("restaurant", "restaurantName logo location");
       await order.populate("customer", "username email phone");
 
       // Mark credits as used
@@ -266,7 +266,7 @@ router.get("/", protect, async (req, res) => {
 
     const orders = await Order.find(query)
       .populate("customer", "username email phone")
-      .populate("restaurant", "restaurant_name logo")
+      .populate("restaurant", "restaurantName logo location")
       .populate("rider", "username email phone")
       .populate("items.food", "name price image")
       .sort({ createdAt: -1 });
@@ -365,7 +365,7 @@ router.get("/:orderId", protect, async (req, res) => {
   try {
     const order = await Order.findById(req.params.orderId)
       .populate("customer", "username email phone")
-      .populate("restaurant", "restaurant_name logo address phone")
+      .populate("restaurant", "restaurantName logo location phone")
       .populate("rider", "username email phone")
       .populate("items.food", "name price image description");
 
@@ -495,7 +495,7 @@ router.put(
       await order.save();
 
       await order.populate("customer", "username email phone");
-      await order.populate("restaurant", "restaurant_name logo");
+      await order.populate("restaurant", "restaurantName logo location");
       await order.populate("rider", "username email phone");
 
       // Send push notification to customer about order status change

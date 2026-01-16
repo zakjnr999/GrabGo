@@ -72,6 +72,11 @@ const foodSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
+// Virtual fields for legacy support
+foodSchema.virtual('food_image').get(function () {
+  return this.foodImage;
+});
+
 // Virtual field for original price (before discount)
 foodSchema.virtual('originalPrice').get(function () {
   if (this.discountPercentage > 0) {
