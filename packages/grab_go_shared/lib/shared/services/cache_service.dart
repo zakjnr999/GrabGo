@@ -32,6 +32,7 @@ class CacheService {
         await clearFoodCategoriesCache();
         await clearRestaurantsCache();
         await clearChatList();
+        await clearAllVendorsCache();
 
         // Update version
         await _instance.setInt(_cacheVersionKey, CACHE_VERSION);
@@ -244,6 +245,73 @@ class CacheService {
       return true;
     } catch (e) {
       debugPrint('Error clearing restaurants cache: $e');
+      return false;
+    }
+  }
+
+  /// Save vendors by type
+  static Future<bool> saveVendorsByType(String type, List<Map<String, dynamic>> vendors) async {
+    try {
+      final vendorsJson = jsonEncode(vendors);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      await _instance.setString('vendors_data_$type', vendorsJson);
+      await _instance.setInt('vendors_cache_timestamp_$type', timestamp);
+      return true;
+    } catch (e) {
+      debugPrint('Error saving vendors for $type: $e');
+      return false;
+    }
+  }
+
+  /// Get vendors by type
+  static List<Map<String, dynamic>> getVendorsByType(String type) {
+    try {
+      final vendorsJson = _instance.getString('vendors_data_$type');
+      if (vendorsJson != null) {
+        final List<dynamic> vendorsList = jsonDecode(vendorsJson);
+        return vendorsList.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting vendors for $type: $e');
+      return [];
+    }
+  }
+
+  /// Clear all vendors cache
+  static Future<void> clearAllVendorsCache() async {
+    try {
+      final keys = _instance.getKeys();
+      final vendorKeys = keys.where((k) => k.startsWith('vendors_data_') || k.startsWith('vendors_cache_timestamp_'));
+      for (final key in vendorKeys) {
+        await _instance.remove(key);
+      }
+    } catch (e) {
+      debugPrint('Error clearing all vendors cache: $e');
+    }
+  }
+
+  /// Check if vendors cache is valid for a specific type
+  static bool isVendorsCacheValid(String type) {
+    try {
+      final timestamp = _instance.getInt('vendors_cache_timestamp_$type') ?? 0;
+      final cacheTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
+      final now = DateTime.now();
+      return now.difference(cacheTime) < _defaultCacheExpiry;
+    } catch (e) {
+      debugPrint('Error checking vendors cache validity for $type: $e');
+      return false;
+    }
+  }
+
+  /// Clear vendors cache for a specific type
+  static Future<bool> clearVendorsCache(String type) async {
+    try {
+      await _instance.remove('vendors_data_$type');
+      await _instance.remove('vendors_cache_timestamp_$type');
+      return true;
+    } catch (e) {
+      debugPrint('Error clearing vendors cache for $type: $e');
       return false;
     }
   }
@@ -1220,6 +1288,7 @@ class CacheService {
       await clearSearchHistory();
       await _clearFavoriteRestaurants();
       await clearFavoriteFoods();
+      await clearAllVendorsCache();
       return true;
     } catch (e) {
       debugPrint('Error clearing user data: $e');

@@ -23,6 +23,8 @@ import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/theme_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/service_provider.dart';
 import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart';
+import 'package:grab_go_customer/features/vendors/viewmodel/vendor_provider.dart';
+import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:provider/provider.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -80,6 +82,7 @@ void main() async {
         ChangeNotifierProvider(create: (context) => SettingsProvider()),
         ChangeNotifierProvider(create: (context) => ServiceProvider()),
         ChangeNotifierProvider(create: (context) => GroceryProvider()),
+        ChangeNotifierProvider(create: (context) => VendorProvider(vendorService)),
         ChangeNotifierProvider(create: (context) => WebRTCService()),
       ],
       child: const GrabGoCustomerApp(),
@@ -134,7 +137,7 @@ class _MyAppState extends State<GrabGoCustomerApp> with WidgetsBindingObserver {
       } else {
         debugPrint('⚠️ Cannot initialize WebRTC: Socket not connected or user not logged in');
         debugPrint('   Will retry in 2 seconds...');
-        
+
         // Retry after a delay
         Future.delayed(const Duration(seconds: 2), () {
           if (mounted) _initializeWebRTC();

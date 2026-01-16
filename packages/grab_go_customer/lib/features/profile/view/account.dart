@@ -26,6 +26,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
   bool _isLoading = true;
   late AnimationController _animationController;
 
+  final ScrollController _scrollController = ScrollController();
   final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
   static const double _collapsedHeight = 70.0;
   static const double _scrollThreshold = 150.0;
@@ -33,8 +34,14 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _animationController = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
     _loadUserData();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    _scrollOffsetNotifier.value = _scrollController.offset;
   }
 
   Future<void> _loadUserData() async {
@@ -70,6 +77,8 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     _animationController.dispose();
     _scrollOffsetNotifier.dispose();
     super.dispose();
@@ -120,14 +129,10 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
               child: ClipRect(
                 child: Stack(
                   children: [
-                    NotificationListener<ScrollNotification>(
-                      onNotification: (notification) {
-                        _scrollOffsetNotifier.value = notification.metrics.pixels;
-                        return false;
-                      },
-                      child: SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: EdgeInsets.only(top: size.height * 0.22),
+                    SingleChildScrollView(
+                      controller: _scrollController,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.only(top: size.height * 0.22),
                         child: Padding(
                           padding: EdgeInsets.symmetric(horizontal: 20.w),
                           child: Column(
@@ -369,7 +374,6 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                           ),
                         ),
                       ),
-                    ),
 
                     Positioned(top: 0, left: 0, right: 0, child: _buildCollapsibleUmbrellaHeader(colors, size)),
                   ],

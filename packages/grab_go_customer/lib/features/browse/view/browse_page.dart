@@ -41,6 +41,7 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
   FilterModel _comprehensiveFilter = FilterModel(); // Comprehensive filter from bottom sheet
 
   // Scroll tracking for collapsing header
+  final ScrollController _scrollController = ScrollController();
   final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
   static const double _collapsedHeight = 70.0;
   static const double _scrollThreshold = 150.0;
@@ -80,7 +81,20 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
   bool get wantKeepAlive => true;
 
   @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    _scrollOffsetNotifier.value = _scrollController.offset;
+  }
+
+  @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     _scrollOffsetNotifier.dispose();
     super.dispose();
   }
@@ -127,13 +141,10 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
           child: ClipRect(
             child: Stack(
               children: [
-                NotificationListener<ScrollNotification>(
-                  onNotification: (notification) {
-                    _scrollOffsetNotifier.value = notification.metrics.pixels;
-                    return false;
-                  },
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.only(top: size.height * 0.20),
+                SingleChildScrollView(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.only(top: size.height * 0.20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -222,7 +233,6 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
                       ],
                     ),
                   ),
-                ),
 
                 Positioned(top: 0, left: 0, right: 0, child: _buildCollapsibleUmbrellaHeader(colors, size)),
               ],

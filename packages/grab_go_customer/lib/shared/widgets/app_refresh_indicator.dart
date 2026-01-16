@@ -60,11 +60,7 @@ class AppRefreshIndicator extends StatelessWidget {
             width: 60.w,
             height: 60.h,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [bgColor, bgColor.withValues(alpha: 0.8)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: bgColor,
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white, width: 0.5),
               boxShadow: [

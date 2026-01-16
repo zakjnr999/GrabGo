@@ -11,6 +11,7 @@ import 'package:grab_go_customer/features/order/service/order_service_chopper.da
 import 'package:grab_go_customer/features/status/service/status_service.dart';
 import 'package:grab_go_customer/shared/services/notification_service_chopper.dart';
 import 'package:grab_go_customer/shared/api/cart_api_service.dart';
+import 'package:grab_go_customer/features/vendors/service/vendor_service.dart';
 
 final chopperClient = ChopperClient(
   baseUrl: Uri.parse(AppConfig.apiBaseUrl),
@@ -23,6 +24,7 @@ final chopperClient = ChopperClient(
     StatusService.create(),
     NotificationServiceChopper.create(),
     CartApiService.create(),
+    VendorService.create(),
   ],
   converter: const local.JsonSerializableConverter(),
   interceptors: [AuthInterceptor(), HttpLoggingInterceptor()],
@@ -37,3 +39,4 @@ OrderServiceChopper get orderServiceChopper => chopperClient.getService<OrderSer
 StatusService get statusService => chopperClient.getService<StatusService>();
 NotificationServiceChopper get notificationServiceChopper => chopperClient.getService<NotificationServiceChopper>();
 CartApiService get cartApiService => chopperClient.getService<CartApiService>();
+VendorService get vendorService => chopperClient.getService<VendorService>();

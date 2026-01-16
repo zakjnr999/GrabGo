@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:grab_go_customer/features/home/model/service_model.dart';
+import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class ServiceSelector extends StatefulWidget {
@@ -121,12 +123,14 @@ class _ServiceSelectorState extends State<ServiceSelector> {
         ),
         itemBuilder: (context, index) {
           final service = widget.services[index];
+          final isSelected = index == selectedIndex;
 
           return Material(
             color: Colors.transparent,
             child: InkWell(
               onTap: () {
                 if (index >= 0 && index < widget.services.length) {
+                  setState(() => selectedIndex = index);
                   widget.onServiceSelected(service);
                 }
               },
@@ -134,11 +138,26 @@ class _ServiceSelectorState extends State<ServiceSelector> {
               child: Ink(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [colors.accentOrange.withValues(alpha: 0.12), colors.accentOrange.withValues(alpha: 0.08)],
+                    colors: isSelected
+                        ? [colors.accentOrange.withValues(alpha: 0.18), colors.accentOrange.withValues(alpha: 0.1)]
+                        : [colors.accentOrange.withValues(alpha: 0.08), colors.accentOrange.withValues(alpha: 0.04)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                  border: Border.all(
+                    color: isSelected ? colors.accentOrange : colors.accentOrange.withValues(alpha: 0.1),
+                    width: isSelected ? 1.w : 0.w,
+                  ),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: colors.accentOrange.withValues(alpha: 0.15),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ]
+                      : null,
                 ),
                 child: Stack(
                   children: [
@@ -147,10 +166,46 @@ class _ServiceSelectorState extends State<ServiceSelector> {
                       right: -8,
                       bottom: -8,
                       child: Opacity(
-                        opacity: 0.12,
+                        opacity: isSelected ? 0.2 : 0.08,
                         child: Text(service.emoji, style: TextStyle(fontSize: 50.sp)),
                       ),
                     ),
+                    // Active checkmark indicator
+                    if (isSelected)
+                      Positioned(
+                        top: 6.r,
+                        right: 6.r,
+                        child: Container(
+                          padding: EdgeInsets.all(3.r),
+                          decoration: BoxDecoration(
+                            color: colors.accentOrange,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Container(
+                            height: 14.h,
+                            width: 14.w,
+                            decoration: BoxDecoration(
+                              color: colors.accentOrange,
+                              borderRadius: BorderRadius.circular(KBorderSize.border),
+                            ),
+                            child: SvgPicture.asset(
+                              Assets.icons.check,
+                              package: "grab_go_shared",
+                              height: 10.h,
+                              width: 10.w,
+                              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                            ),
+                          ),
+                          // child: Icon(Icons.check, color: Colors.white, size: 10.r),
+                        ),
+                      ),
                     Center(
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -163,8 +218,8 @@ class _ServiceSelectorState extends State<ServiceSelector> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: colors.textPrimary,
-                                fontWeight: FontWeight.w700,
+                                color: isSelected ? colors.accentOrange : colors.textPrimary,
+                                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
                                 fontSize: 15.sp,
                                 fontFamily: "Lato",
                                 letterSpacing: 0.2,

@@ -5,7 +5,7 @@ import 'package:grab_go_customer/features/browse/view/browse_page.dart';
 import 'package:grab_go_customer/features/chat/view/chats.dart';
 import 'package:grab_go_customer/features/home/view/home_page.dart';
 import 'package:grab_go_customer/features/profile/view/account.dart';
-import 'package:grab_go_customer/features/restaurant/view/restaurants.dart';
+import 'package:grab_go_customer/features/vendors/view/vendors_page.dart';
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -27,7 +27,7 @@ class _BottomNavigatorState extends State<BottomNavigator> {
     const HomePage(),
     const BrowsePage(),
     const Chats(),
-    const Restaurants(),
+    const VendorsPage(),
     const Account(),
   ];
 
@@ -70,7 +70,7 @@ class _BottomNavigatorState extends State<BottomNavigator> {
             children: [
               Expanded(child: _buildNavItem(Assets.icons.home, "Home", 0, context)),
               Expanded(child: _buildNavItem(Assets.icons.search, "Browse", 1, context)),
-              Expanded(child: _buildNavItem(Assets.icons.chatBubble, "chats", 2, context)),
+              Expanded(child: _buildNavItem(Assets.icons.squareMenu, "Orders", 2, context)),
               Expanded(child: _buildNavItem(Assets.icons.store, "Vendors", 3, context)),
               Expanded(child: _buildNavItem(Assets.icons.user, "Account", 4, context)),
             ],
