@@ -80,6 +80,9 @@ class ServiceCategoryList<T> extends StatefulWidget {
   /// Optional initial selected category
   final T? initialSelectedCategory;
 
+  /// Whether to automatically notify onCategorySelected on build/list change
+  final bool autoNotify;
+
   const ServiceCategoryList({
     super.key,
     required this.categories,
@@ -88,6 +91,7 @@ class ServiceCategoryList<T> extends StatefulWidget {
     required this.getId,
     required this.onCategorySelected,
     this.initialSelectedCategory,
+    this.autoNotify = true,
   });
 
   @override
@@ -102,7 +106,9 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
   void initState() {
     super.initState();
     _initializeSelection();
-    _notifyInitialSelection();
+    if (widget.autoNotify) {
+      _notifyInitialSelection();
+    }
   }
 
   /// Initialize the selected index based on initialSelectedCategory
@@ -214,6 +220,7 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
 
   /// Notify parent of selection change
   void _notifySelectionChange(int index) {
+    if (!widget.autoNotify) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && index < widget.categories.length) {
         widget.onCategorySelected(widget.categories[index]);

@@ -13,9 +13,11 @@ import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
 import 'package:grab_go_customer/shared/services/food_share_link.dart';
 import 'package:provider/provider.dart';
 
+import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
+
 class FoodDetailsAppBar extends StatelessWidget {
   const FoodDetailsAppBar({super.key, required this.foodItem});
-  final FoodItem foodItem;
+  final CartItem foodItem;
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +53,7 @@ class FoodDetailsAppBar extends StatelessWidget {
                 color: colors.inputBorder,
                 padding: EdgeInsets.all(60.r),
                 child: SvgPicture.asset(
-                  Assets.icons.utensilsCrossed,
+                  foodItem is FoodItem ? Assets.icons.utensilsCrossed : Assets.icons.package,
                   package: 'grab_go_shared',
                   colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                 ),
@@ -62,7 +64,7 @@ class FoodDetailsAppBar extends StatelessWidget {
                 color: colors.inputBorder,
                 padding: EdgeInsets.all(60.r),
                 child: SvgPicture.asset(
-                  Assets.icons.utensilsCrossed,
+                  foodItem is FoodItem ? Assets.icons.utensilsCrossed : Assets.icons.package,
                   package: 'grab_go_shared',
                   colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                 ),
@@ -135,9 +137,9 @@ class FoodDetailsAppBar extends StatelessWidget {
           onTap: () async {
             try {
               await FoodShareLinkService.shareFoodItem(
-                sellerId: foodItem.sellerId.toString(),
+                sellerId: foodItem.providerId,
                 foodName: foodItem.name,
-                sellerName: foodItem.sellerName,
+                sellerName: foodItem.providerName,
                 imageUrl: foodItem.image,
                 description: foodItem.description,
               );
@@ -160,11 +162,13 @@ class FoodDetailsAppBar extends StatelessWidget {
         SizedBox(width: 10.w),
         Consumer<FavoritesProvider>(
           builder: (context, favoritesProvider, child) {
-            final isFavorite = favoritesProvider.isFavorite(foodItem);
+            // favoritesProvider works with CartItem or specific models? 
+            // Most likely it works with CartItem since it's a shared feature.
+            final isFavorite = favoritesProvider.isFavorite(foodItem as dynamic);
             return _buildActionButton(
               context: context,
               onTap: () {
-                favoritesProvider.toggleFavorite(foodItem);
+                favoritesProvider.toggleFavorite(foodItem as dynamic);
               },
               icon: SvgPicture.asset(
                 isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,

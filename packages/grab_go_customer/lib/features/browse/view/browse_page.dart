@@ -3,10 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_category.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart';
 import 'package:grab_go_customer/features/pharmacy/model/pharmacy_category.dart';
+import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
 import 'package:grab_go_customer/features/pharmacy/viewmodel/pharmacy_provider.dart';
 import 'package:grab_go_customer/features/grabmart/model/grabmart_category.dart';
 import 'package:grab_go_customer/features/grabmart/viewmodel/grabmart_provider.dart';
@@ -260,7 +262,7 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Browse ${currentService.name}',
+                        'Browse',
                         style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.w700, color: Colors.white),
                       ),
                       Text(
@@ -726,9 +728,15 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
     if (serviceProvider.isFoodService) {
       final foodProvider = Provider.of<FoodProvider>(context, listen: false);
       itemCount = _getFilteredFoodItems(foodProvider).length;
-    } else {
+    } else if (serviceProvider.isGroceryService) {
       final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
       itemCount = _getFilteredGroceryItems(groceryProvider).length;
+    } else if (serviceProvider.isPharmacyService) {
+      final pharmacyProvider = Provider.of<PharmacyProvider>(context, listen: false);
+      itemCount = _getFilteredPharmacyItems(pharmacyProvider).length;
+    } else if (serviceProvider.isStoresService) {
+      final grabMartProvider = Provider.of<GrabMartProvider>(context, listen: false);
+      itemCount = _getFilteredGrabMartItems(grabMartProvider).length;
     }
 
     return Padding(
@@ -1035,6 +1043,214 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
     return items;
   }
 
+  List<PharmacyItem> _getFilteredPharmacyItems(PharmacyProvider provider) {
+    List<PharmacyItem> items = List.from(provider.items);
+
+    // Apply category filter
+    if (_selectedCategoryId != 'all') {
+      items = items.where((item) => item.categoryId == _selectedCategoryId).toList();
+    }
+
+    // Apply comprehensive filter from bottom sheet (if active)
+    if (_comprehensiveFilter.isActive) {
+      // Price range filter
+      if (_comprehensiveFilter.minPrice > 0 || _comprehensiveFilter.maxPrice < 10000) {
+        items = items.where((item) {
+          return item.price >= _comprehensiveFilter.minPrice && item.price <= _comprehensiveFilter.maxPrice;
+        }).toList();
+      }
+
+      // Rating filter
+      if (_comprehensiveFilter.minRating != null) {
+        items = items.where((item) => item.rating >= _comprehensiveFilter.minRating!).toList();
+      }
+
+      // Quick filters from comprehensive filter
+      if (_comprehensiveFilter.onSale) {
+        items = items.where((item) => item.hasDiscount).toList();
+      }
+      if (_comprehensiveFilter.popular) {
+        items = items.where((item) => item.orderCount >= 50).toList();
+      }
+    }
+
+    // Apply quick filters - iterate through all selected filters
+    for (final filterName in _selectedQuickFilters) {
+      switch (filterName) {
+        case 'On Sale':
+          items = items.where((item) => item.hasDiscount).toList();
+          break;
+        case 'Top Rated':
+          items = items.where((item) => item.rating >= 4.5).toList();
+          break;
+        case 'Popular':
+          items = items.where((item) => item.orderCount >= 50).toList();
+          break;
+        case 'Price':
+          if (_selectedPriceRange != null) {
+            items = items.where((item) {
+              switch (_selectedPriceRange) {
+                case 'Under GH₵20':
+                  return item.price < 20;
+                case 'GH₵20 - GH₵50':
+                  return item.price >= 20 && item.price <= 50;
+                case 'GH₵50 - GH₵100':
+                  return item.price > 50 && item.price <= 100;
+                case 'Over GH₵100':
+                  return item.price > 100;
+                default:
+                  return true;
+              }
+            }).toList();
+          }
+          break;
+        case 'Rating':
+          if (_selectedRating != null) {
+            items = items.where((item) {
+              switch (_selectedRating) {
+                case '4.5+ Stars':
+                  return item.rating >= 4.5;
+                case '4.0+ Stars':
+                  return item.rating >= 4.0;
+                case '3.5+ Stars':
+                  return item.rating >= 3.5;
+                case 'Any Rating':
+                default:
+                  return true;
+              }
+            }).toList();
+          }
+          break;
+      }
+    }
+
+    // Apply sort
+    _applySortToPharmacyItems(items);
+
+    return items;
+  }
+
+  List<GrabMartItem> _getFilteredGrabMartItems(GrabMartProvider provider) {
+    List<GrabMartItem> items = List.from(provider.items);
+
+    // Apply category filter
+    if (_selectedCategoryId != 'all') {
+      items = items.where((item) => item.categoryId == _selectedCategoryId).toList();
+    }
+
+    // Apply comprehensive filter from bottom sheet (if active)
+    if (_comprehensiveFilter.isActive) {
+      // Price range filter
+      if (_comprehensiveFilter.minPrice > 0 || _comprehensiveFilter.maxPrice < 10000) {
+        items = items.where((item) {
+          return item.price >= _comprehensiveFilter.minPrice && item.price <= _comprehensiveFilter.maxPrice;
+        }).toList();
+      }
+
+      // Rating filter
+      if (_comprehensiveFilter.minRating != null) {
+        items = items.where((item) => item.rating >= _comprehensiveFilter.minRating!).toList();
+      }
+
+      // Quick filters from comprehensive filter
+      if (_comprehensiveFilter.onSale) {
+        items = items.where((item) => item.hasDiscount).toList();
+      }
+      if (_comprehensiveFilter.popular) {
+        items = items.where((item) => item.orderCount >= 50).toList();
+      }
+    }
+
+    // Apply quick filters - iterate through all selected filters
+    for (final filterName in _selectedQuickFilters) {
+      switch (filterName) {
+        case 'On Sale':
+          items = items.where((item) => item.hasDiscount).toList();
+          break;
+        case 'Top Rated':
+          items = items.where((item) => item.rating >= 4.5).toList();
+          break;
+        case 'Popular':
+          items = items.where((item) => item.orderCount >= 50).toList();
+          break;
+        case 'Price':
+          if (_selectedPriceRange != null) {
+            items = items.where((item) {
+              switch (_selectedPriceRange) {
+                case 'Under GH₵20':
+                  return item.price < 20;
+                case 'GH₵20 - GH₵50':
+                  return item.price >= 20 && item.price <= 50;
+                case 'GH₵50 - GH₵100':
+                  return item.price > 50 && item.price <= 100;
+                case 'Over GH₵100':
+                  return item.price > 100;
+                default:
+                  return true;
+              }
+            }).toList();
+          }
+          break;
+        case 'Rating':
+          if (_selectedRating != null) {
+            items = items.where((item) {
+              switch (_selectedRating) {
+                case '4.5+ Stars':
+                  return item.rating >= 4.5;
+                case '4.0+ Stars':
+                  return item.rating >= 4.0;
+                case '3.5+ Stars':
+                  return item.rating >= 3.5;
+                case 'Any Rating':
+                default:
+                  return true;
+              }
+            }).toList();
+          }
+          break;
+      }
+    }
+
+    // Apply sort
+    _applySortToGrabMartItems(items);
+
+    return items;
+  }
+
+  void _applySortToPharmacyItems(List<PharmacyItem> items) {
+    switch (_sortBy) {
+      case 'Price: Low to High':
+        items.sort((a, b) => a.price.compareTo(b.price));
+        break;
+      case 'Price: High to Low':
+        items.sort((a, b) => b.price.compareTo(a.price));
+        break;
+      case 'Rating: High to Low':
+        items.sort((a, b) => b.rating.compareTo(a.rating));
+        break;
+      case 'Popularity':
+        items.sort((a, b) => b.orderCount.compareTo(a.orderCount));
+        break;
+    }
+  }
+
+  void _applySortToGrabMartItems(List<GrabMartItem> items) {
+    switch (_sortBy) {
+      case 'Price: Low to High':
+        items.sort((a, b) => a.price.compareTo(b.price));
+        break;
+      case 'Price: High to Low':
+        items.sort((a, b) => b.price.compareTo(a.price));
+        break;
+      case 'Rating: High to Low':
+        items.sort((a, b) => b.rating.compareTo(a.rating));
+        break;
+      case 'Popularity':
+        items.sort((a, b) => b.orderCount.compareTo(a.orderCount));
+        break;
+    }
+  }
+
   void _applySortToFoodItems(List<FoodItem> items) {
     switch (_sortBy) {
       case 'Price: Low to High':
@@ -1173,8 +1389,10 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
             return BrowseCategorySkeleton(colors: colors, isDark: isDark);
           }
 
+          final pharmacyProvider = Provider.of<PharmacyProvider>(context, listen: false);
           final categoryData = categories.map((cat) {
-            return {'id': cat.id, 'name': cat.name, 'emoji': cat.emoji, 'itemCount': 0};
+            final itemCount = pharmacyProvider.items.where((item) => item.categoryId == cat.id).length;
+            return {'id': cat.id, 'name': cat.name, 'emoji': cat.emoji, 'itemCount': itemCount};
           }).toList();
 
           return Padding(
@@ -1192,8 +1410,10 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
             return BrowseCategorySkeleton(colors: colors, isDark: isDark);
           }
 
+          final grabMartProvider = Provider.of<GrabMartProvider>(context, listen: false);
           final categoryData = categories.map((cat) {
-            return {'id': cat.id, 'name': cat.name, 'emoji': cat.emoji, 'itemCount': 0};
+            final itemCount = grabMartProvider.items.where((item) => item.categoryId == cat.id).length;
+            return {'id': cat.id, 'name': cat.name, 'emoji': cat.emoji, 'itemCount': itemCount};
           }).toList();
 
           return Padding(
@@ -1219,46 +1439,12 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
 
           final items = _getFilteredFoodItems(provider);
 
-          if (items.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.search_off, size: 64.sp, color: colors.textSecondary),
-                  SizedBox(height: 16.h),
-                  Text(
-                    'No items found',
-                    style: TextStyle(fontSize: 16.sp, color: colors.textSecondary),
-                  ),
-                ],
-              ),
-            );
-          }
+          if (items.isEmpty) return _buildNoResults(colors);
 
-          return Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.75,
-                crossAxisSpacing: 12.w,
-                mainAxisSpacing: 12.h,
-              ),
-              itemCount: items.length,
-              itemBuilder: (context, index) {
-                return PopularItemCard(
-                  item: items[index],
-                  orderCount: items[index].orderCount,
-                  onTap: () => context.push('/food-details', extra: items[index]),
-                );
-              },
-            ),
-          );
+          return _buildGrid(items, (item) => context.push('/foodDetails', extra: item));
         },
       );
-    } else {
+    } else if (serviceProvider.isGroceryService) {
       return Consumer<GroceryProvider>(
         builder: (context, provider, _) {
           if (provider.isLoadingItems) {
@@ -1268,61 +1454,95 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
 
           final items = _getFilteredGroceryItems(provider);
 
-          if (items.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.search_off, size: 64.sp, color: colors.textSecondary),
-                  SizedBox(height: 16.h),
-                  Text(
-                    'No items found',
-                    style: TextStyle(fontSize: 16.sp, color: colors.textSecondary),
-                  ),
-                ],
-              ),
-            );
+          if (items.isEmpty) return _buildNoResults(colors);
+
+          return _buildGrid(
+            items,
+            (item) => context.push('/foodDetails', extra: item),
+            itemMapper: (item) => (item).toFoodItem(),
+          );
+        },
+      );
+    } else if (serviceProvider.isPharmacyService) {
+      return Consumer<PharmacyProvider>(
+        builder: (context, provider, _) {
+          if (provider.isLoadingItems) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            return BrowseGridSkeleton(colors: colors, isDark: isDark, isGridView: _isGridView);
           }
 
-          return Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.75,
-                crossAxisSpacing: 12.w,
-                mainAxisSpacing: 12.h,
-              ),
-              itemCount: items.length,
-              itemBuilder: (context, index) {
-                final groceryItem = items[index];
-                return PopularItemCard(
-                  item: FoodItem(
-                    id: groceryItem.id,
-                    name: groceryItem.name,
-                    description: groceryItem.description,
-                    price: groceryItem.price,
-                    discountPercentage: groceryItem.discountPercentage,
-                    image: groceryItem.image,
-                    rating: groceryItem.rating,
-                    deliveryTimeMinutes: 30,
-                    sellerName: groceryItem.storeName ?? 'Unknown Store',
-                    sellerId: groceryItem.storeId.hashCode % 1000000,
-                    restaurantId: groceryItem.storeId,
-                    restaurantImage: '',
-                    orderCount: groceryItem.orderCount,
-                  ),
-                  orderCount: groceryItem.orderCount,
-                  onTap: () => context.push('/grocery-details', extra: groceryItem),
-                );
-              },
-            ),
+          final items = _getFilteredPharmacyItems(provider);
+
+          if (items.isEmpty) return _buildNoResults(colors);
+
+          return _buildGrid(
+            items,
+            (item) => context.push('/foodDetails', extra: item),
+            itemMapper: (item) => (item).toFoodItem(),
+          );
+        },
+      );
+    } else if (serviceProvider.isStoresService) {
+      return Consumer<GrabMartProvider>(
+        builder: (context, provider, _) {
+          if (provider.isLoadingItems) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            return BrowseGridSkeleton(colors: colors, isDark: isDark, isGridView: _isGridView);
+          }
+
+          final items = _getFilteredGrabMartItems(provider);
+
+          if (items.isEmpty) return _buildNoResults(colors);
+
+          return _buildGrid(
+            items,
+            (item) => context.push('/foodDetails', extra: item),
+            itemMapper: (item) => (item).toFoodItem(),
           );
         },
       );
     }
+
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildNoResults(AppColorsExtension colors) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.search_off, size: 64.sp, color: colors.textSecondary),
+          SizedBox(height: 16.h),
+          Text(
+            'No items found',
+            style: TextStyle(fontSize: 16.sp, color: colors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGrid<T>(List<T> items, Function(T) onTap, {FoodItem Function(T)? itemMapper}) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 0.7,
+          crossAxisSpacing: 12.w,
+          mainAxisSpacing: 16.h,
+        ),
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          final item = items[index];
+          final foodItem = itemMapper != null ? itemMapper(item) : item as FoodItem;
+
+          return PopularItemCard(item: foodItem, orderCount: foodItem.orderCount, onTap: () => onTap(item));
+        },
+      ),
+    );
   }
 
   Widget _buildCategoryCard(Map<String, dynamic> category, AppColorsExtension colors) {
@@ -1340,6 +1560,7 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
             'categoryId': categoryId,
             'categoryName': categoryName,
             'categoryEmoji': categoryEmoji,
+            'serviceType': serviceProvider.currentService.id,
             'isFood': serviceProvider.isFoodService,
           },
         );

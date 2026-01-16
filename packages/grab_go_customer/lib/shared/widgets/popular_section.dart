@@ -14,6 +14,8 @@ class PopularSection extends StatelessWidget {
   final VoidCallback onSeeAll;
   final Function(FoodItem) onItemTap;
   final bool isLoading;
+  final String? title;
+  final String? icon;
 
   const PopularSection({
     super.key,
@@ -22,6 +24,8 @@ class PopularSection extends StatelessWidget {
     required this.onSeeAll,
     required this.onItemTap,
     this.isLoading = false,
+    this.title,
+    this.icon,
   });
 
   @override
@@ -32,8 +36,8 @@ class PopularSection extends StatelessWidget {
     return Column(
       children: [
         SectionHeader(
-          title: "Popular Right Now",
-          sectionIcon: Assets.icons.flame,
+          title: title ?? "Popular Right Now",
+          sectionIcon: icon ?? Assets.icons.flame,
           sectionTotal: popularItems.length,
           accentColor: AppColors.accentOrange,
           onSeeAll: onSeeAll,
@@ -82,7 +86,7 @@ class PopularSection extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SvgPicture.asset(
-            Assets.icons.flame,
+            icon ?? Assets.icons.flame,
             package: "grab_go_shared",
             height: 48.h,
             width: 48.w,
@@ -90,7 +94,7 @@ class PopularSection extends StatelessWidget {
           ),
           SizedBox(height: 16.h),
           Text(
-            'No popular items yet',
+            'No items yet',
             style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
           ),
           SizedBox(height: 8.h),

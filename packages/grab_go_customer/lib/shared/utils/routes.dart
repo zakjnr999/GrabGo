@@ -3,7 +3,9 @@ import 'package:flutter/material.dart' hide Notification;
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/auth/view/location_permission.dart';
 import 'package:grab_go_customer/features/auth/view/notification_permission.dart';
+import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
 import 'package:grab_go_customer/features/home/navigation/bottom_navigator.dart';
+import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
 import 'package:grab_go_customer/features/profile/view/settings_page.dart';
 import 'package:grab_go_customer/features/status/view/status_page.dart';
 import 'package:grab_go_customer/features/status/view/all_statuses_page.dart';
@@ -46,7 +48,6 @@ import 'package:grab_go_customer/features/restaurant/view/restaurants.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/splash_screen.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
-import 'package:grab_go_customer/features/home/view/grocery_details.dart';
 import 'package:grab_go_customer/features/location/view/location_picker_page.dart';
 import 'package:grab_go_customer/features/browse/view/category_items_page.dart';
 import 'package:flutter/material.dart';
@@ -784,8 +785,12 @@ final GoRouter appRouter = GoRouter(
           child = FoodDetails(groceryItem: extra);
         } else if (extra is FoodItem) {
           child = FoodDetails(foodItem: extra);
+        } else if (extra is PharmacyItem) {
+          child = FoodDetails(pharmacyItem: extra);
+        } else if (extra is GrabMartItem) {
+          child = FoodDetails(grabMartItem: extra);
         } else {
-          // Invalid type - should not happen
+          // Check if it's a Map (for potential future proofing or fallback)
           child = const Scaffold(body: Center(child: Text('Invalid item type')));
         }
 
@@ -799,43 +804,6 @@ final GoRouter appRouter = GoRouter(
               animation: animation,
               secondaryAnimation: secondaryAnimation,
               transitionType: SharedAxisTransitionType.horizontal,
-              child: child,
-            );
-          },
-        );
-      },
-    ),
-    GoRoute(
-      path: "/grocery-details",
-      pageBuilder: (context, state) {
-        final groceryItem = state.extra as GroceryItem?;
-        if (groceryItem == null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (context.mounted) {
-              context.pop();
-            }
-          });
-          return CustomTransitionPage(
-            key: state.pageKey,
-            child: const SizedBox.shrink(),
-            transitionDuration: const Duration(milliseconds: 400),
-            reverseTransitionDuration: const Duration(milliseconds: 400),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return child;
-            },
-          );
-        }
-
-        return CustomTransitionPage(
-          key: state.pageKey,
-          child: GroceryDetails(groceryItem: groceryItem),
-          transitionDuration: const Duration(milliseconds: 400),
-          reverseTransitionDuration: const Duration(milliseconds: 400),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return SharedAxisTransition(
-              animation: animation,
-              secondaryAnimation: secondaryAnimation,
-              transitionType: SharedAxisTransitionType.scaled,
               child: child,
             );
           },
@@ -922,48 +890,16 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
-      path: "/foodDetails",
-      pageBuilder: (context, state) {
-        final extra = state.extra;
-
-        // Detect type and pass to correct parameter
-        final Widget child;
-        if (extra is GroceryItem) {
-          child = FoodDetails(groceryItem: extra);
-        } else if (extra is FoodItem) {
-          child = FoodDetails(foodItem: extra);
-        } else {
-          // Fallback - should not happen
-          child = const Scaffold(body: Center(child: Text('Invalid item type')));
-        }
-
-        return CustomTransitionPage(
-          key: state.pageKey,
-          child: child,
-          transitionDuration: const Duration(milliseconds: 400),
-          reverseTransitionDuration: const Duration(milliseconds: 400),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return SharedAxisTransition(
-              animation: animation,
-              secondaryAnimation: secondaryAnimation,
-              transitionType: SharedAxisTransitionType.horizontal,
-              child: child,
-            );
-          },
-        );
-      },
-    ),
-    GoRoute(
       path: "/categoryItems",
       pageBuilder: (context, state) {
         final extra = state.extra as Map<String, dynamic>;
         return CustomTransitionPage(
           key: state.pageKey,
-          child: CategoryItemsPage(
-            categoryId: extra['categoryId'] as String,
-            categoryName: extra['categoryName'] as String,
-            categoryEmoji: extra['categoryEmoji'] as String,
-            isFood: extra['isFood'] as bool,
+            child: CategoryItemsPage(
+            categoryId: (extra['categoryId'] as String?) ?? '',
+            categoryName: (extra['categoryName'] as String?) ?? 'Items',
+            categoryEmoji: (extra['categoryEmoji'] as String?) ?? '📦',
+            serviceType: extra['serviceType'] as String? ?? (extra['isFood'] == true ? 'food' : 'grocery'),
           ),
           transitionDuration: const Duration(milliseconds: 400),
           reverseTransitionDuration: const Duration(milliseconds: 400),

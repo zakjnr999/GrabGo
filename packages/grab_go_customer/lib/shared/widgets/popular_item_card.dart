@@ -12,8 +12,7 @@ import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:provider/provider.dart';
 
 class PopularItemCard extends StatelessWidget {
-  final FoodItem item;
-  final CartItem? cartItem;
+  final CartItem item;
   final int orderCount;
   final VoidCallback onTap;
   final String? deliveryTime;
@@ -22,7 +21,7 @@ class PopularItemCard extends StatelessWidget {
   const PopularItemCard({
     super.key,
     required this.item,
-    this.cartItem,
+    CartItem? cartItem, // Keep for backward compatibility if needed, but we'll use item
     required this.orderCount,
     required this.onTap,
     this.deliveryTime,
@@ -130,102 +129,108 @@ class PopularItemCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                Consumer<FavoritesProvider>(
-                  builder: (context, favoriteProvider, child) {
-                    final bool isFavorite = favoriteProvider.isFavorite(item);
-                    return Positioned(
-                      right: 6.r,
-                      top: 6.r,
-                      child: GestureDetector(
-                        onTap: () {
-                          if (isFavorite) {
-                            favoriteProvider.removeFromFavorites(item);
-                          } else {
-                            favoriteProvider.addToFavorites(item);
-                          }
-                        },
-                        child: SvgPicture.asset(
-                          isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
-                          package: 'grab_go_shared',
-                          height: 24.h,
-                          width: 24.w,
-                          colorFilter: ColorFilter.mode(
-                            isFavorite ? colors.accentOrange : Colors.white,
-                            BlendMode.srcIn,
+                  Consumer<FavoritesProvider>(
+                    builder: (context, favoriteProvider, child) {
+                      final bool isFavorite = item is FoodItem ? favoriteProvider.isFavorite(item as FoodItem) : false;
+                      return Positioned(
+                        right: 6.r,
+                        top: 6.r,
+                        child: GestureDetector(
+                          onTap: () {
+                            if (item is FoodItem) {
+                              if (isFavorite) {
+                                favoriteProvider.removeFromFavorites(item as FoodItem);
+                              } else {
+                                favoriteProvider.addToFavorites(item as FoodItem);
+                              }
+                            } else {
+                              // TODO: Implement favorites for non-food items if needed
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Favorites coming soon for this service!')),
+                              );
+                            }
+                          },
+                          child: SvgPicture.asset(
+                            isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
+                            package: 'grab_go_shared',
+                            height: 24.h,
+                            width: 24.w,
+                            colorFilter: ColorFilter.mode(
+                              isFavorite ? colors.accentOrange : Colors.white,
+                              BlendMode.srcIn,
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-            // Content
-            Padding(
-              padding: EdgeInsets.fromLTRB(10.r, 10.r, 10.r, 6.r),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
-                        ),
-                        SizedBox(height: 8.h),
-                        Row(
-                          children: [
-                            if (showDeliveryTime) ...[
-                              SvgPicture.asset(
-                                Assets.icons.timer,
-                                package: 'grab_go_shared',
-                                height: 12.h,
-                                width: 12.w,
-                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                              ),
-                              SizedBox(width: 4.w),
-                              Text(
-                                deliveryTime ?? '25-30 min',
-                                style: TextStyle(
-                                  fontSize: 11.sp,
-                                  fontWeight: FontWeight.w500,
-                                  color: colors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        SizedBox(height: 8.h),
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                          decoration: BoxDecoration(
-                            color: colors.accentOrange.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8.r),
-                          ),
-                          child: Text(
-                            "GHS ${item.price.toStringAsFixed(2)}",
-                            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800, color: colors.accentOrange),
-                          ),
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                  Consumer<CartProvider>(
-                    builder: (context, provider, _) {
-                      final itemForCart = cartItem ?? item;
-                      final bool isInCart = provider.cartItems.containsKey(itemForCart);
-                      return GestureDetector(
-                        onTap: () {
-                          if (isInCart) {
-                            provider.removeItemCompletely(itemForCart);
-                          } else {
-                            provider.addToCart(itemForCart, context: context);
-                          }
-                        },
+                ],
+              ),
+              // Content
+              Padding(
+                padding: EdgeInsets.fromLTRB(10.r, 10.r, 10.r, 6.r),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                          ),
+                          SizedBox(height: 8.h),
+                          Row(
+                            children: [
+                              if (showDeliveryTime) ...[
+                                SvgPicture.asset(
+                                  Assets.icons.timer,
+                                  package: 'grab_go_shared',
+                                  height: 12.h,
+                                  width: 12.w,
+                                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                ),
+                                SizedBox(width: 4.w),
+                                Text(
+                                  deliveryTime ?? '25-30 min',
+                                  style: TextStyle(
+                                    fontSize: 11.sp,
+                                    fontWeight: FontWeight.w500,
+                                    color: colors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          SizedBox(height: 8.h),
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                            decoration: BoxDecoration(
+                              color: colors.accentOrange.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8.r),
+                            ),
+                            child: Text(
+                              "GHS ${item.price.toStringAsFixed(2)}",
+                              style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800, color: colors.accentOrange),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Consumer<CartProvider>(
+                      builder: (context, provider, _) {
+                        final bool isInCart = provider.cartItems.containsKey(item);
+                        return GestureDetector(
+                          onTap: () {
+                            if (isInCart) {
+                              provider.removeItemCompletely(item);
+                            } else {
+                              provider.addToCart(item, context: context);
+                            }
+                          },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 300),
                           curve: Curves.easeOut,

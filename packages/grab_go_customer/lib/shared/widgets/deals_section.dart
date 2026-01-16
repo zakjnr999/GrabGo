@@ -14,6 +14,8 @@ class DealsSection extends StatelessWidget {
   final VoidCallback onSeeAll;
   final Function(FoodItem) onItemTap;
   final bool isLoading;
+  final String? title;
+  final String? icon;
 
   const DealsSection({
     super.key,
@@ -22,6 +24,8 @@ class DealsSection extends StatelessWidget {
     required this.onSeeAll,
     required this.onItemTap,
     this.isLoading = false,
+    this.title,
+    this.icon,
   });
 
   @override
@@ -32,8 +36,8 @@ class DealsSection extends StatelessWidget {
     return Column(
       children: [
         SectionHeader(
-          title: "Deals & Offers",
-          sectionIcon: Assets.icons.tag,
+          title: title ?? "Deals & Offers",
+          sectionIcon: icon ?? Assets.icons.tag,
           accentColor: colors.accentOrange,
           sectionTotal: dealItems.length,
           onSeeAll: onSeeAll,
@@ -82,7 +86,7 @@ class DealsSection extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SvgPicture.asset(
-            Assets.icons.tag,
+            icon ?? Assets.icons.tag,
             package: "grab_go_shared",
             height: 48.h,
             width: 48.w,

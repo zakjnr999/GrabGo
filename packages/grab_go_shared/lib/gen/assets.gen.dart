@@ -380,6 +380,10 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/percentage.svg
   String get percentage => 'lib/assets/icons/percentage.svg';
 
+  /// File path: lib/assets/icons/pharmacy-cross-circle.svg
+  String get pharmacyCrossCircle =>
+      'lib/assets/icons/pharmacy-cross-circle.svg';
+
   /// File path: lib/assets/icons/phone-solid.svg
   String get phoneSolid => 'lib/assets/icons/phone-solid.svg';
 
@@ -618,6 +622,7 @@ class $LibAssetsIconsGen {
     pause,
     percentageCircle,
     percentage,
+    pharmacyCrossCircle,
     phoneSolid,
     phone,
     play,
@@ -735,10 +740,6 @@ class $LibAssetsImagesGen {
   AssetGenImage get splashImage =>
       const AssetGenImage('lib/assets/images/splash_image.png');
 
-  /// File path: lib/assets/images/tracking_sample.png
-  AssetGenImage get trackingSample =>
-      const AssetGenImage('lib/assets/images/tracking_sample.png');
-
   /// List of all assets
   List<AssetGenImage> get values => [
     deliveryGuyBicycle,
@@ -758,7 +759,6 @@ class $LibAssetsImagesGen {
     sampleThree,
     sampleTwo,
     splashImage,
-    trackingSample,
   ];
 }
 

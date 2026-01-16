@@ -9,6 +9,8 @@ import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.d
 import 'package:grab_go_customer/features/home/model/filter_model.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
+import 'package:grab_go_customer/features/pharmacy/viewmodel/pharmacy_provider.dart';
+import 'package:grab_go_customer/features/grabmart/viewmodel/grabmart_provider.dart';
 import 'package:grab_go_customer/shared/widgets/browse_grid_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/home_search.dart';
 import 'package:grab_go_customer/shared/widgets/popular_item_card.dart';
@@ -21,15 +23,20 @@ class CategoryItemsPage extends StatefulWidget {
   final String categoryId;
   final String categoryName;
   final String categoryEmoji;
-  final bool isFood;
+  final String serviceType; // 'food', 'grocery', 'pharmacy', 'convenience'
 
   const CategoryItemsPage({
     super.key,
     required this.categoryId,
     required this.categoryName,
     required this.categoryEmoji,
-    required this.isFood,
+    required this.serviceType,
   });
+
+  bool get isFood => serviceType == 'food';
+  bool get isGrocery => serviceType == 'grocery';
+  bool get isPharmacy => serviceType == 'pharmacy';
+  bool get isGrabMart => serviceType == 'convenience';
 
   @override
   State<CategoryItemsPage> createState() => _CategoryItemsPageState();
@@ -106,6 +113,31 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
     ]).animate(_badgePulseController);
 
     _fabAnimationController.forward();
+
+    // Fetch items for specific service if not already loaded
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.isPharmacy) {
+        final provider = Provider.of<PharmacyProvider>(context, listen: false);
+        if (provider.items.isEmpty) {
+          provider.fetchItems();
+        }
+      } else if (widget.isGrabMart) {
+        final provider = Provider.of<GrabMartProvider>(context, listen: false);
+        if (provider.items.isEmpty) {
+          provider.fetchItems();
+        }
+      } else if (widget.isFood) {
+        final provider = Provider.of<FoodProvider>(context, listen: false);
+        if (provider.categories.isEmpty) {
+          provider.fetchCategories();
+        }
+      } else if (widget.isGrocery) {
+        final provider = Provider.of<GroceryProvider>(context, listen: false);
+        if (provider.items.isEmpty) {
+          provider.fetchItems();
+        }
+      }
+    });
   }
 
   @override
@@ -196,76 +228,121 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              widget.isFood
-                                  ? Consumer<FoodProvider>(
-                                      builder: (context, foodProvider, _) {
-                                        final categoryList = foodProvider.categories
-                                            .where((cat) => cat.id == widget.categoryId)
-                                            .toList();
-                                        return HomeSearch(
-                                          categories: categoryList,
-                                          activeFilter: _comprehensiveFilter,
-                                          hintText: "Find your food item...",
-                                          onFilterApplied: (FilterModel filter) {
-                                            setState(() {
-                                              _comprehensiveFilter = filter.copyWith();
-                                            });
-                                          },
-                                          isFood: true,
-                                        );
+                              if (widget.isFood)
+                                Consumer<FoodProvider>(
+                                  builder: (context, foodProvider, _) {
+                                    final categoryList = foodProvider.categories
+                                        .where((cat) => cat.id == widget.categoryId)
+                                        .toList();
+                                    return HomeSearch(
+                                      categories: categoryList,
+                                      activeFilter: _comprehensiveFilter,
+                                      hintText: "Find your food item...",
+                                      onFilterApplied: (FilterModel filter) {
+                                        setState(() {
+                                          _comprehensiveFilter = filter.copyWith();
+                                        });
                                       },
-                                    )
-                                  : Consumer<GroceryProvider>(
-                                      builder: (context, groceryProvider, _) {
-                                        final groceryCategories = groceryProvider.categories
-                                            .where((cat) => cat.id == widget.categoryId)
-                                            .map(
-                                              (cat) => FoodCategoryModel(
-                                                id: cat.id,
-                                                name: cat.name,
-                                                emoji: cat.emoji,
-                                                description: cat.description,
-                                                isActive: cat.isActive,
-                                                items: groceryProvider.items
-                                                    .where((item) => item.categoryId == cat.id)
-                                                    .map(
-                                                      (item) => FoodItem(
-                                                        id: item.id,
-                                                        name: item.name,
-                                                        image: item.image,
-                                                        description: item.description,
-                                                        sellerName: 'Grocery Store',
-                                                        sellerId: 0,
-                                                        restaurantId: '',
-                                                        restaurantImage: '',
-                                                        price: item.price,
-                                                        rating: item.rating,
-                                                        prepTimeMinutes: 15,
-                                                        calories: 100,
-                                                        dietaryTags: [],
-                                                        deliveryTimeMinutes: 30,
-                                                        isAvailable: item.isAvailable,
-                                                        discountPercentage: item.discountPercentage,
-                                                        orderCount: item.orderCount,
-                                                      ),
-                                                    )
-                                                    .toList(),
-                                              ),
-                                            )
-                                            .toList();
-                                        return HomeSearch(
-                                          categories: groceryCategories,
-                                          activeFilter: _comprehensiveFilter,
-                                          hintText: "Find your grocery item...",
-                                          onFilterApplied: (FilterModel filter) {
-                                            setState(() {
-                                              _comprehensiveFilter = filter.copyWith();
-                                            });
-                                          },
-                                          isFood: false,
-                                        );
+                                      isFood: true,
+                                    );
+                                  },
+                                )
+                              else if (widget.isGrocery)
+                                Consumer<GroceryProvider>(
+                                  builder: (context, groceryProvider, _) {
+                                    final groceryCategories = groceryProvider.categories
+                                        .where((cat) => cat.id == widget.categoryId)
+                                        .map(
+                                          (cat) => FoodCategoryModel(
+                                            id: cat.id,
+                                            name: cat.name,
+                                            emoji: cat.emoji,
+                                            description: cat.description,
+                                            isActive: cat.isActive,
+                                            items: groceryProvider.items
+                                                .where((item) => item.categoryId == cat.id)
+                                                .map((item) => item.toFoodItem())
+                                                .toList(),
+                                          ),
+                                        )
+                                        .toList();
+                                    return HomeSearch(
+                                      categories: groceryCategories,
+                                      activeFilter: _comprehensiveFilter,
+                                      hintText: "Find your grocery item...",
+                                      onFilterApplied: (FilterModel filter) {
+                                        setState(() {
+                                          _comprehensiveFilter = filter.copyWith();
+                                        });
                                       },
-                                    ),
+                                      isFood: false,
+                                    );
+                                  },
+                                )
+                              else if (widget.isPharmacy)
+                                Consumer<PharmacyProvider>(
+                                  builder: (context, pharmacyProvider, _) {
+                                    final pharmacyCategories = pharmacyProvider.categories
+                                        .where((cat) => cat.id == widget.categoryId)
+                                        .map(
+                                          (cat) => FoodCategoryModel(
+                                            id: cat.id,
+                                            name: cat.name,
+                                            emoji: cat.emoji,
+                                            description: '',
+                                            isActive: true,
+                                            items: pharmacyProvider.items
+                                                .where((item) => item.categoryId == cat.id)
+                                                .map((item) => item.toFoodItem())
+                                                .toList(),
+                                          ),
+                                        )
+                                        .toList();
+                                    return HomeSearch(
+                                      categories: pharmacyCategories,
+                                      activeFilter: _comprehensiveFilter,
+                                      hintText: "Search medications...",
+                                      onFilterApplied: (FilterModel filter) {
+                                        setState(() {
+                                          _comprehensiveFilter = filter.copyWith();
+                                        });
+                                      },
+                                      isFood: false,
+                                    );
+                                  },
+                                )
+                              else if (widget.isGrabMart)
+                                Consumer<GrabMartProvider>(
+                                  builder: (context, grabMartProvider, _) {
+                                    final grabMartCategories = grabMartProvider.categories
+                                        .where((cat) => cat.id == widget.categoryId)
+                                        .map(
+                                          (cat) => FoodCategoryModel(
+                                            id: cat.id,
+                                            name: cat.name,
+                                            emoji: cat.emoji,
+                                            description: '',
+                                            isActive: true,
+                                            items: grabMartProvider.items
+                                                .where((item) => item.categoryId == cat.id)
+                                                .map((item) => item.toFoodItem())
+                                                .toList(),
+                                          ),
+                                        )
+                                        .toList();
+                                    return HomeSearch(
+                                      categories: grabMartCategories,
+                                      activeFilter: _comprehensiveFilter,
+                                      hintText: "Search essentials...",
+                                      onFilterApplied: (FilterModel filter) {
+                                        setState(() {
+                                          _comprehensiveFilter = filter.copyWith();
+                                        });
+                                      },
+                                      isFood: false,
+                                    );
+                                  },
+                                ),
                               _buildQuickFilters(colors),
                             ],
                           ),
@@ -273,7 +350,14 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
                       ),
                     ),
 
-                    widget.isFood ? _buildFoodItemsSliver(colors, isDark) : _buildGroceryItemsSliver(colors, isDark),
+                    if (widget.isFood)
+                      _buildFoodItemsSliver(colors, isDark)
+                    else if (widget.isGrocery)
+                      _buildGroceryItemsSliver(colors, isDark)
+                    else if (widget.isPharmacy)
+                      _buildPharmacyItemsSliver(colors, isDark)
+                    else if (widget.isGrabMart)
+                      _buildGrabMartItemsSliver(colors, isDark),
                   ],
                 ),
 
@@ -520,7 +604,7 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
           sliver: SliverGrid(
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: _isGridView ? 2 : 1,
-              childAspectRatio: _isGridView ? 0.700 : 1.8,
+              childAspectRatio: _isGridView ? 0.7 : 1.8,
               crossAxisSpacing: 12.w,
               mainAxisSpacing: 16.h,
             ),
@@ -551,34 +635,7 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
         final items = _getFilteredGroceryItems(provider);
 
         if (items.isEmpty) {
-          return SliverFillRemaining(
-            hasScrollBody: false,
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(20.r),
-                    decoration: BoxDecoration(
-                      color: colors.accentOrange.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(Icons.shopping_basket_outlined, size: 40.sp, color: colors.accentOrange),
-                  ),
-                  SizedBox(height: 16.h),
-                  Text(
-                    'No items found',
-                    style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
-                  ),
-                  SizedBox(height: 8.h),
-                  Text(
-                    'Try adjusting your filters',
-                    style: TextStyle(fontSize: 14.sp, color: colors.textSecondary),
-                  ),
-                ],
-              ),
-            ),
-          );
+          return _buildEmptyState(colors);
         }
 
         return SliverPadding(
@@ -586,7 +643,7 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
           sliver: SliverGrid(
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: _isGridView ? 2 : 1,
-              childAspectRatio: _isGridView ? 0.615 : 1.8,
+              childAspectRatio: _isGridView ? 0.7 : 1.8,
               crossAxisSpacing: 12.w,
               mainAxisSpacing: 16.h,
             ),
@@ -594,14 +651,119 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
               final item = items[index];
               return PopularItemCard(
                 item: item.toFoodItem(),
-                cartItem: item,
                 orderCount: item.orderCount,
-                onTap: () => context.push('/grocery-details', extra: item),
+                onTap: () => context.push('/foodDetails', extra: item),
               );
             }, childCount: items.length),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildPharmacyItemsSliver(AppColorsExtension colors, bool isDark) {
+    final padding = MediaQuery.paddingOf(context);
+    return Consumer<PharmacyProvider>(
+      builder: (context, provider, _) {
+        if (provider.isLoadingItems) {
+          return SliverToBoxAdapter(
+            child: BrowseGridSkeleton(colors: colors, isDark: isDark, isGridView: _isGridView),
+          );
+        }
+
+        final items = provider.items.where((item) => item.categoryId == widget.categoryId).toList();
+
+        if (items.isEmpty) {
+          return _buildEmptyState(colors);
+        }
+
+        return SliverPadding(
+          padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 8.h, bottom: padding.bottom + 16.h),
+          sliver: SliverGrid(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: _isGridView ? 2 : 1,
+              childAspectRatio: _isGridView ? 0.7 : 1.8,
+              crossAxisSpacing: 12.w,
+              mainAxisSpacing: 16.h,
+            ),
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final item = items[index];
+              return PopularItemCard(
+                item: item.toFoodItem(),
+                orderCount: item.orderCount,
+                onTap: () => context.push('/foodDetails', extra: item),
+              );
+            }, childCount: items.length),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildGrabMartItemsSliver(AppColorsExtension colors, bool isDark) {
+    final padding = MediaQuery.paddingOf(context);
+    return Consumer<GrabMartProvider>(
+      builder: (context, provider, _) {
+        if (provider.isLoadingItems) {
+          return SliverToBoxAdapter(
+            child: BrowseGridSkeleton(colors: colors, isDark: isDark, isGridView: _isGridView),
+          );
+        }
+
+        final items = provider.items.where((item) => item.categoryId == widget.categoryId).toList();
+
+        if (items.isEmpty) {
+          return _buildEmptyState(colors);
+        }
+
+        return SliverPadding(
+          padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 8.h, bottom: padding.bottom + 16.h),
+          sliver: SliverGrid(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: _isGridView ? 2 : 1,
+              childAspectRatio: _isGridView ? 0.7 : 1.8,
+              crossAxisSpacing: 12.w,
+              mainAxisSpacing: 16.h,
+            ),
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final item = items[index];
+              return PopularItemCard(
+                item: item.toFoodItem(),
+                orderCount: item.orderCount,
+                onTap: () => context.push('/foodDetails', extra: item),
+              );
+            }, childCount: items.length),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyState(AppColorsExtension colors) {
+    return SliverFillRemaining(
+      hasScrollBody: false,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: EdgeInsets.all(20.r),
+              decoration: BoxDecoration(color: colors.accentOrange.withValues(alpha: 0.1), shape: BoxShape.circle),
+              child: Icon(Icons.shopping_basket_outlined, size: 40.sp, color: colors.accentOrange),
+            ),
+            SizedBox(height: 16.h),
+            Text(
+              'No items found',
+              style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+            ),
+            SizedBox(height: 8.h),
+            Text(
+              'Try adjusting your filters',
+              style: TextStyle(fontSize: 14.sp, color: colors.textSecondary),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1097,33 +1259,62 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
                     overflow: TextOverflow.ellipsis,
                   ),
                   SizedBox(height: 2.h),
-                  widget.isFood
-                      ? Consumer<FoodProvider>(
-                          builder: (context, provider, _) {
-                            final items = _getFilteredFoodItems(provider);
-                            return Text(
-                              '${items.length} options available',
-                              style: TextStyle(
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white.withValues(alpha: 0.8),
-                              ),
-                            );
-                          },
-                        )
-                      : Consumer<GroceryProvider>(
-                          builder: (context, provider, _) {
-                            final items = _getFilteredGroceryItems(provider);
-                            return Text(
-                              '${items.length} options available',
-                              style: TextStyle(
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white.withValues(alpha: 0.8),
-                              ),
-                            );
-                          },
-                        ),
+                  if (widget.isFood)
+                    Consumer<FoodProvider>(
+                      builder: (context, provider, _) {
+                        final items = _getFilteredFoodItems(provider);
+                        return Text(
+                          '${items.length} options available',
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white.withValues(alpha: 0.8),
+                          ),
+                        );
+                      },
+                    )
+                  else if (widget.isGrocery)
+                    Consumer<GroceryProvider>(
+                      builder: (context, provider, _) {
+                        final items = _getFilteredGroceryItems(provider);
+                        return Text(
+                          '${items.length} options available',
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white.withValues(alpha: 0.8),
+                          ),
+                        );
+                      },
+                    )
+                  else if (widget.isPharmacy)
+                    Consumer<PharmacyProvider>(
+                      builder: (context, provider, _) {
+                        final items = provider.items.where((item) => item.categoryId == widget.categoryId).toList();
+                        return Text(
+                          '${items.length} options available',
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white.withValues(alpha: 0.8),
+                          ),
+                        );
+                      },
+                    )
+                  else if (widget.isGrabMart)
+                    Consumer<GrabMartProvider>(
+                      builder: (context, provider, _) {
+                        final items = provider.items.where((item) => item.categoryId == widget.categoryId).toList();
+                        return Text(
+                          '${items.length} options available',
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white.withValues(alpha: 0.8),
+                          ),
+                        );
+                      },
+                    ),
                 ],
               ),
             ),

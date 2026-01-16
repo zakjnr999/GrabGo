@@ -4,9 +4,13 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
+import 'package:grab_go_customer/features/grabmart/model/grabmart_category.dart';
+import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_category.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart';
+import 'package:grab_go_customer/features/pharmacy/model/pharmacy_category.dart';
+import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
 import 'package:grab_go_customer/features/pharmacy/viewmodel/pharmacy_provider.dart';
 import 'package:grab_go_customer/features/grabmart/viewmodel/grabmart_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_banner_provider.dart';
@@ -14,6 +18,7 @@ import 'package:grab_go_customer/features/home/viewmodel/food_deals_provider.dar
 import 'package:grab_go_customer/features/home/viewmodel/food_discovery_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/location_provider.dart';
+import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_customer/shared/widgets/app_refresh_indicator.dart';
 import 'package:grab_go_customer/shared/widgets/category_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_skeleton.dart';
@@ -36,6 +41,8 @@ import 'package:grab_go_customer/shared/widgets/promo_section.dart';
 import 'package:grab_go_customer/shared/widgets/top_rated_section.dart';
 import 'package:grab_go_customer/shared/widgets/fresh_arrivals_section.dart';
 import 'package:grab_go_customer/shared/widgets/browse_all_groceries_section.dart';
+import 'package:grab_go_customer/shared/widgets/browse_all_section.dart';
+import 'package:grab_go_customer/shared/widgets/browse_items_grid.dart';
 import 'package:grab_go_customer/shared/widgets/promotional_banner_carousel.dart';
 import 'package:grab_go_customer/features/home/model/promotional_banner.dart';
 import 'package:grab_go_customer/shared/viewmodels/service_provider.dart';
@@ -300,11 +307,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                         _buildStoreSpecialsSection(serviceProvider, groceryProvider),
                                         _buildBrowseAllGroceriesSection(serviceProvider, groceryProvider),
                                       ] else if (serviceProvider.isPharmacyService) ...[
-                                        _buildPharmacyInfoSection(colors),
-                                        _buildPharmacyServicesSection(colors),
+                                        _buildPharmacyOnSaleSection(),
+                                        _buildPharmacyPopularSection(),
+                                        _buildPharmacyTopRatedSection(),
+                                        _buildPharmacyItemsGrid(),
                                       ] else if (serviceProvider.isStoresService) ...[
-                                        _buildGrabMartInfoSection(colors),
-                                        _buildGrabMartQuickPicksSection(colors),
+                                        _buildGrabMartSpecialOffersSection(),
+                                        _buildGrabMartQuickPicksSection(),
+                                        _buildGrabMartTopRatedSection(),
+                                        _buildGrabMartItemsGrid(),
                                       ],
                                     ],
                                   ),
@@ -468,7 +479,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SectionHeader(
-              title: "Categories",
+              title: "Food Categories",
               sectionIcon: Assets.icons.viewGrid,
               accentColor: colors.accentOrange,
               sectionTotal: categoriesToShow.length.toInt(),
@@ -578,11 +589,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           // Load pharmacy data
           if (pharmacyProvider.categories.isEmpty) {
             pharmacyProvider.fetchCategories();
+            pharmacyProvider.fetchItems();
           }
         } else if (service.id == 'convenience') {
           // Load GrabMart data
           if (grabMartProvider.categories.isEmpty) {
             grabMartProvider.fetchCategories();
+            grabMartProvider.fetchItems();
           }
         }
       },
@@ -774,46 +787,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  "Categories",
-                  style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
-                ),
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      // Navigate to browse page or all categories
-                    },
-                    borderRadius: BorderRadius.circular(20.r),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          "See All",
-                          style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.accentOrange),
-                        ),
-                        SizedBox(width: 4.w),
-                        SvgPicture.asset(
-                          Assets.icons.navArrowRight,
-                          package: 'grab_go_shared',
-                          height: 14.h,
-                          width: 14.w,
-                          colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          SectionHeader(
+            title: "Categories",
+            sectionIcon: Assets.icons.viewGrid,
+            accentColor: colors.accentOrange,
+            sectionTotal: groceryProvider.categories.length.toInt(),
+            onSeeAll: () {},
           ),
-          SizedBox(height: KSpacing.md.h),
+          SizedBox(height: 10.h),
           ServiceCategoryList<GroceryCategory>(
             categories: categoriesWithType,
             getName: (cat) => cat.name,
@@ -844,54 +825,31 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20.w),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      "Health Categories",
-                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
-                    ),
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          // Navigate to browse page
-                        },
-                        borderRadius: BorderRadius.circular(20.r),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              "See All",
-                              style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.accentOrange),
-                            ),
-                            SizedBox(width: 4.w),
-                            SvgPicture.asset(
-                              Assets.icons.navArrowRight,
-                              package: 'grab_go_shared',
-                              height: 14.h,
-                              width: 14.w,
-                              colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              SectionHeader(
+                title: "Categories",
+                sectionIcon: Assets.icons.viewGrid,
+                accentColor: colors.accentOrange,
+                sectionTotal: pharmacyProvider.categories.length.toInt(),
+                onSeeAll: () {},
               ),
-              SizedBox(height: KSpacing.md.h),
+              SizedBox(height: 10.h),
               ServiceCategoryList<PharmacyCategory>(
                 categories: pharmacyProvider.categories,
                 getName: (cat) => cat.name,
                 getEmoji: (cat) => cat.emoji,
                 getId: (cat) => cat.id,
                 initialSelectedCategory: null,
+                autoNotify: false,
                 onCategorySelected: (category) {
-                  // Handle category selection
+                  context.push(
+                    '/categoryItems',
+                    extra: {
+                      'categoryId': category.id,
+                      'categoryName': category.name,
+                      'categoryEmoji': category.emoji,
+                      'serviceType': 'pharmacy',
+                    },
+                  );
                 },
               ),
             ],
@@ -914,54 +872,31 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20.w),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      "Shop by Category",
-                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
-                    ),
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          // Navigate to browse page
-                        },
-                        borderRadius: BorderRadius.circular(20.r),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              "See All",
-                              style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.accentOrange),
-                            ),
-                            SizedBox(width: 4.w),
-                            SvgPicture.asset(
-                              Assets.icons.navArrowRight,
-                              package: 'grab_go_shared',
-                              height: 14.h,
-                              width: 14.w,
-                              colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              SectionHeader(
+                title: "Categories",
+                sectionIcon: Assets.icons.viewGrid,
+                accentColor: colors.accentOrange,
+                sectionTotal: grabMartProvider.categories.length.toInt(),
+                onSeeAll: () {},
               ),
-              SizedBox(height: KSpacing.md.h),
+              SizedBox(height: 10.h),
               ServiceCategoryList<GrabMartCategory>(
                 categories: grabMartProvider.categories,
                 getName: (cat) => cat.name,
                 getEmoji: (cat) => cat.emoji,
                 getId: (cat) => cat.id,
                 initialSelectedCategory: null,
+                autoNotify: false,
                 onCategorySelected: (category) {
-                  // Handle category selection
+                  context.push(
+                    '/categoryItems',
+                    extra: {
+                      'categoryId': category.id,
+                      'categoryName': category.name,
+                      'categoryEmoji': category.emoji,
+                      'serviceType': 'convenience',
+                    },
+                  );
                 },
               ),
             ],
@@ -1098,9 +1033,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   try {
                     originalItem = groceryProvider.popularItems.firstWhere((g) => g.id == item.id);
                   } catch (_) {}
-                  context.push('/grocery-details', extra: originalItem ?? item);
+                  context.push('/foodDetails', extra: originalItem ?? item);
                 } else {
-                  context.push('/food-details', extra: item);
+                  context.push('/foodDetails', extra: item);
                 }
               },
               isLoading: isLoading,
@@ -1125,7 +1060,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             try {
               groceryItem = groceryProvider.buyAgainItems.firstWhere((item) => item.id == foodItem.id);
             } catch (_) {}
-            context.push('/grocery-details', extra: groceryItem ?? foodItem);
+            context.push('/foodDetails', extra: groceryItem ?? foodItem);
           },
           isLoading: groceryProvider.isLoadingBuyAgain,
         ),
@@ -1177,9 +1112,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   try {
                     originalItem = groceryProvider.topRatedItems.firstWhere((g) => g.id == item.id);
                   } catch (_) {}
-                  context.push('/grocery-details', extra: originalItem ?? item);
+                  context.push('/foodDetails', extra: originalItem ?? item);
                 } else {
-                  context.push('/food-details', extra: item);
+                  context.push('/foodDetails', extra: item);
                 }
               },
               isLoading: isLoading,
@@ -1213,7 +1148,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       children: [
         BrowseAllGroceriesSection(
           items: groceryProvider.items,
-          onItemTap: (item) => context.push('/grocery-details', extra: item),
+          onItemTap: (item) => context.push('/foodDetails', extra: item),
           isLoading: groceryProvider.isLoadingItems,
         ),
         SizedBox(height: KSpacing.lg.h),
@@ -1352,7 +1287,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               final bool isInCart = provider.cartItems.containsKey(item);
               return FoodItemCard(
                 item: item,
-                onTap: () => context.push("/foodDetails", extra: item),
+                onTap: () => context.push('/foodDetails', extra: recommendedFoods[index]),
                 trailing: GestureDetector(
                   onTap: () {
                     if (isInCart) {
@@ -1405,251 +1340,328 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   // ==================== PHARMACY SECTIONS ====================
 
-  Widget _buildPharmacyInfoSection(AppColorsExtension colors) {
-    return Column(
-      children: [
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20.w),
-          child: Container(
-            padding: EdgeInsets.all(16.w),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF2196F3).withOpacity(0.1), Color(0xFF2196F3).withOpacity(0.05)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16.r),
-              border: Border.all(color: Color(0xFF2196F3).withOpacity(0.2)),
+  // ==================== PHARMACY SECTIONS ====================
+
+  Widget _buildPharmacyOnSaleSection() {
+    return Consumer<PharmacyProvider>(
+      builder: (context, provider, _) {
+        if (provider.onSaleItems.isEmpty) return const SizedBox.shrink();
+
+        // Convert PharmacyItem to FoodItem for DealsSection widget
+        final dealItems = provider.onSaleItems.take(10).map((item) {
+          return FoodItem(
+            id: item.id,
+            name: item.name,
+            description: item.description,
+            price: item.price,
+            discountPercentage: item.discountPercentage,
+            image: item.image,
+            rating: item.rating,
+            deliveryTimeMinutes: 30,
+            sellerName: item.storeName ?? 'Pharmacy',
+            sellerId: item.storeId.hashCode % 1000000,
+            restaurantId: item.storeId,
+            restaurantImage: item.storeLogo ?? '',
+            orderCount: item.orderCount,
+          );
+        }).toList();
+
+        return Column(
+          children: [
+            DealsSection(
+              title: "Exclusive Medical Deals",
+              icon: Assets.icons.tag,
+              dealItems: dealItems,
+              onSeeAll: () => Provider.of<NavigationProvider>(context, listen: false).setIndex(1),
+              onItemTap: (item) {
+                final originalItem = provider.items.firstWhere((i) => i.id == item.id);
+                context.push('/foodDetails', extra: originalItem);
+              },
+              isLoading: provider.isLoadingItems,
             ),
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(12.w),
-                  decoration: BoxDecoration(
-                    color: Color(0xFF2196F3).withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                  child: Text('💊', style: TextStyle(fontSize: 24.sp)),
-                ),
-                SizedBox(width: 16.w),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Health & Wellness',
-                        style: TextStyle(
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.w700,
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                      SizedBox(height: 4.h),
-                      Text(
-                        'Browse medicines, vitamins, and health products',
-                        style: TextStyle(
-                          fontSize: 13.sp,
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        SizedBox(height: KSpacing.lg.h),
-      ],
+            SizedBox(height: KSpacing.lg.h),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildPharmacyServicesSection(AppColorsExtension colors) {
-    final services = [
-      {'icon': '🩺', 'title': 'Prescription', 'subtitle': 'Upload & order'},
-      {'icon': '🚑', 'title': '24/7 Service', 'subtitle': 'Always available'},
-      {'icon': '🏥', 'title': 'Verified', 'subtitle': 'Licensed pharmacies'},
-      {'icon': '🚚', 'title': 'Fast Delivery', 'subtitle': 'Quick & safe'},
-    ];
+  Widget _buildPharmacyPopularSection() {
+    return Consumer<PharmacyProvider>(
+      builder: (context, provider, _) {
+        if (provider.popularItems.isEmpty) return const SizedBox.shrink();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20.w),
-          child: Text(
-            'Our Services',
-            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
-          ),
-        ),
-        SizedBox(height: KSpacing.md.h),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20.w),
-          child: GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 1.5,
-              crossAxisSpacing: 12.w,
-              mainAxisSpacing: 12.h,
+        // Convert PharmacyItem to FoodItem for PopularSection widget
+        final popularItems = provider.popularItems.take(10).map((item) {
+          return FoodItem(
+            id: item.id,
+            name: item.name,
+            description: item.description,
+            price: item.price,
+            discountPercentage: item.discountPercentage,
+            image: item.image,
+            rating: item.rating,
+            deliveryTimeMinutes: 30,
+            sellerName: item.storeName ?? 'Pharmacy',
+            sellerId: item.storeId.hashCode % 1000000,
+            restaurantId: item.storeId,
+            restaurantImage: item.storeLogo ?? '',
+            orderCount: item.orderCount,
+          );
+        }).toList();
+
+        return Column(
+          children: [
+            PopularSection(
+              title: "Daily Health Needs",
+              icon: Assets.icons.pharmacyCrossCircle,
+              popularItems: popularItems,
+              onSeeAll: () => Provider.of<NavigationProvider>(context, listen: false).setIndex(1),
+              onItemTap: (item) {
+                PharmacyItem? originalItem;
+                try {
+                  originalItem = provider.popularItems.firstWhere((i) => i.id == item.id);
+                } catch (_) {}
+                context.push('/foodDetails', extra: originalItem ?? item);
+              },
+              isLoading: provider.isLoadingItems,
             ),
-            itemCount: services.length,
-            itemBuilder: (context, index) {
-              final service = services[index];
-              return Container(
-                padding: EdgeInsets.all(16.w),
-                decoration: BoxDecoration(
-                  color: colors.backgroundSecondary,
-                  borderRadius: BorderRadius.circular(12.r),
-                  border: Border.all(color: colors.borderColor),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(service['icon']!, style: TextStyle(fontSize: 32.sp)),
-                    SizedBox(height: 8.h),
-                    Text(
-                      service['title']!,
-                      style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
-                    ),
-                    Text(
-                      service['subtitle']!,
-                      style: TextStyle(fontSize: 11.sp, color: colors.textSecondary),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-        SizedBox(height: KSpacing.lg.h),
-      ],
+            SizedBox(height: KSpacing.lg.h),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildPharmacyTopRatedSection() {
+    return Consumer<PharmacyProvider>(
+      builder: (context, provider, _) {
+        if (provider.topRatedItems.isEmpty) return const SizedBox.shrink();
+
+        final topRatedItems = provider.topRatedItems.take(10).map((item) {
+          return FoodItem(
+            id: item.id,
+            name: item.name,
+            description: item.description,
+            price: item.price,
+            discountPercentage: item.discountPercentage,
+            image: item.image,
+            rating: item.rating,
+            deliveryTimeMinutes: 30,
+            sellerName: item.storeName ?? 'Pharmacy',
+            sellerId: item.storeId.hashCode % 1000000,
+            restaurantId: item.storeId,
+            restaurantImage: item.storeLogo ?? '',
+            orderCount: item.orderCount,
+          );
+        }).toList();
+
+        return Column(
+          children: [
+            TopRatedSection(
+              title: "Highly Rated Wellness",
+              icon: Assets.icons.star,
+              topRatedItems: topRatedItems,
+              onSeeAll: () => Provider.of<NavigationProvider>(context, listen: false).setIndex(1),
+              onItemTap: (item) {
+                PharmacyItem? originalItem;
+                try {
+                  originalItem = provider.topRatedItems.firstWhere((i) => i.id == item.id);
+                } catch (_) {}
+                context.push('/foodDetails', extra: originalItem ?? item);
+              },
+              isLoading: provider.isLoadingItems,
+            ),
+            SizedBox(height: KSpacing.lg.h),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildPharmacyItemsGrid() {
+    return Consumer<PharmacyProvider>(
+      builder: (context, provider, _) {
+        if (provider.items.isEmpty && !provider.isLoadingItems) return const SizedBox.shrink();
+
+        return Column(
+          children: [
+            BrowseItemsGrid(
+              title: "Browse All Pharmacy",
+              icon: Assets.icons.squareMenu,
+              items: provider.items,
+              onItemTap: (item) => context.push('/foodDetails', extra: item),
+              isLoading: provider.isLoadingItems && provider.items.isEmpty,
+              accentColor: context.appColors.accentOrange,
+            ),
+            SizedBox(height: KSpacing.lg.h),
+          ],
+        );
+      },
     );
   }
 
   // ==================== GRABMART SECTIONS ====================
 
-  Widget _buildGrabMartInfoSection(AppColorsExtension colors) {
-    return Column(
-      children: [
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20.w),
-          child: Container(
-            padding: EdgeInsets.all(16.w),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF9C27B0).withOpacity(0.1), Color(0xFF9C27B0).withOpacity(0.05)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16.r),
-              border: Border.all(color: Color(0xFF9C27B0).withOpacity(0.2)),
+  Widget _buildGrabMartSpecialOffersSection() {
+    return Consumer<GrabMartProvider>(
+      builder: (context, provider, _) {
+        if (provider.specialOffers.isEmpty) return const SizedBox.shrink();
+
+        // Convert GrabMartItem to FoodItem for DealsSection widget
+        final dealItems = provider.specialOffers.take(10).map((item) {
+          return FoodItem(
+            id: item.id,
+            name: item.name,
+            description: item.description,
+            price: item.price,
+            discountPercentage: item.discountPercentage,
+            image: item.image,
+            rating: item.rating,
+            deliveryTimeMinutes: 20,
+            sellerName: item.storeName ?? 'GrabMart',
+            sellerId: item.storeId.hashCode % 1000000,
+            restaurantId: item.storeId,
+            restaurantImage: item.storeLogo ?? '',
+            orderCount: item.orderCount,
+          );
+        }).toList();
+
+        return Column(
+          children: [
+            DealsSection(
+              title: "Groceries & More Deals",
+              icon: Assets.icons.tag,
+              dealItems: dealItems,
+              onSeeAll: () => Provider.of<NavigationProvider>(context, listen: false).setIndex(1),
+              onItemTap: (item) {
+                GrabMartItem? originalItem;
+                try {
+                  originalItem = provider.specialOffers.firstWhere((i) => i.id == item.id);
+                } catch (_) {}
+                context.push('/foodDetails', extra: originalItem ?? item);
+              },
+              isLoading: provider.isLoadingItems,
             ),
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(12.w),
-                  decoration: BoxDecoration(
-                    color: Color(0xFF9C27B0).withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                  child: Text('🏪', style: TextStyle(fontSize: 24.sp)),
-                ),
-                SizedBox(width: 16.w),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Convenience Store',
-                        style: TextStyle(
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.w700,
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                      SizedBox(height: 4.h),
-                      Text(
-                        'Snacks, drinks, and everyday essentials',
-                        style: TextStyle(
-                          fontSize: 13.sp,
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        SizedBox(height: KSpacing.lg.h),
-      ],
+            SizedBox(height: KSpacing.lg.h),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildGrabMartQuickPicksSection(AppColorsExtension colors) {
-    final quickPicks = [
-      {'icon': '🍿', 'title': 'Snacks', 'subtitle': 'Quick bites'},
-      {'icon': '🥤', 'title': 'Beverages', 'subtitle': 'Cold drinks'},
-      {'icon': '🍦', 'title': 'Ice Cream', 'subtitle': 'Frozen treats'},
-      {'icon': '🔌', 'title': 'Electronics', 'subtitle': 'Gadgets & more'},
-    ];
+  Widget _buildGrabMartQuickPicksSection() {
+    return Consumer<GrabMartProvider>(
+      builder: (context, provider, _) {
+        if (provider.quickPicks.isEmpty) return const SizedBox.shrink();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20.w),
-          child: Text(
-            'Quick Picks',
-            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
-          ),
-        ),
-        SizedBox(height: KSpacing.md.h),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20.w),
-          child: GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 1.5,
-              crossAxisSpacing: 12.w,
-              mainAxisSpacing: 12.h,
+        // Convert GrabMartItem to FoodItem for PopularSection widget
+        final quickPickItems = provider.quickPicks.take(10).map((item) {
+          return FoodItem(
+            id: item.id,
+            name: item.name,
+            description: item.description,
+            price: item.price,
+            discountPercentage: item.discountPercentage,
+            image: item.image,
+            rating: item.rating,
+            deliveryTimeMinutes: 20,
+            sellerName: item.storeName ?? 'GrabMart',
+            sellerId: item.storeId.hashCode % 1000000,
+            restaurantId: item.storeId,
+            restaurantImage: item.storeLogo ?? '',
+            orderCount: item.orderCount,
+          );
+        }).toList();
+
+        return Column(
+          children: [
+            PopularSection(
+              title: "Essentials Quick Picks",
+              icon: Assets.icons.cart,
+              popularItems: quickPickItems,
+              onSeeAll: () => Provider.of<NavigationProvider>(context, listen: false).setIndex(1),
+              onItemTap: (item) {
+                GrabMartItem? originalItem;
+                try {
+                  originalItem = provider.quickPicks.firstWhere((i) => i.id == item.id);
+                } catch (_) {}
+                context.push('/foodDetails', extra: originalItem ?? item);
+              },
+              isLoading: provider.isLoadingItems,
             ),
-            itemCount: quickPicks.length,
-            itemBuilder: (context, index) {
-              final pick = quickPicks[index];
-              return Container(
-                padding: EdgeInsets.all(16.w),
-                decoration: BoxDecoration(
-                  color: colors.backgroundSecondary,
-                  borderRadius: BorderRadius.circular(12.r),
-                  border: Border.all(color: colors.borderColor),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(pick['icon']!, style: TextStyle(fontSize: 32.sp)),
-                    SizedBox(height: 8.h),
-                    Text(
-                      pick['title']!,
-                      style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
-                    ),
-                    Text(
-                      pick['subtitle']!,
-                      style: TextStyle(fontSize: 11.sp, color: colors.textSecondary),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-        SizedBox(height: KSpacing.lg.h),
-      ],
+            SizedBox(height: KSpacing.lg.h),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildGrabMartTopRatedSection() {
+    return Consumer<GrabMartProvider>(
+      builder: (context, provider, _) {
+        if (provider.topRatedItems.isEmpty) return const SizedBox.shrink();
+
+        final topRatedItems = provider.topRatedItems.take(10).map((item) {
+          return FoodItem(
+            id: item.id,
+            name: item.name,
+            description: item.description,
+            price: item.price,
+            discountPercentage: item.discountPercentage,
+            image: item.image,
+            rating: item.rating,
+            deliveryTimeMinutes: 20,
+            sellerName: item.storeName ?? 'GrabMart',
+            sellerId: item.storeId.hashCode % 1000000,
+            restaurantId: item.storeId,
+            restaurantImage: item.storeLogo ?? '',
+            orderCount: item.orderCount,
+          );
+        }).toList();
+
+        return Column(
+          children: [
+            TopRatedSection(
+              title: "Top Rated Essentials",
+              icon: Assets.icons.star,
+              topRatedItems: topRatedItems,
+              onSeeAll: () => Provider.of<NavigationProvider>(context, listen: false).setIndex(1),
+              onItemTap: (item) {
+                GrabMartItem? originalItem;
+                try {
+                  originalItem = provider.topRatedItems.firstWhere((i) => i.id == item.id);
+                } catch (_) {}
+                context.push('/foodDetails', extra: originalItem ?? item);
+              },
+              isLoading: provider.isLoadingItems,
+            ),
+            SizedBox(height: KSpacing.lg.h),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildGrabMartItemsGrid() {
+    return Consumer<GrabMartProvider>(
+      builder: (context, provider, _) {
+        if (provider.items.isEmpty && !provider.isLoadingItems) return const SizedBox.shrink();
+
+        return Column(
+          children: [
+            BrowseItemsGrid(
+              title: "Browse All GrabMart",
+              icon: Assets.icons.squareMenu,
+              items: provider.items,
+              onItemTap: (item) => context.push('/foodDetails', extra: item),
+              isLoading: provider.isLoadingItems && provider.items.isEmpty,
+              accentColor: context.appColors.accentBlue,
+            ),
+            SizedBox(height: KSpacing.lg.h),
+          ],
+        );
+      },
     );
   }
 }

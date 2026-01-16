@@ -1,4 +1,5 @@
 import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
+import 'package:grab_go_customer/features/home/model/food_category.dart';
 
 class GrabMartItem implements CartItem {
   final String id;
@@ -120,4 +121,22 @@ class GrabMartItem implements CartItem {
   }
 
   bool get hasDiscount => discountPercentage > 0 && (discountEndDate == null || discountEndDate!.isAfter(DateTime.now()));
+
+  FoodItem toFoodItem() {
+    return FoodItem(
+      id: id,
+      name: name,
+      description: description,
+      price: price,
+      discountPercentage: discountPercentage,
+      image: image,
+      rating: rating,
+      deliveryTimeMinutes: 30, // Default for grabmart
+      sellerName: storeName ?? 'GrabMart',
+      sellerId: storeId.hashCode % 1000000,
+      restaurantId: storeId,
+      restaurantImage: storeLogo ?? '',
+      orderCount: orderCount,
+    );
+  }
 }

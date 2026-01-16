@@ -192,7 +192,7 @@ class _VendorsPageState extends State<VendorsPage> {
               // 1. GrabGo Exclusives
               VendorHorizontalSection(
                 title: "GrabGo Exclusives",
-                icon: Assets.icons.sparkles,
+                icon: Assets.icons.tag,
                 vendors: provider.exclusiveVendors,
                 onItemTap: (vendor) {
                   // TODO: Navigate to vendor details
@@ -205,7 +205,7 @@ class _VendorsPageState extends State<VendorsPage> {
               // 2. New on GrabGo
               VendorHorizontalSection(
                 title: "New on GrabGo",
-                icon: Assets.icons.gift,
+                icon: Assets.icons.sparkles,
                 vendors: provider.newVendors,
                 onItemTap: (vendor) {
                   // TODO: Navigate to vendor details

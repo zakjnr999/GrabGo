@@ -136,7 +136,7 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                     _showBottomSheet = false;
                   });
                 },
-                child: Image.asset(Assets.images.trackingSample.path, package: 'grab_go_shared', fit: BoxFit.cover),
+                child: Image.asset(Assets.images.deliveryGuyBicycle.path, package: 'grab_go_shared', fit: BoxFit.cover),
               ),
             ),
 

@@ -8,6 +8,8 @@ import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
+import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
+import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -20,13 +22,21 @@ import 'package:grab_go_customer/shared/widgets/food_details_appbar.dart';
 import 'package:grab_go_customer/shared/widgets/grocery_item_card.dart';
 
 class FoodDetails extends StatefulWidget {
-  const FoodDetails({super.key, this.foodItem, this.groceryItem})
-    : assert(foodItem != null || groceryItem != null, 'Either foodItem or groceryItem must be provided');
+  const FoodDetails({super.key, this.foodItem, this.groceryItem, this.pharmacyItem, this.grabMartItem})
+    : assert(
+        foodItem != null || groceryItem != null || pharmacyItem != null || grabMartItem != null,
+        'At least one item type must be provided',
+      );
 
   final FoodItem? foodItem;
   final GroceryItem? groceryItem;
+  final PharmacyItem? pharmacyItem;
+  final GrabMartItem? grabMartItem;
 
   bool get isGrocery => groceryItem != null;
+  bool get isPharmacy => pharmacyItem != null;
+  bool get isGrabMart => grabMartItem != null;
+  bool get isStoreItem => isGrocery || isPharmacy || isGrabMart;
 
   @override
   State<FoodDetails> createState() => _FoodDetailsState();
@@ -119,7 +129,12 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
     return restaurantFoods;
   }
 
+  bool get isPharmacy => widget.isPharmacy;
+  bool get isGrabMart => widget.isGrabMart;
+  bool get isStoreItem => widget.isStoreItem;
+
   void _loadMoreRestaurantItems() {
+    if (widget.foodItem == null) return;
     setState(() {
       _isLoadingMore = true;
     });
@@ -134,15 +149,48 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
     });
   }
 
-  // Helper getters to access properties regardless of item type
-  String get itemName => widget.isGrocery ? widget.groceryItem!.name : widget.foodItem!.name;
-  String get itemDescription => widget.isGrocery ? widget.groceryItem!.description : widget.foodItem!.description;
-  String get itemImage => widget.isGrocery ? widget.groceryItem!.image : widget.foodItem!.image;
-  double get itemPrice => widget.isGrocery ? widget.groceryItem!.discountedPrice : widget.foodItem!.price;
-  double get itemRating => widget.isGrocery ? widget.groceryItem!.rating : widget.foodItem!.rating;
+  String get itemName {
+    if (widget.isGrocery) return widget.groceryItem!.name;
+    if (isPharmacy) return widget.pharmacyItem!.name;
+    if (isGrabMart) return widget.grabMartItem!.name;
+    return widget.foodItem!.name;
+  }
+
+  String get itemDescription {
+    if (widget.isGrocery) return widget.groceryItem!.description;
+    if (isPharmacy) return widget.pharmacyItem!.description;
+    if (isGrabMart) return widget.grabMartItem!.description;
+    return widget.foodItem!.description;
+  }
+
+  String get itemImage {
+    if (widget.isGrocery) return widget.groceryItem!.image;
+    if (isPharmacy) return widget.pharmacyItem!.image;
+    if (isGrabMart) return widget.grabMartItem!.image;
+    return widget.foodItem!.image;
+  }
+
+  double get itemPrice {
+    if (widget.isGrocery) return widget.groceryItem!.discountedPrice;
+    if (isPharmacy) return widget.pharmacyItem!.discountedPrice;
+    if (isGrabMart) return widget.grabMartItem!.discountedPrice;
+    return widget.foodItem!.price;
+  }
+
+  double get itemRating {
+    if (widget.isGrocery) return widget.groceryItem!.rating;
+    if (isPharmacy) return widget.pharmacyItem!.rating;
+    if (isGrabMart) return widget.grabMartItem!.rating;
+    return widget.foodItem!.rating;
+  }
 
   // Get CartItem for cart operations (use original type)
-  dynamic get cartItem => widget.isGrocery ? widget.groceryItem! : widget.foodItem!;
+  dynamic get cartItem {
+    if (widget.isGrocery) return widget.groceryItem!;
+    if (isPharmacy) return widget.pharmacyItem!;
+    if (isGrabMart) return widget.grabMartItem!;
+    return widget.foodItem!;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -202,18 +250,33 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          // Show brand for groceries
-                                          if (widget.isGrocery && widget.groceryItem!.brand.isNotEmpty) ...[
-                                            Text(
-                                              widget.groceryItem!.brand.toUpperCase(),
-                                              style: TextStyle(
-                                                color: colors.textSecondary,
-                                                fontSize: 12.sp,
-                                                fontWeight: FontWeight.w600,
-                                                letterSpacing: 1.0,
-                                              ),
+                                          // Show brand for store items
+                                          if (isStoreItem) ...[
+                                            Builder(
+                                              builder: (context) {
+                                                String brand = "";
+                                                if (widget.isGrocery) brand = widget.groceryItem!.brand;
+                                                if (isPharmacy) brand = widget.pharmacyItem!.brand;
+                                                if (isGrabMart) brand = widget.grabMartItem!.brand;
+
+                                                if (brand.isEmpty) return const SizedBox.shrink();
+                                                return Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      brand.toUpperCase(),
+                                                      style: TextStyle(
+                                                        color: colors.textSecondary,
+                                                        fontSize: 12.sp,
+                                                        fontWeight: FontWeight.w600,
+                                                        letterSpacing: 1.0,
+                                                      ),
+                                                    ),
+                                                    SizedBox(height: 4.h),
+                                                  ],
+                                                );
+                                              },
                                             ),
-                                            SizedBox(height: 4.h),
                                           ],
                                           // Item name
                                           Text(
@@ -226,22 +289,31 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                             ),
                                           ),
                                           SizedBox(height: 6.h),
-                                          // Show unit for groceries or seller for food
-                                          if (widget.isGrocery)
-                                            Container(
-                                              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                                              decoration: BoxDecoration(
-                                                color: colors.inputBackground,
-                                                borderRadius: BorderRadius.circular(6.r),
-                                              ),
-                                              child: Text(
-                                                widget.groceryItem!.unit,
-                                                style: TextStyle(
-                                                  color: colors.textSecondary,
-                                                  fontSize: 12.sp,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
+                                          // Show unit for store items or seller for food
+                                          if (isStoreItem)
+                                            Builder(
+                                              builder: (context) {
+                                                String unit = "";
+                                                if (widget.isGrocery) unit = widget.groceryItem!.unit;
+                                                if (isPharmacy) unit = widget.pharmacyItem!.unit;
+                                                if (isGrabMart) unit = widget.grabMartItem!.unit;
+
+                                                return Container(
+                                                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                                                  decoration: BoxDecoration(
+                                                    color: colors.inputBackground,
+                                                    borderRadius: BorderRadius.circular(6.r),
+                                                  ),
+                                                  child: Text(
+                                                    unit,
+                                                    style: TextStyle(
+                                                      color: colors.textSecondary,
+                                                      fontSize: 12.sp,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                );
+                                              },
                                             )
                                           else
                                             Text(
@@ -252,12 +324,37 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                                 fontWeight: FontWeight.w500,
                                               ),
                                             ),
+                                          if (isPharmacy && widget.pharmacyItem!.requiresPrescription) ...[
+                                            SizedBox(height: 8.h),
+                                            Container(
+                                              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                                              decoration: BoxDecoration(
+                                                color: Colors.red.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(6.r),
+                                                border: Border.all(color: Colors.red.withOpacity(0.3)),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(Icons.description_outlined, size: 14.sp, color: Colors.red),
+                                                  SizedBox(width: 4.w),
+                                                  Text(
+                                                    "Prescription Required",
+                                                    style: TextStyle(
+                                                      color: Colors.red,
+                                                      fontSize: 11.sp,
+                                                      fontWeight: FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
                                         ],
                                       ),
                                     ),
                                     SizedBox(width: 12.w),
                                     Container(
-                                      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
                                       decoration: BoxDecoration(
                                         color: colors.accentOrange.withOpacity(0.15),
                                         borderRadius: BorderRadius.circular(12.r),
@@ -299,6 +396,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                       colors: colors,
                                       isDark: isDark,
                                     ),
+                                    if (isStoreItem) ...[SizedBox(width: 12.w), _buildStockChip(colors, isDark)],
                                     SizedBox(width: 8.w),
 
                                     // Conditional chips based on item type
@@ -916,6 +1014,46 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
           Text(
             text,
             style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStockChip(AppColorsExtension colors, bool isDark) {
+    bool inStock = true;
+    if (widget.isGrocery) inStock = widget.groceryItem!.stock > 0 && widget.groceryItem!.isAvailable;
+    if (isPharmacy) inStock = widget.pharmacyItem!.stock > 0 && widget.pharmacyItem!.isAvailable;
+    if (isGrabMart) inStock = widget.grabMartItem!.stock > 0 && widget.grabMartItem!.isAvailable;
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+      decoration: BoxDecoration(
+        color: inStock
+            ? (isDark ? colors.accentGreen.withOpacity(0.1) : colors.accentGreen.withOpacity(0.05))
+            : colors.inputBackground,
+        borderRadius: BorderRadius.circular(10.r),
+        border: Border.all(
+          color: inStock ? colors.accentGreen.withOpacity(0.3) : colors.inputBorder.withOpacity(0.3),
+          width: 0.5,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            inStock ? Icons.check_circle_outline : Icons.error_outline,
+            size: 14.sp,
+            color: inStock ? colors.accentGreen : colors.textSecondary,
+          ),
+          SizedBox(width: 5.w),
+          Text(
+            inStock ? "In Stock" : "Out of Stock",
+            style: TextStyle(
+              fontSize: 11.sp,
+              fontWeight: FontWeight.w700,
+              color: inStock ? colors.accentGreen : colors.textSecondary,
+            ),
           ),
         ],
       ),

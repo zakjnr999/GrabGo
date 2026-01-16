@@ -1,0 +1,227 @@
+Analyzing grab_go_customer...                                   
+
+warning • The declaration '_$UserResponseFromJson' isn't referenced • lib/features/auth/model/user_model.g.dart:81:14 • unused_element
+   info • Uses 'await' on an instance of 'GoogleSignInAuthentication', which is not a subtype of 'Future' • lib/features/auth/service/google_sign_in_service.dart:51:53 • await_only_futures
+   info • Uses 'await' on an instance of 'GoogleSignInAuthentication', which is not a subtype of 'Future' • lib/features/auth/service/google_sign_in_service.dart:139:53 • await_only_futures
+warning • The value of the local variable 'icon' isn't used • lib/features/auth/view/login.dart:260:16 • unused_local_variable
+warning • The value of the local variable 'icon' isn't used • lib/features/auth/view/login.dart:456:16 • unused_local_variable
+   info • Don't invoke 'print' in production code • lib/features/auth/view/register.dart:467:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/auth/view/register.dart:468:7 • avoid_print
+   info • 'onPopInvoked' is deprecated and shouldn't be used. Use onPopInvokedWithResult instead. This feature was deprecated after v3.22.0-12.0.pre • lib/features/auth/view/restaurant_registration.dart:375:9 • deprecated_member_use
+warning • Unused import: 'package:grab_go_customer/features/home/model/service_model.dart' • lib/features/browse/view/browse_page.dart:15:8 • unused_import
+warning • The declaration '_buildVerticalCategoryCards' isn't referenced • lib/features/browse/view/browse_page.dart:648:10 • unused_element
+warning • The declaration '_showSortOptions' isn't referenced • lib/features/browse/view/browse_page.dart:1075:8 • unused_element
+warning • Unused import: 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart' • lib/features/browse/view/category_items_page.dart:14:8 • unused_import
+warning • Unused import: 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart' • lib/features/browse/view/category_items_page.dart:15:8 • unused_import
+  error • The getter 'isLoading' isn't defined for the type 'PharmacyProvider' • lib/features/browse/view/category_items_page.dart:613:22 • undefined_getter
+  error • The getter 'isLoading' isn't defined for the type 'GrabMartProvider' • lib/features/browse/view/category_items_page.dart:652:22 • undefined_getter
+warning • The declaration '_showSortOptions' isn't referenced • lib/features/browse/view/category_items_page.dart:1088:8 • unused_element
+warning • The declaration '_showClearAllDialog' isn't referenced • lib/features/cart/view/cart.dart:474:8 • unused_element
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/cart/view/checkout.dart:1160:59 • deprecated_member_use
+warning • The value of the local variable 'isDark' isn't used • lib/features/cart/view/mtn_momo_payment_dialog.dart:192:11 • unused_local_variable
+   info • 'onPopInvoked' is deprecated and shouldn't be used. Use onPopInvokedWithResult instead. This feature was deprecated after v3.22.0-12.0.pre • lib/features/cart/view/mtn_momo_payment_dialog.dart:196:7 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/cart/view/mtn_momo_payment_dialog.dart:211:37 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/cart/view/mtn_momo_payment_dialog.dart:304:89 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/cart/view/mtn_momo_payment_dialog.dart:329:41 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/cart/view/mtn_momo_payment_dialog.dart:331:60 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/cart/view/mtn_momo_payment_dialog.dart:350:64 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/cart/view/mtn_momo_payment_dialog.dart:395:50 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/cart/view/mtn_momo_payment_dialog.dart:417:63 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/cart/view/mtn_momo_payment_dialog.dart:434:57 • deprecated_member_use
+warning • The value of the local variable 'storeName' isn't used • lib/features/cart/viewmodel/cart_provider.dart:142:13 • unused_local_variable
+warning • The value of the local variable 'storeLogo' isn't used • lib/features/cart/viewmodel/cart_provider.dart:143:13 • unused_local_variable
+warning • This 'onError' handler must return a value assignable to 'Response<Map<String, dynamic>>', but ends without returning a value • lib/features/cart/viewmodel/cart_provider.dart:319:47 • body_might_complete_normally_catch_error
+   info • The import of 'package:grab_go_shared/shared/widgets/recording_lock_button.dart' is unnecessary because all of the used elements are also provided by the import of 'package:grab_go_shared/grub_go_shared.dart' • lib/features/chat/view/chats_details.dart:16:8 • unnecessary_import
+   info • The member 'id' overrides an inherited member but isn't annotated with '@override' • lib/features/grabmart/model/grabmart_item.dart:4:16 • annotate_overrides
+   info • The member 'name' overrides an inherited member but isn't annotated with '@override' • lib/features/grabmart/model/grabmart_item.dart:5:16 • annotate_overrides
+   info • The member 'description' overrides an inherited member but isn't annotated with '@override' • lib/features/grabmart/model/grabmart_item.dart:6:16 • annotate_overrides
+   info • The member 'image' overrides an inherited member but isn't annotated with '@override' • lib/features/grabmart/model/grabmart_item.dart:7:16 • annotate_overrides
+   info • The member 'price' overrides an inherited member but isn't annotated with '@override' • lib/features/grabmart/model/grabmart_item.dart:8:16 • annotate_overrides
+   info • The member 'isAvailable' overrides an inherited member but isn't annotated with '@override' • lib/features/grabmart/model/grabmart_item.dart:18:14 • annotate_overrides
+   info • The member 'rating' overrides an inherited member but isn't annotated with '@override' • lib/features/grabmart/model/grabmart_item.dart:22:16 • annotate_overrides
+   info • The member 'toJson' overrides an inherited member but isn't annotated with '@override' • lib/features/grabmart/model/grabmart_item.dart:92:24 • annotate_overrides
+   info • The private field _isLoadingSpecialOffers could be 'final' • lib/features/grabmart/viewmodel/grabmart_provider.dart:20:8 • prefer_final_fields
+   info • The private field _isLoadingQuickPicks could be 'final' • lib/features/grabmart/viewmodel/grabmart_provider.dart:24:8 • prefer_final_fields
+   info • The member 'id' overrides an inherited member but isn't annotated with '@override' • lib/features/groceries/model/grocery_item.dart:27:16 • annotate_overrides
+   info • The member 'name' overrides an inherited member but isn't annotated with '@override' • lib/features/groceries/model/grocery_item.dart:28:16 • annotate_overrides
+   info • The member 'description' overrides an inherited member but isn't annotated with '@override' • lib/features/groceries/model/grocery_item.dart:29:16 • annotate_overrides
+   info • The member 'image' overrides an inherited member but isn't annotated with '@override' • lib/features/groceries/model/grocery_item.dart:30:16 • annotate_overrides
+   info • The member 'price' overrides an inherited member but isn't annotated with '@override' • lib/features/groceries/model/grocery_item.dart:31:16 • annotate_overrides
+   info • The member 'isAvailable' overrides an inherited member but isn't annotated with '@override' • lib/features/groceries/model/grocery_item.dart:41:14 • annotate_overrides
+   info • The member 'rating' overrides an inherited member but isn't annotated with '@override' • lib/features/groceries/model/grocery_item.dart:46:16 • annotate_overrides
+   info • The member 'toJson' overrides an inherited member but isn't annotated with '@override' • lib/features/groceries/model/grocery_item.dart:172:24 • annotate_overrides
+   info • The member 'id' overrides an inherited member but isn't annotated with '@override' • lib/features/home/model/food_category.dart:4:16 • annotate_overrides
+   info • The member 'name' overrides an inherited member but isn't annotated with '@override' • lib/features/home/model/food_category.dart:5:16 • annotate_overrides
+   info • The member 'image' overrides an inherited member but isn't annotated with '@override' • lib/features/home/model/food_category.dart:6:16 • annotate_overrides
+   info • The member 'description' overrides an inherited member but isn't annotated with '@override' • lib/features/home/model/food_category.dart:8:16 • annotate_overrides
+   info • The member 'price' overrides an inherited member but isn't annotated with '@override' • lib/features/home/model/food_category.dart:12:16 • annotate_overrides
+   info • The member 'rating' overrides an inherited member but isn't annotated with '@override' • lib/features/home/model/food_category.dart:13:16 • annotate_overrides
+   info • The member 'isAvailable' overrides an inherited member but isn't annotated with '@override' • lib/features/home/model/food_category.dart:18:14 • annotate_overrides
+warning • Unused import: 'package:grab_go_customer/features/home/model/promotional_banner.dart' • lib/features/home/repository/food_repository.dart:6:8 • unused_import
+  error • The getter 'isPharmacy' isn't defined for the type 'FoodDetails' • lib/features/home/view/food_details.dart:122:33 • undefined_getter
+  error • The getter 'isGrabMart' isn't defined for the type 'FoodDetails' • lib/features/home/view/food_details.dart:123:33 • undefined_getter
+  error • The getter 'isStoreItem' isn't defined for the type 'FoodDetails' • lib/features/home/view/food_details.dart:124:34 • undefined_getter
+  error • The getter 'pharmacyItem' isn't defined for the type 'FoodDetails' • lib/features/home/view/food_details.dart:215:79 • undefined_getter
+  error • The getter 'grabMartItem' isn't defined for the type 'FoodDetails' • lib/features/home/view/food_details.dart:216:79 • undefined_getter
+  error • The getter 'pharmacyItem' isn't defined for the type 'FoodDetails' • lib/features/home/view/food_details.dart:252:78 • undefined_getter
+  error • The getter 'grabMartItem' isn't defined for the type 'FoodDetails' • lib/features/home/view/food_details.dart:253:78 • undefined_getter
+  error • The getter 'pharmacyItem' isn't defined for the type 'FoodDetails' • lib/features/home/view/food_details.dart:280:69 • undefined_getter
+  error • The getter 'pharmacyItem' isn't defined for the type 'FoodDetails' • lib/features/home/view/food_details.dart:982:38 • undefined_getter
+  error • The getter 'pharmacyItem' isn't defined for the type 'FoodDetails' • lib/features/home/view/food_details.dart:982:72 • undefined_getter
+  error • The getter 'grabMartItem' isn't defined for the type 'FoodDetails' • lib/features/home/view/food_details.dart:983:38 • undefined_getter
+  error • The getter 'grabMartItem' isn't defined for the type 'FoodDetails' • lib/features/home/view/food_details.dart:983:72 • undefined_getter
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/view/grocery_details.dart:237:76 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/view/grocery_details.dart:432:83 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/view/grocery_details.dart:437:62 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/view/grocery_details.dart:488:50 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/home/view/grocery_details.dart:490:54 • deprecated_member_use
+warning • The value of the field '_notificationTabs' isn't used • lib/features/home/view/notification.dart:181:22 • unused_field
+warning • The declaration '_markAllAsRead' isn't referenced • lib/features/home/view/notification.dart:333:16 • unused_element
+warning • The declaration '_clearAll' isn't referenced • lib/features/home/view/notification.dart:342:16 • unused_element
+warning • Unused import: 'package:flutter_polyline_points/flutter_polyline_points.dart' • lib/features/order/providers/mock_tracking_provider.dart:3:8 • unused_import
+warning • Unused import: 'package:grab_go_shared/grub_go_shared.dart' • lib/features/order/providers/mock_tracking_provider.dart:7:8 • unused_import
+   info • Don't invoke 'print' in production code • lib/features/order/providers/mock_tracking_provider.dart:49:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/providers/mock_tracking_provider.dart:67:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/providers/mock_tracking_provider.dart:72:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/providers/mock_tracking_provider.dart:77:5 • avoid_print
+   info • 'zIndex' is deprecated and shouldn't be used. Use zIndexInt instead. On some platforms zIndex is truncated to an int, which can lead to incorrect/unstable ordering • lib/features/order/providers/mock_tracking_provider.dart:204:9 • deprecated_member_use
+   info • 'zIndex' is deprecated and shouldn't be used. Use zIndexInt instead. On some platforms zIndex is truncated to an int, which can lead to incorrect/unstable ordering • lib/features/order/providers/mock_tracking_provider.dart:224:9 • deprecated_member_use
+   info • 'zIndex' is deprecated and shouldn't be used. Use zIndexInt instead. On some platforms zIndex is truncated to an int, which can lead to incorrect/unstable ordering • lib/features/order/providers/mock_tracking_provider.dart:244:11 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/order/providers/mock_tracking_provider.dart:273:40 • deprecated_member_use
+   info • Don't invoke 'print' in production code • lib/features/order/providers/tracking_provider.dart:60:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/providers/tracking_provider.dart:67:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/providers/tracking_provider.dart:72:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/providers/tracking_provider.dart:91:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/providers/tracking_provider.dart:95:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/providers/tracking_provider.dart:99:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/providers/tracking_provider.dart:109:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/providers/tracking_provider.dart:114:7 • avoid_print
+warning • The declaration '_getRiderMarkerIcon' isn't referenced • lib/features/order/providers/tracking_provider.dart:200:28 • unused_element
+   info • Don't invoke 'print' in production code • lib/features/order/providers/tracking_provider.dart:235:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/providers/tracking_provider.dart:245:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/providers/tracking_provider.dart:355:5 • avoid_print
+warning • The value of the field '_currentStep' isn't used • lib/features/order/service/mock_tracking_service.dart:26:7 • unused_field
+   info • The private field _phase1Steps could be 'final' • lib/features/order/service/mock_tracking_service.dart:30:7 • prefer_final_fields
+   info • The private field _phase2Steps could be 'final' • lib/features/order/service/mock_tracking_service.dart:35:7 • prefer_final_fields
+   info • Don't invoke 'print' in production code • lib/features/order/service/mock_tracking_service.dart:45:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/mock_tracking_service.dart:46:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/mock_tracking_service.dart:47:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/mock_tracking_service.dart:110:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/mock_tracking_service.dart:123:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/mock_tracking_service.dart:130:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/mock_tracking_service.dart:143:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/mock_tracking_service.dart:156:9 • avoid_print
+   info • Use interpolation to compose strings and values • lib/features/order/service/mock_tracking_service.dart:207:12 • prefer_interpolation_to_compose_strings
+warning • The declaration '_generateMockPolyline' isn't referenced • lib/features/order/service/mock_tracking_service.dart:232:10 • unused_element
+   info • Don't invoke 'print' in production code • lib/features/order/service/mock_tracking_service.dart:240:5 • avoid_print
+   info • The prefix 'IO' isn't a lower_case_with_underscores identifier • lib/features/order/service/tracking_socket_service.dart:2:60 • library_prefixes
+   info • Don't invoke 'print' in production code • lib/features/order/service/tracking_socket_service.dart:28:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/tracking_socket_service.dart:32:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/tracking_socket_service.dart:54:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/tracking_socket_service.dart:59:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/tracking_socket_service.dart:64:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/tracking_socket_service.dart:69:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/tracking_socket_service.dart:74:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/tracking_socket_service.dart:78:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/tracking_socket_service.dart:82:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/tracking_socket_service.dart:88:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/tracking_socket_service.dart:93:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/tracking_socket_service.dart:98:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/tracking_socket_service.dart:103:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/tracking_socket_service.dart:109:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/tracking_socket_service.dart:114:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/tracking_socket_service.dart:122:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/tracking_socket_service.dart:126:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/tracking_socket_service.dart:136:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/service/tracking_socket_service.dart:144:5 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/view/map_tracking.dart:411:39 • avoid_print
+   info • Don't invoke 'print' in production code • lib/features/order/view/map_tracking.dart:412:39 • avoid_print
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/order/view/map_tracking.dart:468:67 • deprecated_member_use
+   info • Unnecessary escape in string literal • lib/features/order/view/payment_complete.dart:259:48 • unnecessary_string_escapes
+   info • Unnecessary escape in string literal • lib/features/order/view/payment_complete.dart:261:52 • unnecessary_string_escapes
+   info • Unnecessary escape in string literal • lib/features/order/view/payment_complete.dart:271:59 • unnecessary_string_escapes
+   info • Use 'const' with the constructor to improve performance • lib/features/order/view/rating_onboarding.dart:78:21 • prefer_const_constructors
+warning • The declaration '_submitRating' isn't referenced • lib/features/order/view/rider_rating.dart:87:16 • unused_element
+   info • Use a 'SizedBox' to add whitespace to a layout • lib/features/order/view/tracking_test_page.dart:131:11 • sized_box_for_whitespace
+   info • The private field _showCustomTip could be 'final' • lib/features/order/view/vendor_rating.dart:19:8 • prefer_final_fields
+   info • The member 'id' overrides an inherited member but isn't annotated with '@override' • lib/features/pharmacy/model/pharmacy_item.dart:4:16 • annotate_overrides
+   info • The member 'name' overrides an inherited member but isn't annotated with '@override' • lib/features/pharmacy/model/pharmacy_item.dart:5:16 • annotate_overrides
+   info • The member 'description' overrides an inherited member but isn't annotated with '@override' • lib/features/pharmacy/model/pharmacy_item.dart:6:16 • annotate_overrides
+   info • The member 'image' overrides an inherited member but isn't annotated with '@override' • lib/features/pharmacy/model/pharmacy_item.dart:7:16 • annotate_overrides
+   info • The member 'price' overrides an inherited member but isn't annotated with '@override' • lib/features/pharmacy/model/pharmacy_item.dart:8:16 • annotate_overrides
+   info • The member 'isAvailable' overrides an inherited member but isn't annotated with '@override' • lib/features/pharmacy/model/pharmacy_item.dart:18:14 • annotate_overrides
+   info • The member 'rating' overrides an inherited member but isn't annotated with '@override' • lib/features/pharmacy/model/pharmacy_item.dart:24:16 • annotate_overrides
+   info • The member 'toJson' overrides an inherited member but isn't annotated with '@override' • lib/features/pharmacy/model/pharmacy_item.dart:98:24 • annotate_overrides
+   info • The private field _isLoadingOnSale could be 'final' • lib/features/pharmacy/viewmodel/pharmacy_provider.dart:20:8 • prefer_final_fields
+   info • The private field _isLoadingPopular could be 'final' • lib/features/pharmacy/viewmodel/pharmacy_provider.dart:24:8 • prefer_final_fields
+warning • Unused import: 'package:grab_go_customer/shared/widgets/umbrella_header.dart' • lib/features/profile/view/orders.dart:17:8 • unused_import
+warning • The value of the field '_collapsedHeight' isn't used • lib/features/profile/view/orders.dart:79:23 • unused_field
+warning • The value of the field '_scrollThreshold' isn't used • lib/features/profile/view/orders.dart:80:23 • unused_field
+warning • Duplicate import • lib/features/profile/view/referral_page.dart:18:8 • duplicate_import
+   info • Missing type annotation • lib/features/restaurant/view/restaurant_review_page.dart:279:26 • strict_top_level_inference
+   info • Missing type annotation • lib/features/restaurant/view/restaurant_review_page.dart:304:31 • strict_top_level_inference
+   info • Use 'const' with the constructor to improve performance • lib/features/status/view/story_viewer.dart:677:56 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/status/view/story_viewer.dart:677:74 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/status/view/story_viewer.dart:690:46 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/status/view/story_viewer.dart:692:53 • prefer_const_constructors
+warning • The declaration '_shareStatus' isn't referenced • lib/features/status/view/story_viewer.dart:1190:8 • unused_element
+   info • 'Share' is deprecated and shouldn't be used. Use SharePlus instead • lib/features/status/view/story_viewer.dart:1205:5 • deprecated_member_use
+   info • 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead • lib/features/status/view/story_viewer.dart:1205:11 • deprecated_member_use
+   info • Use 'const' with the constructor to improve performance • lib/features/status/view/story_viewer.dart:1269:20 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/status/view/story_viewer.dart:1269:41 • prefer_const_constructors
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/status/view/story_viewer.dart:1305:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/status/view/story_viewer.dart:1307:71 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/status/view/story_viewer.dart:1320:52 • deprecated_member_use
+   info • Use 'const' with the constructor to improve performance • lib/features/status/view/story_viewer.dart:1376:37 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/status/view/story_viewer.dart:1379:33 • prefer_const_constructors
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/status/view/story_viewer.dart:1408:86 • deprecated_member_use
+   info • Use 'const' with the constructor to improve performance • lib/features/status/view/story_viewer.dart:1486:30 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/status/view/story_viewer.dart:1491:64 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/status/view/story_viewer.dart:1491:82 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/status/view/story_viewer.dart:1643:38 • prefer_const_constructors
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/status/view/story_viewer.dart:1651:43 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/status/view/story_viewer.dart:1697:103 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/status/view/story_viewer.dart:1706:78 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/status/view/story_viewer.dart:1726:55 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/status/view/story_viewer.dart:1730:73 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/status/view/story_viewer.dart:1783:61 • deprecated_member_use
+   info • Use 'const' with the constructor to improve performance • lib/features/status/view/story_viewer.dart:1783:103 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/status/view/story_viewer.dart:1816:46 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/status/view/story_viewer.dart:1816:64 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/features/status/view/widgets/skeleton_loaders.dart:179:29 • prefer_const_constructors
+   info • Don't invoke 'print' in production code • lib/features/status/viewmodel/status_provider.dart:193:7 • avoid_print
+warning • The declaration '_$VendorModelFromJson' isn't referenced • lib/features/vendors/model/vendor_model.g.dart:9:13 • unused_element
+warning • Unused import: 'package:flutter_svg/flutter_svg.dart' • lib/features/vendors/view/vendors_page.dart:4:8 • unused_import
+warning • The value of the field '_previousLng' isn't used • lib/features/vendors/view/vendors_page.dart:76:11 • unused_field
+warning • The value of the local variable 'groceryProvider' isn't used • lib/features/vendors/view/vendors_page.dart:299:11 • unused_local_variable
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/vendors/widgets/vendor_card.dart:299:37 • deprecated_member_use
+   info • 'Share' is deprecated and shouldn't be used. Use SharePlus instead • lib/shared/services/food_share_link.dart:80:28 • deprecated_member_use
+   info • 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead • lib/shared/services/food_share_link.dart:80:34 • deprecated_member_use
+   info • 'Share' is deprecated and shouldn't be used. Use SharePlus instead • lib/shared/services/food_share_link.dart:117:33 • deprecated_member_use
+   info • 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead • lib/shared/services/food_share_link.dart:117:39 • deprecated_member_use
+   info • Use 'const' with the constructor to improve performance • lib/shared/services/notification_handler.dart:34:18 • prefer_const_constructors
+warning • Unused import: 'package:grab_go_customer/features/home/view/grocery_details.dart' • lib/shared/utils/routes.dart:51:8 • unused_import
+  error • The named parameter 'pharmacyItem' isn't defined • lib/shared/utils/routes.dart:790:31 • undefined_named_parameter
+  error • The named parameter 'grabMartItem' isn't defined • lib/shared/utils/routes.dart:792:31 • undefined_named_parameter
+warning • Unused import: 'package:grab_go_shared/shared/services/cache_service.dart' • lib/shared/viewmodels/base_provider.dart:2:8 • unused_import
+   info • Use 'const' with the constructor to improve performance • lib/shared/widgets/browse_grid_skeleton.dart:43:35 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/shared/widgets/browse_grid_skeleton.dart:44:32 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/shared/widgets/browse_grid_skeleton.dart:45:33 • prefer_const_constructors
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/shared/widgets/custom_switch.dart:100:44 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/shared/widgets/custom_switch.dart:100:74 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/shared/widgets/custom_switch.dart:134:57 • deprecated_member_use
+warning • The value of the local variable 'isDark' isn't used • lib/shared/widgets/food_details_appbar.dart:25:11 • unused_local_variable
+   info • The import of 'package:flutter/services.dart' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' • lib/shared/widgets/home_banner.dart:5:8 • unnecessary_import
+warning • The value of the local variable 'hasError' isn't used • lib/shared/widgets/home_banner.dart:66:10 • unused_local_variable
+   info • Use 'const' with the constructor to improve performance • lib/shared/widgets/menu_category.dart:65:16 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/shared/widgets/promo_banner_card.dart:105:36 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/shared/widgets/promo_skeleton.dart:67:35 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/shared/widgets/promo_skeleton.dart:68:33 • prefer_const_constructors
+   info • Use 'const' with the constructor to improve performance • lib/shared/widgets/promo_skeleton.dart:69:36 • prefer_const_constructors
+   info • The import of 'dart:ui' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' • lib/shared/widgets/restaurant_details_helper.dart:1:8 • unnecessary_import
+   info • 'Share' is deprecated and shouldn't be used. Use SharePlus instead • lib/shared/widgets/status_card.dart:291:5 • deprecated_member_use
+   info • 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead • lib/shared/widgets/status_card.dart:291:11 • deprecated_member_use
+warning • The value of the local variable 'x1' isn't used • lib/shared/widgets/wavy_banner_clipper.dart:34:13 • unused_local_variable
+warning • The value of the local variable 'x1' isn't used • lib/shared/widgets/wavy_banner_clipper.dart:85:13 • unused_local_variable
+
+223 issues found. (ran in 15.3s)

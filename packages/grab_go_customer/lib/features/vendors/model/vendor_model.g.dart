@@ -46,6 +46,7 @@ VendorModel _$VendorModelFromJson(Map<String, dynamic> json) => VendorModel(
   productTypes: (json['productTypes'] as List<dynamic>?)
       ?.map((e) => e as String)
       .toList(),
+  isExclusive: json['isExclusive'] as bool?,
   createdAt: json['createdAt'] == null
       ? null
       : DateTime.parse(json['createdAt'] as String),
@@ -87,6 +88,7 @@ Map<String, dynamic> _$VendorModelToJson(VendorModel instance) =>
       'acceptsMobileMoney': instance.acceptsMobileMoney,
       'services': instance.services,
       'productTypes': instance.productTypes,
+      'isExclusive': instance.isExclusive,
       'createdAt': instance.createdAt?.toIso8601String(),
       'updatedAt': instance.updatedAt?.toIso8601String(),
     };

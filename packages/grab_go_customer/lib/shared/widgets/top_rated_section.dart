@@ -14,6 +14,8 @@ class TopRatedSection extends StatelessWidget {
   final VoidCallback onSeeAll;
   final Function(FoodItem) onItemTap;
   final bool isLoading;
+  final String? title;
+  final String? icon;
 
   const TopRatedSection({
     super.key,
@@ -22,6 +24,8 @@ class TopRatedSection extends StatelessWidget {
     required this.onSeeAll,
     required this.onItemTap,
     this.isLoading = false,
+    this.title,
+    this.icon,
   });
 
   @override
@@ -32,8 +36,8 @@ class TopRatedSection extends StatelessWidget {
     return Column(
       children: [
         SectionHeader(
-          title: "Top Rated Dishes",
-          sectionIcon: Assets.icons.star,
+          title: title ?? "Top Rated Dishes",
+          sectionIcon: icon ?? Assets.icons.star,
           sectionTotal: topRatedItems.length,
           accentColor: AppColors.accentOrange,
           onSeeAll: onSeeAll,
@@ -75,7 +79,7 @@ class TopRatedSection extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SvgPicture.asset(
-            Assets.icons.star,
+            icon ?? Assets.icons.star,
             package: "grab_go_shared",
             height: 48.h,
             width: 48.w,
@@ -83,7 +87,7 @@ class TopRatedSection extends StatelessWidget {
           ),
           SizedBox(height: 16.h),
           Text(
-            'No top rated items yet',
+            title != null ? 'No $title yet' : 'No top rated items yet',
             style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
           ),
           SizedBox(height: 8.h),

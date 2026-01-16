@@ -211,7 +211,7 @@ class VendorModel {
       deliveryTime: json['average_delivery_time']?.toString(),
       emergencyService: json['emergencyService'] as bool?,
       is24Hours: json['is24Hours'] as bool?,
-      isExclusive: (json['is_exclusive'] ?? json['isExclusive']) as bool?,
+      isExclusive: (json['is_exclusive'] ?? json['isExclusive'] ?? json['isGrabGoExclusive']) as bool?,
     );
   }
 

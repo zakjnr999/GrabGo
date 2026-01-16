@@ -107,7 +107,7 @@ const restaurantSchema = new mongoose.Schema({
     type: Number,
     default: 1.0,
     validate: {
-      validator: function(value) {
+      validator: function (value) {
         // Allow 0 (no rating) or values between 1.0 and 5.0
         return value === 0 || (value >= 1.0 && value <= 5.0);
       },
@@ -122,6 +122,54 @@ const restaurantSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  // High-Priority Production Fields
+  averagePreparationTime: {
+    type: Number,
+    default: null,
+    min: [0, 'Preparation time cannot be negative']
+  },
+  isAcceptingOrders: {
+    type: Boolean,
+    default: true
+  },
+  deliveryRadius: {
+    type: Number,
+    default: 5,
+    min: [0, 'Delivery radius cannot be negative']
+  },
+  features: [{
+    type: String,
+    enum: ['wifi', 'parking', 'wheelchair_accessible', 'outdoor_seating',
+      'takeaway', 'dine_in', 'halal', 'vegan_options', 'alcohol_served',
+      'live_music', 'air_conditioned', 'pet_friendly']
+  }],
+  tags: [{
+    type: String
+  }],
+  featured: {
+    type: Boolean,
+    default: false
+  },
+  featuredUntil: {
+    type: Date,
+    default: null
+  },
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  verifiedAt: {
+    type: Date,
+    default: null
+  },
+  whatsappNumber: {
+    type: String,
+    default: null
+  },
+  isGrabGoExclusive: {
+    type: Boolean,
+    default: false
+  },
   socials: {
     type: socialsSchema,
     default: null
@@ -130,7 +178,7 @@ const restaurantSchema = new mongoose.Schema({
   timestamps: true
 });
 
-restaurantSchema.pre('save', async function(next) {
+restaurantSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {
     return next();
   }
@@ -139,7 +187,7 @@ restaurantSchema.pre('save', async function(next) {
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-restaurantSchema.methods.matchPassword = async function(enteredPassword) {
+restaurantSchema.methods.matchPassword = async function (enteredPassword) {
   const bcrypt = require('bcryptjs');
   return await bcrypt.compare(enteredPassword, this.password);
 };

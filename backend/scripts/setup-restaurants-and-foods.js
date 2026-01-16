@@ -55,7 +55,7 @@ const setupRestaurantsAndFoods = async () => {
           "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800",
           "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800"
         ],
-        logo: "https://res.cloudinary.com/dxxuaiqib/image/upload/v1762517879/grabgo/r…",
+        logo: "https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800",
         rating: 4.0,
         is_open: true,
         status: "approved"
@@ -137,11 +137,11 @@ const setupRestaurantsAndFoods = async () => {
         restaurant.delivery_fee = restaurant.delivery_fee || template.delivery_fee;
         restaurant.min_order = restaurant.min_order || template.min_order;
         restaurant.opening_hours = restaurant.opening_hours || template.opening_hours;
-        restaurant.payment_methods = restaurant.payment_methods && restaurant.payment_methods.length > 0 
-          ? restaurant.payment_methods 
+        restaurant.payment_methods = restaurant.payment_methods && restaurant.payment_methods.length > 0
+          ? restaurant.payment_methods
           : template.payment_methods;
-        restaurant.banner_images = restaurant.banner_images && restaurant.banner_images.length > 0 
-          ? restaurant.banner_images 
+        restaurant.banner_images = restaurant.banner_images && restaurant.banner_images.length > 0
+          ? restaurant.banner_images
           : template.banner_images;
         restaurant.is_open = true;
         restaurant.rating = restaurant.rating || template.rating;

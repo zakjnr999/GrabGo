@@ -1498,18 +1498,50 @@ class CacheService {
     }
   }
 
+
   /// Clear pharmacy cache
   static Future<void> clearPharmacyCache() async {
     try {
       final keys = [
         'pharmacy_categories',
-        'pharmacy_categories_cache_timestamp'
+        'pharmacy_categories_cache_timestamp',
+        'pharmacy_items',
+        'pharmacy_items_cache_timestamp'
       ];
       for (final key in keys) {
         await _instance.remove(key);
       }
     } catch (e) {
       debugPrint('Error clearing pharmacy cache: $e');
+    }
+  }
+
+  /// Save pharmacy items
+  static Future<bool> savePharmacyItems(List<Map<String, dynamic>> items) async {
+    try {
+      final itemsJson = jsonEncode(items);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      await _instance.setString('pharmacy_items', itemsJson);
+      await _instance.setInt('pharmacy_items_cache_timestamp', timestamp);
+      return true;
+    } catch (e) {
+      debugPrint('Error saving pharmacy items: $e');
+      return false;
+    }
+  }
+
+  /// Get pharmacy items
+  static List<Map<String, dynamic>> getPharmacyItems() {
+    try {
+      final itemsJson = _instance.getString('pharmacy_items');
+      if (itemsJson != null) {
+        final List<dynamic> itemsList = jsonDecode(itemsJson);
+        return itemsList.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting pharmacy items: $e');
+      return [];
     }
   }
 
@@ -1549,13 +1581,44 @@ class CacheService {
     try {
       final keys = [
         'grabmart_categories',
-        'grabmart_categories_cache_timestamp'
+        'grabmart_categories_cache_timestamp',
+        'grabmart_items',
+        'grabmart_items_cache_timestamp'
       ];
       for (final key in keys) {
         await _instance.remove(key);
       }
     } catch (e) {
       debugPrint('Error clearing GrabMart cache: $e');
+    }
+  }
+
+  /// Save GrabMart items
+  static Future<bool> saveGrabMartItems(List<Map<String, dynamic>> items) async {
+    try {
+      final itemsJson = jsonEncode(items);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      await _instance.setString('grabmart_items', itemsJson);
+      await _instance.setInt('grabmart_items_cache_timestamp', timestamp);
+      return true;
+    } catch (e) {
+      debugPrint('Error saving GrabMart items: $e');
+      return false;
+    }
+  }
+
+  /// Get GrabMart items
+  static List<Map<String, dynamic>> getGrabMartItems() {
+    try {
+      final itemsJson = _instance.getString('grabmart_items');
+      if (itemsJson != null) {
+        final List<dynamic> itemsList = jsonDecode(itemsJson);
+        return itemsList.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting GrabMart items: $e');
+      return [];
     }
   }
 }
