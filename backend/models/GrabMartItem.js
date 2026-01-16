@@ -23,7 +23,7 @@ const grabMartItemSchema = new mongoose.Schema(
         unit: {
             type: String,
             required: [true, 'Unit is required'],
-            enum: ['piece', 'pack', 'bottle', 'can', 'box', 'kg', 'liter', 'ml', 'gram'],
+            enum: ['piece', 'pack', 'bottle', 'can', 'box', 'kg', 'liter', 'ml', 'gram', 'tube'],
         },
         category: {
             type: mongoose.Schema.Types.ObjectId,
