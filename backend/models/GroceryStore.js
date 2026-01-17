@@ -319,7 +319,6 @@ groceryStoreSchema.index({ "location.coordinates": "2dsphere" });
 groceryStoreSchema.index({ status: 1, isOpen: 1, isDeleted: 1, rating: -1 });
 groceryStoreSchema.index({ vendorType: 1, status: 1, isDeleted: 1 });
 groceryStoreSchema.index({ storeName: 1 });
-groceryStoreSchema.index({ email: 1 });
 
 // Virtuals for legacy support (snake_case and top-level location)
 groceryStoreSchema.virtual('store_name').get(function () { return this.storeName; });

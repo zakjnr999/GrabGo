@@ -385,8 +385,6 @@ restaurantSchema.index({ "location.coordinates": "2dsphere" });
 restaurantSchema.index({ status: 1, isOpen: 1, isDeleted: 1, rating: -1 });
 restaurantSchema.index({ vendorType: 1, status: 1, isDeleted: 1 });
 restaurantSchema.index({ "location.city": 1, "location.area": 1 });
-restaurantSchema.index({ email: 1 });
-restaurantSchema.index({ businessIdNumber: 1 });
 
 restaurantSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {

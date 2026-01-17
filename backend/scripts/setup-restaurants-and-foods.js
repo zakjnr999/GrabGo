@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
-require("dotenv").config();
+const path = require('path');
+require("dotenv").config({ path: path.resolve(__dirname, '../.env') });
 
 const Restaurant = require("../models/Restaurant");
 const Food = require("../models/Food");
@@ -23,6 +24,10 @@ const setupRestaurantsAndFoods = async () => {
     await connectDB();
 
     console.log("\n📋 Step 1: Checking restaurants...");
+
+    // Drop existing indexes to remove legacy conflicts
+    await Restaurant.collection.dropIndexes();
+    console.log("   ✅ Dropped existing indexes");
 
     // TEMPLATE DATA
     const restaurantTemplates = [
@@ -56,7 +61,30 @@ const setupRestaurantsAndFoods = async () => {
         rating: 4.0,
         isOpen: true,
         status: "approved",
-        vendorType: "restaurant"
+        vendorType: "restaurant",
+        ratingSum: 400,
+        totalReviews: 100,
+        priorityScore: 10,
+        orderAcceptanceRate: 98,
+        orderCancellationRate: 2,
+        features: ['takeaway', 'dine_in', 'outdoor_seating'],
+        tags: ['local', 'international', 'cozy'],
+        featured: true,
+        isVerified: true,
+        deliveryRadius: 10,
+        openingHours: {
+          monday: { open: '08:00', close: '22:00', isClosed: false },
+          tuesday: { open: '08:00', close: '22:00', isClosed: false },
+          wednesday: { open: '08:00', close: '22:00', isClosed: false },
+          thursday: { open: '08:00', close: '22:00', isClosed: false },
+          friday: { open: '08:00', close: '23:00', isClosed: false },
+          saturday: { open: '09:00', close: '23:00', isClosed: false },
+          sunday: { open: '10:00', close: '22:00', isClosed: false }
+        },
+        socials: {
+          facebook: 'https://facebook.com/adepa',
+          instagram: 'https://instagram.com/adepa'
+        }
       },
       {
         restaurantName: "Tasty Bites",
@@ -88,7 +116,29 @@ const setupRestaurantsAndFoods = async () => {
         rating: 4.5,
         isOpen: true,
         status: "approved",
-        vendorType: "restaurant"
+        vendorType: "restaurant",
+        ratingSum: 450,
+        totalReviews: 100,
+        priorityScore: 8,
+        orderAcceptanceRate: 95,
+        orderCancellationRate: 5,
+        features: ['takeaway', 'air_conditioned'],
+        tags: ['fast food', 'burgers', 'pizza'],
+        featured: false,
+        isVerified: true,
+        deliveryRadius: 8,
+        openingHours: {
+          monday: { open: '09:00', close: '21:00', isClosed: false },
+          tuesday: { open: '09:00', close: '21:00', isClosed: false },
+          wednesday: { open: '09:00', close: '21:00', isClosed: false },
+          thursday: { open: '09:00', close: '21:00', isClosed: false },
+          friday: { open: '09:00', close: '22:00', isClosed: false },
+          saturday: { open: '10:00', close: '22:00', isClosed: false },
+          sunday: { open: '10:00', close: '20:00', isClosed: false }
+        },
+        socials: {
+          instagram: 'https://instagram.com/tastybites'
+        }
       }
     ];
 

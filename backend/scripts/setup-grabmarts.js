@@ -31,6 +31,7 @@ const grabMartStores = [
         },
         phone: "+233 24 789 0123",
         email: "info@quickstop.gh",
+        businessIdNumber: "BID-GM-001",
         isOpen: true,
         deliveryFee: 3,
         minOrder: 5,
@@ -44,7 +45,31 @@ const grabMartStores = [
         productTypes: ["Snacks", "Beverages", "Personal Care", "Household"],
         vendorType: "grabmart",
         status: "approved",
-        createdAt: daysAgo(40)
+        createdAt: daysAgo(40),
+        ratingSum: 2665,
+        priorityScore: 10,
+        orderAcceptanceRate: 99,
+        orderCancellationRate: 1,
+        features: ['parking', 'takeaway', 'wheelchair_accessible', 'air_conditioned'],
+        tags: ['convenience', '24/7', 'essentials'],
+        featured: true,
+        isVerified: true,
+        deliveryRadius: 5,
+        averagePreparationTime: 5,
+        averageDeliveryTime: 15,
+        openingHours: {
+            monday: { open: '00:00', close: '23:59', isClosed: false },
+            tuesday: { open: '00:00', close: '23:59', isClosed: false },
+            wednesday: { open: '00:00', close: '23:59', isClosed: false },
+            thursday: { open: '00:00', close: '23:59', isClosed: false },
+            friday: { open: '00:00', close: '23:59', isClosed: false },
+            saturday: { open: '00:00', close: '23:59', isClosed: false },
+            sunday: { open: '00:00', close: '23:59', isClosed: false }
+        },
+        socials: {
+            facebook: 'https://facebook.com/quickstop',
+            instagram: 'https://instagram.com/quickstop'
+        }
     },
     {
         storeName: "Express Mart",
@@ -59,6 +84,7 @@ const grabMartStores = [
         },
         phone: "+233 30 276 8901",
         email: "contact@expressmart.gh",
+        businessIdNumber: "BID-GM-002",
         isOpen: true,
         deliveryFee: 4,
         minOrder: 10,
@@ -72,7 +98,30 @@ const grabMartStores = [
         productTypes: ["Snacks", "Beverages", "Stationery", "Personal Care"],
         vendorType: "grabmart",
         status: "approved",
-        createdAt: daysAgo(28)
+        createdAt: daysAgo(28),
+        ratingSum: 1053,
+        priorityScore: 8,
+        orderAcceptanceRate: 96,
+        orderCancellationRate: 4,
+        features: ['takeaway'],
+        tags: ['express', ' snacks', 'drinks'],
+        featured: false,
+        isVerified: true,
+        deliveryRadius: 4,
+        averagePreparationTime: 5,
+        averageDeliveryTime: 20,
+        openingHours: {
+            monday: { open: '07:00', close: '23:00', isClosed: false },
+            tuesday: { open: '07:00', close: '23:00', isClosed: false },
+            wednesday: { open: '07:00', close: '23:00', isClosed: false },
+            thursday: { open: '07:00', close: '23:00', isClosed: false },
+            friday: { open: '07:00', close: '23:00', isClosed: false },
+            saturday: { open: '08:00', close: '23:00', isClosed: false },
+            sunday: { open: '08:00', close: '22:00', isClosed: false }
+        },
+        socials: {
+            instagram: 'https://instagram.com/expressmart'
+        }
     },
     {
         storeName: "Metro GrabMart",
@@ -87,6 +136,7 @@ const grabMartStores = [
         },
         phone: "+233 20 345 6789",
         email: "hello@metrograbmart.gh",
+        businessIdNumber: "BID-GM-003",
         isOpen: true,
         deliveryFee: 5,
         minOrder: 15,
@@ -100,7 +150,31 @@ const grabMartStores = [
         productTypes: ["Snacks", "Beverages", "Personal Care", "Household", "Electronics", "Stationery"],
         vendorType: "grabmart",
         status: "approved",
-        createdAt: daysAgo(55)
+        createdAt: daysAgo(55),
+        ratingSum: 4281,
+        priorityScore: 11,
+        orderAcceptanceRate: 98,
+        orderCancellationRate: 2,
+        features: ['parking', 'takeaway', 'wheelchair_accessible', 'air_conditioned'],
+        tags: ['premium', 'metro', 'electronics'],
+        featured: true,
+        isVerified: true,
+        deliveryRadius: 8,
+        averagePreparationTime: 10,
+        averageDeliveryTime: 25,
+        openingHours: {
+            monday: { open: '00:00', close: '23:59', isClosed: false },
+            tuesday: { open: '00:00', close: '23:59', isClosed: false },
+            wednesday: { open: '00:00', close: '23:59', isClosed: false },
+            thursday: { open: '00:00', close: '23:59', isClosed: false },
+            friday: { open: '00:00', close: '23:59', isClosed: false },
+            saturday: { open: '00:00', close: '23:59', isClosed: false },
+            sunday: { open: '00:00', close: '23:59', isClosed: false }
+        },
+        socials: {
+            facebook: 'https://facebook.com/metrograbmart',
+            twitter: 'https://twitter.com/metrograbmart'
+        }
     }
 ];
 
