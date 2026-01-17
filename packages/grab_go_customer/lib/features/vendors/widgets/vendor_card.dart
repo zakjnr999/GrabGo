@@ -65,7 +65,7 @@ class VendorCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Row 1: Name and Rating
+                        // Row 1: Name and Rating d
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
