@@ -56,7 +56,15 @@ const grabMartStoreSchema = new mongoose.Schema(
             },
             coordinates: {
                 type: [Number], // [longitude, latitude]
-                required: [true, 'Coordinates are required']
+                required: [true, 'Coordinates are required'],
+                validate: {
+                    validator: function (coords) {
+                        return coords.length === 2 &&
+                            coords[0] >= -180 && coords[0] <= 180 && // Longitude
+                            coords[1] >= -90 && coords[1] <= 90;    // Latitude
+                    },
+                    message: 'Invalid coordinates. Longitude must be between -180 and 180, and Latitude between -90 and 90.'
+                }
             },
             address: {
                 type: String,
@@ -121,10 +129,32 @@ const grabMartStoreSchema = new mongoose.Schema(
             default: 0,
             min: [0, 'Rating cannot be negative'],
             max: [5, 'Rating cannot exceed 5'],
+            set: v => Math.round(v * 10) / 10
+        },
+        ratingSum: {
+            type: Number,
+            default: 0
         },
         totalReviews: {
             type: Number,
             default: 0,
+        },
+        priorityScore: {
+            type: Number,
+            default: 0,
+            index: true
+        },
+        orderAcceptanceRate: {
+            type: Number,
+            default: 100,
+            min: 0,
+            max: 100
+        },
+        orderCancellationRate: {
+            type: Number,
+            default: 0,
+            min: 0,
+            max: 100
         },
         categories: [{
             type: String,
@@ -188,6 +218,47 @@ const grabMartStoreSchema = new mongoose.Schema(
             type: String,
             default: null,
         },
+        timezone: {
+            type: String,
+            default: 'Africa/Accra'
+        },
+        utcOffset: {
+            type: Number,
+            default: 0
+        },
+        totalOrders: {
+            type: Number,
+            default: 0
+        },
+        totalCancelledOrders: {
+            type: Number,
+            default: 0
+        },
+        totalRevenue: {
+            type: Number,
+            default: 0
+        },
+        monthlyRevenue: {
+            type: Number,
+            default: 0
+        },
+        last30DaysRevenue: {
+            type: Number,
+            default: 0
+        },
+        averageOrderValue: {
+            type: Number,
+            default: 0
+        },
+        monthlyOrders: {
+            type: Number,
+            default: 0
+        },
+        parentVendorId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'GrabMartStore',
+            default: null
+        },
         paymentMethods: [{
             type: String,
             enum: ['cash', 'card', 'mobile_money']
@@ -237,6 +308,24 @@ const grabMartStoreSchema = new mongoose.Schema(
     }
 );
 
+// Soft-deletion middleware
+grabMartStoreSchema.pre(/^find/, function (next) {
+    this.find({ isDeleted: { $ne: true } });
+    next();
+});
+
+grabMartStoreSchema.pre('aggregate', function (next) {
+    const pipeline = this.pipeline();
+    const firstStage = pipeline[0];
+
+    if (firstStage && firstStage.$geoNear) {
+        firstStage.$geoNear.query = { ...firstStage.$geoNear.query, isDeleted: { $ne: true } };
+    } else {
+        pipeline.unshift({ $match: { isDeleted: { $ne: true } } });
+    }
+    next();
+});
+
 // Production Indexes
 grabMartStoreSchema.index({ "location.coordinates": "2dsphere" });
 grabMartStoreSchema.index({ status: 1, isOpen: 1, isDeleted: 1, rating: -1 });
@@ -251,10 +340,71 @@ grabMartStoreSchema.virtual('is_open').get(function () { return this.isOpen; });
 grabMartStoreSchema.virtual('total_reviews').get(function () { return this.totalReviews; });
 grabMartStoreSchema.virtual('delivery_fee').get(function () { return this.deliveryFee; });
 grabMartStoreSchema.virtual('min_order').get(function () { return this.minOrder; });
-grabMartStoreSchema.virtual('latitude').get(function () { return this.location.coordinates[1]; });
-grabMartStoreSchema.virtual('longitude').get(function () { return this.location.coordinates[0]; });
-grabMartStoreSchema.virtual('address').get(function () { return this.location.address; });
-grabMartStoreSchema.virtual('city').get(function () { return this.location.city; });
+grabMartStoreSchema.virtual('latitude').get(function () { return this.location?.coordinates?.[1]; });
+grabMartStoreSchema.virtual('longitude').get(function () { return this.location?.coordinates?.[0]; });
+grabMartStoreSchema.virtual('address').get(function () { return this.location?.address; });
+grabMartStoreSchema.virtual('city').get(function () { return this.location?.city; });
+
+grabMartStoreSchema.virtual('isActive').get(function () {
+    return !this.isDeleted && this.status === 'approved' && this.isAcceptingOrders;
+});
+
+// Automatic isOpen logic based on schedule
+grabMartStoreSchema.virtual('isScheduledOpen').get(function () {
+    if (this.is24Hours) return true;
+    if (!this.openingHours) return false;
+
+    const now = new Date();
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const today = days[now.getDay()];
+    const schedule = this.openingHours[today];
+
+    if (!schedule || schedule.isClosed) return false;
+
+    const [openHours, openMinutes] = schedule.open.split(':').map(Number);
+    const [closeHours, closeMinutes] = schedule.close.split(':').map(Number);
+
+    const openTime = openHours * 60 + openMinutes;
+    let closeTime = closeHours * 60 + closeMinutes;
+
+    // Handle shifts spanning past midnight
+    if (closeTime < openTime) {
+        closeTime += 24 * 60;
+    }
+
+    // Get current time in vendor's timezone
+    // Priority: 1. utcOffset (Fastest) 2. Intl API (Accurate Fallback)
+    let localNow;
+    if (typeof this.utcOffset === 'number') {
+        localNow = new Date(now.getTime() + this.utcOffset * 60000);
+    } else {
+        try {
+            const formatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: this.timezone || 'Africa/Accra',
+                hour: 'numeric',
+                minute: 'numeric',
+                hour12: false
+            });
+            const parts = formatter.formatToParts(now);
+            const hour = parseInt(parts.find(p => p.type === 'hour').value);
+            const minute = parseInt(parts.find(p => p.type === 'minute').value);
+            localNow = new Date();
+            localNow.setHours(hour, minute, 0, 0);
+        } catch (err) {
+            localNow = now;
+        }
+    }
+
+    const currentTimeInTZ = localNow.getHours() * 60 + localNow.getMinutes();
+    return currentTimeInTZ >= openTime && currentTimeInTZ <= closeTime;
+});
+
+grabMartStoreSchema.methods.updateRating = async function (newScore) {
+    this.ratingSum += newScore;
+    this.totalReviews += 1;
+    this.rating = Math.round((this.ratingSum / this.totalReviews) * 10) / 10;
+    return this.save();
+};
 
 const GrabMartStore = mongoose.model('GrabMartStore', grabMartStoreSchema);
 

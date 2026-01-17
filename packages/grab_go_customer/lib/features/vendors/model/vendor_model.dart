@@ -108,8 +108,8 @@ class VendorModel {
   final String? foodType;
   final VendorLocation? location;
   final OpeningHours? openingHours;
-  final String? deliveryTime; // Legacy fallback
-  final int? averageDeliveryTime; // New numerical field
+  final String? deliveryTime;
+  final int? averageDeliveryTime;
   final int? averagePreparationTime;
   final double? deliveryRadius;
   final List<String>? features;
