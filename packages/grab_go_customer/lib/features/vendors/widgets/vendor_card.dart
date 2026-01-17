@@ -71,7 +71,7 @@ class VendorCard extends StatelessWidget {
                           children: [
                             Expanded(
                               child: Text(
-                                vendor.storeName,
+                                vendor.displayName,
                                 style: TextStyle(
                                   color: colors.textPrimary,
                                   fontSize: 17.sp,

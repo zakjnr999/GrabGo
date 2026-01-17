@@ -95,24 +95,50 @@ router.get("/deals", cacheMiddleware(cache.CACHE_KEYS.FOOD_DEALS, 120), async (r
 // Get popular items with caching (5 minutes)
 router.get("/popular", cacheMiddleware(cache.CACHE_KEYS.FOOD_POPULAR, 300), async (req, res) => {
   try {
-    // Validate and sanitize limit parameter
     let { limit = 10 } = req.query;
     limit = parseInt(limit);
 
-    // Handle invalid input
-    if (isNaN(limit) || limit < 1) {
-      limit = 10;
-    }
-    // Cap at maximum 50 items
-    if (limit > 50) {
-      limit = 50;
-    }
+    if (isNaN(limit) || limit < 1) limit = 10;
+    if (limit > 50) limit = 50;
 
-    const popularItems = await Food.find({ isAvailable: true })
-      .sort({ orderCount: -1, rating: -1 }) // Sort by order count, then rating
-      .limit(limit)
-      .populate('category', 'name')
-      .populate('restaurant', 'restaurantName logo rating location');
+    // Use aggregation to get unique food names with highest order counts
+    const popularItems = await Food.aggregate([
+      { $match: { isAvailable: true } },
+      { $sort: { orderCount: -1, rating: -1 } },
+      {
+        $group: {
+          _id: "$name",
+          doc: { $first: "$$ROOT" }
+        }
+      },
+      { $replaceRoot: { newRoot: "$doc" } },
+      { $sort: { orderCount: -1, rating: -1 } },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "category",
+          foreignField: "_id",
+          as: "category"
+        }
+      },
+      { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "restaurants",
+          localField: "restaurant",
+          foreignField: "_id",
+          as: "restaurant"
+        }
+      },
+      { $unwind: { path: "$restaurant", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          "restaurant.password": 0,
+          "category.isActive": 0
+        }
+      }
+    ]);
 
     res.json({
       success: true,
@@ -136,32 +162,56 @@ router.get("/popular", cacheMiddleware(cache.CACHE_KEYS.FOOD_POPULAR, 300), asyn
 // Get top-rated items with caching (10 minutes - stable data)
 router.get("/top-rated", cacheMiddleware(cache.CACHE_KEYS.FOOD_TOP_RATED, 600), async (req, res) => {
   try {
-    // Validate and sanitize limit parameter
     let { limit = 10, minRating = 4.5 } = req.query;
     limit = parseInt(limit);
     minRating = parseFloat(minRating);
 
-    // Handle invalid input
-    if (isNaN(limit) || limit < 1) {
-      limit = 10;
-    }
-    // Cap at maximum 50 items
-    if (limit > 50) {
-      limit = 50;
-    }
-    // Validate minRating
-    if (isNaN(minRating) || minRating < 0 || minRating > 5) {
-      minRating = 4.5;
-    }
+    if (isNaN(limit) || limit < 1) limit = 10;
+    if (limit > 50) limit = 50;
+    if (isNaN(minRating) || minRating < 0 || minRating > 5) minRating = 4.5;
 
-    const topRatedItems = await Food.find({
-      isAvailable: true,
-      rating: { $gte: minRating }
-    })
-      .sort({ rating: -1, totalReviews: -1 }) // Sort by rating, then review count
-      .limit(limit)
-      .populate('category', 'name')
-      .populate('restaurant', 'restaurantName logo rating location');
+    const topRatedItems = await Food.aggregate([
+      {
+        $match: {
+          isAvailable: true,
+          rating: { $gte: minRating }
+        }
+      },
+      { $sort: { rating: -1, totalReviews: -1 } },
+      {
+        $group: {
+          _id: "$name",
+          doc: { $first: "$$ROOT" }
+        }
+      },
+      { $replaceRoot: { newRoot: "$doc" } },
+      { $sort: { rating: -1, totalReviews: -1 } },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "category",
+          foreignField: "_id",
+          as: "category"
+        }
+      },
+      { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "restaurants",
+          localField: "restaurant",
+          foreignField: "_id",
+          as: "restaurant"
+        }
+      },
+      { $unwind: { path: "$restaurant", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          "restaurant.password": 0,
+          "category.isActive": 0
+        }
+      }
+    ]);
 
     res.json({
       success: true,
