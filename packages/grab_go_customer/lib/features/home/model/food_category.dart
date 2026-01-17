@@ -76,7 +76,7 @@ class FoodItem implements CartItem {
     if (restaurant != null) {
       if (restaurant is Map<String, dynamic>) {
         // Case 1: Restaurant is a populated object with full details
-        restaurantName = restaurant['restaurant_name']?.toString() ?? restaurant['name']?.toString() ?? '';
+        restaurantName = restaurant['restaurant_name']?.toString() ?? restaurant['restaurantName']?.toString() ?? restaurant['name']?.toString() ?? '';
         restaurantId = restaurant['_id']?.toString() ?? '';
         restaurantImage = restaurant['logo']?.toString() ?? restaurant['image']?.toString() ?? '';
       } else {
@@ -111,7 +111,7 @@ class FoodItem implements CartItem {
     final nameStr = json['name']?.toString() ?? '';
     final name = nameStr.isEmpty ? 'Unknown Food' : nameStr;
 
-    final imageStr = json['food_image']?.toString() ?? json['image']?.toString() ?? '';
+    final imageStr = json['food_image']?.toString() ?? json['foodImage']?.toString() ?? json['image']?.toString() ?? '';
     final image = imageStr.isEmpty ? '' : imageStr;
 
     final description = json['description']?.toString() ?? '';

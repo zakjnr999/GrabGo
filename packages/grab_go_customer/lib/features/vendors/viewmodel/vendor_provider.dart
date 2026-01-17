@@ -82,13 +82,13 @@ class VendorProvider extends ChangeNotifier {
   /// Fetch vendors by type
   Future<void> fetchVendors(VendorType type, {double? lat, double? lng, bool forceRefresh = false}) async {
     final typeName = type.toString().split('.').last;
-    
+
     // If type changed, clear current vendors immediately to avoid showing wrong data
     if (_selectedType != type) {
       _vendors = [];
       _filteredVendors = [];
     }
-    
+
     _selectedType = type;
 
     // Load from cache first for immediate UI update
@@ -220,7 +220,9 @@ class VendorProvider extends ChangeNotifier {
       if (response.isSuccessful && response.body != null) {
         final data = response.body!['data'] as List;
         _filteredVendors = data.map((json) {
-          final vendor = VendorModel.fromJson(Map<String, dynamic>.from(json as Map)).copyWith(vendorTypeEnum: _selectedType!);
+          final vendor = VendorModel.fromJson(
+            Map<String, dynamic>.from(json as Map),
+          ).copyWith(vendorTypeEnum: _selectedType!);
           // Search results from backend might not include coordinates in search results in some APIs
           // but if they do, we can calculate distance
           return vendor;
@@ -266,7 +268,9 @@ class VendorProvider extends ChangeNotifier {
       if (response.isSuccessful && response.body != null) {
         final data = response.body!['data'] as List;
         _vendors = data.map((json) {
-          final vendor = VendorModel.fromJson(Map<String, dynamic>.from(json as Map)).copyWith(vendorTypeEnum: _selectedType!);
+          final vendor = VendorModel.fromJson(
+            Map<String, dynamic>.from(json as Map),
+          ).copyWith(vendorTypeEnum: _selectedType!);
           final distanceInMeters = Geolocator.distanceBetween(lat, lng, vendor.latitude, vendor.longitude);
           return vendor.copyWith(distance: distanceInMeters / 1000);
         }).toList();
@@ -295,7 +299,13 @@ class VendorProvider extends ChangeNotifier {
 
       if (response.isSuccessful && response.body != null) {
         final data = response.body!['data'] as List;
-        _vendors = data.map((json) => VendorModel.fromJson(Map<String, dynamic>.from(json as Map)).copyWith(vendorTypeEnum: VendorType.pharmacy)).toList();
+        _vendors = data
+            .map(
+              (json) => VendorModel.fromJson(
+                Map<String, dynamic>.from(json as Map),
+              ).copyWith(vendorTypeEnum: VendorType.pharmacy),
+            )
+            .toList();
         _filteredVendors = _vendors;
       } else {
         _error = 'Failed to fetch emergency pharmacies';
@@ -336,7 +346,12 @@ class VendorProvider extends ChangeNotifier {
 
       if (response.isSuccessful && response.body != null) {
         final data = response.body!['data'] as List;
-        _vendors = data.map((json) => VendorModel.fromJson(Map<String, dynamic>.from(json as Map)).copyWith(vendorTypeEnum: _selectedType!)).toList();
+        _vendors = data
+            .map(
+              (json) =>
+                  VendorModel.fromJson(Map<String, dynamic>.from(json as Map)).copyWith(vendorTypeEnum: _selectedType!),
+            )
+            .toList();
         _filteredVendors = _vendors;
       } else {
         _error = 'Failed to fetch 24-hour vendors';
@@ -364,7 +379,7 @@ class VendorProvider extends ChangeNotifier {
         final matchesCategory = vendor.categories?.contains(_selectedCategoryId) ?? false;
         final matchesService = vendor.services?.contains(_selectedCategoryId) ?? false;
         final matchesProductType = vendor.productTypes?.contains(_selectedCategoryId) ?? false;
-        
+
         if (!matchesCategory && !matchesService && !matchesProductType) return false;
       }
       return true;

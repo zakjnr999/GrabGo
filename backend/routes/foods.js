@@ -133,13 +133,17 @@ router.get("/popular", cacheMiddleware(cache.CACHE_KEYS.FOOD_POPULAR, 300), asyn
       },
       { $unwind: { path: "$restaurant", preserveNullAndEmptyArrays: true } },
       {
+        $addFields: {
+          food_image: "$foodImage",
+          image: "$foodImage",
+          "restaurant.restaurant_name": "$restaurant.restaurantName",
+          "restaurant.image": "$restaurant.logo"
+        }
+      },
+      {
         $project: {
           "restaurant.password": 0,
-          "restaurant.restaurant_name": "$restaurant.restaurantName",
-          "restaurant.image": "$restaurant.logo",
-          "category.isActive": 0,
-          food_image: "$foodImage",
-          image: "$foodImage"
+          "category.isActive": 0
         }
       }
     ]);
@@ -210,13 +214,17 @@ router.get("/top-rated", cacheMiddleware(cache.CACHE_KEYS.FOOD_TOP_RATED, 600), 
       },
       { $unwind: { path: "$restaurant", preserveNullAndEmptyArrays: true } },
       {
+        $addFields: {
+          food_image: "$foodImage",
+          image: "$foodImage",
+          "restaurant.restaurant_name": "$restaurant.restaurantName",
+          "restaurant.image": "$restaurant.logo"
+        }
+      },
+      {
         $project: {
           "restaurant.password": 0,
-          "restaurant.restaurant_name": "$restaurant.restaurantName",
-          "restaurant.image": "$restaurant.logo",
-          "category.isActive": 0,
-          food_image: "$foodImage",
-          image: "$foodImage"
+          "category.isActive": 0
         }
       }
     ]);
