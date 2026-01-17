@@ -392,22 +392,46 @@ const setupRestaurantsAndFoods = async () => {
         orderCount: 450, discountPercentage: 0
       },
       {
-        name: 'Fried Rice & Beef Sauce', description: 'Stir-fried rice with vegetables and savory beef sauce', price: 40.00,
-        categoryName: 'Healthy', foodImage: 'https://images.unsplash.com/photo-1603133872878-684f57143b34?w=500',
-        ingredients: ['Rice', 'Beef', 'Vegetables', 'Soy sauce'], rating: 4.6, totalReviews: 140, isAvailable: true,
-        orderCount: 180, discountPercentage: 20, discountEndDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
+        name: 'Thai Green Curry', description: 'Fragrant and spicy coconut curry with chicken and basil', price: 42.00,
+        categoryName: 'Healthy', foodImage: 'https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?w=500',
+        ingredients: ['Chicken', 'Coconut milk', 'Green curry paste', 'Bamboo shoots'], rating: 4.7, totalReviews: 88, isAvailable: true,
+        orderCount: 215, discountPercentage: 0
       },
       {
-        name: 'Pepperoni Pizza', description: 'Loaded with spicy pepperoni slices and extra cheese', price: 55.00,
-        categoryName: 'Pizza', foodImage: 'https://images.unsplash.com/photo-1628840042765-356cda07504e?w=500',
-        ingredients: ['Pizza dough', 'Pepperoni', 'Cheese'], rating: 4.7, totalReviews: 180, isAvailable: true,
-        orderCount: 310, discountPercentage: 0
+        name: 'Chicken Tacos', description: 'Three soft corn tortillas with grilled chicken and salsa', price: 28.00,
+        categoryName: 'Quick Bite', foodImage: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=500',
+        ingredients: ['Chicken', 'Corn tortillas', 'Cilantro', 'Onion', 'Salsa'], rating: 4.6, totalReviews: 142, isAvailable: true,
+        orderCount: 380, discountPercentage: 10
       },
       {
-        name: 'Chicken Shawarma', description: 'Tender chicken strips wrapped in pita bread with veggies and sauce', price: 20.00,
-        categoryName: 'Quick Bite', foodImage: 'https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=500',
-        ingredients: ['Chicken', 'Pita bread', 'Cabbage', 'Sauce'], rating: 4.5, totalReviews: 110, isAvailable: true,
-        orderCount: 520, discountPercentage: 5, discountEndDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000)
+        name: 'Salmon Poke Bowl', description: 'Fresh salmon with avocado, edamame, and pickled ginger over rice', price: 55.00,
+        categoryName: 'Healthy', foodImage: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500',
+        ingredients: ['Salmon', 'Avocado', 'Rice', 'Edamame', 'Seaweed'], rating: 4.8, totalReviews: 95, isAvailable: true,
+        orderCount: 160, discountPercentage: 0
+      },
+      {
+        name: 'Pancakes with Syrup', description: 'Fluffy pancakes served with butter and maple syrup', price: 22.00,
+        categoryName: 'Desserts', foodImage: 'https://images.unsplash.com/photo-1528207776546-365bb710ee93?w=500',
+        ingredients: ['Flour', 'Milk', 'Eggs', 'Maple syrup'], rating: 4.5, totalReviews: 110, isAvailable: true,
+        orderCount: 290, discountPercentage: 5
+      },
+      {
+        name: 'Lamb Gyro', description: 'Grilled lamb in pita with tzatziki sauce and fries', price: 32.00,
+        categoryName: 'Fast Food', foodImage: 'https://images.unsplash.com/photo-1561651823-34feb02250e4?w=500',
+        ingredients: ['Lamb', 'Pita', 'Tzatziki', 'Tomato', 'Onion'], rating: 4.7, totalReviews: 165, isAvailable: true,
+        orderCount: 410, discountPercentage: 0
+      },
+      {
+        name: 'Beef Pho', description: 'Vietnamese rice noodle soup with thinly sliced beef and herbs', price: 38.00,
+        categoryName: 'Healthy', foodImage: 'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=500',
+        ingredients: ['Rice noodles', 'Beef broth', 'Beef slices', 'Basil', 'Bean sprouts'], rating: 4.9, totalReviews: 120, isAvailable: true,
+        orderCount: 305, discountPercentage: 0
+      },
+      {
+        name: 'Falafel Wrap', description: 'Crispy falafel balls with hummus and fresh veggies in a wrap', price: 18.00,
+        categoryName: 'Quick Bite', foodImage: 'https://images.unsplash.com/photo-1547496502-affa22d38842?w=500',
+        ingredients: ['Falafel', 'Hummus', 'Tahini', 'Wrap', 'Cucumber'], rating: 4.4, totalReviews: 78, isAvailable: true,
+        orderCount: 225, discountPercentage: 15
       },
       {
         name: 'Beef Burger', description: 'Double beef patty with cheese and bacon', price: 30.00,
@@ -416,46 +440,22 @@ const setupRestaurantsAndFoods = async () => {
         orderCount: 140, discountPercentage: 0
       },
       {
-        name: 'Caesar Salad', description: 'Fresh romaine lettuce with parmesan cheese and croutons', price: 22.00,
-        categoryName: 'Healthy', foodImage: 'https://images.unsplash.com/photo-1550304943-4f24f54ddde9?w=500',
-        ingredients: ['Lettuce', 'Parmesan', 'Croutons', 'Dressing'], rating: 4.4, totalReviews: 90, isAvailable: true,
-        orderCount: 95, discountPercentage: 0
+        name: 'Chicken Shawarma', description: 'Tender chicken strips wrapped in pita bread with veggies and sauce', price: 20.00,
+        categoryName: 'Quick Bite', foodImage: 'https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=500',
+        ingredients: ['Chicken', 'Pita bread', 'Cabbage', 'Sauce'], rating: 4.5, totalReviews: 110, isAvailable: true,
+        orderCount: 520, discountPercentage: 5, discountEndDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000)
       },
       {
-        name: 'Chocolate Cake', description: 'Rich and moist chocolate cake slice', price: 15.00,
-        categoryName: 'Desserts', foodImage: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=500',
-        ingredients: ['Flour', 'Cocoa', 'Sugar', 'Eggs'], rating: 4.9, totalReviews: 150, isAvailable: true,
-        orderCount: 210, discountPercentage: 25, discountEndDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
+        name: 'Pepperoni Pizza', description: 'Loaded with spicy pepperoni slices and extra cheese', price: 55.00,
+        categoryName: 'Pizza', foodImage: 'https://images.unsplash.com/photo-1628840042765-356cda07504e?w=500',
+        ingredients: ['Pizza dough', 'Pepperoni', 'Cheese'], rating: 4.7, totalReviews: 180, isAvailable: true,
+        orderCount: 310, discountPercentage: 0
       },
       {
-        name: 'Iced Coffee', description: 'Chilled coffee with milk and ice', price: 12.00,
-        categoryName: 'Beverages', foodImage: 'https://images.unsplash.com/photo-1517701604599-bb29b5c5090c?w=500',
-        ingredients: ['Coffee', 'Milk', 'Ice', 'Sugar'], rating: 4.7, totalReviews: 100, isAvailable: true,
-        orderCount: 340, discountPercentage: 0
-      },
-      {
-        name: 'Spaghetti Bolognese', description: 'Classic Italian pasta with meat sauce', price: 38.00,
-        categoryName: 'Healthy', foodImage: 'https://images.unsplash.com/photo-1622973536968-3ead9e780960?w=500',
-        ingredients: ['Pasta', 'Beef', 'Tomato', 'Herbs'], rating: 4.6, totalReviews: 125, isAvailable: true,
-        orderCount: 165, discountPercentage: 0
-      },
-      {
-        name: 'Sushi Platter', description: 'Assorted sushi rolls (six pieces)', price: 60.00,
-        categoryName: 'Healthy', foodImage: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=500',
-        ingredients: ['Rice', 'Seaweed', 'Fish', 'Vegetables'], rating: 4.8, totalReviews: 85, isAvailable: true,
-        orderCount: 110, discountPercentage: 10, discountEndDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000)
-      },
-      {
-        name: 'Vanilla Milkshake', description: 'Creamy vanilla milkshake perfect for a sunny day', price: 18.00,
-        categoryName: 'Beverages', foodImage: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=500',
-        ingredients: ['Milk', 'Ice cream', 'Vanilla'], rating: 4.5, totalReviews: 110, isAvailable: true,
-        orderCount: 125, discountPercentage: 0
-      },
-      {
-        name: 'Club Sandwich', description: 'Triple-decker sandwich with chicken, egg, and cheese', price: 28.00,
-        categoryName: 'Quick Bite', foodImage: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=500',
-        ingredients: ['Bread', 'Chicken', 'Egg', 'Cheese'], rating: 4.6, totalReviews: 115, isAvailable: true,
-        orderCount: 195, discountPercentage: 0
+        name: 'Fried Rice & Beef Sauce', description: 'Stir-fried rice with vegetables and savory beef sauce', price: 40.00,
+        categoryName: 'Healthy', foodImage: 'https://images.unsplash.com/photo-1603133872878-684f57143b34?w=500',
+        ingredients: ['Rice', 'Beef', 'Vegetables', 'Soy sauce'], rating: 4.6, totalReviews: 140, isAvailable: true,
+        orderCount: 180, discountPercentage: 20, discountEndDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
       }
     ];
 

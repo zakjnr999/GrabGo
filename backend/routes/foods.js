@@ -135,7 +135,11 @@ router.get("/popular", cacheMiddleware(cache.CACHE_KEYS.FOOD_POPULAR, 300), asyn
       {
         $project: {
           "restaurant.password": 0,
-          "category.isActive": 0
+          "restaurant.restaurant_name": "$restaurant.restaurantName",
+          "restaurant.image": "$restaurant.logo",
+          "category.isActive": 0,
+          food_image: "$foodImage",
+          image: "$foodImage"
         }
       }
     ]);
@@ -208,7 +212,11 @@ router.get("/top-rated", cacheMiddleware(cache.CACHE_KEYS.FOOD_TOP_RATED, 600), 
       {
         $project: {
           "restaurant.password": 0,
-          "category.isActive": 0
+          "restaurant.restaurant_name": "$restaurant.restaurantName",
+          "restaurant.image": "$restaurant.logo",
+          "category.isActive": 0,
+          food_image: "$foodImage",
+          image: "$foodImage"
         }
       }
     ]);
