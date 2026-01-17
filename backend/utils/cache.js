@@ -229,6 +229,7 @@ const CACHE_KEYS = {
     FOOD_DEALS: 'grabgo:food:deals',
     FOOD_POPULAR: 'grabgo:food:popular',
     FOOD_TOP_RATED: 'grabgo:food:toprated',
+    FOOD_RECOMMENDED: 'grabgo:food:recommended',
     FOOD_BANNERS: 'grabgo:food:banners',
     FOOD_ITEM: 'grabgo:food:item',
 };

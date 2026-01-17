@@ -29,5 +29,8 @@ abstract class FoodService extends ChopperService {
   @GET(path: '/foods/top-rated')
   Future<Response> getTopRatedItems(@Query('limit') int? limit, @Query('minRating') double? minRating);
 
+  @GET(path: '/foods/recommended')
+  Future<Response> getRecommendedItems(@Query('limit') int? limit);
+
   static FoodService create([ChopperClient? client]) => _$FoodService(client);
 }

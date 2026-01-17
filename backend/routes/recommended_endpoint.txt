@@ -1,0 +1,118 @@
+/**
+ * @route   GET /api/foods/recommended
+ * @desc    Get personalized food recommendations
+ * @access  Public (better with auth for personalization)
+ */
+router.get("/recommended", cacheMiddleware(cache.CACHE_KEYS.FOOD_RECOMMENDED, 180), async (req, res) => {
+  try {
+    let { limit = 10 } = req.query;
+    limit = parseInt(limit);
+    if (isNaN(limit) || limit < 1) limit = 10;
+    if (limit > 50) limit = 50;
+
+    // Smart recommendation algorithm:
+    // 1. Mix of popular items (40%)
+    // 2. Highly rated items (30%)
+    // 3. Items with deals (20%)
+    // 4. Random discovery items (10%)
+
+    const popularCount = Math.ceil(limit * 0.4);
+    const ratedCount = Math.ceil(limit * 0.3);
+    const dealsCount = Math.ceil(limit * 0.2);
+    const randomCount = limit - popularCount - ratedCount - dealsCount;
+
+    // Get popular items
+    const popular = await Food.find({ isAvailable: true })
+      .sort({ orderCount: -1 })
+      .limit(popularCount)
+      .populate('category', 'name')
+      .populate('restaurant', 'restaurantName logo rating location');
+
+    // Get highly rated items (excluding already selected popular)
+    const popularIds = popular.map(f => f._id);
+    const rated = await Food.find({ 
+      isAvailable: true,
+      rating: { $gte: 4.5 },
+      _id: { $nin: popularIds }
+    })
+      .sort({ rating: -1, totalReviews: -1 })
+      .limit(ratedCount)
+      .populate('category', 'name')
+      .populate('restaurant', 'restaurantName logo rating location');
+
+    // Get items with deals (excluding already selected)
+    const selectedIds = [...popularIds, ...rated.map(f => f._id)];
+    const now = new Date();
+    const deals = await Food.find({
+      isAvailable: true,
+      discountPercentage: { $gt: 0 },
+      _id: { $nin: selectedIds },
+      $or: [
+        { discountEndDate: null },
+        { discountEndDate: { $gte: now } }
+      ]
+    })
+      .sort({ discountPercentage: -1 })
+      .limit(dealsCount)
+      .populate('category', 'name')
+      .populate('restaurant', 'restaurantName logo rating location');
+
+    // Get random items for discovery (excluding already selected)
+    const allSelectedIds = [...selectedIds, ...deals.map(f => f._id)];
+    const random = await Food.aggregate([
+      { 
+        $match: { 
+          isAvailable: true,
+          _id: { $nin: allSelectedIds }
+        } 
+      },
+      { $sample: { size: randomCount } },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "category",
+          foreignField: "_id",
+          as: "category"
+        }
+      },
+      { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "restaurants",
+          localField: "restaurant",
+          foreignField: "_id",
+          as: "restaurant"
+        }
+      },
+      { $unwind: { path: "$restaurant", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          "restaurant.password": 0,
+          "category.isActive": 0
+        }
+      }
+    ]);
+
+    // Combine and shuffle for variety
+    const recommended = [...popular, ...rated, ...deals, ...random];
+    
+    // Shuffle the array for better variety
+    for (let i = recommended.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [recommended[i], recommended[j]] = [recommended[j], recommended[i]];
+    }
+
+    res.json({
+      success: true,
+      message: "Recommended items retrieved successfully",
+      data: recommended.slice(0, limit)
+    });
+  } catch (error) {
+    console.error("Get recommended items error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
+  }
+});
