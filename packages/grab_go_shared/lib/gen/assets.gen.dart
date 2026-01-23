@@ -353,6 +353,9 @@ class $LibAssetsIconsGen {
   AssetGenImage get noProfile =>
       const AssetGenImage('lib/assets/icons/no_profile.png');
 
+  /// File path: lib/assets/icons/notes.svg
+  String get notes => 'lib/assets/icons/notes.svg';
+
   /// File path: lib/assets/icons/order-food.png
   AssetGenImage get orderFood =>
       const AssetGenImage('lib/assets/icons/order-food.png');
@@ -476,6 +479,12 @@ class $LibAssetsIconsGen {
 
   /// File path: lib/assets/icons/text-size.svg
   String get textSize => 'lib/assets/icons/text-size.svg';
+
+  /// File path: lib/assets/icons/thumbs-down.svg
+  String get thumbsDown => 'lib/assets/icons/thumbs-down.svg';
+
+  /// File path: lib/assets/icons/thumbs-up.svg
+  String get thumbsUp => 'lib/assets/icons/thumbs-up.svg';
 
   /// File path: lib/assets/icons/tiktok.svg
   String get tiktok => 'lib/assets/icons/tiktok.svg';
@@ -614,6 +623,7 @@ class $LibAssetsIconsGen {
     navArrowUp,
     night,
     noProfile,
+    notes,
     orderFood,
     orderTrackSample,
     packageDelivered,
@@ -653,6 +663,8 @@ class $LibAssetsIconsGen {
     sunMoon,
     tag,
     textSize,
+    thumbsDown,
+    thumbsUp,
     tiktok,
     timer,
     trophy,

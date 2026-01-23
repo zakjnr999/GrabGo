@@ -57,7 +57,6 @@ class OrderAgainSection extends StatelessWidget {
                 final originalItem = originalItems != null && index < originalItems!.length
                     ? originalItems![index]
                     : null;
-                // Calculate real days ago from lastOrderedAt
                 final daysAgo = item.lastOrderedAt != null ? DateTime.now().difference(item.lastOrderedAt!).inDays : 0;
 
                 return Consumer<CartProvider>(

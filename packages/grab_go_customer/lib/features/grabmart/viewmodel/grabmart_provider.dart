@@ -42,7 +42,9 @@ class GrabMartProvider extends ChangeNotifier {
 
   /// Fetch all GrabMart categories
   Future<void> fetchCategories({bool forceRefresh = false}) async {
-    if (!forceRefresh && _categories.isEmpty) {
+    // Always load from cache first if empty, even if forcing refresh, 
+    // to show something while fetching
+    if (_categories.isEmpty) {
       final cached = CacheService.getGrabMartCategories();
       if (cached.isNotEmpty) {
         _categories = cached.map((json) => GrabMartCategory.fromJson(json)).toList();
@@ -50,8 +52,13 @@ class GrabMartProvider extends ChangeNotifier {
       }
     }
 
-    _isLoadingCategories = true;
-    notifyListeners();
+    if (!forceRefresh && _categories.isNotEmpty) return;
+
+    // Only show loading state if we have no data
+    if (_categories.isEmpty) {
+      _isLoadingCategories = true;
+      notifyListeners();
+    }
 
     try {
       final categories = await _repository.fetchCategories();
@@ -78,7 +85,7 @@ class GrabMartProvider extends ChangeNotifier {
   }) async {
     final isBaseFetch = category == null && store == null && minPrice == null && maxPrice == null && tags == null;
 
-    if (!forceRefresh && isBaseFetch && _items.isEmpty) {
+    if (isBaseFetch && _items.isEmpty) {
       final cached = CacheService.getGrabMartItems();
       if (cached.isNotEmpty) {
         _items = cached.map((json) => GrabMartItem.fromJson(json)).toList();
@@ -87,12 +94,16 @@ class GrabMartProvider extends ChangeNotifier {
         _loadSpecialOffers();
         _loadQuickPicks();
         _loadTopRatedItems();
-        return;
       }
     }
 
-    _isLoadingItems = true;
-    notifyListeners();
+    if (!forceRefresh && isBaseFetch && _items.isNotEmpty) return;
+
+    // Only show loading state if we have no data
+    if (_items.isEmpty) {
+      _isLoadingItems = true;
+      notifyListeners();
+    }
 
     try {
       final items = await _repository.fetchItems(
@@ -150,5 +161,36 @@ class GrabMartProvider extends ChangeNotifier {
     _quickPicks = [];
     _topRatedItems = [];
     notifyListeners();
+  }
+
+  /// Refresh all GrabMart data
+  Future<void> refreshAll({bool forceRefresh = false}) async {
+    // Smart caching: Check if cache is stale (> 5 minutes)
+    final cacheIsStale = CacheService.isCacheStale(
+      CacheService.grabmartItemsTimestampKey,
+      const Duration(minutes: 5),
+    );
+
+    // ONLY show loading states (skeletons) if data is actually empty
+    // This prevents skeletons from showing during pull-to-refresh when data is already visible
+    if (_items.isEmpty) {
+      _isLoadingCategories = true;
+      _isLoadingItems = true;
+      notifyListeners();
+    }
+
+    await Future.wait([
+      fetchCategories(forceRefresh: forceRefresh || cacheIsStale),
+      fetchItems(forceRefresh: forceRefresh || cacheIsStale),
+    ]);
+  }
+
+  /// Check if we should show skeleton loader based on cache age
+  bool shouldShowSkeleton() {
+    final cacheIsStale = CacheService.isCacheStale(
+      CacheService.grabmartItemsTimestampKey,
+      const Duration(minutes: 5),
+    );
+    return cacheIsStale && _items.isEmpty;
   }
 }

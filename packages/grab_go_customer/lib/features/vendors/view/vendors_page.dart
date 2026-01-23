@@ -10,7 +10,7 @@ import '../model/vendor_type.dart';
 import '../viewmodel/vendor_provider.dart';
 import '../widgets/vendor_card.dart';
 import '../../../shared/viewmodels/service_provider.dart';
-import '../../../shared/viewmodels/location_provider.dart';
+import '../../../shared/viewmodels/native_location_provider.dart';
 import '../../../shared/widgets/umbrella_header.dart';
 import '../../../shared/widgets/home_search.dart';
 import '../../../shared/widgets/section_header.dart';
@@ -45,7 +45,7 @@ class _VendorsPageState extends State<VendorsPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final vendorProvider = context.read<VendorProvider>();
       final serviceProvider = context.read<ServiceProvider>();
-      final locationProvider = context.read<LocationProvider>();
+      final locationProvider = context.read<NativeLocationProvider>();
       final vendorType = _getVendorTypeFromService(serviceProvider.currentService.id);
       vendorProvider.fetchVendors(vendorType, lat: locationProvider.latitude, lng: locationProvider.longitude);
     });
@@ -79,15 +79,18 @@ class _VendorsPageState extends State<VendorsPage> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final serviceProvider = context.watch<ServiceProvider>();
-    final locationProvider = context.watch<LocationProvider>();
+    final locationProvider = context.watch<NativeLocationProvider>();
     final currentVendorType = _getVendorTypeFromService(serviceProvider.currentService.id);
 
     final bool typeChanged = _previousVendorType != null && _previousVendorType != currentVendorType;
     final bool locationLoaded = _previousLat == null && locationProvider.latitude != null;
 
     if (typeChanged || locationLoaded) {
-      final vendorProvider = context.read<VendorProvider>();
-      vendorProvider.fetchVendors(currentVendorType, lat: locationProvider.latitude, lng: locationProvider.longitude);
+      // Defer to after build to prevent setState during build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final vendorProvider = context.read<VendorProvider>();
+        vendorProvider.fetchVendors(currentVendorType, lat: locationProvider.latitude, lng: locationProvider.longitude);
+      });
     }
 
     _previousVendorType = currentVendorType;
@@ -110,8 +113,8 @@ class _VendorsPageState extends State<VendorsPage> {
     final size = MediaQuery.sizeOf(context);
 
     return Scaffold(
-      backgroundColor: colors.backgroundSecondary,
-      body: Consumer2<ServiceProvider, LocationProvider>(
+      backgroundColor: colors.backgroundPrimary,
+      body: Consumer2<ServiceProvider, NativeLocationProvider>(
         builder: (context, serviceProvider, locationProvider, _) {
           final vendorType = _getVendorTypeFromService(serviceProvider.currentService.id);
           final accentColor = Color(vendorType.color);
@@ -166,7 +169,7 @@ class _VendorsPageState extends State<VendorsPage> {
     VendorType vendorType,
     Size size,
     ServiceProvider serviceProvider,
-    LocationProvider locationProvider,
+    NativeLocationProvider locationProvider,
   ) {
     final expandedContentPadding = size.height * 0.26;
 

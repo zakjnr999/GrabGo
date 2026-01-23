@@ -322,7 +322,7 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
                                           item: similarItems[index],
                                           margin: EdgeInsets.only(right: 12.w, bottom: 10.h),
                                           onTap: () {
-                                            context.push('/grocery-details', extra: similarItems[index]);
+                                            context.push('/foodDetails', extra: similarItems[index]);
                                           },
                                         ),
                                       );

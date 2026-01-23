@@ -288,8 +288,16 @@ class VendorModel {
   }
 
   factory VendorModel.fromJson(Map<String, dynamic> json) {
+    List<String>? parseStringList(dynamic val) {
+      if (val == null) return null;
+      if (val is List) {
+        return val.map((e) => e.toString()).toList();
+      }
+      return null;
+    }
+
     return VendorModel(
-      id: json['_id'] ?? (json['id'] ?? '').toString(),
+      id: (json['_id'] ?? json['id'] ?? '').toString(),
       storeName: json['storeName']?.toString() ?? json['store_name']?.toString(),
       restaurantName: json['restaurantName']?.toString() ?? json['restaurant_name']?.toString(),
       name: json['name']?.toString(),
@@ -303,7 +311,7 @@ class VendorModel {
       minOrder: (json['minOrder'] ?? json['min_order'] ?? 0.0).toDouble(),
       rating: (json['rating'] ?? 0.0).toDouble(),
       totalReviews: (json['totalReviews'] ?? json['total_reviews'] ?? 0) as int,
-      categories: (json['categories'] as List?)?.map((e) => e.toString()).toList(),
+      categories: parseStringList(json['categories']),
       foodType: json['foodType']?.toString() ?? json['food_type']?.toString(),
       location: json['location'] != null ? VendorLocation.fromJson(json['location'] as Map<String, dynamic>) : null,
       openingHours: json['openingHours'] != null
@@ -315,15 +323,15 @@ class VendorModel {
           (json['average_delivery_time'] is int ? json['average_delivery_time'] as int : null),
       averagePreparationTime: json['averagePreparationTime'] as int? ?? json['average_preparation_time'] as int?,
       deliveryRadius: (json['deliveryRadius'] ?? json['delivery_radius'] ?? 5.0).toDouble(),
-      features: (json['features'] as List?)?.map((e) => e.toString()).toList(),
-      tags: (json['tags'] as List?)?.map((e) => e.toString()).toList(),
+      features: parseStringList(json['features']),
+      tags: parseStringList(json['tags']),
       featured: json['featured'] as bool?,
       featuredUntil: json['featuredUntil'] != null ? DateTime.tryParse(json['featuredUntil'].toString()) : null,
       isVerified: json['isVerified'] as bool?,
       verifiedAt: json['verifiedAt'] != null ? DateTime.tryParse(json['verifiedAt'].toString()) : null,
       whatsappNumber: json['whatsappNumber']?.toString(),
-      paymentMethods: (json['paymentMethods'] ?? json['payment_methods'] as List?)?.map((e) => e.toString()).toList(),
-      bannerImages: (json['bannerImages'] ?? json['banner_images'] as List?)?.map((e) => e.toString()).toList(),
+      paymentMethods: parseStringList(json['paymentMethods'] ?? json['payment_methods']),
+      bannerImages: parseStringList(json['bannerImages'] ?? json['banner_images']),
       isGrabGoExclusive: json['isGrabGoExclusive'] as bool? ?? json['is_exclusive'] as bool?,
       isGrabGoExclusiveUntil: json['isGrabGoExclusiveUntil'] != null
           ? DateTime.tryParse(json['isGrabGoExclusiveUntil'].toString())
@@ -334,14 +342,12 @@ class VendorModel {
       emergencyService: json['emergencyService'] as bool? ?? json['emergency_service'] as bool?,
       licenseNumber: json['licenseNumber']?.toString() ?? json['license_number']?.toString(),
       pharmacistName: json['pharmacistName']?.toString() ?? json['pharmacist_name']?.toString(),
-      insuranceAccepted: (json['insuranceAccepted'] ?? json['insurance_accepted'] as List?)
-          ?.map((e) => e.toString())
-          .toList(),
+      insuranceAccepted: parseStringList(json['insuranceAccepted'] ?? json['insurance_accepted']),
       prescriptionRequired: json['prescriptionRequired'] as bool? ?? json['prescription_required'] as bool?,
       is24Hours: json['is24Hours'] as bool? ?? json['is_24_hours'] as bool?,
       hasParking: json['hasParking'] as bool? ?? json['has_parking'] as bool?,
-      services: (json['services'] as List?)?.map((e) => e.toString()).toList(),
-      productTypes: (json['productTypes'] ?? json['product_types'] as List?)?.map((e) => e.toString()).toList(),
+      services: parseStringList(json['services']),
+      productTypes: parseStringList(json['productTypes'] ?? json['product_types']),
       businessIdNumber: json['businessIdNumber']?.toString() ?? json['business_id_number']?.toString(),
       createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) : null,
       updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt'].toString()) : null,

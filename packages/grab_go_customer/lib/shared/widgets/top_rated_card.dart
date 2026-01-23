@@ -31,9 +31,7 @@ class TopRatedCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withAlpha(10), spreadRadius: 1, blurRadius: 12, offset: const Offset(0, 4)),
-          ],
+          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.5), width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

@@ -123,7 +123,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
             systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
           ),
           child: Scaffold(
-            backgroundColor: colors.backgroundSecondary,
+            backgroundColor: colors.backgroundPrimary,
             body: SafeArea(
               top: false,
               child: ClipRect(
@@ -133,19 +133,21 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                       controller: _scrollController,
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: EdgeInsets.only(top: size.height * 0.22),
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20.w),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                                ),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 0.w),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                              ),
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 20.w),
                                 child: Row(
                                   children: [
                                     Container(
-                                      padding: EdgeInsets.all(02.r),
+                                      padding: EdgeInsets.all(2.r),
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
                                         color: colors.textPrimary.withValues(alpha: 0.1),
@@ -271,9 +273,14 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                   ],
                                 ),
                               ),
-                              SizedBox(height: 24.h),
+                            ),
+                            SizedBox(height: 24.h),
 
-                              Text(
+                            Container(
+                              width: double.infinity,
+                              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                              color: colors.backgroundSecondary,
+                              child: Text(
                                 "General",
                                 style: TextStyle(
                                   color: colors.textPrimary,
@@ -281,47 +288,36 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
-                              SizedBox(height: 12.h),
+                            ),
+                            SizedBox(height: 12.h),
 
-                              Container(
-                                padding: EdgeInsets.symmetric(vertical: 8.r),
-                                decoration: BoxDecoration(
-                                  color: colors.backgroundPrimary,
-                                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                                  border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
-                                      spreadRadius: 0,
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  children: [
-                                    itemTile("Pickup Location", Assets.icons.sendDiagonal, context, () {
-                                      context.push("/mapTracking");
-                                    }),
-                                    _favoritesTile(context),
-                                    itemTile("My Orders", Assets.icons.boxIso, context, () {
-                                      context.push("/orders");
-                                    }),
-                                    itemTile("Payment Methods", Assets.icons.cash, context, () {
-                                      context.push("/paymentMethod");
-                                    }),
-                                    itemTile("Refer & Earn", Assets.icons.gift, context, () {
-                                      context.push("/referral");
-                                    }),
-                                    itemTile("Change Password", Assets.icons.lock, context, () {
-                                      context.push("/orderTracking");
-                                    }),
-                                  ],
-                                ),
-                              ),
-                              SizedBox(height: 24.h),
+                            Column(
+                              children: [
+                                itemTile("Pickup Location", Assets.icons.sendDiagonal, context, () {
+                                  context.push("/mapTracking");
+                                }),
+                                _favoritesTile(context),
+                                itemTile("My Orders", Assets.icons.boxIso, context, () {
+                                  context.push("/orders");
+                                }),
+                                itemTile("Payment Methods", Assets.icons.cash, context, () {
+                                  context.push("/paymentMethod");
+                                }),
+                                itemTile("Refer & Earn", Assets.icons.gift, context, () {
+                                  context.push("/referral");
+                                }),
+                                itemTile("Change Password", Assets.icons.lock, context, () {
+                                  context.push("/orderTracking");
+                                }),
+                              ],
+                            ),
+                            SizedBox(height: 24.h),
 
-                              Text(
+                            Container(
+                              width: double.infinity,
+                              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                              color: colors.backgroundSecondary,
+                              child: Text(
                                 "Other Information",
                                 style: TextStyle(
                                   color: colors.textPrimary,
@@ -329,51 +325,36 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
-                              SizedBox(height: 12.h),
+                            ),
+                            SizedBox(height: 12.h),
 
-                              Container(
-                                padding: EdgeInsets.symmetric(vertical: 8.r),
-                                decoration: BoxDecoration(
-                                  color: colors.backgroundPrimary,
-                                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                                  border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
-                                      spreadRadius: 0,
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  children: [
-                                    itemTile("Settings", Assets.icons.settings, context, () {
-                                      context.push("/settings");
-                                    }),
-                                    itemTile("Vender Registration", Assets.icons.store, context, () {
-                                      context.push("/restaurantRegistration");
-                                    }),
-                                    itemTile("Notifications", Assets.icons.bell, context, () {
-                                      context.push("/notification");
-                                    }),
-                                    itemTile("Help & Support", Assets.icons.headsetHelp, context, () {
-                                      //Do nothing for now
-                                    }),
-                                    itemTile("About App", Assets.icons.infoCircle, context, () {
-                                      //Do nothing for now
-                                    }),
-                                    itemTile("Logout", Assets.icons.logOut, context, () {
-                                      _handleLogout();
-                                    }),
-                                  ],
-                                ),
-                              ),
-                              SizedBox(height: 24.h),
-                            ],
-                          ),
+                            Column(
+                              children: [
+                                itemTile("Settings", Assets.icons.settings, context, () {
+                                  context.push("/settings");
+                                }),
+                                itemTile("Vender Registration", Assets.icons.store, context, () {
+                                  context.push("/restaurantRegistration");
+                                }),
+                                itemTile("Notifications", Assets.icons.bell, context, () {
+                                  context.push("/notification");
+                                }),
+                                itemTile("Help & Support", Assets.icons.headsetHelp, context, () {
+                                  //Do nothing for now
+                                }),
+                                itemTile("About App", Assets.icons.infoCircle, context, () {
+                                  //Do nothing for now
+                                }),
+                                itemTile("Logout", Assets.icons.logOut, context, () {
+                                  _handleLogout();
+                                }),
+                              ],
+                            ),
+                            SizedBox(height: 24.h),
+                          ],
                         ),
                       ),
+                    ),
 
                     Positioned(top: 0, left: 0, right: 0, child: _buildCollapsibleUmbrellaHeader(colors, size)),
                   ],
@@ -460,19 +441,15 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
         onTap: onTap,
         splashColor: colors.backgroundSecondary,
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
+          padding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 20.w),
           child: Row(
             children: [
-              Container(
-                padding: EdgeInsets.all(8.r),
-                decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(10.r)),
-                child: SvgPicture.asset(
-                  icon,
-                  package: 'grab_go_shared',
-                  height: 18.h,
-                  width: 18.w,
-                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                ),
+              SvgPicture.asset(
+                icon,
+                package: 'grab_go_shared',
+                height: 18.h,
+                width: 18.w,
+                colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
               ),
               SizedBox(width: 14.w),
               Expanded(
@@ -508,25 +485,18 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
             },
             splashColor: colors.backgroundSecondary,
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
+              padding: EdgeInsets.symmetric(vertical: 14.h, horizontal: 20.w),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Container(
-                        padding: EdgeInsets.all(8.r),
-                        decoration: BoxDecoration(
-                          color: colors.backgroundSecondary,
-                          borderRadius: BorderRadius.circular(10.r),
-                        ),
-                        child: SvgPicture.asset(
-                          Assets.icons.heart,
-                          package: 'grab_go_shared',
-                          height: 18.h,
-                          width: 18.w,
-                          colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                        ),
+                      SvgPicture.asset(
+                        Assets.icons.heart,
+                        package: 'grab_go_shared',
+                        height: 18.h,
+                        width: 18.w,
+                        colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                       ),
                       SizedBox(width: 14.w),
                       Expanded(

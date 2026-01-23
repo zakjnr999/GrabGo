@@ -34,7 +34,7 @@ class FreshArrivalsSection extends StatelessWidget {
           title: 'Fresh Arrivals',
           sectionIcon: Assets.icons.sparkles,
           sectionTotal: items.length,
-          accentColor: colors.accentGreen,
+          accentColor: colors.accentOrange,
           onSeeAll: onSeeAll,
         ),
         SizedBox(height: 16.h),
@@ -50,7 +50,7 @@ class FreshArrivalsSection extends StatelessWidget {
 
   Widget _buildItemsList() {
     return SizedBox(
-      height: 260.h,
+      height: 220.h,
       child: ListView.builder(
         padding: EdgeInsets.only(left: 20.w),
         scrollDirection: Axis.horizontal,
@@ -62,35 +62,14 @@ class FreshArrivalsSection extends StatelessWidget {
 
           return Padding(
             padding: EdgeInsets.only(right: 15.w),
-            child: Stack(
-              children: [
-                PopularItemCard(
-                  item: foodItem,
-                  cartItem: item,
-                  orderCount: item.orderCount,
-                  onTap: () => onItemTap(item),
-                ),
-                // NEW badge
-                Positioned(top: 8, right: 8, child: _buildNewBadge(item)),
-              ],
+            child: PopularItemCard(
+              item: foodItem,
+              cartItem: item,
+              orderCount: item.orderCount,
+              onTap: () => onItemTap(item),
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildNewBadge(GroceryItem item) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)]),
-        borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-        boxShadow: [BoxShadow(color: Colors.green.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2))],
-      ),
-      child: Text(
-        'NEW',
-        style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.bold, letterSpacing: 0.5),
       ),
     );
   }

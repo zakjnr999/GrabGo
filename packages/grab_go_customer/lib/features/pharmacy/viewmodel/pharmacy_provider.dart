@@ -42,7 +42,7 @@ class PharmacyProvider extends ChangeNotifier {
 
   /// Fetch all pharmacy categories
   Future<void> fetchCategories({bool forceRefresh = false}) async {
-    if (!forceRefresh && _categories.isEmpty) {
+    if (_categories.isEmpty) {
       final cached = CacheService.getPharmacyCategories();
       if (cached.isNotEmpty) {
         _categories = cached.map((json) => PharmacyCategory.fromJson(json)).toList();
@@ -50,8 +50,13 @@ class PharmacyProvider extends ChangeNotifier {
       }
     }
 
-    _isLoadingCategories = true;
-    notifyListeners();
+    if (!forceRefresh && _categories.isNotEmpty) return;
+
+    // Only show loading state if we have no data
+    if (_categories.isEmpty) {
+      _isLoadingCategories = true;
+      notifyListeners();
+    }
 
     try {
       final categories = await _repository.fetchCategories();
@@ -78,7 +83,7 @@ class PharmacyProvider extends ChangeNotifier {
   }) async {
     final isBaseFetch = category == null && store == null && minPrice == null && maxPrice == null && tags == null;
 
-    if (!forceRefresh && isBaseFetch && _items.isEmpty) {
+    if (isBaseFetch && _items.isEmpty) {
       final cached = CacheService.getPharmacyItems();
       if (cached.isNotEmpty) {
         _items = cached.map((json) => PharmacyItem.fromJson(json)).toList();
@@ -87,12 +92,16 @@ class PharmacyProvider extends ChangeNotifier {
         _loadOnSaleItems();
         _loadPopularItems();
         _loadTopRatedItems();
-        return;
       }
     }
 
-    _isLoadingItems = true;
-    notifyListeners();
+    if (!forceRefresh && isBaseFetch && _items.isNotEmpty) return;
+
+    // Only show loading state if we have no data
+    if (_items.isEmpty) {
+      _isLoadingItems = true;
+      notifyListeners();
+    }
 
     try {
       final items = await _repository.fetchItems(
@@ -149,5 +158,36 @@ class PharmacyProvider extends ChangeNotifier {
     _popularItems = [];
     _topRatedItems = [];
     notifyListeners();
+  }
+
+  /// Refresh all pharmacy data
+  Future<void> refreshAll({bool forceRefresh = false}) async {
+    // Smart caching: Check if cache is stale (> 5 minutes)
+    final cacheIsStale = CacheService.isCacheStale(
+      CacheService.pharmacyItemsTimestampKey,
+      const Duration(minutes: 5),
+    );
+
+    // ONLY show loading states (skeletons) if data is actually empty
+    // This prevents skeletons from showing during pull-to-refresh when data is already visible
+    if (_items.isEmpty) {
+      _isLoadingCategories = true;
+      _isLoadingItems = true;
+      notifyListeners();
+    }
+
+    await Future.wait([
+      fetchCategories(forceRefresh: forceRefresh || cacheIsStale),
+      fetchItems(forceRefresh: forceRefresh || cacheIsStale),
+    ]);
+  }
+
+  /// Check if we should show skeleton loader based on cache age
+  bool shouldShowSkeleton() {
+    final cacheIsStale = CacheService.isCacheStale(
+      CacheService.pharmacyItemsTimestampKey,
+      const Duration(minutes: 5),
+    );
+    return cacheIsStale && _items.isEmpty;
   }
 }

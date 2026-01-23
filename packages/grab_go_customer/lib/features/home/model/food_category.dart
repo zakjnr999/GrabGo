@@ -14,12 +14,13 @@ class FoodItem implements CartItem {
   final int prepTimeMinutes;
   final int calories;
   final List<String> dietaryTags;
+  final List<String> ingredients;
   final int deliveryTimeMinutes;
   final bool isAvailable;
   final double discountPercentage;
   final DateTime? discountEndDate;
-  final int orderCount; // Number of times ordered (for popularity)
-  final DateTime? lastOrderedAt; // Last time this item was ordered
+  final int orderCount;
+  final DateTime? lastOrderedAt;
 
   // CartItem interface implementations
   @override
@@ -55,13 +56,14 @@ class FoodItem implements CartItem {
     this.prepTimeMinutes = 15,
     this.calories = 300,
     this.dietaryTags = const [],
+    this.ingredients = const [],
     this.deliveryTimeMinutes = 30,
     this.isAvailable = true,
     this.discountPercentage = 0.0,
     this.discountEndDate,
     required this.restaurantImage,
-    this.orderCount = 0, // Default to 0
-    this.lastOrderedAt, // Optional - only for order history
+    this.orderCount = 0,
+    this.lastOrderedAt,
   });
 
   factory FoodItem.fromJson(Map<String, dynamic> json) {
@@ -76,7 +78,11 @@ class FoodItem implements CartItem {
     if (restaurant != null) {
       if (restaurant is Map<String, dynamic>) {
         // Case 1: Restaurant is a populated object with full details
-        restaurantName = restaurant['restaurant_name']?.toString() ?? restaurant['restaurantName']?.toString() ?? restaurant['name']?.toString() ?? '';
+        restaurantName =
+            restaurant['restaurant_name']?.toString() ??
+            restaurant['restaurantName']?.toString() ??
+            restaurant['name']?.toString() ??
+            '';
         restaurantId = restaurant['_id']?.toString() ?? '';
         restaurantImage = restaurant['logo']?.toString() ?? restaurant['image']?.toString() ?? '';
       } else {
@@ -140,6 +146,34 @@ class FoodItem implements CartItem {
               .where((e) => e.isNotEmpty)
               .toList() ??
           [],
+      ingredients: () {
+        try {
+          final ingredientsList = json['ingredients'];
+          print('🔍 DEBUG - Ingredients raw data: $ingredientsList');
+          print('🔍 DEBUG - Ingredients type: ${ingredientsList.runtimeType}');
+
+          if (ingredientsList == null) {
+            print('⚠️ WARNING - Ingredients is null for item: ${json['name']}');
+            return <String>[];
+          }
+          if (ingredientsList is! List) {
+            print(
+              '⚠️ WARNING - Ingredients is not a List for item: ${json['name']}, type: ${ingredientsList.runtimeType}',
+            );
+            return <String>[];
+          }
+
+          final parsed = (ingredientsList as List<dynamic>)
+              .map((e) => e?.toString() ?? '')
+              .where((e) => e.isNotEmpty)
+              .toList();
+          print('✅ SUCCESS - Parsed ${parsed.length} ingredients for ${json['name']}: $parsed');
+          return parsed;
+        } catch (e) {
+          print('❌ ERROR - Failed to parse ingredients for ${json['name']}: $e');
+          return <String>[];
+        }
+      }(),
       deliveryTimeMinutes: (json['deliveryTimeMinutes'] as num?)?.toInt() ?? 30,
       isAvailable: json['isAvailable'] is bool
           ? json['isAvailable'] as bool
@@ -166,6 +200,7 @@ class FoodItem implements CartItem {
     'prepTimeMinutes': prepTimeMinutes,
     'calories': calories,
     'dietaryTags': dietaryTags,
+    'ingredients': ingredients,
     'deliveryTimeMinutes': deliveryTimeMinutes,
     'isAvailable': isAvailable,
     'discountPercentage': discountPercentage,

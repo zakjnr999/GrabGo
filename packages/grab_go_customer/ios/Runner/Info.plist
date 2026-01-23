@@ -27,9 +27,11 @@
 		<key>UIMainStoryboardFile</key>
 		<string>Main</string>
 		<key>NSLocationWhenInUseUsageDescription</key>
-		<string>We need your location to show your current address</string>
+		<string>GrabGo needs your location to show nearby restaurants, calculate delivery distances, and track your order in real-time.</string>
 		<key>NSLocationAlwaysUsageDescription</key>
-		<string>We need your location to show your current address</string>
+		<string>GrabGo needs background location access to provide delivery tracking notifications and geofencing alerts when you're near your delivery zone.</string>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>GrabGo needs background location access to provide delivery tracking notifications and geofencing alerts when you're near your delivery zone.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>Pick an image from gallery</string>
 		<key>NSCameraUsageDescription</key>
@@ -54,6 +56,13 @@
 		<true />
 		<key>UIApplicationSupportsIndirectInputEvents</key>
 		<true />
+		
+		<!-- Background Modes for Location -->
+		<key>UIBackgroundModes</key>
+		<array>
+			<string>location</string>
+			<string>fetch</string>
+		</array>
 		
 		<!-- Custom URL Scheme for Deep Links -->
 		<key>CFBundleURLTypes</key>

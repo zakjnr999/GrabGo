@@ -387,77 +387,6 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Unable to open notification: $message')));
   }
 
-  Widget _buildNotificationIcon(NotificationType type, AppColorsExtension colors) {
-    switch (type) {
-      case NotificationType.order:
-        return Container(
-          padding: EdgeInsets.all(8.r),
-          decoration: BoxDecoration(color: colors.accentOrange.withValues(alpha: 0.15), shape: BoxShape.circle),
-          child: SvgPicture.asset(
-            Assets.icons.cart,
-            package: 'grab_go_shared',
-            height: 20.h,
-            width: 20.w,
-            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-          ),
-        );
-      case NotificationType.promo:
-        return Container(
-          padding: EdgeInsets.all(8.r),
-          decoration: BoxDecoration(color: colors.accentViolet.withValues(alpha: 0.15), shape: BoxShape.circle),
-          child: SvgPicture.asset(
-            Assets.icons.badgePercent,
-            package: 'grab_go_shared',
-            height: 20.h,
-            width: 20.w,
-            colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
-          ),
-        );
-      case NotificationType.update:
-        return Container(
-          padding: EdgeInsets.all(8.r),
-          decoration: BoxDecoration(color: colors.accentBlue.withValues(alpha: 0.15), shape: BoxShape.circle),
-          child: SvgPicture.asset(
-            Assets.icons.bell,
-            package: 'grab_go_shared',
-            height: 20.h,
-            width: 20.w,
-            colorFilter: ColorFilter.mode(colors.accentBlue, BlendMode.srcIn),
-          ),
-        );
-      case NotificationType.system:
-        return Container(
-          padding: EdgeInsets.all(8.r),
-          decoration: BoxDecoration(color: colors.accentGreen.withValues(alpha: 0.15), shape: BoxShape.circle),
-          child: SvgPicture.asset(
-            Assets.icons.infoCircle,
-            package: 'grab_go_shared',
-            height: 20.h,
-            width: 20.w,
-            colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
-          ),
-        );
-      case NotificationType.commentReply:
-        return Container(
-          padding: EdgeInsets.all(8.r),
-          decoration: BoxDecoration(color: colors.accentBlue.withValues(alpha: 0.15), shape: BoxShape.circle),
-          child: Icon(Icons.reply, size: 20.r, color: colors.accentBlue),
-        );
-      case NotificationType.commentReaction:
-        return Container(
-          padding: EdgeInsets.all(8.r),
-          decoration: BoxDecoration(color: Colors.pink.withValues(alpha: 0.15), shape: BoxShape.circle),
-          child: SvgPicture.asset(
-            Assets.icons.emoji,
-            package: 'grab_go_shared',
-            height: 20.h,
-            width: 20.w,
-            colorFilter: const ColorFilter.mode(Colors.pink, BlendMode.srcIn),
-          ),
-        );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
@@ -476,7 +405,7 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: systemUiOverlayStyle,
       child: Scaffold(
-        backgroundColor: colors.backgroundSecondary,
+        backgroundColor: colors.backgroundPrimary,
         body: Column(
           children: [
             Container(
@@ -486,7 +415,7 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: EdgeInsets.only(top: padding.top, left: 10.w, right: 20.w),
+                    padding: EdgeInsets.only(top: padding.top, left: 20.w, right: 20.w),
                     child: Row(
                       children: [
                         // Back button
@@ -494,7 +423,7 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
                           height: 44.h,
                           width: 44.w,
                           decoration: BoxDecoration(
-                            color: colors.backgroundPrimary,
+                            color: colors.backgroundSecondary,
                             shape: BoxShape.circle,
                             border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
                           ),
@@ -521,7 +450,7 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
                             fontFamily: "Lato",
                             package: 'grab_go_shared',
                             color: colors.textPrimary,
-                            fontSize: 24.sp,
+                            fontSize: 20.sp,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -530,31 +459,30 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
                   ),
                   SizedBox(height: 16.h),
                   Container(
-                    margin: EdgeInsets.symmetric(horizontal: 20.w),
-                    padding: EdgeInsets.all(4.r),
                     decoration: BoxDecoration(
-                      color: colors.backgroundSecondary,
-                      borderRadius: BorderRadius.circular(14.r),
+                      border: Border(bottom: BorderSide(color: colors.inputBorder.withValues(alpha: 0.5), width: 1)),
                     ),
                     child: TabBar(
                       controller: _tabController,
-                      indicator: BoxDecoration(color: colors.accentOrange, borderRadius: BorderRadius.circular(10.r)),
                       indicatorSize: TabBarIndicatorSize.tab,
+                      indicatorWeight: 3,
                       dividerColor: Colors.transparent,
-                      labelColor: Colors.white,
+                      labelColor: colors.accentOrange,
                       unselectedLabelColor: colors.textSecondary,
+                      splashFactory: NoSplash.splashFactory,
                       labelStyle: TextStyle(
-                        fontFamily: "Lato",
-                        package: 'grab_go_shared',
-                        fontSize: 13.sp,
+                        fontSize: 15.sp,
                         fontWeight: FontWeight.w700,
+                        fontFamily: 'Lato',
+                        package: 'grab_go_shared',
                       ),
                       unselectedLabelStyle: TextStyle(
-                        fontFamily: "Lato",
-                        package: 'grab_go_shared',
-                        fontSize: 13.sp,
+                        fontSize: 15.sp,
                         fontWeight: FontWeight.w600,
+                        fontFamily: 'Lato',
+                        package: 'grab_go_shared',
                       ),
+                      overlayColor: WidgetStateProperty.all(Colors.transparent),
                       tabs: const [
                         Tab(text: "All"),
                         Tab(text: "Orders"),
@@ -569,9 +497,9 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
             Expanded(
               child: _isLoading && _notifications.isEmpty
                   ? ListView.separated(
-                      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
                       itemCount: 8,
-                      separatorBuilder: (context, index) => SizedBox(height: 12.h),
+                      separatorBuilder: (context, index) => SizedBox(height: 10.h),
                       itemBuilder: (context, index) => NotificationSkeleton(colors: colors, isDark: isDark),
                     )
                   : _error != null
@@ -585,9 +513,15 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
                       child: ListView.separated(
                         controller: _scrollController,
                         physics: const AlwaysScrollableScrollPhysics(),
-                        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                        padding: EdgeInsets.symmetric(vertical: 0.h),
                         itemCount: _getFilteredNotifications().length + (_isLoadingMore ? 1 : 0),
-                        separatorBuilder: (context, index) => SizedBox(height: 12.h),
+                        separatorBuilder: (context, index) => Divider(
+                          color: colors.backgroundSecondary,
+                          height: 1,
+                          thickness: 1,
+                          indent: 20,
+                          endIndent: 20,
+                        ),
                         itemBuilder: (context, index) {
                           final filteredNotifications = _getFilteredNotifications();
                           if (index == filteredNotifications.length) {
@@ -697,20 +631,10 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
         decoration: BoxDecoration(
           color: notification.isRead ? colors.backgroundSecondary : colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-          boxShadow: [
-            BoxShadow(
-              color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
-              spreadRadius: 0,
-              blurRadius: 12,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildNotificationIcon(notification.type, colors),
-            SizedBox(width: 12.w),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -732,7 +656,6 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
                     ],
                   ),
                   SizedBox(height: 6.h),
-                  // Show actor avatars for grouped notifications
                   if (notification.actorCount > 1 &&
                       notification.actors != null &&
                       notification.actors!.isNotEmpty) ...[

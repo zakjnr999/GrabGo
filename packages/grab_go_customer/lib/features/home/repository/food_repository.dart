@@ -240,4 +240,25 @@ class FoodRepository {
       rethrow; // Let provider handle the error
     }
   }
+
+  /// Fetch recommended food items using smart algorithm
+  Future<List<FoodItem>> fetchRecommendedItems({int limit = 10}) async {
+    try {
+      final response = await service.getRecommendedItems(limit);
+
+      if (response.isSuccessful && response.body != null) {
+        final data = response.body as Map<String, dynamic>;
+        if (data['success'] == true && data['data'] != null) {
+          return (data['data'] as List).map((json) => FoodItem.fromJson(json)).toList();
+        }
+      }
+
+      throw Exception('Failed to fetch recommended items: ${response.statusCode}');
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching recommended items: $e');
+      }
+      rethrow; // Let provider handle the error
+    }
+  }
 }

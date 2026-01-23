@@ -57,6 +57,25 @@ class LocationService {
     }
   }
 
+  /// Get address from specific coordinates
+  static Future<String> getAddressFromCoordinates(double latitude, double longitude) async {
+    try {
+      List<Placemark> placeMarks = await placemarkFromCoordinates(latitude, longitude);
+
+      if (placeMarks.isNotEmpty) {
+        Placemark place = placeMarks[0];
+        return _formatAddress(place);
+      } else {
+        return "Address not found";
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Reverse geocoding error: $e');
+      }
+      return "Unable to get address";
+    }
+  }
+
   static String _formatAddress(Placemark place) {
     final parts = <String>[];
 

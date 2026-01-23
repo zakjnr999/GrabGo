@@ -790,7 +790,6 @@ final GoRouter appRouter = GoRouter(
         } else if (extra is GrabMartItem) {
           child = FoodDetails(grabMartItem: extra);
         } else {
-          // Check if it's a Map (for potential future proofing or fallback)
           child = const Scaffold(body: Center(child: Text('Invalid item type')));
         }
 
@@ -803,7 +802,7 @@ final GoRouter appRouter = GoRouter(
             return SharedAxisTransition(
               animation: animation,
               secondaryAnimation: secondaryAnimation,
-              transitionType: SharedAxisTransitionType.horizontal,
+              transitionType: SharedAxisTransitionType.vertical,
               child: child,
             );
           },
@@ -895,7 +894,7 @@ final GoRouter appRouter = GoRouter(
         final extra = state.extra as Map<String, dynamic>;
         return CustomTransitionPage(
           key: state.pageKey,
-            child: CategoryItemsPage(
+          child: CategoryItemsPage(
             categoryId: (extra['categoryId'] as String?) ?? '',
             categoryName: (extra['categoryName'] as String?) ?? 'Items',
             categoryEmoji: (extra['categoryEmoji'] as String?) ?? '📦',

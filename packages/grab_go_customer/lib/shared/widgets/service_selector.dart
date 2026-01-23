@@ -145,10 +145,10 @@ class _ServiceSelectorState extends State<ServiceSelector> {
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                  border: Border.all(
-                    color: isSelected ? colors.accentOrange : colors.accentOrange.withValues(alpha: 0.1),
-                    width: isSelected ? 1.w : 0.w,
-                  ),
+                  // border: Border.all(
+                  //   color: isSelected ? colors.accentOrange : colors.accentOrange.withValues(alpha: 0.1),
+                  //   width: isSelected ? 1.w : 0.w,
+                  // ),
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
@@ -203,7 +203,6 @@ class _ServiceSelectorState extends State<ServiceSelector> {
                               colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                             ),
                           ),
-                          // child: Icon(Icons.check, color: Colors.white, size: 10.r),
                         ),
                       ),
                     Center(

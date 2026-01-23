@@ -17,13 +17,12 @@ import 'package:grab_go_customer/features/home/viewmodel/food_banner_provider.da
 import 'package:grab_go_customer/features/home/viewmodel/food_deals_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_discovery_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
-import 'package:grab_go_customer/shared/viewmodels/location_provider.dart';
+import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_customer/shared/widgets/app_refresh_indicator.dart';
 import 'package:grab_go_customer/shared/widgets/category_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
-import 'package:grab_go_customer/shared/widgets/store_specials_section.dart';
 import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
@@ -41,11 +40,12 @@ import 'package:grab_go_customer/shared/widgets/promo_section.dart';
 import 'package:grab_go_customer/shared/widgets/top_rated_section.dart';
 import 'package:grab_go_customer/shared/widgets/fresh_arrivals_section.dart';
 import 'package:grab_go_customer/shared/widgets/browse_all_groceries_section.dart';
-import 'package:grab_go_customer/shared/widgets/browse_all_section.dart';
 import 'package:grab_go_customer/shared/widgets/browse_items_grid.dart';
 import 'package:grab_go_customer/shared/widgets/promotional_banner_carousel.dart';
 import 'package:grab_go_customer/features/home/model/promotional_banner.dart';
 import 'package:grab_go_customer/shared/viewmodels/service_provider.dart';
+import 'package:grab_go_customer/shared/widgets/home_page_skeleton.dart';
+import 'package:grab_go_customer/shared/widgets/location_accuracy_popup.dart';
 import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
@@ -123,7 +123,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     final currentOffset = _scrollController.offset;
 
-    // Update scroll offset for collapsing header WITHOUT setState to avoid lagging
     _scrollOffsetNotifier.value = currentOffset;
 
     final scrollDelta = currentOffset - _lastScrollOffset;
@@ -162,17 +161,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   void _initializeData() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<LocationProvider>(context, listen: false).fetchAddress();
+      Provider.of<NativeLocationProvider>(context, listen: false).fetchAddress();
 
       // Initialize Food provider
       final foodProvider = Provider.of<FoodProvider>(context, listen: false);
       if (foodProvider.categories.isEmpty) {
-        foodProvider.fetchCategories();
-        foodProvider.fetchOrderHistory();
-        foodProvider.fetchPromotionalBanners();
-        foodProvider.fetchDeals();
-        foodProvider.fetchPopularItems();
-        foodProvider.fetchTopRatedItems();
+        foodProvider.refreshAll();
       } else {
         if (foodProvider.categories.isNotEmpty) {
           setState(() {
@@ -186,6 +180,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       if (groceryProvider.items.isEmpty) {
         groceryProvider.refreshAll();
       }
+
+      // Initialize Pharmacy provider
+      final pharmacyProvider = Provider.of<PharmacyProvider>(context, listen: false);
+      if (pharmacyProvider.items.isEmpty) {
+        pharmacyProvider.refreshAll();
+      }
+
+      // Initialize GrabMart provider
+      final grabMartProvider = Provider.of<GrabMartProvider>(context, listen: false);
+      if (grabMartProvider.items.isEmpty) {
+        grabMartProvider.refreshAll();
+      }
     });
   }
 
@@ -193,13 +199,21 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
 
     if (serviceProvider.isFoodService) {
-      // Refresh all food data using the new refreshAll() method
+      // Refresh all food data
       final provider = Provider.of<FoodProvider>(context, listen: false);
-      await provider.refreshAll();
+      await provider.refreshAll(forceRefresh: true);
     } else if (serviceProvider.isGroceryService) {
       // Refresh grocery data
       final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
-      await groceryProvider.refreshAll();
+      await groceryProvider.refreshAll(forceRefresh: true);
+    } else if (serviceProvider.isPharmacyService) {
+      // Refresh pharmacy data
+      final pharmacyProvider = Provider.of<PharmacyProvider>(context, listen: false);
+      await pharmacyProvider.refreshAll(forceRefresh: true);
+    } else if (serviceProvider.isStoresService) {
+      // Refresh GrabMart data
+      final grabMartProvider = Provider.of<GrabMartProvider>(context, listen: false);
+      await grabMartProvider.refreshAll(forceRefresh: true);
     }
   }
 
@@ -209,10 +223,23 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     Size size = MediaQuery.sizeOf(context);
 
-    final locationProvider = Provider.of<LocationProvider>(context);
+    final locationProvider = Provider.of<NativeLocationProvider>(context);
     final foodProvider = Provider.of<FoodProvider>(context);
     final serviceProvider = Provider.of<ServiceProvider>(context);
     final groceryProvider = Provider.of<GroceryProvider>(context);
+    final pharmacyProvider = Provider.of<PharmacyProvider>(context);
+    final grabMartProvider = Provider.of<GrabMartProvider>(context);
+
+    bool shouldShowSkeleton = false;
+    if (serviceProvider.isGroceryService) {
+      shouldShowSkeleton = groceryProvider.items.isEmpty;
+    } else if (serviceProvider.isPharmacyService) {
+      shouldShowSkeleton = pharmacyProvider.items.isEmpty;
+    } else if (serviceProvider.isStoresService) {
+      shouldShowSkeleton = grabMartProvider.items.isEmpty;
+    } else if (serviceProvider.isFoodService) {
+      shouldShowSkeleton = foodProvider.categories.isEmpty;
+    }
 
     final systemUiOverlayStyle = SystemUiOverlayStyle(
       statusBarColor: colors.accentOrange,
@@ -234,6 +261,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: systemUiOverlayStyle,
       child: Scaffold(
+        backgroundColor: colors.backgroundPrimary,
         body: SafeArea(
           top: false,
           child: ClipRect(
@@ -245,100 +273,133 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   bgColor: colors.accentOrange,
                   child: CustomScrollView(
                     controller: _scrollController,
-                    physics: const AlwaysScrollableScrollPhysics(),
+                    physics: shouldShowSkeleton
+                        ? const NeverScrollableScrollPhysics()
+                        : const AlwaysScrollableScrollPhysics(),
                     slivers: [
                       SliverPadding(
                         padding: EdgeInsets.only(top: size.height * 0.16),
                         sliver: SliverToBoxAdapter(
                           child: Container(
-                            color: colors.backgroundSecondary,
-                            child: Column(
-                              children: [
-                                SizedBox(height: KSpacing.lg.h),
-                                _buildServiceSelector(),
-                                SizedBox(height: KSpacing.lg.h),
-                                PromotionalBannerCarousel(
-                                  banners: AppPromotionalBanners.getDefaultBanners(
-                                    onReferralTap: () => context.push('/referral'),
-                                    onWelcomeTap: () {},
-                                    onFlashDealTap: () {},
-                                    onGrabMartTap: () {},
-                                  ),
-                                ),
-                                SizedBox(height: KSpacing.lg.h),
-                                AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 300),
-                                  switchInCurve: Curves.easeInOut,
-                                  switchOutCurve: Curves.easeInOut,
-                                  transitionBuilder: (Widget child, Animation<double> animation) {
-                                    return FadeTransition(
-                                      opacity: animation,
-                                      child: SlideTransition(
-                                        position: Tween<Offset>(
-                                          begin: const Offset(0.0, 0.02),
-                                          end: Offset.zero,
-                                        ).animate(animation),
-                                        child: child,
-                                      ),
-                                    );
-                                  },
-                                  child: Column(
-                                    key: ValueKey<bool>(serviceProvider.isFoodService),
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                            color: colors.backgroundPrimary,
+                            child: shouldShowSkeleton
+                                ? const HomePageSkeleton()
+                                : Column(
                                     children: [
-                                      _buildCategories(
-                                        serviceProvider,
-                                        foodProvider,
-                                        groceryProvider,
-                                        isDark,
-                                        size,
-                                        colors,
+                                      SizedBox(height: KSpacing.lg.h),
+                                      _buildServiceSelector(),
+                                      SizedBox(height: KSpacing.lg.h),
+                                      PromotionalBannerCarousel(
+                                        banners: AppPromotionalBanners.getDefaultBanners(
+                                          onReferralTap: () => context.push('/referral'),
+                                          onWelcomeTap: () {},
+                                          onFlashDealTap: () {},
+                                          onGrabMartTap: () {},
+                                        ),
                                       ),
-                                      SizedBox(height: KSpacing.md.h),
-                                      // Service-specific sections
-                                      if (serviceProvider.isFoodService || serviceProvider.isGroceryService) ...[
-                                        _buildDealsSection(serviceProvider, groceryProvider),
-                                        _buildFreshArrivalsSection(serviceProvider, groceryProvider),
-                                        _buildOrderAgainSection(serviceProvider),
-                                        _buildPopularSection(serviceProvider, foodProvider),
-                                        _buildBuyAgainSection(serviceProvider, groceryProvider),
-                                        _buildPromoBanners(serviceProvider),
-                                        _buildTopRatedSection(serviceProvider, foodProvider),
-                                        _buildStoreSpecialsSection(serviceProvider, groceryProvider),
-                                        _buildBrowseAllGroceriesSection(serviceProvider, groceryProvider),
-                                      ] else if (serviceProvider.isPharmacyService) ...[
-                                        _buildPharmacyOnSaleSection(),
-                                        _buildPharmacyPopularSection(),
-                                        _buildPharmacyTopRatedSection(),
-                                        _buildPharmacyItemsGrid(),
-                                      ] else if (serviceProvider.isStoresService) ...[
-                                        _buildGrabMartSpecialOffersSection(),
-                                        _buildGrabMartQuickPicksSection(),
-                                        _buildGrabMartTopRatedSection(),
-                                        _buildGrabMartItemsGrid(),
-                                      ],
+                                      SizedBox(height: KSpacing.lg.h),
+                                      AnimatedSwitcher(
+                                        duration: const Duration(milliseconds: 300),
+                                        switchInCurve: Curves.easeInOut,
+                                        switchOutCurve: Curves.easeInOut,
+                                        transitionBuilder: (Widget child, Animation<double> animation) {
+                                          return FadeTransition(
+                                            opacity: animation,
+                                            child: SlideTransition(
+                                              position: Tween<Offset>(
+                                                begin: const Offset(0.0, 0.02),
+                                                end: Offset.zero,
+                                              ).animate(animation),
+                                              child: child,
+                                            ),
+                                          );
+                                        },
+                                        child: Column(
+                                          key: ValueKey<bool>(serviceProvider.isFoodService),
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            _buildCategories(
+                                              serviceProvider,
+                                              foodProvider,
+                                              groceryProvider,
+                                              isDark,
+                                              size,
+                                              colors,
+                                            ),
+                                            SizedBox(height: KSpacing.md.h),
+                                            // Service-specific sections
+                                            if (serviceProvider.isFoodService || serviceProvider.isGroceryService) ...[
+                                              _buildDealsSection(serviceProvider, groceryProvider),
+                                              _buildFreshArrivalsSection(serviceProvider, groceryProvider),
+                                              _buildOrderAgainSection(serviceProvider),
+                                              _buildPopularSection(serviceProvider, foodProvider),
+                                              _buildBuyAgainSection(serviceProvider, groceryProvider),
+                                              _buildPromoBanners(serviceProvider),
+                                              _buildTopRatedSection(serviceProvider, foodProvider),
+                                              _buildBrowseAllGroceriesSection(serviceProvider, groceryProvider),
+                                            ] else if (serviceProvider.isPharmacyService) ...[
+                                              _buildPharmacyOnSaleSection(),
+                                              _buildPharmacyPopularSection(),
+                                              _buildPharmacyTopRatedSection(),
+                                              _buildPharmacyItemsGrid(),
+                                            ] else if (serviceProvider.isStoresService) ...[
+                                              _buildGrabMartSpecialOffersSection(),
+                                              _buildGrabMartQuickPicksSection(),
+                                              _buildGrabMartTopRatedSection(),
+                                              _buildGrabMartItemsGrid(),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
                                     ],
                                   ),
-                                ),
-                              ],
-                            ),
                           ),
                         ),
                       ),
-                      // Lazy-loaded Recommended Section
-                      ..._buildRecommendedSectionSlivers(serviceProvider, foodProvider, colors, size, isDark),
+                      if (!shouldShowSkeleton)
+                        ..._buildRecommendedSectionSlivers(serviceProvider, foodProvider, colors, size, isDark),
 
                       SliverToBoxAdapter(child: SizedBox(height: KSpacing.lg.h)),
                     ],
                   ),
                 ),
 
-                // Positioned umbrella header layer (collapsible)
+                // Positioned umbrella header layer
                 Positioned(
                   top: 0,
                   left: 0,
                   right: 0,
                   child: _buildCollapsibleHomeHeader(context, size, colors, isDark, locationProvider, foodProvider),
+                ),
+
+                // Location accuracy popup (appears below header when needed)
+                ValueListenableBuilder<double>(
+                  valueListenable: _scrollOffsetNotifier,
+                  builder: (context, scrollOffset, _) {
+                    final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
+                    final opacity = (1.0 - (collapseProgress * 2)).clamp(0.0, 1.0);
+
+                    if (opacity == 0 || !locationProvider.shouldShowAccuracyPopup) return const SizedBox.shrink();
+
+                    return Positioned(
+                      top: MediaQuery.of(context).padding.top + 45.h,
+                      left: 0,
+                      right: 0,
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 200),
+                        opacity: opacity,
+                        child: LocationAccuracyPopup(
+                          distanceInMeters: locationProvider.distanceFromSavedLocation ?? 0,
+                          onUpdateLocation: () async {
+                            await locationProvider.updateToCurrentLocation();
+                          },
+                          onDismiss: () {
+                            locationProvider.dismissAccuracyPopup();
+                          },
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -555,13 +616,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final pharmacyProvider = Provider.of<PharmacyProvider>(context, listen: false);
     final grabMartProvider = Provider.of<GrabMartProvider>(context, listen: false);
 
-    // // Uncomment if you need skeleton loading state
-    // final colors = context.appColors;
-    // final isDark = Theme.of(context).brightness == Brightness.dark;
-    // if (itemsProvider.isLoading) {
-    //    return ServiceSelectorSkeleton(colors: colors, isDark: isDark);
-    // }
-
     return ServiceSelector(
       services: AppServices.all,
       initialSelectedService: serviceProvider.currentService,
@@ -570,34 +624,25 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         serviceProvider.selectService(service);
 
         // Load data for the selected service
-        if (service.id == 'groceries') {
-          if (groceryProvider.categories.isEmpty) {
-            groceryProvider.fetchCategories();
-            groceryProvider.fetchStores();
-            groceryProvider.fetchItems();
-            groceryProvider.fetchDeals();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (service.id == 'groceries') {
+            if (groceryProvider.items.isEmpty) {
+              groceryProvider.refreshAll();
+            }
+          } else if (service.id == 'food') {
+            if (foodProvider.categories.isEmpty) {
+              foodProvider.refreshAll();
+            }
+          } else if (service.id == 'pharmacy') {
+            if (pharmacyProvider.items.isEmpty) {
+              pharmacyProvider.refreshAll();
+            }
+          } else if (service.id == 'convenience') {
+            if (grabMartProvider.items.isEmpty) {
+              grabMartProvider.refreshAll();
+            }
           }
-        } else if (service.id == 'food') {
-          // Load food data (already loaded in initState)
-          if (foodProvider.categories.isEmpty) {
-            foodProvider.fetchCategories();
-            foodProvider.fetchRecentOrderItems();
-            foodProvider.fetchPromotionalBanners();
-            foodProvider.fetchDeals();
-          }
-        } else if (service.id == 'pharmacy') {
-          // Load pharmacy data
-          if (pharmacyProvider.categories.isEmpty) {
-            pharmacyProvider.fetchCategories();
-            pharmacyProvider.fetchItems();
-          }
-        } else if (service.id == 'convenience') {
-          // Load GrabMart data
-          if (grabMartProvider.categories.isEmpty) {
-            grabMartProvider.fetchCategories();
-            grabMartProvider.fetchItems();
-          }
-        }
+        });
       },
     );
   }
@@ -607,7 +652,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     Size size,
     AppColorsExtension colors,
     bool isDark,
-    LocationProvider locationProvider,
+    NativeLocationProvider locationProvider,
     FoodProvider foodProvider,
   ) {
     return ValueListenableBuilder<double>(
@@ -643,7 +688,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     Size size,
     AppColorsExtension colors,
     bool isDark,
-    LocationProvider locationProvider,
+    NativeLocationProvider locationProvider,
     FoodProvider foodProvider,
   ) {
     return SizedBox.expand(
@@ -668,11 +713,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                         ),
                         SizedBox(width: 10.w),
-                        Text(
-                          locationProvider.address.isEmpty ? "Fetching location..." : locationProvider.address,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: Colors.white),
+                        Flexible(
+                          child: Text(
+                            locationProvider.address.isEmpty ? "Fetching location..." : locationProvider.address,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: Colors.white),
+                          ),
                         ),
                         SizedBox(width: 6.w),
                         SvgPicture.asset(
@@ -739,7 +786,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  /// Build service selector (Food, Groceries, Pharmacy, Stores)
+  /// Build service selector
   Widget buildServiceSelector() {
     final serviceProvider = Provider.of<ServiceProvider>(context);
     final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
@@ -751,7 +798,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       onServiceSelected: (service) {
         serviceProvider.selectService(service);
 
-        // Load data for the selected service
         if (service.id == 'groceries') {
           // Load grocery data
           if (groceryProvider.categories.isEmpty) {
@@ -938,7 +984,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 dealItems: provider.dealItems.take(10).toList(),
                 onSeeAll: () {},
                 onItemTap: (item) {
-                  context.push('/food-details', extra: item);
+                  context.push('/foodDetails', extra: item);
                 },
                 isLoading: provider.isLoadingDeals,
               );
@@ -955,7 +1001,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               try {
                 originalItem = gp.deals.firstWhere((g) => g.id == item.id);
               } catch (_) {}
-              context.push('/grocery-details', extra: originalItem ?? item);
+              context.push('/foodDetails', extra: originalItem ?? item);
             },
             isLoading: groceryProvider.isLoadingDeals,
           ),
@@ -972,7 +1018,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           items: groceryProvider.freshArrivals.take(10).toList(),
           onSeeAll: () {},
           onItemTap: (item) {
-            context.push('/grocery-details', extra: item);
+            context.push('/foodDetails', extra: item);
           },
           isLoading: groceryProvider.isLoadingFreshArrivals,
         ),
@@ -992,7 +1038,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               recentOrders: provider.orderHistoryItems.take(10).toList(),
               onSeeAll: () {},
               onItemTap: (item) {
-                context.push('/food-details', extra: item);
+                context.push('/foodDetails', extra: item);
               },
               isLoading: provider.isLoadingOrderHistory,
             ),
@@ -1126,22 +1172,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildStoreSpecialsSection(ServiceProvider serviceProvider, GroceryProvider groceryProvider) {
-    if (!serviceProvider.isGroceryService) return const SizedBox.shrink();
-    return Column(
-      children: [
-        StoreSpecialsSection(
-          storeSpecials: groceryProvider.storeSpecials,
-          isLoading: groceryProvider.isLoadingStoreSpecials,
-          onSeeAll: () {},
-          onItemTap: (item) => context.push('/grocery-details', extra: item),
-          onStoreTap: (store) {},
-        ),
-        SizedBox(height: KSpacing.lg.h),
-      ],
-    );
-  }
-
   Widget _buildBrowseAllGroceriesSection(ServiceProvider serviceProvider, GroceryProvider groceryProvider) {
     if (!serviceProvider.isGroceryService) return const SizedBox.shrink();
     return Column(
@@ -1173,7 +1203,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             SectionHeader(
               title: "Recommended For You",
               sectionIcon: Assets.icons.sparkles,
-              sectionTotal: 1,
+              sectionTotal: foodProvider.recommendedItems.length,
               accentColor: colors.accentOrange,
               onSeeAll: () {},
             ),
@@ -1191,10 +1221,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     AppColorsExtension colors,
     bool isDark,
   ) {
-    List<FoodItem> allFoods = [];
+    final recommendedItems = itemsProvider.recommendedItems;
+    final isLoading = itemsProvider.isLoadingRecommended;
 
-    // Show skeleton only when categories are empty (initial load or empty state)
-    if (itemsProvider.categories.isEmpty) {
+    // Show skeleton while loading
+    if (isLoading && recommendedItems.isEmpty) {
       return [
         SliverToBoxAdapter(
           child: FoodItemSkeleton(colors: colors, isDark: isDark, size: size),
@@ -1202,92 +1233,32 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       ];
     }
 
-    List<FoodCategoryModel> categoriesToProcess = itemsProvider.categories;
-
-    if (_selectedCategory != null) {
-      final categoryExists = categoriesToProcess.any((cat) => cat.id == _selectedCategory!.id);
-      if (categoryExists) {
-        categoriesToProcess = categoriesToProcess.where((category) => category.id == _selectedCategory!.id).toList();
-      } else if (categoriesToProcess.isNotEmpty) {
-        categoriesToProcess = [categoriesToProcess.first];
-      }
-    } else if (_activeFilter.isActive && _activeFilter.selectedCategories.isNotEmpty) {
-      final validCategoryIds = itemsProvider.categories.map((cat) => cat.id).where((id) => id.isNotEmpty).toSet();
-      final validSelectedCategories = _activeFilter.selectedCategories
-          .where((id) => id.isNotEmpty && validCategoryIds.contains(id))
-          .toList();
-
-      if (validSelectedCategories.isNotEmpty) {
-        categoriesToProcess = itemsProvider.categories
-            .where((category) => validSelectedCategories.contains(category.id))
-            .toList();
-      } else if (categoriesToProcess.isNotEmpty) {
-        categoriesToProcess = [categoriesToProcess.first];
-      }
-    } else if (categoriesToProcess.isNotEmpty) {
-      categoriesToProcess = [categoriesToProcess.first];
-    }
-
-    final Set<String> seenItemKeys = {};
-    for (var category in categoriesToProcess) {
-      if (category.items.isNotEmpty) {
-        for (var item in category.items) {
-          final key = '${item.id}_${item.sellerId}';
-          if (!seenItemKeys.contains(key)) {
-            seenItemKeys.add(key);
-            allFoods.add(item);
-          }
-        }
-      }
-    }
-
-    if (allFoods.isEmpty) {
+    // Show empty state if no items
+    if (recommendedItems.isEmpty) {
       return [
         SliverToBoxAdapter(
-          child: _activeFilter.isActive
-              ? Container(
-                  height: size.height * 0.15,
-                  margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
-                  decoration: BoxDecoration(
-                    color: colors.backgroundPrimary,
-                    borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          "No items match your filters",
-                          style: TextStyle(color: colors.textSecondary, fontSize: 16.sp, fontWeight: FontWeight.w500),
-                        ),
-                        if (_activeFilter.isActive) ...[
-                          SizedBox(height: 8.h),
-                          Text(
-                            "Try adjusting your filter criteria",
-                            style: TextStyle(color: colors.textTertiary, fontSize: 12.sp),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                )
-              : FoodItemSkeleton(colors: colors, isDark: isDark, size: size),
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: KSpacing.xl.h),
+            child: Center(
+              child: Text('No recommendations available', style: TextStyle(color: colors.textSecondary)),
+            ),
+          ),
         ),
       ];
     }
 
-    final recommendedFoods = allFoods.take(_recommendedDisplayedCount.clamp(0, allFoods.length)).toList();
+    final displayedItems = recommendedItems.take(_recommendedDisplayedCount.clamp(0, recommendedItems.length)).toList();
 
     return [
       SliverList(
         delegate: SliverChildBuilderDelegate((context, index) {
-          final item = recommendedFoods[index];
+          final item = displayedItems[index];
           return Consumer<CartProvider>(
             builder: (context, provider, _) {
               final bool isInCart = provider.cartItems.containsKey(item);
               return FoodItemCard(
                 item: item,
-                onTap: () => context.push('/foodDetails', extra: recommendedFoods[index]),
+                onTap: () => context.push('/foodDetails', extra: item),
                 trailing: GestureDetector(
                   onTap: () {
                     if (isInCart) {
@@ -1315,16 +1286,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               );
             },
           );
-        }, childCount: recommendedFoods.length),
+        }, childCount: displayedItems.length),
       ),
-      if (allFoods.length > _recommendedDisplayedCount)
+      if (recommendedItems.length > _recommendedDisplayedCount)
         SliverToBoxAdapter(
           child: Builder(
             builder: (context) {
               Future.delayed(const Duration(milliseconds: 500), () {
-                if (mounted && allFoods.length > _recommendedDisplayedCount) {
+                if (mounted && recommendedItems.length > _recommendedDisplayedCount) {
                   setState(() {
-                    _recommendedDisplayedCount = (_recommendedDisplayedCount + 10).clamp(0, allFoods.length);
+                    _recommendedDisplayedCount = (_recommendedDisplayedCount + 10).clamp(0, recommendedItems.length);
                   });
                 }
               });

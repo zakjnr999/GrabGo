@@ -90,8 +90,8 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
     Size size = MediaQuery.sizeOf(context);
 
     final systemUiOverlayStyle = SystemUiOverlayStyle(
-      statusBarColor: colors.accentOrange,
-      statusBarIconBrightness: Brightness.light,
+      statusBarColor: colors.backgroundPrimary,
+      statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       systemNavigationBarColor: colors.backgroundSecondary,
       systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
@@ -99,7 +99,7 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: systemUiOverlayStyle,
       child: Scaffold(
-        backgroundColor: colors.backgroundSecondary,
+        backgroundColor: colors.backgroundPrimary,
         body: SafeArea(
           top: false,
           child: ClipRect(
@@ -142,7 +142,7 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
 
   Widget _buildCollapsibleFavoritesHeader(AppColorsExtension colors, Size size) {
     final statusBarHeight = MediaQuery.of(context).padding.top;
-    final dynamicCollapsedHeight = _collapsedHeight + statusBarHeight; // Add status bar height
+    final dynamicCollapsedHeight = _collapsedHeight + statusBarHeight;
 
     return ValueListenableBuilder<double>(
       valueListenable: _scrollOffsetNotifier,
@@ -154,27 +154,22 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
 
         return SizedBox(
           height: currentHeight,
-          child: UmbrellaHeaderWithShadow(
-            curveDepth: 25.h,
-            numberOfCurves: 10,
-            height: currentHeight,
-            child: Padding(
-              padding: EdgeInsets.only(bottom: 50.h), // Add padding to keep tabs above curves
-              child: Column(
-                children: [
-                  Expanded(
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 100),
-                      opacity: contentOpacity,
-                      child: _buildFavoritesHeader(colors),
-                    ),
+          child: Padding(
+            padding: EdgeInsets.only(bottom: 50.h),
+            child: Column(
+              children: [
+                Expanded(
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 100),
+                    opacity: contentOpacity,
+                    child: _buildFavoritesHeader(colors),
                   ),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 200),
-                    child: _isSearchActive ? _buildSearchBar(colors) : _buildStickyTabs(colors, contentOpacity),
-                  ),
-                ],
-              ),
+                ),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: _isSearchActive ? _buildSearchBar(colors) : _buildStickyTabs(colors, contentOpacity),
+                ),
+              ],
             ),
           ),
         );
@@ -184,31 +179,31 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
 
   Widget _buildStickyTabs(AppColorsExtension colors, double opacity) {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 20.w),
-      padding: EdgeInsets.all(4.r),
       decoration: BoxDecoration(
-        color: colors.backgroundPrimary.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(14.r),
+        color: colors.backgroundPrimary,
+        border: Border(bottom: BorderSide(color: colors.inputBorder.withValues(alpha: 0.5), width: 1)),
       ),
       child: TabBar(
         controller: _tabController,
-        indicator: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10.r)),
         indicatorSize: TabBarIndicatorSize.tab,
+        indicatorWeight: 3,
         dividerColor: Colors.transparent,
         labelColor: colors.accentOrange,
-        unselectedLabelColor: Colors.white.withValues(alpha: 0.8),
+        unselectedLabelColor: colors.textSecondary,
+        splashFactory: NoSplash.splashFactory,
         labelStyle: TextStyle(
-          fontFamily: "Lato",
-          package: "grab_go_shared",
-          fontSize: 13.sp,
+          fontSize: 15.sp,
           fontWeight: FontWeight.w700,
+          fontFamily: 'Lato',
+          package: 'grab_go_shared',
         ),
         unselectedLabelStyle: TextStyle(
-          fontFamily: "Lato",
-          package: 'grab_go_shared',
-          fontSize: 13.sp,
+          fontSize: 15.sp,
           fontWeight: FontWeight.w600,
+          fontFamily: 'Lato',
+          package: 'grab_go_shared',
         ),
+        overlayColor: WidgetStateProperty.all(Colors.transparent),
         tabs: const [
           Tab(text: "My Items"),
           Tab(text: "Vendors"),
@@ -233,8 +228,8 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                 style: TextStyle(
                   fontFamily: "Lato",
                   package: 'grab_go_shared',
-                  color: Colors.white,
-                  fontSize: 24.sp,
+                  color: colors.textPrimary,
+                  fontSize: 20.sp,
                   fontWeight: FontWeight.w800,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -301,7 +296,7 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
     return Container(
       height: 44.h,
       width: 44.w,
-      decoration: BoxDecoration(color: colors.backgroundPrimary.withValues(alpha: 0.2), shape: BoxShape.circle),
+      decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -312,7 +307,7 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
             child: SvgPicture.asset(
               icon,
               package: 'grab_go_shared',
-              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
             ),
           ),
         ),
@@ -324,11 +319,7 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
     return Container(
       key: const ValueKey('search'),
       margin: EdgeInsets.symmetric(horizontal: 20.w),
-      decoration: BoxDecoration(
-        color: colors.backgroundPrimary.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 0.5),
-      ),
+      decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(14.r)),
       child: TextField(
         controller: _searchController,
         focusNode: _searchFocus,
@@ -337,12 +328,12 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
             _searchQuery = value;
           });
         },
-        style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w500),
+        style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
         cursorColor: Colors.white,
         decoration: InputDecoration(
           hintText: "Search your favorites...",
           hintStyle: TextStyle(
-            color: Colors.white.withValues(alpha: 0.6),
+            color: colors.textPrimary.withValues(alpha: 0.6),
             fontSize: 14.sp,
             fontWeight: FontWeight.w500,
           ),
@@ -351,7 +342,7 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
             child: SvgPicture.asset(
               Assets.icons.search,
               package: 'grab_go_shared',
-              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
             ),
           ),
           suffixIcon: _searchQuery.isNotEmpty
@@ -367,7 +358,7 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                     height: 18.h,
                     width: 18.w,
                     package: "grab_go_shared",
-                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                   ),
                 )
               : null,
@@ -493,7 +484,7 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
       padding: EdgeInsets.only(
         left: 16.w,
         right: 16.w,
-        top: size.height * 0.26 + 10.h, // Space for expanded header
+        top: size.height * 0.22, // Space for expanded header
         bottom: 8.h,
       ),
       itemCount: items.length,

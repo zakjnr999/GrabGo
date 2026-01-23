@@ -18,7 +18,7 @@ import 'package:grab_go_customer/shared/services/image_cache_service.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_customer/shared/utils/routes.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
-import 'package:grab_go_customer/shared/viewmodels/location_provider.dart';
+import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/theme_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/service_provider.dart';
@@ -56,7 +56,8 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (context) => ThemeProvider()),
         ChangeNotifierProvider(create: (context) => CartProvider()),
-        ChangeNotifierProvider(create: (context) => LocationProvider()),
+        // Native location provider with geofencing support (replaces old LocationProvider)
+        ChangeNotifierProvider(create: (context) => NativeLocationProvider()),
         ChangeNotifierProvider(create: (context) => FoodCategoryProvider()),
         ChangeNotifierProvider(create: (context) => FoodBannerProvider()),
         ChangeNotifierProvider(create: (context) => FoodDealsProvider()),

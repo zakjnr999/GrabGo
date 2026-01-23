@@ -40,7 +40,7 @@ class _BottomNavigatorState extends State<BottomNavigator> {
     Size size = MediaQuery.sizeOf(context);
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: colors.backgroundPrimary,
       body: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle(
           statusBarColor: Theme.of(context).scaffoldBackgroundColor,
@@ -54,7 +54,7 @@ class _BottomNavigatorState extends State<BottomNavigator> {
       bottomNavigationBar: Container(
         height: size.height * 0.16,
         decoration: BoxDecoration(
-          color: colors.backgroundPrimary,
+          color: colors.backgroundTertiary,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(KBorderSize.border),
             topRight: Radius.circular(KBorderSize.border),

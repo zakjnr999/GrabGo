@@ -4,9 +4,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
@@ -93,6 +97,25 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyBvSX6emxtbMNjweHsnetgASW7vCmBysGQ" />
+            
+        <!-- Geofence Broadcast Receiver for delivery zone monitoring -->
+        <receiver
+            android:name=".location.GeofenceBroadcastReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.grabgo.customer.ACTION_GEOFENCE_EVENT" />
+            </intent-filter>
+        </receiver>
+        
+        <!-- Boot receiver to re-register geofences after reboot -->
+        <receiver
+            android:name=".location.BootReceiver"
+            android:exported="true"
+            android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
     </application>
 
     <queries>

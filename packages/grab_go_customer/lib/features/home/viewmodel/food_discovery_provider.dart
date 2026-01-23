@@ -19,6 +19,9 @@ class FoodDiscoveryState {
   final List<FoodItem> topRatedItems;
   final bool isLoadingTopRated;
 
+  final List<FoodItem> recommendedItems;
+  final bool isLoadingRecommended;
+
   const FoodDiscoveryState({
     this.recentOrderItems = const [],
     this.isLoadingRecentItems = false,
@@ -29,6 +32,8 @@ class FoodDiscoveryState {
     this.isLoadingPopular = false,
     this.topRatedItems = const [],
     this.isLoadingTopRated = false,
+    this.recommendedItems = const [],
+    this.isLoadingRecommended = false,
   });
 
   FoodDiscoveryState copyWith({
@@ -41,6 +46,8 @@ class FoodDiscoveryState {
     bool? isLoadingPopular,
     List<FoodItem>? topRatedItems,
     bool? isLoadingTopRated,
+    List<FoodItem>? recommendedItems,
+    bool? isLoadingRecommended,
   }) {
     return FoodDiscoveryState(
       recentOrderItems: recentOrderItems ?? this.recentOrderItems,
@@ -52,6 +59,8 @@ class FoodDiscoveryState {
       isLoadingPopular: isLoadingPopular ?? this.isLoadingPopular,
       topRatedItems: topRatedItems ?? this.topRatedItems,
       isLoadingTopRated: isLoadingTopRated ?? this.isLoadingTopRated,
+      recommendedItems: recommendedItems ?? this.recommendedItems,
+      isLoadingRecommended: isLoadingRecommended ?? this.isLoadingRecommended,
     );
   }
 }
@@ -76,6 +85,9 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
 
   List<FoodItem> get topRatedItems => _state.topRatedItems;
   bool get isLoadingTopRated => _state.isLoadingTopRated;
+
+  List<FoodItem> get recommendedItems => _state.recommendedItems;
+  bool get isLoadingRecommended => _state.isLoadingRecommended;
 
   /// Fetch recent order items
   Future<void> fetchRecentOrderItems({bool forceRefresh = false}) async {
@@ -320,6 +332,67 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
     } catch (e) {
       if (kDebugMode) {
         print('Error saving recent order items to cache: $e');
+      }
+    }
+  }
+
+  /// Fetch recommended items
+  Future<void> fetchRecommendedItems({bool forceRefresh = false}) async {
+    if (_state.isLoadingRecommended) return;
+
+    // Try loading from cache first if we have no data
+    if (!forceRefresh && _state.recommendedItems.isEmpty) {
+      await _loadRecommendedFromCache();
+    }
+
+    // Fetch fresh data from API
+    await _fetchFromApiRecommended();
+  }
+
+  /// Private: Internal fetch for recommended items
+  Future<void> _fetchFromApiRecommended() async {
+    _updateState(_state.copyWith(isLoadingRecommended: true));
+
+    try {
+      final items = await _repository.fetchRecommendedItems(limit: 10);
+      _updateState(_state.copyWith(recommendedItems: items, isLoadingRecommended: false));
+      await _saveRecommendedToCache();
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching recommended items: $e');
+      }
+      _updateState(_state.copyWith(isLoadingRecommended: false));
+    }
+  }
+
+  /// Force refresh recommended items (for pull-to-refresh)
+  Future<void> refreshRecommendedItems() async {
+    await fetchRecommendedItems(forceRefresh: true);
+  }
+
+  /// Private: Load recommended items from cache
+  Future<void> _loadRecommendedFromCache() async {
+    try {
+      final cached = CacheService.getRecommendedItems();
+      if (cached.isNotEmpty) {
+        final items = cached.map((json) => FoodItem.fromJson(json)).toList();
+        _updateState(_state.copyWith(recommendedItems: items));
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error loading recommended items from cache: $e');
+      }
+    }
+  }
+
+  /// Private: Save recommended items to cache
+  Future<void> _saveRecommendedToCache() async {
+    try {
+      final itemsJson = _state.recommendedItems.map((item) => item.toJson()).toList();
+      CacheService.saveRecommendedItems(itemsJson);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error saving recommended items to cache: $e');
       }
     }
   }

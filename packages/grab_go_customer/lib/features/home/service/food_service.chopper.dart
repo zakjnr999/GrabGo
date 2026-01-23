@@ -95,4 +95,17 @@ final class _$FoodService extends FoodService {
     );
     return client.send<dynamic, dynamic>($request);
   }
+
+  @override
+  Future<Response<dynamic>> getRecommendedItems(int? limit) {
+    final Uri $url = Uri.parse('/foods/recommended');
+    final Map<String, dynamic> $params = <String, dynamic>{'limit': limit};
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+      parameters: $params,
+    );
+    return client.send<dynamic, dynamic>($request);
+  }
 }

@@ -129,6 +129,22 @@ VendorModel _$VendorModelFromJson(Map<String, dynamic> json) => VendorModel(
       ? null
       : DateTime.parse(json['lastOnlineAt'] as String),
   distance: (json['distance'] as num?)?.toDouble(),
+  emergencyService: json['emergencyService'] as bool?,
+  licenseNumber: json['licenseNumber'] as String?,
+  pharmacistName: json['pharmacistName'] as String?,
+  insuranceAccepted: (json['insuranceAccepted'] as List<dynamic>?)
+      ?.map((e) => e as String)
+      .toList(),
+  prescriptionRequired: json['prescriptionRequired'] as bool?,
+  is24Hours: json['is24Hours'] as bool?,
+  hasParking: json['hasParking'] as bool?,
+  services: (json['services'] as List<dynamic>?)
+      ?.map((e) => e as String)
+      .toList(),
+  productTypes: (json['productTypes'] as List<dynamic>?)
+      ?.map((e) => e as String)
+      .toList(),
+  businessIdNumber: json['businessIdNumber'] as String?,
   createdAt: json['createdAt'] == null
       ? null
       : DateTime.parse(json['createdAt'] as String),
@@ -176,6 +192,16 @@ Map<String, dynamic> _$VendorModelToJson(
   'vendorType': instance.vendorType,
   'lastOnlineAt': instance.lastOnlineAt?.toIso8601String(),
   'distance': instance.distance,
+  'emergencyService': instance.emergencyService,
+  'licenseNumber': instance.licenseNumber,
+  'pharmacistName': instance.pharmacistName,
+  'insuranceAccepted': instance.insuranceAccepted,
+  'prescriptionRequired': instance.prescriptionRequired,
+  'is24Hours': instance.is24Hours,
+  'hasParking': instance.hasParking,
+  'services': instance.services,
+  'productTypes': instance.productTypes,
+  'businessIdNumber': instance.businessIdNumber,
   'createdAt': instance.createdAt?.toIso8601String(),
   'updatedAt': instance.updatedAt?.toIso8601String(),
 };

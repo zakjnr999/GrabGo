@@ -5,7 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_places_flutter/google_places_flutter.dart';
 import 'package:google_places_flutter/model/prediction.dart';
-import 'package:grab_go_customer/shared/viewmodels/location_provider.dart';
+import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:provider/provider.dart';
@@ -45,7 +45,7 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
     });
 
     try {
-      final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+      final locationProvider = Provider.of<NativeLocationProvider>(context, listen: false);
       await locationProvider.fetchAddress();
 
       if (mounted) {
@@ -71,7 +71,7 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
   }
 
   void _onPlaceSelected(Prediction prediction) async {
-    final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+    final locationProvider = Provider.of<NativeLocationProvider>(context, listen: false);
 
     await locationProvider.updateLocation(
       latitude: 0.0, // TODO: Get from place details

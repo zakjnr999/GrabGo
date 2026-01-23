@@ -53,6 +53,7 @@ class CacheService {
     }
   }
 
+
   /// Get SharedPreferences instance
   static SharedPreferences get _instance {
     if (_prefs == null) {
@@ -60,6 +61,77 @@ class CacheService {
     }
     return _prefs!;
   }
+
+  // ==================== CACHE AGE UTILITIES ====================
+  
+  /// Check if cache is stale based on timestamp key and max age
+  static bool isCacheStale(String timestampKey, Duration maxAge) {
+    try {
+      final timestamp = _instance.getInt(timestampKey) ?? 0;
+      if (timestamp == 0) return true; // No cache exists
+      
+      final cacheDate = DateTime.fromMillisecondsSinceEpoch(timestamp);
+      final age = DateTime.now().difference(cacheDate);
+      
+      return age > maxAge;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error checking cache age for $timestampKey: $e');
+      }
+      return true; // Treat errors as stale
+    }
+  }
+
+  /// Get cache age in minutes
+  static int getCacheAgeInMinutes(String timestampKey) {
+    try {
+      final timestamp = _instance.getInt(timestampKey) ?? 0;
+      if (timestamp == 0) return -1; // No cache
+      
+      final cacheDate = DateTime.fromMillisecondsSinceEpoch(timestamp);
+      final age = DateTime.now().difference(cacheDate);
+      
+      return age.inMinutes;
+    } catch (e) {
+      return -1;
+    }
+  }
+
+  /// Get human-readable cache age string
+  static String getCacheAgeString(String timestampKey) {
+    final minutes = getCacheAgeInMinutes(timestampKey);
+    if (minutes < 0) return 'No cache';
+    if (minutes == 0) return 'Just now';
+    if (minutes < 60) return '$minutes min${minutes > 1 ? 's' : ''} ago';
+    
+    final hours = minutes ~/ 60;
+    if (hours < 24) return '$hours hour${hours > 1 ? 's' : ''} ago';
+    
+    final days = hours ~/ 24;
+    return '$days day${days > 1 ? 's' : ''} ago';
+  }
+
+  // ==================== CACHE TIMESTAMP KEYS ====================
+  
+  /// Timestamp keys for different cache types
+  static const String foodCategoriesTimestampKey = 'food_categories_cache_timestamp';
+  static const String foodDealsTimestampKey = 'food_deals_cache_timestamp';
+  static const String popularItemsTimestampKey = 'popular_items_cache_timestamp';
+  static const String topRatedItemsTimestampKey = 'top_rated_items_cache_timestamp';
+  static const String recommendedItemsTimestampKey = 'recommended_items_cache_timestamp';
+  static const String promotionalBannersTimestampKey = 'promotional_banners_cache_timestamp';
+  static const String restaurantsTimestampKey = 'restaurants_cache_timestamp';
+  
+  static const String groceryCategoriesTimestampKey = 'grocery_categories_cache_timestamp';
+  static const String groceryStoresTimestampKey = 'grocery_stores_cache_timestamp';
+  static const String groceryItemsTimestampKey = 'grocery_items_cache_timestamp';
+  static const String groceryDealsTimestampKey = 'grocery_deals_cache_timestamp';
+  
+  static const String pharmacyCategoriesTimestampKey = 'pharmacy_categories_cache_timestamp';
+  static const String pharmacyItemsTimestampKey = 'pharmacy_items_cache_timestamp';
+  
+  static const String grabmartCategoriesTimestampKey = 'grabmart_categories_cache_timestamp';
+  static const String grabmartItemsTimestampKey = 'grabmart_items_cache_timestamp';
 
   /// Save user authentication token (delegates to SecureStorageService)
   static Future<bool> saveAuthToken(String token) async {
@@ -474,6 +546,43 @@ class CacheService {
   static bool isTopRatedItemsCacheValid() {
     try {
       final timestamp = _instance.getInt('top_rated_items_cache_timestamp') ?? 0;
+      final cacheTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
+      final now = DateTime.now();
+      return now.difference(cacheTime) < _defaultCacheExpiry;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Save recommended items
+  static void saveRecommendedItems(List<Map<String, dynamic>> items) {
+    try {
+      _instance.setString('recommended_items', jsonEncode(items));
+      _instance.setInt('recommended_items_cache_timestamp', DateTime.now().millisecondsSinceEpoch);
+    } catch (e) {
+      debugPrint('Error saving recommended items: $e');
+    }
+  }
+
+  /// Get recommended items
+  static List<Map<String, dynamic>> getRecommendedItems() {
+    try {
+      final itemsJson = _instance.getString('recommended_items');
+      if (itemsJson != null) {
+        final List<dynamic> itemsList = jsonDecode(itemsJson);
+        return itemsList.cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting recommended items: $e');
+      return [];
+    }
+  }
+
+  /// Check if recommended items cache is valid
+  static bool isRecommendedItemsCacheValid() {
+    try {
+      final timestamp = _instance.getInt('recommended_items_cache_timestamp') ?? 0;
       final cacheTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
       final now = DateTime.now();
       return now.difference(cacheTime) < _defaultCacheExpiry;
@@ -1446,6 +1555,122 @@ class CacheService {
     }
   }
 
+  /// Save grocery popular items
+  static Future<bool> saveGroceryPopularItems(List<Map<String, dynamic>> items) async {
+    try {
+      final itemsJson = jsonEncode(items);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      await _instance.setString('grocery_popular_items', itemsJson);
+      await _instance.setInt('grocery_popular_items_cache_timestamp', timestamp);
+      return true;
+    } catch (e) {
+      debugPrint('Error saving grocery popular items: $e');
+      return false;
+    }
+  }
+
+  /// Get grocery popular items
+  static List<Map<String, dynamic>> getGroceryPopularItems() {
+    try {
+      final itemsJson = _instance.getString('grocery_popular_items');
+      if (itemsJson != null) {
+        final List<dynamic> itemsList = jsonDecode(itemsJson);
+        return itemsList.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting grocery popular items: $e');
+      return [];
+    }
+  }
+
+  /// Save grocery top rated items
+  static Future<bool> saveGroceryTopRatedItems(List<Map<String, dynamic>> items) async {
+    try {
+      final itemsJson = jsonEncode(items);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      await _instance.setString('grocery_top_rated_items', itemsJson);
+      await _instance.setInt('grocery_top_rated_items_cache_timestamp', timestamp);
+      return true;
+    } catch (e) {
+      debugPrint('Error saving grocery top rated items: $e');
+      return false;
+    }
+  }
+
+  /// Get grocery top rated items
+  static List<Map<String, dynamic>> getGroceryTopRatedItems() {
+    try {
+      final itemsJson = _instance.getString('grocery_top_rated_items');
+      if (itemsJson != null) {
+        final List<dynamic> itemsList = jsonDecode(itemsJson);
+        return itemsList.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting grocery top rated items: $e');
+      return [];
+    }
+  }
+
+  /// Save grocery buy again items
+  static Future<bool> saveGroceryBuyAgainItems(List<Map<String, dynamic>> items) async {
+    try {
+      final itemsJson = jsonEncode(items);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      await _instance.setString('grocery_buy_again_items', itemsJson);
+      await _instance.setInt('grocery_buy_again_items_cache_timestamp', timestamp);
+      return true;
+    } catch (e) {
+      debugPrint('Error saving grocery buy again items: $e');
+      return false;
+    }
+  }
+
+  /// Get grocery buy again items
+  static List<Map<String, dynamic>> getGroceryBuyAgainItems() {
+    try {
+      final itemsJson = _instance.getString('grocery_buy_again_items');
+      if (itemsJson != null) {
+        final List<dynamic> itemsList = jsonDecode(itemsJson);
+        return itemsList.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting grocery buy again items: $e');
+      return [];
+    }
+  }
+
+  /// Save grocery store specials
+  static Future<bool> saveGroceryStoreSpecials(List<Map<String, dynamic>> specials) async {
+    try {
+      final specialsJson = jsonEncode(specials);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      await _instance.setString('grocery_store_specials', specialsJson);
+      await _instance.setInt('grocery_store_specials_cache_timestamp', timestamp);
+      return true;
+    } catch (e) {
+      debugPrint('Error saving grocery store specials: $e');
+      return false;
+    }
+  }
+
+  /// Get grocery store specials
+  static List<Map<String, dynamic>> getGroceryStoreSpecials() {
+    try {
+      final specialsJson = _instance.getString('grocery_store_specials');
+      if (specialsJson != null) {
+        final List<dynamic> specialsList = jsonDecode(specialsJson);
+        return specialsList.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error getting grocery store specials: $e');
+      return [];
+    }
+  }
+
   /// Clear all grocery cache
   static Future<void> clearGroceryCache() async {
     try {
@@ -1457,7 +1682,15 @@ class CacheService {
         'grocery_items',
         'grocery_items_cache_timestamp',
         'grocery_deals',
-        'grocery_deals_cache_timestamp'
+        'grocery_deals_cache_timestamp',
+        'grocery_popular_items',
+        'grocery_popular_items_cache_timestamp',
+        'grocery_top_rated_items',
+        'grocery_top_rated_items_cache_timestamp',
+        'grocery_buy_again_items',
+        'grocery_buy_again_items_cache_timestamp',
+        'grocery_store_specials',
+        'grocery_store_specials_cache_timestamp'
       ];
       for (final key in keys) {
         await _instance.remove(key);

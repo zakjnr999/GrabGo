@@ -50,16 +50,17 @@ class FoodProvider with ChangeNotifier {
   List<FoodItem> getAllFoods() => _categoryProvider.state.allFoods;
   List<FoodItem> getRandomFoods({int count = 5}) => _categoryProvider.state.getRandomFoods(count: count);
 
-  /// Refresh all data from all providers
-  Future<void> refreshAll() async {
+  /// Refresh all data from all providers (cache-first on initial load)
+  Future<void> refreshAll({bool forceRefresh = false}) async {
     await Future.wait([
-      _categoryProvider.refreshCategories(),
-      _bannerProvider.refreshBanners(),
-      _dealsProvider.refreshDeals(),
-      _discoveryProvider.fetchOrderHistory(forceRefresh: true),
-      _discoveryProvider.fetchRecentOrderItems(forceRefresh: true),
-      _discoveryProvider.refreshPopularItems(),
-      _discoveryProvider.refreshTopRatedItems(),
+      forceRefresh ? _categoryProvider.refreshCategories() : _categoryProvider.fetchCategories(),
+      forceRefresh ? _bannerProvider.refreshBanners() : _bannerProvider.fetchPromotionalBanners(),
+      forceRefresh ? _dealsProvider.refreshDeals() : _dealsProvider.fetchDeals(),
+      _discoveryProvider.fetchOrderHistory(forceRefresh: forceRefresh),
+      _discoveryProvider.fetchRecentOrderItems(forceRefresh: forceRefresh),
+      forceRefresh ? _discoveryProvider.refreshPopularItems() : _discoveryProvider.fetchPopularItems(),
+      forceRefresh ? _discoveryProvider.refreshTopRatedItems() : _discoveryProvider.fetchTopRatedItems(),
+      forceRefresh ? _discoveryProvider.refreshRecommendedItems() : _discoveryProvider.fetchRecommendedItems(),
     ]);
   }
 
@@ -89,8 +90,12 @@ class FoodProvider with ChangeNotifier {
   List<FoodItem> get topRatedItems => _discoveryProvider.topRatedItems;
   bool get isLoadingTopRated => _discoveryProvider.isLoadingTopRated;
 
+  List<FoodItem> get recommendedItems => _discoveryProvider.recommendedItems;
+  bool get isLoadingRecommended => _discoveryProvider.isLoadingRecommended;
+
   Future<void> fetchRecentOrderItems() => _discoveryProvider.fetchRecentOrderItems();
   Future<void> fetchOrderHistory() => _discoveryProvider.fetchOrderHistory();
   Future<void> fetchPopularItems() => _discoveryProvider.fetchPopularItems();
   Future<void> fetchTopRatedItems() => _discoveryProvider.fetchTopRatedItems();
+  Future<void> fetchRecommendedItems() => _discoveryProvider.fetchRecommendedItems();
 }

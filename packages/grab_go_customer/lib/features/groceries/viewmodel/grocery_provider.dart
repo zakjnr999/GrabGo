@@ -75,8 +75,8 @@ class GroceryProvider extends ChangeNotifier {
 
   /// Fetch all grocery stores
   Future<void> fetchStores({bool forceRefresh = false}) async {
-    // Load from cache if not already loaded and not forcing refresh
-    if (!forceRefresh && _stores.isEmpty) {
+    // Load from cache first if empty for immediate UI
+    if (_stores.isEmpty) {
       final cached = CacheService.getGroceryStores();
       if (cached.isNotEmpty) {
         _stores = cached.map((json) => GroceryStore.fromJson(json)).toList();
@@ -84,8 +84,14 @@ class GroceryProvider extends ChangeNotifier {
       }
     }
 
-    _isLoadingStores = true;
-    notifyListeners();
+    // Always fetch fresh data if forcing refresh or if we want background update
+    if (!forceRefresh && _stores.isNotEmpty) return;
+
+    // Only show loading state if we have no data
+    if (_stores.isEmpty) {
+      _isLoadingStores = true;
+      notifyListeners();
+    }
 
     try {
       final freshStores = await _repository.fetchStores();
@@ -105,7 +111,7 @@ class GroceryProvider extends ChangeNotifier {
 
   /// Fetch all grocery categories
   Future<void> fetchCategories({bool forceRefresh = false}) async {
-    if (!forceRefresh && _categories.isEmpty) {
+    if (_categories.isEmpty) {
       final cached = CacheService.getGroceryCategories();
       if (cached.isNotEmpty) {
         _categories = cached.map((json) => GroceryCategory.fromJson(json)).toList();
@@ -113,8 +119,13 @@ class GroceryProvider extends ChangeNotifier {
       }
     }
 
-    _isLoadingCategories = true;
-    notifyListeners();
+    if (!forceRefresh && _categories.isNotEmpty) return;
+
+    // Only show loading state if we have no data
+    if (_categories.isEmpty) {
+      _isLoadingCategories = true;
+      notifyListeners();
+    }
 
     try {
       final freshCategories = await _repository.fetchCategories();
@@ -141,18 +152,28 @@ class GroceryProvider extends ChangeNotifier {
   }) async {
     final isBaseFetch = category == null && store == null && minPrice == null && maxPrice == null && tags == null;
 
-    if (!forceRefresh && isBaseFetch && _items.isEmpty) {
+    if (isBaseFetch && _items.isEmpty) {
       final cached = CacheService.getGroceryItems();
       if (cached.isNotEmpty) {
         _items = cached.map((json) => GroceryItem.fromJson(json)).toList();
         notifyListeners();
-        // Load sub-sections from memory-cached items
         fetchFreshArrivals();
       }
     }
 
-    _isLoadingItems = true;
-    notifyListeners();
+    if (!forceRefresh && isBaseFetch && _items.isNotEmpty) {
+      // Still need to trigger secondary fetches if items exist but lists don't
+      if (_freshArrivals.isEmpty) fetchFreshArrivals();
+      if (_buyAgainItems.isEmpty) fetchBuyAgainItems();
+      if (_storeSpecials.isEmpty) fetchStoreSpecials();
+      return;
+    }
+
+    // Only show loading state if we have no data
+    if (_items.isEmpty) {
+      _isLoadingItems = true;
+      notifyListeners();
+    }
 
     try {
       final freshItems = await _repository.fetchItems(
@@ -195,7 +216,7 @@ class GroceryProvider extends ChangeNotifier {
 
   /// Fetch grocery deals
   Future<void> fetchDeals({bool forceRefresh = false}) async {
-    if (!forceRefresh && _deals.isEmpty) {
+    if (_deals.isEmpty) {
       final cached = CacheService.getGroceryDeals();
       if (cached.isNotEmpty) {
         _deals = cached.map((json) => GroceryItem.fromJson(json)).toList();
@@ -203,8 +224,13 @@ class GroceryProvider extends ChangeNotifier {
       }
     }
 
-    _isLoadingDeals = true;
-    notifyListeners();
+    if (!forceRefresh && _deals.isNotEmpty) return;
+
+    // Only show loading state if we have no data
+    if (_deals.isEmpty) {
+      _isLoadingDeals = true;
+      notifyListeners();
+    }
 
     try {
       final freshDeals = await _repository.fetchDeals();
@@ -240,17 +266,26 @@ class GroceryProvider extends ChangeNotifier {
   }
 
   /// Fetch buy again items (order history)
-  Future<void> fetchBuyAgainItems() async {
+  Future<void> fetchBuyAgainItems({bool forceRefresh = false}) async {
+    if (!forceRefresh && _buyAgainItems.isEmpty) {
+      final cached = CacheService.getGroceryBuyAgainItems();
+      if (cached.isNotEmpty) {
+        _buyAgainItems = cached.map((json) => GroceryItem.fromJson(json)).toList();
+        notifyListeners();
+      }
+    }
+
     _isLoadingBuyAgain = true;
     notifyListeners();
 
     try {
-      _buyAgainItems = await _repository.fetchOrderHistory();
+      final items = await _repository.fetchOrderHistory();
+      _buyAgainItems = items;
+      await CacheService.saveGroceryBuyAgainItems(items.map((i) => i.toJson()).toList());
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error in fetchBuyAgainItems: $e');
       }
-      _buyAgainItems = [];
     } finally {
       _isLoadingBuyAgain = false;
       notifyListeners();
@@ -258,33 +293,53 @@ class GroceryProvider extends ChangeNotifier {
   }
 
   /// Refresh all grocery data
-  Future<void> refreshAll() async {
-    // Pre-set all loading states to true so UI shows loading skeletons immediately
-    _isLoadingStores = true;
-    _isLoadingCategories = true;
-    _isLoadingItems = true;
-    _isLoadingDeals = true;
-    _isLoadingFreshArrivals = true;
-    _isLoadingBuyAgain = true;
-    _isLoadingStoreSpecials = true;
-    _isLoadingPopular = true;
-    _isLoadingTopRated = true;
-    notifyListeners();
+  Future<void> refreshAll({bool forceRefresh = false}) async {
+    // Smart caching: Check if cache is stale (> 5 minutes)
+    final cacheIsStale = CacheService.isCacheStale(
+      CacheService.groceryItemsTimestampKey,
+      const Duration(minutes: 5),
+    );
+
+    // ONLY show loading states (skeletons) if data is actually empty
+    // This prevents skeletons from showing during pull-to-refresh when data is already visible
+    if (_items.isEmpty) {
+      _isLoadingStores = true;
+      _isLoadingCategories = true;
+      _isLoadingItems = true;
+      _isLoadingDeals = true;
+      _isLoadingFreshArrivals = true;
+      _isLoadingBuyAgain = true;
+      _isLoadingStoreSpecials = true;
+      _isLoadingPopular = true;
+      _isLoadingTopRated = true;
+      notifyListeners();
+    }
 
     await Future.wait([
-      fetchStores(forceRefresh: true),
-      fetchCategories(forceRefresh: true),
-      fetchItems(forceRefresh: true),
-      fetchDeals(forceRefresh: true),
+      fetchStores(forceRefresh: forceRefresh || cacheIsStale),
+      fetchCategories(forceRefresh: forceRefresh || cacheIsStale),
+      fetchItems(forceRefresh: forceRefresh || cacheIsStale),
+      fetchDeals(forceRefresh: forceRefresh || cacheIsStale),
     ]);
-    // Fetch fresh arrivals, buy again, store specials, popular, and top-rated after items are loaded
+
+    // Fetch dependent sections after base data is updated
     await Future.wait([
       fetchFreshArrivals(),
-      fetchBuyAgainItems(),
-      fetchStoreSpecials(),
-      fetchPopularItems(),
-      fetchTopRatedItems(),
+      fetchBuyAgainItems(forceRefresh: forceRefresh || cacheIsStale),
+      fetchStoreSpecials(forceRefresh: forceRefresh || cacheIsStale),
+      fetchPopularItems(forceRefresh: forceRefresh || cacheIsStale),
+      fetchTopRatedItems(forceRefresh: forceRefresh || cacheIsStale),
     ]);
+  }
+
+  /// Check if we should show skeleton loader based on cache age
+  bool shouldShowSkeleton() {
+    // Show skeleton if cache is older than 5 minutes and we have no data
+    final cacheIsStale = CacheService.isCacheStale(
+      CacheService.groceryItemsTimestampKey,
+      const Duration(minutes: 5),
+    );
+    return cacheIsStale && _items.isEmpty;
   }
 
   /// Clear all data
@@ -297,17 +352,26 @@ class GroceryProvider extends ChangeNotifier {
   }
 
   /// Fetch store specials (items with active discounts grouped by store)
-  Future<void> fetchStoreSpecials() async {
+  Future<void> fetchStoreSpecials({bool forceRefresh = false}) async {
+    if (!forceRefresh && _storeSpecials.isEmpty) {
+      final cached = CacheService.getGroceryStoreSpecials();
+      if (cached.isNotEmpty) {
+        _storeSpecials = cached.map((json) => StoreSpecial.fromJson(json)).toList();
+        notifyListeners();
+      }
+    }
+
     _isLoadingStoreSpecials = true;
     notifyListeners();
 
     try {
-      _storeSpecials = await _repository.fetchStoreSpecials();
+      final specials = await _repository.fetchStoreSpecials();
+      _storeSpecials = specials;
+      await CacheService.saveGroceryStoreSpecials(specials.map((s) => s.toJson()).toList());
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error fetching store specials: $e');
       }
-      _storeSpecials = [];
     } finally {
       _isLoadingStoreSpecials = false;
       notifyListeners();
@@ -315,17 +379,26 @@ class GroceryProvider extends ChangeNotifier {
   }
 
   /// Fetch popular grocery items sorted by order count
-  Future<void> fetchPopularItems() async {
+  Future<void> fetchPopularItems({bool forceRefresh = false}) async {
+    if (!forceRefresh && _popularItems.isEmpty) {
+      final cached = CacheService.getGroceryPopularItems();
+      if (cached.isNotEmpty) {
+        _popularItems = cached.map((json) => GroceryItem.fromJson(json)).toList();
+        notifyListeners();
+      }
+    }
+
     _isLoadingPopular = true;
     notifyListeners();
 
     try {
-      _popularItems = await _repository.fetchPopularItems(limit: 10);
+      final items = await _repository.fetchPopularItems(limit: 10);
+      _popularItems = items;
+      await CacheService.saveGroceryPopularItems(items.map((i) => i.toJson()).toList());
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error fetching popular items: $e');
       }
-      _popularItems = [];
     } finally {
       _isLoadingPopular = false;
       notifyListeners();
@@ -333,17 +406,26 @@ class GroceryProvider extends ChangeNotifier {
   }
 
   /// Fetch top-rated grocery items sorted by rating
-  Future<void> fetchTopRatedItems() async {
+  Future<void> fetchTopRatedItems({bool forceRefresh = false}) async {
+    if (!forceRefresh && _topRatedItems.isEmpty) {
+      final cached = CacheService.getGroceryTopRatedItems();
+      if (cached.isNotEmpty) {
+        _topRatedItems = cached.map((json) => GroceryItem.fromJson(json)).toList();
+        notifyListeners();
+      }
+    }
+
     _isLoadingTopRated = true;
     notifyListeners();
 
     try {
-      _topRatedItems = await _repository.fetchTopRatedItems(limit: 10, minRating: 4.5);
+      final items = await _repository.fetchTopRatedItems(limit: 10, minRating: 4.5);
+      _topRatedItems = items;
+      await CacheService.saveGroceryTopRatedItems(items.map((i) => i.toJson()).toList());
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error fetching top rated items: $e');
       }
-      _topRatedItems = [];
     } finally {
       _isLoadingTopRated = false;
       notifyListeners();

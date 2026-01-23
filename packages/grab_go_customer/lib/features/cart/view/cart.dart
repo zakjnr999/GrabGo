@@ -33,7 +33,7 @@ class Cart extends StatelessWidget {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: systemUiOverlayStyle,
       child: Scaffold(
-        backgroundColor: colors.backgroundSecondary,
+        backgroundColor: colors.backgroundPrimary,
         body: Consumer<CartProvider>(
           builder: (context, provider, child) {
             const double deliveryFee = 2.0;
@@ -51,17 +51,9 @@ class Cart extends StatelessWidget {
                         height: 44.h,
                         width: 44.w,
                         decoration: BoxDecoration(
-                          color: colors.backgroundPrimary,
+                          color: colors.backgroundSecondary,
                           shape: BoxShape.circle,
                           border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
-                          boxShadow: [
-                            BoxShadow(
-                              color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                              spreadRadius: 0,
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
                         ),
                         child: Material(
                           color: Colors.transparent,
@@ -86,27 +78,28 @@ class Cart extends StatelessWidget {
                           fontFamily: "Lato",
                           package: 'grab_go_shared',
                           color: colors.textPrimary,
-                          fontSize: 24.sp,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      if (provider.cartItems.isNotEmpty) ...[
-                        SizedBox(width: 8.w),
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-                          decoration: BoxDecoration(
-                            color: colors.accentOrange,
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          child: Text(
-                            "${provider.cartItems.length}",
-                            style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                      ],
+                      // if (provider.cartItems.isNotEmpty) ...[
+                      //   SizedBox(width: 8.w),
+                      //   Container(
+                      //     padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                      //     decoration: BoxDecoration(
+                      //       color: colors.accentOrange,
+                      //       borderRadius: BorderRadius.circular(12.r),
+                      //     ),
+                      //     child: Text(
+                      //       "${provider.cartItems.length}",
+                      //       style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w700),
+                      //     ),
+                      //   ),
+                      // ],
                     ],
                   ),
                 ),
+                Divider(color: colors.backgroundSecondary, height: 1.h, thickness: 1),
                 if (provider.cartItems.isEmpty)
                   _buildEmptyCart(context, colors)
                 else
@@ -324,7 +317,7 @@ class Cart extends StatelessWidget {
                   Container(
                     padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 16.h, bottom: padding.bottom + 16.h),
                     decoration: BoxDecoration(
-                      color: colors.backgroundSecondary,
+                      color: colors.backgroundPrimary,
                       border: Border(top: BorderSide(color: colors.textPrimary.withOpacity(0.1), width: 0.5)),
                     ),
                     child: GestureDetector(

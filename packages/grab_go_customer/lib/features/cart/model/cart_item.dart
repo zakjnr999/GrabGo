@@ -24,13 +24,12 @@ class _CartItemState extends State<CartItem> {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final size = MediaQuery.sizeOf(context);
 
     return Consumer<CartProvider>(
       builder: (context, provider, child) {
         if (provider.cartItems.isEmpty) {
-          return const SizedBox.shrink(); // Empty state handled in parent
+          return const SizedBox.shrink();
         }
 
         final cartEntries = provider.cartItems.entries.toList();
@@ -46,7 +45,6 @@ class _CartItemState extends State<CartItem> {
                 children: [
                   GestureDetector(
                     onTap: () {
-                      // Type-based navigation
                       if (cartItem.itemType == 'Food') {
                         context.push("/foodDetails", extra: cartItem);
                       } else if (cartItem.itemType == 'GroceryItem') {
@@ -54,6 +52,7 @@ class _CartItemState extends State<CartItem> {
                       }
                     },
                     child: SwipeActionCell(
+                      backgroundColor: colors.backgroundPrimary,
                       key: ObjectKey(cartItem),
                       trailingActions: [
                         SwipeAction(
@@ -69,19 +68,12 @@ class _CartItemState extends State<CartItem> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Container(
-                                  padding: EdgeInsets.all(10.r),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.2),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: SvgPicture.asset(
-                                    Assets.icons.binMinusIn,
-                                    package: 'grab_go_shared',
-                                    height: 24.h,
-                                    width: 24.w,
-                                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                                  ),
+                                SvgPicture.asset(
+                                  Assets.icons.binMinusIn,
+                                  package: 'grab_go_shared',
+                                  height: 24.h,
+                                  width: 24.w,
+                                  colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                                 ),
                                 SizedBox(height: 6.h),
                                 Text(
@@ -107,15 +99,7 @@ class _CartItemState extends State<CartItem> {
                         decoration: BoxDecoration(
                           color: colors.backgroundPrimary,
                           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                          border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 1),
-                          boxShadow: [
-                            BoxShadow(
-                              color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
-                              spreadRadius: 0,
-                              blurRadius: 12,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                          border: Border.all(color: colors.inputBorder.withOpacity(0.5), width: 1),
                         ),
                         child: Row(
                           children: [
@@ -150,7 +134,13 @@ class _CartItemState extends State<CartItem> {
                                   width: size.width * 0.32,
                                   color: colors.inputBorder,
                                   child: Center(
-                                    child: Icon(Icons.broken_image, color: colors.textSecondary, size: 30.sp),
+                                    child: SvgPicture.asset(
+                                      Assets.icons.utensilsCrossed,
+                                      package: 'grab_go_shared',
+                                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                      width: 30.w,
+                                      height: 30.h,
+                                    ),
                                   ),
                                 ),
                               ),

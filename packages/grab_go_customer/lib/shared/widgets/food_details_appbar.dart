@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
+import 'package:grab_go_customer/features/home/view/item_reviews_page.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
@@ -22,12 +23,11 @@ class FoodDetailsAppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     Size size = MediaQuery.sizeOf(context);
 
     return SliverAppBar(
-      expandedHeight: size.height * 0.30,
-      backgroundColor: const Color(0xFF121212),
+      expandedHeight: size.height * 0.20,
+      backgroundColor: Colors.black,
       surfaceTintColor: colors.backgroundPrimary,
       systemOverlayStyle: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -51,7 +51,7 @@ class FoodDetailsAppBar extends StatelessWidget {
                 height: size.height * 0.30,
                 width: double.infinity,
                 color: colors.inputBorder,
-                padding: EdgeInsets.all(60.r),
+                padding: EdgeInsets.all(80.r),
                 child: SvgPicture.asset(
                   foodItem is FoodItem ? Assets.icons.utensilsCrossed : Assets.icons.package,
                   package: 'grab_go_shared',
@@ -62,7 +62,7 @@ class FoodDetailsAppBar extends StatelessWidget {
                 height: size.height * 0.30,
                 width: double.infinity,
                 color: colors.inputBorder,
-                padding: EdgeInsets.all(60.r),
+                padding: EdgeInsets.all(80.r),
                 child: SvgPicture.asset(
                   foodItem is FoodItem ? Assets.icons.utensilsCrossed : Assets.icons.package,
                   package: 'grab_go_shared',
@@ -96,7 +96,7 @@ class FoodDetailsAppBar extends StatelessWidget {
           height: 24.h,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: colors.backgroundSecondary,
+            color: colors.backgroundPrimary,
             borderRadius: BorderRadius.only(topLeft: Radius.circular(20.r), topRight: Radius.circular(20.r)),
           ),
           child: Container(
@@ -145,8 +145,11 @@ class FoodDetailsAppBar extends StatelessWidget {
               );
             } catch (e) {
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Failed to share: ${e.toString()}'), backgroundColor: colors.error),
+                AppToastMessage.show(
+                  context: context,
+                  message: 'Failed to share ${e.toString()}',
+                  backgroundColor: colors.error,
+                  maxLines: 2,
                 );
               }
             }
@@ -162,8 +165,6 @@ class FoodDetailsAppBar extends StatelessWidget {
         SizedBox(width: 10.w),
         Consumer<FavoritesProvider>(
           builder: (context, favoritesProvider, child) {
-            // favoritesProvider works with CartItem or specific models? 
-            // Most likely it works with CartItem since it's a shared feature.
             final isFavorite = favoritesProvider.isFavorite(foodItem as dynamic);
             return _buildActionButton(
               context: context,
@@ -180,6 +181,18 @@ class FoodDetailsAppBar extends StatelessWidget {
               isFavorite: isFavorite,
             );
           },
+        ),
+        SizedBox(width: 10.w),
+        _buildActionButton(
+          context: context,
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ItemReviewsPage())),
+          icon: SvgPicture.asset(
+            Assets.icons.moreVertical,
+            package: 'grab_go_shared',
+            height: 20.h,
+            width: 20.w,
+            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+          ),
         ),
       ],
     );
@@ -201,14 +214,7 @@ class FoodDetailsAppBar extends StatelessWidget {
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Container(
-              decoration: BoxDecoration(
-                color: isFavorite ? Colors.red.withValues(alpha: 0.3) : Colors.grey.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isFavorite ? Colors.red.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.2),
-                  width: 1.5,
-                ),
-              ),
+              decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.2), shape: BoxShape.circle),
               child: Center(child: icon),
             ),
           ),

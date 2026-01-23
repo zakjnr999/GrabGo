@@ -55,7 +55,7 @@ class _CheckoutState extends State<Checkout> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: systemUiOverlayStyle,
       child: Scaffold(
-        backgroundColor: colors.backgroundSecondary,
+        backgroundColor: colors.backgroundPrimary,
         body: Consumer<CartProvider>(
           builder: (context, provider, child) {
             const double deliveryFee = 2.0;
@@ -74,17 +74,9 @@ class _CheckoutState extends State<Checkout> {
                         height: 44.h,
                         width: 44.w,
                         decoration: BoxDecoration(
-                          color: colors.backgroundPrimary,
+                          color: colors.backgroundSecondary,
                           shape: BoxShape.circle,
                           border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-                          boxShadow: [
-                            BoxShadow(
-                              color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                              spreadRadius: 0,
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
                         ),
                         child: Material(
                           color: Colors.transparent,
@@ -116,16 +108,17 @@ class _CheckoutState extends State<Checkout> {
                     ],
                   ),
                 ),
+                Divider(color: colors.backgroundSecondary, height: 1.h, thickness: 1),
                 // Scrollable content
                 Expanded(
                   child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
+                    physics: const AlwaysScrollableScrollPhysics(),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Shipping Address Section
                         Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20.w),
+                          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
                           child: Row(
                             children: [
                               SvgPicture.asset(
@@ -581,7 +574,7 @@ class _CheckoutState extends State<Checkout> {
                 Container(
                   padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 16.h, bottom: padding.bottom + 16.h),
                   decoration: BoxDecoration(
-                    color: colors.backgroundSecondary,
+                    color: colors.backgroundPrimary,
                     border: Border(top: BorderSide(color: colors.textPrimary.withValues(alpha: 0.1), width: 0.5)),
                   ),
                   child: GestureDetector(
@@ -675,7 +668,7 @@ class _CheckoutState extends State<Checkout> {
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
         decoration: BoxDecoration(
-          color: isSelected ? colors.accentOrange : colors.backgroundPrimary,
+          color: isSelected ? colors.accentOrange : colors.backgroundSecondary,
           borderRadius: BorderRadius.circular(20.r),
         ),
         child: Text(
@@ -701,7 +694,7 @@ class _CheckoutState extends State<Checkout> {
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
         decoration: BoxDecoration(
-          color: _showCustomInstruction ? colors.accentOrange : colors.backgroundPrimary,
+          color: _showCustomInstruction ? colors.accentOrange : colors.backgroundSecondary,
           borderRadius: BorderRadius.circular(20.r),
         ),
         child: Row(
@@ -749,7 +742,7 @@ class _CheckoutState extends State<Checkout> {
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
         decoration: BoxDecoration(
-          color: isSelected ? colors.accentOrange : colors.backgroundPrimary,
+          color: isSelected ? colors.accentOrange : colors.backgroundSecondary,
           borderRadius: BorderRadius.circular(20.r),
         ),
         child: Text(
@@ -775,7 +768,7 @@ class _CheckoutState extends State<Checkout> {
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
         decoration: BoxDecoration(
-          color: _showCustomDeliveryInstruction ? colors.accentOrange : colors.backgroundPrimary,
+          color: _showCustomDeliveryInstruction ? colors.accentOrange : colors.backgroundSecondary,
           borderRadius: BorderRadius.circular(20.r),
         ),
         child: Row(
@@ -820,7 +813,7 @@ class _CheckoutState extends State<Checkout> {
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
         decoration: BoxDecoration(
-          color: isSelected ? colors.accentOrange : colors.backgroundPrimary,
+          color: isSelected ? colors.accentOrange : colors.backgroundSecondary,
           borderRadius: BorderRadius.circular(20.r),
         ),
         child: Text(
@@ -849,7 +842,7 @@ class _CheckoutState extends State<Checkout> {
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
         decoration: BoxDecoration(
-          color: _showCustomTip ? colors.accentOrange : colors.backgroundPrimary,
+          color: _showCustomTip ? colors.accentOrange : colors.backgroundSecondary,
           borderRadius: BorderRadius.circular(20.r),
         ),
         child: Row(
@@ -885,7 +878,6 @@ class _CheckoutState extends State<Checkout> {
     required BuildContext context,
   }) {
     final colors = context.appColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isSelected = _selectedAddress == id;
 
     return GestureDetector(
@@ -902,14 +894,7 @@ class _CheckoutState extends State<Checkout> {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-          boxShadow: [
-            BoxShadow(
-              color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
-              spreadRadius: 0,
-              blurRadius: isSelected ? 16 : 12,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.5), width: 1),
         ),
         child: Row(
           children: [
@@ -1013,7 +998,6 @@ class _CheckoutState extends State<Checkout> {
 
   Widget _buildCurrentLocationTile(BuildContext context) {
     final colors = context.appColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isSelected = _selectedAddress == "Current Location";
 
     return GestureDetector(
@@ -1030,14 +1014,7 @@ class _CheckoutState extends State<Checkout> {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-          boxShadow: [
-            BoxShadow(
-              color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
-              spreadRadius: 0,
-              blurRadius: isSelected ? 16 : 12,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.5), width: 1),
         ),
         child: Row(
           children: [
@@ -1125,7 +1102,6 @@ class _CheckoutState extends State<Checkout> {
     required BuildContext context,
   }) {
     final colors = context.appColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isSelected = _selectedPaymentMethod == methodValue;
 
     return GestureDetector(
@@ -1141,14 +1117,7 @@ class _CheckoutState extends State<Checkout> {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-          boxShadow: [
-            BoxShadow(
-              color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
-              spreadRadius: 0,
-              blurRadius: isSelected ? 16 : 12,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.5), width: 1),
         ),
         child: Row(
           children: [
@@ -1157,7 +1126,7 @@ class _CheckoutState extends State<Checkout> {
               height: 50.h,
               width: 60.w,
               decoration: BoxDecoration(
-                color: icon != null ? colors.accentOrange.withOpacity(0.1) : colors.backgroundSecondary,
+                color: icon != null ? colors.accentOrange.withValues(alpha: 0.1) : colors.backgroundSecondary,
                 borderRadius: BorderRadius.circular(10.r),
                 border: icon == null ? Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5) : null,
               ),
