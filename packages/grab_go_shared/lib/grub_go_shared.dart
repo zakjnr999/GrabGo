@@ -2,6 +2,7 @@ export 'shared/utils/app_colors_extension.dart';
 export 'shared/utils/colors.dart';
 export 'shared/utils/config.dart';
 export 'shared/utils/constants.dart';
+export 'shared/utils/map_styles.dart';
 export 'shared/utils/strings.dart';
 export 'shared/utils/theme.dart';
 export 'shared/utils/theme_helper.dart';

@@ -3,9 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:grab_go_rider/shared/service/user_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_rider/features/orders/service/available_orders_service.dart';
+import 'package:grab_go_rider/features/orders/widgets/order_accept_dialog.dart';
 
 class OrdersPage extends StatefulWidget {
   const OrdersPage({super.key});
@@ -57,24 +59,31 @@ class _OrdersPageState extends State<OrdersPage> {
     }
   }
 
-  Future<void> _acceptOrder(AvailableOrderDto order, AppColorsExtension colors, BuildContext context) async {
+  Future<void> _acceptOrder(AvailableOrderDto order, AppColorsExtension colors, BuildContext ctx) async {
+    // Capture references before async gap
+    final messenger = ScaffoldMessenger.of(context);
+
     final accepted = await _availableOrdersService.acceptOrder(order.id);
 
     if (!mounted) return;
 
     if (accepted == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(content: const Text('Failed to accept order. Please try again.'), backgroundColor: colors.error),
       );
       return;
     }
 
-    Navigator.of(context).pop();
+    // Get the current rider ID
+    final riderId = UserService().currentUser?.id;
+
+    if (!mounted) return;
 
     context.push(
       '/order-confirmation',
       extra: {
-        'orderId': accepted.orderNumber,
+        'orderId': accepted.id, // Use MongoDB _id, not orderNumber
+        'orderNumber': accepted.orderNumber, // Keep orderNumber for display
         'restaurantName': accepted.restaurantName,
         'restaurantAddress': accepted.restaurantAddress,
         'customerName': accepted.customerName,
@@ -83,16 +92,54 @@ class _OrdersPageState extends State<OrdersPage> {
         'orderTotal': 'GHS ${accepted.totalAmount.toStringAsFixed(2)}',
         'orderItems': accepted.orderItems,
         'specialInstructions': accepted.notes,
+        // Tracking data - Use ORIGINAL order coordinates since accept API doesn't return full location data
+        'customerId': accepted.customerId,
+        'riderId': riderId,
+        'pickupLatitude': order.pickupLatitude ?? accepted.pickupLatitude,
+        'pickupLongitude': order.pickupLongitude ?? accepted.pickupLongitude,
+        'destinationLatitude': order.destinationLatitude ?? accepted.destinationLatitude,
+        'destinationLongitude': order.destinationLongitude ?? accepted.destinationLongitude,
       },
     );
   }
 
-  Future<void> _showAvailableOrdersSheet(BuildContext context, AppColorsExtension colors) async {
+  /// Show the order accept dialog with countdown timer
+  void _showAcceptOrderDialog(AvailableOrderDto order, AppColorsExtension colors, BuildContext ctx) {
+    // Close the available orders sheet first
+    Navigator.pop(ctx);
+
+    // Show the countdown accept dialog
+    OrderAcceptDialog.show(
+      context: context,
+      order: order,
+      countdownSeconds: 30, // 30 seconds to accept
+      onAccept: () {
+        _acceptOrder(order, colors, context);
+      },
+      onDecline: () {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: const Text('Order declined'), backgroundColor: colors.textSecondary));
+      },
+      onExpired: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Order expired - took too long to accept'),
+            backgroundColor: colors.accentOrange,
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showAvailableOrdersSheet(BuildContext ctx, AppColorsExtension colors) async {
     await _loadAvailableOrders();
     if (!mounted) return;
 
+    if (!ctx.mounted) return;
+
     showModalBottomSheet(
-      context: context,
+      context: ctx,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (sheetContext) {
@@ -157,7 +204,7 @@ class _OrdersPageState extends State<OrdersPage> {
                       shrinkWrap: true,
                       physics: const BouncingScrollPhysics(),
                       itemCount: _availableOrders.length,
-                      separatorBuilder: (_, __) => SizedBox(height: 12.h),
+                      separatorBuilder: (context, index) => SizedBox(height: 12.h),
                       itemBuilder: (context, index) {
                         final order = _availableOrders[index];
                         return Container(
@@ -242,8 +289,8 @@ class _OrdersPageState extends State<OrdersPage> {
                                 height: 40.h,
                                 width: double.infinity,
                                 child: AppButton(
-                                  onPressed: () => _acceptOrder(order, colors, context),
-                                  buttonText: 'Accept order',
+                                  onPressed: () => _showAcceptOrderDialog(order, colors, context),
+                                  buttonText: 'View & Accept',
                                 ),
                               ),
                             ],
@@ -671,6 +718,7 @@ class _OrdersPageState extends State<OrdersPage> {
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: () {
+                          // Mock coordinates for testing (Accra, Ghana area)
                           context.push(
                             '/order-confirmation',
                             extra: {
@@ -683,6 +731,13 @@ class _OrdersPageState extends State<OrdersPage> {
                               'orderTotal': 'GHS 45.00',
                               'orderItems': ['Pizza Margherita x1', 'Coca Cola x2'],
                               'specialInstructions': 'Ring doorbell twice',
+                              // Testing tracking data - mock coordinates
+                              'customerId': 'test-customer-123',
+                              'riderId': 'test-rider-456',
+                              'pickupLatitude': 5.6037, // Accra (restaurant)
+                              'pickupLongitude': -0.1870,
+                              'destinationLatitude': 5.6145, // Nearby destination (customer)
+                              'destinationLongitude': -0.2056,
                             },
                           );
                         },

@@ -595,7 +595,8 @@ final GoRouter appRouter = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: OrderConfirmationPage(
-            orderId: extra?['orderId'] ?? "ORD-12345",
+            orderId: extra?['orderId'] ?? "",
+            orderNumber: extra?['orderNumber'],
             customerName: extra?['customerName'] ?? "John Doe",
             customerAddress: extra?['customerAddress'] ?? "123 Main Street, Accra, Ghana",
             customerPhone: extra?['customerPhone'] ?? "+233 123 456 789",
@@ -606,6 +607,13 @@ final GoRouter appRouter = GoRouter(
                 ? List<String>.from(extra!['orderItems'])
                 : const ["Pizza Margherita x1", "Coca Cola x2"],
             specialInstructions: extra?['specialInstructions'],
+            // Tracking data
+            customerId: extra?['customerId'],
+            riderId: extra?['riderId'],
+            pickupLatitude: extra?['pickupLatitude'] as double?,
+            pickupLongitude: extra?['pickupLongitude'] as double?,
+            destinationLatitude: extra?['destinationLatitude'] as double?,
+            destinationLongitude: extra?['destinationLongitude'] as double?,
           ),
           transitionDuration: const Duration(milliseconds: 800),
           reverseTransitionDuration: const Duration(milliseconds: 800),
@@ -640,6 +648,13 @@ final GoRouter appRouter = GoRouter(
             specialInstructions: extra?['specialInstructions'],
             phase: extra?['phase'],
             hasPickedUp: extra?['hasPickedUp'],
+            // Additional tracking data
+            customerId: extra?['customerId'],
+            riderId: extra?['riderId'],
+            pickupLatitude: extra?['pickupLatitude'] as double?,
+            pickupLongitude: extra?['pickupLongitude'] as double?,
+            destinationLatitude: extra?['destinationLatitude'] as double?,
+            destinationLongitude: extra?['destinationLongitude'] as double?,
           ),
           transitionDuration: const Duration(milliseconds: 800),
           reverseTransitionDuration: const Duration(milliseconds: 800),

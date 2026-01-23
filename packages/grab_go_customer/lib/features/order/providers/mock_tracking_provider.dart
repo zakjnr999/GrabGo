@@ -20,9 +20,13 @@ class MockTrackingProvider extends BaseTrackingProvider {
 
   Set<Marker> _markers = {};
   Set<Polyline> _polylines = {};
+  Set<Circle> _circles = {};
   GoogleMapController? _mapController;
   Timer? _animationTimer;
   LatLng? _lastKnownPosition;
+
+  // Geofence radius in meters
+  static const double _geofenceRadius = 50.0;
 
   // Getters
   @override
@@ -35,6 +39,8 @@ class MockTrackingProvider extends BaseTrackingProvider {
   Set<Marker> get markers => _markers;
   @override
   Set<Polyline> get polylines => _polylines;
+  @override
+  Set<Circle> get circles => _circles;
   @override
   bool get isSocketConnected => true; // Always "connected" in test mode
 
@@ -206,11 +212,11 @@ class MockTrackingProvider extends BaseTrackingProvider {
       markers.add(riderMarker);
     }
 
-    // Add destination marker (Labeled as 'You')
+    // Add destination marker (customer's home) with home icon
     if (!_markerIconCache.containsKey('destination')) {
-      _markerIconCache['destination'] = await CustomMapMarkers.createRiderMarker(
+      _markerIconCache['destination'] = await CustomMapMarkers.createDestinationMarker(
         name: 'You',
-        primaryColor: const Color(0xFFFE6132),
+        primaryColor: const Color(0xFF4CAF50), // Green for delivery destination
       );
     }
 
@@ -247,6 +253,9 @@ class MockTrackingProvider extends BaseTrackingProvider {
     }
 
     _markers = markers;
+
+    // Setup geofence circles
+    _setupGeofenceCircles();
 
     // Create curved polyline from rider to destination (The "Future" path)
     if (_trackingData!.currentLocation != null && _trackingData!.route != null) {
@@ -291,6 +300,43 @@ class MockTrackingProvider extends BaseTrackingProvider {
     _mapController = controller;
   }
 
+  /// Setup geofence circles around pickup and destination
+  void _setupGeofenceCircles() {
+    if (_trackingData == null) return;
+
+    final circles = <Circle>{};
+    const pickupColor = Color(0xFFFE6132); // Orange for pickup
+    const deliveryColor = Color(0xFF4CAF50); // Green for delivery
+
+    // Pickup geofence circle
+    if (_trackingData!.pickupLocation != null) {
+      circles.add(
+        Circle(
+          circleId: const CircleId('pickup_geofence'),
+          center: _trackingData!.pickupLocation!.toLatLng(),
+          radius: _geofenceRadius,
+          fillColor: pickupColor.withValues(alpha: 0.15),
+          strokeColor: pickupColor.withValues(alpha: 0.5),
+          strokeWidth: 2,
+        ),
+      );
+    }
+
+    // Destination geofence circle (customer's home)
+    circles.add(
+      Circle(
+        circleId: const CircleId('destination_geofence'),
+        center: _trackingData!.destination.toLatLng(),
+        radius: _geofenceRadius,
+        fillColor: deliveryColor.withValues(alpha: 0.15),
+        strokeColor: deliveryColor.withValues(alpha: 0.5),
+        strokeWidth: 2,
+      ),
+    );
+
+    _circles = circles;
+  }
+
   @override
   Future<void> refreshTracking() async {
     if (_trackingData == null) return;
@@ -310,6 +356,7 @@ class MockTrackingProvider extends BaseTrackingProvider {
     _trackingData = null;
     _markers = {};
     _polylines = {};
+    _circles = {};
     _markerIconCache.clear();
     _error = null;
     notifyListeners();

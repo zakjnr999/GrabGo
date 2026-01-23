@@ -9,6 +9,9 @@ final trackingLocator = GetIt.instance;
 /// Initialize tracking services
 /// Call this before using tracking features
 void setupTrackingServices({required String baseUrl, required String token}) {
+  // Extract root URL for Socket.IO (remove /api suffix if present)
+  final socketUrl = baseUrl.endsWith('/api') ? baseUrl.substring(0, baseUrl.length - 4) : baseUrl;
+
   // Register Dio instance for tracking
   if (!trackingLocator.isRegistered<Dio>(instanceName: 'trackingDio')) {
     final dio = Dio(
@@ -32,10 +35,10 @@ void setupTrackingServices({required String baseUrl, required String token}) {
     );
   }
 
-  // Register Socket Service
+  // Register Socket Service - use root URL without /api
   if (!trackingLocator.isRegistered<TrackingSocketService>()) {
     trackingLocator.registerLazySingleton<TrackingSocketService>(
-      () => TrackingSocketService(serverUrl: baseUrl, token: token),
+      () => TrackingSocketService(serverUrl: socketUrl, token: token),
     );
   }
 

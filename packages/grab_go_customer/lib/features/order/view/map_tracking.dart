@@ -10,39 +10,54 @@ import 'package:grab_go_customer/features/order/view/rating_onboarding.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/tracking_provider.dart';
-import '../providers/mock_tracking_provider.dart';
-import '../providers/base_tracking_provider.dart';
 import '../config/tracking_service_locator.dart';
 import 'delivery_success_screen.dart';
 import 'call_screen.dart';
 
 class MapTracking extends StatefulWidget {
   final String orderId;
-  final bool useTestMode;
 
-  const MapTracking({super.key, required this.orderId, this.useTestMode = false});
+  const MapTracking({super.key, required this.orderId});
 
   @override
   State<MapTracking> createState() => _MapTrackingState();
 }
 
 class _MapTrackingState extends State<MapTracking> {
-  bool _isInitialized = false;
   bool _hasShownSuccessScreen = false;
   String? _previousStatus;
   bool _isSheetCollapsed = true;
+  TrackingProvider? _trackingProvider;
+  Future<TrackingProvider>? _initFuture;
 
   @override
   void initState() {
     super.initState();
-    if (widget.useTestMode) {
-      _isInitialized = true;
-    }
+    _initFuture = _initializeTrackingServices();
   }
 
-  void _checkDeliveryStatus(BaseTrackingProvider provider) {
+  Future<TrackingProvider> _initializeTrackingServices() async {
+    final token = await CacheService.getAuthToken();
+
+    if (token == null || token.isEmpty) {
+      throw Exception('Auth token not found');
+    }
+
+    // Setup services first
+    setupTrackingServices(baseUrl: AppConfig.apiBaseUrl, token: token);
+
+    // Now get the provider from GetIt
+    final provider = trackingLocator<TrackingProvider>();
+    _trackingProvider = provider;
+
+    // Initialize tracking for this order
+    await provider.initializeTracking(widget.orderId);
+
+    return provider;
+  }
+
+  void _checkDeliveryStatus(TrackingProvider provider) {
     final currentStatus = provider.trackingData?.status;
 
     if (currentStatus == 'delivered' && _previousStatus != 'delivered' && !_hasShownSuccessScreen) {
@@ -73,6 +88,7 @@ class _MapTrackingState extends State<MapTracking> {
 
   @override
   void dispose() {
+    _trackingProvider?.dispose();
     super.dispose();
   }
 
@@ -82,123 +98,218 @@ class _MapTrackingState extends State<MapTracking> {
     final Size size = MediaQuery.sizeOf(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return ChangeNotifierProvider<BaseTrackingProvider>(
-      create: (_) {
-        if (widget.useTestMode) {
-          final mockProvider = MockTrackingProvider();
-          mockProvider.initializeTracking(widget.orderId);
-          return mockProvider;
-        } else {
-          final provider = trackingLocator<TrackingProvider>();
-
-          Future.microtask(() async {
-            try {
-              final prefs = await SharedPreferences.getInstance();
-              final token = prefs.getString('authToken') ?? '';
-
-              if (token.isNotEmpty) {
-                setupTrackingServices(baseUrl: 'https://grabgo-backend.onrender.com', token: token);
-                await provider.initializeTracking(widget.orderId);
-
-                if (mounted) {
-                  setState(() => _isInitialized = true);
-                }
-              } else {
-                debugPrint('Auth token not found for real tracking');
-              }
-            } catch (e) {
-              debugPrint('Async init error: $e');
-            }
-          });
-
-          return provider;
+    return FutureBuilder<TrackingProvider>(
+      future: _initFuture,
+      builder: (context, snapshot) {
+        // Loading state
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            backgroundColor: colors.backgroundPrimary,
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(color: colors.accentOrange),
+                  SizedBox(height: 16.h),
+                  Text(
+                    'Connecting to tracking...',
+                    style: TextStyle(color: colors.textPrimary, fontSize: 16.sp),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
-      },
-      child: Consumer<BaseTrackingProvider>(
-        builder: (context, provider, child) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _checkDeliveryStatus(provider);
-          });
 
-          if ((provider.isLoading && !_isInitialized) || (provider.trackingData == null && provider.error == null)) {
-            return Scaffold(
+        // Error state
+        if (snapshot.hasError) {
+          return Scaffold(
+            backgroundColor: colors.backgroundPrimary,
+            appBar: AppBar(
               backgroundColor: colors.backgroundPrimary,
-              body: Center(
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back, color: colors.textPrimary),
+                onPressed: () => context.pop(),
+              ),
+            ),
+            body: Center(
+              child: Padding(
+                padding: EdgeInsets.all(20.w),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(color: colors.accentOrange),
+                    Icon(Icons.error_outline, size: 64.sp, color: colors.error),
                     SizedBox(height: 16.h),
                     Text(
-                      'Connecting to tracking...',
-                      style: TextStyle(color: colors.textPrimary, fontSize: 16.sp),
+                      'Failed to initialize tracking',
+                      style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w600),
+                    ),
+                    SizedBox(height: 8.h),
+                    Text(
+                      snapshot.error.toString(),
+                      style: TextStyle(color: colors.textSecondary, fontSize: 14.sp),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 24.h),
+                    ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          _initFuture = _initializeTrackingServices();
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colors.accentOrange,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Retry'),
                     ),
                   ],
                 ),
               ),
-            );
-          }
+            ),
+          );
+        }
 
-          // Error state
-          if (provider.error != null && provider.trackingData == null) {
-            return Scaffold(
-              backgroundColor: colors.backgroundPrimary,
-              appBar: AppBar(
-                backgroundColor: colors.backgroundPrimary,
-                leading: IconButton(
-                  icon: Icon(Icons.arrow_back, color: colors.textPrimary),
-                  onPressed: () => context.pop(),
-                ),
-              ),
-              body: Center(
-                child: Padding(
-                  padding: EdgeInsets.all(20.w),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.error_outline, size: 64.sp, color: colors.error),
-                      SizedBox(height: 16.h),
-                      Text(
-                        'Failed to load tracking',
-                        style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
-                      ),
-                      SizedBox(height: 8.h),
-                      Text(
-                        provider.error!,
-                        style: TextStyle(color: colors.textSecondary, fontSize: 14.sp),
-                        textAlign: TextAlign.center,
-                      ),
-                      SizedBox(height: 24.h),
-                      ElevatedButton(
-                        onPressed: () => provider.refreshTracking(),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: colors.accentOrange,
-                          padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 12.h),
-                        ),
-                        child: Text(
-                          'Retry',
-                          style: TextStyle(color: Colors.white, fontSize: 16.sp),
-                        ),
-                      ),
-                    ],
+        // Success - provider is ready
+        final provider = snapshot.data!;
+
+        return ChangeNotifierProvider<TrackingProvider>.value(
+          value: provider,
+          child: Consumer<TrackingProvider>(
+            builder: (context, provider, child) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _checkDeliveryStatus(provider);
+              });
+
+              // Waiting for rider state
+              if (provider.isWaitingForRider && provider.trackingData == null) {
+                return Scaffold(
+                  backgroundColor: colors.backgroundPrimary,
+                  appBar: AppBar(
+                    backgroundColor: colors.backgroundPrimary,
+                    leading: IconButton(
+                      icon: Icon(Icons.arrow_back, color: colors.textPrimary),
+                      onPressed: () => context.pop(),
+                    ),
+                    title: Text(
+                      'Order Tracking',
+                      style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w600),
+                    ),
                   ),
-                ),
-              ),
-            );
-          }
+                  body: Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20.w),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Animated searching icon
+                          Container(
+                            width: 100.w,
+                            height: 100.w,
+                            decoration: BoxDecoration(
+                              color: colors.accentOrange.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(Icons.delivery_dining_outlined, size: 50.sp, color: colors.accentOrange),
+                          ),
+                          SizedBox(height: 24.h),
+                          Text(
+                            'Looking for a rider',
+                            style: TextStyle(color: colors.textPrimary, fontSize: 22.sp, fontWeight: FontWeight.w700),
+                          ),
+                          SizedBox(height: 12.h),
+                          Text(
+                            'We\'re finding the best available rider for your order. This usually takes 1-3 minutes.',
+                            style: TextStyle(color: colors.textSecondary, fontSize: 14.sp),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: 32.h),
+                          // Progress indicator
+                          SizedBox(
+                            width: 200.w,
+                            child: LinearProgressIndicator(
+                              backgroundColor: colors.border,
+                              valueColor: AlwaysStoppedAnimation<Color>(colors.accentOrange),
+                            ),
+                          ),
+                          SizedBox(height: 32.h),
+                          TextButton.icon(
+                            onPressed: () => provider.refreshTracking(),
+                            icon: Icon(Icons.refresh, color: colors.accentOrange),
+                            label: Text(
+                              'Refresh',
+                              style: TextStyle(color: colors.accentOrange, fontSize: 16.sp),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }
 
-          // Main tracking UI
-          final activeStep = provider.trackingData?.activeStep ?? 0;
+              // Error state from provider (runtime errors)
+              if (provider.error != null && provider.trackingData == null) {
+                return Scaffold(
+                  backgroundColor: colors.backgroundPrimary,
+                  appBar: AppBar(
+                    backgroundColor: colors.backgroundPrimary,
+                    leading: IconButton(
+                      icon: Icon(Icons.arrow_back, color: colors.textPrimary),
+                      onPressed: () => context.pop(),
+                    ),
+                  ),
+                  body: Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20.w),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.error_outline, size: 64.sp, color: colors.error),
+                          SizedBox(height: 16.h),
+                          Text(
+                            'Failed to load tracking',
+                            style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
+                          ),
+                          SizedBox(height: 8.h),
+                          Text(
+                            provider.error!,
+                            style: TextStyle(color: colors.textSecondary, fontSize: 14.sp),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: 24.h),
+                          ElevatedButton(
+                            onPressed: () => provider.refreshTracking(),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: colors.accentOrange,
+                              padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 12.h),
+                            ),
+                            child: Text(
+                              'Retry',
+                              style: TextStyle(color: Colors.white, fontSize: 16.sp),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }
 
-          return _buildTrackingUI(context, provider, colors, size, isDark, activeStep);
-        },
-      ),
+              // Main tracking UI
+              final activeStep = provider.trackingData?.activeStep ?? 0;
+
+              return _buildTrackingUI(context, provider, colors, size, isDark, activeStep);
+            },
+          ),
+        );
+      },
     );
   }
 
   Widget _buildTrackingUI(
     BuildContext context,
-    BaseTrackingProvider provider,
+    TrackingProvider provider,
     AppColorsExtension colors,
     Size size,
     bool isDark,
@@ -272,6 +383,7 @@ class _MapTrackingState extends State<MapTracking> {
               ),
               markers: provider.markers,
               polylines: provider.polylines,
+              circles: provider.circles,
               myLocationEnabled: false,
               myLocationButtonEnabled: false,
               zoomControlsEnabled: false,
@@ -280,7 +392,7 @@ class _MapTrackingState extends State<MapTracking> {
               onMapCreated: (GoogleMapController controller) {
                 provider.setMapController(controller);
               },
-              style: isDark ? _darkMapStyle : null,
+              style: GrabGoMapStyles.forBrightness(Theme.of(context).brightness),
             ),
           ),
 
@@ -326,13 +438,28 @@ class _MapTrackingState extends State<MapTracking> {
                                 child: Container(
                                   height: 50.h,
                                   width: 50.w,
-                                  padding: EdgeInsets.all(12.r),
                                   decoration: BoxDecoration(shape: BoxShape.circle, color: colors.backgroundPrimary),
-                                  child: SvgPicture.asset(
-                                    Assets.icons.deliveryGuyIcon,
-                                    package: "grab_go_shared",
-                                    colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                                  ),
+                                  child: provider.trackingData?.rider?.profileImage != null
+                                      ? Image.network(
+                                          provider.trackingData!.rider!.profileImage!,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) => Padding(
+                                            padding: EdgeInsets.all(12.r),
+                                            child: SvgPicture.asset(
+                                              Assets.icons.deliveryGuyIcon,
+                                              package: "grab_go_shared",
+                                              colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                            ),
+                                          ),
+                                        )
+                                      : Padding(
+                                          padding: EdgeInsets.all(12.r),
+                                          child: SvgPicture.asset(
+                                            Assets.icons.deliveryGuyIcon,
+                                            package: "grab_go_shared",
+                                            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                          ),
+                                        ),
                                 ),
                               ),
                               SizedBox(width: 16.w),
@@ -405,19 +532,23 @@ class _MapTrackingState extends State<MapTracking> {
                                     icon: Assets.icons.phoneSolid,
                                     colors: colors,
                                     onTap: () async {
-                                      // DEBUG: Print rider ID
-                                      final mockRiderId = provider.trackingData?.rider?.id;
-                                      final actualRiderId = '691159180f7a5a0143d12d33';
-                                      print('🔍 Mock rider ID: $mockRiderId');
-                                      print('🔍 Using actual rider ID: $actualRiderId');
+                                      final riderId = provider.trackingData?.rider?.id;
+                                      if (riderId == null || riderId.isEmpty) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Rider information not available'),
+                                            backgroundColor: colors.error,
+                                          ),
+                                        );
+                                        return;
+                                      }
 
                                       // Navigate to call screen
                                       Navigator.of(context).push(
                                         MaterialPageRoute(
                                           builder: (context) => CallScreen(
-                                            // ALWAYS use actual rider ID (ignore mock)
-                                            otherUserId: actualRiderId,
-                                            otherUserName: provider.trackingData?.rider?.name ?? 'Test Rider',
+                                            otherUserId: riderId,
+                                            otherUserName: provider.trackingData?.rider?.name ?? 'Rider',
                                             otherUserAvatar: provider.trackingData?.rider?.profileImage,
                                             orderId: widget.orderId,
                                             isIncoming: false,
@@ -487,7 +618,7 @@ class _MapTrackingState extends State<MapTracking> {
                                       ),
                                       SizedBox(height: 4.h),
                                       Text(
-                                        "The rider is on the way to you. Your order will arrive soon.",
+                                        _getStatusDescription(provider.trackingData?.status),
                                         style: TextStyle(
                                           color: colors.textSecondary,
                                           fontSize: 12.sp,
@@ -1035,6 +1166,24 @@ class _MapTrackingState extends State<MapTracking> {
     );
   }
 
+  /// Get dynamic status description based on order status
+  String _getStatusDescription(String? status) {
+    switch (status?.toLowerCase()) {
+      case 'preparing':
+        return 'Your order is being prepared at the store.';
+      case 'picked_up':
+        return 'The rider has picked up your order and is heading to you.';
+      case 'in_transit':
+        return 'The rider is on the way to your location.';
+      case 'nearby':
+        return 'The rider is almost at your location!';
+      case 'delivered':
+        return 'Your order has been delivered. Enjoy!';
+      default:
+        return 'Your order is being processed.';
+    }
+  }
+
   Widget _buildActionButton({required String icon, required AppColorsExtension colors, required VoidCallback onTap}) {
     return Container(
       height: 40.h,
@@ -1093,45 +1242,3 @@ class _MapTrackingState extends State<MapTracking> {
     );
   }
 }
-
-// Dark map style for Google Maps
-const String _darkMapStyle = '''
-[
-  {
-    "elementType": "geometry",
-    "stylers": [{"color": "#212121"}]
-  },
-  {
-    "elementType": "labels.icon",
-    "stylers": [{"visibility": "off"}]
-  },
-  {
-    "elementType": "labels.text.fill",
-    "stylers": [{"color": "#757575"}]
-  },
-  {
-    "elementType": "labels.text.stroke",
-    "stylers": [{"color": "#212121"}]
-  },
-  {
-    "featureType": "administrative",
-    "elementType": "geometry",
-    "stylers": [{"color": "#757575"}]
-  },
-  {
-    "featureType": "road",
-    "elementType": "geometry.fill",
-    "stylers": [{"color": "#2c2c2c"}]
-  },
-  {
-    "featureType": "road",
-    "elementType": "labels.text.fill",
-    "stylers": [{"color": "#8a8a8a"}]
-  },
-  {
-    "featureType": "water",
-    "elementType": "geometry",
-    "stylers": [{"color": "#000000"}]
-  }
-]
-''';

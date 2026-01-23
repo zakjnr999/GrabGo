@@ -33,21 +33,21 @@ class SocketService {
 
     // Join order tracking room
     joinOrderRoom(socket, orderId) {
-        socket.join(`order_${orderId}`);
-        console.log(`User joined order room: order_${orderId}`);
+        socket.join(`order:${orderId}`);
+        console.log(`User joined order room: order:${orderId}`);
     }
 
     // Leave order tracking room
     leaveOrderRoom(socket, orderId) {
-        socket.leave(`order_${orderId}`);
-        console.log(`User left order room: order_${orderId}`);
+        socket.leave(`order:${orderId}`);
+        console.log(`User left order room: order:${orderId}`);
     }
 
     // Broadcast to order room (all users tracking this order)
     emitToOrder(orderId, event, data) {
         if (this.io) {
-            this.io.to(`order_${orderId}`).emit(event, data);
-            console.log(`📡 Broadcast '${event}' to order room: order_${orderId}`);
+            this.io.to(`order:${orderId}`).emit(event, data);
+            console.log(`📡 Broadcast '${event}' to order room: order:${orderId}`);
         }
     }
 

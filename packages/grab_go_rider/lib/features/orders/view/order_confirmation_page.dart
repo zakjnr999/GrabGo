@@ -7,7 +7,8 @@ import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class OrderConfirmationPage extends StatefulWidget {
-  final String orderId;
+  final String orderId; // MongoDB _id for API calls
+  final String? orderNumber; // Human-readable order number for display
   final String customerName;
   final String customerAddress;
   final String customerPhone;
@@ -17,9 +18,18 @@ class OrderConfirmationPage extends StatefulWidget {
   final List<String> orderItems;
   final String? specialInstructions;
 
+  // Additional tracking data
+  final String? customerId;
+  final String? riderId;
+  final double? pickupLatitude;
+  final double? pickupLongitude;
+  final double? destinationLatitude;
+  final double? destinationLongitude;
+
   const OrderConfirmationPage({
     super.key,
-    this.orderId = "ORD-12345",
+    this.orderId = "",
+    this.orderNumber,
     this.customerName = "John Doe",
     this.customerAddress = "123 Main Street, Accra, Ghana",
     this.customerPhone = "+233 123 456 789",
@@ -28,7 +38,16 @@ class OrderConfirmationPage extends StatefulWidget {
     this.orderTotal = "GHS 45.00",
     this.orderItems = const ["Pizza Margherita x1", "Coca Cola x2"],
     this.specialInstructions,
+    this.customerId,
+    this.riderId,
+    this.pickupLatitude,
+    this.pickupLongitude,
+    this.destinationLatitude,
+    this.destinationLongitude,
   });
+
+  /// Display-friendly order identifier (orderNumber or orderId)
+  String get displayOrderId => orderNumber ?? orderId;
 
   @override
   State<OrderConfirmationPage> createState() => _OrderConfirmationPageState();
@@ -113,7 +132,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                         ),
                         SizedBox(height: 4.h),
                         Text(
-                          widget.orderId,
+                          widget.displayOrderId,
                           style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
                         ),
                       ],
@@ -484,6 +503,13 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
         'specialInstructions': widget.specialInstructions,
         'phase': phase,
         'hasPickedUp': phase == "delivery",
+        // Tracking data
+        'customerId': widget.customerId,
+        'riderId': widget.riderId,
+        'pickupLatitude': widget.pickupLatitude,
+        'pickupLongitude': widget.pickupLongitude,
+        'destinationLatitude': widget.destinationLatitude,
+        'destinationLongitude': widget.destinationLongitude,
       },
     );
   }

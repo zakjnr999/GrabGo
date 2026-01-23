@@ -480,9 +480,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: "/mapTracking",
       pageBuilder: (context, state) {
+        final orderId = state.uri.queryParameters['orderId'] ?? '';
         return CustomTransitionPage(
           key: state.pageKey,
-          child: const MapTracking(orderId: 'test_123', useTestMode: true),
+          child: MapTracking(orderId: orderId),
           transitionDuration: const Duration(milliseconds: 800),
           reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {

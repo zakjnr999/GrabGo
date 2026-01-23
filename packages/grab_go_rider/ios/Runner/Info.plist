@@ -38,6 +38,18 @@
 	<string>We need your location to show delivery routes and track orders</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>We need your location to track deliveries in the background</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>GrabGo Rider needs your location to track deliveries even when the app is in the background. This helps customers know when their order will arrive.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.grabgo.rider.locationTracking</string>
+	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

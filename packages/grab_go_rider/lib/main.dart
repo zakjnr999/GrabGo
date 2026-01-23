@@ -3,6 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:grab_go_rider/features/chat/view/chat_detail_page.dart';
+import 'package:grab_go_rider/features/orders/service/rider_foreground_service.dart';
+import 'package:grab_go_rider/features/orders/viewmodel/rider_tracking_provider.dart';
 import 'package:grab_go_rider/shared/viewmodel/bottom_nav_provider.dart';
 import 'package:grab_go_rider/shared/viewmodel/theme_provider.dart';
 import 'package:grab_go_rider/shared/service/user_service.dart';
@@ -37,11 +39,15 @@ void main() async {
   await CacheService.initialize();
   await _initializeBackgroundServices();
 
+  // Initialize foreground service for rider tracking
+  await RiderForegroundService().initialize();
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => ThemeProvider()),
         ChangeNotifierProvider(create: (context) => BottomNavProvider()),
+        ChangeNotifierProvider(create: (context) => RiderTrackingProvider()),
       ],
       child: GrabGoRiderApp(),
     ),

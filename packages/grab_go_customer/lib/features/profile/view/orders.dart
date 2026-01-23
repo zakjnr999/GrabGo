@@ -828,7 +828,7 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
           else if (isOngoing)
             GestureDetector(
               onTap: () {
-                context.push("/mapTracking");
+                context.push("/mapTracking?orderId=${order.id}");
               },
               child: Container(
                 width: double.infinity,

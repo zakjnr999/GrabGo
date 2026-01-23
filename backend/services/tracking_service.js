@@ -88,15 +88,21 @@ class TrackingService {
             tracking.lastUpdated = new Date();
             await tracking.save();
 
-            // Broadcast update to customer via Socket.IO
-            socketService.emitToUser(tracking.customerId.toString(), 'location_update', {
+            // Prepare update data
+            const updateData = {
                 orderId: orderId.toString(),
                 location: { latitude, longitude },
                 distance: distance,
                 eta: eta.duration,
                 status: tracking.status,
                 route: tracking.route
-            });
+            };
+
+            // Broadcast update to order room (for customers tracking this order)
+            socketService.emitToOrder(orderId.toString(), 'location_update', updateData);
+
+            // Also emit to specific customer if they're connected directly
+            socketService.emitToUser(tracking.customerId.toString(), 'location_update', updateData);
 
             // check geofences
             await geofenceService.checkGeofences(orderId, latitude, longitude);

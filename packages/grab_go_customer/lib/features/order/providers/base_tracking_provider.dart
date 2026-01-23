@@ -8,6 +8,7 @@ abstract class BaseTrackingProvider extends ChangeNotifier {
   TrackingData? get trackingData;
   Set<Marker> get markers;
   Set<Polyline> get polylines;
+  Set<Circle> get circles;
   bool get isSocketConnected;
 
   Future<void> initializeTracking(String orderId);

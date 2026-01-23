@@ -8,6 +8,7 @@ class AvailableOrderDto {
   final String id;
   final String orderNumber;
   final String customerName;
+  final String customerId;
   final String customerAddress;
   final String customerPhone;
   final String restaurantName;
@@ -16,10 +17,17 @@ class AvailableOrderDto {
   final List<String> orderItems;
   final String? notes;
 
+  // Coordinates for tracking initialization
+  final double? destinationLatitude;
+  final double? destinationLongitude;
+  final double? pickupLatitude;
+  final double? pickupLongitude;
+
   AvailableOrderDto({
     required this.id,
     required this.orderNumber,
     required this.customerName,
+    required this.customerId,
     required this.customerAddress,
     required this.customerPhone,
     required this.restaurantName,
@@ -27,6 +35,10 @@ class AvailableOrderDto {
     required this.totalAmount,
     required this.orderItems,
     required this.notes,
+    this.destinationLatitude,
+    this.destinationLongitude,
+    this.pickupLatitude,
+    this.pickupLongitude,
   });
 
   factory AvailableOrderDto.fromJson(Map<String, dynamic> json) {
@@ -45,6 +57,35 @@ class AvailableOrderDto {
 
     final customerAddress = addressParts.isNotEmpty ? addressParts.join(', ') : '';
 
+    // Extract coordinates from delivery address
+    final destinationLat = delivery != null ? (delivery['latitude'] as num?)?.toDouble() : null;
+    final destinationLng = delivery != null ? (delivery['longitude'] as num?)?.toDouble() : null;
+
+    // Extract restaurant/pickup coordinates
+    final restaurantLocation = restaurant?['location'] as Map<String, dynamic>?;
+    double? pickupLat;
+    double? pickupLng;
+
+    debugPrint('🍕 Parsing restaurant coordinates:');
+    debugPrint('   restaurant: $restaurant');
+    debugPrint('   restaurantLocation: $restaurantLocation');
+
+    if (restaurantLocation != null) {
+      // GeoJSON format: coordinates [longitude, latitude]
+      final coords = restaurantLocation['coordinates'] as List<dynamic>?;
+      debugPrint('   coords: $coords');
+      if (coords != null && coords.length >= 2) {
+        pickupLng = (coords[0] as num?)?.toDouble();
+        pickupLat = (coords[1] as num?)?.toDouble();
+        debugPrint('   ✅ Parsed: lat=$pickupLat, lng=$pickupLng');
+      }
+    } else if (restaurant != null) {
+      // Try direct latitude/longitude fields
+      pickupLat = (restaurant['latitude'] as num?)?.toDouble();
+      pickupLng = (restaurant['longitude'] as num?)?.toDouble();
+      debugPrint('   📍 Direct fields: lat=$pickupLat, lng=$pickupLng');
+    }
+
     final items = (json['items'] as List<dynamic>? ?? [])
         .whereType<Map<String, dynamic>>()
         .map((item) {
@@ -60,13 +101,21 @@ class AvailableOrderDto {
       id: json['_id']?.toString() ?? '',
       orderNumber: json['orderNumber']?.toString() ?? '',
       customerName: customer != null ? (customer['username']?.toString() ?? 'Customer') : 'Customer',
+      customerId: customer != null ? (customer['_id']?.toString() ?? '') : '',
       customerAddress: customerAddress,
       customerPhone: customer != null ? (customer['phone']?.toString() ?? '') : '',
-      restaurantName: restaurant != null ? (restaurant['restaurant_name']?.toString() ?? 'Restaurant') : 'Restaurant',
+      // Handle both restaurant_name and restaurantName
+      restaurantName: restaurant != null
+          ? (restaurant['restaurantName']?.toString() ?? restaurant['restaurant_name']?.toString() ?? 'Restaurant')
+          : 'Restaurant',
       restaurantAddress: restaurant != null ? (restaurant['address']?.toString() ?? '') : '',
       totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0.0,
       orderItems: items,
       notes: json['notes']?.toString(),
+      destinationLatitude: destinationLat,
+      destinationLongitude: destinationLng,
+      pickupLatitude: pickupLat,
+      pickupLongitude: pickupLng,
     );
   }
 }
@@ -93,21 +142,34 @@ class AvailableOrdersService {
 
   Future<List<AvailableOrderDto>> getAvailableOrders() async {
     final uri = Uri.parse('$_baseUrl/riders/available-orders');
+    debugPrint('🔍 Fetching available orders from: $uri');
     try {
-      final response = await _client.get(uri, headers: await _buildHeaders());
+      final headers = await _buildHeaders();
+      debugPrint('🔍 Headers: ${headers.keys.toList()}');
+
+      final response = await _client.get(uri, headers: headers);
+      debugPrint('🔍 Response status: ${response.statusCode}');
+      debugPrint(
+        '🔍 Response body: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}',
+      );
+
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body) as Map<String, dynamic>;
         final data = decoded['data'];
+        debugPrint('🔍 Data type: ${data.runtimeType}, length: ${data is List ? data.length : 'N/A'}');
         if (data is List) {
-          return data.whereType<Map<String, dynamic>>().map((e) => AvailableOrderDto.fromJson(e)).toList();
+          final orders = data.whereType<Map<String, dynamic>>().map((e) => AvailableOrderDto.fromJson(e)).toList();
+          debugPrint('✅ Parsed ${orders.length} orders');
+          return orders;
         }
         return [];
       } else {
-        debugPrint('AvailableOrdersService.getAvailableOrders failed: ${response.statusCode} ${response.body}');
+        debugPrint('❌ AvailableOrdersService.getAvailableOrders failed: ${response.statusCode} ${response.body}');
         return [];
       }
-    } catch (e) {
-      debugPrint('AvailableOrdersService.getAvailableOrders error: $e');
+    } catch (e, stack) {
+      debugPrint('❌ AvailableOrdersService.getAvailableOrders error: $e');
+      debugPrint('Stack: $stack');
       return [];
     }
   }

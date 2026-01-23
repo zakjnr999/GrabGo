@@ -18,11 +18,16 @@ class TrackingProvider extends BaseTrackingProvider {
   TrackingData? _trackingData;
   bool _isLoading = false;
   String? _error;
+  bool _isWaitingForRider = false;
 
   // Map elements
   Set<Marker> _markers = {};
   Set<Polyline> _polylines = {};
+  Set<Circle> _circles = {};
   GoogleMapController? _mapController;
+
+  // Geofence radius in meters
+  static const double _geofenceRadius = 50.0;
 
   // Subscriptions
   StreamSubscription? _locationSubscription;
@@ -39,10 +44,13 @@ class TrackingProvider extends BaseTrackingProvider {
   bool get isLoading => _isLoading;
   @override
   String? get error => _error;
+  bool get isWaitingForRider => _isWaitingForRider;
   @override
   Set<Marker> get markers => _markers;
   @override
   Set<Polyline> get polylines => _polylines;
+  @override
+  Set<Circle> get circles => _circles;
   @override
   bool get isSocketConnected => _socketService.isConnected;
 
@@ -90,14 +98,14 @@ class TrackingProvider extends BaseTrackingProvider {
       // 1. Get initial tracking data from API
       print('📡 Fetching tracking data for order: $orderId');
       _trackingData = await _apiService.getTrackingInfo(orderId);
+      print('✅ Got tracking data: status=${_trackingData?.status}, rider=${_trackingData?.rider?.name}');
 
       // 2. Connect to socket for real-time updates
       print('🔌 Connecting to socket');
       _socketService.connect();
 
-      // 3. Join order room
-      print('🚪 Joining order room');
-      _socketService.joinOrderRoom(orderId);
+      // 3. Wait for socket to connect, then join order room
+      _waitForSocketAndJoinRoom(orderId);
 
       // 4. Setup map elements
       await _setupMapElements();
@@ -107,12 +115,50 @@ class TrackingProvider extends BaseTrackingProvider {
       notifyListeners();
 
       print('✅ Tracking initialized successfully');
+    } on TrackingException catch (e) {
+      // Handle specific tracking errors
+      if (e.statusCode == 404) {
+        // Tracking not initialized yet - rider hasn't accepted the order
+        _error = 'Waiting for a rider to accept your order...';
+        _isWaitingForRider = true;
+      } else {
+        _error = e.message;
+      }
+      _isLoading = false;
+      notifyListeners();
+      print('❌ Failed to initialize tracking: $e');
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
       notifyListeners();
       print('❌ Failed to initialize tracking: $e');
     }
+  }
+
+  /// Wait for socket connection and then join the order room
+  void _waitForSocketAndJoinRoom(String orderId) {
+    // If already connected, join immediately
+    if (_socketService.isConnected) {
+      print('🚪 Socket already connected, joining order room: $orderId');
+      _socketService.joinOrderRoom(orderId);
+      return;
+    }
+
+    // Otherwise wait for connection
+    print('⏳ Waiting for socket connection...');
+    StreamSubscription<bool>? subscription;
+    subscription = _socketService.connectionStatus.listen((isConnected) {
+      if (isConnected) {
+        print('🚪 Socket connected, joining order room: $orderId');
+        _socketService.joinOrderRoom(orderId);
+        subscription?.cancel();
+      }
+    });
+
+    // Cancel subscription after 10 seconds to avoid memory leak
+    Future.delayed(const Duration(seconds: 10), () {
+      subscription?.cancel();
+    });
   }
 
   /// Setup markers and polylines on the map
@@ -143,11 +189,11 @@ class TrackingProvider extends BaseTrackingProvider {
       markers.add(riderMarker);
     }
 
-    // Add destination marker (Labeled as 'You')
+    // Add destination marker (customer's home) with home icon
     if (!_markerIconCache.containsKey('destination')) {
-      _markerIconCache['destination'] = await CustomMapMarkers.createRiderMarker(
+      _markerIconCache['destination'] = await CustomMapMarkers.createDestinationMarker(
         name: 'You',
-        primaryColor: const Color(0xFFFE6132),
+        primaryColor: const Color(0xFF4CAF50), // Green for delivery destination
       );
     }
 
@@ -185,6 +231,9 @@ class TrackingProvider extends BaseTrackingProvider {
 
     _markers = markers;
 
+    // Setup geofence circles
+    _setupGeofenceCircles();
+
     // Create polyline from route if available
     if (_trackingData!.route != null && _trackingData!.route!.polyline.isNotEmpty) {
       await _createPolyline(_trackingData!.route!.polyline);
@@ -194,6 +243,43 @@ class TrackingProvider extends BaseTrackingProvider {
     _animateCameraToFitMarkers();
 
     notifyListeners();
+  }
+
+  /// Setup geofence circles around pickup and destination
+  void _setupGeofenceCircles() {
+    if (_trackingData == null) return;
+
+    final circles = <Circle>{};
+    const pickupColor = Color(0xFFFE6132); // Orange for pickup
+    const deliveryColor = Color(0xFF4CAF50); // Green for delivery
+
+    // Pickup geofence circle
+    if (_trackingData!.pickupLocation != null) {
+      circles.add(
+        Circle(
+          circleId: const CircleId('pickup_geofence'),
+          center: _trackingData!.pickupLocation!.toLatLng(),
+          radius: _geofenceRadius,
+          fillColor: pickupColor.withValues(alpha: 0.15),
+          strokeColor: pickupColor.withValues(alpha: 0.5),
+          strokeWidth: 2,
+        ),
+      );
+    }
+
+    // Destination geofence circle (customer's home)
+    circles.add(
+      Circle(
+        circleId: const CircleId('destination_geofence'),
+        center: _trackingData!.destination.toLatLng(),
+        radius: _geofenceRadius,
+        fillColor: deliveryColor.withValues(alpha: 0.15),
+        strokeColor: deliveryColor.withValues(alpha: 0.5),
+        strokeWidth: 2,
+      ),
+    );
+
+    _circles = circles;
   }
 
   /// Get custom rider marker icon with caching

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../models/tracking_models.dart';
 
 /// Service for tracking API calls
@@ -10,11 +11,15 @@ class TrackingApiService {
 
   /// Get tracking information for an order
   ///
-  /// Endpoint: GET /api/tracking/:orderId
+  /// Endpoint: GET /tracking/:orderId
   /// Returns: TrackingData with current location, ETA, route, etc.
   Future<TrackingData> getTrackingInfo(String orderId) async {
     try {
-      final response = await _dio.get('$baseUrl/api/tracking/$orderId');
+      // Use relative path - baseUrl already includes /api
+      final url = '/tracking/$orderId';
+      debugPrint('🔍 Tracking API: GET $url (base: $baseUrl)');
+
+      final response = await _dio.get(url);
 
       if (response.data['success'] == true) {
         return TrackingData.fromJson(response.data['data']);
@@ -25,6 +30,7 @@ class TrackingApiService {
         );
       }
     } on DioException catch (e) {
+      debugPrint('❌ Tracking API error: ${e.response?.statusCode} - ${e.response?.data}');
       throw _handleDioError(e);
     } catch (e) {
       throw TrackingException(message: 'Unexpected error: $e', statusCode: null);
@@ -33,7 +39,7 @@ class TrackingApiService {
 
   /// Initialize tracking for an order
   ///
-  /// Endpoint: POST /api/tracking/initialize
+  /// Endpoint: POST /tracking/initialize
   /// Used when order is first assigned to rider
   Future<TrackingData> initializeTracking({
     required String orderId,
@@ -43,8 +49,12 @@ class TrackingApiService {
     required Map<String, double> destination,
   }) async {
     try {
+      // Use relative path - baseUrl already includes /api
+      final url = '/tracking/initialize';
+      debugPrint('🔍 Tracking API: POST $url');
+
       final response = await _dio.post(
-        '$baseUrl/api/tracking/initialize',
+        url,
         data: {
           'orderId': orderId,
           'riderId': riderId,
@@ -63,6 +73,7 @@ class TrackingApiService {
         );
       }
     } on DioException catch (e) {
+      debugPrint('❌ Tracking API error: ${e.response?.statusCode} - ${e.response?.data}');
       throw _handleDioError(e);
     } catch (e) {
       throw TrackingException(message: 'Unexpected error: $e', statusCode: null);

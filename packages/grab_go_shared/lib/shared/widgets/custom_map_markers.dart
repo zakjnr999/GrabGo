@@ -222,8 +222,100 @@ class CustomMapMarkers {
     return null;
   }
 
-  /// Create a destination marker (Home/Pin)
-  static Future<BitmapDescriptor> createDestinationMarker({required Color color}) async {
-    return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
+  /// Create a destination marker (Home/Pin) with house icon
+  static Future<BitmapDescriptor> createDestinationMarker({required String name, required Color primaryColor}) async {
+    const double width = 200;
+    const double height = 230;
+    const double radius = 60;
+
+    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(pictureRecorder);
+    final Paint paint = Paint();
+
+    // 1. Label Bubble
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: name,
+        style: const TextStyle(color: Colors.black, fontSize: 28, fontWeight: FontWeight.w600),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+
+    final double labelWidth = textPainter.width + 40;
+    final double labelHeight = textPainter.height + 20;
+    final Rect labelRect = Rect.fromLTWH((width - labelWidth) / 2, 0, labelWidth, labelHeight);
+
+    paint.color = Colors.white;
+    canvas.drawRRect(RRect.fromRectAndRadius(labelRect, const Radius.circular(30)), paint);
+
+    final Path bubbleTail = Path();
+    bubbleTail.moveTo(width / 2 - 10, labelHeight);
+    bubbleTail.lineTo(width / 2 + 10, labelHeight);
+    bubbleTail.lineTo(width / 2, labelHeight + 12);
+    bubbleTail.close();
+    canvas.drawPath(bubbleTail, paint);
+
+    textPainter.paint(canvas, Offset((width - textPainter.width) / 2, (labelHeight - textPainter.height) / 2));
+
+    // 2. Icon Circle
+    final double centerY = labelHeight + 15 + radius;
+    final Offset center = Offset(width / 2, centerY);
+
+    paint.color = Colors.white;
+    canvas.drawCircle(center, radius + 3, paint);
+
+    paint.color = primaryColor;
+    canvas.drawCircle(center, radius, paint);
+
+    // Draw Home SVG
+    try {
+      final String svgString = await rootBundle.loadString('packages/grab_go_shared/lib/assets/icons/home.svg');
+      final SvgStringLoader loader = SvgStringLoader(svgString);
+      final PictureInfo pictureInfo = await vg.loadPicture(loader, null);
+
+      // Calculate SVG size (60% of the circle)
+      const double svgSize = radius * 1.2;
+
+      canvas.save();
+      // Move to center and scale
+      canvas.translate(center.dx - svgSize / 2, center.dy - svgSize / 2);
+      final double scale = svgSize / pictureInfo.size.width;
+      canvas.scale(scale, scale);
+
+      // Apply white color filter to the SVG
+      final Paint tintPaint = Paint()..colorFilter = const ColorFilter.mode(Colors.white, BlendMode.srcIn);
+      canvas.saveLayer(Rect.fromLTWH(0, 0, pictureInfo.size.width, pictureInfo.size.height), tintPaint);
+      canvas.drawPicture(pictureInfo.picture);
+      canvas.restore(); // Pop the saveLayer
+
+      canvas.restore(); // Pop the translation/scale
+    } catch (e) {
+      debugPrint('Error drawing Home SVG: $e');
+      // Fallback to Icon if SVG fails
+      final icon = Icons.home_rounded;
+      final iconPainter = TextPainter(
+        text: TextSpan(
+          text: String.fromCharCode(icon.codePoint),
+          style: TextStyle(fontSize: 60, fontFamily: icon.fontFamily, package: icon.fontPackage, color: Colors.white),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      iconPainter.layout();
+      iconPainter.paint(canvas, Offset(center.dx - iconPainter.width / 2, center.dy - iconPainter.height / 2));
+    }
+
+    // 3. Pointer
+    final Path bottomPointer = Path();
+    bottomPointer.moveTo(width / 2 - 12, centerY + radius + 2);
+    bottomPointer.lineTo(width / 2 + 12, centerY + radius + 2);
+    bottomPointer.lineTo(width / 2, centerY + radius + 15);
+    bottomPointer.close();
+    paint.color = Colors.white;
+    canvas.drawPath(bottomPointer, paint);
+
+    final ui.Image finalImage = await pictureRecorder.endRecording().toImage(width.toInt(), height.toInt());
+    final ByteData? byteData = await finalImage.toByteData(format: ui.ImageByteFormat.png);
+    return BitmapDescriptor.fromBytes(byteData!.buffer.asUint8List());
   }
 }

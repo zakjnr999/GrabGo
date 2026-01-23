@@ -266,6 +266,39 @@ io.on("connection", (socket) => {
 
     console.log("🔌 WebSocket disconnected", socket.id);
   });
+
+  // ==================== ORDER TRACKING SOCKET HANDLERS ====================
+
+  // Join order tracking room (for customers tracking their orders)
+  socket.on("join_order", ({ orderId }) => {
+    if (!orderId) {
+      console.warn("⚠️ join_order: No orderId provided");
+      return;
+    }
+
+    const roomName = `order:${orderId}`;
+    socket.join(roomName);
+    console.log(`📦 User ${socket.data.userId} joined order tracking room: ${roomName}`);
+
+    // Store the order room in socket data for cleanup
+    if (!socket.data.orderRooms) {
+      socket.data.orderRooms = new Set();
+    }
+    socket.data.orderRooms.add(roomName);
+  });
+
+  // Leave order tracking room
+  socket.on("leave_order", ({ orderId }) => {
+    if (!orderId) return;
+
+    const roomName = `order:${orderId}`;
+    socket.leave(roomName);
+    console.log(`📦 User ${socket.data.userId} left order tracking room: ${roomName}`);
+
+    if (socket.data.orderRooms) {
+      socket.data.orderRooms.delete(roomName);
+    }
+  });
 });
 
 // SECURITY: Periodic cleanup of empty rooms (every hour)
