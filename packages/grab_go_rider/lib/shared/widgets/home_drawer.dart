@@ -176,7 +176,7 @@ class _HomeDrawerState extends State<HomeDrawer> with SingleTickerProviderStateM
 
                 Expanded(
                   child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: EdgeInsets.symmetric(vertical: 12.h),
                     child: Column(
                       children: [

@@ -216,12 +216,34 @@ class LocationUpdateEvent {
   });
 
   factory LocationUpdateEvent.fromJson(Map<String, dynamic> json) {
+    // Parse ETA - backend sends duration in seconds, convert to DateTime
+    DateTime parsedEta;
+    final etaValue = json['eta'];
+    if (etaValue is int) {
+      // ETA is duration in seconds - add to current time
+      parsedEta = DateTime.now().add(Duration(seconds: etaValue));
+    } else if (etaValue is String) {
+      // ETA is already a date string
+      parsedEta = DateTime.tryParse(etaValue) ?? DateTime.now().add(const Duration(minutes: 10));
+    } else {
+      parsedEta = DateTime.now().add(const Duration(minutes: 10));
+    }
+
+    // Parse distance - ensure it's an int
+    final distanceValue = json['distance'];
+    final int parsedDistance = distanceValue is int
+        ? distanceValue
+        : (distanceValue is double ? distanceValue.toInt() : int.tryParse(distanceValue.toString()) ?? 0);
+
     return LocationUpdateEvent(
-      orderId: json['orderId'],
-      location: LocationData(latitude: json['location']['latitude'], longitude: json['location']['longitude']),
-      distance: json['distance'],
-      eta: DateTime.parse(json['eta']),
-      status: json['status'],
+      orderId: json['orderId']?.toString() ?? '',
+      location: LocationData(
+        latitude: (json['location']['latitude'] as num).toDouble(),
+        longitude: (json['location']['longitude'] as num).toDouble(),
+      ),
+      distance: parsedDistance,
+      eta: parsedEta,
+      status: json['status']?.toString() ?? 'unknown',
     );
   }
 }
@@ -235,6 +257,10 @@ class StatusUpdateEvent {
   StatusUpdateEvent({required this.orderId, required this.status, this.message});
 
   factory StatusUpdateEvent.fromJson(Map<String, dynamic> json) {
-    return StatusUpdateEvent(orderId: json['orderId'], status: json['status'], message: json['message']);
+    return StatusUpdateEvent(
+      orderId: json['orderId']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'unknown',
+      message: json['message']?.toString(),
+    );
   }
 }

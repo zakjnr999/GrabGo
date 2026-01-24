@@ -207,7 +207,7 @@ class _MapTrackingState extends State<MapTracking> {
                             width: 100.w,
                             height: 100.w,
                             decoration: BoxDecoration(
-                              color: colors.accentOrange.withOpacity(0.1),
+                              color: colors.accentOrange.withValues(alpha: 0.1),
                               shape: BoxShape.circle,
                             ),
                             child: Icon(Icons.delivery_dining_outlined, size: 50.sp, color: colors.accentOrange),

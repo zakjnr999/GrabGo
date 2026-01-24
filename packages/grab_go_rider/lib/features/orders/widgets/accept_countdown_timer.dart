@@ -4,8 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
-/// A countdown timer widget for order acceptance
-/// Shows a circular progress indicator that counts down from [duration] seconds
 class AcceptCountdownTimer extends StatefulWidget {
   final int duration;
   final VoidCallback onExpired;
@@ -86,13 +84,12 @@ class _AcceptCountdownTimerState extends State<AcceptCountdownTimer> with Single
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Countdown circle
         Stack(
           alignment: Alignment.center,
           children: [
             SizedBox(
-              width: 80.w,
-              height: 80.w,
+              width: 105.w,
+              height: 105.w,
               child: CircularProgressIndicator(
                 value: progress,
                 strokeWidth: 6.w,
@@ -116,7 +113,6 @@ class _AcceptCountdownTimerState extends State<AcceptCountdownTimer> with Single
           ],
         ),
         SizedBox(height: 20.h),
-        // Action buttons
         Row(
           children: [
             Expanded(
@@ -124,7 +120,7 @@ class _AcceptCountdownTimerState extends State<AcceptCountdownTimer> with Single
                 onPressed: widget.onDecline,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: colors.error,
-                  side: BorderSide(color: colors.error, width: 1.5),
+                  side: BorderSide(color: colors.error, width: 1),
                   padding: EdgeInsets.symmetric(vertical: 14.h),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.borderRadius4)),
                 ),

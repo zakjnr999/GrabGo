@@ -154,7 +154,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
                 label: "Email",
                 value: _email,
                 icon: Assets.icons.mail,
-                iconColor: colors.accentOrange,
+                iconColor: colors.accentGreen,
                 isEditing: _isEditing,
                 onChanged: (value) => setState(() => _email = value),
               ),
@@ -164,7 +164,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
                 label: "Phone Number",
                 value: _phoneNumber,
                 icon: Assets.icons.phone,
-                iconColor: colors.accentViolet,
+                iconColor: colors.accentGreen,
                 isEditing: _isEditing,
                 onChanged: (value) => setState(() => _phoneNumber = value),
               ),
@@ -184,7 +184,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
                 label: "National ID",
                 value: _nationalId,
                 icon: Assets.icons.idCard,
-                iconColor: colors.accentOrange,
+                iconColor: colors.accentGreen,
                 isEditing: _isEditing,
                 onChanged: (value) => setState(() => _nationalId = value),
               ),
@@ -212,7 +212,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
                       label: "City",
                       value: _city,
                       icon: Assets.icons.mapPin,
-                      iconColor: colors.accentOrange,
+                      iconColor: colors.accentGreen,
                       isEditing: _isEditing,
                       onChanged: (value) => setState(() => _city = value),
                     ),
@@ -224,7 +224,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
                       label: "Country",
                       value: _country,
                       icon: Assets.icons.mapPin,
-                      iconColor: colors.accentViolet,
+                      iconColor: colors.accentGreen,
                       isEditing: _isEditing,
                       onChanged: (value) => setState(() => _country = value),
                     ),
@@ -251,7 +251,7 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
                 label: "Contact Phone",
                 value: _emergencyContactPhone,
                 icon: Assets.icons.phone,
-                iconColor: colors.accentOrange,
+                iconColor: colors.accentGreen,
                 isEditing: _isEditing,
                 onChanged: (value) => setState(() => _emergencyContactPhone = value),
               ),
@@ -264,9 +264,9 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
                     Expanded(
                       child: _buildActionButton(
                         label: "Cancel",
-                        backgroundColor: colors.backgroundSecondary,
+                        backgroundColor: colors.inputBorder,
                         textColor: colors.textPrimary,
-                        borderColor: colors.border,
+                        borderColor: Colors.transparent,
                         onPressed: () {
                           setState(() {
                             _isEditing = false;
@@ -329,7 +329,6 @@ class _PersonalInformationPageState extends State<PersonalInformationPage> {
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        border: Border.all(color: colors.border, width: 1),
       ),
       child: Row(
         crossAxisAlignment: isMultiline ? CrossAxisAlignment.start : CrossAxisAlignment.center,

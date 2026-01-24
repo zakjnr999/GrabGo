@@ -83,7 +83,7 @@ class _BankAccountPageState extends State<BankAccountPage> {
           ],
         ),
         body: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -127,7 +127,7 @@ class _BankAccountPageState extends State<BankAccountPage> {
                 label: "Bank Name",
                 value: _bankName,
                 icon: Assets.icons.creditCard,
-                iconColor: colors.accentOrange,
+                iconColor: colors.accentGreen,
                 isEditing: _isEditing,
                 onChanged: (value) => setState(() => _bankName = value),
               ),
@@ -137,7 +137,7 @@ class _BankAccountPageState extends State<BankAccountPage> {
                 label: "Account Number",
                 value: _accountNumber,
                 icon: Assets.icons.creditCard,
-                iconColor: colors.accentViolet,
+                iconColor: colors.accentGreen,
                 isEditing: _isEditing,
                 onChanged: (value) => setState(() => _accountNumber = value),
                 isSecure: !_isEditing,
@@ -173,7 +173,7 @@ class _BankAccountPageState extends State<BankAccountPage> {
                 label: "SWIFT Code",
                 value: _swiftCode,
                 icon: Assets.icons.infoCircle,
-                iconColor: colors.accentOrange,
+                iconColor: colors.accentGreen,
                 isEditing: _isEditing,
                 onChanged: (value) => setState(() => _swiftCode = value),
               ),
@@ -183,7 +183,7 @@ class _BankAccountPageState extends State<BankAccountPage> {
                 label: "Routing Number",
                 value: _routingNumber,
                 icon: Assets.icons.infoCircle,
-                iconColor: colors.accentViolet,
+                iconColor: colors.accentGreen,
                 isEditing: _isEditing,
                 onChanged: (value) => setState(() => _routingNumber = value),
               ),
@@ -194,7 +194,6 @@ class _BankAccountPageState extends State<BankAccountPage> {
                 decoration: BoxDecoration(
                   color: colors.accentOrange.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                  border: Border.all(color: colors.accentOrange.withValues(alpha: 0.3), width: 1),
                 ),
                 child: Row(
                   children: [
@@ -290,7 +289,6 @@ class _BankAccountPageState extends State<BankAccountPage> {
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        border: Border.all(color: colors.border, width: 1),
       ),
       child: Row(
         children: [

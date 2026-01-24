@@ -273,7 +273,7 @@ class _BonusesPageState extends State<BonusesPage> with SingleTickerProviderStat
                   BoxShadow(
                     color: colors.accentOrange.withValues(alpha: 0.3),
                     blurRadius: 12,
-                    offset: const Offset(0, 4),
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
@@ -345,7 +345,7 @@ class _BonusesPageState extends State<BonusesPage> with SingleTickerProviderStat
                   _activeBonuses.isEmpty
                       ? _buildEmptyState("No active bonuses", "Check back later for new bonus opportunities!", colors)
                       : ListView.separated(
-                          physics: const BouncingScrollPhysics(),
+                          physics: const AlwaysScrollableScrollPhysics(),
                           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
                           itemCount: _activeBonuses.length,
                           separatorBuilder: (context, index) => SizedBox(height: 16.h),
@@ -357,7 +357,7 @@ class _BonusesPageState extends State<BonusesPage> with SingleTickerProviderStat
                   _completedBonuses.isEmpty
                       ? _buildEmptyState("No bonus history", "Complete bonuses to see your earnings here!", colors)
                       : ListView.separated(
-                          physics: const BouncingScrollPhysics(),
+                          physics: const AlwaysScrollableScrollPhysics(),
                           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
                           itemCount: _completedBonuses.length,
                           separatorBuilder: (context, index) => SizedBox(height: 16.h),
@@ -385,7 +385,6 @@ class _BonusesPageState extends State<BonusesPage> with SingleTickerProviderStat
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        border: Border.all(color: isActive ? typeColor.withValues(alpha: 0.3) : colors.border, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

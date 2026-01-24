@@ -49,11 +49,12 @@ Widget switchTile({
             ],
           ),
         ),
-        Switch.adaptive(
+        CustomSwitch(
           value: value,
           onChanged: onChanged,
-          activeThumbColor: AppColors.white,
-          activeTrackColor: colors.accentGreen,
+          activeColor: colors.accentGreen,
+          inactiveColor: colors.border,
+          thumbColor: colors.backgroundPrimary,
         ),
       ],
     ),

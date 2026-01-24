@@ -8,7 +8,6 @@ import 'package:grab_go_rider/features/orders/widgets/accept_countdown_timer.dar
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
-/// A bottom sheet dialog for accepting an order with a countdown timer
 class OrderAcceptDialog extends StatelessWidget {
   final AvailableOrderDto order;
   final VoidCallback onAccept;
@@ -72,28 +71,22 @@ class OrderAcceptDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle bar
-            Container(
-              width: 40.w,
-              height: 4.h,
-              margin: EdgeInsets.only(bottom: 20.h),
-              decoration: BoxDecoration(
-                color: colors.textSecondary.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(2.r),
-              ),
-            ),
-            // Header with "New Order" badge
             Container(
               padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
               decoration: BoxDecoration(
                 color: colors.accentGreen.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20.r),
-                border: Border.all(color: colors.accentGreen, width: 1),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.notifications_active, color: colors.accentGreen, size: 16.w),
+                  SvgPicture.asset(
+                    Assets.icons.bell,
+                    package: 'grab_go_shared',
+                    width: 16.w,
+                    height: 16.w,
+                    colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                  ),
                   SizedBox(width: 6.w),
                   Text(
                     'NEW ORDER REQUEST',
@@ -108,24 +101,21 @@ class OrderAcceptDialog extends StatelessWidget {
               ),
             ),
             SizedBox(height: 20.h),
-            // Order details card
             Container(
               padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
                 color: colors.backgroundSecondary,
                 borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                border: Border.all(color: colors.border, width: 1),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Restaurant info
                   Row(
                     children: [
                       Container(
                         padding: EdgeInsets.all(8.r),
                         decoration: BoxDecoration(
-                          color: colors.accentOrange.withValues(alpha: 0.1),
+                          color: colors.accentGreen.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                         ),
                         child: SvgPicture.asset(
@@ -133,7 +123,7 @@ class OrderAcceptDialog extends StatelessWidget {
                           package: 'grab_go_shared',
                           width: 20.w,
                           height: 20.w,
-                          colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                          colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
                         ),
                       ),
                       SizedBox(width: 12.w),
@@ -160,7 +150,6 @@ class OrderAcceptDialog extends StatelessWidget {
                       ),
                     ],
                   ),
-                  // Dotted line connector
                   Padding(
                     padding: EdgeInsets.only(left: 18.w),
                     child: Column(
@@ -175,13 +164,12 @@ class OrderAcceptDialog extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Customer info
                   Row(
                     children: [
                       Container(
                         padding: EdgeInsets.all(8.r),
                         decoration: BoxDecoration(
-                          color: colors.accentViolet.withValues(alpha: 0.1),
+                          color: colors.accentGreen.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                         ),
                         child: SvgPicture.asset(
@@ -189,7 +177,7 @@ class OrderAcceptDialog extends StatelessWidget {
                           package: 'grab_go_shared',
                           width: 20.w,
                           height: 20.w,
-                          colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                          colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
                         ),
                       ),
                       SizedBox(width: 12.w),
@@ -220,12 +208,11 @@ class OrderAcceptDialog extends StatelessWidget {
               ),
             ),
             SizedBox(height: 16.h),
-            // Order items and earnings
             Row(
               children: [
                 Expanded(
                   child: _buildInfoCard(
-                    icon: Icons.shopping_bag_outlined,
+                    icon: Assets.icons.cart,
                     label: 'Items',
                     value: '${order.orderItems.length}',
                     colors: colors,
@@ -234,7 +221,7 @@ class OrderAcceptDialog extends StatelessWidget {
                 SizedBox(width: 12.w),
                 Expanded(
                   child: _buildInfoCard(
-                    icon: Icons.payments_outlined,
+                    icon: Assets.icons.cash,
                     label: 'Earnings',
                     value: 'GHS ${order.totalAmount.toStringAsFixed(2)}',
                     colors: colors,
@@ -244,7 +231,6 @@ class OrderAcceptDialog extends StatelessWidget {
               ],
             ),
             SizedBox(height: 24.h),
-            // Countdown timer with action buttons
             AcceptCountdownTimer(
               duration: countdownSeconds,
               onExpired: () {
@@ -267,7 +253,7 @@ class OrderAcceptDialog extends StatelessWidget {
   }
 
   Widget _buildInfoCard({
-    required IconData icon,
+    required String icon,
     required String label,
     required String value,
     required AppColorsExtension colors,
@@ -278,12 +264,17 @@ class OrderAcceptDialog extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.backgroundSecondary,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        border: Border.all(color: colors.border, width: 1),
       ),
       child: Row(
         children: [
-          Icon(icon, color: colors.textSecondary, size: 20.w),
-          SizedBox(width: 8.w),
+          SvgPicture.asset(
+            icon,
+            package: 'grab_go_shared',
+            width: 20.w,
+            height: 20.w,
+            colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+          ),
+          SizedBox(width: 10.w),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

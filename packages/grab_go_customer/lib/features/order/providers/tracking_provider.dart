@@ -29,12 +29,18 @@ class TrackingProvider extends BaseTrackingProvider {
   // Geofence radius in meters
   static const double _geofenceRadius = 50.0;
 
+  // Animation constants for smooth movement
+  static const int _animationDurationMs = 1500; // Total animation duration
+  static const int _animationFrameMs = 16; // ~60fps
+  static const int _animationSteps = _animationDurationMs ~/ _animationFrameMs;
+
   // Subscriptions
   StreamSubscription? _locationSubscription;
   StreamSubscription? _statusSubscription;
   StreamSubscription? _connectionSubscription;
   Timer? _animationTimer;
   LatLng? _lastKnownPosition;
+  double _currentBearing = 0;
   final Map<String, BitmapDescriptor> _markerIconCache = {};
 
   // Getters
@@ -348,47 +354,83 @@ class TrackingProvider extends BaseTrackingProvider {
       locationHistory: updatedHistory,
     );
 
+    final newPosition = event.location.toLatLng();
+
     // Start smooth animation from old to new position
     if (_lastKnownPosition != null) {
+      // Calculate distance between last and new position
+      final distance = _calculateDistance(_lastKnownPosition!, newPosition);
+
+      // If distance is too large (>500m), jump directly (could be GPS error or teleport)
+      if (distance > 500) {
+        print('📍 Large position jump detected (${distance.toStringAsFixed(0)}m), jumping directly');
+        _updateRiderMarker(newPosition, _currentBearing);
+        _lastKnownPosition = newPosition;
+        notifyListeners();
+        return;
+      }
+
       // Calculate bearing from last position to new one
-      double bearing = _calculateBearing(_lastKnownPosition!, event.location.toLatLng());
-      _animateMarkerMovement(_lastKnownPosition!, event.location.toLatLng(), bearing);
+      double bearing = _calculateBearing(_lastKnownPosition!, newPosition);
+      _animateMarkerMovement(_lastKnownPosition!, newPosition, bearing);
     } else {
-      _updateRiderMarker(event.location.toLatLng(), 0);
+      _updateRiderMarker(newPosition, 0);
+      notifyListeners();
     }
 
-    _lastKnownPosition = event.location.toLatLng();
+    _lastKnownPosition = newPosition;
 
     // Update trail
     _updateLocationHistoryPolyline();
 
-    // Animate camera to rider if needed
-    _animateCameraToRider(event.location.toLatLng());
-
-    notifyListeners();
+    // Only animate camera if not already following (to avoid jerky movement)
+    // Camera will follow naturally during marker animation
   }
 
-  /// Smoothly animate marker from one position to another
-  void _animateMarkerMovement(LatLng start, LatLng end, double bearing) {
+  /// Smoothly animate marker from one position to another with easing
+  void _animateMarkerMovement(LatLng start, LatLng end, double targetBearing) {
     _animationTimer?.cancel();
 
-    int steps = 20; // Number of animation steps
     int currentStep = 0;
+    final double startBearing = _currentBearing;
 
-    _animationTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
-      if (currentStep >= steps) {
+    // Calculate the shortest rotation path
+    double bearingDiff = targetBearing - startBearing;
+    if (bearingDiff > 180) bearingDiff -= 360;
+    if (bearingDiff < -180) bearingDiff += 360;
+
+    _animationTimer = Timer.periodic(const Duration(milliseconds: _animationFrameMs), (timer) {
+      if (currentStep >= _animationSteps) {
         timer.cancel();
+        // Ensure we end exactly at the target position
+        _updateRiderMarker(end, targetBearing);
+        _currentBearing = targetBearing;
+        // Smoothly move camera to final position
+        _animateCameraToRider(end);
+        notifyListeners();
         return;
       }
 
       currentStep++;
-      double fraction = currentStep / steps;
 
-      double lat = start.latitude + (end.latitude - start.latitude) * fraction;
-      double lng = start.longitude + (end.longitude - start.longitude) * fraction;
+      // Use ease-out cubic for smooth deceleration: 1 - (1 - t)^3
+      double t = currentStep / _animationSteps;
+      double easedT = 1 - pow(1 - t, 3).toDouble();
 
-      _updateRiderMarker(LatLng(lat, lng), bearing);
-      notifyListeners();
+      // Interpolate position
+      double lat = start.latitude + (end.latitude - start.latitude) * easedT;
+      double lng = start.longitude + (end.longitude - start.longitude) * easedT;
+
+      // Interpolate bearing smoothly
+      double currentBearingAnimated = startBearing + bearingDiff * easedT;
+      _currentBearing = currentBearingAnimated;
+
+      _updateRiderMarker(LatLng(lat, lng), currentBearingAnimated);
+
+      // Only notify every 3rd frame to reduce UI rebuilds while maintaining visual smoothness
+      if (currentStep % 3 == 0 || currentStep == _animationSteps) {
+        notifyListeners();
+      }
     });
   }
 
@@ -405,6 +447,21 @@ class TrackingProvider extends BaseTrackingProvider {
 
     double bearing = atan2(y, x) * 180 / pi;
     return (bearing + 360) % 360;
+  }
+
+  /// Calculate distance between two points in meters (Haversine formula)
+  double _calculateDistance(LatLng start, LatLng end) {
+    const double earthRadius = 6371000; // meters
+
+    double lat1 = start.latitude * pi / 180;
+    double lat2 = end.latitude * pi / 180;
+    double dLat = (end.latitude - start.latitude) * pi / 180;
+    double dLng = (end.longitude - start.longitude) * pi / 180;
+
+    double a = sin(dLat / 2) * sin(dLat / 2) + cos(lat1) * cos(lat2) * sin(dLng / 2) * sin(dLng / 2);
+    double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+    return earthRadius * c;
   }
 
   /// Update location history (trail) on the map
@@ -495,9 +552,19 @@ class TrackingProvider extends BaseTrackingProvider {
     _mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100));
   }
 
-  /// Animate camera to rider location
+  /// Animate camera to rider location smoothly
   void _animateCameraToRider(LatLng position) {
-    _mapController?.animateCamera(CameraUpdate.newLatLng(position));
+    // Use a gentler zoom level and smooth animation
+    _mapController?.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(
+          target: position,
+          zoom: 16.0, // Closer zoom for better detail
+          tilt: 45.0, // Slight tilt for 3D effect
+          bearing: _currentBearing, // Rotate map to rider's direction
+        ),
+      ),
+    );
   }
 
   /// Set map controller

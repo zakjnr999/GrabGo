@@ -60,8 +60,7 @@ class _OrdersPageState extends State<OrdersPage> {
   }
 
   Future<void> _acceptOrder(AvailableOrderDto order, AppColorsExtension colors, BuildContext ctx) async {
-    // Capture references before async gap
-    final messenger = ScaffoldMessenger.of(context);
+    final messenger = ScaffoldMessenger.of(ctx);
 
     final accepted = await _availableOrdersService.acceptOrder(order.id);
 
@@ -74,7 +73,6 @@ class _OrdersPageState extends State<OrdersPage> {
       return;
     }
 
-    // Get the current rider ID
     final riderId = UserService().currentUser?.id;
 
     if (!mounted) return;
@@ -82,8 +80,8 @@ class _OrdersPageState extends State<OrdersPage> {
     context.push(
       '/order-confirmation',
       extra: {
-        'orderId': accepted.id, // Use MongoDB _id, not orderNumber
-        'orderNumber': accepted.orderNumber, // Keep orderNumber for display
+        'orderId': accepted.id,
+        'orderNumber': accepted.orderNumber,
         'restaurantName': accepted.restaurantName,
         'restaurantAddress': accepted.restaurantAddress,
         'customerName': accepted.customerName,
@@ -92,7 +90,6 @@ class _OrdersPageState extends State<OrdersPage> {
         'orderTotal': 'GHS ${accepted.totalAmount.toStringAsFixed(2)}',
         'orderItems': accepted.orderItems,
         'specialInstructions': accepted.notes,
-        // Tracking data - Use ORIGINAL order coordinates since accept API doesn't return full location data
         'customerId': accepted.customerId,
         'riderId': riderId,
         'pickupLatitude': order.pickupLatitude ?? accepted.pickupLatitude,
@@ -103,26 +100,23 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
-  /// Show the order accept dialog with countdown timer
   void _showAcceptOrderDialog(AvailableOrderDto order, AppColorsExtension colors, BuildContext ctx) {
-    // Close the available orders sheet first
     Navigator.pop(ctx);
 
-    // Show the countdown accept dialog
     OrderAcceptDialog.show(
-      context: context,
+      context: ctx,
       order: order,
-      countdownSeconds: 30, // 30 seconds to accept
+      countdownSeconds: 30,
       onAccept: () {
-        _acceptOrder(order, colors, context);
+        _acceptOrder(order, colors, ctx);
       },
       onDecline: () {
         ScaffoldMessenger.of(
-          context,
+          ctx,
         ).showSnackBar(SnackBar(content: const Text('Order declined'), backgroundColor: colors.textSecondary));
       },
       onExpired: () {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(ctx).showSnackBar(
           SnackBar(
             content: const Text('Order expired - took too long to accept'),
             backgroundColor: colors.accentOrange,
@@ -158,7 +152,6 @@ class _OrdersPageState extends State<OrdersPage> {
             bottom: MediaQuery.of(sheetContext).padding.bottom + 16.h,
           ),
           child: SafeArea(
-            top: false,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -202,7 +195,7 @@ class _OrdersPageState extends State<OrdersPage> {
                   Flexible(
                     child: ListView.separated(
                       shrinkWrap: true,
-                      physics: const BouncingScrollPhysics(),
+                      physics: const AlwaysScrollableScrollPhysics(),
                       itemCount: _availableOrders.length,
                       separatorBuilder: (context, index) => SizedBox(height: 12.h),
                       itemBuilder: (context, index) {
@@ -348,7 +341,7 @@ class _OrdersPageState extends State<OrdersPage> {
           centerTitle: true,
         ),
         body: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.symmetric(horizontal: 20.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -359,7 +352,6 @@ class _OrdersPageState extends State<OrdersPage> {
                 decoration: BoxDecoration(
                   color: colors.backgroundPrimary,
                   borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                  border: Border.all(color: colors.border, width: 1),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -522,7 +514,6 @@ class _OrdersPageState extends State<OrdersPage> {
                 decoration: BoxDecoration(
                   color: colors.backgroundPrimary,
                   borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                  border: Border.all(color: colors.border, width: 1),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -622,7 +613,6 @@ class _OrdersPageState extends State<OrdersPage> {
                       decoration: BoxDecoration(
                         color: colors.accentGreen.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                        border: Border.all(color: colors.accentGreen.withValues(alpha: 0.3), width: 1),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -660,35 +650,25 @@ class _OrdersPageState extends State<OrdersPage> {
                 decoration: BoxDecoration(
                   color: colors.backgroundPrimary,
                   borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                  border: Border.all(color: colors.border, width: 1),
                 ),
                 child: Row(
                   children: [
-                    Switch.adaptive(
+                    CustomSwitch(
                       value: _routeOptimizationEnabled,
                       onChanged: (value) {
                         setState(() {
                           _routeOptimizationEnabled = value;
                         });
                       },
-                      activeThumbColor: AppColors.white,
-                      activeTrackColor: colors.accentGreen,
+                      activeColor: colors.accentGreen,
+                      inactiveColor: colors.border,
+                      thumbColor: colors.backgroundPrimary,
                     ),
                     SizedBox(width: 12.w),
                     Expanded(
                       child: Text(
                         "Always select best route, ignore traffic",
                         style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
-                      ),
-                    ),
-                    SizedBox(width: 8.w),
-                    GestureDetector(
-                      onTap: () {},
-                      child: Container(
-                        width: 20.w,
-                        height: 20.w,
-                        decoration: BoxDecoration(color: colors.info.withValues(alpha: 0.1), shape: BoxShape.circle),
-                        child: Icon(Icons.info_outline, size: 14.w, color: colors.info),
                       ),
                     ),
                   ],
@@ -718,7 +698,6 @@ class _OrdersPageState extends State<OrdersPage> {
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: () {
-                          // Mock coordinates for testing (Accra, Ghana area)
                           context.push(
                             '/order-confirmation',
                             extra: {
@@ -731,12 +710,11 @@ class _OrdersPageState extends State<OrdersPage> {
                               'orderTotal': 'GHS 45.00',
                               'orderItems': ['Pizza Margherita x1', 'Coca Cola x2'],
                               'specialInstructions': 'Ring doorbell twice',
-                              // Testing tracking data - mock coordinates
                               'customerId': 'test-customer-123',
                               'riderId': 'test-rider-456',
-                              'pickupLatitude': 5.6037, // Accra (restaurant)
+                              'pickupLatitude': 5.6037,
                               'pickupLongitude': -0.1870,
-                              'destinationLatitude': 5.6145, // Nearby destination (customer)
+                              'destinationLatitude': 5.6145,
                               'destinationLongitude': -0.2056,
                             },
                           );
@@ -777,9 +755,8 @@ class _OrdersPageState extends State<OrdersPage> {
                       width: double.infinity,
                       padding: EdgeInsets.symmetric(vertical: 18.h, horizontal: 20.w),
                       decoration: BoxDecoration(
-                        color: colors.backgroundSecondary,
+                        color: colors.inputBorder,
                         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                        border: Border.all(color: colors.border, width: 1),
                       ),
                       child: Center(
                         child: Text(

@@ -53,7 +53,7 @@ class SupportPage extends StatelessWidget {
           centerTitle: true,
         ),
         body: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,7 +73,7 @@ class SupportPage extends StatelessWidget {
               _buildContactCard(
                 colors: colors,
                 icon: Assets.icons.mail,
-                iconColor: colors.accentOrange,
+                iconColor: colors.accentGreen,
                 title: "Email Support",
                 subtitle: "Send us an email",
                 email: "support@grabgo.com",
@@ -83,7 +83,7 @@ class SupportPage extends StatelessWidget {
               _buildContactCard(
                 colors: colors,
                 icon: Assets.icons.headsetHelp,
-                iconColor: colors.accentViolet,
+                iconColor: colors.accentGreen,
                 title: "Live Chat",
                 subtitle: "Chat with us instantly",
                 onTap: () {
@@ -113,7 +113,7 @@ class SupportPage extends StatelessWidget {
               _buildHelpCard(
                 colors: colors,
                 icon: Assets.icons.warningCircle,
-                iconColor: colors.accentOrange,
+                iconColor: colors.accentGreen,
                 title: "Report an Issue",
                 subtitle: "Report bugs or technical problems",
                 onTap: () => _sendEmail("support@grabgo.com", true),
@@ -122,7 +122,7 @@ class SupportPage extends StatelessWidget {
               _buildHelpCard(
                 colors: colors,
                 icon: Assets.icons.shieldCheck,
-                iconColor: colors.accentViolet,
+                iconColor: colors.accentGreen,
                 title: "Safety & Guidelines",
                 subtitle: "Learn about safety protocols",
                 onTap: () {
@@ -172,7 +172,6 @@ class SupportPage extends StatelessWidget {
           decoration: BoxDecoration(
             color: colors.backgroundPrimary,
             borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-            border: Border.all(color: colors.border, width: 1),
           ),
           child: Row(
             children: [
@@ -300,7 +299,6 @@ class SupportPage extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        border: Border.all(color: colors.border, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

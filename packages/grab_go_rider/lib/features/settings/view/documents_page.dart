@@ -65,7 +65,7 @@ class _DocumentsPageState extends State<DocumentsPage> {
           centerTitle: true,
         ),
         body: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,7 +75,6 @@ class _DocumentsPageState extends State<DocumentsPage> {
                 decoration: BoxDecoration(
                   color: colors.accentOrange.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                  border: Border.all(color: colors.accentOrange.withValues(alpha: 0.3), width: 1),
                 ),
                 child: Row(
                   children: [
@@ -116,7 +115,7 @@ class _DocumentsPageState extends State<DocumentsPage> {
                 description: "Valid driving license",
                 status: _documents["Driver's License"]!,
                 icon: Assets.icons.idCard,
-                iconColor: colors.accentOrange,
+                iconColor: colors.accentGreen,
                 onTap: () => _showDocumentOptions(context, colors, "Driver's License"),
               ),
               SizedBox(height: 12.h),
@@ -126,7 +125,7 @@ class _DocumentsPageState extends State<DocumentsPage> {
                 description: "Vehicle registration certificate",
                 status: _documents["Vehicle Registration"]!,
                 icon: Assets.icons.deliveryTruck,
-                iconColor: colors.accentViolet,
+                iconColor: colors.accentGreen,
                 onTap: () => _showDocumentOptions(context, colors, "Vehicle Registration"),
               ),
               SizedBox(height: 12.h),
@@ -149,7 +148,7 @@ class _DocumentsPageState extends State<DocumentsPage> {
                 description: "Clear profile photo",
                 status: _documents["Profile Photo"]!,
                 icon: Assets.icons.user,
-                iconColor: colors.accentOrange,
+                iconColor: colors.accentGreen,
                 onTap: () => _showDocumentOptions(context, colors, "Profile Photo"),
               ),
               SizedBox(height: 12.h),
@@ -159,7 +158,7 @@ class _DocumentsPageState extends State<DocumentsPage> {
                 description: "Photo of your vehicle",
                 status: _documents["Vehicle Photo"]!,
                 icon: Assets.icons.deliveryTruck,
-                iconColor: colors.accentViolet,
+                iconColor: colors.accentGreen,
                 onTap: () => _showDocumentOptions(context, colors, "Vehicle Photo"),
               ),
               SizedBox(height: 32.h),
@@ -190,7 +189,6 @@ class _DocumentsPageState extends State<DocumentsPage> {
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        border: Border.all(color: colors.border, width: 1),
       ),
       child: Material(
         color: Colors.transparent,

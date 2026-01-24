@@ -1,3 +1,4 @@
+import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -17,10 +18,10 @@ class WalletPage extends StatefulWidget {
 
 class _WalletPageState extends State<WalletPage> {
   List<TransactionModel> _allTransactions = [];
-  double _totalBalance = 184.90;
-  double _todayEarnings = 45.50;
-  double _thisWeekEarnings = 320.75;
-  double _thisMonthEarnings = 1250.30;
+  final double _totalBalance = 184.90;
+  final double _todayEarnings = 45.50;
+  final double _thisWeekEarnings = 320.75;
+  final double _thisMonthEarnings = 1250.30;
 
   @override
   void initState() {
@@ -175,7 +176,7 @@ class _WalletPageState extends State<WalletPage> {
           actionsPadding: EdgeInsets.only(right: 10.w),
         ),
         body: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.symmetric(horizontal: 20.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -193,9 +194,9 @@ class _WalletPageState extends State<WalletPage> {
                   borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                   boxShadow: [
                     BoxShadow(
-                      color: colors.accentGreen.withValues(alpha: 0.3),
+                      color: colors.accentGreen.withValues(alpha: 0.2),
                       blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
@@ -262,11 +263,11 @@ class _WalletPageState extends State<WalletPage> {
                   ),
                   SizedBox(width: 12.w),
                   Expanded(
-                    child: _buildQuickAction("Earnings", Assets.icons.dollar, colors.accentOrange, colors, () {}),
+                    child: _buildQuickAction("Earnings", Assets.icons.dollar, colors.accentGreen, colors, () {}),
                   ),
                   SizedBox(width: 12.w),
                   Expanded(
-                    child: _buildQuickAction("History", Assets.icons.clock, colors.accentViolet, colors, () {
+                    child: _buildQuickAction("History", Assets.icons.clock, colors.accentGreen, colors, () {
                       context.push("/transaction-history-page");
                     }),
                   ),
@@ -280,7 +281,6 @@ class _WalletPageState extends State<WalletPage> {
                 decoration: BoxDecoration(
                   color: colors.backgroundPrimary,
                   borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                  border: Border.all(color: colors.border, width: 1),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -301,36 +301,38 @@ class _WalletPageState extends State<WalletPage> {
                     SizedBox(height: 16.h),
                     _buildEarningsRow("This Month", _thisMonthEarnings, colors),
                     SizedBox(height: 20.h),
-                    Container(
-                      padding: EdgeInsets.all(16.w),
-                      decoration: BoxDecoration(
-                        color: colors.accentGreen.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                        border: Border.all(color: colors.accentGreen.withValues(alpha: 0.3), width: 1),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "TOTAL EARNINGS",
-                            style: TextStyle(
-                              color: colors.accentGreen,
-                              fontSize: 12.sp,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.5,
-                            ),
+                    DottedLine(
+                      direction: Axis.horizontal,
+                      lineLength: double.infinity,
+                      lineThickness: 1.5,
+                      dashLength: 6,
+                      dashColor: colors.inputBorder.withValues(alpha: 0.65),
+                      dashGapLength: 4,
+                    ),
+                    SizedBox(height: 12.h),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "TOTAL EARNINGS",
+                          style: TextStyle(
+                            color: colors.accentGreen,
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
                           ),
-                          Text(
-                            "GHC ${_thisMonthEarnings.toStringAsFixed(2)}",
-                            style: TextStyle(
-                              color: colors.accentGreen,
-                              fontSize: 18.sp,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.5,
-                            ),
+                        ),
+                        Text(
+                          "GHC ${_thisMonthEarnings.toStringAsFixed(2)}",
+                          style: TextStyle(
+                            color: colors.accentGreen,
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -347,17 +349,30 @@ class _WalletPageState extends State<WalletPage> {
                   ),
                   TextButton(
                     onPressed: () {},
-                    child: Text(
-                      "View All",
-                      style: TextStyle(color: colors.accentGreen, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                    child: Row(
+                      children: [
+                        Text(
+                          "All",
+                          style: TextStyle(color: colors.accentGreen, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                        ),
+                        SizedBox(width: 4.w),
+                        SvgPicture.asset(
+                          Assets.icons.navArrowRight,
+                          package: 'grab_go_shared',
+                          width: 16.w,
+                          height: 16.w,
+                          colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
 
-              SizedBox(height: 16.h),
+              SizedBox(height: 6.h),
 
               ListView.separated(
+                padding: EdgeInsets.zero,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: _allTransactions.length,
@@ -378,7 +393,6 @@ class _WalletPageState extends State<WalletPage> {
                     decoration: BoxDecoration(
                       color: colors.backgroundPrimary,
                       borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                      border: Border.all(color: colors.border, width: 1),
                     ),
                     child: Row(
                       children: [
@@ -417,16 +431,9 @@ class _WalletPageState extends State<WalletPage> {
                               SizedBox(height: 4.h),
                               Row(
                                 children: [
-                                  Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                                    decoration: BoxDecoration(
-                                      color: typeColor.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      typeLabel,
-                                      style: TextStyle(color: typeColor, fontSize: 10.sp, fontWeight: FontWeight.w600),
-                                    ),
+                                  Text(
+                                    typeLabel,
+                                    style: TextStyle(color: typeColor, fontSize: 12.sp, fontWeight: FontWeight.w600),
                                   ),
                                   SizedBox(width: 8.w),
                                   Flexible(
@@ -445,6 +452,7 @@ class _WalletPageState extends State<WalletPage> {
                             ],
                           ),
                         ),
+                        SizedBox(width: 4.w),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
@@ -528,7 +536,6 @@ class _WalletPageState extends State<WalletPage> {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-          border: Border.all(color: colors.border, width: 1),
         ),
         child: Column(
           children: [

@@ -33,12 +33,12 @@ class PerformancePage extends StatefulWidget {
 }
 
 class _PerformancePageState extends State<PerformancePage> {
-  double _overallRating = 4.8;
-  int _totalDeliveries = 1247;
-  double _successRate = 98.5;
-  double _averageDeliveryTime = 25.0;
-  int _onTimeDeliveries = 1228;
-  int _totalRatings = 892;
+  final double _overallRating = 4.8;
+  final int _totalDeliveries = 1247;
+  final double _successRate = 98.5;
+  final double _averageDeliveryTime = 25.0;
+  final int _onTimeDeliveries = 1228;
+  final int _totalRatings = 892;
 
   List<RatingReview> _recentRatings = [];
 
@@ -136,7 +136,7 @@ class _PerformancePageState extends State<PerformancePage> {
           centerTitle: true,
         ),
         body: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.symmetric(horizontal: 20.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -156,7 +156,7 @@ class _PerformancePageState extends State<PerformancePage> {
                     BoxShadow(
                       color: colors.accentViolet.withValues(alpha: 0.3),
                       blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
@@ -239,7 +239,7 @@ class _PerformancePageState extends State<PerformancePage> {
                       'Total Deliveries',
                       _totalDeliveries.toString(),
                       Assets.icons.deliveryTruck,
-                      colors.accentGreen,
+                      colors.accentViolet,
                       colors,
                     ),
                   ),
@@ -249,7 +249,7 @@ class _PerformancePageState extends State<PerformancePage> {
                       'Success Rate',
                       '${_successRate.toStringAsFixed(1)}%',
                       Assets.icons.check,
-                      colors.accentOrange,
+                      colors.accentViolet,
                       colors,
                     ),
                   ),
@@ -265,7 +265,7 @@ class _PerformancePageState extends State<PerformancePage> {
                       'Avg. Time',
                       '${_averageDeliveryTime.toStringAsFixed(0)} min',
                       Assets.icons.clock,
-                      colors.accentBlue,
+                      colors.accentViolet,
                       colors,
                     ),
                   ),
@@ -289,7 +289,6 @@ class _PerformancePageState extends State<PerformancePage> {
                 decoration: BoxDecoration(
                   color: colors.backgroundPrimary,
                   borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                  border: Border.all(color: colors.border, width: 1),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -336,17 +335,30 @@ class _PerformancePageState extends State<PerformancePage> {
                   ),
                   TextButton(
                     onPressed: () {},
-                    child: Text(
-                      "View All",
-                      style: TextStyle(color: colors.accentViolet, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                    child: Row(
+                      children: [
+                        Text(
+                          "All",
+                          style: TextStyle(color: colors.accentViolet, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                        ),
+                        SizedBox(width: 4.w),
+                        SvgPicture.asset(
+                          Assets.icons.navArrowRight,
+                          package: 'grab_go_shared',
+                          width: 16.w,
+                          height: 16.w,
+                          colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
 
-              SizedBox(height: 16.h),
+              SizedBox(height: 6.h),
 
               ListView.separated(
+                padding: EdgeInsets.zero,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: _recentRatings.length,
@@ -371,7 +383,6 @@ class _PerformancePageState extends State<PerformancePage> {
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        border: Border.all(color: colors.border, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -444,7 +455,6 @@ class _PerformancePageState extends State<PerformancePage> {
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        border: Border.all(color: colors.border, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

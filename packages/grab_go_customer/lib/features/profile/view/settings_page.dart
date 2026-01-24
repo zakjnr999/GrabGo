@@ -7,7 +7,6 @@ import 'package:grab_go_customer/shared/services/image_cache_service.dart';
 import 'package:grab_go_customer/shared/services/location_service.dart';
 import 'package:grab_go_customer/shared/viewmodels/settings_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/theme_provider.dart';
-import 'package:grab_go_customer/shared/widgets/custom_switch.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';

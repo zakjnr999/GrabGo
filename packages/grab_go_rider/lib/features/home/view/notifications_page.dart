@@ -300,7 +300,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         body: _notifications.isEmpty
             ? _buildEmptyState(colors)
             : ListView.separated(
-                physics: const BouncingScrollPhysics(),
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
                 itemCount: _notifications.length,
                 separatorBuilder: (context, index) => SizedBox(height: 12.h),
@@ -358,12 +358,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
         decoration: BoxDecoration(
           color: notification.isRead ? colors.backgroundPrimary : colors.accentGreen.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-          border: Border.all(
-            color: notification.isRead
-                ? colors.border.withValues(alpha: 0.3)
-                : colors.accentGreen.withValues(alpha: 0.2),
-            width: 1,
-          ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -386,12 +380,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
                           ),
                         ),
                       ),
-                      if (!notification.isRead)
-                        Container(
-                          width: 8.w,
-                          height: 8.w,
-                          decoration: BoxDecoration(color: colors.accentGreen, shape: BoxShape.circle),
-                        ),
                     ],
                   ),
                   SizedBox(height: 4.h),

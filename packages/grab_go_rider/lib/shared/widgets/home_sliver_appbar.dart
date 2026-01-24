@@ -45,14 +45,10 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
   }
 
   Future<void> _loadCachedVehicleType() async {
-    // Load cached vehicle type immediately to show correct image
     final cachedVehicleType = CacheService.getVehicleType();
     if (cachedVehicleType != null && mounted) {
       setState(() {
-        // Create a temporary Rider object with cached vehicle type for immediate display
         _rider = Rider(vehicleType: cachedVehicleType);
-        // Don't set _isLoading = false here - we still want to fetch latest data from API
-        // The image will show because we have cached vehicle type
       });
     }
   }
@@ -73,8 +69,6 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
         return;
       }
 
-      // Manually add Authorization header since converter isn't being called
-      // Create a custom request with Authorization header
       final uri = Uri.parse('${riderService.client.baseUrl}/riders/verification');
       final request = Request('GET', uri, riderService.client.baseUrl, headers: {'Authorization': 'Bearer $token'});
       final response = await riderService.client.send<RiderResponse, RiderResponse>(request);
@@ -93,14 +87,12 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
           }
         }
       } else if (response.statusCode == 404) {
-        // Rider verification data doesn't exist yet - this is okay
         if (mounted) {
           setState(() {
             _isLoading = false;
           });
         }
       } else if (response.statusCode == 401) {
-        // Unauthorized - token might be invalid or expired
         if (mounted) {
           setState(() {
             _isLoading = false;
@@ -108,7 +100,6 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
         }
       }
     } catch (e) {
-      // Silently handle error - rider data might not exist yet
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -124,7 +115,6 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
         return;
       }
 
-      // Manually add Authorization header since converter isn't being called
       final uri = Uri.parse('${riderService.client.baseUrl}/riders/wallet');
       final request = Request('GET', uri, riderService.client.baseUrl, headers: {'Authorization': 'Bearer $token'});
       final response = await riderService.client.send<Map<String, dynamic>, Map<String, dynamic>>(request);
@@ -177,13 +167,10 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
     final height = size.height * 0.48 * expandRatio + size.height * 0.35 * reverseRatio;
     final width = size.width * 0.48 * expandRatio + size.width * 0.35 * reverseRatio;
 
-    // Use vehicle type from API if available, otherwise fall back to cached vehicle type
-    // This ensures we show the correct image immediately from cache, then update if API returns different value
     final cachedVehicleType = CacheService.getVehicleType();
     final effectiveVehicleType = vehicleType ?? cachedVehicleType;
     final normalizedType = effectiveVehicleType?.toLowerCase().trim();
 
-    // If we don't have any vehicle type (neither from API nor cache), show nothing while loading
     if (normalizedType == null && _isLoading) {
       return SizedBox(height: height, width: width);
     }
@@ -217,7 +204,6 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
         fit: BoxFit.contain,
       );
     } else {
-      // Default to motorcycle if vehicle type is null or unknown (only after loading is complete)
       return Assets.images.deliveryGuyMotorcycle.image(
         package: "grab_go_shared",
         height: height,
@@ -243,7 +229,7 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
       ),
       elevation: 0,
       pinned: true,
-      stretch: true,
+      stretch: false,
       automaticallyImplyLeading: false,
       flexibleSpace: LayoutBuilder(
         builder: (context, constraints) {
@@ -252,7 +238,6 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
           final double reverseRatio = 1.0 - expandRatio;
 
           return FlexibleSpaceBar(
-            stretchModes: const [StretchMode.zoomBackground, StretchMode.blurBackground],
             background: Stack(
               fit: StackFit.expand,
               children: [
@@ -491,73 +476,79 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
         ),
       ),
 
-      leadingWidth: 60.w,
-      leading: Material(
-        color: Colors.transparent,
-        child: Builder(
-          builder: (context) => InkWell(
-            onTap: () {
-              Scaffold.of(context).openDrawer();
-            },
-            customBorder: const CircleBorder(),
-            borderRadius: BorderRadius.circular(30),
-            child: Container(
-              margin: EdgeInsets.all(8.r),
-              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), shape: BoxShape.circle),
-              child: Padding(
-                padding: EdgeInsets.all(12.r),
-                child: SvgPicture.asset(
-                  Assets.icons.menu,
-                  package: 'grab_go_shared',
-                  width: 20.w,
-                  height: 20.w,
-                  colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-
-      actions: [
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              context.push("/notifications");
-            },
-            customBorder: const CircleBorder(),
-            borderRadius: BorderRadius.circular(30),
-            child: Container(
-              margin: EdgeInsets.all(8.r),
-              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), shape: BoxShape.circle),
-              child: Stack(
-                children: [
-                  Padding(
-                    padding: EdgeInsets.all(12.r),
+      leadingWidth: 56.w,
+      leading: Center(
+        child: Padding(
+          padding: EdgeInsets.only(left: 14.w),
+          child: Material(
+            color: Colors.transparent,
+            child: Builder(
+              builder: (context) => InkWell(
+                onTap: () {
+                  Scaffold.of(context).openDrawer();
+                },
+                customBorder: const CircleBorder(),
+                borderRadius: BorderRadius.circular(30),
+                child: Container(
+                  width: 44.w,
+                  height: 44.w,
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), shape: BoxShape.circle),
+                  child: Center(
                     child: SvgPicture.asset(
-                      Assets.icons.bell,
+                      Assets.icons.menu,
                       package: 'grab_go_shared',
                       width: 20.w,
                       height: 20.w,
                       colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                     ),
                   ),
-                  Positioned(
-                    top: 8.h,
-                    right: 8.w,
-                    child: Container(
-                      width: 8.w,
-                      height: 8.w,
-                      decoration: BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
         ),
-        SizedBox(width: 8.w),
+      ),
+      actions: [
+        Center(
+          child: Padding(
+            padding: EdgeInsets.only(right: 14.w),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  context.push("/notifications");
+                },
+                customBorder: const CircleBorder(),
+                borderRadius: BorderRadius.circular(30),
+                child: Container(
+                  width: 44.w,
+                  height: 44.w,
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), shape: BoxShape.circle),
+                  child: Stack(
+                    children: [
+                      Center(
+                        child: Badge(
+                          backgroundColor: Colors.red,
+                          label: Text(
+                            '3',
+                            style: TextStyle(color: Colors.white, fontSize: 10.sp, fontWeight: FontWeight.w600),
+                          ),
+                          child: SvgPicture.asset(
+                            Assets.icons.bell,
+                            package: 'grab_go_shared',
+                            width: 20.w,
+                            height: 20.w,
+                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }

@@ -253,7 +253,7 @@ class _EarningsHistoryPageState extends State<EarningsHistoryPage> {
           centerTitle: true,
         ),
         body: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.symmetric(horizontal: 20.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -272,7 +272,7 @@ class _EarningsHistoryPageState extends State<EarningsHistoryPage> {
                     BoxShadow(
                       color: colors.accentGreen.withValues(alpha: 0.3),
                       blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
@@ -406,20 +406,9 @@ class _EarningsHistoryPageState extends State<EarningsHistoryPage> {
                                 SizedBox(height: 6.h),
                                 Row(
                                   children: [
-                                    Container(
-                                      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                                      decoration: BoxDecoration(
-                                        color: typeColor.withValues(alpha: 0.15),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        typeLabel,
-                                        style: TextStyle(
-                                          color: typeColor,
-                                          fontSize: 10.sp,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
+                                    Text(
+                                      typeLabel,
+                                      style: TextStyle(color: typeColor, fontSize: 12.sp, fontWeight: FontWeight.w600),
                                     ),
                                     SizedBox(width: 8.w),
                                     Flexible(
@@ -491,7 +480,6 @@ class _EarningsHistoryPageState extends State<EarningsHistoryPage> {
         decoration: BoxDecoration(
           color: isSelected ? colors.accentGreen : colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-          border: Border.all(color: isSelected ? colors.accentGreen : colors.border, width: 1),
         ),
         child: Text(
           label,

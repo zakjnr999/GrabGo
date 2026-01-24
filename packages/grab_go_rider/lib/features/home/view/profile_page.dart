@@ -27,7 +27,7 @@ class ProfilePage extends StatelessWidget {
       child: Scaffold(
         backgroundColor: colors.backgroundSecondary,
         body: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             ProfileSliverAppbar(),
             SliverToBoxAdapter(
@@ -48,18 +48,10 @@ class ProfilePage extends StatelessWidget {
                           ),
                         ),
                         SizedBox(width: 12.w),
-                        Expanded(
-                          child: _buildStatCard("Rating", "4.8", Assets.icons.star, colors.accentOrange, colors),
-                        ),
+                        Expanded(child: _buildStatCard("Rating", "4.8", Assets.icons.star, colors.accentGreen, colors)),
                         SizedBox(width: 12.w),
                         Expanded(
-                          child: _buildStatCard(
-                            "Active Days",
-                            "45",
-                            Assets.icons.calendar,
-                            colors.accentViolet,
-                            colors,
-                          ),
+                          child: _buildStatCard("Active Days", "45", Assets.icons.calendar, colors.accentGreen, colors),
                         ),
                       ],
                     ),
@@ -122,7 +114,6 @@ class ProfilePage extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: colors.error.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                        border: Border.all(color: colors.error.withValues(alpha: 0.3), width: 1),
                       ),
                       child: Material(
                         color: Colors.transparent,
@@ -178,7 +169,6 @@ class ProfilePage extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        border: Border.all(color: colors.border, width: 1),
       ),
       child: Column(
         children: [
@@ -222,7 +212,6 @@ class ProfilePage extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        border: Border.all(color: colors.border, width: 1),
       ),
       child: Material(
         color: Colors.transparent,

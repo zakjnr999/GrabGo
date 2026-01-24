@@ -17,13 +17,40 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
   List<TransactionModel> _recentTransactions = [];
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+  late Animation<double> _rippleAnimation;
 
   @override
   void initState() {
     super.initState();
     _loadSampleTransactions();
+    _setupAnimations();
+  }
+
+  void _setupAnimations() {
+    _pulseController = AnimationController(duration: const Duration(milliseconds: 2000), vsync: this)
+      ..repeat(reverse: false);
+
+    _pulseAnimation = Tween<double>(begin: 0.85, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _pulseController,
+        curve: const Interval(0.0, 0.5, curve: Curves.easeInOut),
+      ),
+    );
+
+    _rippleAnimation = Tween<double>(
+      begin: 0.4,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeOut));
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
   }
 
   void _loadSampleTransactions() {
@@ -138,7 +165,6 @@ class _HomePageState extends State<HomePage> {
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        border: Border.all(color: colors.border, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,7 +173,7 @@ class _HomePageState extends State<HomePage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: EdgeInsets.all(8.w),
+                padding: EdgeInsets.all(8.r),
                 decoration: BoxDecoration(
                   color: iconColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
@@ -196,7 +222,7 @@ class _HomePageState extends State<HomePage> {
         drawer: HomeDrawer(),
         backgroundColor: colors.backgroundSecondary,
         body: CustomScrollView(
-          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+          physics: const AlwaysScrollableScrollPhysics(),
           slivers: <Widget>[
             HomeSliverAppbar(),
             SliverToBoxAdapter(
@@ -209,24 +235,52 @@ class _HomePageState extends State<HomePage> {
                       decoration: BoxDecoration(
                         color: colors.backgroundPrimary,
                         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                        border: Border.all(color: colors.border, width: 1),
                       ),
                       child: Row(
                         children: [
-                          Container(
-                            width: 48.w,
-                            height: 48.w,
-                            decoration: BoxDecoration(
-                              color: colors.accentGreen.withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: Container(
-                                width: 12.w,
-                                height: 12.w,
-                                decoration: BoxDecoration(color: colors.accentGreen, shape: BoxShape.circle),
-                              ),
-                            ),
+                          AnimatedBuilder(
+                            animation: _pulseController,
+                            builder: (context, child) {
+                              return Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Container(
+                                    width: 48.w * _rippleAnimation.value,
+                                    height: 48.w * _rippleAnimation.value,
+                                    decoration: BoxDecoration(
+                                      color: colors.accentGreen.withValues(alpha: 0.15 * (1 - _rippleAnimation.value)),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  Container(
+                                    width: 48.w,
+                                    height: 48.w,
+                                    decoration: BoxDecoration(
+                                      color: colors.accentGreen.withValues(alpha: 0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  Transform.scale(
+                                    scale: _pulseAnimation.value,
+                                    child: Container(
+                                      width: 12.w,
+                                      height: 12.w,
+                                      decoration: BoxDecoration(
+                                        color: colors.accentGreen,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: colors.accentGreen.withValues(alpha: 0.3),
+                                            blurRadius: 8 * _pulseAnimation.value,
+                                            spreadRadius: 2 * _pulseAnimation.value,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
                           SizedBox(width: 16.w),
                           Expanded(
@@ -253,11 +307,14 @@ class _HomePageState extends State<HomePage> {
                               ],
                             ),
                           ),
-                          Switch.adaptive(
+                          CustomSwitch(
                             value: true,
-                            onChanged: (value) {},
-                            activeThumbColor: AppColors.white,
-                            activeTrackColor: colors.accentGreen,
+                            onChanged: (value) {
+                              // Handle switch toggle
+                            },
+                            activeColor: colors.accentGreen,
+                            inactiveColor: colors.border,
+                            thumbColor: colors.backgroundPrimary,
                           ),
                         ],
                       ),
@@ -283,7 +340,7 @@ class _HomePageState extends State<HomePage> {
                           child: _buildStatCard(
                             colors: colors,
                             icon: Assets.icons.creditCard,
-                            iconColor: colors.accentOrange,
+                            iconColor: colors.accentGreen,
                             title: "Earnings",
                             value: "GHC 285",
                             subtitle: "This week",
@@ -313,7 +370,6 @@ class _HomePageState extends State<HomePage> {
                             end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                          border: Border.all(color: colors.accentGreen.withValues(alpha: 0.3), width: 1),
                         ),
                         child: Row(
                           children: [
@@ -391,18 +447,32 @@ class _HomePageState extends State<HomePage> {
                             ),
                             TextButton(
                               onPressed: () {},
-                              child: Text(
-                                "View All",
-                                style: TextStyle(
-                                  color: colors.accentGreen,
-                                  fontSize: 14.sp,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    "All",
+                                    style: TextStyle(
+                                      color: colors.accentGreen,
+                                      fontSize: 14.sp,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  SizedBox(width: 4.w),
+                                  SvgPicture.asset(
+                                    Assets.icons.navArrowRight,
+                                    package: 'grab_go_shared',
+                                    width: 16.w,
+                                    height: 16.w,
+                                    colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
+                        SizedBox(height: 6.h),
                         ListView.separated(
+                          padding: EdgeInsets.zero,
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: _recentTransactions.length,
@@ -460,19 +530,12 @@ class _HomePageState extends State<HomePage> {
                                         SizedBox(height: 4.h),
                                         Row(
                                           children: [
-                                            Container(
-                                              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                                              decoration: BoxDecoration(
-                                                color: typeColor.withValues(alpha: 0.15),
-                                                borderRadius: BorderRadius.circular(4),
-                                              ),
-                                              child: Text(
-                                                typeLabel,
-                                                style: TextStyle(
-                                                  color: typeColor,
-                                                  fontSize: 10.sp,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
+                                            Text(
+                                              typeLabel,
+                                              style: TextStyle(
+                                                color: typeColor,
+                                                fontSize: 12.sp,
+                                                fontWeight: FontWeight.w600,
                                               ),
                                             ),
                                             SizedBox(width: 8.w),
