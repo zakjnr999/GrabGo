@@ -17,7 +17,7 @@ const {
 router.get('/', protect, async (req, res) => {
     try {
         const cartType = req.query.type || null; // 'food' or 'grocery'
-        const cart = await getUserCart(req.user._id, cartType);
+        const cart = await getUserCart(req.user.id, cartType);
 
         if (!cart) {
             return res.json({
@@ -67,7 +67,7 @@ router.post('/add', protect, async (req, res) => {
             });
         }
 
-        const cart = await addToCart(req.user._id, {
+        const cart = await addToCart(req.user.id, {
             itemId,
             itemType,
             quantity: quantity || 1,
@@ -120,7 +120,7 @@ router.patch('/update/:itemId', protect, async (req, res) => {
             });
         }
 
-        const cart = await updateCartItem(req.user._id, itemId, quantity);
+        const cart = await updateCartItem(req.user.id, itemId, quantity);
 
         res.json({
             success: true,
@@ -153,7 +153,7 @@ router.patch('/update/:itemId', protect, async (req, res) => {
 router.delete('/remove/:itemId', protect, async (req, res) => {
     try {
         const { itemId } = req.params;
-        const cart = await removeFromCart(req.user._id, itemId);
+        const cart = await removeFromCart(req.user.id, itemId);
 
         res.json({
             success: true,
@@ -185,7 +185,7 @@ router.delete('/remove/:itemId', protect, async (req, res) => {
  */
 router.delete('/clear', protect, async (req, res) => {
     try {
-        const cart = await clearCart(req.user._id);
+        const cart = await clearCart(req.user.id);
 
         res.json({
             success: true,

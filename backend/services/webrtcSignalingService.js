@@ -162,17 +162,20 @@ class WebRTCSignalingService {
 
             try {
                 // Get caller info for notification
-                const User = require('../models/User');
-                const caller = await User.findById(callerId).select('username profilePicture');
+                const prisma = require('../config/prisma');
+                const caller = await prisma.user.findUnique({
+                    where: { id: callerId },
+                    select: { username: true, profilePicture: true }
+                });
 
                 // Send push notification
                 await sendCallNotification(
                     calleeId,
-                    caller.username || 'Unknown',
+                    caller?.username || 'Unknown',
                     callId,
                     callType,
                     orderId,
-                    caller.profilePicture,
+                    caller?.profilePicture || null,
                     callerId
                 );
 
@@ -332,22 +335,23 @@ class WebRTCSignalingService {
 
     async saveCallLog(call, duration) {
         try {
-            const CallLog = require("../models/CallLog");
+            const CallLog = require('../models/CallLog');
 
             await CallLog.create({
                 order: call.orderId,
                 caller: call.callerId,
                 recipient: call.calleeId,
-                callType: "webrtc",
-                status: duration > 0 ? "completed" : "missed",
+                callType: 'webrtc',
+                isVideoCall: call.callType === 'video',
+                status: duration > 0 ? 'completed' : 'missed',
                 duration,
-                startedAt: new Date(call.startedAt), // Convert ISO string to Date
+                startedAt: new Date(call.startedAt),
                 endedAt: new Date(),
             });
 
-            console.log(`WebRTC: Call log saved for ${call.callId}`);
+            console.log(`✅ WebRTC: Call log saved to MongoDB for ${call.callId}`);
         } catch (error) {
-            console.error("Error saving call log:", error);
+            console.error("❌ Error saving call log to MongoDB:", error);
         }
     }
 

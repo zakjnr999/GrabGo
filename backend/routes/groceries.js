@@ -1,23 +1,74 @@
 const express = require('express');
 const router = express.Router();
-const GroceryStore = require('../models/GroceryStore');
-const GroceryCategory = require('../models/GroceryCategory');
-const GroceryItem = require('../models/GroceryItem');
+const prisma = require('../config/prisma');
 const { protect } = require('../middleware/auth');
+
+/**
+ * Helper to format grocery store for frontend compatibility
+ */
+const formatStore = (store) => {
+    if (!store) return null;
+    const formatted = {
+        ...store,
+        // Legacy support mapping
+        store_name: store.storeName,
+        is_open: store.isOpen,
+        delivery_fee: store.deliveryFee,
+        min_order: store.minOrder,
+    };
+
+    // Construct location object if coordinates exist
+    if (store.longitude !== undefined && store.latitude !== undefined) {
+        formatted.location = {
+            type: 'Point',
+            coordinates: [store.longitude, store.latitude],
+            address: store.address,
+            city: store.city,
+            area: store.area
+        };
+    }
+
+    return formatted;
+};
+
+/**
+ * Helper to format grocery item for frontend compatibility
+ */
+const formatItem = (item) => {
+    if (!item) return null;
+    const formatted = {
+        ...item,
+        // Ensure store is formatted if it exists and is an object
+        store: (item.store && typeof item.store === 'object') ? formatStore(item.store) : item.store
+    };
+    return formatted;
+};
 
 // ==================== STORES ====================
 
-// Get grocery stores
+/**
+ * @route   GET /api/groceries/stores
+ * @desc    Get grocery stores
+ * @access  Public
+ */
 router.get("/stores", async (req, res) => {
     try {
-        const stores = await GroceryStore.find({ isOpen: true, status: 'approved' })
-            .sort({ rating: -1 })
-            .limit(20);
+        const stores = await prisma.groceryStore.findMany({
+            where: {
+                isOpen: true,
+                status: 'approved'
+            },
+            orderBy: {
+                rating: 'desc'
+            },
+            take: 20
+        });
 
         res.json({
             success: true,
             message: "Grocery stores retrieved successfully",
-            data: stores
+            count: stores.length,
+            data: stores.map(formatStore)
         });
     } catch (error) {
         console.error("Get grocery stores error:", error);
@@ -29,7 +80,11 @@ router.get("/stores", async (req, res) => {
     }
 });
 
-// Get nearby grocery stores
+/**
+ * @route   GET /api/groceries/nearby
+ * @desc    Get nearby grocery stores using PostGIS
+ * @access  Public
+ */
 router.get("/nearby", async (req, res) => {
     try {
         const { lat, lng, radius = 5 } = req.query;
@@ -45,30 +100,32 @@ router.get("/nearby", async (req, res) => {
         const longitude = parseFloat(lng);
         const radiusInKm = parseFloat(radius);
 
-        const nearbyStores = await GroceryStore.aggregate([
-            {
-                $geoNear: {
-                    near: { type: "Point", coordinates: [longitude, latitude] },
-                    distanceField: "distance",
-                    maxDistance: radiusInKm * 1000,
-                    query: { isOpen: true, status: 'approved' },
-                    spherical: true
-                }
-            },
-            { $limit: 20 },
-            {
-                $addFields: {
-                    id: "$_id",
-                    distance: { $divide: ["$distance", 1000] }
-                }
-            }
-        ]);
+        // Raw query for PostGIS distance calculation and filtering
+        const nearbyStores = await prisma.$queryRaw`
+            SELECT *, 
+            ST_Distance(
+                ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography,
+                ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography
+            ) AS distance
+            FROM grocery_stores
+            WHERE status = 'approved' AND "isOpen" = true
+            AND ST_DWithin(
+                ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography,
+                ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography,
+                ${radiusInKm * 1000}
+            )
+            ORDER BY distance ASC
+            LIMIT 20
+        `;
 
         res.json({
             success: true,
             message: "Nearby grocery stores retrieved successfully",
             count: nearbyStores.length,
-            data: nearbyStores
+            data: nearbyStores.map(store => ({
+                ...formatStore(store),
+                distance: store.distance
+            }))
         });
     } catch (error) {
         console.error("Get nearby grocery stores error:", error);
@@ -80,10 +137,16 @@ router.get("/nearby", async (req, res) => {
     }
 });
 
-// Get store by ID
+/**
+ * @route   GET /api/groceries/stores/:id
+ * @desc    Get store by ID
+ * @access  Public
+ */
 router.get("/stores/:id", async (req, res) => {
     try {
-        const store = await GroceryStore.findById(req.params.id);
+        const store = await prisma.groceryStore.findUnique({
+            where: { id: req.params.id }
+        });
 
         if (!store) {
             return res.status(404).json({
@@ -95,7 +158,7 @@ router.get("/stores/:id", async (req, res) => {
         res.json({
             success: true,
             message: "Store retrieved successfully",
-            data: store
+            data: formatStore(store)
         });
     } catch (error) {
         console.error("Get store error:", error);
@@ -109,11 +172,17 @@ router.get("/stores/:id", async (req, res) => {
 
 // ==================== CATEGORIES ====================
 
-// Get all grocery categories
+/**
+ * @route   GET /api/groceries/categories
+ * @desc    Get all grocery categories
+ * @access  Public
+ */
 router.get("/categories", async (req, res) => {
     try {
-        const categories = await GroceryCategory.find({ isActive: true })
-            .sort({ sortOrder: 1 });
+        const categories = await prisma.groceryCategory.findMany({
+            where: { isActive: true },
+            orderBy: { sortOrder: 'asc' }
+        });
 
         res.json({
             success: true,
@@ -132,46 +201,58 @@ router.get("/categories", async (req, res) => {
 
 // ==================== ITEMS ====================
 
-// Get all grocery items (with filters)
+/**
+ * @route   GET /api/groceries/items
+ * @desc    Get all grocery items with optional filters
+ * @access  Public
+ */
 router.get("/items", async (req, res) => {
     try {
         const { category, store, minPrice, maxPrice, tags } = req.query;
 
-        let query = { isAvailable: true };
+        const where = { isAvailable: true };
 
-        // Filter by category
-        if (category) {
-            query.category = category;
-        }
+        if (category) where.categoryId = category;
+        if (store) where.storeId = store;
 
-        // Filter by store
-        if (store) {
-            query.store = store;
-        }
-
-        // Filter by price range
         if (minPrice || maxPrice) {
-            query.price = {};
-            if (minPrice) query.price.$gte = parseFloat(minPrice);
-            if (maxPrice) query.price.$lte = parseFloat(maxPrice);
+            where.price = {};
+            if (minPrice) where.price.gte = parseFloat(minPrice);
+            if (maxPrice) where.price.lte = parseFloat(maxPrice);
         }
 
-        // Filter by tags
         if (tags) {
-            const tagArray = tags.split(',');
-            query.tags = { $in: tagArray };
+            where.tags = { hasSome: tags.split(',') };
         }
 
-        const items = await GroceryItem.find(query)
-            .populate('category', 'name emoji')
-            .populate('store', 'storeName logo location')
-            .sort({ rating: -1 })
-            .limit(50);
+        const items = await prisma.groceryItem.findMany({
+            where,
+            include: {
+                category: { select: { name: true, emoji: true } },
+                store: {
+                    select: {
+                        id: true,
+                        storeName: true,
+                        logo: true,
+                        longitude: true,
+                        latitude: true,
+                        address: true,
+                        city: true,
+                        area: true,
+                        isOpen: true,
+                        deliveryFee: true,
+                        minOrder: true
+                    }
+                }
+            },
+            orderBy: { rating: 'desc' },
+            take: 50
+        });
 
         res.json({
             success: true,
             message: "Items retrieved successfully",
-            data: items
+            data: items.map(formatItem)
         });
     } catch (error) {
         console.error("Get items error:", error);
@@ -183,12 +264,35 @@ router.get("/items", async (req, res) => {
     }
 });
 
-// Get item by ID
+/**
+ * @route   GET /api/groceries/items/:id
+ * @desc    Get grocery item by ID
+ * @access  Public
+ */
 router.get("/items/:id", async (req, res) => {
     try {
-        const item = await GroceryItem.findById(req.params.id)
-            .populate('category', 'name emoji')
-            .populate('store', 'storeName logo location phone');
+        const item = await prisma.groceryItem.findUnique({
+            where: { id: req.params.id },
+            include: {
+                category: { select: { name: true, emoji: true } },
+                store: {
+                    select: {
+                        id: true,
+                        storeName: true,
+                        logo: true,
+                        longitude: true,
+                        latitude: true,
+                        address: true,
+                        city: true,
+                        area: true,
+                        phone: true,
+                        isOpen: true,
+                        deliveryFee: true,
+                        minOrder: true
+                    }
+                }
+            }
+        });
 
         if (!item) {
             return res.status(404).json({
@@ -200,7 +304,7 @@ router.get("/items/:id", async (req, res) => {
         res.json({
             success: true,
             message: "Item retrieved successfully",
-            data: item
+            data: formatItem(item)
         });
     } catch (error) {
         console.error("Get item error:", error);
@@ -212,7 +316,11 @@ router.get("/items/:id", async (req, res) => {
     }
 });
 
-// Search grocery items
+/**
+ * @route   GET /api/groceries/search
+ * @desc    Search grocery items by name, description, brand, or tags
+ * @access  Public
+ */
 router.get("/search", async (req, res) => {
     try {
         const { q } = req.query;
@@ -224,18 +332,40 @@ router.get("/search", async (req, res) => {
             });
         }
 
-        const items = await GroceryItem.find({
-            $text: { $search: q },
-            isAvailable: true
-        })
-            .populate('category', 'name emoji')
-            .populate('store', 'storeName logo location')
-            .limit(30);
+        const items = await prisma.groceryItem.findMany({
+            where: {
+                isAvailable: true,
+                OR: [
+                    { name: { contains: q, mode: 'insensitive' } },
+                    { description: { contains: q, mode: 'insensitive' } },
+                    { brand: { contains: q, mode: 'insensitive' } }
+                ]
+            },
+            include: {
+                category: { select: { name: true, emoji: true } },
+                store: {
+                    select: {
+                        id: true,
+                        storeName: true,
+                        logo: true,
+                        longitude: true,
+                        latitude: true,
+                        address: true,
+                        city: true,
+                        area: true,
+                        isOpen: true,
+                        deliveryFee: true,
+                        minOrder: true
+                    }
+                }
+            },
+            take: 30
+        });
 
         res.json({
             success: true,
             message: "Search results retrieved successfully",
-            data: items
+            data: items.map(formatItem)
         });
     } catch (error) {
         console.error("Search error:", error);
@@ -247,28 +377,45 @@ router.get("/search", async (req, res) => {
     }
 });
 
-// Get deals (items with discounts)
+/**
+ * @route   GET /api/groceries/deals
+ * @desc    Get grocery items with active discounts
+ * @access  Public
+ */
 router.get("/deals", async (req, res) => {
     try {
         const now = new Date();
 
-        const deals = await GroceryItem.find({
-            isAvailable: true,
-            discountPercentage: { $gt: 0 },
-            $or: [
-                { discountEndDate: null },
-                { discountEndDate: { $gte: now } }
-            ]
-        })
-            .populate('category', 'name emoji')
-            .populate('store', 'store_name logo')
-            .sort({ discountPercentage: -1 })
-            .limit(10);
+        const deals = await prisma.groceryItem.findMany({
+            where: {
+                isAvailable: true,
+                discountPercentage: { gt: 0 },
+                OR: [
+                    { discountEndDate: null },
+                    { discountEndDate: { gte: now } }
+                ]
+            },
+            include: {
+                category: { select: { name: true, emoji: true } },
+                store: {
+                    select: {
+                        id: true,
+                        storeName: true,
+                        logo: true,
+                        isOpen: true,
+                        deliveryFee: true,
+                        minOrder: true
+                    }
+                }
+            },
+            orderBy: { discountPercentage: 'desc' },
+            take: 10
+        });
 
         res.json({
             success: true,
             message: "Deals retrieved successfully",
-            data: deals
+            data: deals.map(formatItem)
         });
     } catch (error) {
         console.error("Get deals error:", error);
@@ -280,15 +427,23 @@ router.get("/deals", async (req, res) => {
     }
 });
 
-// Get items from a specific store
+/**
+ * @route   GET /api/groceries/stores/:id/items
+ * @desc    Get all items from a specific store
+ * @access  Public
+ */
 router.get("/stores/:id/items", async (req, res) => {
     try {
-        const items = await GroceryItem.find({
-            store: req.params.id,
-            isAvailable: true
-        })
-            .populate('category', 'name emoji')
-            .sort({ name: 1 });
+        const items = await prisma.groceryItem.findMany({
+            where: {
+                storeId: req.params.id,
+                isAvailable: true
+            },
+            include: {
+                category: { select: { name: true, emoji: true } }
+            },
+            orderBy: { name: 'asc' }
+        });
 
         res.json({
             success: true,
@@ -317,18 +472,32 @@ router.get("/store-specials", async (req, res) => {
         const now = new Date();
 
         // Find items with active discounts
-        const items = await GroceryItem.find({
-            isAvailable: true,
-            discountPercentage: { $gt: 0 },
-            $or: [
-                { discountEndDate: null },
-                { discountEndDate: { $gte: now } }
-            ]
-        })
-            .populate('store', 'store_name logo rating isOpen deliveryFee minOrder')
-            .populate('category', 'name emoji')
-            .sort({ discountPercentage: -1 })
-            .limit(50);
+        const items = await prisma.groceryItem.findMany({
+            where: {
+                isAvailable: true,
+                discountPercentage: { gt: 0 },
+                OR: [
+                    { discountEndDate: null },
+                    { discountEndDate: { gte: now } }
+                ]
+            },
+            include: {
+                store: {
+                    select: {
+                        id: true,
+                        storeName: true,
+                        logo: true,
+                        rating: true,
+                        isOpen: true,
+                        deliveryFee: true,
+                        minOrder: true
+                    }
+                },
+                category: { select: { name: true, emoji: true } }
+            },
+            orderBy: { discountPercentage: 'desc' },
+            take: 100
+        });
 
         if (!items || items.length === 0) {
             return res.status(200).json({
@@ -343,12 +512,12 @@ router.get("/store-specials", async (req, res) => {
 
         items.forEach(item => {
             if (item.store) {
-                const storeId = item.store._id.toString();
+                const storeId = item.store.id;
 
                 if (!storeMap.has(storeId)) {
                     storeMap.set(storeId, {
-                        storeId: item.store._id,
-                        storeName: item.store.store_name,
+                        storeId: item.store.id,
+                        storeName: item.store.storeName,
                         storeLogo: item.store.logo,
                         storeRating: item.store.rating,
                         isOpen: item.store.isOpen,
@@ -366,11 +535,11 @@ router.get("/store-specials", async (req, res) => {
         const storeSpecials = Array.from(storeMap.values())
             .map(store => ({
                 ...store,
-                items: store.items.slice(0, 10) // Limit to 10 items per store
+                items: store.items.slice(0, 10).map(formatItem)
             }))
-            .filter(store => store.items.length > 0) // Only stores with items
-            .sort((a, b) => b.items.length - a.items.length) // Sort by item count
-            .slice(0, 5); // Limit to top 5 stores
+            .filter(store => store.items.length > 0)
+            .sort((a, b) => b.items.length - a.items.length)
+            .slice(0, 5);
 
         res.status(200).json({
             success: true,
@@ -390,39 +559,50 @@ router.get("/store-specials", async (req, res) => {
 
 // ==================== ORDER HISTORY ====================
 
-// Get grocery order history for current user (for Buy Again section)
+/**
+ * @route   GET /api/groceries/order-history
+ * @desc    Get user's grocery order history (Buy Again section)
+ * @access  Private
+ */
 router.get("/order-history", protect, async (req, res) => {
     try {
-        const Order = require('../models/Order');
-
-        // For now, return empty array if no user authentication
-        // In production, this should be protected with auth middleware
-        if (!req.user && !req.headers['x-user-id']) {
-            return res.status(200).json({
-                success: true,
-                count: 0,
-                data: []
-            });
-        }
-
-        const userId = req.user?._id || req.headers['x-user-id'];
+        const userId = req.user.id;
 
         // Get completed grocery orders for the user
-        const orders = await Order.find({
-            customer: userId,
-            orderType: 'grocery',
-            status: 'delivered' // Only delivered orders (completed doesn't exist in enum)
-        })
-            .populate({
-                path: 'items.groceryItem',
-                model: 'GroceryItem',
-                populate: [
-                    { path: 'category', model: 'GroceryCategory' },
-                    { path: 'store', model: 'GroceryStore' }
-                ]
-            })
-            .sort({ deliveredDate: -1, orderDate: -1 })
-            .limit(50);
+        const orders = await prisma.order.findMany({
+            where: {
+                customerId: userId,
+                orderType: 'grocery',
+                status: 'delivered'
+            },
+            include: {
+                items: {
+                    where: { itemType: 'GroceryItem' },
+                    include: {
+                        groceryItem: {
+                            include: {
+                                category: { select: { name: true, emoji: true } },
+                                store: {
+                                    select: {
+                                        id: true,
+                                        storeName: true,
+                                        logo: true,
+                                        isOpen: true,
+                                        deliveryFee: true,
+                                        minOrder: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: [
+                { deliveredDate: 'desc' },
+                { orderDate: 'desc' }
+            ],
+            take: 50
+        });
 
         if (!orders || orders.length === 0) {
             return res.status(200).json({
@@ -437,8 +617,8 @@ router.get("/order-history", protect, async (req, res) => {
 
         orders.forEach(order => {
             order.items.forEach(item => {
-                if (item.itemType === 'grocery' && item.groceryItem) {
-                    const itemId = item.groceryItem._id.toString();
+                if (item.groceryItem) {
+                    const itemId = item.groceryItem.id;
 
                     if (!itemsMap.has(itemId)) {
                         itemsMap.set(itemId, {
@@ -450,8 +630,7 @@ router.get("/order-history", protect, async (req, res) => {
                     } else {
                         const existing = itemsMap.get(itemId);
                         existing.timesOrdered += 1;
-                        existing.totalQuantity += item.quantity; // FIX: was undefined totalQuantity
-                        // Update last ordered if this order is more recent
+                        existing.totalQuantity += item.quantity;
                         const orderDate = order.deliveredDate || order.orderDate;
                         if (orderDate > existing.lastOrdered) {
                             existing.lastOrdered = orderDate;
@@ -464,10 +643,10 @@ router.get("/order-history", protect, async (req, res) => {
         // Convert map to array and sort by last ordered date
         const buyAgainItems = Array.from(itemsMap.values())
             .sort((a, b) => b.lastOrdered - a.lastOrdered)
-            .slice(0, 20) // Return top 20 most recent items
+            .slice(0, 20)
             .map(({ item, lastOrdered, timesOrdered, totalQuantity }) => ({
-                ...item.toObject(),
-                lastOrderedAt: lastOrdered, // Renamed for frontend consistency
+                ...formatItem(item),
+                lastOrderedAt: lastOrdered,
                 timesOrdered,
                 totalQuantity
             }));
@@ -490,32 +669,43 @@ router.get("/order-history", protect, async (req, res) => {
 
 // ==================== POPULAR ITEMS ====================
 
-// Get popular items (sorted by order count)
+/**
+ * @route   GET /api/groceries/popular
+ * @desc    Get popular grocery items
+ * @access  Public
+ */
 router.get("/popular", async (req, res) => {
     try {
-        // Validate and sanitize limit parameter
         let { limit = 10 } = req.query;
-        limit = parseInt(limit);
+        limit = Math.min(parseInt(limit) || 10, 50);
 
-        // Handle invalid input
-        if (isNaN(limit) || limit < 1) {
-            limit = 10;
-        }
-        // Cap at maximum 50 items
-        if (limit > 50) {
-            limit = 50;
-        }
-
-        const popularItems = await GroceryItem.find({ isAvailable: true })
-            .sort({ orderCount: -1, rating: -1 }) // Sort by order count, then rating
-            .limit(limit)
-            .populate('category', 'name emoji')
-            .populate('store', 'store_name logo rating');
+        const popularItems = await prisma.groceryItem.findMany({
+            where: { isAvailable: true },
+            orderBy: [
+                { orderCount: 'desc' },
+                { rating: 'desc' }
+            ],
+            take: limit,
+            include: {
+                category: { select: { name: true, emoji: true } },
+                store: {
+                    select: {
+                        id: true,
+                        storeName: true,
+                        logo: true,
+                        rating: true,
+                        isOpen: true,
+                        deliveryFee: true,
+                        minOrder: true
+                    }
+                }
+            }
+        });
 
         res.json({
             success: true,
             message: "Popular items retrieved successfully",
-            data: popularItems
+            data: popularItems.map(formatItem)
         });
     } catch (error) {
         console.error("Get popular items error:", error);
@@ -529,40 +719,47 @@ router.get("/popular", async (req, res) => {
 
 // ==================== TOP RATED ITEMS ====================
 
-// Get top-rated grocery items (sorted by rating)
+/**
+ * @route   GET /api/groceries/top-rated
+ * @desc    Get top-rated grocery items
+ * @access  Public
+ */
 router.get("/top-rated", async (req, res) => {
     try {
-        // Validate and sanitize limit parameter
         let { limit = 10, minRating = 4.5 } = req.query;
-        limit = parseInt(limit);
-        minRating = parseFloat(minRating);
+        limit = Math.min(parseInt(limit) || 10, 50);
+        minRating = parseFloat(minRating) || 4.5;
 
-        // Handle invalid input
-        if (isNaN(limit) || limit < 1) {
-            limit = 10;
-        }
-        // Cap at maximum 50 items
-        if (limit > 50) {
-            limit = 50;
-        }
-        // Validate minRating
-        if (isNaN(minRating) || minRating < 0 || minRating > 5) {
-            minRating = 4.5;
-        }
-
-        const topRatedItems = await GroceryItem.find({
-            isAvailable: true,
-            rating: { $gte: minRating }
-        })
-            .sort({ rating: -1, totalReviews: -1 }) // Sort by rating, then review count
-            .limit(limit)
-            .populate('category', 'name emoji')
-            .populate('store', 'store_name logo rating');
+        const topRatedItems = await prisma.groceryItem.findMany({
+            where: {
+                isAvailable: true,
+                rating: { gte: minRating }
+            },
+            orderBy: [
+                { rating: 'desc' },
+                { reviewCount: 'desc' }
+            ],
+            take: limit,
+            include: {
+                category: { select: { name: true, emoji: true } },
+                store: {
+                    select: {
+                        id: true,
+                        storeName: true,
+                        logo: true,
+                        rating: true,
+                        isOpen: true,
+                        deliveryFee: true,
+                        minOrder: true
+                    }
+                }
+            }
+        });
 
         res.json({
             success: true,
             message: "Top rated items retrieved successfully",
-            data: topRatedItems
+            data: topRatedItems.map(formatItem)
         });
     } catch (error) {
         console.error("Get top rated items error:", error);
@@ -575,4 +772,3 @@ router.get("/top-rated", async (req, res) => {
 });
 
 module.exports = router;
-

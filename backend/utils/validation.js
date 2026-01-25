@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+// No longer using mongoose
 const sanitizeHtml = require('sanitize-html');
 
 /**
@@ -129,8 +129,8 @@ const sanitizeText = (text) => {
  * @throws {Error} - If validation fails
  */
 const validateNotificationInput = (userId, type, title, message, data = {}) => {
-    // Validate userId
-    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+    // Validate userId (Prisma/Postgres uses cuid/strings)
+    if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
         throw new Error('Invalid user ID');
     }
 

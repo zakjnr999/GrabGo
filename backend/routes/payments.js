@@ -1,11 +1,40 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const Order = require('../models/Order');
-const Payment = require('../models/Payment');
+const prisma = require('../config/prisma');
 const mtnMomoService = require('../services/mtn_momo_service');
 const { protect } = require('../middleware/auth');
 
 const router = express.Router();
+
+/**
+ * Payment Helpers to replace Mongoose model methods
+ */
+const markAsCompleted = async (paymentId, financialTransactionId = null) => {
+  return await prisma.payment.update({
+    where: { id: paymentId },
+    data: {
+      status: 'successful',
+      completedAt: new Date(),
+      financialTransactionId: financialTransactionId
+    }
+  });
+};
+
+const markAsFailed = async (paymentId, errorMessage = null, errorCode = null) => {
+  return await prisma.payment.update({
+    where: { id: paymentId },
+    data: {
+      status: 'failed',
+      errorMessage: errorMessage,
+      errorCode: errorCode
+    }
+  });
+};
+
+const isExpired = (payment) => {
+  if (!payment.expiredAt) return false;
+  return new Date() > new Date(payment.expiredAt);
+};
 
 /**
  * Initiate MTN MOMO payment
@@ -35,8 +64,10 @@ router.post(
 
       const { orderId, phoneNumber } = req.body;
 
-      // Find the order
-      const order = await Order.findById(orderId);
+      const order = await prisma.order.findUnique({
+        where: { id: orderId }
+      });
+
       if (!order) {
         return res.status(404).json({
           success: false,
@@ -44,15 +75,13 @@ router.post(
         });
       }
 
-      // Verify the order belongs to the authenticated user
-      if (order.customer.toString() !== req.user._id.toString()) {
+      if (order.customerId !== req.user.id) {
         return res.status(403).json({
           success: false,
           message: 'Not authorized to pay for this order',
         });
       }
 
-      // Check if order is in pending status
       if (order.status !== 'pending') {
         return res.status(400).json({
           success: false,
@@ -60,21 +89,21 @@ router.post(
         });
       }
 
-      // Check if there's already a successful or pending payment for this order
-      const existingPayment = await Payment.findOne({
-        order: orderId,
-        status: { $in: ['pending', 'processing', 'successful'] }
+      const existingPayment = await prisma.payment.findFirst({
+        where: {
+          orderId: orderId,
+          status: { in: ['pending', 'processing', 'successful'] }
+        }
       });
 
       if (existingPayment) {
         return res.status(400).json({
           success: false,
           message: 'A payment for this order is already in progress or completed',
-          data: { paymentId: existingPayment._id, status: existingPayment.status }
+          data: { paymentId: existingPayment.id, status: existingPayment.status }
         });
       }
 
-      // Validate and format phone number
       if (!mtnMomoService.validateGhanaPhoneNumber(phoneNumber)) {
         return res.status(400).json({
           success: false,
@@ -89,22 +118,27 @@ router.post(
       const random = Math.floor(Math.random() * 10000);
       const referenceId = `PAY-${timestamp}-${random}`;
 
+      // Set expiration for mobile money
+      const expiredAt = new Date(Date.now() + 5 * 60 * 1000);
+
       // Create payment record
-      const payment = await Payment.create({
-        referenceId,
-        order: orderId,
-        customer: req.user._id,
-        paymentMethod: 'mobile_money',
-        provider: 'mtn_momo',
-        amount: order.totalAmount,
-        currency: 'GHS',
-        phoneNumber: formattedPhoneNumber,
-        payerMessage: `Payment for GrabGo order ${order.orderNumber}`,
-        payeeNote: 'GrabGo food delivery payment',
-        status: 'pending'
+      const payment = await prisma.payment.create({
+        data: {
+          referenceId,
+          orderId: orderId,
+          customerId: req.user.id,
+          paymentMethod: 'mobile_money',
+          provider: 'mtn_momo',
+          amount: order.totalAmount,
+          currency: 'GHS',
+          phoneNumber: formattedPhoneNumber,
+          payerMessage: `Payment for GrabGo order ${order.orderNumber}`,
+          payeeNote: 'GrabGo food delivery payment',
+          status: 'pending',
+          expiredAt
+        }
       });
 
-      // Request payment from MTN MOMO
       const paymentRequest = await mtnMomoService.requestToPay({
         amount: order.totalAmount,
         currency: 'GHS',
@@ -115,9 +149,8 @@ router.post(
       });
 
       if (!paymentRequest.success) {
-        // Update payment status to failed
-        await payment.markAsFailed(paymentRequest.error, paymentRequest.code);
-        
+        await markAsFailed(payment.id, paymentRequest.error, paymentRequest.code);
+
         return res.status(400).json({
           success: false,
           message: 'Payment request failed',
@@ -126,27 +159,34 @@ router.post(
         });
       }
 
-      // Update payment with MTN MOMO reference ID
-      payment.externalReferenceId = paymentRequest.referenceId;
-      payment.status = 'processing';
-      await payment.save();
+      const updatedPayment = await prisma.payment.update({
+        where: { id: payment.id },
+        data: {
+          externalReferenceId: paymentRequest.referenceId,
+          status: 'processing'
+        }
+      });
 
       // Update order with payment information
-      order.paymentProvider = 'mtn_momo';
-      order.paymentReferenceId = payment.referenceId;
-      await order.save();
+      await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          paymentProvider: 'mtn_momo',
+          paymentReferenceId: updatedPayment.referenceId
+        }
+      });
 
       res.status(200).json({
         success: true,
         message: 'Payment request initiated successfully',
         data: {
-          paymentId: payment._id,
-          referenceId: payment.referenceId,
-          externalReferenceId: payment.externalReferenceId,
-          status: payment.status,
-          amount: payment.amount,
-          currency: payment.currency,
-          phoneNumber: payment.phoneNumber
+          paymentId: updatedPayment.id,
+          referenceId: updatedPayment.referenceId,
+          externalReferenceId: updatedPayment.externalReferenceId,
+          status: updatedPayment.status,
+          amount: updatedPayment.amount,
+          currency: updatedPayment.currency,
+          phoneNumber: updatedPayment.phoneNumber
         }
       });
 
@@ -168,12 +208,12 @@ router.post(
 router.get('/mtn-momo/status/:paymentId', protect, async (req, res) => {
   try {
     const { paymentId } = req.params;
-    console.log('\n🔍 PAYMENT STATUS CHECK ENDPOINT CALLED:');
-    console.log('  Payment ID:', paymentId);
-    console.log('  Request from user:', req.user.username || req.user.email);
 
-    // Find the payment
-    const payment = await Payment.findById(paymentId).populate('order');
+    const payment = await prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: { order: true }
+    });
+
     if (!payment) {
       return res.status(404).json({
         success: false,
@@ -181,21 +221,19 @@ router.get('/mtn-momo/status/:paymentId', protect, async (req, res) => {
       });
     }
 
-    // Verify the payment belongs to the authenticated user
-    if (payment.customer.toString() !== req.user._id.toString()) {
+    if (payment.customerId !== req.user.id) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to check this payment',
       });
     }
 
-    // If payment is already completed or failed, return current status
     if (['successful', 'failed', 'cancelled'].includes(payment.status)) {
       return res.json({
         success: true,
         message: 'Payment status retrieved',
         data: {
-          paymentId: payment._id,
+          paymentId: payment.id,
           status: payment.status,
           amount: payment.amount,
           currency: payment.currency,
@@ -205,58 +243,55 @@ router.get('/mtn-momo/status/:paymentId', protect, async (req, res) => {
       });
     }
 
-    // Check if payment has expired
-    if (payment.isExpired()) {
-      await payment.markAsFailed('Payment expired', 'PAYMENT_EXPIRED');
-      
+    if (isExpired(payment)) {
+      await markAsFailed(payment.id, 'Payment expired', 'PAYMENT_EXPIRED');
+
       return res.json({
         success: true,
         message: 'Payment has expired',
         data: {
-          paymentId: payment._id,
+          paymentId: payment.id,
           status: 'failed',
           errorMessage: 'Payment expired'
         }
       });
     }
 
-    // Check status with MTN MOMO if we have external reference ID
     if (payment.externalReferenceId) {
       const statusCheck = await mtnMomoService.getPaymentStatus(payment.externalReferenceId);
-      
+
       if (statusCheck.success) {
-        // Update payment status based on MTN MOMO response
         if (statusCheck.status === 'SUCCESSFUL') {
-          await payment.markAsCompleted(statusCheck.financialTransactionId);
-          
-          // Update order payment status
-          const order = await Order.findById(payment.order);
-          if (order) {
-            order.paymentStatus = 'paid';
-            order.status = 'confirmed';
-            await order.save();
-          }
-          
+          const finalPayment = await markAsCompleted(payment.id, statusCheck.financialTransactionId);
+
+          await prisma.order.update({
+            where: { id: payment.orderId },
+            data: {
+              paymentStatus: 'paid',
+              status: 'confirmed'
+            }
+          });
+
           return res.json({
             success: true,
             message: 'Payment completed successfully',
             data: {
-              paymentId: payment._id,
+              paymentId: finalPayment.id,
               status: 'successful',
-              amount: payment.amount,
-              currency: payment.currency,
-              financialTransactionId: payment.financialTransactionId,
-              completedAt: payment.completedAt
+              amount: finalPayment.amount,
+              currency: finalPayment.currency,
+              financialTransactionId: finalPayment.financialTransactionId,
+              completedAt: finalPayment.completedAt
             }
           });
         } else if (statusCheck.status === 'FAILED') {
-          await payment.markAsFailed(statusCheck.reason, 'MTN_MOMO_FAILED');
-          
+          const finalPayment = await markAsFailed(payment.id, statusCheck.reason, 'MTN_MOMO_FAILED');
+
           return res.json({
             success: true,
             message: 'Payment failed',
             data: {
-              paymentId: payment._id,
+              paymentId: finalPayment.id,
               status: 'failed',
               errorMessage: statusCheck.reason || 'Payment failed'
             }
@@ -265,12 +300,11 @@ router.get('/mtn-momo/status/:paymentId', protect, async (req, res) => {
       }
     }
 
-    // Return current status if still pending/processing
     res.json({
       success: true,
       message: 'Payment status retrieved',
       data: {
-        paymentId: payment._id,
+        paymentId: payment.id,
         status: payment.status,
         amount: payment.amount,
         currency: payment.currency,
@@ -290,7 +324,6 @@ router.get('/mtn-momo/status/:paymentId', protect, async (req, res) => {
 
 /**
  * Get all payments for a user
- * GET /api/payments/my-payments
  */
 router.get('/my-payments', protect, async (req, res) => {
   try {
@@ -298,13 +331,19 @@ router.get('/my-payments', protect, async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const payments = await Payment.find({ customer: req.user._id })
-      .populate('order', 'orderNumber totalAmount status')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    const payments = await prisma.payment.findMany({
+      where: { customerId: req.user.id },
+      include: {
+        order: { select: { orderNumber: true, totalAmount: true, status: true } }
+      },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit
+    });
 
-    const total = await Payment.countDocuments({ customer: req.user._id });
+    const total = await prisma.payment.count({
+      where: { customerId: req.user.id }
+    });
 
     res.json({
       success: true,
@@ -330,13 +369,15 @@ router.get('/my-payments', protect, async (req, res) => {
 
 /**
  * Cancel a pending payment
- * PUT /api/payments/:paymentId/cancel
  */
 router.put('/:paymentId/cancel', protect, async (req, res) => {
   try {
     const { paymentId } = req.params;
 
-    const payment = await Payment.findById(paymentId);
+    const payment = await prisma.payment.findUnique({
+      where: { id: paymentId }
+    });
+
     if (!payment) {
       return res.status(404).json({
         success: false,
@@ -344,15 +385,13 @@ router.put('/:paymentId/cancel', protect, async (req, res) => {
       });
     }
 
-    // Verify the payment belongs to the authenticated user
-    if (payment.customer.toString() !== req.user._id.toString()) {
+    if (payment.customerId !== req.user.id) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to cancel this payment',
       });
     }
 
-    // Check if payment can be cancelled
     if (!['pending', 'processing'].includes(payment.status)) {
       return res.status(400).json({
         success: false,
@@ -360,16 +399,17 @@ router.put('/:paymentId/cancel', protect, async (req, res) => {
       });
     }
 
-    // Update payment status
-    payment.status = 'cancelled';
-    await payment.save();
+    const updatedPayment = await prisma.payment.update({
+      where: { id: paymentId },
+      data: { status: 'cancelled' }
+    });
 
     res.json({
       success: true,
       message: 'Payment cancelled successfully',
       data: {
-        paymentId: payment._id,
-        status: payment.status
+        paymentId: updatedPayment.id,
+        status: updatedPayment.status
       }
     });
 
@@ -385,14 +425,13 @@ router.put('/:paymentId/cancel', protect, async (req, res) => {
 
 /**
  * MTN MOMO Webhook for payment notifications
- * POST /api/payments/mtn-momo/webhook
  */
 router.post('/mtn-momo/webhook', async (req, res) => {
   try {
     console.log('MTN MOMO Webhook received:', req.body);
-    
+
     const { referenceId, status, financialTransactionId, reason } = req.body;
-    
+
     if (!referenceId) {
       return res.status(400).json({
         success: false,
@@ -400,9 +439,10 @@ router.post('/mtn-momo/webhook', async (req, res) => {
       });
     }
 
-    // Find payment by external reference ID
-    const payment = await Payment.findOne({ externalReferenceId: referenceId });
-    
+    const payment = await prisma.payment.findFirst({
+      where: { externalReferenceId: referenceId }
+    });
+
     if (!payment) {
       console.log(`Payment not found for reference ID: ${referenceId}`);
       return res.status(404).json({
@@ -411,21 +451,26 @@ router.post('/mtn-momo/webhook', async (req, res) => {
       });
     }
 
-    // Update payment based on webhook status
     if (status === 'SUCCESSFUL') {
-      await payment.markAsCompleted(financialTransactionId);
-      
-      // Update order payment status
-      const order = await Order.findById(payment.order);
+      await markAsCompleted(payment.id, financialTransactionId);
+
+      const order = await prisma.order.findUnique({
+        where: { id: payment.orderId }
+      });
+
       if (order && order.paymentStatus !== 'paid') {
-        order.paymentStatus = 'paid';
-        order.status = 'confirmed';
-        await order.save();
+        await prisma.order.update({
+          where: { id: order.id },
+          data: {
+            paymentStatus: 'paid',
+            status: 'confirmed'
+          }
+        });
         console.log(`Order ${order.orderNumber} payment confirmed via webhook`);
       }
-      
+
     } else if (status === 'FAILED') {
-      await payment.markAsFailed(reason || 'Payment failed', 'MTN_MOMO_WEBHOOK_FAILED');
+      await markAsFailed(payment.id, reason || 'Payment failed', 'MTN_MOMO_WEBHOOK_FAILED');
       console.log(`Payment failed for reference ID: ${referenceId}, reason: ${reason}`);
     }
 

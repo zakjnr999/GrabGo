@@ -5,7 +5,7 @@
 
 const cron = require('node-cron');
 const cloudinary = require('cloudinary').v2;
-const Status = require('../models/Status');
+const StatusService = require('../services/status_service');
 
 // Track if cron is already scheduled
 let isScheduled = false;
@@ -19,7 +19,7 @@ const cleanupExpiredStatuses = async () => {
     console.log('[StatusCleanup] Starting cleanup job...');
 
     try {
-        const result = await Status.cleanupExpired(cloudinary);
+        const result = await StatusService.cleanupExpired(cloudinary);
 
         console.log(`[StatusCleanup] Completed: ${result.statusesDeactivated} statuses deactivated, ${result.cloudinaryImagesDeleted} images deleted`);
 

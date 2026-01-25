@@ -1,30 +1,24 @@
-/**
- * Quick script to reset admin password
- * This connects to your MongoDB and updates the admin user's password
- */
-
-require('dotenv').config();
-const mongoose = require('mongoose');
+const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+const prisma = require('../config/prisma');
 
 const ADMIN_EMAIL = 'admin@grabgo.com';
 const NEW_PASSWORD = 'Admin@123456';
 
 async function resetAdminPassword() {
     try {
-        console.log('🔌 Connecting to MongoDB...');
-        await mongoose.connect(process.env.MONGODB_URI);
-        console.log('✅ Connected to MongoDB');
-
-        // Get the User model
-        const User = mongoose.model('User', new mongoose.Schema({}, { strict: false }));
+        console.log('🚀 Connecting to Database with Prisma...');
 
         // Find admin user
-        const admin = await User.findOne({ email: ADMIN_EMAIL });
+        const admin = await prisma.user.findUnique({
+            where: { email: ADMIN_EMAIL }
+        });
 
         if (!admin) {
             console.log('❌ Admin user not found with email:', ADMIN_EMAIL);
-            console.log('💡 Run createAdmin.js first to create the admin user');
+            console.log('💡 Run scripts/createAdmin.js first to create the admin user');
             process.exit(1);
         }
 
@@ -36,10 +30,10 @@ async function resetAdminPassword() {
         const hashedPassword = await bcrypt.hash(NEW_PASSWORD, salt);
 
         // Update password directly
-        await User.updateOne(
-            { email: ADMIN_EMAIL },
-            { $set: { password: hashedPassword } }
-        );
+        await prisma.user.update({
+            where: { email: ADMIN_EMAIL },
+            data: { password: hashedPassword }
+        });
 
         console.log('\n✅ Password reset successfully!');
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -51,8 +45,8 @@ async function resetAdminPassword() {
     } catch (error) {
         console.error('❌ Error:', error.message);
     } finally {
-        await mongoose.disconnect();
-        console.log('\n🔌 Disconnected from MongoDB');
+        await prisma.$disconnect();
+        console.log('\n🔌 Disconnected from Database');
         process.exit(0);
     }
 }

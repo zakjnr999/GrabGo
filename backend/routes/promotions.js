@@ -1,5 +1,5 @@
 const express = require("express");
-const PromotionalBanner = require("../models/PromotionalBanner");
+const prisma = require("../config/prisma");
 const { protect, authorize } = require("../middleware/auth");
 
 const router = express.Router();
@@ -8,12 +8,12 @@ const router = express.Router();
  * @route   GET /api/promotions/banners/all
  * @desc    Get all promotional banners (including inactive)
  * @access  Admin only
- * NOTE: This route MUST come before /banners to avoid route matching issues
  */
 router.get("/banners/all", protect, authorize("admin"), async (req, res) => {
     try {
-        const banners = await PromotionalBanner.find()
-            .sort({ createdAt: -1 });
+        const banners = await prisma.promotionalBanner.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
 
         res.json({
             success: true,
@@ -39,13 +39,20 @@ router.get("/banners", async (req, res) => {
     try {
         const now = new Date();
 
-        const banners = await PromotionalBanner.find({
-            isActive: true,
-            startDate: { $lte: now },
-            endDate: { $gte: now }
-        })
-            .sort({ priority: -1, createdAt: -1 })
-            .limit(10);
+        const banners = await prisma.promotionalBanner.findMany({
+            where: {
+                isActive: true,
+                AND: [
+                    { OR: [{ startDate: null }, { startDate: { lte: now } }] },
+                    { OR: [{ endDate: null }, { endDate: { gte: now } }] }
+                ]
+            },
+            orderBy: [
+                { priority: 'desc' },
+                { createdAt: 'desc' }
+            ],
+            take: 10
+        });
 
         res.json({
             success: true,
@@ -69,36 +76,27 @@ router.get("/banners", async (req, res) => {
  */
 router.post("/banners", protect, authorize("admin"), async (req, res) => {
     try {
-        // Validate required fields
-        const { title, imageUrl, startDate, endDate } = req.body;
+        const { title, imageUrl, startDate, endDate, linkType, linkValue, priority, isActive } = req.body;
 
         if (!title || !imageUrl || !startDate || !endDate) {
             return res.status(400).json({
                 success: false,
-                message: "Missing required fields",
-                required: ["title", "imageUrl", "startDate", "endDate"]
+                message: "Missing required fields"
             });
         }
 
-        // Validate dates
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-
-        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid date format"
-            });
-        }
-
-        if (end <= start) {
-            return res.status(400).json({
-                success: false,
-                message: "End date must be after start date"
-            });
-        }
-
-        const banner = await PromotionalBanner.create(req.body);
+        const banner = await prisma.promotionalBanner.create({
+            data: {
+                title,
+                imageUrl,
+                startDate: new Date(startDate),
+                endDate: new Date(endDate),
+                linkType,
+                linkValue,
+                priority: priority ? parseInt(priority) : 0,
+                isActive: isActive !== undefined ? (isActive === 'true' || isActive === true) : true
+            }
+        });
 
         res.status(201).json({
             success: true,
@@ -107,17 +105,6 @@ router.post("/banners", protect, authorize("admin"), async (req, res) => {
         });
     } catch (error) {
         console.error("Create banner error:", error);
-
-        // Handle validation errors
-        if (error.name === 'ValidationError') {
-            const errors = Object.values(error.errors).map(e => e.message);
-            return res.status(400).json({
-                success: false,
-                message: "Validation failed",
-                errors: errors
-            });
-        }
-
         res.status(500).json({
             success: false,
             message: "Server error",
@@ -133,31 +120,22 @@ router.post("/banners", protect, authorize("admin"), async (req, res) => {
  */
 router.put("/banners/:id", protect, authorize("admin"), async (req, res) => {
     try {
-        // Validate dates if provided
-        if (req.body.startDate && req.body.endDate) {
-            const start = new Date(req.body.startDate);
-            const end = new Date(req.body.endDate);
+        const { title, imageUrl, startDate, endDate, linkType, linkValue, priority, isActive } = req.body;
 
-            if (end <= start) {
-                return res.status(400).json({
-                    success: false,
-                    message: "End date must be after start date"
-                });
-            }
-        }
+        const data = {};
+        if (title !== undefined) data.title = title;
+        if (imageUrl !== undefined) data.imageUrl = imageUrl;
+        if (startDate !== undefined) data.startDate = new Date(startDate);
+        if (endDate !== undefined) data.endDate = new Date(endDate);
+        if (linkType !== undefined) data.linkType = linkType;
+        if (linkValue !== undefined) data.linkValue = linkValue;
+        if (priority !== undefined) data.priority = parseInt(priority);
+        if (isActive !== undefined) data.isActive = (isActive === 'true' || isActive === true);
 
-        const banner = await PromotionalBanner.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            { new: true, runValidators: true }
-        );
-
-        if (!banner) {
-            return res.status(404).json({
-                success: false,
-                message: "Banner not found"
-            });
-        }
+        const banner = await prisma.promotionalBanner.update({
+            where: { id: req.params.id },
+            data
+        });
 
         res.json({
             success: true,
@@ -166,17 +144,6 @@ router.put("/banners/:id", protect, authorize("admin"), async (req, res) => {
         });
     } catch (error) {
         console.error("Update banner error:", error);
-
-        // Handle validation errors
-        if (error.name === 'ValidationError') {
-            const errors = Object.values(error.errors).map(e => e.message);
-            return res.status(400).json({
-                success: false,
-                message: "Validation failed",
-                errors: errors
-            });
-        }
-
         res.status(500).json({
             success: false,
             message: "Server error",
@@ -192,14 +159,9 @@ router.put("/banners/:id", protect, authorize("admin"), async (req, res) => {
  */
 router.delete("/banners/:id", protect, authorize("admin"), async (req, res) => {
     try {
-        const banner = await PromotionalBanner.findByIdAndDelete(req.params.id);
-
-        if (!banner) {
-            return res.status(404).json({
-                success: false,
-                message: "Banner not found"
-            });
-        }
+        await prisma.promotionalBanner.delete({
+            where: { id: req.params.id }
+        });
 
         res.json({
             success: true,

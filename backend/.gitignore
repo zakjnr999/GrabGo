@@ -6,3 +6,5 @@ uploads/
 .vscode/
 .idea/
 
+
+/generated/prisma

@@ -1,7 +1,8 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
 const { body, validationResult } = require("express-validator");
-const User = require("../models/User");
+const prisma = require("../config/prisma");
 const { protect } = require("../middleware/auth");
 const {
   uploadSingle,
@@ -23,6 +24,18 @@ const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE || "7d",
   });
+};
+
+/**
+ * Format user for response - ensures _id and DateOfBirth compatibility
+ */
+const formatUser = (user) => {
+  if (!user) return null;
+  return {
+    ...user,
+    _id: user.id,
+    DateOfBirth: user.dateOfBirth, // Map camelCase back to PascalCase for legacy frontend
+  };
 };
 
 // @route   POST /api/users
@@ -55,7 +68,11 @@ router.post("/", async (req, res) => {
       }
 
       // Check if user exists
-      let user = await User.findOne({ $or: [{ email }, { googleId }] });
+      let user = await prisma.user.findFirst({
+        where: {
+          OR: [{ email }, { googleId }]
+        }
+      });
 
       if (user) {
         return res.status(400).json({
@@ -65,34 +82,22 @@ router.post("/", async (req, res) => {
       }
 
       // Create user
-      user = await User.create({
-        username: displayName,
-        email,
-        googleId,
-        profilePicture: photoUrl,
-        isEmailVerified: true,
-        role: role || "customer",
+      user = await prisma.user.create({
+        data: {
+          username: displayName,
+          email,
+          googleId,
+          profilePicture: photoUrl,
+          isEmailVerified: true,
+          role: (role || "customer").toLowerCase(),
+        }
       });
 
-      const token = generateToken(user._id);
+      const token = generateToken(user.id);
 
       return res.status(201).json({
         message: "User registered successfully",
-        user: {
-          _id: user._id,
-          username: user.username,
-          email: user.email,
-          phone: user.phone,
-          isPhoneVerified: user.isPhoneVerified,
-          isEmailVerified: user.isEmailVerified,
-          DateOfBirth: user.DateOfBirth,
-          profilePicture: user.profilePicture,
-          isAdmin: user.isAdmin,
-          role: user.role,
-          isActive: user.isActive,
-          permissions: user.permissions,
-          createdAt: user.createdAt,
-        },
+        user: formatUser(user),
         token,
       });
     }
@@ -113,7 +118,12 @@ router.post("/", async (req, res) => {
     }
 
     // Check if user exists
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [{ email }, { username }]
+      }
+    });
+
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -122,48 +132,32 @@ router.post("/", async (req, res) => {
     }
 
     // Create user
-    // Validate role if provided
-    const validRoles = ["customer", "restaurant", "rider", "admin"];
-    const receivedRole = req.body.role || role; // Try both ways
-    const userRole =
-      receivedRole && validRoles.includes(String(receivedRole).toLowerCase())
-        ? String(receivedRole).toLowerCase()
-        : "customer";
+    const userRole = (req.body.role || role || "customer").toLowerCase();
+
+    // Hash password manually since Prisma doesn't have pre-save hooks
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
     const userData = {
       username,
       email,
-      password,
-      DateOfBirth,
-      phone,
+      password: hashedPassword,
+      dateOfBirth: DateOfBirth, // Map to camelCase for Prisma
+      phone: phone ? String(phone) : null,
       profilePicture,
       role: userRole,
     };
 
-    // Don't generate OTP during registration - it will be generated when user requests it on verify email page
-    // This prevents unnecessary OTP generation and ensures email is only sent when user explicitly requests it
-    const user = await User.create(userData);
+    const user = await prisma.user.create({
+      data: userData
+    });
 
-    const token = generateToken(user._id);
+    const token = generateToken(user.id);
 
     res.status(201).json({
       message:
         "User registered successfully. Please verify your email to continue.",
-      user: {
-        _id: user._id,
-        username: user.username,
-        email: user.email,
-        phone: user.phone,
-        isPhoneVerified: user.isPhoneVerified,
-        isEmailVerified: user.isEmailVerified,
-        DateOfBirth: user.DateOfBirth,
-        profilePicture: user.profilePicture,
-        isAdmin: user.isAdmin,
-        role: user.role,
-        isActive: user.isActive,
-        permissions: user.permissions,
-        createdAt: user.createdAt,
-      },
+      user: formatUser(user),
       token,
     });
   } catch (error) {
@@ -193,24 +187,34 @@ router.post("/login", async (req, res) => {
       }
 
       // Find or create user
-      let user = await User.findOne({ $or: [{ email }, { googleId }] });
+      let user = await prisma.user.findFirst({
+        where: {
+          OR: [{ email }, { googleId }]
+        }
+      });
 
       if (!user) {
         // Create new user if doesn't exist
-        user = await User.create({
-          username: displayName || email.split("@")[0],
-          email,
-          googleId,
-          profilePicture: photoUrl,
-          isEmailVerified: true,
-          role: req.body.role || "customer",
+        user = await prisma.user.create({
+          data: {
+            username: displayName || email.split("@")[0],
+            email,
+            googleId,
+            profilePicture: photoUrl,
+            isEmailVerified: true,
+            role: (req.body.role || "customer").toLowerCase(),
+          }
         });
       } else {
         // Update Google ID if not set
         if (!user.googleId) {
-          user.googleId = googleId;
-          if (photoUrl) user.profilePicture = photoUrl;
-          await user.save();
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              googleId,
+              profilePicture: photoUrl || user.profilePicture
+            }
+          });
         }
       }
 
@@ -221,25 +225,11 @@ router.post("/login", async (req, res) => {
         });
       }
 
-      const token = generateToken(user._id);
+      const token = generateToken(user.id);
 
       return res.json({
         message: "Login successful",
-        user: {
-          _id: user._id,
-          username: user.username,
-          email: user.email,
-          phone: user.phone,
-          isPhoneVerified: user.isPhoneVerified,
-          isEmailVerified: user.isEmailVerified,
-          DateOfBirth: user.DateOfBirth,
-          profilePicture: user.profilePicture,
-          isAdmin: user.isAdmin,
-          role: user.role,
-          isActive: user.isActive,
-          permissions: user.permissions,
-          createdAt: user.createdAt,
-        },
+        user: formatUser(user),
         token,
       });
     }
@@ -252,9 +242,12 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    // Check if user exists and get password
-    const user = await User.findOne({ email }).select("+password");
-    if (!user) {
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { email }
+    });
+
+    if (!user || !user.password) {
       return res.status(401).json({
         success: false,
         message: "Invalid credentials",
@@ -262,7 +255,7 @@ router.post("/login", async (req, res) => {
     }
 
     // Check password
-    const isMatch = await user.matchPassword(password);
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({
         success: false,
@@ -278,25 +271,11 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    const token = generateToken(user._id);
+    const token = generateToken(user.id);
 
     res.json({
       message: "Login successful",
-      user: {
-        _id: user._id,
-        username: user.username,
-        email: user.email,
-        phone: user.phone,
-        isPhoneVerified: user.isPhoneVerified,
-        isEmailVerified: user.isEmailVerified,
-        DateOfBirth: user.DateOfBirth,
-        profilePicture: user.profilePicture,
-        isAdmin: user.isAdmin,
-        role: user.role,
-        isActive: user.isActive,
-        permissions: user.permissions,
-        createdAt: user.createdAt,
-      },
+      user: formatUser(user),
       token,
     });
   } catch (error) {
@@ -322,20 +301,25 @@ router.put(
     try {
       const { userId } = req.params;
 
-      if (req.user._id.toString() !== userId && !req.user.isAdmin) {
+      if (req.user.id !== userId && !req.user.isAdmin) {
         return res.status(403).json({
           success: false,
           message: "Not authorized to update this user",
         });
       }
 
-      const user = await User.findById(userId);
+      const user = await prisma.user.findUnique({
+        where: { id: userId }
+      });
+
       if (!user) {
         return res.status(404).json({
           success: false,
           message: "User not found",
         });
       }
+
+      const updateData = {};
 
       if (req.file && req.file.cloudinaryUrl) {
         if (
@@ -355,46 +339,34 @@ router.put(
           }
         }
 
-        user.profilePicture = req.file.cloudinaryUrl;
+        updateData.profilePicture = req.file.cloudinaryUrl;
       } else {
-        const { phoneNumber, isPhoneVerified, profilePicture, image } =
-          req.body;
+        const { phoneNumber, isPhoneVerified, profilePicture, image } = req.body;
 
         if (phoneNumber !== undefined) {
-          user.phone = phoneNumber;
+          updateData.phone = String(phoneNumber);
         }
         if (isPhoneVerified !== undefined) {
-          user.isPhoneVerified = isPhoneVerified;
+          updateData.isPhoneVerified = isPhoneVerified;
         }
 
         const pictureToUse = profilePicture || image;
         if (pictureToUse !== undefined && !req.file) {
-          user.profilePicture = pictureToUse;
+          updateData.profilePicture = pictureToUse;
         }
       }
 
-      await user.save();
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: updateData
+      });
 
       res.json({
         success: true,
         message: req.file
           ? "Profile picture uploaded successfully"
           : "User updated successfully",
-        user: {
-          _id: user._id,
-          username: user.username,
-          email: user.email,
-          phone: user.phone,
-          isPhoneVerified: user.isPhoneVerified,
-          isEmailVerified: user.isEmailVerified,
-          DateOfBirth: user.DateOfBirth,
-          profilePicture: user.profilePicture,
-          isAdmin: user.isAdmin,
-          role: user.role,
-          isActive: user.isActive,
-          permissions: user.permissions,
-          createdAt: user.createdAt,
-        },
+        user: formatUser(updatedUser),
       });
     } catch (error) {
       console.error("Update user error:", error);
@@ -416,14 +388,17 @@ router.put(
     try {
       const { userId } = req.params;
 
-      if (req.user._id.toString() !== userId && !req.user.isAdmin) {
+      if (req.user.id !== userId && !req.user.isAdmin) {
         return res.status(403).json({
           success: false,
           message: "Not authorized",
         });
       }
 
-      const user = await User.findById(userId);
+      const user = await prisma.user.findUnique({
+        where: { id: userId }
+      });
+
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -462,27 +437,15 @@ router.put(
         }
       }
 
-      user.profilePicture = req.file.cloudinaryUrl;
-      await user.save();
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: { profilePicture: req.file.cloudinaryUrl }
+      });
 
       res.json({
         success: true,
         message: "Profile picture uploaded successfully",
-        user: {
-          _id: user._id,
-          username: user.username,
-          email: user.email,
-          phone: user.phone,
-          isPhoneVerified: user.isPhoneVerified,
-          isEmailVerified: user.isEmailVerified,
-          DateOfBirth: user.DateOfBirth,
-          profilePicture: user.profilePicture,
-          isAdmin: user.isAdmin,
-          role: user.role,
-          isActive: user.isActive,
-          permissions: user.permissions,
-          createdAt: user.createdAt,
-        },
+        user: formatUser(updatedUser),
       });
     } catch (error) {
       console.error("Upload profile error:", error);
@@ -502,21 +465,7 @@ router.get("/me", protect, async (req, res) => {
   try {
     res.json({
       success: true,
-      user: {
-        _id: req.user._id,
-        username: req.user.username,
-        email: req.user.email,
-        phone: req.user.phone,
-        isPhoneVerified: req.user.isPhoneVerified,
-        isEmailVerified: req.user.isEmailVerified,
-        DateOfBirth: req.user.DateOfBirth,
-        profilePicture: req.user.profilePicture,
-        isAdmin: req.user.isAdmin,
-        role: req.user.role,
-        isActive: req.user.isActive,
-        permissions: req.user.permissions,
-        createdAt: req.user.createdAt,
-      },
+      user: formatUser(req.user),
     });
   } catch (error) {
     console.error("Get current user error:", error);
@@ -530,7 +479,9 @@ router.get("/me", protect, async (req, res) => {
 
 router.get("/:userId", protect, async (req, res) => {
   try {
-    const user = await User.findById(req.params.userId);
+    const user = await prisma.user.findUnique({
+      where: { id: req.params.userId }
+    });
 
     if (!user) {
       return res.status(404).json({
@@ -540,22 +491,9 @@ router.get("/:userId", protect, async (req, res) => {
     }
 
     res.json({
+      success: true,
       message: "User retrieved successfully",
-      user: {
-        _id: user._id,
-        username: user.username,
-        email: user.email,
-        phone: user.phone,
-        isPhoneVerified: user.isPhoneVerified,
-        isEmailVerified: user.isEmailVerified,
-        DateOfBirth: user.DateOfBirth,
-        profilePicture: user.profilePicture,
-        isAdmin: user.isAdmin,
-        role: user.role,
-        isActive: user.isActive,
-        permissions: user.permissions,
-        createdAt: user.createdAt,
-      },
+      user: formatUser(user),
     });
   } catch (error) {
     console.error("Get user error:", error);
@@ -592,10 +530,12 @@ router.post(
       const { email, otp } = req.body;
 
       // Find user with matching email and OTP, check if OTP is not expired
-      const user = await User.findOne({
-        email: email.toLowerCase(),
-        emailVerificationOTP: otp,
-        emailVerificationOTPExpires: { $gt: new Date() },
+      const user = await prisma.user.findFirst({
+        where: {
+          email: email.toLowerCase(),
+          emailVerificationOTP: otp,
+          emailVerificationOTPExpires: { gt: new Date() },
+        }
       });
 
       if (!user) {
@@ -614,31 +554,21 @@ router.post(
       }
 
       // Verify email
-      user.isEmailVerified = true;
-      user.emailVerificationOTP = null;
-      user.emailVerificationOTPExpires = null;
-      await user.save();
+      const updatedUser = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          isEmailVerified: true,
+          emailVerificationOTP: null,
+          emailVerificationOTPExpires: null,
+        }
+      });
 
       // Generate token for the verified user
-      const token = generateToken(user._id);
+      const token = generateToken(updatedUser.id);
 
       res.json({
         success: true,
-        user: {
-          _id: user._id,
-          username: user.username,
-          email: user.email,
-          phone: user.phone,
-          isPhoneVerified: user.isPhoneVerified,
-          isEmailVerified: user.isEmailVerified,
-          DateOfBirth: user.DateOfBirth,
-          profilePicture: user.profilePicture,
-          isAdmin: user.isAdmin,
-          role: user.role,
-          isActive: user.isActive,
-          permissions: user.permissions,
-          createdAt: user.createdAt,
-        },
+        user: formatUser(updatedUser),
         token,
       });
     } catch (error) {
@@ -672,7 +602,9 @@ router.post(
       const { email } = req.body;
 
       // Find user by email
-      const user = await User.findOne({ email: email.toLowerCase() });
+      const user = await prisma.user.findUnique({
+        where: { email: email.toLowerCase() }
+      });
 
       if (!user) {
         // Don't reveal if user exists or not for security
@@ -698,9 +630,13 @@ router.post(
         emailVerificationOTPExpires.getMinutes() + 10
       ); // 10 minutes expiry
 
-      user.emailVerificationOTP = emailVerificationOTP;
-      user.emailVerificationOTPExpires = emailVerificationOTPExpires;
-      await user.save();
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          emailVerificationOTP,
+          emailVerificationOTPExpires
+        }
+      });
 
       // Send verification email with OTP (non-blocking)
       sendVerificationEmail(user.email, user.username, emailVerificationOTP)
@@ -727,7 +663,9 @@ router.post(
 // @access  Private
 router.post("/send-verification", protect, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id }
+    });
 
     if (!user) {
       return res.status(404).json({
@@ -751,9 +689,13 @@ router.post("/send-verification", protect, async (req, res) => {
       emailVerificationOTPExpires.getMinutes() + 10
     ); // 10 minutes expiry
 
-    user.emailVerificationOTP = emailVerificationOTP;
-    user.emailVerificationOTPExpires = emailVerificationOTPExpires;
-    await user.save();
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerificationOTP,
+        emailVerificationOTPExpires
+      }
+    });
 
     // Send verification email with OTP (non-blocking)
     const emailResult = await sendVerificationEmail(
@@ -803,7 +745,10 @@ router.post("/send-phone-otp", async (req, res) => {
     }
 
     // Find user by ID
-    const user = await User.findById(userId);
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -827,9 +772,13 @@ router.post("/send-phone-otp", async (req, res) => {
     ); // 10 minutes expiry
 
     // Save OTP to user
-    user.phoneVerificationOTP = phoneVerificationOTP;
-    user.phoneVerificationOTPExpires = phoneVerificationOTPExpires;
-    await user.save();
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        phoneVerificationOTP,
+        phoneVerificationOTPExpires
+      }
+    });
 
     // Send SMS with OTP (non-blocking)
     console.log(`📱 Attempting to send OTP to ${phoneNumber}: ${phoneVerificationOTP}`);
@@ -905,7 +854,10 @@ router.post("/verify-phone-otp", async (req, res) => {
     }
 
     // Find user by ID
-    const user = await User.findById(userId);
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -922,7 +874,7 @@ router.post("/verify-phone-otp", async (req, res) => {
     }
 
     // Check if OTP has expired
-    if (user.phoneVerificationOTPExpires < new Date()) {
+    if (!user.phoneVerificationOTPExpires || user.phoneVerificationOTPExpires < new Date()) {
       return res.status(400).json({
         success: false,
         message: "OTP has expired",
@@ -930,33 +882,23 @@ router.post("/verify-phone-otp", async (req, res) => {
     }
 
     // Verify phone
-    user.isPhoneVerified = true;
-    user.phone = phoneNumber;
-    user.phoneVerificationOTP = null;
-    user.phoneVerificationOTPExpires = null;
-    await user.save();
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        isPhoneVerified: true,
+        phone: String(phoneNumber),
+        phoneVerificationOTP: null,
+        phoneVerificationOTPExpires: null,
+      }
+    });
 
     // Generate token for the verified user
-    const token = generateToken(user._id);
+    const token = generateToken(updatedUser.id);
 
     res.json({
       success: true,
       message: "Phone verified successfully",
-      user: {
-        _id: user._id,
-        username: user.username,
-        email: user.email,
-        phone: user.phone,
-        isPhoneVerified: user.isPhoneVerified,
-        isEmailVerified: user.isEmailVerified,
-        DateOfBirth: user.DateOfBirth,
-        profilePicture: user.profilePicture,
-        isAdmin: user.isAdmin,
-        role: user.role,
-        isActive: user.isActive,
-        permissions: user.permissions,
-        createdAt: user.createdAt,
-      },
+      user: formatUser(updatedUser),
       token,
     });
   } catch (error) {
@@ -984,7 +926,10 @@ router.post("/resend-phone-otp", async (req, res) => {
     }
 
     // Find user by ID
-    const user = await User.findById(userId);
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -1008,9 +953,13 @@ router.post("/resend-phone-otp", async (req, res) => {
     ); // 10 minutes expiry
 
     // Save OTP to user
-    user.phoneVerificationOTP = phoneVerificationOTP;
-    user.phoneVerificationOTPExpires = phoneVerificationOTPExpires;
-    await user.save();
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        phoneVerificationOTP,
+        phoneVerificationOTPExpires
+      }
+    });
 
     // Send SMS with OTP (non-blocking)
     console.log(`📱 Attempting to resend OTP to ${phoneNumber}: ${phoneVerificationOTP}`);
@@ -1087,7 +1036,7 @@ router.post("/fcm-token", protect, async (req, res) => {
     }
 
     const result = await registerToken(
-      req.user._id,
+      req.user.id,
       token,
       deviceId || null,
       platform || 'android'
@@ -1128,7 +1077,7 @@ router.delete("/fcm-token", protect, async (req, res) => {
       });
     }
 
-    await removeToken(req.user._id, token);
+    await removeToken(req.user.id, token);
 
     res.json({
       success: true,
@@ -1151,27 +1100,30 @@ router.put("/notification-settings", protect, async (req, res) => {
   try {
     const { chatMessages, orderUpdates, promotions } = req.body;
 
-    const updateFields = {};
+    const data = {};
     if (typeof chatMessages === 'boolean') {
-      updateFields['notificationSettings.chatMessages'] = chatMessages;
+      data.chatMessages = chatMessages;
     }
     if (typeof orderUpdates === 'boolean') {
-      updateFields['notificationSettings.orderUpdates'] = orderUpdates;
+      data.orderUpdates = orderUpdates;
     }
     if (typeof promotions === 'boolean') {
-      updateFields['notificationSettings.promotions'] = promotions;
+      data.promoNotifications = promotions;
     }
 
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      { $set: updateFields },
-      { new: true }
-    ).select('notificationSettings');
+    const settings = await prisma.userNotificationSettings.upsert({
+      where: { userId: req.user.id },
+      update: data,
+      create: {
+        userId: req.user.id,
+        ...data
+      }
+    });
 
     res.json({
       success: true,
       message: "Notification settings updated",
-      data: user.notificationSettings,
+      data: settings,
     });
   } catch (error) {
     console.error("Update notification settings error:", error);
@@ -1190,7 +1142,10 @@ router.post("/test-notification", protect, async (req, res) => {
   try {
     const { sendToUser } = require("../services/fcm_service");
 
-    const user = await User.findById(req.user._id).select('fcmTokens username');
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { fcmTokens: true }
+    });
 
     if (!user.fcmTokens || user.fcmTokens.length === 0) {
       return res.status(400).json({
@@ -1201,7 +1156,7 @@ router.post("/test-notification", protect, async (req, res) => {
     }
 
     const result = await sendToUser(
-      req.user._id,
+      req.user.id,
       {
         title: "Test Notification 🔔",
         body: `Hello ${user.username}! This is a test notification from GrabGo.`,
@@ -1235,17 +1190,19 @@ router.post("/test-notification", protect, async (req, res) => {
 // @access  Private
 router.get("/fcm-tokens", protect, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('fcmTokens');
+    const tokens = await prisma.userFcmToken.findMany({
+      where: { userId: req.user.id }
+    });
 
     res.json({
       success: true,
-      tokensCount: user.fcmTokens?.length || 0,
-      tokens: user.fcmTokens?.map(t => ({
+      tokensCount: tokens.length,
+      tokens: tokens.map(t => ({
         platform: t.platform,
         deviceId: t.deviceId,
         createdAt: t.createdAt,
         tokenPreview: t.token ? `${t.token.substring(0, 20)}...` : null,
-      })) || [],
+      })),
     });
   } catch (error) {
     console.error("Get FCM tokens error:", error);

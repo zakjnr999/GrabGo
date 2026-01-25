@@ -1,9 +1,9 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const prisma = require('../config/prisma');
 
 exports.verifyApiKey = (req, res, next) => {
   const apiKey = req.headers['api_key'] || req.headers['x-api-key'];
-  
+
   if (!apiKey) {
     return res.status(401).json({
       success: false,
@@ -28,7 +28,7 @@ exports.protect = async (req, res, next) => {
   console.log('\n🔑 AUTHENTICATION DEBUG:');
   console.log('  Endpoint:', req.method, req.path);
   console.log('  Authorization header:', req.headers.authorization ? 'Present' : 'Missing');
-  
+
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     token = req.headers.authorization.split(' ')[1];
     console.log('  Token extracted:', token ? `${token.substring(0, 20)}...` : 'Failed to extract');
@@ -45,9 +45,11 @@ exports.protect = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log('  ✅ Token verified for user:', decoded.id);
-    
-    req.user = await User.findById(decoded.id).select('-password');
-    
+
+    req.user = await prisma.user.findUnique({
+      where: { id: decoded.id }
+    });
+
     if (!req.user) {
       console.log('  ❌ AUTH FAILED: User not found for ID:', decoded.id);
       return res.status(401).json({
@@ -63,6 +65,9 @@ exports.protect = async (req, res, next) => {
         message: 'Account is deactivated'
       });
     }
+
+    // Add Mongoose compatibility layer for _id if needed
+    req.user._id = req.user.id;
 
     console.log('  ✅ Authentication successful for:', req.user.email || req.user.username);
     next();

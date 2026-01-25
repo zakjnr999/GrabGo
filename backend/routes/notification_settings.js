@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
-const User = require('../models/User');
+const prisma = require('../config/prisma');
 
 /**
  * @route   GET /api/users/settings/notifications
@@ -10,18 +10,35 @@ const User = require('../models/User');
  */
 router.get('/settings/notifications', protect, async (req, res) => {
     try {
-        const user = await User.findById(req.user._id).select('notificationSettings');
+        const settings = await prisma.userNotificationSettings.findUnique({
+            where: { userId: req.user.id }
+        });
 
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found'
+        if (!settings) {
+            // If settings don't exist yet, return defaults
+            return res.json({
+                success: true,
+                notificationSettings: {
+                    chatMessages: true,
+                    orderUpdates: true,
+                    promoNotifications: true,
+                    commentReplies: true,
+                    commentReactions: true,
+                    referralUpdates: true,
+                    paymentUpdates: true,
+                    deliveryUpdates: true,
+                    systemUpdates: true,
+                    cartReminders: true,
+                    favoritesReminders: true,
+                    reorderSuggestions: true,
+                    reengagementReminders: true
+                }
             });
         }
 
         res.json({
             success: true,
-            notificationSettings: user.notificationSettings
+            notificationSettings: settings
         });
     } catch (error) {
         console.error('Error fetching notification settings:', error);
@@ -49,8 +66,8 @@ router.patch('/settings/notifications', protect, async (req, res) => {
             });
         }
 
-        // Valid notification settings
-        const validSettings = [
+        // Valid notification settings keys
+        const validSettingsKeys = [
             'chatMessages',
             'orderUpdates',
             'promoNotifications',
@@ -67,40 +84,36 @@ router.patch('/settings/notifications', protect, async (req, res) => {
         ];
 
         // Build update object
-        const updates = {};
+        const updateData = {};
         for (const [key, value] of Object.entries(settings)) {
-            if (validSettings.includes(key) && typeof value === 'boolean') {
-                updates[`notificationSettings.${key}`] = value;
+            if (validSettingsKeys.includes(key) && typeof value === 'boolean') {
+                updateData[key] = value;
             }
         }
 
-        if (Object.keys(updates).length === 0) {
+        if (Object.keys(updateData).length === 0) {
             return res.status(400).json({
                 success: false,
                 message: 'No valid settings provided'
             });
         }
 
-        // Update user
-        const user = await User.findByIdAndUpdate(
-            req.user._id,
-            { $set: updates },
-            { new: true, runValidators: true }
-        ).select('notificationSettings');
+        // Update or create notification settings
+        const updatedSettings = await prisma.userNotificationSettings.upsert({
+            where: { userId: req.user.id },
+            update: updateData,
+            create: {
+                userId: req.user.id,
+                ...updateData
+            }
+        });
 
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found'
-            });
-        }
-
-        console.log(`✅ Notification settings updated for user ${req.user._id}`);
+        console.log(`✅ Notification settings updated for user ${req.user.id}`);
 
         res.json({
             success: true,
             message: 'Notification settings updated successfully',
-            notificationSettings: user.notificationSettings
+            notificationSettings: updatedSettings
         });
     } catch (error) {
         console.error('Error updating notification settings:', error);

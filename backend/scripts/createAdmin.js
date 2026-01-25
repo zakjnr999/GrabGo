@@ -1,12 +1,8 @@
-/**
- * Script to create admin users in MongoDB
- * Run this script from the backend directory: node scripts/createAdmin.js
- */
-
-require('dotenv').config();
-const mongoose = require('mongoose');
+const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
-const User = require('../models/User');
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+const prisma = require('../config/prisma');
 
 // Admin user details - CHANGE THESE VALUES
 const ADMIN_EMAIL = 'admin@grabgo.com';
@@ -15,13 +11,12 @@ const ADMIN_USERNAME = 'admin';
 
 async function createAdminUser() {
     try {
-        // Connect to MongoDB
-        console.log('🔌 Connecting to MongoDB...');
-        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/grabgo');
-        console.log('✅ Connected to MongoDB');
+        console.log('🚀 Connecting to Database with Prisma...');
 
         // Check if admin already exists
-        const existingAdmin = await User.findOne({ email: ADMIN_EMAIL });
+        const existingAdmin = await prisma.user.findUnique({
+            where: { email: ADMIN_EMAIL }
+        });
 
         if (existingAdmin) {
             console.log('⚠️  Admin user already exists with email:', ADMIN_EMAIL);
@@ -30,8 +25,7 @@ async function createAdminUser() {
             console.log('🔑 Role:', existingAdmin.role);
             console.log('🛡️  isAdmin:', existingAdmin.isAdmin);
 
-            // Ask if you want to update the password
-            console.log('\n💡 To update the password, delete the existing user from MongoDB and run this script again.');
+            console.log('\n💡 To update the password, use scripts/resetAdminPassword.js.');
             process.exit(0);
         }
 
@@ -42,15 +36,17 @@ async function createAdminUser() {
 
         // Create admin user
         console.log('👤 Creating admin user...');
-        const adminUser = await User.create({
-            username: ADMIN_USERNAME,
-            email: ADMIN_EMAIL,
-            password: hashedPassword,
-            role: 'admin',
-            isAdmin: true,
-            isActive: true,
-            isEmailVerified: true,
-            isPhoneVerified: false,
+        const adminUser = await prisma.user.create({
+            data: {
+                username: ADMIN_USERNAME,
+                email: ADMIN_EMAIL,
+                password: hashedPassword,
+                role: 'admin',
+                isAdmin: true,
+                isActive: true,
+                isEmailVerified: true,
+                isPhoneVerified: false,
+            }
         });
 
         console.log('\n✅ Admin user created successfully!');
@@ -68,9 +64,8 @@ async function createAdminUser() {
         console.error('❌ Error creating admin user:', error.message);
         console.error(error);
     } finally {
-        // Disconnect from MongoDB
-        await mongoose.disconnect();
-        console.log('\n🔌 Disconnected from MongoDB');
+        await prisma.$disconnect();
+        console.log('\n🔌 Disconnected from Database');
         process.exit(0);
     }
 }

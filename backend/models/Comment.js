@@ -3,13 +3,12 @@ const mongoose = require('mongoose');
 const commentSchema = new mongoose.Schema({
     status: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Status',
+        ref: 'Status', // Both in MongoDB
         required: true,
         index: true
     },
     user: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        type: String, // String reference to PostgreSQL User ID
         required: true,
         index: true
     },
@@ -42,14 +41,8 @@ commentSchema.index({ status: 1, parentComment: 1, createdAt: -1 });
 // Index for user's comments
 commentSchema.index({ user: 1, createdAt: -1 });
 
-// Auto-populate user details when querying
-commentSchema.pre(/^find/, function (next) {
-    this.populate({
-        path: 'user',
-        select: 'name email profileImage'
-    });
-    next();
-});
+// NOTE: Auto-populate is disabled in hybrid mode because 'User' is in PostgreSQL.
+// Hydration must be handled manually in the service layer.
 
 // Static method to get comments for a status with pagination (top-level only)
 commentSchema.statics.getCommentsForStatus = async function (statusId, page = 1, limit = 20) {
@@ -130,7 +123,8 @@ commentSchema.statics.deleteForStatus = async function (statusId) {
 
 // Method to check if user owns this comment
 commentSchema.methods.isOwnedBy = function (userId) {
-    return this.user._id.toString() === userId.toString();
+    // In hybrid setup, 'user' is the string ID
+    return this.user.toString() === userId.toString();
 };
 
 module.exports = mongoose.model('Comment', commentSchema);

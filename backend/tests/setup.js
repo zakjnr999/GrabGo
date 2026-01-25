@@ -17,11 +17,10 @@ jest.setTimeout(30000);
 // Global test utilities
 global.testUtils = {
     /**
-     * Generate a mock MongoDB ObjectId
+     * Generate a mock ID (Prisma uses cuid/strings)
      */
     generateObjectId: () => {
-        const mongoose = require('mongoose');
-        return new mongoose.Types.ObjectId();
+        return Math.random().toString(36).substring(2, 15);
     },
 
     /**
@@ -57,9 +56,7 @@ if (process.env.SUPPRESS_LOGS === 'true') {
 
 // Clean up after all tests
 afterAll(async () => {
-    // Close any open connections
-    const mongoose = require('mongoose');
-    if (mongoose.connection.readyState !== 0) {
-        await mongoose.connection.close();
-    }
+    // Close Prisma client
+    const prisma = require('../config/prisma');
+    await prisma.$disconnect();
 });

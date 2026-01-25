@@ -3,13 +3,12 @@ const mongoose = require('mongoose');
 const reactionSchema = new mongoose.Schema({
     comment: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Comment',
+        ref: 'Comment', // Both in MongoDB
         required: true,
         index: true
     },
     user: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        type: String, // String reference to PostgreSQL User ID
         required: true,
         index: true
     },

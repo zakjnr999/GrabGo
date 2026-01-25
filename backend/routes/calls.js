@@ -6,7 +6,7 @@ const { protect } = require('../middleware/auth');
 router.get('/:callId', protect, async (req, res) => {
   try {
     const { callId } = req.params;
-    const userId = req.user._id.toString();
+    const userId = req.user.id;
 
     // Get WebRTC signaling service instance
     const webrtcSignaling = req.app.get('webrtcSignaling');

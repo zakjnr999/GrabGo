@@ -1,5 +1,4 @@
-const User = require('../models/User');
-const Order = require('../models/Order');
+const prisma = require('../config/prisma');
 const { sendToUser } = require('./fcm_service');
 const { createNotification } = require('./notification_service');
 
@@ -16,19 +15,25 @@ const { createNotification } = require('./notification_service');
 const findEligibleUsers = async () => {
     try {
         const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        const now = new Date();
 
-        return await User.find({
-            'notificationSettings.reorderSuggestions': true,
-            $or: [
-                { lastReorderSuggestionAt: null },
-                { lastReorderSuggestionAt: { $lt: sevenDaysAgo } }
-            ],
-            $or: [
-                { reorderSuggestionsThisWeek: 0 },
-                { reorderSuggestionsThisWeek: { $exists: false } }
-            ]
-        }).select('_id email username reorderSuggestionsThisWeek lastReorderSuggestionAt weekStartDate');
+        return await prisma.user.findMany({
+            where: {
+                notificationSettings: { reorderSuggestions: true },
+                OR: [
+                    { lastReorderSuggestionAt: null },
+                    { lastReorderSuggestionAt: { lt: sevenDaysAgo } }
+                ],
+                reorderSuggestionsThisWeek: 0
+            },
+            select: {
+                id: true,
+                email: true,
+                username: true,
+                reorderSuggestionsThisWeek: true,
+                lastReorderSuggestionAt: true,
+                weekStartDate: true
+            }
+        });
     } catch (error) {
         console.error('Error finding users for reorder suggestion:', error.message);
         return [];
@@ -37,7 +42,7 @@ const findEligibleUsers = async () => {
 
 /**
  * Identify the best item to suggest for reordering
- * @param {ObjectId} userId - User ID
+ * @param {string} userId - User ID
  * @returns {Promise<Object|null>} Best item or null
  */
 const getFrequentItemToSuggest = async (userId) => {
@@ -46,10 +51,15 @@ const getFrequentItemToSuggest = async (userId) => {
         const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
 
         // Get delivered orders from the last 30 days
-        const orders = await Order.find({
-            customer: userId,
-            status: 'delivered',
-            orderDate: { $gt: thirtyDaysAgo }
+        const orders = await prisma.order.findMany({
+            where: {
+                customerId: userId,
+                status: 'delivered',
+                createdAt: { gt: thirtyDaysAgo }
+            },
+            include: {
+                items: true
+            }
         });
 
         if (orders.length === 0) return null;
@@ -60,15 +70,15 @@ const getFrequentItemToSuggest = async (userId) => {
 
         orders.forEach(order => {
             order.items.forEach(item => {
-                const itemId = (item.food || item.groceryItem)?.toString();
+                const itemId = item.foodId || item.groceryItemId;
                 if (!itemId) return;
 
                 const currentCount = itemFreq.get(itemId) || 0;
                 itemFreq.set(itemId, currentCount + 1);
 
                 const currentLastDate = lastOrderedAt.get(itemId);
-                if (!currentLastDate || order.orderDate > currentLastDate) {
-                    lastOrderedAt.set(itemId, order.orderDate);
+                if (!currentLastDate || order.createdAt > currentLastDate) {
+                    lastOrderedAt.set(itemId, order.createdAt);
                 }
             });
         });
@@ -83,10 +93,10 @@ const getFrequentItemToSuggest = async (userId) => {
         // Pick the top candidate
         const bestItemId = candidates[0][0];
 
-        // Find the item details from the orders list (to avoid extra queries)
+        // Find the item details from the orders list
         let bestItemData = null;
         for (const order of orders) {
-            const found = order.items.find(i => (i.food || i.groceryItem)?.toString() === bestItemId);
+            const found = order.items.find(i => (i.foodId || i.groceryItemId) === bestItemId);
             if (found) {
                 bestItemData = found;
                 break;
@@ -107,7 +117,7 @@ const getFrequentItemToSuggest = async (userId) => {
  */
 const sendReorderSuggestion = async (user, io = null) => {
     try {
-        const item = await getFrequentItemToSuggest(user._id);
+        const item = await getFrequentItemToSuggest(user.id);
         if (!item) return;
 
         const templates = [
@@ -129,12 +139,12 @@ const sendReorderSuggestion = async (user, io = null) => {
 
         // 1. In-app notification
         await createNotification(
-            user._id,
+            user.id,
             'reorder_suggestion',
             template.title,
             template.message,
             {
-                itemId: (item.food || item.groceryItem).toString(),
+                itemId: item.foodId || item.groceryItemId,
                 itemType: item.itemType,
                 itemName: item.name,
                 route: '/browse'
@@ -144,14 +154,14 @@ const sendReorderSuggestion = async (user, io = null) => {
 
         // 2. Push notification
         await sendToUser(
-            user._id,
+            user.id,
             {
                 title: template.title,
                 body: template.message
             },
             {
                 type: 'reorder_suggestion',
-                itemId: (item.food || item.groceryItem).toString(),
+                itemId: item.foodId || item.groceryItemId,
                 itemType: String(item.itemType),
                 promoCode: 'REORDER10',
                 click_action: 'FLUTTER_NOTIFICATION_CLICK'
@@ -163,20 +173,23 @@ const sendReorderSuggestion = async (user, io = null) => {
         let weekStartDate = user.weekStartDate || now;
 
         // Reset weekly counters if week expired
-        if (user.weekStartDate && now - user.weekStartDate > 7 * 24 * 60 * 60 * 1000) {
+        if (user.weekStartDate && (now - user.weekStartDate) > 7 * 24 * 60 * 60 * 1000) {
             weekStartDate = now;
         }
 
-        await User.findByIdAndUpdate(user._id, {
-            lastReorderSuggestionAt: now,
-            reorderSuggestionsThisWeek: 1, // Max 1 per week for this specific type
-            weekStartDate
+        await prisma.user.update({
+            where: { id: user.id },
+            data: {
+                lastReorderSuggestionAt: now,
+                reorderSuggestionsThisWeek: 1, // Max 1 per week for this specific type
+                weekStartDate
+            }
         });
 
         console.log(`✅ Sent reorder suggestion (${item.name}) to ${user.email}`);
 
     } catch (error) {
-        console.error(`Error sending reorder suggestion to ${user._id}:`, error.message);
+        console.error(`Error sending reorder suggestion to ${user.id}:`, error.message);
     }
 };
 

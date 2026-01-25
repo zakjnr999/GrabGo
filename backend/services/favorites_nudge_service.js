@@ -1,4 +1,4 @@
-const User = require('../models/User');
+const prisma = require('../config/prisma');
 const { sendToUser } = require('./fcm_service');
 const { createNotification } = require('./notification_service');
 
@@ -25,30 +25,40 @@ const findEligibleUsers = async () => {
         const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
         const now = new Date();
 
-        // Find users with favorites
-        const users = await User.find({
-            'favorites.restaurants.0': { $exists: true }, // Has at least one favorite
-            'notificationSettings.favoritesReminders': true,
-            // Never ordered OR haven't ordered in 7 days
-            $or: [
-                { lastOrderDate: null },
-                { lastOrderDate: { $exists: false } },
-                { lastOrderDate: { $lt: sevenDaysAgo } }
-            ],
-            // Never nudged OR haven't been nudged in 3 days
-            $and: [
-                {
-                    $or: [
-                        { lastFavoritesNudgeAt: null },
-                        { lastFavoritesNudgeAt: { $exists: false } },
-                        { lastFavoritesNudgeAt: { $lt: threeDaysAgo } }
-                    ]
+        // Get users with favorites and specific notification settings
+        const users = await prisma.user.findMany({
+            where: {
+                favoriteRestaurants: { some: {} }, // Has at least one favorite
+                notificationSettings: { favoritesReminders: true },
+                OR: [
+                    { lastOrderDate: null },
+                    { lastOrderDate: { lt: sevenDaysAgo } }
+                ],
+                OR: [
+                    { lastFavoritesNudgeAt: null },
+                    { lastFavoritesNudgeAt: { lt: threeDaysAgo } }
+                ]
+            },
+            select: {
+                id: true,
+                username: true,
+                email: true,
+                lastOrderDate: true,
+                favoritesNudgesThisWeek: true,
+                lastFavoritesNudgeAt: true,
+                weekStartDate: true,
+                favoriteRestaurants: {
+                    include: {
+                        restaurant: {
+                            select: {
+                                id: true,
+                                restaurantName: true
+                            }
+                        }
+                    }
                 }
-            ]
-        })
-            .select('_id username email favorites lastOrderDate favoritesNudgesThisWeek lastFavoritesNudgeAt weekStartDate')
-            // Populate the restaurant name for personalization
-            .populate('favorites.restaurants.restaurantId', 'restaurant_name');
+            }
+        });
 
         // Filter by weekly limit (max 2)
         const eligibleUsers = users.filter(user => {
@@ -56,7 +66,7 @@ const findEligibleUsers = async () => {
 
             // Check if week has expired
             let currentWeekNudges = user.favoritesNudgesThisWeek || 0;
-            if (user.weekStartDate && now - user.weekStartDate > 7 * 24 * 60 * 60 * 1000) {
+            if (user.weekStartDate && (now - user.weekStartDate) > 7 * 24 * 60 * 60 * 1000) {
                 currentWeekNudges = 0;
             }
 
@@ -74,11 +84,11 @@ const findEligibleUsers = async () => {
 
 /**
  * Generate a personalized message for a favorites nudge
- * @param {Object} user - User object with populated favorites
+ * @param {Object} user - User object with Prisma relations
  * @returns {Object} { title, message, restaurantId }
  */
 const generateFavoritesMessage = (user) => {
-    const favorites = user.favorites.restaurants;
+    const favorites = user.favoriteRestaurants;
     if (!favorites || favorites.length === 0) return null;
 
     // Pick a random favorite restaurant
@@ -86,7 +96,7 @@ const generateFavoritesMessage = (user) => {
     const fav = favorites[randomIndex];
 
     // Safety check for restaurant name
-    const restaurantName = fav.restaurantId?.restaurant_name;
+    const restaurantName = fav.restaurant?.restaurantName;
 
     let templates;
     if (restaurantName) {
@@ -125,7 +135,7 @@ const generateFavoritesMessage = (user) => {
 
     return {
         ...template,
-        restaurantId: (fav.restaurantId._id || fav.restaurantId).toString()
+        restaurantId: fav.restaurantId
     };
 };
 
@@ -141,7 +151,7 @@ const sendFavoritesNudge = async (user, io = null) => {
 
         // 1. In-app notification
         await createNotification(
-            user._id,
+            user.id,
             'favorites_reminder',
             nudgeData.title,
             nudgeData.message,
@@ -153,7 +163,7 @@ const sendFavoritesNudge = async (user, io = null) => {
 
         // 2. Push notification
         await sendToUser(
-            user._id,
+            user.id,
             {
                 title: nudgeData.title,
                 body: nudgeData.message
@@ -169,24 +179,27 @@ const sendFavoritesNudge = async (user, io = null) => {
         // 3. Update user tracking
         const now = new Date();
         let weekStartDate = user.weekStartDate || now;
-        let favorsNudgesThisWeek = (user.favoritesNudgesThisWeek || 0) + 1;
+        let favoritesNudgesThisWeek = (user.favoritesNudgesThisWeek || 0) + 1;
 
         // Reset if week expired
-        if (user.weekStartDate && now - user.weekStartDate > 7 * 24 * 60 * 60 * 1000) {
+        if (user.weekStartDate && (now - user.weekStartDate) > 7 * 24 * 60 * 60 * 1000) {
             weekStartDate = now;
-            favorsNudgesThisWeek = 1;
+            favoritesNudgesThisWeek = 1;
         }
 
-        await User.findByIdAndUpdate(user._id, {
-            lastFavoritesNudgeAt: now,
-            favoritesNudgesThisWeek: favorsNudgesThisWeek,
-            weekStartDate
+        await prisma.user.update({
+            where: { id: user.id },
+            data: {
+                lastFavoritesNudgeAt: now,
+                favoritesNudgesThisWeek: favoritesNudgesThisWeek,
+                weekStartDate
+            }
         });
 
         console.log(`✅ Sent favorites nudge to ${user.email}`);
 
     } catch (error) {
-        console.error(`Error sending favorites nudge to ${user._id}:`, error.message);
+        console.error(`Error sending favorites nudge to ${user.id}:`, error.message);
     }
 };
 

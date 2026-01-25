@@ -3,8 +3,7 @@ const mongoose = require('mongoose');
 // Sub-schema for view tracking with duration
 const viewSchema = new mongoose.Schema({
     user: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        type: String, // String reference to PostgreSQL User ID
         required: true
     },
     viewedAt: {
@@ -20,16 +19,13 @@ const viewSchema = new mongoose.Schema({
 
 const statusSchema = new mongoose.Schema({
     restaurant: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Restaurant',
-        required: true,
-        index: true
+        type: String, // String reference to PostgreSQL Restaurant ID
+        required: true
     },
     category: {
         type: String,
         enum: ['daily_special', 'discount', 'new_item', 'video'],
-        required: true,
-        index: true
+        required: true
     },
     // Content
     title: {
@@ -75,8 +71,7 @@ const statusSchema = new mongoose.Schema({
     },
     // Link to food item (for daily special / new item)
     linkedFood: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Food'
+        type: String // String reference to PostgreSQL Food ID
     },
     // Engagement
     viewCount: {
@@ -105,8 +100,7 @@ const statusSchema = new mongoose.Schema({
     },
     // Users who liked this status
     likedBy: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        type: String // String references to PostgreSQL User IDs
     }],
     // Users who viewed this status with duration tracking
     viewedBy: [viewSchema],

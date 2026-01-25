@@ -1,25 +1,41 @@
-const Cart = require('../models/Cart');
-const Food = require('../models/Food');
-const GroceryItem = require('../models/GroceryItem');
+const prisma = require('../config/prisma');
 
 /**
  * Get or create cart for user
  * @param {string} userId - User ID
- * @param {string} cartType - 'food' or 'grocery'
+ * @param {string} cartType - 'food', 'grocery', or 'pharmacy'
  * @returns {Promise<Object>} Cart object
  */
 const getOrCreateCart = async (userId, cartType = 'food') => {
-    let cart = await Cart.findOne({
-        user: userId,
-        isActive: true,
-        cartType
-    }).populate('items.itemId');
+    let cart = await prisma.cart.findFirst({
+        where: {
+            userId,
+            isActive: true,
+            cartType
+        },
+        include: {
+            items: {
+                include: {
+                    food: true,
+                    groceryItem: true,
+                    pharmacyItem: true
+                }
+            }
+        }
+    });
 
     if (!cart) {
-        cart = await Cart.create({
-            user: userId,
-            cartType,
-            items: []
+        cart = await prisma.cart.create({
+            data: {
+                userId,
+                cartType,
+                items: {
+                    create: []
+                }
+            },
+            include: {
+                items: true
+            }
         });
     }
 
@@ -33,146 +49,262 @@ const getOrCreateCart = async (userId, cartType = 'food') => {
  * @returns {Promise<Object>} Updated cart
  */
 const addToCart = async (userId, itemData) => {
-    const { itemId, itemType, quantity = 1, restaurantId, groceryStoreId } = itemData;
+    const { itemId, itemType, quantity = 1, restaurantId, groceryStoreId, pharmacyStoreId } = itemData;
 
-    // Validate quantity (Fix #3)
+    // Validate quantity
     if (quantity < 1 || quantity > 100) {
         throw new Error('Quantity must be between 1 and 100');
     }
 
-    // Validate item exists
-    const ItemModel = itemType === 'Food' ? Food : GroceryItem;
-    const item = await ItemModel.findById(itemId);
+    // Validate item exists and get item details
+    let item;
+    let price;
+    let itemName;
+    let imageUrl;
 
-    if (!item) {
-        throw new Error('Item not found');
+    if (itemType === 'Food' || itemType === 'food') {
+        item = await prisma.food.findUnique({ where: { id: itemId } });
+        if (!item) throw new Error('Item not found');
+        if (!item.isAvailable) throw new Error('Item is currently unavailable');
+        price = item.price;
+        itemName = item.name;
+        imageUrl = item.foodImage;
+    } else if (itemType === 'GroceryItem' || itemType === 'grocery') {
+        item = await prisma.groceryItem.findUnique({ where: { id: itemId } });
+        if (!item) throw new Error('Item not found');
+        if (!item.isAvailable) throw new Error('Item is currently unavailable');
+        price = item.price;
+        itemName = item.name;
+        imageUrl = item.image;
+    } else if (itemType === 'PharmacyItem' || itemType === 'pharmacy') {
+        item = await prisma.pharmacyItem.findUnique({ where: { id: itemId } });
+        if (!item) throw new Error('Item not found');
+        if (!item.isAvailable) throw new Error('Item is currently unavailable');
+        price = item.price;
+        itemName = item.name;
+        imageUrl = item.image;
+    } else {
+        throw new Error('Invalid item type');
     }
 
-    // Check if item is available (Fix #4)
-    if (item.isActive === false || item.isAvailable === false) {
-        throw new Error('Item is currently unavailable');
-    }
-
-    // Validate price (Fix #7)
-    const price = parseFloat(item.price);
+    // Validate price
     if (isNaN(price) || price < 0) {
         throw new Error('Invalid item price');
     }
 
     // Determine cart type
-    const cartType = itemType === 'Food' ? 'food' : 'grocery';
+    let cartType = 'food';
+    if (itemType === 'GroceryItem' || itemType === 'grocery') cartType = 'grocery';
+    if (itemType === 'PharmacyItem' || itemType === 'pharmacy') cartType = 'pharmacy';
 
     // Get or create cart
     let cart = await getOrCreateCart(userId, cartType);
 
-    // Validate and check if switching restaurants/stores (Fix #5)
+    // Validate and check if switching restaurants/stores
     if (cartType === 'food' && restaurantId) {
-        const Restaurant = require('../models/Restaurant');
-        const restaurant = await Restaurant.findById(restaurantId);
-        if (!restaurant || restaurant.isActive === false) {
+        const restaurant = await prisma.restaurant.findUnique({
+            where: { id: restaurantId }
+        });
+        if (!restaurant || restaurant.status !== 'approved') {
             throw new Error('Restaurant not found or inactive');
         }
 
-        if (cart.restaurant && cart.restaurant.toString() !== restaurantId) {
+        if (cart.restaurantId && cart.restaurantId !== restaurantId) {
             // Clear cart if switching restaurants
-            cart.items = [];
+            await prisma.cartItem.deleteMany({
+                where: { cartId: cart.id }
+            });
         }
-        cart.restaurant = restaurantId;
+
+        await prisma.cart.update({
+            where: { id: cart.id },
+            data: { restaurantId }
+        });
     } else if (cartType === 'grocery' && groceryStoreId) {
-        const GroceryStore = require('../models/GroceryStore');
-        const store = await GroceryStore.findById(groceryStoreId);
-        if (!store || store.isActive === false) {
+        const store = await prisma.groceryStore.findUnique({
+            where: { id: groceryStoreId }
+        });
+        if (!store || store.status !== 'approved') {
             throw new Error('Grocery store not found or inactive');
         }
 
-        if (cart.groceryStore && cart.groceryStore.toString() !== groceryStoreId) {
+        if (cart.groceryStoreId && cart.groceryStoreId !== groceryStoreId) {
             // Clear cart if switching stores
-            cart.items = [];
+            await prisma.cartItem.deleteMany({
+                where: { cartId: cart.id }
+            });
         }
-        cart.groceryStore = groceryStoreId;
-    }
 
-    // Check if item already in cart
-    const existingItemIndex = cart.items.findIndex(
-        cartItem => cartItem.itemId.toString() === itemId
-    );
-
-    if (existingItemIndex > -1) {
-        // Update quantity with max limit check (Fix #3)
-        const newQuantity = cart.items[existingItemIndex].quantity + quantity;
-        if (newQuantity > 100) {
-            throw new Error('Maximum quantity per item is 100');
+        await prisma.cart.update({
+            where: { id: cart.id },
+            data: { groceryStoreId }
+        });
+    } else if (cartType === 'pharmacy' && pharmacyStoreId) {
+        const store = await prisma.pharmacyStore.findUnique({
+            where: { id: pharmacyStoreId }
+        });
+        if (!store || store.status !== 'approved') {
+            throw new Error('Pharmacy store not found or inactive');
         }
-        cart.items[existingItemIndex].quantity = newQuantity;
-    } else {
-        // Add new item with validated price (Fix #7)
-        cart.items.push({
-            itemId,
-            itemType,
-            name: item.name,
-            price: price, // Use validated price
-            quantity,
-            imageUrl: item.imageUrl || item.image || null
+
+        if (cart.pharmacyStoreId && cart.pharmacyStoreId !== pharmacyStoreId) {
+            // Clear cart if switching stores
+            await prisma.cartItem.deleteMany({
+                where: { cartId: cart.id }
+            });
+        }
+
+        await prisma.cart.update({
+            where: { id: cart.id },
+            data: { pharmacyStoreId }
         });
     }
 
-    // Reset abandonment tracking
-    cart.abandonmentNotificationSent = false;
-    cart.abandonmentNotificationSentAt = null;
+    // Reload cart with items
+    cart = await prisma.cart.findUnique({
+        where: { id: cart.id },
+        include: { items: true }
+    });
 
-    await cart.save();
-    return cart;
+    // Check if item already in cart
+    const existingItem = cart.items.find(cartItem => {
+        if (itemType === 'Food' || itemType === 'food') return cartItem.foodId === itemId;
+        if (itemType === 'GroceryItem' || itemType === 'grocery') return cartItem.groceryItemId === itemId;
+        if (itemType === 'PharmacyItem' || itemType === 'pharmacy') return cartItem.pharmacyItemId === itemId;
+        return false;
+    });
+
+    if (existingItem) {
+        // Update quantity with max limit check
+        const newQuantity = existingItem.quantity + quantity;
+        if (newQuantity > 100) {
+            throw new Error('Maximum quantity per item is 100');
+        }
+
+        await prisma.cartItem.update({
+            where: { id: existingItem.id },
+            data: { quantity: newQuantity }
+        });
+    } else {
+        // Add new item
+        const itemTypeEnum = itemType === 'Food' || itemType === 'food' ? 'Food' :
+            itemType === 'GroceryItem' || itemType === 'grocery' ? 'GroceryItem' : 'PharmacyItem';
+
+        const createData = {
+            cartId: cart.id,
+            itemType: itemTypeEnum,
+            name: itemName,
+            price,
+            quantity,
+            imageUrl
+        };
+
+        if (itemTypeEnum === 'Food') createData.foodId = itemId;
+        else if (itemTypeEnum === 'GroceryItem') createData.groceryItemId = itemId;
+        else if (itemTypeEnum === 'PharmacyItem') createData.pharmacyItemId = itemId;
+
+        await prisma.cartItem.create({ data: createData });
+    }
+
+    // Reset abandonment tracking
+    await prisma.cart.update({
+        where: { id: cart.id },
+        data: {
+            abandonmentNotificationSent: false,
+            abandonmentNotificationSentAt: null,
+            lastUpdatedAt: new Date()
+        }
+    });
+
+    // Return updated cart
+    return prisma.cart.findUnique({
+        where: { id: cart.id },
+        include: {
+            items: {
+                include: {
+                    food: true,
+                    groceryItem: true,
+                    pharmacyItem: true
+                }
+            }
+        }
+    });
 };
 
 /**
  * Update item quantity in cart
  * @param {string} userId - User ID
- * @param {string} itemId - Item ID
+ * @param {string} itemId - Cart Item ID
  * @param {number} quantity - New quantity
  * @returns {Promise<Object>} Updated cart
  */
 const updateCartItem = async (userId, itemId, quantity) => {
-    const cart = await Cart.findOne({ user: userId, isActive: true });
+    const cart = await prisma.cart.findFirst({
+        where: { userId, isActive: true },
+        include: { items: true }
+    });
 
     if (!cart) {
         throw new Error('Cart not found');
     }
 
-    const itemIndex = cart.items.findIndex(
-        item => item.itemId.toString() === itemId
-    );
+    const item = cart.items.find(i => i.id === itemId);
 
-    if (itemIndex === -1) {
+    if (!item) {
         throw new Error('Item not found in cart');
     }
 
     if (quantity <= 0) {
         // Remove item
-        cart.items.splice(itemIndex, 1);
+        await prisma.cartItem.delete({
+            where: { id: itemId }
+        });
     } else {
         // Update quantity
-        cart.items[itemIndex].quantity = quantity;
+        await prisma.cartItem.update({
+            where: { id: itemId },
+            data: { quantity }
+        });
     }
 
     // Reset abandonment tracking
-    cart.abandonmentNotificationSent = false;
-    cart.abandonmentNotificationSentAt = null;
+    await prisma.cart.update({
+        where: { id: cart.id },
+        data: {
+            abandonmentNotificationSent: false,
+            abandonmentNotificationSentAt: null,
+            lastUpdatedAt: new Date()
+        }
+    });
 
-    await cart.save();
-    return cart;
+    return prisma.cart.findUnique({
+        where: { id: cart.id },
+        include: {
+            items: {
+                include: {
+                    food: true,
+                    groceryItem: true,
+                    pharmacyItem: true
+                }
+            }
+        }
+    });
 };
 
 /**
  * Remove item from cart
  * @param {string} userId - User ID
- * @param {string} itemId - Item ID
+ * @param {string} itemId - Cart Item ID
  * @returns {Promise<Object>} Updated cart
  */
 const removeFromCart = async (userId, itemId) => {
     console.log(`🗑️ Backend: Removing item ${itemId} from cart for user ${userId}`);
 
-    // Find ALL active carts and locate the one with the item
-    const carts = await Cart.find({ user: userId, isActive: true });
+    // Find ALL active carts
+    const carts = await prisma.cart.findMany({
+        where: { userId, isActive: true },
+        include: { items: true }
+    });
 
     if (!carts || carts.length === 0) {
         console.log('❌ No active carts found');
@@ -182,7 +314,7 @@ const removeFromCart = async (userId, itemId) => {
     // Find which cart contains the item
     let cart = null;
     for (const c of carts) {
-        const hasItem = c.items.some(item => item.itemId.toString() === itemId);
+        const hasItem = c.items.some(item => item.id === itemId);
         if (hasItem) {
             cart = c;
             break;
@@ -195,31 +327,44 @@ const removeFromCart = async (userId, itemId) => {
     }
 
     console.log(`📋 Cart details BEFORE removal:`, {
-        cartId: cart._id,
+        cartId: cart.id,
         cartType: cart.cartType,
-        itemCount: cart.items.length,
-        items: cart.items.map(item => ({
-            itemId: item.itemId.toString(),
-            name: item.name,
-            quantity: item.quantity
-        }))
+        itemCount: cart.items.length
     });
 
     const initialLength = cart.items.length;
-    cart.items = cart.items.filter(
-        item => item.itemId.toString() !== itemId
-    );
 
-    const itemsRemoved = initialLength - cart.items.length;
-    console.log(`📊 Items before: ${initialLength}, Items after: ${cart.items.length}, Removed: ${itemsRemoved}`);
+    // Delete the cart item
+    await prisma.cartItem.delete({
+        where: { id: itemId }
+    });
+
+    console.log(`📊 Items before: ${initialLength}, Items after: ${initialLength - 1}, Removed: 1`);
 
     // Reset abandonment tracking
-    cart.abandonmentNotificationSent = false;
-    cart.abandonmentNotificationSentAt = null;
+    await prisma.cart.update({
+        where: { id: cart.id },
+        data: {
+            abandonmentNotificationSent: false,
+            abandonmentNotificationSentAt: null,
+            lastUpdatedAt: new Date()
+        }
+    });
 
-    await cart.save();
     console.log('✅ Cart saved successfully');
-    return cart;
+
+    return prisma.cart.findUnique({
+        where: { id: cart.id },
+        include: {
+            items: {
+                include: {
+                    food: true,
+                    groceryItem: true,
+                    pharmacyItem: true
+                }
+            }
+        }
+    });
 };
 
 /**
@@ -228,59 +373,125 @@ const removeFromCart = async (userId, itemId) => {
  * @returns {Promise<Object>} Empty cart
  */
 const clearCart = async (userId) => {
-    const cart = await Cart.findOne({ user: userId, isActive: true });
+    const cart = await prisma.cart.findFirst({
+        where: { userId, isActive: true }
+    });
 
     if (!cart) {
         throw new Error('Cart not found');
     }
 
-    cart.items = [];
-    cart.restaurant = null;
-    cart.groceryStore = null;
-    cart.abandonmentNotificationSent = false;
-    cart.abandonmentNotificationSentAt = null;
+    // Delete all cart items
+    await prisma.cartItem.deleteMany({
+        where: { cartId: cart.id }
+    });
 
-    await cart.save();
-    return cart;
+    // Update cart
+    await prisma.cart.update({
+        where: { id: cart.id },
+        data: {
+            restaurantId: null,
+            groceryStoreId: null,
+            pharmacyStoreId: null,
+            abandonmentNotificationSent: false,
+            abandonmentNotificationSentAt: null,
+            lastUpdatedAt: new Date()
+        }
+    });
+
+    return prisma.cart.findUnique({
+        where: { id: cart.id },
+        include: { items: true }
+    });
 };
 
 /**
  * Get user's active cart
  * @param {string} userId - User ID
- * @param {string} cartType - 'food' or 'grocery'
+ * @param {string} cartType - 'food', 'grocery', or 'pharmacy'
  * @returns {Promise<Object>} Cart object
  */
 const getUserCart = async (userId, cartType = null) => {
-    const query = { user: userId, isActive: true };
+    const where = { userId, isActive: true };
     if (cartType) {
-        query.cartType = cartType;
+        where.cartType = cartType;
     }
 
-    const cart = await Cart.findOne(query)
-        .populate({
-            path: 'items.itemId',
-            options: { strictPopulate: false }, // Fix #1: Don't fail on missing refs
-            populate: {
-                path: 'restaurant',
-                select: 'name restaurant_name logo image imageUrl'
+    const cart = await prisma.cart.findFirst({
+        where,
+        include: {
+            items: {
+                include: {
+                    food: {
+                        include: {
+                            restaurant: {
+                                select: {
+                                    id: true,
+                                    restaurantName: true,
+                                    logo: true
+                                }
+                            }
+                        }
+                    },
+                    groceryItem: {
+                        include: {
+                            store: {
+                                select: {
+                                    id: true,
+                                    storeName: true,
+                                    logo: true
+                                }
+                            }
+                        }
+                    },
+                    pharmacyItem: {
+                        include: {
+                            store: {
+                                select: {
+                                    id: true,
+                                    storeName: true,
+                                    logo: true
+                                }
+                            }
+                        }
+                    }
+                }
             }
-        })
-        .populate('restaurant', 'name imageUrl')
-        .populate('groceryStore', 'name imageUrl');
+        }
+    });
 
-    // Fix #1: Filter out items with deleted itemId
+    // Filter out items with deleted references
     if (cart && cart.items) {
         const originalLength = cart.items.length;
-        cart.items = cart.items.filter(item => item.itemId !== null);
+        const validItems = cart.items.filter(item => {
+            if (item.itemType === 'Food') return item.food !== null;
+            if (item.itemType === 'GroceryItem') return item.groceryItem !== null;
+            if (item.itemType === 'PharmacyItem') return item.pharmacyItem !== null;
+            return false;
+        });
 
-        // If all items were removed, clear restaurant/store
-        if (cart.items.length === 0 && originalLength > 0) {
-            cart.restaurant = null;
-            cart.groceryStore = null;
-            await cart.save();
-        } else if (cart.items.length < originalLength) {
-            // Some items were removed, save the cart
-            await cart.save();
+        // If items were removed, update the cart
+        if (validItems.length < originalLength) {
+            const itemsToDelete = cart.items.filter(item => !validItems.includes(item));
+            await prisma.cartItem.deleteMany({
+                where: {
+                    id: { in: itemsToDelete.map(i => i.id) }
+                }
+            });
+
+            // If all items were removed, clear restaurant/store
+            if (validItems.length === 0) {
+                await prisma.cart.update({
+                    where: { id: cart.id },
+                    data: {
+                        restaurantId: null,
+                        groceryStoreId: null,
+                        pharmacyStoreId: null
+                    }
+                });
+            }
+
+            cart.items = validItems;
         }
     }
 
@@ -294,18 +505,22 @@ const getUserCart = async (userId, cartType = null) => {
  * @returns {Promise<Object>} Updated cart
  */
 const markCartAsConverted = async (userId, orderId) => {
-    const cart = await Cart.findOne({ user: userId, isActive: true });
+    const cart = await prisma.cart.findFirst({
+        where: { userId, isActive: true }
+    });
 
     if (!cart) {
         throw new Error('Cart not found');
     }
 
-    cart.convertedToOrder = true;
-    cart.orderId = orderId;
-    cart.isActive = false;
-
-    await cart.save();
-    return cart;
+    return prisma.cart.update({
+        where: { id: cart.id },
+        data: {
+            convertedToOrder: true,
+            orderId,
+            isActive: false
+        }
+    });
 };
 
 /**
@@ -320,23 +535,53 @@ const findAbandonedCarts = async () => {
     console.log(`   30 min ago: ${thirtyMinutesAgo}`);
     console.log(`   1 day ago: ${oneDayAgo}`);
 
-    const carts = await Cart.find({
-        isActive: true,
-        convertedToOrder: false,
-        lastUpdatedAt: { $lt: thirtyMinutesAgo },
-        itemCount: { $gt: 0 },
-        $or: [
-            { abandonmentNotificationSent: false },
-            {
-                abandonmentNotificationSent: true,
-                abandonmentNotificationSentAt: { $lt: oneDayAgo } // Max 1 per day
+    const carts = await prisma.cart.findMany({
+        where: {
+            isActive: true,
+            convertedToOrder: false,
+            lastUpdatedAt: { lt: thirtyMinutesAgo },
+            itemCount: { gt: 0 },
+            OR: [
+                { abandonmentNotificationSent: false },
+                {
+                    AND: [
+                        { abandonmentNotificationSent: true },
+                        { abandonmentNotificationSentAt: { lt: oneDayAgo } }
+                    ]
+                }
+            ]
+        },
+        include: {
+            user: {
+                select: {
+                    id: true,
+                    username: true,
+                    email: true,
+                    fcmTokens: true,
+                    notificationSettings: true
+                }
             }
-        ]
-    }).populate('user', 'username email fcmTokens notificationSettings');
+        }
+    });
 
     console.log(`🔍 Found ${carts.length} cart(s) matching criteria`);
 
     return carts;
+};
+
+/**
+ * Mark cart as having had an abandonment notification sent
+ * @param {string} cartId - Cart ID
+ * @returns {Promise<Object>} Updated cart
+ */
+const markAbandonmentNotificationSent = async (cartId) => {
+    return await prisma.cart.update({
+        where: { id: cartId },
+        data: {
+            abandonmentNotificationSent: true,
+            abandonmentNotificationSentAt: new Date()
+        }
+    });
 };
 
 module.exports = {
@@ -347,5 +592,6 @@ module.exports = {
     clearCart,
     getUserCart,
     markCartAsConverted,
-    findAbandonedCarts
+    findAbandonedCarts,
+    markAbandonmentNotificationSent
 };

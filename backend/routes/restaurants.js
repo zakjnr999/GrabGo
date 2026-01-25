@@ -1,6 +1,6 @@
 const express = require("express");
 const { body, validationResult } = require("express-validator");
-const Restaurant = require("../models/Restaurant");
+const prisma = require("../config/prisma");
 const { protect, verifyApiKey, admin } = require("../middleware/auth");
 const {
   uploadFields,
@@ -10,34 +10,74 @@ const {
 
 const router = express.Router();
 
+// Helper function to check if user is admin
+async function checkIsAdmin(req) {
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer")
+  ) {
+    try {
+      const jwt = require("jsonwebtoken");
+      const token = req.headers.authorization.split(" ")[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.id },
+        select: { isAdmin: true }
+      });
+      return user?.isAdmin || false;
+    } catch (err) {
+      return false;
+    }
+  }
+  return false;
+}
+
+// Get all restaurants
 router.get("/", async (req, res, next) => {
   try {
-    let isAdmin = false;
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
-    ) {
-      try {
-        const jwt = require("jsonwebtoken");
-        const User = require("../models/User");
-        const token = req.headers.authorization.split(" ")[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await User.findById(decoded.id).select("-password");
-        if (user && user.isAdmin) {
-          isAdmin = true;
-        }
-      } catch (err) { }
-    }
+    const isAdmin = await checkIsAdmin(req);
+    const where = isAdmin ? {} : { status: "approved" };
 
-    const query = isAdmin ? {} : { status: "approved" };
-
-    const restaurants = await Restaurant.find(query)
-      .select("-password")
-      .sort({ createdAt: -1 });
+    const restaurants = await prisma.restaurant.findMany({
+      where,
+      select: {
+        id: true,
+        restaurantName: true,
+        email: true,
+        phone: true,
+        ownerFullName: true,
+        ownerContactNumber: true,
+        businessIdNumber: true,
+        logo: true,
+        businessIdPhoto: true,
+        ownerPhoto: true,
+        foodType: true,
+        description: true,
+        averageDeliveryTime: true,
+        averagePreparationTime: true,
+        deliveryFee: true,
+        minOrder: true,
+        paymentMethods: true,
+        bannerImages: true,
+        status: true,
+        rating: true,
+        ratingCount: true,
+        isOpen: true,
+        longitude: true,
+        latitude: true,
+        address: true,
+        city: true,
+        area: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: { createdAt: 'desc' }
+    });
 
     res.json({
       success: true,
       message: "Restaurants retrieved successfully",
+      count: restaurants.length,
       data: restaurants,
     });
   } catch (error) {
@@ -50,6 +90,7 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+// Register new restaurant
 router.post(
   "/register",
   uploadFields([
@@ -97,8 +138,14 @@ router.post(
         password,
       } = req.body;
 
-      const existingRestaurant = await Restaurant.findOne({
-        $or: [{ email }, { business_id_number }],
+      // Check if restaurant already exists
+      const existingRestaurant = await prisma.restaurant.findFirst({
+        where: {
+          OR: [
+            { email },
+            { businessIdNumber }
+          ]
+        }
       });
 
       if (existingRestaurant) {
@@ -122,65 +169,59 @@ router.post(
           ? getFileUrl(req.files["owner_photo"][0].filename)
           : null);
 
-      const restaurant = await Restaurant.create({
-        restaurantName: name,
-        email,
-        phone,
-        location: {
-          type: "Point",
-          coordinates: [
-            req.body.lng ? parseFloat(req.body.lng) : 0,
-            req.body.lat ? parseFloat(req.body.lat) : 0
-          ],
+      const restaurant = await prisma.restaurant.create({
+        data: {
+          restaurantName: name,
+          email,
+          phone,
+          longitude: req.body.lng ? parseFloat(req.body.lng) : 0,
+          latitude: req.body.lat ? parseFloat(req.body.lat) : 0,
           address,
           city,
           area: area || "",
-        },
-        ownerFullName,
-        ownerContactNumber,
-        businessIdNumber,
-        password,
-        logo,
-        businessIdPhoto: businessIdPhoto,
-        ownerPhoto: ownerPhoto,
-        status: "pending",
-        vendorType: "restaurant"
+          ownerFullName,
+          ownerContactNumber,
+          businessIdNumber,
+          password,
+          logo,
+          businessIdPhoto,
+          ownerPhoto,
+          status: "pending",
+        }
       });
 
-      const restaurantData = restaurant.toObject();
-
       const formattedData = {
-        _id: restaurantData._id.toString(),
-        restaurantName: restaurantData.restaurantName || "",
-        email: restaurantData.email || "",
-        phone: restaurantData.phone || "",
-        ownerFullName: restaurantData.ownerFullName || "",
-        ownerContactNumber: restaurantData.ownerContactNumber || "",
-        businessIdNumber: restaurantData.businessIdNumber || "",
+        _id: restaurant.id,
+        restaurantName: restaurant.restaurantName || "",
+        email: restaurant.email || "",
+        phone: restaurant.phone || "",
+        ownerFullName: restaurant.ownerFullName || "",
+        ownerContactNumber: restaurant.ownerContactNumber || "",
+        businessIdNumber: restaurant.businessIdNumber || "",
         password: "",
-        logo: restaurantData.logo || null,
-        businessIdPhoto: restaurantData.businessIdPhoto || null,
-        ownerPhoto: restaurantData.ownerPhoto || null,
-        foodType: restaurantData.foodType || null,
-        description: restaurantData.description || null,
+        logo: restaurant.logo || null,
+        businessIdPhoto: restaurant.businessIdPhoto || null,
+        ownerPhoto: restaurant.ownerPhoto || null,
+        foodType: restaurant.foodType || null,
+        description: restaurant.description || null,
         location: {
-          coordinates: restaurantData.location?.coordinates || [0, 0],
-          address: restaurantData.location?.address || "",
-          city: restaurantData.location?.city || "",
-          area: restaurantData.location?.area || "",
+          coordinates: [restaurant.longitude, restaurant.latitude],
+          address: restaurant.address || "",
+          city: restaurant.city || "",
+          area: restaurant.area || "",
         },
-        averageDeliveryTime: restaurantData.averageDeliveryTime || 30,
-        averagePreparationTime: restaurantData.averagePreparationTime || 15,
-        deliveryFee: restaurantData.deliveryFee || 0,
-        minOrder: restaurantData.minOrder || 0,
-        openingHours: restaurantData.openingHours || {},
-        paymentMethods: restaurantData.paymentMethods || [],
-        bannerImages: restaurantData.bannerImages || [],
-        status: restaurantData.status || "pending",
-        rating: restaurantData.rating || 0,
-        isOpen: restaurantData.isOpen || false,
-        totalReviews: restaurantData.totalReviews || 0,
-        createdAt: restaurantData.createdAt
+        averageDeliveryTime: restaurant.averageDeliveryTime || 30,
+        averagePreparationTime: restaurant.averagePreparationTime || 15,
+        deliveryFee: restaurant.deliveryFee || 0,
+        minOrder: restaurant.minOrder || 0,
+        openingHours: {},
+        paymentMethods: restaurant.paymentMethods || [],
+        bannerImages: restaurant.bannerImages || [],
+        status: restaurant.status || "pending",
+        rating: restaurant.rating || 0,
+        isOpen: restaurant.isOpen || false,
+        totalReviews: restaurant.ratingCount || 0,
+        createdAt: restaurant.createdAt
       };
 
       res.status(201).json({
@@ -199,39 +240,43 @@ router.post(
   }
 );
 
-
-// Standardized endpoints to match other vendor types
-
 // Get all restaurants (alias for /)
 router.get("/stores", async (req, res) => {
   try {
-    let isAdmin = false;
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
-    ) {
-      try {
-        const jwt = require("jsonwebtoken");
-        const User = require("../models/User");
-        const token = req.headers.authorization.split(" ")[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await User.findById(decoded.id).select("-password");
-        if (user && user.isAdmin) {
-          isAdmin = true;
-        }
-      } catch (err) { }
-    }
+    const isAdmin = await checkIsAdmin(req);
+    const where = isAdmin ? {} : { status: "approved", isOpen: true };
 
-    const query = isAdmin ? {} : { status: "approved", isOpen: true };
-
-    const restaurants = await Restaurant.find(query)
-      .select("-password")
-      .sort({ rating: -1 })
-      .limit(20);
+    const restaurants = await prisma.restaurant.findMany({
+      where,
+      select: {
+        id: true,
+        restaurantName: true,
+        email: true,
+        phone: true,
+        logo: true,
+        foodType: true,
+        description: true,
+        averageDeliveryTime: true,
+        deliveryFee: true,
+        minOrder: true,
+        status: true,
+        rating: true,
+        ratingCount: true,
+        isOpen: true,
+        longitude: true,
+        latitude: true,
+        address: true,
+        city: true,
+        area: true,
+      },
+      orderBy: { rating: 'desc' },
+      take: 20
+    });
 
     res.json({
       success: true,
       message: "Restaurants retrieved successfully",
+      count: restaurants.length,
       data: restaurants,
     });
   } catch (error) {
@@ -247,9 +292,40 @@ router.get("/stores", async (req, res) => {
 // Get restaurant by ID (alias for /:restaurantId)
 router.get("/stores/:id", async (req, res) => {
   try {
-    const restaurant = await Restaurant.findById(req.params.id).select(
-      "-password"
-    );
+    const restaurant = await prisma.restaurant.findUnique({
+      where: { id: req.params.id },
+      select: {
+        id: true,
+        restaurantName: true,
+        email: true,
+        phone: true,
+        ownerFullName: true,
+        ownerContactNumber: true,
+        businessIdNumber: true,
+        logo: true,
+        businessIdPhoto: true,
+        ownerPhoto: true,
+        foodType: true,
+        description: true,
+        averageDeliveryTime: true,
+        averagePreparationTime: true,
+        deliveryFee: true,
+        minOrder: true,
+        paymentMethods: true,
+        bannerImages: true,
+        status: true,
+        rating: true,
+        ratingCount: true,
+        isOpen: true,
+        longitude: true,
+        latitude: true,
+        address: true,
+        city: true,
+        area: true,
+        createdAt: true,
+        updatedAt: true,
+      }
+    });
 
     if (!restaurant) {
       return res.status(404).json({
@@ -278,45 +354,90 @@ router.get("/search", async (req, res) => {
   try {
     const { q, lat, lng, radius = 5 } = req.query;
 
-    let query = { status: "approved" };
+    let where = { status: "approved" };
 
     // Text search
     if (q) {
-      query.$or = [
-        { restaurantName: { $regex: q, $options: "i" } },
-        { description: { $regex: q, $options: "i" } },
-        { foodType: { $regex: q, $options: "i" } },
-        { 'location.address': { $regex: q, $options: "i" } },
-        { 'location.city': { $regex: q, $options: "i" } },
-        { 'location.area': { $regex: q, $options: "i" } },
+      where.OR = [
+        { restaurantName: { contains: q, mode: 'insensitive' } },
+        { description: { contains: q, mode: 'insensitive' } },
+        { foodType: { contains: q, mode: 'insensitive' } },
+        { address: { contains: q, mode: 'insensitive' } },
+        { city: { contains: q, mode: 'insensitive' } },
+        { area: { contains: q, mode: 'insensitive' } },
       ];
     }
 
-    // Location-based search
+    let restaurants;
+
+    // Location-based search using raw SQL for geospatial query
     if (lat && lng) {
       const latitude = parseFloat(lat);
       const longitude = parseFloat(lng);
-      const radiusInKm = parseFloat(radius);
+      const radiusInMeters = parseFloat(radius) * 1000;
 
-      query['location.coordinates'] = {
-        $near: {
-          $geometry: {
-            type: "Point",
-            coordinates: [longitude, latitude],
-          },
-          $maxDistance: radiusInKm * 1000,
+      // Use raw SQL for PostGIS distance calculation
+      const searchQuery = q ? `%${q}%` : '%';
+      restaurants = await prisma.$queryRaw`
+        SELECT 
+          id, "restaurantName", email, phone, logo, "foodType", description,
+          "averageDeliveryTime", "deliveryFee", "minOrder", status, rating,
+          "ratingCount", "isOpen", longitude, latitude, address, city, area,
+          ST_Distance(
+            ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography,
+            ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography
+          ) as distance
+        FROM restaurants
+        WHERE status = 'approved'
+        AND (
+          "restaurantName" ILIKE ${searchQuery}
+          OR description ILIKE ${searchQuery}
+          OR "foodType" ILIKE ${searchQuery}
+          OR address ILIKE ${searchQuery}
+          OR city ILIKE ${searchQuery}
+          OR area ILIKE ${searchQuery}
+        )
+        AND ST_DWithin(
+          ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography,
+          ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography,
+          ${radiusInMeters}
+        )
+        ORDER BY distance ASC
+        LIMIT 50
+      `;
+    } else {
+      restaurants = await prisma.restaurant.findMany({
+        where,
+        select: {
+          id: true,
+          restaurantName: true,
+          email: true,
+          phone: true,
+          logo: true,
+          foodType: true,
+          description: true,
+          averageDeliveryTime: true,
+          deliveryFee: true,
+          minOrder: true,
+          status: true,
+          rating: true,
+          ratingCount: true,
+          isOpen: true,
+          longitude: true,
+          latitude: true,
+          address: true,
+          city: true,
+          area: true,
         },
-      };
+        orderBy: { rating: 'desc' },
+        take: 50
+      });
     }
-
-    const restaurants = await Restaurant.find(query)
-      .select("-password")
-      .sort({ rating: -1 })
-      .limit(50);
 
     res.json({
       success: true,
       message: "Search results retrieved successfully",
+      count: restaurants.length,
       data: restaurants,
     });
   } catch (error) {
@@ -343,36 +464,32 @@ router.get("/nearby", async (req, res) => {
 
     const latitude = parseFloat(lat);
     const longitude = parseFloat(lng);
-    const radiusInKm = parseFloat(radius);
+    const radiusInMeters = parseFloat(radius) * 1000;
 
-    // Use aggregation for $geoNear which provides the distance in the output
-    const restaurants = await Restaurant.aggregate([
-      {
-        $geoNear: {
-          near: { type: "Point", coordinates: [longitude, latitude] },
-          distanceField: "distance",
-          maxDistance: radiusInKm * 1000,
-          query: { status: "approved" },
-          spherical: true,
-        },
-      },
-      {
-        $project: {
-          password: 0,
-        },
-      },
-      {
-        $addFields: {
-          id: "$_id",
-          // Convert distance from meters to kilometers
-          distance: { $divide: ["$distance", 1000] },
-        },
-      },
-    ]);
+    // Use raw SQL for PostGIS geospatial query
+    const restaurants = await prisma.$queryRaw`
+      SELECT 
+        id, "restaurantName", email, phone, logo, "foodType", description,
+        "averageDeliveryTime", "deliveryFee", "minOrder", status, rating,
+        "ratingCount", "isOpen", longitude, latitude, address, city, area,
+        ST_Distance(
+          ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography,
+          ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography
+        ) / 1000 as distance
+      FROM restaurants
+      WHERE status = 'approved'
+      AND ST_DWithin(
+        ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography,
+        ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography,
+        ${radiusInMeters}
+      )
+      ORDER BY distance ASC
+    `;
 
     res.json({
       success: true,
       message: "Nearby restaurants retrieved successfully",
+      count: restaurants.length,
       data: restaurants,
     });
   } catch (error) {
@@ -388,8 +505,9 @@ router.get("/nearby", async (req, res) => {
 // Get food categories
 router.get("/categories", async (req, res) => {
   try {
-    const Category = require("../models/Category");
-    const categories = await Category.find().sort({ sortOrder: 1 });
+    const categories = await prisma.category.findMany({
+      orderBy: { sortOrder: 'asc' }
+    });
 
     res.json({
       success: true,
@@ -409,18 +527,25 @@ router.get("/categories", async (req, res) => {
 // Get food items
 router.get("/items", async (req, res) => {
   try {
-    const Food = require("../models/Food");
     const { category, restaurant } = req.query;
 
-    let query = {};
-    if (category) query.category = category;
-    if (restaurant) query.restaurant = restaurant;
+    let where = {};
+    if (category) where.categoryId = category;
+    if (restaurant) where.restaurantId = restaurant;
 
-    const items = await Food.find(query)
-      .populate("restaurant", "restaurant_name logo")
-      .populate("category", "name emoji")
-      .sort({ createdAt: -1 })
-      .limit(50);
+    const items = await prisma.food.findMany({
+      where,
+      include: {
+        restaurant: {
+          select: { id: true, restaurantName: true, logo: true }
+        },
+        category: {
+          select: { id: true, name: true, emoji: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50
+    });
 
     res.json({
       success: true,
@@ -437,6 +562,7 @@ router.get("/items", async (req, res) => {
   }
 });
 
+// Update restaurant status
 router.put("/:restaurantId", protect, admin, verifyApiKey, async (req, res) => {
   try {
     const { restaurantId } = req.params;
@@ -449,7 +575,10 @@ router.put("/:restaurantId", protect, admin, verifyApiKey, async (req, res) => {
       });
     }
 
-    const restaurant = await Restaurant.findById(restaurantId);
+    const restaurant = await prisma.restaurant.findUnique({
+      where: { id: restaurantId }
+    });
+
     if (!restaurant) {
       return res.status(404).json({
         success: false,
@@ -457,16 +586,46 @@ router.put("/:restaurantId", protect, admin, verifyApiKey, async (req, res) => {
       });
     }
 
-    restaurant.status = status;
-    await restaurant.save();
-
-    const restaurantData = restaurant.toObject();
-    delete restaurantData.password;
+    const updatedRestaurant = await prisma.restaurant.update({
+      where: { id: restaurantId },
+      data: { status },
+      select: {
+        id: true,
+        restaurantName: true,
+        email: true,
+        phone: true,
+        ownerFullName: true,
+        ownerContactNumber: true,
+        businessIdNumber: true,
+        logo: true,
+        businessIdPhoto: true,
+        ownerPhoto: true,
+        foodType: true,
+        description: true,
+        averageDeliveryTime: true,
+        averagePreparationTime: true,
+        deliveryFee: true,
+        minOrder: true,
+        paymentMethods: true,
+        bannerImages: true,
+        status: true,
+        rating: true,
+        ratingCount: true,
+        isOpen: true,
+        longitude: true,
+        latitude: true,
+        address: true,
+        city: true,
+        area: true,
+        createdAt: true,
+        updatedAt: true,
+      }
+    });
 
     res.json({
       success: true,
       message: "Restaurant status updated successfully",
-      data: restaurantData,
+      data: updatedRestaurant,
     });
   } catch (error) {
     console.error("Update restaurant error:", error);
@@ -478,11 +637,43 @@ router.put("/:restaurantId", protect, admin, verifyApiKey, async (req, res) => {
   }
 });
 
+// Get single restaurant
 router.get("/:restaurantId", async (req, res) => {
   try {
-    const restaurant = await Restaurant.findById(
-      req.params.restaurantId
-    ).select("-password");
+    const restaurant = await prisma.restaurant.findUnique({
+      where: { id: req.params.restaurantId },
+      select: {
+        id: true,
+        restaurantName: true,
+        email: true,
+        phone: true,
+        ownerFullName: true,
+        ownerContactNumber: true,
+        businessIdNumber: true,
+        logo: true,
+        businessIdPhoto: true,
+        ownerPhoto: true,
+        foodType: true,
+        description: true,
+        averageDeliveryTime: true,
+        averagePreparationTime: true,
+        deliveryFee: true,
+        minOrder: true,
+        paymentMethods: true,
+        bannerImages: true,
+        status: true,
+        rating: true,
+        ratingCount: true,
+        isOpen: true,
+        longitude: true,
+        latitude: true,
+        address: true,
+        city: true,
+        area: true,
+        createdAt: true,
+        updatedAt: true,
+      }
+    });
 
     if (!restaurant) {
       return res.status(404).json({

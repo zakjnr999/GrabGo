@@ -14,20 +14,19 @@ const locationSchema = new mongoose.Schema({
 
 const orderTrackingSchema = new mongoose.Schema({
     orderId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Order',
+        type: String, // References PostgreSQL Order ID
         required: true,
         unique: true
     },
     riderId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
+        type: String, // References PostgreSQL User ID
+        required: true,
+        index: true
     },
     customerId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
+        type: String, // References PostgreSQL User ID
+        required: true,
+        index: true
     },
     currentLocation: {
         type: locationSchema,
@@ -68,7 +67,6 @@ const orderTrackingSchema = new mongoose.Schema({
 });
 
 // Index for geospatial queries
-orderTrackingSchema.index({ currentLocation: '2dsphere' });
 orderTrackingSchema.index({ orderId: 1, status: 1 });
 
 module.exports = mongoose.model('OrderTracking', orderTrackingSchema);

@@ -1,5 +1,4 @@
 const express = require("express");
-const mongoose = require("mongoose");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
@@ -8,11 +7,14 @@ const http = require("http");
 const { Server } = require("socket.io");
 const WebRTCSignalingService = require("./services/webrtcSignalingService");
 const jwt = require("jsonwebtoken");
-const User = require("./models/User");
-const Chat = require("./models/Chat");
+const prisma = require("./config/prisma");
+const connectMongoDB = require("./config/mongodb");
 const { initIO } = require("./utils/socket");
 const callRoutes = require("./routes/calls");
 require("dotenv").config();
+
+// Connect to MongoDB for NoSQL data (Hybrid Architecture)
+connectMongoDB();
 
 const app = express();
 const server = http.createServer(app);
@@ -63,13 +65,16 @@ io.use(async (socket, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select("_id role isActive");
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: { id: true, role: true, isActive: true }
+    });
 
     if (!user || !user.isActive) {
       return next(new Error("Not authorized"));
     }
 
-    socket.data.userId = user._id.toString();
+    socket.data.userId = user.id;
     socket.data.userRole = user.role;
     return next();
   } catch (error) {
@@ -95,13 +100,15 @@ io.on("connection", (socket) => {
       const userId = socket.data.userId;
       if (!chatId || !userId) return;
 
-      const chat = await Chat.findById(chatId).select("customer rider");
+      const chat = await prisma.chat.findUnique({
+        where: { id: chatId },
+        select: { customerId: true, riderId: true }
+      });
       if (!chat) return;
 
       const userIdStr = userId.toString();
       const isParticipant =
-        (chat.customer && chat.customer.toString() === userIdStr) ||
-        (chat.rider && chat.rider.toString() === userIdStr);
+        chat.customerId === userIdStr || chat.riderId === userIdStr;
 
       if (!isParticipant) {
         console.warn(
@@ -129,9 +136,9 @@ io.on("connection", (socket) => {
       }
 
       // Check if the other participant is online and notify the joining user
-      const otherUserId = chat.customer?.toString() === userIdStr
-        ? chat.rider?.toString()
-        : chat.customer?.toString();
+      const otherUserId = chat.customerId === userIdStr
+        ? chat.riderId
+        : chat.customerId;
 
       if (otherUserId) {
         const otherPresenceKey = `${chatId}:${otherUserId}`;
@@ -140,7 +147,7 @@ io.on("connection", (socket) => {
         // Also verify the user actually has connected sockets in this room
         const socketsInRoom = await io.in(room).fetchSockets();
         const otherUserHasSocket = socketsInRoom.some(
-          (s) => s.data.userId?.toString() === otherUserId && s.id !== socket.id
+          (s) => s.data.userId === otherUserId && s.id !== socket.id
         );
 
         const isOnline = otherCount > 0 && otherUserHasSocket;
@@ -156,7 +163,10 @@ io.on("connection", (socket) => {
           socket.emit("chat:presence", { chatId, userId: otherUserId, online: true });
         } else {
           // The other user is offline, send their last seen time
-          const otherUser = await User.findById(otherUserId).select("lastSeenAt");
+          const otherUser = await prisma.user.findUnique({
+            where: { id: otherUserId },
+            select: { lastSeenAt: true }
+          });
           socket.emit("chat:presence", {
             chatId,
             userId: otherUserId,
@@ -187,27 +197,36 @@ io.on("connection", (socket) => {
       const userId = socket.data.userId;
       if (!chatId || !userId) return;
 
-      const chat = await Chat.findById(chatId);
+      const chat = await prisma.chat.findUnique({
+        where: { id: chatId },
+        include: { messages: true }
+      });
       if (!chat) return;
 
       const userIdStr = userId.toString();
       const isParticipant =
-        (chat.customer && chat.customer.toString() === userIdStr) ||
-        (chat.rider && chat.rider.toString() === userIdStr);
+        chat.customerId === userIdStr || chat.riderId === userIdStr;
 
       if (!isParticipant) return;
 
-      let changed = false;
-      chat.messages.forEach((msg) => {
-        const alreadyRead = msg.readBy.some((id) => id.toString() === userIdStr);
-        if (!alreadyRead) {
-          msg.readBy.push(userId);
-          changed = true;
-        }
-      });
+      // In Prisma, we'll iterate through messages and update readBy if needed
+      // This is a bit more complex for a relational DB if readBy is a string[]
+      // We'll update each message that needs it
 
-      if (changed) {
-        await chat.save();
+      const unreadMessages = chat.messages.filter(msg => !msg.readBy.includes(userIdStr));
+
+      if (unreadMessages.length > 0) {
+        await Promise.all(unreadMessages.map(msg =>
+          prisma.chatMessage.update({
+            where: { id: msg.id },
+            data: {
+              readBy: {
+                set: [...msg.readBy, userIdStr]
+              }
+            }
+          })
+        ));
+
         const room = `chat:${chatId}`;
         io.to(room).emit("chat:read", {
           chatId,
@@ -230,7 +249,10 @@ io.on("connection", (socket) => {
 
       // Update user's lastSeenAt timestamp
       try {
-        await User.findByIdAndUpdate(userId, { lastSeenAt });
+        await prisma.user.update({
+          where: { id: userId },
+          data: { lastSeenAt }
+        });
       } catch (err) {
         console.error("Failed to update lastSeenAt:", err.message);
       }
@@ -393,56 +415,58 @@ const { initializeEngagementNudges } = require("./jobs/engagement_nudges");
 // Import cache utility
 const cache = require("./utils/cache");
 
-// Connect to MongoDB
-mongoose
-  .connect(process.env.MONGODB_URI || "mongodb://localhost:27017/grabgo")
-  .then(() => {
-    console.log("✅ Connected to MongoDB");
+// Initialize Redis cache (optional - falls back to memory cache)
+cache.initRedis();
 
-    // Initialize Redis cache (optional - falls back to memory cache)
-    cache.initRedis();
+// Schedule status cleanup cron job (runs every hour)
+scheduleCleanup();
 
-    // Schedule status cleanup cron job (runs every hour)
-    scheduleCleanup();
+// Schedule referral cleanup cron job (runs daily at 2:00 AM)
+scheduleReferralCleanup();
 
-    // Schedule referral cleanup cron job (runs daily at 2:00 AM)
-    scheduleReferralCleanup();
+// Initialize notification scheduler (runs every minute)
+initializeScheduler(io);
 
-    // Initialize notification scheduler (runs every minute)
-    initializeScheduler(io);
+// Initialize cart abandonment job (runs every 30 minutes)
+initializeCartAbandonmentJob(io);
 
-    // Initialize cart abandonment job (runs every 30 minutes)
-    initializeCartAbandonmentJob(io);
+// Initialize meal-time nudges (breakfast, lunch, dinner)
+initializeMealNudges(io);
 
-    // Initialize meal-time nudges (breakfast, lunch, dinner)
-    initializeMealNudges(io);
+// Initialize engagement nudges (favorites, reorder, re-engagement)
+initializeEngagementNudges(io);
 
-    // Initialize engagement nudges (favorites, reorder, re-engagement)
-    initializeEngagementNudges(io);
-
-    const PORT = process.env.PORT || 5000;
-    server.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📡 API available at http://localhost:${PORT}/api`);
-      if (!process.env.EMAIL_PASS) {
-        console.log("⚠️  Email service not configured");
-      }
-    });
-  })
-  .catch((error) => {
-    console.error(" MongoDB connection error:", error);
-    process.exit(1);
-  });
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📡 API available at http://localhost:${PORT}/api`);
+  if (!process.env.EMAIL_PASS) {
+    console.log("⚠️  Email service not configured");
+  }
+});
 
 // Graceful shutdown
-process.on("SIGTERM", async () => {
-  console.log("SIGTERM received, shutting down gracefully...");
-  await cache.close();
-  process.exit(0);
-});
+const shutdown = async () => {
+  console.log("🛑 Shutting down server...");
+  try {
+    if (cache && typeof cache.close === 'function') {
+      await cache.close();
+    }
+  } catch (err) {
+    console.error("Error closing cache:", err.message);
+  }
 
-process.on("SIGINT", async () => {
-  console.log("SIGINT received, shutting down gracefully...");
-  await cache.close();
-  process.exit(0);
-});
+  server.close(() => {
+    console.log("🏁 Server closed");
+    process.exit(0);
+  });
+
+  // Force exit if server.close() takes too long
+  setTimeout(() => {
+    console.error("⚠️ Forcefully shutting down...");
+    process.exit(1);
+  }, 5000);
+};
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);

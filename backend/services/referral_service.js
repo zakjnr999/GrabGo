@@ -1,7 +1,4 @@
-const Referral = require('../models/Referral');
-const ReferralCode = require('../models/ReferralCode');
-const UserCredit = require('../models/UserCredit');
-const User = require('../models/User');
+const prisma = require('../config/prisma');
 const { sendReferralNotification, sendMilestoneBonusNotification } = require('./fcm_service');
 const { createNotification } = require('./notification_service');
 const { getIO } = require('../utils/socket');
@@ -22,9 +19,11 @@ class ReferralService {
     static async completeReferral(userId, orderId, orderAmount, io = null) {
         try {
             // Find pending referral for this user
-            const referral = await Referral.findOne({
-                referee: userId,
-                status: 'pending_order'
+            const referral = await prisma.referral.findFirst({
+                where: {
+                    refereeId: userId,
+                    status: 'pending_order'
+                }
             });
 
             if (!referral) {
@@ -32,8 +31,11 @@ class ReferralService {
             }
 
             // Check if referral expired
-            if (referral.expiresAt < new Date()) {
-                await Referral.findByIdAndUpdate(referral._id, { status: 'expired' });
+            if (referral.expiresAt && referral.expiresAt < new Date()) {
+                await prisma.referral.update({
+                    where: { id: referral.id },
+                    data: { status: 'expired' }
+                });
                 return { success: false, message: 'Referral expired' };
             }
 
@@ -42,102 +44,85 @@ class ReferralService {
                 return { success: false, message: 'Order amount below minimum for referral discount' };
             }
 
-            // Create credit for referrer (expires in 90 days)
-            const referrerCreditExpiry = new Date();
-            referrerCreditExpiry.setDate(referrerCreditExpiry.getDate() + 90);
+            // ATOMIC UPDATE: Use transaction
+            const result = await prisma.$transaction(async (tx) => {
+                // Create credit for referrer (expires in 90 days)
+                const referrerCreditExpiry = new Date();
+                referrerCreditExpiry.setDate(referrerCreditExpiry.getDate() + 90);
 
-            const referrerCredit = await UserCredit.create({
-                user: referral.referrer,
-                amount: REFERRAL_REWARD_AMOUNT,
-                source: 'referral_earned',
-                referralId: referral._id,
-                expiresAt: referrerCreditExpiry,
-                description: `Referral bonus - friend completed first order`
-            });
-
-            // Update referral status
-            await Referral.findByIdAndUpdate(referral._id, {
-                status: 'completed',
-                refereeOrderId: orderId,
-                referrerCreditId: referrerCredit._id,
-                referrerCreditedAt: new Date(),
-                completedAt: new Date()
-            });
-
-            // Update referral code stats and get the NEW value atomically
-            const referrerCode = await ReferralCode.findOneAndUpdate(
-                { user: referral.referrer },
-                {
-                    $inc: {
-                        completedReferrals: 1,
-                        totalEarned: REFERRAL_REWARD_AMOUNT
+                const referrerCredit = await tx.userCredit.create({
+                    data: {
+                        userId: referral.referrerId,
+                        amount: REFERRAL_REWARD_AMOUNT,
+                        type: 'referral_earned',
+                        referralId: referral.id,
+                        expiresAt: referrerCreditExpiry,
+                        description: `Referral bonus - friend completed first order`
                     }
-                },
-                { new: true } // Return updated document
-            );
-
-            // Check for milestone bonus (every 5 completed referrals)
-            if (referrerCode && referrerCode.completedReferrals % 5 === 0) {
-                // Award milestone bonus (GHS 5)
-                const bonusExpiry = new Date();
-                bonusExpiry.setDate(bonusExpiry.getDate() + 90);
-
-                await UserCredit.create({
-                    user: referral.referrer,
-                    amount: MILESTONE_BONUS_AMOUNT,
-                    source: 'bonus',
-                    expiresAt: bonusExpiry,
-                    description: `Milestone bonus - ${referrerCode.completedReferrals} referrals completed!`
                 });
 
-                await ReferralCode.findByIdAndUpdate(referrerCode._id, {
-                    $inc: { totalEarned: MILESTONE_BONUS_AMOUNT }
+                // Update referral status
+                await tx.referral.update({
+                    where: { id: referral.id },
+                    data: {
+                        status: 'completed',
+                        refereeOrderId: orderId,
+                        referrerCreditId: referrerCredit.id,
+                        referrerCreditedAt: new Date(),
+                        completedAt: new Date()
+                    }
                 });
 
-                // Send milestone notifications (FCM + in-app)
-                try {
-                    // FCM push notification
-                    await sendMilestoneBonusNotification(
-                        referral.referrer,
-                        referrerCode.completedReferrals,
-                        MILESTONE_BONUS_AMOUNT
-                    );
-
-                    // In-app notification with WebSocket
-                    const ioInstance = io || getIO();
-                    if (ioInstance) {
-                        await createNotification(
-                            referral.referrer,
-                            'milestone_bonus',
-                            '🎉 Milestone Reached!',
-                            `Congrats! You've completed ${referrerCode.completedReferrals} referrals. Bonus GHS ${MILESTONE_BONUS_AMOUNT} added!`,
-                            {
-                                milestone: referrerCode.completedReferrals,
-                                bonusAmount: MILESTONE_BONUS_AMOUNT,
-                                route: '/referral'
-                            },
-                            ioInstance
-                        );
+                // Update referral code stats
+                const referrerCode = await tx.referralCode.update({
+                    where: { userId: referral.referrerId },
+                    data: {
+                        completedReferrals: { increment: 1 },
+                        totalEarned: { increment: REFERRAL_REWARD_AMOUNT }
                     }
-                    console.log(`✅ Milestone notifications sent to ${referral.referrer}`);
-                } catch (notifError) {
-                    console.error('❌ Error sending milestone notification:', notifError.message);
+                });
+
+                // Check for milestone bonus (every 5 completed referrals)
+                let awardedBonus = false;
+                if (referrerCode.completedReferrals % 5 === 0) {
+                    awardedBonus = true;
+                    const bonusExpiry = new Date();
+                    bonusExpiry.setDate(bonusExpiry.getDate() + 90);
+
+                    await tx.userCredit.create({
+                        data: {
+                            userId: referral.referrerId,
+                            amount: MILESTONE_BONUS_AMOUNT,
+                            type: 'bonus',
+                            expiresAt: bonusExpiry,
+                            description: `Milestone bonus - ${referrerCode.completedReferrals} referrals completed!`
+                        }
+                    });
+
+                    await tx.referralCode.update({
+                        where: { id: referrerCode.id },
+                        data: { totalEarned: { increment: MILESTONE_BONUS_AMOUNT } }
+                    });
                 }
-            }
 
-            // Send referral notifications (FCM + in-app)
+                return { referrerCode, awardedBonus };
+            });
+
+            // Send notifications (async, outside transaction)
             try {
-                const referee = await User.findById(userId).select('username');
+                const referee = await prisma.user.findUnique({
+                    where: { id: userId },
+                    select: { username: true }
+                });
                 const refereeName = referee?.username || 'Your friend';
 
-                // FCM push notification
-                await sendReferralNotification(referral.referrer, refereeName, REFERRAL_REWARD_AMOUNT);
+                // 1. Referral success notification
+                await sendReferralNotification(referral.referrerId, refereeName, REFERRAL_REWARD_AMOUNT);
 
-                // In-app notification with WebSocket
                 const ioInstance = io || getIO();
                 if (ioInstance) {
                     await createNotification(
-                        referral.referrer,
+                        referral.referrerId,
                         'referral_completed',
                         '🎉 Referral Success!',
                         `${refereeName} completed their first order. You earned GHS ${REFERRAL_REWARD_AMOUNT}!`,
@@ -149,17 +134,39 @@ class ReferralService {
                         ioInstance
                     );
                 }
-                console.log(`✅ Referral notifications sent to ${referral.referrer}`);
+
+                // 2. Milestone bonus notification
+                if (result.awardedBonus) {
+                    await sendMilestoneBonusNotification(
+                        referral.referrerId,
+                        result.referrerCode.completedReferrals,
+                        MILESTONE_BONUS_AMOUNT
+                    );
+
+                    if (ioInstance) {
+                        await createNotification(
+                            referral.referrerId,
+                            'milestone_bonus',
+                            '🎉 Milestone Reached!',
+                            `Congrats! You've completed ${result.referrerCode.completedReferrals} referrals. Bonus GHS ${MILESTONE_BONUS_AMOUNT} added!`,
+                            {
+                                milestone: result.referrerCode.completedReferrals,
+                                bonusAmount: MILESTONE_BONUS_AMOUNT,
+                                route: '/referral'
+                            },
+                            ioInstance
+                        );
+                    }
+                }
             } catch (notifError) {
-                console.error('❌ Error sending referral notification:', notifError.message);
-                // Don't fail the whole operation if notification fails
+                console.error('❌ Error sending referral notifications:', notifError.message);
             }
 
             return {
                 success: true,
                 message: 'Referral completed successfully',
-                referrerId: referral.referrer,
-                creditAmount: 10.00
+                referrerId: referral.referrerId,
+                creditAmount: REFERRAL_REWARD_AMOUNT
             };
         } catch (error) {
             console.error('Error completing referral:', error);
@@ -176,12 +183,18 @@ class ReferralService {
     static async applyCreditsToOrder(userId, orderAmount) {
         try {
             // Get available credits (oldest first - FIFO)
-            const credits = await UserCredit.find({
-                user: userId,
-                isActive: true,
-                usedAt: null,
-                expiresAt: { $gt: new Date() }
-            }).sort({ expiresAt: 1 });
+            const credits = await prisma.userCredit.findMany({
+                where: {
+                    userId: userId,
+                    isActive: true,
+                    isUsed: false,
+                    OR: [
+                        { expiresAt: null },
+                        { expiresAt: { gt: new Date() } }
+                    ]
+                },
+                orderBy: { expiresAt: 'asc' }
+            });
 
             if (credits.length === 0) {
                 return {
@@ -199,13 +212,12 @@ class ReferralService {
                 if (remainingAmount <= 0) break;
 
                 // Only use credits that can be fully consumed
-                // This prevents losing unused credit portions
                 if (credit.amount <= remainingAmount) {
                     appliedAmount += credit.amount;
                     remainingAmount -= credit.amount;
 
                     creditsUsed.push({
-                        creditId: credit._id,
+                        creditId: credit.id,
                         amount: credit.amount
                     });
                 }
@@ -233,13 +245,19 @@ class ReferralService {
      */
     static async markCreditsAsUsed(creditsUsed, orderId) {
         try {
-            for (const { creditId } of creditsUsed) {
-                await UserCredit.findByIdAndUpdate(creditId, {
-                    usedAt: new Date(),
-                    orderId: orderId,
-                    isActive: false
-                });
-            }
+            await prisma.$transaction(
+                creditsUsed.map(({ creditId }) =>
+                    prisma.userCredit.update({
+                        where: { id: creditId },
+                        data: {
+                            isUsed: true,
+                            orderId: orderId,
+                            isActive: false,
+                            usedAt: new Date()
+                        }
+                    })
+                )
+            );
             return { success: true };
         } catch (error) {
             console.error('Error marking credits as used:', error);
@@ -254,11 +272,16 @@ class ReferralService {
      */
     static async getUserCreditBalance(userId) {
         try {
-            const credits = await UserCredit.find({
-                user: userId,
-                isActive: true,
-                usedAt: null,
-                expiresAt: { $gt: new Date() }
+            const credits = await prisma.userCredit.findMany({
+                where: {
+                    userId: userId,
+                    isActive: true,
+                    isUsed: false,
+                    OR: [
+                        { expiresAt: null },
+                        { expiresAt: { gt: new Date() } }
+                    ]
+                }
             });
 
             const total = credits.reduce((sum, credit) => sum + credit.amount, 0);
@@ -277,27 +300,27 @@ class ReferralService {
             const now = new Date();
 
             // Expire old referrals
-            await Referral.updateMany(
-                {
+            await prisma.referral.updateMany({
+                where: {
                     status: 'pending_order',
-                    expiresAt: { $lt: now }
+                    expiresAt: { lt: now }
                 },
-                {
+                data: {
                     status: 'expired'
                 }
-            );
+            });
 
             // Deactivate expired credits
-            await UserCredit.updateMany(
-                {
+            await prisma.userCredit.updateMany({
+                where: {
                     isActive: true,
-                    usedAt: null,
-                    expiresAt: { $lt: now }
+                    isUsed: false,
+                    expiresAt: { lt: now }
                 },
-                {
+                data: {
                     isActive: false
                 }
-            );
+            });
 
             console.log('Expired old referrals and credits');
             return { success: true };

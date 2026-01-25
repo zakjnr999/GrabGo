@@ -1,60 +1,57 @@
 const mongoose = require("mongoose");
 
 const callLogSchema = new mongoose.Schema(
-  {
-    order: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Order",
-      required: true,
+    {
+        order: {
+            type: String, // References PostgreSQL Order ID
+            required: true,
+        },
+        caller: {
+            type: String, // References PostgreSQL User ID
+            required: true,
+        },
+        recipient: {
+            type: String, // References PostgreSQL User ID
+            required: true,
+        },
+        callType: {
+            type: String,
+            enum: ["direct", "masked", "webrtc"],
+            default: "webrtc",
+        },
+        status: {
+            type: String,
+            enum: [
+                "initiated",
+                "ringing",
+                "active",
+                "completed",
+                "missed",
+                "rejected",
+                "failed",
+            ],
+            default: "initiated",
+        },
+        duration: {
+            type: Number,
+            default: 0,
+        },
+        isVideoCall: {
+            type: Boolean,
+            default: false,
+        },
+        startedAt: {
+            type: Date,
+            default: Date.now,
+        },
+        endedAt: {
+            type: Date,
+            default: null,
+        },
     },
-    caller: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-    recipient: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-    callType: {
-      type: String,
-      enum: ["direct", "masked", "webrtc"],
-      default: "webrtc",
-    },
-    status: {
-      type: String,
-      enum: [
-        "initiated",
-        "ringing",
-        "active",
-        "completed",
-        "missed",
-        "rejected",
-        "failed",
-      ],
-      default: "initiated",
-    },
-    duration: {
-      type: Number,
-      default: 0,
-    },
-    isVideoCall: {
-      type: Boolean,
-      default: false,
-    },
-    startedAt: {
-      type: Date,
-      default: Date.now,
-    },
-    endedAt: {
-      type: Date,
-      default: null,
-    },
-  },
-  {
-    timestamps: true,
-  }
+    {
+        timestamps: true,
+    }
 );
 
 callLogSchema.index({ order: 1 });

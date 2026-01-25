@@ -40,7 +40,7 @@ class MTNMomoService {
    * Generate a unique reference ID for the transaction
    */
   generateReferenceId() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
       var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
       return v.toString(16);
     });
@@ -65,7 +65,7 @@ class MTNMomoService {
         if (phoneNumber.startsWith('233') && phoneNumber.length === 12) {
           console.log('🧪 MOCK PAYMENT MODE: Simulating successful payment for Ghana number');
           console.log('Payment Data:', JSON.stringify(paymentData, null, 2));
-          
+
           // Return exact same structure as real MTN MOMO service
           return {
             success: true,
@@ -79,7 +79,7 @@ class MTNMomoService {
 
       // MTN MOMO sandbox typically uses EUR for testing, even for Ghana
       const currency = this.targetEnvironment === 'sandbox' ? 'EUR' : (paymentData.currency || 'GHS');
-      
+
       const payload = {
         amount: paymentData.amount.toString(),
         currency: currency,
@@ -108,7 +108,7 @@ class MTNMomoService {
 
       console.log('MTN MOMO Request Response:', response.status, response.statusText);
       console.log('MTN MOMO Payload sent:', JSON.stringify(payload, null, 2));
-      
+
       return {
         success: true,
         referenceId: referenceId,
@@ -116,7 +116,7 @@ class MTNMomoService {
       };
     } catch (error) {
       console.error('MTN MOMO Request Payment Error:', error.response?.data || error.message);
-      
+
       return {
         success: false,
         error: error.response?.data?.message || error.message,
@@ -139,20 +139,22 @@ class MTNMomoService {
           console.log('  Reference ID:', referenceId);
           console.log('  Environment:', this.targetEnvironment);
           console.log('  NODE_ENV:', process.env.NODE_ENV);
-          
+
           // Extract timestamp from PAY- format, or use creation time for other formats
           let paymentCreatedAt;
           if (referenceId.startsWith('PAY-')) {
             paymentCreatedAt = parseInt(referenceId.split('-')[1]);
           } else {
             // For external references, find the payment record to get creation time
-            const Payment = require('../models/Payment');
+            const prisma = require('../config/prisma');
             try {
-              const payment = await Payment.findOne({ 
-                $or: [
-                  { referenceId: referenceId },
-                  { externalReferenceId: referenceId }
-                ]
+              const payment = await prisma.payment.findFirst({
+                where: {
+                  OR: [
+                    { referenceId: referenceId },
+                    { externalReferenceId: referenceId }
+                  ]
+                }
               });
               if (payment) {
                 paymentCreatedAt = payment.createdAt.getTime();
@@ -163,15 +165,15 @@ class MTNMomoService {
               paymentCreatedAt = Date.now() - 15000; // Default to successful
             }
           }
-          
+
           const now = Date.now();
           const timeDiff = now - paymentCreatedAt;
-          
+
           console.log('  Payment created at:', new Date(paymentCreatedAt).toLocaleString());
           console.log('  Current time:', new Date(now).toLocaleString());
-          console.log('  Time difference:', timeDiff + 'ms (' + (timeDiff/1000).toFixed(1) + 's)');
+          console.log('  Time difference:', timeDiff + 'ms (' + (timeDiff / 1000).toFixed(1) + 's)');
           console.log('  Status will be:', timeDiff < 10000 ? 'PENDING' : 'SUCCESSFUL');
-          
+
           if (timeDiff < 10000) { // First 10 seconds = pending
             return {
               success: true,
@@ -217,7 +219,7 @@ class MTNMomoService {
       };
     } catch (error) {
       console.error('MTN MOMO Get Status Error:', error.response?.data || error.message);
-      
+
       return {
         success: false,
         error: error.response?.data?.message || error.message,
@@ -233,7 +235,7 @@ class MTNMomoService {
   validateGhanaPhoneNumber(phoneNumber) {
     // Remove any spaces, dashes, or parentheses
     const cleaned = phoneNumber.replace(/[\s\-\(\)]/g, '');
-    
+
     // Ghana phone number patterns
     const ghanaPatterns = [
       /^233[0-9]{9}$/,    // +233xxxxxxxxx format
@@ -261,12 +263,12 @@ class MTNMomoService {
   formatPhoneNumber(phoneNumber) {
     // Remove any non-digits except +
     let cleaned = phoneNumber.replace(/[^\d\+]/g, '');
-    
+
     // For sandbox environment, keep test numbers as-is
     if (this.targetEnvironment === 'sandbox' && this.isSandboxTestNumber(cleaned)) {
       return cleaned;
     }
-    
+
     // Handle Ghana phone number formats
     if (cleaned.startsWith('+233')) {
       return cleaned.substring(1); // Remove the + sign

@@ -1,14 +1,22 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const Category = require('../models/Category');
+const prisma = require('../config/prisma');
 const { protect, admin } = require('../middleware/auth');
 
 const router = express.Router();
 
+// GET /api/categories - Get all active categories
 router.get('/', async (req, res) => {
   try {
-    const categories = await Category.find({ isActive: true })
-      .sort({ name: 1 });
+    const categories = await prisma.category.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: 'asc' },
+      include: {
+        _count: {
+          select: { foods: true }
+        }
+      }
+    });
 
     res.json({
       success: true,
@@ -25,9 +33,10 @@ router.get('/', async (req, res) => {
   }
 });
 
+// POST /api/categories - Create new category (Admin only)
 router.post('/', protect, admin, [
   body('name').notEmpty().withMessage('Category name is required'),
-  body('emoji').notEmpty().withMessage('Category emoji is required')
+  body('emoji').optional()
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -39,12 +48,16 @@ router.post('/', protect, admin, [
       });
     }
 
-    const { name, description, emoji } = req.body;
+    const { name, description, emoji, sortOrder, isActive } = req.body;
 
-    const category = await Category.create({
-      name,
-      description,
-      emoji
+    const category = await prisma.category.create({
+      data: {
+        name,
+        description: description || null,
+        emoji: emoji || null,
+        sortOrder: sortOrder || 0,
+        isActive: isActive !== false
+      }
     });
 
     res.status(201).json({
@@ -62,9 +75,22 @@ router.post('/', protect, admin, [
   }
 });
 
+// GET /api/categories/:categoryId - Get single category
 router.get('/:categoryId', async (req, res) => {
   try {
-    const category = await Category.findById(req.params.categoryId);
+    const category = await prisma.category.findUnique({
+      where: { id: req.params.categoryId },
+      include: {
+        foods: {
+          where: { isAvailable: true },
+          take: 10,
+          orderBy: { orderCount: 'desc' }
+        },
+        _count: {
+          select: { foods: true }
+        }
+      }
+    });
 
     if (!category) {
       return res.status(404).json({
@@ -89,4 +115,3 @@ router.get('/:categoryId', async (req, res) => {
 });
 
 module.exports = router;
-

@@ -1,0 +1,4 @@
+🚀 Initializing database with Prisma...
+✅ PostgreSQL Connected via Prisma
+Admin user already exists
+✅ Database initialization completed!

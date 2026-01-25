@@ -21,7 +21,7 @@ const {
  */
 router.get('/', protect, async (req, res) => {
     try {
-        const favorites = await getUserFavorites(req.user._id);
+        const favorites = await getUserFavorites(req.user.id);
 
         res.json({
             success: true,
@@ -43,7 +43,7 @@ router.get('/', protect, async (req, res) => {
  */
 router.post('/restaurant/:restaurantId', protect, async (req, res) => {
     try {
-        const favorites = await addFavoriteRestaurant(req.user._id, req.params.restaurantId);
+        const favorites = await addFavoriteRestaurant(req.user.id, req.params.restaurantId);
 
         res.json({
             success: true,
@@ -67,7 +67,7 @@ router.post('/restaurant/:restaurantId', protect, async (req, res) => {
  */
 router.delete('/restaurant/:restaurantId', protect, async (req, res) => {
     try {
-        const favorites = await removeFavoriteRestaurant(req.user._id, req.params.restaurantId);
+        const favorites = await removeFavoriteRestaurant(req.user.id, req.params.restaurantId);
 
         res.json({
             success: true,
@@ -90,7 +90,7 @@ router.delete('/restaurant/:restaurantId', protect, async (req, res) => {
  */
 router.post('/store/:storeId', protect, async (req, res) => {
     try {
-        const favorites = await addFavoriteStore(req.user._id, req.params.storeId);
+        const favorites = await addFavoriteStore(req.user.id, req.params.storeId);
 
         res.json({
             success: true,
@@ -114,7 +114,7 @@ router.post('/store/:storeId', protect, async (req, res) => {
  */
 router.delete('/store/:storeId', protect, async (req, res) => {
     try {
-        const favorites = await removeFavoriteStore(req.user._id, req.params.storeId);
+        const favorites = await removeFavoriteStore(req.user.id, req.params.storeId);
 
         res.json({
             success: true,
@@ -137,7 +137,7 @@ router.delete('/store/:storeId', protect, async (req, res) => {
  */
 router.post('/food/:foodId', protect, async (req, res) => {
     try {
-        const favorites = await addFavoriteFoodItem(req.user._id, req.params.foodId);
+        const favorites = await addFavoriteFoodItem(req.user.id, req.params.foodId);
 
         res.json({
             success: true,
@@ -161,7 +161,7 @@ router.post('/food/:foodId', protect, async (req, res) => {
  */
 router.delete('/food/:foodId', protect, async (req, res) => {
     try {
-        const favorites = await removeFavoriteFoodItem(req.user._id, req.params.foodId);
+        const favorites = await removeFavoriteFoodItem(req.user.id, req.params.foodId);
 
         res.json({
             success: true,
@@ -184,7 +184,7 @@ router.delete('/food/:foodId', protect, async (req, res) => {
  */
 router.post('/grocery/:groceryId', protect, async (req, res) => {
     try {
-        const favorites = await addFavoriteGroceryItem(req.user._id, req.params.groceryId);
+        const favorites = await addFavoriteGroceryItem(req.user.id, req.params.groceryId);
 
         res.json({
             success: true,
@@ -208,7 +208,7 @@ router.post('/grocery/:groceryId', protect, async (req, res) => {
  */
 router.delete('/grocery/:groceryId', protect, async (req, res) => {
     try {
-        const favorites = await removeFavoriteGroceryItem(req.user._id, req.params.groceryId);
+        const favorites = await removeFavoriteGroceryItem(req.user.id, req.params.groceryId);
 
         res.json({
             success: true,
@@ -240,7 +240,7 @@ router.post('/sync', protect, async (req, res) => {
             groceryItems: groceryItems || []
         };
 
-        const favorites = await syncFavorites(req.user._id, localFavorites);
+        const favorites = await syncFavorites(req.user.id, localFavorites);
 
         res.json({
             success: true,

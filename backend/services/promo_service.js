@@ -1,6 +1,4 @@
-const PromoCode = require('../models/PromoCode');
-const User = require('../models/User');
-const Order = require('../models/Order');
+const prisma = require('../config/prisma');
 
 /**
  * Promo Code Service
@@ -11,7 +9,7 @@ const Order = require('../models/Order');
 /**
  * Validate a promo code for a user and order
  * @param {string} code - Promo code to validate
- * @param {ObjectId} userId - User ID
+ * @param {string} userId - User ID
  * @param {number} orderAmount - Order subtotal
  * @param {string} orderType - 'food' or 'grocery'
  * @returns {Promise<Object>} Validation result with discount info
@@ -19,15 +17,17 @@ const Order = require('../models/Order');
 const validatePromoCode = async (code, userId, orderAmount, orderType) => {
     try {
         // Find the promo code (case-insensitive)
-        const promo = await PromoCode.findOne({
-            code: code.toUpperCase(),
-            isActive: true
+        const promo = await prisma.promoCode.findUnique({
+            where: { code: code.toUpperCase() },
+            include: {
+                targetedUsers: true
+            }
         });
 
-        if (!promo) {
+        if (!promo || !promo.isActive) {
             return {
                 valid: false,
-                error: 'Invalid promo code'
+                error: 'Invalid or inactive promo code'
             };
         }
 
@@ -72,18 +72,9 @@ const validatePromoCode = async (code, userId, orderAmount, orderType) => {
         }
 
         // Check user-specific restrictions
-        const user = await User.findById(userId);
-        if (!user) {
-            return {
-                valid: false,
-                error: 'User not found'
-            };
-        }
-
-        // Check if code is targeted to specific users
         if (promo.targetedUsers.length > 0) {
             const isTargeted = promo.targetedUsers.some(
-                id => id.toString() === userId.toString()
+                target => target.userId === userId
             );
             if (!isTargeted) {
                 return {
@@ -95,9 +86,11 @@ const validatePromoCode = async (code, userId, orderAmount, orderType) => {
 
         // Check first order only restriction
         if (promo.firstOrderOnly) {
-            const orderCount = await Order.countDocuments({
-                customer: userId,
-                status: { $in: ['delivered', 'confirmed', 'preparing', 'ready', 'picked_up', 'on_the_way'] }
+            const orderCount = await prisma.order.count({
+                where: {
+                    customerId: userId,
+                    status: { in: ['delivered', 'confirmed', 'preparing', 'ready', 'picked_up', 'on_the_way'] }
+                }
             });
             if (orderCount > 0) {
                 return {
@@ -108,9 +101,13 @@ const validatePromoCode = async (code, userId, orderAmount, orderType) => {
         }
 
         // Check per-user usage limit
-        const userUsageCount = (user.usedPromoCodes || []).filter(
-            usage => usage.code.toUpperCase() === code.toUpperCase()
-        ).length;
+        const userUsageCount = await prisma.order.count({
+            where: {
+                customerId: userId,
+                promoCode: code.toUpperCase(),
+                status: { not: 'cancelled' }
+            }
+        });
 
         if (userUsageCount >= promo.maxUsesPerUser) {
             return {
@@ -141,7 +138,7 @@ const validatePromoCode = async (code, userId, orderAmount, orderType) => {
 
 /**
  * Calculate discount amount based on promo type
- * @param {Object} promo - PromoCode document
+ * @param {Object} promo - PromoCode object
  * @param {number} orderAmount - Order subtotal
  * @returns {number} Discount amount
  */
@@ -176,7 +173,7 @@ const calculateDiscount = (promo, orderAmount) => {
 
 /**
  * Generate success message for valid promo code
- * @param {Object} promo - PromoCode document
+ * @param {Object} promo - PromoCode object
  * @param {number} discount - Calculated discount
  * @returns {string} Success message
  */
@@ -196,51 +193,40 @@ const getSuccessMessage = (promo, discount) => {
 /**
  * Apply promo code to an order (after order creation)
  * @param {string} code - Promo code
- * @param {ObjectId} userId - User ID
- * @param {ObjectId} orderId - Order ID
+ * @param {string} userId - User ID
+ * @param {string} orderId - Order ID
  * @param {number} discountAmount - Pre-calculated discount
  * @returns {Promise<Object>} Application result
  */
 const applyPromoCode = async (code, userId, orderId, discountAmount) => {
     try {
-        const promo = await PromoCode.findOne({
-            code: code.toUpperCase(),
-            isActive: true
+        const promo = await prisma.promoCode.findUnique({
+            where: { code: code.toUpperCase() }
         });
 
-        if (!promo) {
-            throw new Error('Promo code not found');
+        if (!promo || !promo.isActive) {
+            throw new Error('Promo code not found or inactive');
         }
 
-        // Atomic increment with validation (prevents race conditions)
-        const updated = await PromoCode.findOneAndUpdate(
-            {
-                _id: promo._id,
+        // Atomic update for usage count
+        const updated = await prisma.promoCode.update({
+            where: {
+                id: promo.id,
                 isActive: true,
-                $or: [
-                    { maxUses: null },
-                    { currentUses: { $lt: promo.maxUses } }
+                AND: [
+                    { OR: [{ maxUses: null }, { currentUses: { lt: promo.maxUses } }] }
                 ]
             },
-            { $inc: { currentUses: 1 } },
-            { new: true }
-        );
+            data: { currentUses: { increment: 1 } }
+        }).catch(() => null);
 
         if (!updated) {
             throw new Error('Promo code usage limit reached');
         }
 
-        // Record in user's history
-        await User.findByIdAndUpdate(userId, {
-            $push: {
-                usedPromoCodes: {
-                    code: code.toUpperCase(),
-                    usedAt: new Date(),
-                    orderId,
-                    discountAmount
-                }
-            }
-        });
+        // Note: In Prisma, we don't have a direct equivalent of $push to a JSON field on User 
+        // if user history is not a separate model. Instead, we rely on the Order record 
+        // which now contains promoCode and promoDiscount.
 
         console.log(`✅ Promo code ${code} applied to order ${orderId}`);
 
@@ -265,11 +251,21 @@ const applyPromoCode = async (code, userId, orderId, discountAmount) => {
  */
 const createPromoCode = async (codeData) => {
     try {
-        const promo = await PromoCode.create(codeData);
+        const { targetedUsers, ...rest } = codeData;
+
+        const promo = await prisma.promoCode.create({
+            data: {
+                ...rest,
+                targetedUsers: {
+                    create: targetedUsers ? targetedUsers.map(userId => ({ userId })) : []
+                }
+            }
+        });
+
         console.log(`✅ Created promo code: ${promo.code}`);
         return promo;
     } catch (error) {
-        if (error.code === 11000) {
+        if (error.code === 'P2002') {
             throw new Error('Promo code already exists');
         }
         throw error;
@@ -278,36 +274,36 @@ const createPromoCode = async (codeData) => {
 
 /**
  * Get all active promo codes available to a user
- * @param {ObjectId} userId - User ID
+ * @param {string} userId - User ID
  * @returns {Promise<Array>} List of available promo codes
  */
 const getAvailablePromoCodes = async (userId) => {
     try {
         const now = new Date();
 
-        const promos = await PromoCode.find({
-            isActive: true,
-            $and: [
-                {
-                    $or: [
-                        { startDate: null },
-                        { startDate: { $lte: now } }
-                    ]
-                },
-                {
-                    $or: [
-                        { endDate: null },
-                        { endDate: { $gte: now } }
-                    ]
-                },
-                {
-                    $or: [
-                        { targetedUsers: { $size: 0 } },
-                        { targetedUsers: userId }
-                    ]
-                }
-            ]
-        }).select('code description type value minOrderAmount endDate');
+        const promos = await prisma.promoCode.findMany({
+            where: {
+                isActive: true,
+                AND: [
+                    { OR: [{ startDate: null }, { startDate: { lte: now } }] },
+                    { OR: [{ endDate: null }, { endDate: { gte: now } }] },
+                    {
+                        OR: [
+                            { targetedUsers: { none: {} } },
+                            { targetedUsers: { some: { userId } } }
+                        ]
+                    }
+                ]
+            },
+            select: {
+                code: true,
+                description: true,
+                type: true,
+                value: true,
+                minOrderAmount: true,
+                endDate: true
+            }
+        });
 
         return promos;
     } catch (error) {
@@ -322,7 +318,9 @@ const getAvailablePromoCodes = async (userId) => {
  */
 const getAllPromoCodes = async () => {
     try {
-        return await PromoCode.find().sort({ createdAt: -1 });
+        return await prisma.promoCode.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
     } catch (error) {
         console.error('Error fetching all promo codes:', error.message);
         return [];
@@ -336,10 +334,10 @@ const getAllPromoCodes = async () => {
  */
 const deactivatePromoCode = async (code) => {
     try {
-        await PromoCode.findOneAndUpdate(
-            { code: code.toUpperCase() },
-            { isActive: false }
-        );
+        await prisma.promoCode.update({
+            where: { code: code.toUpperCase() },
+            data: { isActive: false }
+        });
         console.log(`✅ Deactivated promo code: ${code}`);
         return true;
     } catch (error) {

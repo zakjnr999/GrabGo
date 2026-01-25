@@ -2,8 +2,7 @@ const mongoose = require('mongoose');
 
 const notificationSchema = new mongoose.Schema({
     user: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        type: String, // String reference to PostgreSQL User ID
         required: true,
         index: true
     },
@@ -66,7 +65,7 @@ const notificationSchema = new mongoose.Schema({
         orderId: String,
         restaurantId: String,
         restaurantName: String,
-        actorId: mongoose.Schema.Types.ObjectId,
+        actorId: String,          // String reference to PostgreSQL User/Actor ID
         actorName: String,
         actorAvatar: String,
         reactionType: String,
@@ -81,14 +80,13 @@ const notificationSchema = new mongoose.Schema({
 
 // Indexes for efficient querying
 notificationSchema.index({ user: 1, createdAt: -1 });
+
 // Optimized for the common query pattern in routes/notifications.js:
 // .find({ user: req.user._id }).sort({ isRead: 1, createdAt: -1 })
-// This index supports sorting by isRead first (better selectivity for unread filtering) then createdAt
 notificationSchema.index({ user: 1, isRead: 1, createdAt: -1 });
 notificationSchema.index({ user: 1, type: 1 });
 
 // Compound indexes for grouping queries (findGroupableNotification)
-// These support queries with user + type + data field + createdAt
 notificationSchema.index({ user: 1, type: 1, 'data.commentId': 1, createdAt: -1 });
 notificationSchema.index({ user: 1, type: 1, 'data.parentCommentId': 1, createdAt: -1 });
 

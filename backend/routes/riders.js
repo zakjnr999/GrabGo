@@ -1,14 +1,57 @@
 const express = require("express");
 const { body, validationResult } = require("express-validator");
-const Order = require("../models/Order");
-const Transaction = require("../models/Transaction");
-const RiderWallet = require("../models/RiderWallet");
-const Rider = require("../models/Rider");
-const Chat = require("../models/Chat");
+const prisma = require("../config/prisma");
 const { protect, authorize } = require("../middleware/auth");
 const { uploadSingle, uploadToCloudinary } = require("../middleware/upload");
 
 const router = express.Router();
+
+/**
+ * Helper to update rider wallet balance
+ */
+const updateWalletBalance = async (userId) => {
+  const wallet = await prisma.riderWallet.findUnique({
+    where: { userId }
+  });
+
+  if (!wallet) return null;
+
+  const transactions = await prisma.transaction.findMany({
+    where: {
+      walletId: wallet.id,
+      status: "completed"
+    }
+  });
+
+  const totals = transactions.reduce((acc, tx) => {
+    if (["delivery", "tip", "bonus"].includes(tx.type)) {
+      acc.earnings += tx.amount;
+    } else if (tx.type === "withdrawal") {
+      acc.withdrawals += tx.amount;
+    }
+    return acc;
+  }, { earnings: 0, withdrawals: 0 });
+
+  const pendingWithdrawalsSum = await prisma.transaction.aggregate({
+    where: {
+      walletId: wallet.id,
+      type: "withdrawal",
+      status: "pending"
+    },
+    _sum: { amount: true }
+  });
+
+  return await prisma.riderWallet.update({
+    where: { id: wallet.id },
+    data: {
+      totalEarnings: totals.earnings,
+      totalWithdrawals: totals.withdrawals,
+      pendingWithdrawal: pendingWithdrawalsSum._sum.amount || 0,
+      balance: totals.earnings - totals.withdrawals,
+      updatedAt: new Date()
+    }
+  });
+};
 
 router.get(
   "/available-orders",
@@ -16,17 +59,18 @@ router.get(
   authorize("rider", "admin"),
   async (req, res) => {
     try {
-      const availableOrders = await Order.find({
-        rider: null,
-        status: { $in: ["confirmed", "preparing", "ready"] },
-      })
-        .populate("customer", "username email phone")
-        .populate(
-          "restaurant",
-          "restaurantName logo location"
-        )
-        .sort({ createdAt: -1 })
-        .limit(50);
+      const availableOrders = await prisma.order.findMany({
+        where: {
+          riderId: null,
+          status: { in: ["confirmed", "preparing", "ready"] },
+        },
+        include: {
+          customer: { select: { username: true, email: true, phone: true } },
+          restaurant: { select: { restaurantName: true, logo: true, location: true } }
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 50
+      });
 
       res.json({
         success: true,
@@ -52,7 +96,10 @@ router.post(
     try {
       const { orderId } = req.params;
 
-      const order = await Order.findById(orderId);
+      const order = await prisma.order.findUnique({
+        where: { id: orderId }
+      });
+
       if (!order) {
         return res.status(404).json({
           success: false,
@@ -60,7 +107,7 @@ router.post(
         });
       }
 
-      if (order.rider) {
+      if (order.riderId) {
         return res.status(400).json({
           success: false,
           message: "Order already assigned to a rider",
@@ -74,35 +121,42 @@ router.post(
         });
       }
 
-      order.rider = req.user._id;
-      if (order.status === "ready") {
-        order.status = "picked_up";
-      }
-      await order.save();
+      const updatedOrder = await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          riderId: req.user.id,
+          status: order.status === "ready" ? "picked_up" : order.status
+        },
+        include: {
+          customer: { select: { username: true, email: true, phone: true } },
+          restaurant: { select: { restaurantName: true, logo: true, location: true } },
+          rider: { select: { username: true, email: true, phone: true } }
+        }
+      });
 
       // Ensure chat exists between customer and rider for this order
       try {
-        let chat = await Chat.findOne({ order: order._id });
-        if (!chat) {
-          chat = await Chat.create({
-            order: order._id,
-            customer: order.customer,
-            rider: order.rider,
-            messages: [],
+        const existingChat = await prisma.chat.findUnique({
+          where: { orderId: updatedOrder.id }
+        });
+
+        if (!existingChat) {
+          await prisma.chat.create({
+            data: {
+              orderId: updatedOrder.id,
+              customerId: updatedOrder.customerId,
+              riderId: updatedOrder.riderId,
+            }
           });
         }
       } catch (chatError) {
         console.error("Ensure chat for accepted order error:", chatError);
       }
 
-      await order.populate("customer", "username email phone");
-      await order.populate("restaurant", "restaurant_name logo address");
-      await order.populate("rider", "username email phone");
-
       res.json({
         success: true,
         message: "Order accepted successfully",
-        data: order,
+        data: updatedOrder,
       });
     } catch (error) {
       console.error("Accept order error:", error);
@@ -117,12 +171,16 @@ router.post(
 
 router.get("/wallet", protect, authorize("rider"), async (req, res) => {
   try {
-    let wallet = await RiderWallet.findOne({ rider: req.user._id });
+    let wallet = await prisma.riderWallet.findUnique({
+      where: { userId: req.user.id }
+    });
 
     if (!wallet) {
-      wallet = await RiderWallet.create({ rider: req.user._id });
+      wallet = await prisma.riderWallet.create({
+        data: { userId: req.user.id }
+      });
     } else {
-      await wallet.updateBalance();
+      wallet = await updateWalletBalance(req.user.id);
     }
 
     res.json({
@@ -132,7 +190,7 @@ router.get("/wallet", protect, authorize("rider"), async (req, res) => {
         balance: wallet.balance,
         totalEarnings: wallet.totalEarnings,
         totalWithdrawals: wallet.totalWithdrawals,
-        pendingWithdrawals: wallet.pendingWithdrawals,
+        pendingWithdrawals: wallet.pendingWithdrawal,
       },
     });
   } catch (error) {
@@ -169,31 +227,27 @@ router.get("/earnings", protect, authorize("rider"), async (req, res) => {
         startDate = null;
     }
 
-    const query = {
-      rider: req.user._id,
-      type: { $in: ["delivery", "tip", "bonus"] },
+    let where = {
+      userId: req.user.id,
+      type: { in: ["delivery", "tip", "bonus"] },
       status: "completed",
     };
 
     if (startDate) {
-      query.createdAt = { $gte: startDate };
+      where.createdAt = { gte: startDate };
     }
 
-    const earnings = await Transaction.find(query)
-      .populate("order", "orderNumber totalAmount")
-      .sort({ createdAt: -1 });
+    const earnings = await prisma.transaction.findMany({
+      where,
+      orderBy: { createdAt: 'desc' }
+    });
 
-    // Calculate totals
-    const totals = await Transaction.aggregate([
-      { $match: query },
-      {
-        $group: {
-          _id: "$type",
-          total: { $sum: "$amount" },
-          count: { $sum: 1 },
-        },
-      },
-    ]);
+    // Calculate totals using aggregation
+    const totals = await prisma.transaction.groupBy({
+      by: ['type'],
+      where,
+      _sum: { amount: true },
+    });
 
     const summary = {
       total: 0,
@@ -203,8 +257,8 @@ router.get("/earnings", protect, authorize("rider"), async (req, res) => {
     };
 
     totals.forEach((item) => {
-      summary[item._id] = item.total;
-      summary.total += item.total;
+      summary[item.type] = item._sum.amount || 0;
+      summary.total += item._sum.amount || 0;
     });
 
     res.json({
@@ -250,23 +304,24 @@ router.get("/transactions", protect, authorize("rider"), async (req, res) => {
         startDate = null;
     }
 
-    const query = { rider: req.user._id };
+    let where = { userId: req.user.id };
 
     if (startDate) {
-      query.createdAt = { $gte: startDate };
+      where.createdAt = { gte: startDate };
     }
 
     if (type) {
-      query.type = type;
+      where.type = type;
     }
 
     if (status) {
-      query.status = status;
+      where.status = status;
     }
 
-    const transactions = await Transaction.find(query)
-      .populate("order", "orderNumber totalAmount")
-      .sort({ createdAt: -1 });
+    const transactions = await prisma.transaction.findMany({
+      where,
+      orderBy: { createdAt: 'desc' }
+    });
 
     res.json({
       success: true,
@@ -307,36 +362,31 @@ router.post(
         });
       }
 
-      const { amount, withdrawalMethod, withdrawalAccount, description } =
-        req.body;
+      const { amount, withdrawalMethod, withdrawalAccount, description } = req.body;
 
-      let wallet = await RiderWallet.findOne({ rider: req.user._id });
-      if (!wallet) {
-        wallet = await RiderWallet.create({ rider: req.user._id });
-        await wallet.updateBalance();
-      } else {
-        await wallet.updateBalance();
-      }
+      const wallet = await prisma.riderWallet.findUnique({
+        where: { userId: req.user.id }
+      });
 
-      if (wallet.balance < amount) {
+      if (!wallet || wallet.balance < parseFloat(amount)) {
         return res.status(400).json({
           success: false,
           message: "Insufficient balance",
         });
       }
 
-      const transaction = await Transaction.create({
-        rider: req.user._id,
-        type: "withdrawal",
-        amount: parseFloat(amount),
-        description:
-          description || `Withdrawal to ${withdrawalMethod.replace("_", " ")}`,
-        withdrawalMethod,
-        withdrawalAccount,
-        status: "pending",
+      const transaction = await prisma.transaction.create({
+        data: {
+          walletId: wallet.id,
+          userId: req.user.id,
+          type: "withdrawal",
+          amount: parseFloat(amount),
+          description: description || `Withdrawal to ${withdrawalMethod.replace("_", " ")}`,
+          status: "pending",
+        }
       });
 
-      await wallet.updateBalance();
+      await updateWalletBalance(req.user.id);
 
       res.status(201).json({
         success: true,
@@ -377,7 +427,10 @@ router.put(
       const { transactionId } = req.params;
       const { status } = req.body;
 
-      const transaction = await Transaction.findById(transactionId);
+      const transaction = await prisma.transaction.findUnique({
+        where: { id: transactionId }
+      });
+
       if (!transaction) {
         return res.status(404).json({
           success: false,
@@ -385,21 +438,24 @@ router.put(
         });
       }
 
-      transaction.status = status;
-      if (status === "completed") {
-        transaction.processedAt = new Date();
-      }
-      await transaction.save();
+      await prisma.transaction.update({
+        where: { id: transactionId },
+        data: {
+          status,
+          ...(status === "completed" ? { updatedAt: new Date() } : {})
+        }
+      });
 
-      const wallet = await RiderWallet.findOne({ rider: transaction.rider });
-      if (wallet) {
-        await wallet.updateBalance();
-      }
+      await updateWalletBalance(transaction.userId);
+
+      const updatedTransaction = await prisma.transaction.findUnique({
+        where: { id: transactionId }
+      });
 
       res.json({
         success: true,
         message: "Transaction status updated successfully",
-        data: transaction,
+        data: updatedTransaction,
       });
     } catch (error) {
       console.error("Update transaction status error:", error);
@@ -441,35 +497,22 @@ router.post(
         agreedToAccuracy,
       } = req.body;
 
-      // Validate vehicle type
+      // Validate enums against Prisma schema
       const validVehicleTypes = ["motorcycle", "bicycle", "car", "scooter"];
-      if (
-        vehicleType &&
-        !validVehicleTypes.includes(vehicleType.toLowerCase())
-      ) {
+      const validIdTypes = ["national_id", "passport", "drivers_license"];
+      const validMobileMoneyProviders = ["mtn", "vodafone", "airtel", "tigo"];
+
+      if (vehicleType && !validVehicleTypes.includes(vehicleType.toLowerCase())) {
         return res.status(400).json({
           success: false,
-          message: `Invalid vehicle type. Must be one of: ${validVehicleTypes.join(
-            ", "
-          )}`,
+          message: `Invalid vehicle type.`,
         });
       }
 
-      // Validate national ID type
-      const validNationalIdTypes = [
-        "national_id",
-        "passport",
-        "drivers_license",
-      ];
-      if (
-        nationalIdType &&
-        !validNationalIdTypes.includes(nationalIdType.toLowerCase())
-      ) {
+      if (nationalIdType && !validIdTypes.includes(nationalIdType.toLowerCase())) {
         return res.status(400).json({
           success: false,
-          message: `Invalid national ID type. Must be one of: ${validNationalIdTypes.join(
-            ", "
-          )}`,
+          message: `Invalid ID type.`,
         });
       }
 
@@ -487,34 +530,26 @@ router.post(
         });
       }
 
-      // Validate mobile money provider
-      const validMobileMoneyProviders = ["mtn", "vodafone", "airtel", "tigo"];
-      if (
-        mobileMoneyProvider &&
-        !validMobileMoneyProviders.includes(mobileMoneyProvider.toLowerCase())
-      ) {
+      if (mobileMoneyProvider && !validMobileMoneyProviders.includes(mobileMoneyProvider.toLowerCase())) {
         return res.status(400).json({
           success: false,
-          message: `Invalid mobile money provider. Must be one of: ${validMobileMoneyProviders.join(
-            ", "
-          )}`,
+          message: `Invalid mobile money provider.`,
         });
       }
 
-      // Check if rider verification already exists
-      let rider = await Rider.findOne({ user: req.user._id });
+      const existingRider = await prisma.rider.findUnique({
+        where: { userId: req.user.id }
+      });
 
-      if (rider && rider.verificationStatus === "approved") {
+      if (existingRider && existingRider.verificationStatus === "approved") {
         return res.status(400).json({
           success: false,
-          message:
-            "Your verification has already been approved. Contact support to make changes.",
+          message: "Verification already approved.",
         });
       }
 
-      // Prepare rider data with normalized values
       const riderData = {
-        user: req.user._id,
+        userId: req.user.id,
         vehicleType: vehicleType ? vehicleType.toLowerCase() : null,
         licensePlateNumber,
         vehicleBrand,
@@ -525,55 +560,43 @@ router.post(
         bankName,
         accountNumber,
         accountHolderName,
-        mobileMoneyProvider: mobileMoneyProvider
-          ? mobileMoneyProvider.toLowerCase()
-          : null,
+        mobileMoneyProvider: mobileMoneyProvider ? mobileMoneyProvider.toLowerCase() : null,
         mobileMoneyNumber,
         agreedToTerms: agreedToTerms === "true" || agreedToTerms === true,
-        agreedToLocationAccess:
-          agreedToLocationAccess === "true" || agreedToLocationAccess === true,
-        agreedToAccuracy:
-          agreedToAccuracy === "true" || agreedToAccuracy === true,
+        agreedToLocationAccess: agreedToLocationAccess === "true" || agreedToLocationAccess === true,
+        agreedToAccuracy: agreedToAccuracy === "true" || agreedToAccuracy === true,
         verificationStatus: "pending",
       };
 
-      // Handle vehicle image upload
       if (req.file && req.file.cloudinaryUrl) {
         riderData.vehicleImage = req.file.cloudinaryUrl;
       }
 
-      // Create or update rider verification
-      if (rider) {
-        // Update existing verification
-        Object.assign(rider, riderData);
-        await rider.save();
-      } else {
-        // Create new verification
-        rider = await Rider.create(riderData);
-      }
+      const rider = await prisma.rider.upsert({
+        where: { userId: req.user.id },
+        update: riderData,
+        create: riderData
+      });
 
       res.status(201).json({
         success: true,
-        message:
-          "Verification data submitted successfully. Your application is under review.",
+        message: "Verification data submitted successfully.",
         data: rider,
       });
     } catch (error) {
       console.error("Submit verification error:", error);
 
-      // Handle Mongoose validation errors
-      if (error.name === "ValidationError") {
-        const errors = Object.values(error.errors).map((err) => err.message);
+      // Handle Prisma validation errors (e.g., enum mismatch)
+      if (error.code === 'P2007') { // Prisma validation error code
         return res.status(400).json({
           success: false,
           message: "Validation error",
-          errors: errors,
+          errors: error.message,
         });
       }
-
-      // Handle duplicate key errors
-      if (error.code === 11000) {
-        const field = Object.keys(error.keyPattern)[0];
+      // Handle duplicate key errors (Prisma P2002)
+      if (error.code === 'P2002') {
+        const field = error.meta.target.join(', ');
         return res.status(400).json({
           success: false,
           message: `${field} already exists`,
@@ -594,13 +617,14 @@ router.post(
 // @access  Private (rider only)
 router.get("/verification", protect, authorize("rider"), async (req, res) => {
   try {
-    const rider = await Rider.findOne({ user: req.user._id });
+    const rider = await prisma.rider.findUnique({
+      where: { userId: req.user.id }
+    });
 
     if (!rider) {
       return res.status(404).json({
         success: false,
-        message:
-          "Verification data not found. Please submit your verification information.",
+        message: "Verification data not found",
       });
     }
 
@@ -630,7 +654,9 @@ router.put(
   uploadToCloudinary,
   async (req, res) => {
     try {
-      const rider = await Rider.findOne({ user: req.user._id });
+      const rider = await prisma.rider.findUnique({
+        where: { userId: req.user.id }
+      });
 
       if (!rider) {
         return res.status(404).json({
@@ -712,86 +738,45 @@ router.put(
         }
       }
 
-      // Update allowed fields
-      const allowedUpdates = [
-        "vehicleType",
-        "licensePlateNumber",
-        "vehicleBrand",
-        "vehicleModel",
-        "nationalIdType",
-        "nationalIdNumber",
-        "paymentMethod",
-        "bankName",
-        "accountNumber",
-        "accountHolderName",
-        "mobileMoneyProvider",
-        "mobileMoneyNumber",
-        "agreedToTerms",
-        "agreedToLocationAccess",
-        "agreedToAccuracy",
-      ];
-
+      const updateData = {};
       allowedUpdates.forEach((field) => {
         if (req.body[field] !== undefined) {
           if (field.includes("agreed")) {
-            rider[field] =
-              req.body[field] === "true" || req.body[field] === true;
+            updateData[field] = req.body[field] === "true" || req.body[field] === true;
           } else if (
             field === "vehicleType" ||
             field === "nationalIdType" ||
             field === "paymentMethod" ||
             field === "mobileMoneyProvider"
           ) {
-            // Normalize enum fields to lowercase
-            rider[field] = req.body[field]
-              ? req.body[field].toLowerCase()
-              : req.body[field];
+            updateData[field] = req.body[field] ? req.body[field].toLowerCase() : req.body[field];
           } else {
-            rider[field] = req.body[field];
+            updateData[field] = req.body[field];
           }
         }
       });
 
-      // Handle vehicle image upload
       if (req.file && req.file.cloudinaryUrl) {
-        rider.vehicleImage = req.file.cloudinaryUrl;
+        updateData.vehicleImage = req.file.cloudinaryUrl;
       }
 
-      // Reset status to pending if it was rejected
       if (rider.verificationStatus === "rejected") {
-        rider.verificationStatus = "pending";
-        rider.rejectionReason = null;
+        updateData.verificationStatus = "pending";
+        updateData.rejectionReason = null;
       }
 
-      await rider.save();
+      const updatedRider = await prisma.rider.update({
+        where: { id: rider.id },
+        data: updateData
+      });
 
       res.json({
         success: true,
         message: "Verification data updated successfully",
-        data: rider,
+        data: updatedRider,
       });
     } catch (error) {
       console.error("Update verification error:", error);
-
-      // Handle Mongoose validation errors
-      if (error.name === "ValidationError") {
-        const errors = Object.values(error.errors).map((err) => err.message);
-        return res.status(400).json({
-          success: false,
-          message: "Validation error",
-          errors: errors,
-        });
-      }
-
-      // Handle duplicate key errors
-      if (error.code === 11000) {
-        const field = Object.keys(error.keyPattern)[0];
-        return res.status(400).json({
-          success: false,
-          message: `${field} already exists`,
-        });
-      }
-
       res.status(500).json({
         success: false,
         message: "Server error",
@@ -828,22 +813,25 @@ router.post(
         });
       }
 
-      let rider = await Rider.findOne({ user: req.user._id });
+      const rider = await prisma.rider.upsert({
+        where: { userId: req.user.id },
+        update: {},
+        create: { userId: req.user.id }
+      });
 
-      if (!rider) {
-        rider = await Rider.create({ user: req.user._id });
-      }
-
-      // Update the appropriate image field
+      const updateData = {};
       if (imageType === "front") {
-        rider.idFrontImage = req.file.cloudinaryUrl;
+        updateData.idFrontImage = req.file.cloudinaryUrl;
       } else if (imageType === "back") {
-        rider.idBackImage = req.file.cloudinaryUrl;
+        updateData.idBackImage = req.file.cloudinaryUrl;
       } else if (imageType === "selfie") {
-        rider.selfiePhoto = req.file.cloudinaryUrl;
+        updateData.selfiePhoto = req.file.cloudinaryUrl;
       }
 
-      await rider.save();
+      const updatedRider = await prisma.rider.update({
+        where: { id: rider.id },
+        data: updateData
+      });
 
       res.json({
         success: true,
@@ -851,6 +839,7 @@ router.post(
         data: {
           imageType,
           imageUrl: req.file.cloudinaryUrl,
+          rider: updatedRider
         },
       });
     } catch (error) {
@@ -891,7 +880,9 @@ router.put(
       const { riderId } = req.params;
       const { status, rejectionReason } = req.body;
 
-      const rider = await Rider.findById(riderId);
+      const rider = await prisma.rider.findUnique({
+        where: { id: riderId }
+      });
       if (!rider) {
         return res.status(404).json({
           success: false,
@@ -899,20 +890,27 @@ router.put(
         });
       }
 
-      rider.verificationStatus = status;
+      const updateData = {
+        verificationStatus: status,
+        updatedAt: new Date()
+      };
+
       if (status === "approved") {
-        rider.verifiedAt = new Date();
-        rider.rejectionReason = null;
+        updateData.verifiedAt = new Date();
+        updateData.rejectionReason = null;
       } else if (status === "rejected" && rejectionReason) {
-        rider.rejectionReason = rejectionReason;
+        updateData.rejectionReason = rejectionReason;
       }
 
-      await rider.save();
+      const updatedRider = await prisma.rider.update({
+        where: { id: riderId },
+        data: updateData
+      });
 
       res.json({
         success: true,
         message: "Verification status updated successfully",
-        data: rider,
+        data: updatedRider,
       });
     } catch (error) {
       console.error("Update verification status error:", error);

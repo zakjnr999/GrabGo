@@ -1,0 +1,1433 @@
+(node:82293) [MONGOOSE] Warning: Duplicate schema index on {"referenceId":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:82293) [MONGOOSE] Warning: Duplicate schema index on {"user":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:82293) [MONGOOSE] Warning: Duplicate schema index on {"currentLocation":"2dsphere"} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:82293) [MONGOOSE] Warning: Duplicate schema index on {"referee":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:82293) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:82293) [MONGOOSE] Warning: Duplicate schema index on {"licenseNumber":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+  ❌ Failed to migrate pharmacy item Multivitamin Complex: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Multivitamin Complex",
+    description: "Complete daily nutrition",
+    image: "https://images.unsplash.com/photo-1550572017-4a6e8c4f8f7f?w=400",
+    price: 20,
+    unit: "bottle",
+    categoryId: null,
+    storeId: null,
+    brand: "HealthPlus",
+    stock: 90,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "multivitamin",
+      "wellness"
+    ],
+    rating: 4.8,
+    reviewCount: 112,
+    orderCount: 480,
+    createdAt: new Date("2026-01-16T03:39:38.186Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.186Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Adhesive Bandages: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Adhesive Bandages",
+    description: "Assorted sizes for cuts and scrapes",
+    image: "https://images.unsplash.com/photo-1603398938378-e54eab446dde?w=400",
+    price: 4,
+    unit: "box",
+    categoryId: null,
+    storeId: null,
+    brand: "FirstCare",
+    stock: 180,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "bandage",
+      "first-aid"
+    ],
+    rating: 4.5,
+    reviewCount: 63,
+    orderCount: 290,
+    createdAt: new Date("2026-01-16T03:39:38.188Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.188Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Paracetamol 500mg: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Paracetamol 500mg",
+    description: "Pain relief and fever reducer",
+    image: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400",
+    price: 5,
+    unit: "strip",
+    categoryId: null,
+    storeId: null,
+    brand: "MediCare",
+    stock: 200,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "pain-relief",
+      "fever"
+    ],
+    rating: 4.7,
+    reviewCount: 89,
+    orderCount: 450,
+    createdAt: new Date("2026-01-16T03:39:38.180Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.180Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Antiseptic Solution: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Antiseptic Solution",
+    description: "Prevents infection in wounds",
+    image: "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=400",
+    price: 6,
+    unit: "bottle",
+    categoryId: null,
+    storeId: null,
+    brand: "MediClean",
+    stock: 140,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "antiseptic",
+      "wound-care"
+    ],
+    rating: 4.6,
+    reviewCount: 48,
+    orderCount: 220,
+    createdAt: new Date("2026-01-16T03:39:38.188Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.188Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Blood Pressure Monitor: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Blood Pressure Monitor",
+    description: "Automatic BP measurement",
+    image: "https://images.unsplash.com/photo-1550572017-4a6e8c4f8f7f?w=400",
+    price: 50,
+    unit: "piece",
+    categoryId: null,
+    storeId: null,
+    brand: "HealthMonitor",
+    stock: 45,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "bp-monitor",
+      "health-device"
+    ],
+    rating: 4.8,
+    reviewCount: 62,
+    orderCount: 280,
+    createdAt: new Date("2026-01-16T03:39:38.190Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.190Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Sunscreen SPF 50: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Sunscreen SPF 50",
+    description: "Broad spectrum UV protection",
+    image: "https://images.unsplash.com/photo-1571875257727-256c39da42af?w=400",
+    price: 18,
+    unit: "tube",
+    categoryId: null,
+    storeId: null,
+    brand: "SunShield",
+    stock: 85,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "sunscreen",
+      "skincare"
+    ],
+    rating: 4.8,
+    reviewCount: 92,
+    orderCount: 420,
+    createdAt: new Date("2026-01-16T03:39:38.187Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.187Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Baby Wipes: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Baby Wipes",
+    description: "Gentle and hypoallergenic",
+    image: "https://images.unsplash.com/photo-1522771930-78848d9293e8?w=400",
+    price: 8,
+    unit: "pack",
+    categoryId: null,
+    storeId: null,
+    brand: "BabyClean",
+    stock: 150,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "wipes",
+      "baby"
+    ],
+    rating: 4.6,
+    reviewCount: 98,
+    orderCount: 480,
+    createdAt: new Date("2026-01-16T03:39:38.189Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.189Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Ibuprofen 400mg: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Ibuprofen 400mg",
+    description: "Anti-inflammatory pain reliever",
+    image: "https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=400",
+    price: 8,
+    unit: "strip",
+    categoryId: null,
+    storeId: null,
+    brand: "PharmaCare",
+    stock: 150,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "pain-relief",
+      "anti-inflammatory"
+    ],
+    rating: 4.6,
+    reviewCount: 67,
+    orderCount: 320,
+    createdAt: new Date("2026-01-16T03:39:38.184Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.184Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item First Aid Kit: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "First Aid Kit",
+    description: "Complete emergency kit",
+    image: "https://images.unsplash.com/photo-1603398938378-e54eab446dde?w=400",
+    price: 35,
+    unit: "box",
+    categoryId: null,
+    storeId: null,
+    brand: "EmergencyCare",
+    stock: 50,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 20,
+    discountEndDate: new Date("2026-01-21T03:39:38.127Z"),
+    expiryDate: null,
+    tags: [
+      "first-aid",
+      "emergency"
+    ],
+    rating: 4.9,
+    reviewCount: 71,
+    orderCount: 310,
+    createdAt: new Date("2026-01-16T03:39:38.188Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.188Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Cough Syrup: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Cough Syrup",
+    description: "Relief from cough and cold symptoms",
+    image: "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=400",
+    price: 12,
+    unit: "bottle",
+    categoryId: null,
+    storeId: null,
+    brand: "CoughAway",
+    stock: 80,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 10,
+    discountEndDate: new Date("2026-01-23T03:39:38.127Z"),
+    expiryDate: null,
+    tags: [
+      "cough",
+      "cold"
+    ],
+    rating: 4.5,
+    reviewCount: 54,
+    orderCount: 280,
+    createdAt: new Date("2026-01-16T03:39:38.184Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.184Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Moisturizing Lotion: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Moisturizing Lotion",
+    description: "Hydrates and softens skin",
+    image: "https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=400",
+    price: 12,
+    unit: "bottle",
+    categoryId: null,
+    storeId: null,
+    brand: "SkinCare Pro",
+    stock: 110,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "skincare",
+      "moisturizer"
+    ],
+    rating: 4.7,
+    reviewCount: 76,
+    orderCount: 340,
+    createdAt: new Date("2026-01-16T03:39:38.187Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.187Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Digital Thermometer: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Digital Thermometer",
+    description: "Fast and accurate temperature reading",
+    image: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400",
+    price: 15,
+    unit: "piece",
+    categoryId: null,
+    storeId: null,
+    brand: "TempCheck",
+    stock: 90,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "thermometer",
+      "health-device"
+    ],
+    rating: 4.7,
+    reviewCount: 76,
+    orderCount: 340,
+    createdAt: new Date("2026-01-16T03:39:38.190Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.190Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Omega-3 Fish Oil: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Omega-3 Fish Oil",
+    description: "Heart and brain health support",
+    image: "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=400",
+    price: 30,
+    unit: "bottle",
+    categoryId: null,
+    storeId: null,
+    brand: "OmegaCare",
+    stock: 70,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 15,
+    discountEndDate: new Date("2026-01-26T03:39:38.127Z"),
+    expiryDate: null,
+    tags: [
+      "omega-3",
+      "heart-health"
+    ],
+    rating: 4.9,
+    reviewCount: 87,
+    orderCount: 390,
+    createdAt: new Date("2026-01-16T03:39:38.186Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.186Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Vitamin C 1000mg: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Vitamin C 1000mg",
+    description: "Immune system support",
+    image: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400",
+    price: 15,
+    unit: "bottle",
+    categoryId: null,
+    storeId: null,
+    brand: "VitaBoost",
+    stock: 120,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "vitamin",
+      "immunity"
+    ],
+    rating: 4.7,
+    reviewCount: 98,
+    orderCount: 520,
+    createdAt: new Date("2026-01-16T03:39:38.185Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.185Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Pulse Oximeter: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Pulse Oximeter",
+    description: "Measures oxygen saturation",
+    image: "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=400",
+    price: 35,
+    unit: "piece",
+    categoryId: null,
+    storeId: null,
+    brand: "OxyCheck",
+    stock: 60,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 12,
+    discountEndDate: new Date("2026-01-24T03:39:38.127Z"),
+    expiryDate: null,
+    tags: [
+      "oximeter",
+      "health-device"
+    ],
+    rating: 4.6,
+    reviewCount: 54,
+    orderCount: 240,
+    createdAt: new Date("2026-01-16T03:39:38.190Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.190Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Hand Sanitizer 500ml: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Hand Sanitizer 500ml",
+    description: "Kills 99.9% of germs",
+    image: "https://images.unsplash.com/photo-1585909695284-32d2985ac9c0?w=400",
+    price: 8,
+    unit: "bottle",
+    categoryId: null,
+    storeId: null,
+    brand: "CleanHands",
+    stock: 200,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "sanitizer",
+      "hygiene"
+    ],
+    rating: 4.6,
+    reviewCount: 145,
+    orderCount: 680,
+    createdAt: new Date("2026-01-16T03:39:38.186Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.186Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Baby Formula Milk: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Baby Formula Milk",
+    description: "Nutritious infant formula",
+    image: "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=400",
+    price: 40,
+    unit: "can",
+    categoryId: null,
+    storeId: null,
+    brand: "BabyNutri",
+    stock: 70,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "formula",
+      "baby"
+    ],
+    rating: 4.8,
+    reviewCount: 87,
+    orderCount: 390,
+    createdAt: new Date("2026-01-16T03:39:38.189Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.189Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Antibiotic Amoxicillin: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Antibiotic Amoxicillin",
+    description: "Treats bacterial infections",
+    image: "https://images.unsplash.com/photo-1550572017-4a6e8c4f8f7f?w=400",
+    price: 25,
+    unit: "pack",
+    categoryId: null,
+    storeId: null,
+    brand: "MediStrong",
+    stock: 60,
+    isAvailable: true,
+    requiresPrescription: true,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "antibiotic",
+      "prescription"
+    ],
+    rating: 4.8,
+    reviewCount: 42,
+    orderCount: 180,
+    createdAt: new Date("2026-01-16T03:39:38.185Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.185Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Baby Diapers Size 3: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Baby Diapers Size 3",
+    description: "Soft and absorbent diapers",
+    image: "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=400",
+    price: 25,
+    unit: "pack",
+    categoryId: null,
+    storeId: null,
+    brand: "BabySoft",
+    stock: 100,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "diapers",
+      "baby"
+    ],
+    rating: 4.7,
+    reviewCount: 134,
+    orderCount: 560,
+    createdAt: new Date("2026-01-16T03:39:38.189Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.189Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+
+❌ Migration failed: ReferenceError: GrabMartStore is not defined
+    at migrateGrabMartStores (/home/zakjnr/Documents/Project/GrabGo/backend/scripts/migrate-to-postgres.js:690:18)
+    at runMigration (/home/zakjnr/Documents/Project/GrabGo/backend/scripts/migrate-to-postgres.js:1158:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              ❌ Failed to migrate pharmacy store HealthHub Pharmacy: 
+Invalid `prisma.pharmacyStore.create()` invocation:
+
+
+Unique constraint failed on the fields: (`email`)
+  ❌ Failed to migrate pharmacy store PharmaZone: 
+Invalid `prisma.pharmacyStore.create()` invocation:
+
+
+Unique constraint failed on the fields: (`email`)
+  ❌ Failed to migrate pharmacy item Multivitamin Complex: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Multivitamin Complex",
+    description: "Complete daily nutrition",
+    image: "https://images.unsplash.com/photo-1550572017-4a6e8c4f8f7f?w=400",
+    price: 20,
+    unit: "bottle",
+    categoryId: null,
+    storeId: null,
+    brand: "HealthPlus",
+    stock: 90,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "multivitamin",
+      "wellness"
+    ],
+    rating: 4.8,
+    reviewCount: 112,
+    orderCount: 480,
+    createdAt: new Date("2026-01-16T03:39:38.186Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.186Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Adhesive Bandages: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Adhesive Bandages",
+    description: "Assorted sizes for cuts and scrapes",
+    image: "https://images.unsplash.com/photo-1603398938378-e54eab446dde?w=400",
+    price: 4,
+    unit: "box",
+    categoryId: null,
+    storeId: null,
+    brand: "FirstCare",
+    stock: 180,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "bandage",
+      "first-aid"
+    ],
+    rating: 4.5,
+    reviewCount: 63,
+    orderCount: 290,
+    createdAt: new Date("2026-01-16T03:39:38.188Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.188Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Paracetamol 500mg: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Paracetamol 500mg",
+    description: "Pain relief and fever reducer",
+    image: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400",
+    price: 5,
+    unit: "strip",
+    categoryId: null,
+    storeId: null,
+    brand: "MediCare",
+    stock: 200,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "pain-relief",
+      "fever"
+    ],
+    rating: 4.7,
+    reviewCount: 89,
+    orderCount: 450,
+    createdAt: new Date("2026-01-16T03:39:38.180Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.180Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Antiseptic Solution: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Antiseptic Solution",
+    description: "Prevents infection in wounds",
+    image: "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=400",
+    price: 6,
+    unit: "bottle",
+    categoryId: null,
+    storeId: null,
+    brand: "MediClean",
+    stock: 140,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "antiseptic",
+      "wound-care"
+    ],
+    rating: 4.6,
+    reviewCount: 48,
+    orderCount: 220,
+    createdAt: new Date("2026-01-16T03:39:38.188Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.188Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Blood Pressure Monitor: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Blood Pressure Monitor",
+    description: "Automatic BP measurement",
+    image: "https://images.unsplash.com/photo-1550572017-4a6e8c4f8f7f?w=400",
+    price: 50,
+    unit: "piece",
+    categoryId: null,
+    storeId: null,
+    brand: "HealthMonitor",
+    stock: 45,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "bp-monitor",
+      "health-device"
+    ],
+    rating: 4.8,
+    reviewCount: 62,
+    orderCount: 280,
+    createdAt: new Date("2026-01-16T03:39:38.190Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.190Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Sunscreen SPF 50: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Sunscreen SPF 50",
+    description: "Broad spectrum UV protection",
+    image: "https://images.unsplash.com/photo-1571875257727-256c39da42af?w=400",
+    price: 18,
+    unit: "tube",
+    categoryId: null,
+    storeId: null,
+    brand: "SunShield",
+    stock: 85,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "sunscreen",
+      "skincare"
+    ],
+    rating: 4.8,
+    reviewCount: 92,
+    orderCount: 420,
+    createdAt: new Date("2026-01-16T03:39:38.187Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.187Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Baby Wipes: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Baby Wipes",
+    description: "Gentle and hypoallergenic",
+    image: "https://images.unsplash.com/photo-1522771930-78848d9293e8?w=400",
+    price: 8,
+    unit: "pack",
+    categoryId: null,
+    storeId: null,
+    brand: "BabyClean",
+    stock: 150,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "wipes",
+      "baby"
+    ],
+    rating: 4.6,
+    reviewCount: 98,
+    orderCount: 480,
+    createdAt: new Date("2026-01-16T03:39:38.189Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.189Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Ibuprofen 400mg: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Ibuprofen 400mg",
+    description: "Anti-inflammatory pain reliever",
+    image: "https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=400",
+    price: 8,
+    unit: "strip",
+    categoryId: null,
+    storeId: null,
+    brand: "PharmaCare",
+    stock: 150,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "pain-relief",
+      "anti-inflammatory"
+    ],
+    rating: 4.6,
+    reviewCount: 67,
+    orderCount: 320,
+    createdAt: new Date("2026-01-16T03:39:38.184Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.184Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item First Aid Kit: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "First Aid Kit",
+    description: "Complete emergency kit",
+    image: "https://images.unsplash.com/photo-1603398938378-e54eab446dde?w=400",
+    price: 35,
+    unit: "box",
+    categoryId: null,
+    storeId: null,
+    brand: "EmergencyCare",
+    stock: 50,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 20,
+    discountEndDate: new Date("2026-01-21T03:39:38.127Z"),
+    expiryDate: null,
+    tags: [
+      "first-aid",
+      "emergency"
+    ],
+    rating: 4.9,
+    reviewCount: 71,
+    orderCount: 310,
+    createdAt: new Date("2026-01-16T03:39:38.188Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.188Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Cough Syrup: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Cough Syrup",
+    description: "Relief from cough and cold symptoms",
+    image: "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=400",
+    price: 12,
+    unit: "bottle",
+    categoryId: null,
+    storeId: null,
+    brand: "CoughAway",
+    stock: 80,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 10,
+    discountEndDate: new Date("2026-01-23T03:39:38.127Z"),
+    expiryDate: null,
+    tags: [
+      "cough",
+      "cold"
+    ],
+    rating: 4.5,
+    reviewCount: 54,
+    orderCount: 280,
+    createdAt: new Date("2026-01-16T03:39:38.184Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.184Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Moisturizing Lotion: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Moisturizing Lotion",
+    description: "Hydrates and softens skin",
+    image: "https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=400",
+    price: 12,
+    unit: "bottle",
+    categoryId: null,
+    storeId: null,
+    brand: "SkinCare Pro",
+    stock: 110,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "skincare",
+      "moisturizer"
+    ],
+    rating: 4.7,
+    reviewCount: 76,
+    orderCount: 340,
+    createdAt: new Date("2026-01-16T03:39:38.187Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.187Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Digital Thermometer: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Digital Thermometer",
+    description: "Fast and accurate temperature reading",
+    image: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400",
+    price: 15,
+    unit: "piece",
+    categoryId: null,
+    storeId: null,
+    brand: "TempCheck",
+    stock: 90,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "thermometer",
+      "health-device"
+    ],
+    rating: 4.7,
+    reviewCount: 76,
+    orderCount: 340,
+    createdAt: new Date("2026-01-16T03:39:38.190Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.190Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Omega-3 Fish Oil: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Omega-3 Fish Oil",
+    description: "Heart and brain health support",
+    image: "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=400",
+    price: 30,
+    unit: "bottle",
+    categoryId: null,
+    storeId: null,
+    brand: "OmegaCare",
+    stock: 70,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 15,
+    discountEndDate: new Date("2026-01-26T03:39:38.127Z"),
+    expiryDate: null,
+    tags: [
+      "omega-3",
+      "heart-health"
+    ],
+    rating: 4.9,
+    reviewCount: 87,
+    orderCount: 390,
+    createdAt: new Date("2026-01-16T03:39:38.186Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.186Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Vitamin C 1000mg: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Vitamin C 1000mg",
+    description: "Immune system support",
+    image: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400",
+    price: 15,
+    unit: "bottle",
+    categoryId: null,
+    storeId: null,
+    brand: "VitaBoost",
+    stock: 120,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "vitamin",
+      "immunity"
+    ],
+    rating: 4.7,
+    reviewCount: 98,
+    orderCount: 520,
+    createdAt: new Date("2026-01-16T03:39:38.185Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.185Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Pulse Oximeter: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Pulse Oximeter",
+    description: "Measures oxygen saturation",
+    image: "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=400",
+    price: 35,
+    unit: "piece",
+    categoryId: null,
+    storeId: null,
+    brand: "OxyCheck",
+    stock: 60,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 12,
+    discountEndDate: new Date("2026-01-24T03:39:38.127Z"),
+    expiryDate: null,
+    tags: [
+      "oximeter",
+      "health-device"
+    ],
+    rating: 4.6,
+    reviewCount: 54,
+    orderCount: 240,
+    createdAt: new Date("2026-01-16T03:39:38.190Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.190Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Hand Sanitizer 500ml: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Hand Sanitizer 500ml",
+    description: "Kills 99.9% of germs",
+    image: "https://images.unsplash.com/photo-1585909695284-32d2985ac9c0?w=400",
+    price: 8,
+    unit: "bottle",
+    categoryId: null,
+    storeId: null,
+    brand: "CleanHands",
+    stock: 200,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "sanitizer",
+      "hygiene"
+    ],
+    rating: 4.6,
+    reviewCount: 145,
+    orderCount: 680,
+    createdAt: new Date("2026-01-16T03:39:38.186Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.186Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Baby Formula Milk: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Baby Formula Milk",
+    description: "Nutritious infant formula",
+    image: "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=400",
+    price: 40,
+    unit: "can",
+    categoryId: null,
+    storeId: null,
+    brand: "BabyNutri",
+    stock: 70,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "formula",
+      "baby"
+    ],
+    rating: 4.8,
+    reviewCount: 87,
+    orderCount: 390,
+    createdAt: new Date("2026-01-16T03:39:38.189Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.189Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Antibiotic Amoxicillin: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Antibiotic Amoxicillin",
+    description: "Treats bacterial infections",
+    image: "https://images.unsplash.com/photo-1550572017-4a6e8c4f8f7f?w=400",
+    price: 25,
+    unit: "pack",
+    categoryId: null,
+    storeId: null,
+    brand: "MediStrong",
+    stock: 60,
+    isAvailable: true,
+    requiresPrescription: true,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "antibiotic",
+      "prescription"
+    ],
+    rating: 4.8,
+    reviewCount: 42,
+    orderCount: 180,
+    createdAt: new Date("2026-01-16T03:39:38.185Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.185Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+  ❌ Failed to migrate pharmacy item Baby Diapers Size 3: 
+Invalid `prisma.pharmacyItem.create()` invocation:
+
+{
+  data: {
+    name: "Baby Diapers Size 3",
+    description: "Soft and absorbent diapers",
+    image: "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=400",
+    price: 25,
+    unit: "pack",
+    categoryId: null,
+    storeId: null,
+    brand: "BabySoft",
+    stock: 100,
+    isAvailable: true,
+    requiresPrescription: false,
+    discountPercentage: 0,
+    discountEndDate: null,
+    expiryDate: null,
+    tags: [
+      "diapers",
+      "baby"
+    ],
+    rating: 4.7,
+    reviewCount: 134,
+    orderCount: 560,
+    createdAt: new Date("2026-01-16T03:39:38.189Z"),
+    updatedAt: new Date("2026-01-16T03:39:38.189Z"),
++   store: {
++     create: PharmacyStoreCreateWithoutItemsInput | PharmacyStoreUncheckedCreateWithoutItemsInput,
++     connectOrCreate: PharmacyStoreCreateOrConnectWithoutItemsInput,
++     connect: PharmacyStoreWhereUniqueInput
++   }
+  }
+}
+
+Argument `store` is missing.
+
+❌ Migration failed: ReferenceError: GrabMartStore is not defined
+    at migrateGrabMartStores (/home/zakjnr/Documents/Project/GrabGo/backend/scripts/migrate-to-postgres.js:690:18)
+    at runMigration (/home/zakjnr/Documents/Project/GrabGo/backend/scripts/migrate-to-postgres.js:1138:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)

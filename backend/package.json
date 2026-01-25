@@ -20,7 +20,12 @@
     "test:routes": "jest tests/status.routes.test.js",
     "docs:build": "npx @redocly/cli build-docs docs/openapi.yaml -o docs/index.html",
     "docs:lint": "npx @redocly/cli lint docs/openapi.yaml",
-    "docs:serve": "npx serve docs -l 8080"
+    "docs:serve": "npx serve docs -l 8080",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:push": "prisma db push",
+    "prisma:studio": "prisma studio",
+    "migrate:postgres": "node scripts/migrate-to-postgres.js"
   },
   "keywords": [
     "food-delivery",
@@ -32,6 +37,8 @@
   "license": "ISC",
   "dependencies": {
     "@googlemaps/google-maps-services-js": "^3.4.2",
+    "@prisma/adapter-pg": "^7.3.0",
+    "@prisma/client": "^7.3.0",
     "@sendgrid/mail": "^8.1.6",
     "axios": "^1.6.0",
     "bcryptjs": "^2.4.3",
@@ -56,6 +63,8 @@
     "node-cron": "^4.2.1",
     "node-geocoder": "^4.4.1",
     "nodemailer": "^7.0.10",
+    "pg": "^8.17.2",
+    "prisma": "^7.3.0",
     "sanitize-html": "^2.17.0",
     "sharp": "^0.33.5",
     "socket.io": "^4.7.5",

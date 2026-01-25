@@ -82,7 +82,7 @@ router.post('/', protect, authorize('admin'), async (req, res) => {
             targetSegment,
             isRecurring,
             recurrencePattern,
-            createdBy: req.user._id
+            createdBy: req.user.id
         });
 
         res.status(201).json({
@@ -223,7 +223,7 @@ router.patch('/:id', protect, authorize('admin'), async (req, res) => {
         const notification = await updateScheduledNotification(
             req.params.id,
             updates,
-            req.user._id
+            req.user.id
         );
 
         if (!notification) {
@@ -254,7 +254,7 @@ router.delete('/:id', protect, authorize('admin'), async (req, res) => {
     try {
         const success = await cancelScheduledNotification(
             req.params.id,
-            req.user._id
+            req.user.id
         );
 
         if (!success) {

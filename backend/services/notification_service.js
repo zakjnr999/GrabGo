@@ -5,7 +5,7 @@ const { checkRateLimit, validateNotificationInput } = require('../utils/validati
 // Grouping configuration
 const GROUPING_CONFIG = {
     enabled: true,
-    timeWindow: 12 * 60 * 60 * 1000, // 12 hours (reduced from 24h for better UX)
+    timeWindow: 12 * 60 * 60 * 1000, // 12 hours
     groupableTypes: ['comment_reaction', 'comment_reply'],
     maxActorsInList: 50
 };
@@ -21,9 +21,6 @@ const TRUNCATION_LIMITS = {
 
 /**
  * Prepare FCM data payload by converting all values to strings
- * FCM requires all data values to be strings, otherwise notifications fail silently
- * @param {object} data - Data object to prepare
- * @returns {object} - Data object with all values as strings
  */
 const prepareFCMData = (data) => {
     const fcmData = {};
@@ -32,7 +29,6 @@ const prepareFCMData = (data) => {
             if (typeof value === 'object' && !Array.isArray(value)) {
                 fcmData[key] = JSON.stringify(value);
             } else if (typeof value === 'boolean') {
-                // Explicitly convert booleans to strings for consistency
                 fcmData[key] = value ? 'true' : 'false';
             } else {
                 fcmData[key] = String(value);
@@ -44,13 +40,6 @@ const prepareFCMData = (data) => {
 
 /**
  * Create in-app notification record and emit via Socket.IO
- * @param {string} userId - User ID to receive notification
- * @param {string} type - Notification type
- * @param {string} title - Notification title
- * @param {string} message - Notification message
- * @param {object} data - Additional navigation data
- * @param {object} io - Socket.IO instance (optional)
- * @returns {Promise<object|null>} Created notification or null
  */
 const createNotification = async (userId, type, title, message, data = {}, io = null) => {
     try {
@@ -65,7 +54,7 @@ const createNotification = async (userId, type, title, message, data = {}, io = 
         // SECURITY: Check rate limits
         if (!checkRateLimit(userId, type)) {
             console.warn(`⚠️ Rate limit exceeded for user ${userId}, type ${type}`);
-            return null; // Silently drop notification
+            return null;
         }
 
         // Check for existing notification to group
@@ -77,53 +66,37 @@ const createNotification = async (userId, type, title, message, data = {}, io = 
             }
         }
 
-        // Create new notification
-        const notification = await Notification.create({
+        // Create new notification in MongoDB
+        const notificationData = {
             user: userId,
             type,
             title,
             message,
             data,
+            actorCount: data.actorId ? 1 : 0,
             actors: data.actorId ? [{
-                actorId: data.actorId.toString(),
+                actorId: String(data.actorId),
                 actorName: data.actorName,
                 actorAvatar: data.actorAvatar,
                 reactedAt: new Date()
-            }] : [],
-            actorCount: data.actorId ? 1 : 0
-        });
+            }] : []
+        };
 
-        console.log(`📬 In-app notification created for user ${userId}: ${type}`);
+        const notification = await Notification.create(notificationData);
 
-        // Emit real-time notification via Socket.IO (for open apps)
+        console.log(`📬 In-app notification created in MongoDB for user ${userId}: ${type}`);
+
+        // Emit real-time notification via Socket.IO
         if (io) {
-            const notificationData = {
-                _id: notification._id,
-                title: notification.title,
-                message: notification.message,
-                type: notification.type,
-                createdAt: notification.createdAt,
-                isRead: notification.isRead,
-                data: notification.data,
-                actors: notification.actors,
-                actorCount: notification.actorCount
-            };
-
-            // Emit to specific user's room (not broadcast to all!)
-            io.to(`user:${userId}`).emit('newNotification', notificationData);
+            io.to(`user:${userId}`).emit('newNotification', notification);
             console.log(`📡 Real-time notification emitted to user ${userId}`);
-        } else {
-            console.warn(`⚠️ Socket.IO not available, notification created but not emitted in real-time for user ${userId}`);
         }
 
-        // Send FCM push notification (for closed apps)
+        // Send FCM push notification
         try {
-            const fcmResult = await sendToUser(
+            await sendToUser(
                 userId,
-                {
-                    title: title,
-                    body: message
-                },
+                { title: title, body: message },
                 prepareFCMData({
                     type: type,
                     notificationId: notification._id.toString(),
@@ -131,34 +104,19 @@ const createNotification = async (userId, type, title, message, data = {}, io = 
                     ...data
                 })
             );
-
-            if (fcmResult.success) {
-                console.log(`📲 Push notification sent to user ${userId}: ${fcmResult.successCount}/${fcmResult.successCount + fcmResult.failureCount} succeeded`);
-            } else {
-                console.warn(`⚠️ Push notification failed for user ${userId}: ${fcmResult.reason || 'unknown'}`);
-            }
         } catch (fcmError) {
-            // Don't fail the entire notification if push fails
             console.error(`❌ Push notification error for user ${userId}:`, fcmError.message);
         }
 
         return notification;
     } catch (error) {
-        console.error('❌ Error creating notification:', {
-            error: error.message,
-            stack: error.stack,
-            userId,
-            type,
-            title,
-            dataKeys: Object.keys(data),
-            timestamp: new Date().toISOString()
-        });
+        console.error('❌ Error creating notification:', error);
         return null;
     }
 };
 
 /**
- * Find existing notification that can be grouped
+ * Find existing notification that can be grouped using MongoDB query
  */
 const findGroupableNotification = async (userId, type, data) => {
     const targetKey = type === 'comment_reaction' ? 'commentId' : 'parentCommentId';
@@ -166,7 +124,6 @@ const findGroupableNotification = async (userId, type, data) => {
 
     if (!targetId) return null;
 
-    // Find recent notification (within time window) for same target
     const cutoffTime = new Date(Date.now() - GROUPING_CONFIG.timeWindow);
 
     const query = {
@@ -180,11 +137,7 @@ const findGroupableNotification = async (userId, type, data) => {
 };
 
 /**
- * Update grouped notification with new actor
- */
-/**
- * Update grouped notification with new actor
- * SECURITY: Uses atomic updates to prevent race conditions
+ * Update grouped notification in MongoDB
  */
 const updateGroupedNotification = async (notification, data, io) => {
     const actorId = data.actorId?.toString();
@@ -196,32 +149,46 @@ const updateGroupedNotification = async (notification, data, io) => {
     }
 
     try {
-        // Fetch existing notification to pre-calculate title and message
-        const existingNotification = await Notification.findById(notification._id);
-        if (!existingNotification) return notification;
+        // Check if actor already in list
+        const actorExists = notification.actors.some(a => a.actorId === actorId);
+        if (actorExists) {
+            console.log(`Actor ${actorId} already exists for notification ${notification._id}. Skipping.`);
+            return notification;
+        }
 
-        // Pre-calculate title and message with the new actor included
-        const updatedActors = [
+        const currentActors = notification.actors.map(a => ({
+            actorId: a.actorId,
+            actorName: a.actorName,
+            actorAvatar: a.actorAvatar,
+            reactedAt: a.reactedAt
+        }));
+
+        const updatedActorsForTitleMessage = [
             { actorId, actorName, actorAvatar, reactedAt: new Date() },
-            ...existingNotification.actors
+            ...currentActors
         ].slice(0, GROUPING_CONFIG.maxActorsInList);
 
-        const newTitle = buildGroupedTitle(existingNotification.type, updatedActors);
-        const newMessage = buildGroupedMessage(existingNotification.type, updatedActors, data);
+        const newTitle = buildGroupedTitle(notification.type, updatedActorsForTitleMessage);
+        const newMessage = buildGroupedMessage(notification.type, updatedActorsForTitleMessage, data);
 
         // Prepare updated data object
-        const updatedData = { ...existingNotification.data };
-        if (data.commentText) updatedData.commentText = data.commentText;
-        if (data.replyText) updatedData.replyText = data.replyText;
-        if (data.reactionType) updatedData.reactionType = data.reactionType;
+        const updatedDataFields = { ...notification.data };
+        if (data.commentText) updatedDataFields.commentText = data.commentText;
+        if (data.replyText) updatedDataFields.replyText = data.replyText;
+        if (data.reactionType) updatedDataFields.reactionType = data.reactionType;
 
-        // ATOMIC UPDATE: Everything in one operation to prevent race conditions
-        const updatedNotification = await Notification.findOneAndUpdate(
+        // Perform update in MongoDB
+        const updatedNotification = await Notification.findByIdAndUpdate(
+            notification._id,
             {
-                _id: notification._id,
-                'actors.actorId': { $ne: actorId } // Double-check actor doesn't exist
-            },
-            {
+                $set: {
+                    isRead: false,
+                    title: newTitle,
+                    message: newMessage,
+                    data: updatedDataFields,
+                    updatedAt: new Date()
+                },
+                $inc: { actorCount: 1 },
                 $push: {
                     actors: {
                         $each: [{
@@ -233,51 +200,21 @@ const updateGroupedNotification = async (notification, data, io) => {
                         $position: 0,
                         $slice: GROUPING_CONFIG.maxActorsInList
                     }
-                },
-                $inc: { actorCount: 1 },
-                $set: {
-                    isRead: false,
-                    updatedAt: new Date(),
-                    title: newTitle,      // ✅ Atomic title update
-                    message: newMessage,  // ✅ Atomic message update
-                    data: updatedData     // ✅ Atomic data update
                 }
             },
             { new: true }
         );
 
-        // If the update returned null, actor was added by another process
-        if (!updatedNotification) {
-            console.log(`Actor ${actorId} was already added to notification ${notification._id} by another process`);
-            return await Notification.findById(notification._id);
-        }
+        console.log(`📬 Grouped notification updated in MongoDB for user ${updatedNotification.user}: ${updatedNotification.type}`);
 
-        console.log(`📬 Grouped notification updated for user ${updatedNotification.user}: ${updatedNotification.type} (${updatedNotification.actorCount} actors)`);
-
-        // Emit via Socket.IO
         if (io) {
-            io.to(`user:${updatedNotification.user}`).emit('newNotification', {
-                _id: updatedNotification._id,
-                title: updatedNotification.title,
-                message: updatedNotification.message,
-                type: updatedNotification.type,
-                createdAt: updatedNotification.createdAt,
-                isRead: updatedNotification.isRead,
-                data: updatedNotification.data,
-                actors: updatedNotification.actors,
-                actorCount: updatedNotification.actorCount
-            });
-            console.log(`📡 Grouped notification emitted to user ${updatedNotification.user}`);
+            io.to(`user:${updatedNotification.user}`).emit('newNotification', updatedNotification);
         }
 
-        // Send FCM push with properly formatted data
         try {
             await sendToUser(
-                updatedNotification.user.toString(),
-                {
-                    title: updatedNotification.title,
-                    body: updatedNotification.message
-                },
+                updatedNotification.user,
+                { title: updatedNotification.title, body: updatedNotification.message },
                 prepareFCMData({
                     type: updatedNotification.type,
                     notificationId: updatedNotification._id.toString(),
@@ -285,9 +222,8 @@ const updateGroupedNotification = async (notification, data, io) => {
                     ...updatedNotification.data
                 })
             );
-            console.log(`📲 Grouped push notification sent to user ${updatedNotification.user}`);
         } catch (fcmError) {
-            console.error('Push notification failed (non-critical):', fcmError.message);
+            console.error('Push notification failed (grouped):', fcmError.message);
         }
 
         return updatedNotification;
@@ -297,39 +233,19 @@ const updateGroupedNotification = async (notification, data, io) => {
     }
 };
 
-
 /**
  * Build grouped notification title
  */
 const buildGroupedTitle = (type, actors) => {
     const count = actors.length;
+    if (count === 0) return type === 'comment_reaction' ? 'Someone reacted to your comment' : 'Someone replied to your comment';
+    if (count === 1) return type === 'comment_reaction' ? `${actors[0].actorName} reacted to your comment` : `${actors[0].actorName} replied to your comment`;
+    if (count === 2) return type === 'comment_reaction' ? `${actors[0].actorName} and ${actors[1].actorName} reacted to your comment` : `${actors[0].actorName} and ${actors[1].actorName} replied to your comment`;
 
-    if (count === 0) {
-        return type === 'comment_reaction' ? 'Someone reacted to your comment' : 'Someone replied to your comment';
-    }
-
-    if (count === 1) {
-        const name = actors[0].actorName;
-        return type === 'comment_reaction'
-            ? `${name} reacted to your comment`
-            : `${name} replied to your comment`;
-    }
-
-    if (count === 2) {
-        const name1 = actors[0].actorName;
-        const name2 = actors[1].actorName;
-        return type === 'comment_reaction'
-            ? `${name1} and ${name2} reacted to your comment`
-            : `${name1} and ${name2} replied to your comment`;
-    }
-
-    // 3 or more actors
-    const name1 = actors[0].actorName;
-    const name2 = actors[1].actorName;
     const others = count - 2;
     return type === 'comment_reaction'
-        ? `${name1}, ${name2}, and ${others} ${others === 1 ? 'other' : 'others'} reacted to your comment`
-        : `${name1}, ${name2}, and ${others} ${others === 1 ? 'other' : 'others'} replied to your comment`;
+        ? `${actors[0].actorName}, ${actors[1].actorName}, and ${others} ${others === 1 ? 'other' : 'others'} reacted to your comment`
+        : `${actors[0].actorName}, ${actors[1].actorName}, and ${others} ${others === 1 ? 'other' : 'others'} replied to your comment`;
 };
 
 /**
@@ -361,19 +277,14 @@ const buildGroupedMessage = (type, actors, data) => {
 };
 
 /**
- * Get notifications for a user
- * @param {string} userId - User ID
- * @param {number} limit - Maximum number of notifications to return
- * @param {number} skip - Number of notifications to skip (for pagination)
- * @returns {Promise<Array>} Array of notifications
+ * Get notifications for a user from MongoDB
  */
 const getUserNotifications = async (userId, limit = 50, skip = 0) => {
     try {
-        const notifications = await Notification.find({ user: userId })
+        return await Notification.find({ user: userId })
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit);
-        return notifications;
     } catch (error) {
         console.error('Error fetching notifications:', error.message);
         return [];
@@ -381,16 +292,13 @@ const getUserNotifications = async (userId, limit = 50, skip = 0) => {
 };
 
 /**
- * Mark notification as read
- * @param {string} notificationId - Notification ID
- * @param {string} userId - User ID (for security)
- * @returns {Promise<boolean>} Success status
+ * Mark notification as read in MongoDB
  */
 const markAsRead = async (notificationId, userId) => {
     try {
         const notification = await Notification.findOneAndUpdate(
             { _id: notificationId, user: userId },
-            { isRead: true },
+            { $set: { isRead: true } },
             { new: true }
         );
         return !!notification;
@@ -401,15 +309,13 @@ const markAsRead = async (notificationId, userId) => {
 };
 
 /**
- * Mark all notifications as read for a user
- * @param {string} userId - User ID
- * @returns {Promise<boolean>} Success status
+ * Mark all notifications as read for a user in MongoDB
  */
 const markAllAsRead = async (userId) => {
     try {
         await Notification.updateMany(
             { user: userId, isRead: false },
-            { isRead: true }
+            { $set: { isRead: true } }
         );
         return true;
     } catch (error) {
@@ -419,9 +325,7 @@ const markAllAsRead = async (userId) => {
 };
 
 /**
- * Delete all notifications for a user
- * @param {string} userId - User ID
- * @returns {Promise<boolean>} Success status
+ * Delete all notifications for a user in MongoDB
  */
 const clearAllNotifications = async (userId) => {
     try {
@@ -434,14 +338,11 @@ const clearAllNotifications = async (userId) => {
 };
 
 /**
- * Get unread notification count
- * @param {string} userId - User ID
- * @returns {Promise<number>} Count of unread notifications
+ * Get unread notification count from MongoDB
  */
 const getUnreadCount = async (userId) => {
     try {
-        const count = await Notification.countDocuments({ user: userId, isRead: false });
-        return count;
+        return await Notification.countDocuments({ user: userId, isRead: false });
     } catch (error) {
         console.error('Error getting unread count:', error.message);
         return 0;

@@ -1,5 +1,4 @@
-const Payment = require('../models/Payment');
-const Order = require('../models/Order');
+const prisma = require('../config/prisma');
 const mtnMomoService = require('../services/mtn_momo_service');
 
 /**
@@ -8,16 +7,27 @@ const mtnMomoService = require('../services/mtn_momo_service');
  */
 async function processExpiredPayments() {
   try {
-    const expiredPayments = await Payment.find({
-      status: { $in: ['pending', 'processing'] },
-      expiredAt: { $lt: new Date() }
+    const now = new Date();
+    const expiredPayments = await prisma.payment.findMany({
+      where: {
+        status: { in: ['pending', 'processing'] },
+        expiredAt: { lt: now }
+      }
     });
 
     console.log(`Found ${expiredPayments.length} expired payments to process`);
 
     for (const payment of expiredPayments) {
-      await payment.markAsFailed('Payment expired', 'PAYMENT_EXPIRED');
-      console.log(`Marked payment ${payment._id} as expired`);
+      await prisma.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: 'failed',
+          failureReason: 'Payment expired',
+          errorCode: 'PAYMENT_EXPIRED',
+          updatedAt: now
+        }
+      });
+      console.log(`Marked payment ${payment.id} as expired`);
     }
 
     return {
@@ -64,39 +74,53 @@ function validatePaymentData(paymentData) {
  */
 async function getPaymentStatistics(startDate, endDate) {
   try {
-    const matchStage = {
-      createdAt: {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate)
-      }
-    };
+    const start = new Date(startDate);
+    const end = new Date(endDate);
 
-    const stats = await Payment.aggregate([
-      { $match: matchStage },
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 },
-          totalAmount: { $sum: '$amount' }
+    const statusStats = await prisma.payment.groupBy({
+      by: ['status'],
+      where: {
+        createdAt: {
+          gte: start,
+          lte: end
         }
+      },
+      _count: {
+        id: true
+      },
+      _sum: {
+        amount: true
       }
-    ]);
+    });
 
-    const providerStats = await Payment.aggregate([
-      { $match: matchStage },
-      {
-        $group: {
-          _id: '$provider',
-          count: { $sum: 1 },
-          totalAmount: { $sum: '$amount' }
+    const providerStats = await prisma.payment.groupBy({
+      by: ['provider'],
+      where: {
+        createdAt: {
+          gte: start,
+          lte: end
         }
+      },
+      _count: {
+        id: true
+      },
+      _sum: {
+        amount: true
       }
-    ]);
+    });
 
     return {
       success: true,
-      statusStats: stats,
-      providerStats: providerStats
+      statusStats: statusStats.map(s => ({
+        _id: s.status,
+        count: s._count.id,
+        totalAmount: s._sum.amount
+      })),
+      providerStats: providerStats.map(p => ({
+        _id: p.provider,
+        count: p._count.id,
+        totalAmount: p._sum.amount
+      }))
     };
   } catch (error) {
     console.error('Error getting payment statistics:', error);
@@ -114,54 +138,72 @@ async function retryFailedPayments() {
   try {
     // Find failed payments from the last hour that might be retryable
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    
-    const retryablePayments = await Payment.find({
-      status: 'failed',
-      errorCode: { $in: ['NETWORK_ERROR', 'TIMEOUT', 'SERVICE_UNAVAILABLE'] },
-      createdAt: { $gte: oneHourAgo }
-    }).populate('order');
+
+    const retryablePayments = await prisma.payment.findMany({
+      where: {
+        status: 'failed',
+        errorCode: { in: ['NETWORK_ERROR', 'TIMEOUT', 'SERVICE_UNAVAILABLE'] },
+        createdAt: { gte: oneHourAgo }
+      },
+      include: {
+        order: true
+      }
+    });
 
     console.log(`Found ${retryablePayments.length} potentially retryable payments`);
 
     const results = [];
-    
+
     for (const payment of retryablePayments) {
       try {
         // Check if we still have the external reference to check status
         if (payment.externalReferenceId) {
           const statusCheck = await mtnMomoService.getPaymentStatus(payment.externalReferenceId);
-          
+
           if (statusCheck.success) {
             if (statusCheck.status === 'SUCCESSFUL') {
-              await payment.markAsCompleted(statusCheck.financialTransactionId);
-              
-              // Update order
-              const order = payment.order;
-              if (order && order.paymentStatus !== 'paid') {
-                order.paymentStatus = 'paid';
-                order.status = 'confirmed';
-                await order.save();
-              }
-              
+              await prisma.$transaction([
+                prisma.payment.update({
+                  where: { id: payment.id },
+                  data: {
+                    status: 'completed',
+                    financialTransactionId: statusCheck.financialTransactionId,
+                    updatedAt: new Date()
+                  }
+                }),
+                prisma.order.update({
+                  where: { id: payment.orderId },
+                  data: {
+                    paymentStatus: 'paid',
+                    status: 'confirmed'
+                  }
+                })
+              ]);
+
               results.push({
-                paymentId: payment._id,
+                paymentId: payment.id,
                 action: 'completed',
                 status: 'successful'
               });
             } else if (statusCheck.status === 'FAILED') {
               // Confirm it's really failed
               results.push({
-                paymentId: payment._id,
+                paymentId: payment.id,
                 action: 'confirmed_failed',
                 status: 'failed'
               });
             } else {
               // Still pending, update status
-              payment.status = 'processing';
-              await payment.save();
-              
+              await prisma.payment.update({
+                where: { id: payment.id },
+                data: {
+                  status: 'processing',
+                  updatedAt: new Date()
+                }
+              });
+
               results.push({
-                paymentId: payment._id,
+                paymentId: payment.id,
                 action: 'updated_to_processing',
                 status: 'processing'
               });
@@ -169,9 +211,9 @@ async function retryFailedPayments() {
           }
         }
       } catch (error) {
-        console.error(`Error retrying payment ${payment._id}:`, error);
+        console.error(`Error retrying payment ${payment.id}:`, error);
         results.push({
-          paymentId: payment._id,
+          paymentId: payment.id,
           action: 'retry_failed',
           error: error.message
         });

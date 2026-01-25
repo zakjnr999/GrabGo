@@ -1,7 +1,4 @@
-const User = require('../models/User');
-const Order = require('../models/Order');
-const Restaurant = require('../models/Restaurant');
-const Food = require('../models/Food');
+const prisma = require('../config/prisma');
 const { createNotification } = require('./notification_service');
 
 /**
@@ -22,26 +19,46 @@ const findEligibleUsers = async (mealType) => {
     const oneDayAgo = new Date(now - 24 * 60 * 60 * 1000);
 
     try {
-        const users = await User.find({
-            // Must have ordered before (not new users)
-            lastOrderDate: { $exists: true, $ne: null, $lt: threeDaysAgo },
+        const mealPrefField = mealType === 'breakfast' ? 'breakfast' : mealType === 'lunch' ? 'lunch' : 'dinner';
 
-            // Meal notifications enabled
-            'mealTimePreferences.enabled': true,
-            [`mealTimePreferences.${mealType}`]: true,
+        const users = await prisma.user.findMany({
+            where: {
+                // Must have ordered before (not new users)
+                lastOrderDate: { lt: threeDaysAgo },
 
-            // General promo notifications enabled (meal nudges are promotional)
-            'notificationSettings.promoNotifications': true,
+                // Meal notifications enabled
+                mealTimePreferences: {
+                    enabled: true,
+                    [mealPrefField]: true
+                },
 
-            // Frequency limits
-            $or: [
-                { lastMealNudgeAt: null },
-                { lastMealNudgeAt: { $lt: oneDayAgo } }
-            ],
+                // General promo notifications enabled
+                notificationSettings: {
+                    promoNotifications: true
+                },
 
-        }).select('_id username email lastOrderDate mealTimePreferences mealNudgesThisWeek weekStartDate');
+                // Frequency limits
+                OR: [
+                    { lastMealNudgeAt: null },
+                    { lastMealNudgeAt: { lt: oneDayAgo } }
+                ]
+            },
+            select: {
+                id: true,
+                username: true,
+                email: true,
+                lastOrderDate: true,
+                mealNudgesThisWeek: true,
+                weekStartDate: true,
+                mealTimePreferences: {
+                    select: {
+                        maxPerWeek: true
+                    }
+                }
+            }
+        });
 
-        // Filter by weekly limit in JavaScript (simpler than $expr)
+        // Filter by weekly limit in JavaScript
         const eligibleUsers = users.filter(user => {
             const maxPerWeek = user.mealTimePreferences?.maxPerWeek || 3;
             return user.mealNudgesThisWeek < maxPerWeek;
@@ -65,23 +82,32 @@ const findEligibleUsers = async (mealType) => {
 const generatePersonalizedMessage = async (user, mealType) => {
     try {
         // Get user's last order to personalize
-        const lastOrder = await Order.findOne({ customer: user._id })
-            .sort({ createdAt: -1 })
-            .populate('restaurant', 'restaurant_name')
-            .populate('items.food', 'name');
+        const lastOrder = await prisma.order.findFirst({
+            where: { customerId: user.id },
+            orderBy: { createdAt: 'desc' },
+            include: {
+                restaurant: { select: { restaurantName: true } },
+                items: {
+                    where: { itemType: 'Food' },
+                    take: 1
+                }
+            }
+        });
 
         // Get popular food item
-        const popularFood = await Food.findOne({ isAvailable: true })
-            .sort({ orderCount: -1 })
-            .select('name');
+        const popularFood = await prisma.food.findFirst({
+            where: { isAvailable: true },
+            orderBy: { orderCount: 'desc' },
+            select: { name: true }
+        });
 
         // Message templates by meal type
         const templates = {
             breakfast: [
                 {
                     title: '🌅 Good Morning!',
-                    message: lastOrder?.restaurant?.restaurant_name
-                        ? `Start your day with breakfast from ${lastOrder.restaurant.restaurant_name}!`
+                    message: lastOrder?.restaurant?.restaurantName
+                        ? `Start your day with breakfast from ${lastOrder.restaurant.restaurantName}!`
                         : 'Start your day right with a delicious breakfast!',
                 },
                 {
@@ -98,8 +124,8 @@ const generatePersonalizedMessage = async (user, mealType) => {
             lunch: [
                 {
                     title: '🍔 Lunch Break!',
-                    message: lastOrder?.restaurant?.restaurant_name
-                        ? `Hungry? Order lunch from ${lastOrder.restaurant.restaurant_name}!`
+                    message: lastOrder?.restaurant?.restaurantName
+                        ? `Hungry? Order lunch from ${lastOrder.restaurant.restaurantName}!`
                         : 'Time for lunch! Get your favorite meal delivered.',
                 },
                 {
@@ -116,8 +142,8 @@ const generatePersonalizedMessage = async (user, mealType) => {
             dinner: [
                 {
                     title: '🍝 Dinner Time!',
-                    message: lastOrder?.restaurant?.restaurant_name
-                        ? `End your day with dinner from ${lastOrder.restaurant.restaurant_name}!`
+                    message: lastOrder?.restaurant?.restaurantName
+                        ? `End your day with dinner from ${lastOrder.restaurant.restaurantName}!`
                         : 'Relax and enjoy dinner delivered to your door!',
                 },
                 {
@@ -142,7 +168,7 @@ const generatePersonalizedMessage = async (user, mealType) => {
             message: template.message,
             data: {
                 mealType,
-                lastRestaurantId: lastOrder?.restaurant?._id?.toString() || null,
+                lastRestaurantId: lastOrder?.restaurantId || null,
                 route: '/browse'
             }
         };
@@ -173,7 +199,7 @@ const sendMealNudge = async (user, mealType, io = null) => {
 
         // Create notification
         await createNotification(
-            user._id,
+            user.id,
             `meal_nudge_${mealType}`,
             title,
             message,
@@ -186,21 +212,23 @@ const sendMealNudge = async (user, mealType, io = null) => {
         const weekStart = user.weekStartDate || now;
         const daysSinceWeekStart = Math.floor((now - weekStart) / (24 * 60 * 60 * 1000));
 
-        // Reset weekly counter if it's a new week (Sunday)
+        // Reset weekly counter if it's a new week (7+ days)
         let mealNudgesThisWeek, weekStartDate;
         if (daysSinceWeekStart >= 7 || !user.weekStartDate) {
             mealNudgesThisWeek = 1;
             weekStartDate = now;
         } else {
-            mealNudgesThisWeek = user.mealNudgesThisWeek + 1;
+            mealNudgesThisWeek = (user.mealNudgesThisWeek || 0) + 1;
             weekStartDate = user.weekStartDate;
         }
 
-        // Use direct update to avoid triggering pre-save hooks
-        await User.findByIdAndUpdate(user._id, {
-            lastMealNudgeAt: now,
-            mealNudgesThisWeek,
-            weekStartDate
+        await prisma.user.update({
+            where: { id: user.id },
+            data: {
+                lastMealNudgeAt: now,
+                mealNudgesThisWeek,
+                weekStartDate
+            }
         });
 
         console.log(`✅ Sent ${mealType} nudge to ${user.email}`);
@@ -260,25 +288,23 @@ const resetWeeklyCounters = async () => {
     try {
         console.log('🔄 Resetting weekly meal nudge counters...');
 
-        const result = await User.updateMany(
-            {
-                $or: [
-                    { mealNudgesThisWeek: { $gt: 0 } },
-                    { favoritesNudgesThisWeek: { $gt: 0 } },
-                    { reorderSuggestionsThisWeek: { $gt: 0 } }
+        const result = await prisma.user.updateMany({
+            where: {
+                OR: [
+                    { mealNudgesThisWeek: { gt: 0 } },
+                    { favoritesNudgesThisWeek: { gt: 0 } },
+                    { reorderSuggestionsThisWeek: { gt: 0 } }
                 ]
             },
-            {
-                $set: {
-                    mealNudgesThisWeek: 0,
-                    favoritesNudgesThisWeek: 0,
-                    reorderSuggestionsThisWeek: 0,
-                    weekStartDate: new Date()
-                }
+            data: {
+                mealNudgesThisWeek: 0,
+                favoritesNudgesThisWeek: 0,
+                reorderSuggestionsThisWeek: 0,
+                weekStartDate: new Date()
             }
-        );
+        });
 
-        console.log(`✅ Reset counters for ${result.modifiedCount} users`);
+        console.log(`✅ Reset counters for ${result.count} users`);
 
     } catch (error) {
         console.error('❌ Error resetting weekly counters:', error.message);

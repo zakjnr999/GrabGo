@@ -52,12 +52,12 @@ const processAbandonedCarts = async (io = null) => {
                     : 'items';
 
                 await createNotification(
-                    cart.user._id,
+                    cart.user.id,
                     'cart_reminder',
                     '🛒 You left items in your cart',
                     `${firstItemName}${itemCount > 1 ? ` and ${itemCount - 1} more item${itemCount > 2 ? 's' : ''}` : ''} - Complete your order now!`,
                     {
-                        cartId: cart._id.toString(),
+                        cartId: cart.id,
                         itemCount: itemCount.toString(),
                         totalAmount: totalAmount,
                         route: '/cart'
@@ -66,7 +66,8 @@ const processAbandonedCarts = async (io = null) => {
                 );
 
                 // Mark notification as sent
-                await cart.markAbandonmentNotificationSent();
+                const { markAbandonmentNotificationSent } = require('../services/cart_service');
+                await markAbandonmentNotificationSent(cart.id);
 
                 console.log(`✅ Sent cart reminder to ${cart.user.email}`);
                 notified++;

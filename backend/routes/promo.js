@@ -34,7 +34,7 @@ router.post('/validate', protect, [
         const { code, orderAmount, orderType } = req.body;
         const result = await validatePromoCode(
             code,
-            req.user._id,
+            req.user.id,
             parseFloat(orderAmount),
             orderType
         );
@@ -85,7 +85,7 @@ router.post('/apply', protect, [
         const { code, orderId, discountAmount } = req.body;
         const result = await applyPromoCode(
             code,
-            req.user._id,
+            req.user.id,
             orderId,
             parseFloat(discountAmount)
         );
@@ -118,7 +118,7 @@ router.post('/apply', protect, [
  */
 router.get('/available', protect, async (req, res) => {
     try {
-        const codes = await getAvailablePromoCodes(req.user._id);
+        const codes = await getAvailablePromoCodes(req.user.id);
         res.json({
             success: true,
             data: codes
@@ -153,7 +153,7 @@ router.post('/create', protect, authorize('admin'), [
 
         const promoData = {
             ...req.body,
-            createdBy: req.user._id
+            createdById: req.user.id
         };
 
         const promo = await createPromoCode(promoData);

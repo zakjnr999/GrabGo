@@ -1,8 +1,6 @@
 const express = require("express");
 const { body, validationResult } = require("express-validator");
-const Food = require("../models/Food");
-const Category = require("../models/Category");
-const Restaurant = require("../models/Restaurant");
+const prisma = require("../config/prisma");
 const { protect } = require("../middleware/auth");
 const {
   uploadSingle,
@@ -18,22 +16,30 @@ const router = express.Router();
 router.get("/", cacheMiddleware(cache.CACHE_KEYS.FOOD_CATEGORIES, 300), async (req, res) => {
   try {
     const { restaurant, category, isAvailable } = req.query;
-    let query = {};
+    const where = {};
 
     if (restaurant) {
-      query.restaurant = restaurant;
+      where.restaurantId = restaurant;
     }
     if (category) {
-      query.category = category;
+      where.categoryId = category;
     }
     if (isAvailable !== undefined) {
-      query.isAvailable = isAvailable === "true";
+      where.isAvailable = isAvailable === "true";
     }
 
-    const foods = await Food.find(query)
-      .populate("category", "name")
-      .populate("restaurant", "restaurantName logo location")
-      .sort({ createdAt: -1 });
+    const foods = await prisma.food.findMany({
+      where,
+      include: {
+        category: {
+          select: { id: true, name: true }
+        },
+        restaurant: {
+          select: { id: true, restaurantName: true, logo: true, address: true, city: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
 
     res.json({
       success: true,
@@ -55,23 +61,30 @@ router.get("/", cacheMiddleware(cache.CACHE_KEYS.FOOD_CATEGORIES, 300), async (r
  * @desc    Get foods with active discounts
  * @access  Public
  */
-// Get deals with caching (2 minutes - more dynamic)
 router.get("/deals", cacheMiddleware(cache.CACHE_KEYS.FOOD_DEALS, 120), async (req, res) => {
   try {
     const now = new Date();
 
-    const deals = await Food.find({
-      isAvailable: true,
-      discountPercentage: { $gt: 0 },
-      $or: [
-        { discountEndDate: null },
-        { discountEndDate: { $gte: now } }
-      ]
-    })
-      .populate("category", "name")
-      .populate("restaurant", "restaurantName logo location")
-      .sort({ discountPercentage: -1 })
-      .limit(10);
+    const deals = await prisma.food.findMany({
+      where: {
+        isAvailable: true,
+        discountPercentage: { gt: 0 },
+        OR: [
+          { discountEndDate: null },
+          { discountEndDate: { gte: now } }
+        ]
+      },
+      include: {
+        category: {
+          select: { id: true, name: true }
+        },
+        restaurant: {
+          select: { id: true, restaurantName: true, logo: true, address: true, city: true }
+        }
+      },
+      orderBy: { discountPercentage: 'desc' },
+      take: 10
+    });
 
     res.json({
       success: true,
@@ -106,64 +119,80 @@ router.get("/recommended", cacheMiddleware(cache.CACHE_KEYS.FOOD_RECOMMENDED, 18
     const dealsCount = Math.ceil(limit * 0.2);
     const randomCount = limit - popularCount - ratedCount - dealsCount;
 
-    const popular = await Food.find({ isAvailable: true })
-      .sort({ orderCount: -1 })
-      .limit(popularCount)
-      .populate('category', 'name')
-      .populate('restaurant', 'restaurantName logo rating location');
+    const includeRelations = {
+      category: { select: { id: true, name: true } },
+      restaurant: { select: { id: true, restaurantName: true, logo: true, rating: true, address: true, city: true } }
+    };
 
-    const popularIds = popular.map(f => f._id);
-    const rated = await Food.find({
-      isAvailable: true,
-      rating: { $gte: 4.5 },
-      _id: { $nin: popularIds }
-    })
-      .sort({ rating: -1, totalReviews: -1 })
-      .limit(ratedCount)
-      .populate('category', 'name')
-      .populate('restaurant', 'restaurantName logo rating location');
+    // Get popular items
+    const popular = await prisma.food.findMany({
+      where: { isAvailable: true },
+      include: includeRelations,
+      orderBy: { orderCount: 'desc' },
+      take: popularCount
+    });
 
-    const selectedIds = [...popularIds, ...rated.map(f => f._id)];
+    const popularIds = popular.map(f => f.id);
+
+    // Get highly rated items
+    const rated = await prisma.food.findMany({
+      where: {
+        isAvailable: true,
+        rating: { gte: 4.5 },
+        id: { notIn: popularIds }
+      },
+      include: includeRelations,
+      orderBy: [
+        { rating: 'desc' },
+        { totalReviews: 'desc' }
+      ],
+      take: ratedCount
+    });
+
+    const selectedIds = [...popularIds, ...rated.map(f => f.id)];
     const now = new Date();
-    const deals = await Food.find({
-      isAvailable: true,
-      discountPercentage: { $gt: 0 },
-      _id: { $nin: selectedIds },
-      $or: [
-        { discountEndDate: null },
-        { discountEndDate: { $gte: now } }
-      ]
-    })
-      .sort({ discountPercentage: -1 })
-      .limit(dealsCount)
-      .populate('category', 'name')
-      .populate('restaurant', 'restaurantName logo rating location');
 
-    const allSelectedIds = [...selectedIds, ...deals.map(f => f._id)];
-    const random = await Food.aggregate([
-      { $match: { isAvailable: true, _id: { $nin: allSelectedIds } } },
-      { $sample: { size: randomCount } },
-      {
-        $lookup: {
-          from: "categories",
-          localField: "category",
-          foreignField: "_id",
-          as: "category"
-        }
+    // Get deals
+    const deals = await prisma.food.findMany({
+      where: {
+        isAvailable: true,
+        discountPercentage: { gt: 0 },
+        id: { notIn: selectedIds },
+        OR: [
+          { discountEndDate: null },
+          { discountEndDate: { gte: now } }
+        ]
       },
-      { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
-      {
-        $lookup: {
-          from: "restaurants",
-          localField: "restaurant",
-          foreignField: "_id",
-          as: "restaurant"
-        }
-      },
-      { $unwind: { path: "$restaurant", preserveNullAndEmptyArrays: true } },
-      { $project: { "restaurant.password": 0, "category.isActive": 0 } }
-    ]);
+      include: includeRelations,
+      orderBy: { discountPercentage: 'desc' },
+      take: dealsCount
+    });
 
+    const allSelectedIds = [...selectedIds, ...deals.map(f => f.id)];
+
+    // Get random items
+    const totalCount = await prisma.food.count({
+      where: {
+        isAvailable: true,
+        id: { notIn: allSelectedIds }
+      }
+    });
+
+    let random = [];
+    if (totalCount > 0 && randomCount > 0) {
+      const skip = Math.max(0, Math.floor(Math.random() * (totalCount - randomCount)));
+      random = await prisma.food.findMany({
+        where: {
+          isAvailable: true,
+          id: { notIn: allSelectedIds }
+        },
+        include: includeRelations,
+        skip,
+        take: randomCount
+      });
+    }
+
+    // Combine and shuffle
     const recommended = [...popular, ...rated, ...deals, ...random];
     for (let i = recommended.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -187,9 +216,6 @@ router.get("/recommended", cacheMiddleware(cache.CACHE_KEYS.FOOD_RECOMMENDED, 18
 
 // ==================== POPULAR ITEMS ====================
 
-// Get popular food items (sorted by order count)
-// IMPORTANT: This must come BEFORE /:foodId route
-// Get popular items with caching (5 minutes)
 router.get("/popular", cacheMiddleware(cache.CACHE_KEYS.FOOD_POPULAR, 300), async (req, res) => {
   try {
     let { limit = 10 } = req.query;
@@ -198,57 +224,40 @@ router.get("/popular", cacheMiddleware(cache.CACHE_KEYS.FOOD_POPULAR, 300), asyn
     if (isNaN(limit) || limit < 1) limit = 10;
     if (limit > 50) limit = 50;
 
-    // Use aggregation to get unique food names with highest order counts
-    const popularItems = await Food.aggregate([
-      { $match: { isAvailable: true } },
-      { $sort: { orderCount: -1, rating: -1 } },
-      {
-        $group: {
-          _id: "$name",
-          doc: { $first: "$$ROOT" }
+    const popularItems = await prisma.food.findMany({
+      where: { isAvailable: true },
+      include: {
+        category: {
+          select: { id: true, name: true }
+        },
+        restaurant: {
+          select: { id: true, restaurantName: true, logo: true, address: true, city: true }
         }
       },
-      { $replaceRoot: { newRoot: "$doc" } },
-      { $sort: { orderCount: -1, rating: -1 } },
-      { $limit: limit },
-      {
-        $lookup: {
-          from: "categories",
-          localField: "category",
-          foreignField: "_id",
-          as: "category"
-        }
-      },
-      { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
-      {
-        $lookup: {
-          from: "restaurants",
-          localField: "restaurant",
-          foreignField: "_id",
-          as: "restaurant"
-        }
-      },
-      { $unwind: { path: "$restaurant", preserveNullAndEmptyArrays: true } },
-      {
-        $addFields: {
-          food_image: "$foodImage",
-          image: "$foodImage",
-          "restaurant.restaurant_name": "$restaurant.restaurantName",
-          "restaurant.image": "$restaurant.logo"
-        }
-      },
-      {
-        $project: {
-          "restaurant.password": 0,
-          "category.isActive": 0
-        }
+      orderBy: [
+        { orderCount: 'desc' },
+        { rating: 'desc' }
+      ],
+      take: limit,
+      distinct: ['name']
+    });
+
+    // Add aliases for frontend compatibility
+    const formattedItems = popularItems.map(item => ({
+      ...item,
+      food_image: item.foodImage,
+      image: item.foodImage,
+      restaurant: {
+        ...item.restaurant,
+        restaurant_name: item.restaurant.restaurantName,
+        image: item.restaurant.logo
       }
-    ]);
+    }));
 
     res.json({
       success: true,
       message: "Popular items retrieved successfully",
-      data: popularItems
+      data: formattedItems
     });
   } catch (error) {
     console.error("Get popular items error:", error);
@@ -262,9 +271,6 @@ router.get("/popular", cacheMiddleware(cache.CACHE_KEYS.FOOD_POPULAR, 300), asyn
 
 // ==================== TOP RATED ITEMS ====================
 
-// Get top-rated food items (sorted by rating)
-// IMPORTANT: This must come BEFORE /:foodId route
-// Get top-rated items with caching (10 minutes - stable data)
 router.get("/top-rated", cacheMiddleware(cache.CACHE_KEYS.FOOD_TOP_RATED, 600), async (req, res) => {
   try {
     let { limit = 10, minRating = 4.5 } = req.query;
@@ -275,61 +281,43 @@ router.get("/top-rated", cacheMiddleware(cache.CACHE_KEYS.FOOD_TOP_RATED, 600), 
     if (limit > 50) limit = 50;
     if (isNaN(minRating) || minRating < 0 || minRating > 5) minRating = 4.5;
 
-    const topRatedItems = await Food.aggregate([
-      {
-        $match: {
-          isAvailable: true,
-          rating: { $gte: minRating }
+    const topRatedItems = await prisma.food.findMany({
+      where: {
+        isAvailable: true,
+        rating: { gte: minRating }
+      },
+      include: {
+        category: {
+          select: { id: true, name: true }
+        },
+        restaurant: {
+          select: { id: true, restaurantName: true, logo: true, address: true, city: true }
         }
       },
-      { $sort: { rating: -1, totalReviews: -1 } },
-      {
-        $group: {
-          _id: "$name",
-          doc: { $first: "$$ROOT" }
-        }
-      },
-      { $replaceRoot: { newRoot: "$doc" } },
-      { $sort: { rating: -1, totalReviews: -1 } },
-      { $limit: limit },
-      {
-        $lookup: {
-          from: "categories",
-          localField: "category",
-          foreignField: "_id",
-          as: "category"
-        }
-      },
-      { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
-      {
-        $lookup: {
-          from: "restaurants",
-          localField: "restaurant",
-          foreignField: "_id",
-          as: "restaurant"
-        }
-      },
-      { $unwind: { path: "$restaurant", preserveNullAndEmptyArrays: true } },
-      {
-        $addFields: {
-          food_image: "$foodImage",
-          image: "$foodImage",
-          "restaurant.restaurant_name": "$restaurant.restaurantName",
-          "restaurant.image": "$restaurant.logo"
-        }
-      },
-      {
-        $project: {
-          "restaurant.password": 0,
-          "category.isActive": 0
-        }
+      orderBy: [
+        { rating: 'desc' },
+        { totalReviews: 'desc' }
+      ],
+      take: limit,
+      distinct: ['name']
+    });
+
+    // Add aliases for frontend compatibility
+    const formattedItems = topRatedItems.map(item => ({
+      ...item,
+      food_image: item.foodImage,
+      image: item.foodImage,
+      restaurant: {
+        ...item.restaurant,
+        restaurant_name: item.restaurant.restaurantName,
+        image: item.restaurant.logo
       }
-    ]);
+    }));
 
     res.json({
       success: true,
       message: "Top rated items retrieved successfully",
-      data: topRatedItems
+      data: formattedItems
     });
   } catch (error) {
     console.error("Get top rated items error:", error);
@@ -343,16 +331,8 @@ router.get("/top-rated", cacheMiddleware(cache.CACHE_KEYS.FOOD_TOP_RATED, 600), 
 
 // ==================== ORDER HISTORY ====================
 
-/**
- * @route   GET /api/foods/order-history
- * @desc    Get food order history for current user (for Order Again section)
- * @access  Protected
- * IMPORTANT: This must come BEFORE /:foodId route
- */
 router.get("/order-history", protect, async (req, res) => {
   try {
-    const Order = require('../models/Order');
-
     // Return empty array if no user authentication
     if (!req.user && !req.headers['x-user-id']) {
       return res.status(200).json({
@@ -362,24 +342,34 @@ router.get("/order-history", protect, async (req, res) => {
       });
     }
 
-    const userId = req.user?._id || req.headers['x-user-id'];
+    const userId = req.user?.id || req.headers['x-user-id'];
 
     // Get completed food orders for the user
-    const orders = await Order.find({
-      customer: userId,
-      orderType: 'food',
-      status: 'delivered'
-    })
-      .populate({
-        path: 'items.food',
-        model: Food,
-        populate: [
-          { path: 'category', model: Category },
-          { path: 'restaurant', model: Restaurant }
-        ]
-      })
-      .sort({ deliveredDate: -1, orderDate: -1 })
-      .limit(50);
+    const orders = await prisma.order.findMany({
+      where: {
+        customerId: userId,
+        orderType: 'food',
+        status: 'delivered'
+      },
+      include: {
+        items: {
+          where: { itemType: 'food' },
+          include: {
+            food: {
+              include: {
+                category: true,
+                restaurant: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: [
+        { deliveredDate: 'desc' },
+        { orderDate: 'desc' }
+      ],
+      take: 50
+    });
 
     if (!orders || orders.length === 0) {
       return res.status(200).json({
@@ -395,7 +385,7 @@ router.get("/order-history", protect, async (req, res) => {
     orders.forEach(order => {
       order.items.forEach(item => {
         if (item.itemType === 'food' && item.food) {
-          const itemId = item.food._id.toString();
+          const itemId = item.food.id;
 
           if (!itemsMap.has(itemId)) {
             itemsMap.set(itemId, {
@@ -423,8 +413,8 @@ router.get("/order-history", protect, async (req, res) => {
       .sort((a, b) => b.lastOrdered - a.lastOrdered)
       .slice(0, 20) // Limit to 20 most recent items
       .map(({ item, lastOrdered, timesOrdered, totalQuantity }) => ({
-        ...item.toObject(),
-        lastOrderedAt: lastOrdered, // Renamed for frontend consistency
+        ...item,
+        lastOrderedAt: lastOrdered,
         timesOrdered,
         totalQuantity
       }));
@@ -445,6 +435,7 @@ router.get("/order-history", protect, async (req, res) => {
   }
 });
 
+// Create new food
 router.post(
   "/",
   protect,
@@ -481,7 +472,10 @@ router.post(
         ingredients,
       } = req.body;
 
-      const categoryDoc = await Category.findById(category);
+      // Verify category exists
+      const categoryDoc = await prisma.category.findUnique({
+        where: { id: category }
+      });
       if (!categoryDoc) {
         return res.status(404).json({
           success: false,
@@ -489,7 +483,10 @@ router.post(
         });
       }
 
-      const restaurantDoc = await Restaurant.findById(restaurant);
+      // Verify restaurant exists
+      const restaurantDoc = await prisma.restaurant.findUnique({
+        where: { id: restaurant }
+      });
       if (!restaurantDoc) {
         return res.status(404).json({
           success: false,
@@ -501,28 +498,35 @@ router.post(
         req.file?.cloudinaryUrl ||
         (req.file ? getFileUrl(req.file.filename) : null);
 
-      const food = await Food.create({
-        name,
-        description,
-        price: parseFloat(price),
-        category,
-        restaurant,
-        foodImage,
-        isAvailable:
-          isAvailable !== undefined
-            ? isAvailable === "true" || isAvailable === true
-            : true,
-        ingredients: ingredients
-          ? Array.isArray(ingredients)
-            ? ingredients
-            : [ingredients]
-          : [],
-        rating: rating ? parseFloat(rating) : 0,
-        totalReviews: totalReviews ? parseInt(totalReviews) : 0,
+      const food = await prisma.food.create({
+        data: {
+          name,
+          description: description || null,
+          price: parseFloat(price),
+          categoryId: category,
+          restaurantId: restaurant,
+          foodImage,
+          isAvailable:
+            isAvailable !== undefined
+              ? isAvailable === "true" || isAvailable === true
+              : true,
+          ingredients: ingredients
+            ? Array.isArray(ingredients)
+              ? ingredients
+              : [ingredients]
+            : [],
+          rating: rating ? parseFloat(rating) : 0,
+          totalReviews: totalReviews ? parseInt(totalReviews) : 0,
+        },
+        include: {
+          category: {
+            select: { id: true, name: true }
+          },
+          restaurant: {
+            select: { id: true, restaurantName: true, logo: true }
+          }
+        }
       });
-
-      await food.populate("category", "name");
-      await food.populate("restaurant", "restaurantName logo");
 
       // Invalidate related caches
       await invalidateCache([
@@ -550,9 +554,17 @@ router.post(
 // Get single food item with caching (10 minutes)
 router.get("/:foodId", cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM, 600), async (req, res) => {
   try {
-    const food = await Food.findById(req.params.foodId)
-      .populate("category", "name")
-      .populate("restaurant", "restaurantName logo location phone");
+    const food = await prisma.food.findUnique({
+      where: { id: req.params.foodId },
+      include: {
+        category: {
+          select: { id: true, name: true }
+        },
+        restaurant: {
+          select: { id: true, restaurantName: true, logo: true, address: true, city: true, phone: true }
+        }
+      }
+    });
 
     if (!food) {
       return res.status(404).json({
@@ -576,6 +588,7 @@ router.get("/:foodId", cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM, 600), async (
   }
 });
 
+// Update food
 router.put(
   "/:foodId",
   protect,
@@ -583,7 +596,10 @@ router.put(
   uploadToCloudinary,
   async (req, res) => {
     try {
-      const food = await Food.findById(req.params.foodId);
+      const food = await prisma.food.findUnique({
+        where: { id: req.params.foodId }
+      });
+
       if (!food) {
         return res.status(404).json({
           success: false,
@@ -602,19 +618,22 @@ router.put(
         ingredients,
       } = req.body;
 
-      if (name) food.name = name;
-      if (description !== undefined) food.description = description;
-      if (price) food.price = parseFloat(price);
-      if (category) food.category = category;
+      const updateData = {};
+
+      if (name) updateData.name = name;
+      if (description !== undefined) updateData.description = description;
+      if (price) updateData.price = parseFloat(price);
+      if (category) updateData.categoryId = category;
       if (isAvailable !== undefined)
-        food.isAvailable = isAvailable === "true" || isAvailable === true;
+        updateData.isAvailable = isAvailable === "true" || isAvailable === true;
       if (ingredients !== undefined)
-        food.ingredients = Array.isArray(ingredients)
+        updateData.ingredients = Array.isArray(ingredients)
           ? ingredients
           : [ingredients];
-      if (rating !== undefined) food.rating = parseFloat(rating);
+      if (rating !== undefined) updateData.rating = parseFloat(rating);
       if (totalReviews !== undefined)
-        food.totalReviews = parseInt(totalReviews);
+        updateData.totalReviews = parseInt(totalReviews);
+
       if (req.file) {
         if (food.foodImage && food.foodImage.includes("cloudinary.com")) {
           try {
@@ -625,13 +644,22 @@ router.put(
             console.error("Error deleting old food image:", error);
           }
         }
-        food.foodImage =
+        updateData.foodImage =
           req.file.cloudinaryUrl || getFileUrl(req.file.filename);
       }
 
-      await food.save();
-      await food.populate("category", "name");
-      await food.populate("restaurant", "restaurantName logo location");
+      const updatedFood = await prisma.food.update({
+        where: { id: req.params.foodId },
+        data: updateData,
+        include: {
+          category: {
+            select: { id: true, name: true }
+          },
+          restaurant: {
+            select: { id: true, restaurantName: true, logo: true, address: true, city: true }
+          }
+        }
+      });
 
       // Invalidate all food caches
       await invalidateCache([
@@ -645,7 +673,7 @@ router.put(
       res.json({
         success: true,
         message: "Food updated successfully",
-        data: food,
+        data: updatedFood,
       });
     } catch (error) {
       console.error("Update food error:", error);

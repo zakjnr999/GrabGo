@@ -1,9 +1,48 @@
 const express = require('express');
 const router = express.Router();
-const GrabMartStore = require('../models/GrabMartStore');
-const GrabMartCategory = require('../models/GrabMartCategory');
-const GrabMartItem = require('../models/GrabMartItem');
+const prisma = require('../config/prisma');
 const { protect } = require('../middleware/auth');
+
+/**
+ * Helper to format GrabMart store for frontend compatibility
+ */
+const formatStore = (store) => {
+    if (!store) return null;
+    const formatted = {
+        ...store,
+        // Legacy support mapping
+        store_name: store.storeName,
+        is_open: store.isOpen,
+        delivery_fee: store.deliveryFee,
+        min_order: store.minOrder,
+    };
+
+    // Construct location object if coordinates exist
+    if (store.longitude !== undefined && store.latitude !== undefined) {
+        formatted.location = {
+            type: 'Point',
+            coordinates: [store.longitude, store.latitude],
+            address: store.address,
+            city: store.city,
+            area: store.area
+        };
+    }
+
+    return formatted;
+};
+
+/**
+ * Helper to format GrabMart item for frontend compatibility
+ */
+const formatItem = (item) => {
+    if (!item) return null;
+    const formatted = {
+        ...item,
+        // Ensure store is formatted if it exists and is an object
+        store: (item.store && typeof item.store === 'object') ? formatStore(item.store) : item.store
+    };
+    return formatted;
+};
 
 // ==================== STORES ====================
 
@@ -16,44 +55,39 @@ router.get("/stores", async (req, res) => {
     try {
         const { isOpen, is24Hours, minRating, limit = 20 } = req.query;
 
-        let query = {};
+        const where = { status: 'approved' };
 
-        // Filter by open status
         if (isOpen !== undefined) {
-            query.isOpen = isOpen === 'true';
+            where.isOpen = isOpen === 'true';
         }
 
-        // Filter by 24-hour availability
         if (is24Hours !== undefined) {
-            query.is24Hours = is24Hours === 'true';
+            where.is24Hours = is24Hours === 'true';
         }
 
-        // Filter by minimum rating
         if (minRating) {
             const rating = parseFloat(minRating);
-            if (!isNaN(rating) && rating >= 0 && rating <= 5) {
-                query.rating = { $gte: rating };
+            if (!isNaN(rating)) {
+                where.rating = { gte: rating };
             }
         }
 
-        // Validate and sanitize limit
-        let limitValue = parseInt(limit);
-        if (isNaN(limitValue) || limitValue < 1) {
-            limitValue = 20;
-        }
-        if (limitValue > 100) {
-            limitValue = 100;
-        }
+        let limitValue = Math.min(parseInt(limit) || 20, 100);
 
-        const stores = await GrabMartStore.find({ ...query, status: 'approved' })
-            .sort({ rating: -1, totalReviews: -1 })
-            .limit(limitValue);
+        const stores = await prisma.grabMartStore.findMany({
+            where,
+            orderBy: [
+                { rating: 'desc' },
+                { ratingCount: 'desc' }
+            ],
+            take: limitValue
+        });
 
         res.json({
             success: true,
             message: "GrabMart stores retrieved successfully",
             count: stores.length,
-            data: stores
+            data: stores.map(formatStore)
         });
     } catch (error) {
         console.error("Get GrabMart stores error:", error);
@@ -69,7 +103,6 @@ router.get("/stores", async (req, res) => {
  * @route   GET /api/grabmart/search
  * @desc    Search GrabMart stores
  * @access  Public
- * NOTE: This route MUST come before /stores/:id to avoid route conflicts
  */
 router.get("/search", async (req, res) => {
     try {
@@ -82,39 +115,36 @@ router.get("/search", async (req, res) => {
             });
         }
 
-        let query = {
+        const where = {
             status: 'approved',
-            $or: [
-                { storeName: { $regex: q, $options: 'i' } },
-                { description: { $regex: q, $options: 'i' } },
-                { categories: { $in: [new RegExp(q, 'i')] } },
-                { 'location.address': { $regex: q, $options: 'i' } },
-                { 'location.city': { $regex: q, $options: 'i' } },
-                { 'location.area': { $regex: q, $options: 'i' } }
+            OR: [
+                { storeName: { contains: q, mode: 'insensitive' } },
+                { description: { contains: q, mode: 'insensitive' } },
+                { address: { contains: q, mode: 'insensitive' } },
+                { city: { contains: q, mode: 'insensitive' } },
+                { area: { contains: q, mode: 'insensitive' } }
             ]
         };
 
-        // Filter by services
         if (services) {
-            const serviceArray = services.split(',');
-            query.services = { $in: serviceArray };
+            where.services = { hasSome: services.split(',') };
         }
 
-        // Filter by product types
         if (productTypes) {
-            const productTypeArray = productTypes.split(',');
-            query.productTypes = { $in: productTypeArray };
+            where.productTypes = { hasSome: productTypes.split(',') };
         }
 
-        const stores = await GrabMartStore.find(query)
-            .sort({ rating: -1 })
-            .limit(30);
+        const stores = await prisma.grabMartStore.findMany({
+            where,
+            orderBy: { rating: 'desc' },
+            take: 30
+        });
 
         res.json({
             success: true,
             message: "Search results retrieved successfully",
             count: stores.length,
-            data: stores
+            data: stores.map(formatStore)
         });
     } catch (error) {
         console.error("Search GrabMart stores error:", error);
@@ -135,8 +165,10 @@ router.get("/search", async (req, res) => {
  */
 router.get("/categories", async (req, res) => {
     try {
-        const categories = await GrabMartCategory.find({ isActive: true })
-            .sort({ sortOrder: 1 });
+        const categories = await prisma.grabMartCategory.findMany({
+            where: { isActive: true },
+            orderBy: { sortOrder: 'asc' }
+        });
 
         res.json({
             success: true,
@@ -165,42 +197,45 @@ router.get("/items", async (req, res) => {
     try {
         const { category, store, minPrice, maxPrice, tags } = req.query;
 
-        let query = { isAvailable: true };
+        const where = { isAvailable: true };
 
-        // Filter by category
-        if (category) {
-            query.category = category;
-        }
+        if (category) where.categoryId = category;
+        if (store) where.storeId = store;
 
-        // Filter by store
-        if (store) {
-            query.store = store;
-        }
-
-        // Filter by price range
         if (minPrice || maxPrice) {
-            query.price = {};
-            if (minPrice) query.price.$gte = parseFloat(minPrice);
-            if (maxPrice) query.price.$lte = parseFloat(maxPrice);
+            where.price = {};
+            if (minPrice) where.price.gte = parseFloat(minPrice);
+            if (maxPrice) where.price.lte = parseFloat(maxPrice);
         }
 
-        // Filter by tags
         if (tags) {
-            const tagArray = tags.split(',');
-            query.tags = { $in: tagArray };
+            where.tags = { hasSome: tags.split(',') };
         }
 
-        const items = await GrabMartItem.find(query)
-            .populate('category', 'name emoji')
-            .populate('store', 'store_name logo')
-            .sort({ orderCount: -1 })
-            .limit(50);
+        const items = await prisma.grabMartItem.findMany({
+            where,
+            include: {
+                category: { select: { name: true, emoji: true } },
+                store: {
+                    select: {
+                        id: true,
+                        storeName: true,
+                        logo: true,
+                        isOpen: true,
+                        deliveryFee: true,
+                        minOrder: true
+                    }
+                }
+            },
+            orderBy: { orderCount: 'desc' },
+            take: 50
+        });
 
         res.json({
             success: true,
             message: "GrabMart items retrieved successfully",
             count: items.length,
-            data: items
+            data: items.map(formatItem)
         });
     } catch (error) {
         console.error("Get GrabMart items error:", error);
@@ -219,18 +254,21 @@ router.get("/items", async (req, res) => {
  */
 router.get("/24-hours", async (req, res) => {
     try {
-        const stores = await GrabMartStore.find({
-            is24Hours: true,
-            isOpen: true
-        })
-            .sort({ rating: -1 })
-            .limit(10);
+        const stores = await prisma.grabMartStore.findMany({
+            where: {
+                is24Hours: true,
+                isOpen: true,
+                status: 'approved'
+            },
+            orderBy: { rating: 'desc' },
+            take: 10
+        });
 
         res.json({
             success: true,
             message: "24-hour GrabMart stores retrieved successfully",
             count: stores.length,
-            data: stores
+            data: stores.map(formatStore)
         });
     } catch (error) {
         console.error("Get 24-hour GrabMart stores error:", error);
@@ -258,20 +296,21 @@ router.get("/with-services", async (req, res) => {
             });
         }
 
-        const serviceArray = services.split(',');
-
-        const stores = await GrabMartStore.find({
-            services: { $in: serviceArray },
-            isOpen: true
-        })
-            .sort({ rating: -1 })
-            .limit(20);
+        const stores = await prisma.grabMartStore.findMany({
+            where: {
+                services: { hasSome: services.split(',') },
+                isOpen: true,
+                status: 'approved'
+            },
+            orderBy: { rating: 'desc' },
+            take: 20
+        });
 
         res.json({
             success: true,
             message: "GrabMart stores with services retrieved successfully",
             count: stores.length,
-            data: stores
+            data: stores.map(formatStore)
         });
     } catch (error) {
         console.error("Get GrabMart stores with services error:", error);
@@ -285,7 +324,7 @@ router.get("/with-services", async (req, res) => {
 
 /**
  * @route   GET /api/grabmart/nearby
- * @desc    Get nearby GrabMart stores based on location
+ * @desc    Get nearby GrabMart stores using PostGIS
  * @access  Public
  */
 router.get("/nearby", async (req, res) => {
@@ -303,54 +342,31 @@ router.get("/nearby", async (req, res) => {
         const longitude = parseFloat(lng);
         const radiusInKm = parseFloat(radius);
 
-        // Validate coordinates
-        if (isNaN(latitude) || isNaN(longitude) || isNaN(radiusInKm)) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid coordinates or radius"
-            });
-        }
-
-        if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-            return res.status(400).json({
-                success: false,
-                message: "Latitude must be between -90 and 90, longitude between -180 and 180"
-            });
-        }
-
-        if (radiusInKm <= 0 || radiusInKm > 100) {
-            return res.status(400).json({
-                success: false,
-                message: "Radius must be between 0 and 100 km"
-            });
-        }
-
-        // Use aggregation for $geoNear which provides the distance in the output
-        const nearbyStores = await GrabMartStore.aggregate([
-            {
-                $geoNear: {
-                    near: { type: "Point", coordinates: [longitude, latitude] },
-                    distanceField: "distance",
-                    maxDistance: radiusInKm * 1000,
-                    query: { isOpen: true, status: 'approved' },
-                    spherical: true
-                }
-            },
-            { $limit: 20 },
-            {
-                $addFields: {
-                    id: "$_id",
-                    // Convert distance from meters to kilometers
-                    distance: { $divide: ["$distance", 1000] }
-                }
-            }
-        ]);
+        const nearbyStores = await prisma.$queryRaw`
+            SELECT *, 
+            ST_Distance(
+                ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography,
+                ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography
+            ) AS distance
+            FROM grabmart_stores
+            WHERE status = 'approved' AND "isOpen" = true
+            AND ST_DWithin(
+                ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography,
+                ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography,
+                ${radiusInKm * 1000}
+            )
+            ORDER BY distance ASC
+            LIMIT 20
+        `;
 
         res.json({
             success: true,
             message: "Nearby GrabMart stores retrieved successfully",
             count: nearbyStores.length,
-            data: nearbyStores
+            data: nearbyStores.map(store => ({
+                ...formatStore(store),
+                distance: store.distance
+            }))
         });
     } catch (error) {
         console.error("Get nearby GrabMart stores error:", error);
@@ -371,27 +387,29 @@ router.get("/payment-methods", async (req, res) => {
     try {
         const { cash, card, mobileMoney } = req.query;
 
-        let query = { isOpen: true };
+        const where = { isOpen: true, status: 'approved' };
 
         if (cash === 'true') {
-            query.acceptsCash = true;
+            where.acceptsCash = true;
         }
         if (card === 'true') {
-            query.acceptsCard = true;
+            where.acceptsCard = true;
         }
         if (mobileMoney === 'true') {
-            query.acceptsMobileMoney = true;
+            where.acceptsMobileMoney = true;
         }
 
-        const stores = await GrabMartStore.find(query)
-            .sort({ rating: -1 })
-            .limit(20);
+        const stores = await prisma.grabMartStore.findMany({
+            where,
+            orderBy: { rating: 'desc' },
+            take: 20
+        });
 
         res.json({
             success: true,
             message: "GrabMart stores retrieved successfully",
             count: stores.length,
-            data: stores
+            data: stores.map(formatStore)
         });
     } catch (error) {
         console.error("Get GrabMart stores by payment methods error:", error);
@@ -407,19 +425,12 @@ router.get("/payment-methods", async (req, res) => {
  * @route   GET /api/grabmart/stores/:id
  * @desc    Get GrabMart store by ID
  * @access  Public
- * NOTE: This route MUST come after specific routes like /search, /24-hours, etc.
  */
 router.get("/stores/:id", async (req, res) => {
     try {
-        // Validate MongoDB ObjectId format
-        if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid store ID format"
-            });
-        }
-
-        const store = await GrabMartStore.findById(req.params.id);
+        const store = await prisma.grabMartStore.findUnique({
+            where: { id: req.params.id }
+        });
 
         if (!store) {
             return res.status(404).json({
@@ -431,7 +442,7 @@ router.get("/stores/:id", async (req, res) => {
         res.json({
             success: true,
             message: "GrabMart store retrieved successfully",
-            data: store
+            data: formatStore(store)
         });
     } catch (error) {
         console.error("Get GrabMart store error:", error);
@@ -442,19 +453,5 @@ router.get("/stores/:id", async (req, res) => {
         });
     }
 });
-
-// Helper function to calculate distance between two coordinates (Haversine formula)
-function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371; // Radius of the Earth in km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c;
-    return distance;
-}
 
 module.exports = router;

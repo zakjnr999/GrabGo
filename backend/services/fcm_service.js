@@ -1,5 +1,5 @@
 const admin = require('firebase-admin');
-const User = require('../models/User');
+const prisma = require('../config/prisma');
 const { validateFCMToken, validatePlatform, validateDeviceId } = require('../utils/validation');
 
 // Text truncation limits (shared with notification_service.js)
@@ -114,44 +114,51 @@ const registerToken = async (userId, token, deviceId = null, platform = 'android
             throw new Error('Invalid device ID format');
         }
 
-        const user = await User.findById(userId);
+        const user = await prisma.user.findUnique({
+            where: { id: userId }
+        });
+
         if (!user) {
             throw new Error('User not found');
         }
 
-        // Use atomic operations to prevent race conditions
-        // First, remove any existing token with the same deviceId or token value
-        await User.findByIdAndUpdate(userId, {
-            $pull: {
-                fcmTokens: {
-                    $or: [
+        // Use a transaction for atomic cleanup and registration
+        await prisma.$transaction(async (tx) => {
+            // 1. Remove existing token entry for this token or this device (if deviceId provided)
+            await tx.userFcmToken.deleteMany({
+                where: {
+                    userId,
+                    OR: [
                         { token: token },
                         ...(deviceId ? [{ deviceId: deviceId }] : [])
                     ]
                 }
+            });
+
+            // 2. Add the new token
+            await tx.userFcmToken.create({
+                data: {
+                    userId,
+                    token,
+                    deviceId,
+                    platform: platform.toLowerCase()
+                }
+            });
+
+            // 3. Keep only the 5 most recently updated tokens
+            const tokens = await tx.userFcmToken.findMany({
+                where: { userId },
+                orderBy: { updatedAt: 'desc' },
+                select: { id: true }
+            });
+
+            if (tokens.length > 5) {
+                const tokenIdsToDelete = tokens.slice(5).map(t => t.id);
+                await tx.userFcmToken.deleteMany({
+                    where: { id: { in: tokenIdsToDelete } }
+                });
             }
         });
-
-        // Then add the new token
-        await User.findByIdAndUpdate(
-            userId,
-            {
-                $push: {
-                    fcmTokens: {
-                        $each: [{
-                            token,
-                            deviceId,
-                            platform,
-                            createdAt: new Date(),
-                            updatedAt: new Date(),
-                        }],
-                        $position: 0, // Add to the beginning
-                        $slice: 5 // Keep only the last 5 tokens
-                    }
-                }
-            },
-            { new: true }
-        );
 
         console.log(`✅ FCM token registered for user ${userId} (platform: ${platform}, deviceId: ${deviceId || 'none'})`);
         return true;
@@ -168,8 +175,11 @@ const registerToken = async (userId, token, deviceId = null, platform = 'android
  */
 const removeToken = async (userId, token) => {
     try {
-        await User.findByIdAndUpdate(userId, {
-            $pull: { fcmTokens: { token } }
+        await prisma.userFcmToken.deleteMany({
+            where: {
+                userId,
+                token
+            }
         });
         console.log(`FCM token removed for user ${userId}`);
         return true;
@@ -192,7 +202,14 @@ const sendToUser = async (userId, notification, data = {}) => {
     }
 
     try {
-        const user = await User.findById(userId).select('fcmTokens notificationSettings');
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                fcmTokens: true,
+                notificationSettings: true
+            }
+        });
+
         if (!user || !user.fcmTokens || user.fcmTokens.length === 0) {
             return { success: false, reason: 'no_tokens' };
         }
@@ -213,7 +230,7 @@ const sendToUser = async (userId, notification, data = {}) => {
         };
 
         const settingKey = settingsMap[data.type];
-        if (settingKey && !user.notificationSettings?.[settingKey]) {
+        if (settingKey && user.notificationSettings && !user.notificationSettings[settingKey]) {
             return { success: false, reason: 'notifications_disabled' };
         }
 
@@ -309,8 +326,11 @@ const sendToUser = async (userId, notification, data = {}) => {
 
         // Remove invalid tokens
         if (invalidTokens.length > 0) {
-            await User.findByIdAndUpdate(userId, {
-                $pull: { fcmTokens: { token: { $in: invalidTokens } } }
+            await prisma.userFcmToken.deleteMany({
+                where: {
+                    userId,
+                    token: { in: invalidTokens }
+                }
             });
             console.log(`Removed ${invalidTokens.length} invalid FCM tokens for user ${userId}`);
         }
