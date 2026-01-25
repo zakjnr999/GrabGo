@@ -4,9 +4,12 @@ WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm install --only=production
+RUN npm install --omit=dev
 
 COPY . .
+
+# Generate Prisma Client for the target environment
+RUN npx prisma generate
 
 RUN mkdir -p uploads
 
