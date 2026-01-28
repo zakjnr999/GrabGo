@@ -4,11 +4,23 @@ const geofenceService = require('./geofence_service');
 const OrderTracking = require('../models/OrderTracking');
 const socketService = require('./socket_service');
 const prisma = require('../config/prisma');
+const cache = require('../utils/cache');
 
 const googleMapsClient = new Client({});
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
+// Configuration for Redis-based location caching
+const LOCATION_CACHE_TTL = 30;
+const MONGO_PERSIST_INTERVAL = 10000;
+const LOCATION_HISTORY_BATCH_SIZE = 5;
+
 class TrackingService {
+    constructor() {
+        // Track pending location updates per order (for batching)
+        this.pendingLocations = new Map();
+        // Track last MongoDB persist time per order
+        this.lastPersistTime = new Map();
+    }
     /**
      * Initialize tracking for a new order in MongoDB
      */
@@ -39,89 +51,255 @@ class TrackingService {
     }
 
     /**
-     * Update rider's current location in MongoDB
+     * Update rider's current location with Redis caching for performance
+     * Stores latest location in Redis for fast reads, batches writes to MongoDB
      */
     async updateRiderLocation(orderId, latitude, longitude, speed = 0, accuracy = 0) {
         try {
-            const tracking = await OrderTracking.findOne({
-                orderId: orderId.toString(),
-                status: { $nin: ['delivered', 'cancelled'] }
-            });
+            const orderIdStr = orderId.toString();
+            const cacheKey = cache.makeKey(cache.CACHE_KEYS.ORDER_TRACKING, orderIdStr);
+            const now = Date.now();
 
-            if (!tracking) {
-                console.warn(`⚠️ Active tracking not found for order ${orderId}`);
-                throw new Error('Active tracking not found for this order');
+            // Try to get tracking metadata from cache first
+            let trackingMeta = await cache.get(cacheKey);
+
+            if (!trackingMeta) {
+                // Cache miss - fetch from MongoDB and cache it
+                const tracking = await OrderTracking.findOne({
+                    orderId: orderIdStr,
+                    status: { $nin: ['delivered', 'cancelled'] }
+                }).lean();
+
+                if (!tracking) {
+                    console.warn(`⚠️ Active tracking not found for order ${orderId}`);
+                    throw new Error('Active tracking not found for this order');
+                }
+
+                trackingMeta = {
+                    orderId: orderIdStr,
+                    riderId: tracking.riderId,
+                    customerId: tracking.customerId,
+                    destination: tracking.destination,
+                    pickupLocation: tracking.pickupLocation,
+                    status: tracking.status,
+                    route: tracking.route
+                };
+
+                // Cache tracking metadata (longer TTL since it rarely changes)
+                await cache.set(cacheKey, trackingMeta, 300); // 5 minutes
             }
 
-            // Update current location (GeoJSON format: [long, lat])
-            tracking.currentLocation = {
-                type: 'Point',
-                coordinates: [longitude, latitude]
-            };
-
-            // Add to embedded location history in MongoDB
-            tracking.locationHistory.push({
-                coordinates: [longitude, latitude],
-                timestamp: new Date(),
+            // Store current location in Redis (fast write)
+            const locationKey = cache.makeKey(cache.CACHE_KEYS.RIDER_LOCATION, orderIdStr);
+            const locationData = {
+                latitude,
+                longitude,
                 speed,
-                accuracy
-            });
-
-            // Keep only last 100 locations to prevent document bloat
-            if (tracking.locationHistory.length > 100) {
-                tracking.locationHistory = tracking.locationHistory.slice(-100);
-            }
+                accuracy,
+                timestamp: now
+            };
+            await cache.set(locationKey, locationData, LOCATION_CACHE_TTL);
 
             // Calculate distance to destination
             const distance = geolib.getDistance(
                 { latitude, longitude },
                 {
-                    latitude: tracking.destination.coordinates[1],
-                    longitude: tracking.destination.coordinates[0]
+                    latitude: trackingMeta.destination.coordinates[1],
+                    longitude: trackingMeta.destination.coordinates[0]
                 }
             );
 
-            tracking.distanceRemaining = distance;
-
-            // Update status based on distance
-            if (distance < 100 && tracking.status === 'in_transit') {
-                tracking.status = 'nearby';
+            // Check if status should change
+            let status = trackingMeta.status;
+            if (distance < 100 && status === 'in_transit') {
+                status = 'nearby';
+                trackingMeta.status = status;
+                await cache.set(cacheKey, trackingMeta, 300);
             }
 
-            // Calculate ETA
-            const eta = await this.calculateETA(latitude, longitude, tracking.destination.coordinates);
-            tracking.estimatedArrival = eta.arrivalTime;
-            tracking.route = eta.route;
-
-            tracking.lastUpdated = new Date();
-            await tracking.save();
+            // Calculate ETA (throttle to avoid excessive API calls)
+            let eta = { duration: null, route: trackingMeta.route };
+            const lastEtaKey = `${cacheKey}:lastEta`;
+            const lastEtaTime = await cache.get(lastEtaKey);
+            
+            // Only recalculate ETA every 30 seconds
+            if (!lastEtaTime || (now - lastEtaTime) > 30000) {
+                eta = await this.calculateETA(latitude, longitude, trackingMeta.destination.coordinates);
+                await cache.set(lastEtaKey, now, 60);
+                
+                // Update route in cached metadata if changed
+                if (eta.route) {
+                    trackingMeta.route = eta.route;
+                    await cache.set(cacheKey, trackingMeta, 300);
+                }
+            }
 
             // Prepare update data for real-time broadcast
             const updateData = {
-                orderId: orderId.toString(),
+                orderId: orderIdStr,
                 location: { latitude, longitude },
-                distance: distance,
+                distance,
                 eta: eta.duration,
-                status: tracking.status,
-                route: tracking.route
+                status,
+                route: eta.route || trackingMeta.route
             };
 
-            // Broadcast update to order room
-            socketService.emitToOrder(orderId.toString(), 'location_update', updateData);
+            // Broadcast update to order room (immediate)
+            socketService.emitToOrder(orderIdStr, 'location_update', updateData);
+            socketService.emitToUser(trackingMeta.customerId.toString(), 'location_update', updateData);
 
-            // Also emit to specific customer
-            socketService.emitToUser(tracking.customerId.toString(), 'location_update', updateData);
+            // Queue location for batch persistence to MongoDB
+            await this._queueLocationForPersistence(orderIdStr, {
+                coordinates: [longitude, latitude],
+                timestamp: new Date(now),
+                speed,
+                accuracy
+            }, distance, status, eta);
 
             // Check geofences (automated notifications)
             if (geofenceService && typeof geofenceService.checkGeofences === 'function') {
                 await geofenceService.checkGeofences(orderId, latitude, longitude);
             }
 
-            return tracking;
+            return { ...trackingMeta, currentLocation: locationData, distance, eta: eta.duration };
         } catch (error) {
             console.error('❌ Error updating rider location:', error);
             throw error;
         }
+    }
+
+    /**
+     * Queue location updates and batch persist to MongoDB
+     * Reduces MongoDB write operations significantly
+     */
+    async _queueLocationForPersistence(orderId, locationEntry, distance, status, eta) {
+        // Initialize queue for this order if not exists
+        if (!this.pendingLocations.has(orderId)) {
+            this.pendingLocations.set(orderId, []);
+        }
+
+        const queue = this.pendingLocations.get(orderId);
+        queue.push(locationEntry);
+
+        const lastPersist = this.lastPersistTime.get(orderId) || 0;
+        const now = Date.now();
+        const shouldPersist = 
+            queue.length >= LOCATION_HISTORY_BATCH_SIZE ||
+            (now - lastPersist) >= MONGO_PERSIST_INTERVAL;
+
+        if (shouldPersist) {
+            await this._persistToMongoDB(orderId, queue, distance, status, eta);
+            this.pendingLocations.set(orderId, []);
+            this.lastPersistTime.set(orderId, now);
+        }
+    }
+
+    /**
+     * Persist batched location updates to MongoDB
+     */
+    async _persistToMongoDB(orderId, locationBatch, distance, status, eta) {
+        try {
+            const latestLocation = locationBatch[locationBatch.length - 1];
+
+            await OrderTracking.findOneAndUpdate(
+                { orderId },
+                {
+                    $set: {
+                        currentLocation: {
+                            type: 'Point',
+                            coordinates: latestLocation.coordinates
+                        },
+                        distanceRemaining: distance,
+                        status,
+                        estimatedArrival: eta.arrivalTime || null,
+                        route: eta.route || null,
+                        lastUpdated: new Date()
+                    },
+                    $push: {
+                        locationHistory: {
+                            $each: locationBatch,
+                            $slice: -100 // Keep only last 100
+                        }
+                    }
+                }
+            );
+
+            console.log(`📍 Persisted ${locationBatch.length} locations to MongoDB for order ${orderId}`);
+        } catch (error) {
+            console.error(`❌ Error persisting locations for order ${orderId}:`, error);
+            // Don't throw - we don't want to break the real-time flow
+        }
+    }
+
+    /**
+     * Get rider's current location from Redis (fast) with MongoDB fallback
+     */
+    async getRiderLocation(orderId) {
+        const orderIdStr = orderId.toString();
+        const locationKey = cache.makeKey(cache.CACHE_KEYS.RIDER_LOCATION, orderIdStr);
+
+        // Try Redis first
+        const cachedLocation = await cache.get(locationKey);
+        if (cachedLocation) {
+            return cachedLocation;
+        }
+
+        // Fallback to MongoDB
+        const tracking = await OrderTracking.findOne(
+            { orderId: orderIdStr },
+            { currentLocation: 1 }
+        ).lean();
+
+        if (tracking?.currentLocation) {
+            return {
+                latitude: tracking.currentLocation.coordinates[1],
+                longitude: tracking.currentLocation.coordinates[0],
+                timestamp: tracking.lastUpdated
+            };
+        }
+
+        return null;
+    }
+
+    /**
+     * Flush pending locations to MongoDB (call on order completion or server shutdown)
+     */
+    async flushPendingLocations(orderId = null) {
+        const ordersToFlush = orderId 
+            ? [orderId] 
+            : Array.from(this.pendingLocations.keys());
+
+        for (const oid of ordersToFlush) {
+            const queue = this.pendingLocations.get(oid);
+            if (queue && queue.length > 0) {
+                // Get latest tracking data for the flush
+                const cacheKey = cache.makeKey(cache.CACHE_KEYS.ORDER_TRACKING, oid);
+                const meta = await cache.get(cacheKey);
+                
+                await this._persistToMongoDB(
+                    oid, 
+                    queue, 
+                    meta?.distanceRemaining || 0,
+                    meta?.status || 'in_transit',
+                    { arrivalTime: null, route: meta?.route }
+                );
+                this.pendingLocations.delete(oid);
+                this.lastPersistTime.delete(oid);
+            }
+        }
+
+        console.log(`📍 Flushed pending locations for ${ordersToFlush.length} orders`);
+    }
+
+    /**
+     * Clear tracking cache when order is completed/cancelled
+     */
+    async clearTrackingCache(orderId) {
+        const orderIdStr = orderId.toString();
+        await this.flushPendingLocations(orderIdStr);
+        await cache.del(cache.makeKey(cache.CACHE_KEYS.ORDER_TRACKING, orderIdStr));
+        await cache.del(cache.makeKey(cache.CACHE_KEYS.RIDER_LOCATION, orderIdStr));
+        console.log(`🗑️ Cleared tracking cache for order ${orderId}`);
     }
 
     /**
@@ -221,12 +399,14 @@ class TrackingService {
     }
 
     /**
-     * Update order status in MongoDB
+     * Update order status in MongoDB and cache
      */
     async updateOrderStatus(orderId, status) {
         try {
+            const orderIdStr = orderId.toString();
+            
             const tracking = await OrderTracking.findOneAndUpdate(
-                { orderId: orderId.toString() },
+                { orderId: orderIdStr },
                 {
                     $set: {
                         status,
@@ -240,9 +420,22 @@ class TrackingService {
                 throw new Error('Tracking not found');
             }
 
+            // Update cached metadata
+            const cacheKey = cache.makeKey(cache.CACHE_KEYS.ORDER_TRACKING, orderIdStr);
+            const cachedMeta = await cache.get(cacheKey);
+            if (cachedMeta) {
+                cachedMeta.status = status;
+                await cache.set(cacheKey, cachedMeta, 300);
+            }
+
+            // Flush pending locations and clear cache on terminal states
+            if (status === 'delivered' || status === 'cancelled') {
+                await this.clearTrackingCache(orderIdStr);
+            }
+
             // Notify customer in real-time
             socketService.emitToUser(tracking.customerId.toString(), 'order_status_update', {
-                orderId: orderId.toString(),
+                orderId: orderIdStr,
                 status
             });
 
@@ -254,14 +447,28 @@ class TrackingService {
     }
 
     /**
-     * Get current tracking info (Hydrated from PostgreSQL)
+     * Get current tracking info with Redis-cached location (Hydrated from PostgreSQL)
      */
     async getTrackingInfo(orderId) {
         try {
-            const tracking = await OrderTracking.findOne({ orderId: orderId.toString() }).lean();
+            const orderIdStr = orderId.toString();
+
+            // Try to get current location from Redis first (most up-to-date)
+            const cachedLocation = await this.getRiderLocation(orderIdStr);
+
+            const tracking = await OrderTracking.findOne({ orderId: orderIdStr }).lean();
 
             if (!tracking) {
                 throw new Error('Tracking not found');
+            }
+
+            // Override with cached location if available (more recent than MongoDB)
+            if (cachedLocation) {
+                tracking.currentLocation = {
+                    type: 'Point',
+                    coordinates: [cachedLocation.longitude, cachedLocation.latitude]
+                };
+                tracking.lastUpdated = cachedLocation.timestamp;
             }
 
             // Manual hydration from PostgreSQL (Prisma)

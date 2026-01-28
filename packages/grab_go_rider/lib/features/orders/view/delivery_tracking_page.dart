@@ -27,7 +27,6 @@ class DeliveryTrackingPage extends StatefulWidget {
   final String? phase;
   final bool? hasPickedUp;
 
-  // Additional data for tracking initialization
   final String? customerId;
   final String? riderId;
   final double? pickupLatitude;
@@ -37,14 +36,14 @@ class DeliveryTrackingPage extends StatefulWidget {
 
   const DeliveryTrackingPage({
     super.key,
-    this.orderId = "ORD-12345",
-    this.customerName = "John Doe",
-    this.customerAddress = "123 Main Street, Accra, Ghana",
-    this.customerPhone = "+233 123 456 789",
-    this.restaurantName = "Pizza Palace",
-    this.restaurantAddress = "456 Food Street, Accra, Ghana",
-    this.orderTotal = "GHS 45.00",
-    this.orderItems = const ["Pizza Margherita x1", "Coca Cola x2"],
+    required this.orderId,
+    required this.customerName,
+    required this.customerAddress,
+    required this.customerPhone,
+    required this.restaurantName,
+    required this.restaurantAddress,
+    required this.orderTotal,
+    required this.orderItems,
     this.specialInstructions,
     this.phase,
     this.hasPickedUp,

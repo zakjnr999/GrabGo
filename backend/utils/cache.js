@@ -232,6 +232,9 @@ const CACHE_KEYS = {
     FOOD_RECOMMENDED: 'grabgo:food:recommended',
     FOOD_BANNERS: 'grabgo:food:banners',
     FOOD_ITEM: 'grabgo:food:item',
+    // Live tracking cache keys
+    RIDER_LOCATION: 'grabgo:tracking:rider',
+    ORDER_TRACKING: 'grabgo:tracking:order',
 };
 
 /**
