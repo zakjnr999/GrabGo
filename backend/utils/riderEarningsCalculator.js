@@ -54,8 +54,14 @@ function calculateRiderEarnings(order, tip = 0) {
     const deliveryLat = order.deliveryLatitude;
     const deliveryLon = order.deliveryLongitude;
 
+    // Debug logging
+    console.log('🧮 Calculating earnings for order:', order.orderNumber || order.id);
+    console.log('  Pickup coords:', { lat: pickupLat, lon: pickupLon });
+    console.log('  Delivery coords:', { lat: deliveryLat, lon: deliveryLon });
+
     // Calculate distance
     const distance = calculateDistance(pickupLat, pickupLon, deliveryLat, deliveryLon);
+    console.log('  Distance calculated:', distance, 'km');
 
     // Calculate fees
     const baseFee = RIDER_BASE_FEE;
@@ -63,6 +69,14 @@ function calculateRiderEarnings(order, tip = 0) {
     const grossEarnings = baseFee + distanceFee + tip;
     const platformFee = grossEarnings * PLATFORM_COMMISSION_RATE;
     const netEarnings = grossEarnings - platformFee;
+
+    console.log('  Earnings breakdown:', {
+        baseFee,
+        distanceFee,
+        tip,
+        platformFee,
+        netEarnings
+    });
 
     return {
         distance: distance,
