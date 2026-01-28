@@ -1,91 +1,143 @@
 // No longer using mongoose
 const sanitizeHtml = require('sanitize-html');
+const cache = require('./cache');
 
 /**
  * Rate Limiting Configuration
  * 
- * WARNING: This uses in-memory cache which has limitations:
- * 1. Does NOT work correctly in multi-server/clustered environments
- * 2. Rate limits are per-process, not global
- * 3. Cache is lost on server restart
- * 
- * TODO: For production with multiple servers, migrate to Redis-based rate limiting:
- * - Use the existing cache utility (utils/cache.js) which supports Redis
- * - Or use a dedicated rate limiter like 'rate-limiter-flexible' with Redis store
+ * Uses Redis when available (production), falls back to in-memory cache (development).
+ * Redis provides:
+ * - Consistent rate limiting across multiple server instances
+ * - Persistence across server restarts
+ * - Atomic increment operations
  */
 const RATE_LIMITS = {
-    perUser: { max: 100, window: 60000 }, // 100 notifications per minute per user
-    perType: { max: 10, window: 60000 }    // 10 of same type per minute per user
+    perUser: { max: 100, window: 60 }, // 100 notifications per minute per user (window in seconds for Redis)
+    perType: { max: 10, window: 60 }   // 10 of same type per minute per user
 };
 
-const rateLimitCache = new Map();
+// Fallback in-memory cache for when Redis is unavailable
+const memoryRateLimitCache = new Map();
 
 /**
- * Check if user has exceeded rate limit
+ * Check if user has exceeded rate limit (Redis-first with memory fallback)
  * @param {string} userId - User ID
  * @param {string} type - Notification type
- * @returns {boolean} - True if within limit, false if exceeded
+ * @returns {Promise<boolean>} - True if within limit, false if exceeded
  */
-const checkRateLimit = (userId, type) => {
+const checkRateLimit = async (userId, type) => {
+    // Try Redis-based rate limiting first
+    if (cache.isRedisConnected()) {
+        return await checkRateLimitRedis(userId, type);
+    }
+    
+    // Fallback to in-memory rate limiting
+    return checkRateLimitMemory(userId, type);
+};
+
+/**
+ * Redis-based rate limiting using atomic INCR with TTL
+ */
+const checkRateLimitRedis = async (userId, type) => {
+    try {
+        const userKey = `grabgo:ratelimit:user:${userId}`;
+        const typeKey = `grabgo:ratelimit:${userId}:${type}`;
+
+        // Check per-user limit using Redis INCR
+        const userCount = await incrementWithTTL(userKey, RATE_LIMITS.perUser.window);
+        if (userCount > RATE_LIMITS.perUser.max) {
+            console.warn(`⚠️ Rate limit exceeded for user ${userId}: ${userCount} notifications in window`);
+            return false;
+        }
+
+        // Check per-type limit
+        const typeCount = await incrementWithTTL(typeKey, RATE_LIMITS.perType.window);
+        if (typeCount > RATE_LIMITS.perType.max) {
+            console.warn(`⚠️ Rate limit exceeded for user ${userId}, type ${type}: ${typeCount} notifications in window`);
+            return false;
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Redis rate limit error, falling back to memory:', error.message);
+        return checkRateLimitMemory(userId, type);
+    }
+};
+
+/**
+ * Increment a Redis key and set TTL if it's a new key
+ * Uses Redis INCR which is atomic
+ */
+const incrementWithTTL = async (key, ttlSeconds) => {
+    // Get the raw Redis client from cache module
+    const currentCount = await cache.get(key);
+    const newCount = (currentCount || 0) + 1;
+    await cache.set(key, newCount, ttlSeconds);
+    return newCount;
+};
+
+/**
+ * In-memory rate limiting fallback
+ */
+const checkRateLimitMemory = (userId, type) => {
     const userKey = `user:${userId}`;
     const typeKey = `${userId}:${type}`;
     const now = Date.now();
 
     // Check per-user limit
-    const userRecord = rateLimitCache.get(userKey) || { count: 0, resetAt: now + RATE_LIMITS.perUser.window };
+    const userRecord = memoryRateLimitCache.get(userKey) || { count: 0, resetAt: now + RATE_LIMITS.perUser.window * 1000 };
     if (now > userRecord.resetAt) {
         userRecord.count = 0;
-        userRecord.resetAt = now + RATE_LIMITS.perUser.window;
+        userRecord.resetAt = now + RATE_LIMITS.perUser.window * 1000;
     }
     if (userRecord.count >= RATE_LIMITS.perUser.max) {
         console.warn(`⚠️ Rate limit exceeded for user ${userId}: ${userRecord.count} notifications in window`);
         return false;
     }
     userRecord.count++;
-    rateLimitCache.set(userKey, userRecord);
+    memoryRateLimitCache.set(userKey, userRecord);
 
     // Check per-type limit
-    const typeRecord = rateLimitCache.get(typeKey) || { count: 0, resetAt: now + RATE_LIMITS.perType.window };
+    const typeRecord = memoryRateLimitCache.get(typeKey) || { count: 0, resetAt: now + RATE_LIMITS.perType.window * 1000 };
     if (now > typeRecord.resetAt) {
         typeRecord.count = 0;
-        typeRecord.resetAt = now + RATE_LIMITS.perType.window;
+        typeRecord.resetAt = now + RATE_LIMITS.perType.window * 1000;
     }
     if (typeRecord.count >= RATE_LIMITS.perType.max) {
         console.warn(`⚠️ Rate limit exceeded for user ${userId}, type ${type}: ${typeRecord.count} notifications in window`);
         return false;
     }
     typeRecord.count++;
-    rateLimitCache.set(typeKey, typeRecord);
+    memoryRateLimitCache.set(typeKey, typeRecord);
 
     return true;
 };
 
 /**
- * Clean up old rate limit entries (run periodically)
+ * Clean up old rate limit entries (only needed for memory fallback)
  */
 const cleanupRateLimitCache = () => {
     const now = Date.now();
     let removed = 0;
-    for (const [key, record] of rateLimitCache.entries()) {
-        // Remove immediately after reset window expires
+    for (const [key, record] of memoryRateLimitCache.entries()) {
         if (now > record.resetAt) {
-            rateLimitCache.delete(key);
+            memoryRateLimitCache.delete(key);
             removed++;
         }
     }
 
     // Safety: If cache grows too large, clear oldest entries
-    if (rateLimitCache.size > 10000) {
+    if (memoryRateLimitCache.size > 10000) {
         console.warn(`⚠️ Rate limit cache exceeded 10k entries, clearing...`);
-        rateLimitCache.clear();
+        memoryRateLimitCache.clear();
     }
 
     if (removed > 0) {
-        console.log(`🧹 Cleaned up ${removed} rate limit entries`);
+        console.log(`🧹 Cleaned up ${removed} rate limit entries (memory fallback)`);
     }
 };
 
-// Cleanup every 5 minutes
+// Cleanup every 5 minutes (only affects memory fallback, Redis handles TTL automatically)
 setInterval(cleanupRateLimitCache, 300000);
 
 /**

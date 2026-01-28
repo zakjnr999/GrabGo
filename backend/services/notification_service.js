@@ -51,8 +51,9 @@ const createNotification = async (userId, type, title, message, data = {}, io = 
         message = validated.message;
         data = validated.data;
 
-        // SECURITY: Check rate limits
-        if (!checkRateLimit(userId, type)) {
+        // SECURITY: Check rate limits (now async for Redis support)
+        const withinRateLimit = await checkRateLimit(userId, type);
+        if (!withinRateLimit) {
             console.warn(`⚠️ Rate limit exceeded for user ${userId}, type ${type}`);
             return null;
         }
