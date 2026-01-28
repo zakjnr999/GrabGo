@@ -197,7 +197,15 @@ class AvailableOrdersService {
         final data = decoded['data'];
         debugPrint('🔍 Data type: ${data.runtimeType}, length: ${data is List ? data.length : 'N/A'}');
         if (data is List) {
-          final orders = data.whereType<Map<String, dynamic>>().map((e) => AvailableOrderDto.fromJson(e)).toList();
+          final orders = data.whereType<Map<String, dynamic>>().map((e) {
+            final order = AvailableOrderDto.fromJson(e);
+            debugPrint('📦 Parsed order ${order.orderNumber}:');
+            debugPrint('   Distance: ${order.distance} km');
+            debugPrint('   Rider Earnings: GHS ${order.riderEarnings}');
+            debugPrint('   Raw JSON distance: ${e['distance']}');
+            debugPrint('   Raw JSON riderEarnings: ${e['riderEarnings']}');
+            return order;
+          }).toList();
           debugPrint('✅ Parsed ${orders.length} orders');
           return orders;
         }

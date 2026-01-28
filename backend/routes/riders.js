@@ -205,11 +205,54 @@ router.post(
         });
       }
 
+      // Calculate rider earnings and lock them in
+      const { calculateRiderEarnings } = require('../utils/riderEarningsCalculator');
+
+      // Fetch full order with restaurant/store info for calculation
+      const fullOrder = await prisma.order.findUnique({
+        where: { id: orderId },
+        include: {
+          restaurant: {
+            select: {
+              restaurantName: true,
+              latitude: true,
+              longitude: true
+            }
+          },
+          groceryStore: {
+            select: {
+              storeName: true,
+              latitude: true,
+              longitude: true
+            }
+          },
+          pharmacyStore: {
+            select: {
+              storeName: true,
+              latitude: true,
+              longitude: true
+            }
+          }
+        }
+      });
+
+      const earnings = calculateRiderEarnings(fullOrder, 0);
+
+      console.log('💰 Locking in earnings for order:', fullOrder.orderNumber);
+      console.log('   Distance:', earnings.distance, 'km');
+      console.log('   Rider will earn: GHS', earnings.riderEarnings);
+
       const updatedOrder = await prisma.order.update({
         where: { id: orderId },
         data: {
           riderId: req.user.id,
-          status: order.status === "ready" ? "picked_up" : order.status
+          status: order.status === "ready" ? "picked_up" : order.status,
+          // Lock in the calculated earnings
+          riderBaseFee: earnings.riderBaseFee,
+          riderDistanceFee: earnings.riderDistanceFee,
+          riderTip: earnings.riderTip,
+          platformFee: earnings.platformFee,
+          riderEarnings: earnings.riderEarnings
         },
         include: {
           customer: { select: { username: true, email: true, phone: true } },
