@@ -66,7 +66,16 @@ router.get(
         },
         include: {
           customer: { select: { username: true, email: true, phone: true } },
-          restaurant: { select: { restaurantName: true, logo: true, location: true } }
+          restaurant: {
+            select: {
+              restaurantName: true,
+              logo: true,
+              address: true,
+              city: true,
+              longitude: true,
+              latitude: true
+            }
+          }
         },
         orderBy: { createdAt: 'desc' },
         take: 50

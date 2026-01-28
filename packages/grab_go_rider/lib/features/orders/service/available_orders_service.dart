@@ -125,7 +125,7 @@ class AvailableOrdersService {
 
   final http.Client _client;
 
-  String get _baseUrl => AppConfig.apiBaseUrl; // e.g. https://.../api
+  String get _baseUrl => AppConfig.apiBaseUrl;
 
   Future<Map<String, String>> _buildHeaders() async {
     final headers = <String, String>{'Content-Type': 'application/json'};

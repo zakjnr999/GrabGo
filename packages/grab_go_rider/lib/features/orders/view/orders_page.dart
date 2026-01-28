@@ -128,7 +128,6 @@ class _OrdersPageState extends State<OrdersPage> {
 
   Future<void> _showAvailableOrdersSheet(BuildContext ctx, AppColorsExtension colors) async {
     await _loadAvailableOrders();
-    if (!mounted) return;
 
     if (!ctx.mounted) return;
 
@@ -734,7 +733,7 @@ class _OrdersPageState extends State<OrdersPage> {
                               ),
                               SizedBox(width: 12.w),
                               Text(
-                                "Accept 4 deliveries",
+                                "Accept ${_availableOrders.length} Available Orders",
                                 style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w700),
                               ),
                             ],

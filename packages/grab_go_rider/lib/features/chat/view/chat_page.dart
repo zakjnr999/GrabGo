@@ -329,14 +329,14 @@ class _ChatPageState extends State<ChatPage> {
     if (route == null || !route.isCurrent) return;
     if (data is! Map) return;
 
-    final map = Map<String, dynamic>.from(data as Map);
+    final map = Map<String, dynamic>.from(data);
     final chatId = map['chatId']?.toString();
     if (chatId == null) return;
 
     final messageJson = map['message'];
     if (messageJson is! Map) return;
 
-    final messageMap = Map<String, dynamic>.from(messageJson as Map);
+    final messageMap = Map<String, dynamic>.from(messageJson);
     final text = messageMap['text']?.toString() ?? '';
     final sentAtStr = messageMap['sentAt']?.toString();
     final sentAt = DateTime.tryParse(sentAtStr ?? '') ?? DateTime.now();
@@ -371,7 +371,7 @@ class _ChatPageState extends State<ChatPage> {
     if (!mounted) return;
     if (data is! Map) return;
 
-    final map = Map<String, dynamic>.from(data as Map);
+    final map = Map<String, dynamic>.from(data);
     final chatId = map['chatId']?.toString();
     final userId = map['userId']?.toString();
     if (chatId == null || userId == null) return;
@@ -404,7 +404,7 @@ class _ChatPageState extends State<ChatPage> {
     if (!mounted) return;
     if (data is! Map) return;
 
-    final map = Map<String, dynamic>.from(data as Map);
+    final map = Map<String, dynamic>.from(data);
     final chatId = map['chatId']?.toString();
     final userId = map['userId']?.toString();
     if (chatId == null || userId == null) return;
@@ -440,7 +440,7 @@ class _ChatPageState extends State<ChatPage> {
     if (route == null || !route.isCurrent) return;
     if (data is! Map) return;
 
-    final map = Map<String, dynamic>.from(data as Map);
+    final map = Map<String, dynamic>.from(data);
     final chatId = map['chatId']?.toString();
     final userId = map['userId']?.toString();
     if (chatId == null || userId == null) return;
