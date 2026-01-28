@@ -114,10 +114,30 @@ router.get(
         take: 50
       });
 
+      // Calculate rider earnings for each order
+      const { calculateRiderEarnings } = require('../utils/riderEarningsCalculator');
+
+      const ordersWithEarnings = availableOrders.map(order => {
+        const earnings = calculateRiderEarnings(order, 0); // No tip yet
+
+        return {
+          ...order,
+          distance: earnings.distance,
+          riderEarnings: earnings.riderEarnings,
+          earningsBreakdown: {
+            baseFee: earnings.riderBaseFee,
+            distanceFee: earnings.riderDistanceFee,
+            tip: earnings.riderTip,
+            platformFee: earnings.platformFee,
+            total: earnings.riderEarnings
+          }
+        };
+      });
+
       res.json({
         success: true,
         message: "Available orders retrieved successfully",
-        data: availableOrders,
+        data: ordersWithEarnings,
       });
     } catch (error) {
       console.error("Get available orders error:", error);

@@ -959,6 +959,13 @@ model Order {
   promoType          PromoType?
   notes              String?
 
+  // Rider Earnings Breakdown
+  riderBaseFee      Float @default(5.0)   // Base delivery fee (GHS)
+  riderDistanceFee  Float @default(0)     // Distance-based fee (calculated)
+  riderTip          Float @default(0)     // Customer tip
+  platformFee       Float @default(0)     // Platform commission
+  riderEarnings     Float @default(0)     // Total rider gets (baseFee + distanceFee + tip - platformFee)
+
   // Delivery Address
   deliveryStreet    String
   deliveryCity      String

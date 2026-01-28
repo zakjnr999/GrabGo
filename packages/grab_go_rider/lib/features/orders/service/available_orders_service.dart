@@ -22,6 +22,8 @@ class AvailableOrderDto {
   final String? orderType; // food, grocery, pharmacy
   final int itemCount;
   final DateTime? createdAt;
+  final double? distance; // Distance in km
+  final double? riderEarnings; // What the rider will earn
 
   // Coordinates for tracking initialization
   final double? destinationLatitude;
@@ -47,6 +49,8 @@ class AvailableOrderDto {
     this.orderType,
     required this.itemCount,
     this.createdAt,
+    this.distance,
+    this.riderEarnings,
     this.destinationLatitude,
     this.destinationLongitude,
     this.pickupLatitude,
@@ -56,11 +60,12 @@ class AvailableOrderDto {
   factory AvailableOrderDto.fromJson(Map<String, dynamic> json) {
     final customer = json['customer'] as Map<String, dynamic>?;
     final restaurant = json['restaurant'] as Map<String, dynamic>?;
-    final delivery = json['deliveryAddress'] as Map<String, dynamic>?;
 
-    final street = delivery != null ? delivery['street'] as String? : null;
-    final city = delivery != null ? delivery['city'] as String? : null;
-    final state = delivery != null ? delivery['state'] as String? : null;
+    // Parse delivery address from top-level fields (not nested)
+    final street = json['deliveryStreet']?.toString();
+    final city = json['deliveryCity']?.toString();
+    final state = json['deliveryState']?.toString();
+
     final addressParts = <String>[
       if (street != null && street.isNotEmpty) street,
       if (city != null && city.isNotEmpty) city,
@@ -70,32 +75,16 @@ class AvailableOrderDto {
     final customerAddress = addressParts.isNotEmpty ? addressParts.join(', ') : '';
 
     // Extract coordinates from delivery address
-    final destinationLat = delivery != null ? (delivery['latitude'] as num?)?.toDouble() : null;
-    final destinationLng = delivery != null ? (delivery['longitude'] as num?)?.toDouble() : null;
+    final destinationLat = (json['deliveryLatitude'] as num?)?.toDouble();
+    final destinationLng = (json['deliveryLongitude'] as num?)?.toDouble();
 
     // Extract restaurant/pickup coordinates
-    final restaurantLocation = restaurant?['location'] as Map<String, dynamic>?;
     double? pickupLat;
     double? pickupLng;
 
-    debugPrint('🍕 Parsing restaurant coordinates:');
-    debugPrint('   restaurant: $restaurant');
-    debugPrint('   restaurantLocation: $restaurantLocation');
-
-    if (restaurantLocation != null) {
-      // GeoJSON format: coordinates [longitude, latitude]
-      final coords = restaurantLocation['coordinates'] as List<dynamic>?;
-      debugPrint('   coords: $coords');
-      if (coords != null && coords.length >= 2) {
-        pickupLng = (coords[0] as num?)?.toDouble();
-        pickupLat = (coords[1] as num?)?.toDouble();
-        debugPrint('   ✅ Parsed: lat=$pickupLat, lng=$pickupLng');
-      }
-    } else if (restaurant != null) {
-      // Try direct latitude/longitude fields
+    if (restaurant != null) {
       pickupLat = (restaurant['latitude'] as num?)?.toDouble();
       pickupLng = (restaurant['longitude'] as num?)?.toDouble();
-      debugPrint('   📍 Direct fields: lat=$pickupLat, lng=$pickupLng');
     }
 
     final items = (json['items'] as List<dynamic>? ?? [])
@@ -109,10 +98,8 @@ class AvailableOrderDto {
         .whereType<String>()
         .toList();
 
-    // Extract customer area (city or area field)
-    final customerArea = delivery != null
-        ? (delivery['area']?.toString() ?? delivery['city']?.toString() ?? city ?? 'Unknown Area')
-        : 'Unknown Area';
+    // Extract customer area (use street for specific location, fallback to city)
+    final customerArea = street?.isNotEmpty == true ? street! : (city ?? state ?? 'Unknown Area');
 
     // Parse createdAt
     DateTime? createdAt;
@@ -145,6 +132,8 @@ class AvailableOrderDto {
       paymentMethod: json['paymentMethod']?.toString() ?? 'cash',
       orderType: json['orderType']?.toString() ?? json['type']?.toString(),
       createdAt: createdAt,
+      distance: (json['distance'] as num?)?.toDouble(),
+      riderEarnings: (json['riderEarnings'] as num?)?.toDouble(),
       destinationLatitude: destinationLat,
       destinationLongitude: destinationLng,
       pickupLatitude: pickupLat,

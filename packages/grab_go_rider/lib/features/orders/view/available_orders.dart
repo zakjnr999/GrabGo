@@ -1,3 +1,4 @@
+import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -367,6 +368,7 @@ class _AvailableOrdersState extends State<AvailableOrders> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                SizedBox(width: 5.w),
                 SvgPicture.asset(
                   Assets.icons.dotArrowRight,
                   package: 'grab_go_shared',
@@ -374,12 +376,15 @@ class _AvailableOrdersState extends State<AvailableOrders> {
                   height: 16.w,
                   colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                 ),
-                Text(
-                  order.customerArea,
-                  style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.right,
+                SizedBox(width: 5.w),
+                Flexible(
+                  child: Text(
+                    order.customerArea,
+                    style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right,
+                  ),
                 ),
               ],
             ),
@@ -389,11 +394,17 @@ class _AvailableOrdersState extends State<AvailableOrders> {
             // Distance & Status Row
             Row(
               children: [
-                // Distance (placeholder - will calculate with rider's location)
-                Icon(Icons.location_on, size: 14.w, color: colors.accentGreen),
+                // Distance
+                SvgPicture.asset(
+                  Assets.icons.mapPin,
+                  package: 'grab_go_shared',
+                  width: 14.w,
+                  height: 14.w,
+                  colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                ),
                 SizedBox(width: 4.w),
                 Text(
-                  '-- km to pickup', // TODO: Calculate with rider location
+                  order.distance != null ? '${order.distance!.toStringAsFixed(1)} km' : '-- km',
                   style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
                 ),
                 SizedBox(width: 16.w),
@@ -407,24 +418,28 @@ class _AvailableOrdersState extends State<AvailableOrders> {
 
             SizedBox(height: 12.h),
 
+            DottedLine(
+              direction: Axis.horizontal,
+              lineLength: double.infinity,
+              lineThickness: 1.5,
+              dashLength: 6,
+              dashColor: colors.inputBorder.withValues(alpha: 0.65),
+              dashGapLength: 4,
+            ),
+
+            SizedBox(height: 12.h),
+
             // Earnings & Payment Row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Earnings (prominent)
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                  decoration: BoxDecoration(
-                    color: colors.accentGreen.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  child: Text(
-                    'GHS ${order.totalAmount.toStringAsFixed(2)}',
-                    style: TextStyle(color: colors.accentGreen, fontSize: 18.sp, fontWeight: FontWeight.w700),
-                  ),
+                Text(
+                  order.riderEarnings != null 
+                      ? 'GHS ${order.riderEarnings!.toStringAsFixed(2)}'
+                      : 'GHS ${order.totalAmount.toStringAsFixed(2)}',
+                  style: TextStyle(color: colors.accentGreen, fontSize: 18.sp, fontWeight: FontWeight.w700),
                 ),
 
-                // Payment method & item count
                 Row(
                   children: [
                     Container(
