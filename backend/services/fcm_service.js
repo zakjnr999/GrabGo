@@ -217,7 +217,9 @@ const sendToUser = async (userId, notification, data = {}) => {
         // Check notification settings
         const settingsMap = {
             'chat_message': 'chatMessages',
+            'order': 'orderUpdates',
             'order_update': 'orderUpdates',
+            'tracking_update': 'deliveryUpdates',
             'referral_completed': 'referralUpdates',
             'payment_confirmed': 'paymentUpdates',
             'delivery_arriving': 'deliveryUpdates',
@@ -226,7 +228,18 @@ const sendToUser = async (userId, notification, data = {}) => {
             'update': 'systemUpdates',
             'comment_reply': 'commentReplies',
             'comment_reaction': 'commentReactions',
-            'milestone_bonus': 'referralUpdates'
+            'milestone_bonus': 'referralUpdates',
+            'rider_assignment': 'orderUpdates',
+            'cart_reminder': 'cartReminders',
+            'favorites_reminder': 'favoritesReminders',
+            'reorder_suggestion': 'reorderSuggestions',
+            'meal_nudge_breakfast': 'promoNotifications',
+            'meal_nudge_lunch': 'promoNotifications',
+            'meal_nudge_dinner': 'promoNotifications',
+            'reengagement_two_weeks': 'reengagementReminders',
+            'reengagement_one_month': 'reengagementReminders',
+            'reengagement_two_months': 'reengagementReminders'
+            // Note: 'incoming_call' and 'test' are always allowed
         };
 
         const settingKey = settingsMap[data.type];

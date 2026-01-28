@@ -10,9 +10,11 @@ const notificationSchema = new mongoose.Schema({
         type: String,
         enum: [
             'order',
+            'order_update',
             'promo',
             'update',
             'system',
+            'chat_message',
             'comment_reply',
             'comment_reaction',
             'referral_completed',
@@ -27,7 +29,11 @@ const notificationSchema = new mongoose.Schema({
             'reorder_suggestion',
             'reengagement_two_weeks',
             'reengagement_one_month',
-            'reengagement_two_months'
+            'reengagement_two_months',
+            'tracking_update',
+            'incoming_call',
+            'rider_assignment',
+            'test'
         ],
         required: true
     },

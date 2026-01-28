@@ -3,7 +3,15 @@ const sanitizeHtml = require('sanitize-html');
 
 /**
  * Rate Limiting Configuration
- * NOTE: This uses in-memory cache. For production with multiple servers, use Redis.
+ * 
+ * WARNING: This uses in-memory cache which has limitations:
+ * 1. Does NOT work correctly in multi-server/clustered environments
+ * 2. Rate limits are per-process, not global
+ * 3. Cache is lost on server restart
+ * 
+ * TODO: For production with multiple servers, migrate to Redis-based rate limiting:
+ * - Use the existing cache utility (utils/cache.js) which supports Redis
+ * - Or use a dedicated rate limiter like 'rate-limiter-flexible' with Redis store
  */
 const RATE_LIMITS = {
     perUser: { max: 100, window: 60000 }, // 100 notifications per minute per user
@@ -85,9 +93,11 @@ setInterval(cleanupRateLimitCache, 300000);
  */
 const VALID_NOTIFICATION_TYPES = [
     'order',
+    'order_update',
     'promo',
     'update',
     'system',
+    'chat_message',
     'comment_reply',
     'comment_reaction',
     'referral_completed',
@@ -102,7 +112,11 @@ const VALID_NOTIFICATION_TYPES = [
     'reorder_suggestion',
     'reengagement_two_weeks',
     'reengagement_one_month',
-    'reengagement_two_months'
+    'reengagement_two_months',
+    'tracking_update',
+    'incoming_call',
+    'rider_assignment',
+    'test'
 ];
 
 /**

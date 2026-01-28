@@ -78,7 +78,7 @@ const processScheduledNotifications = async (io = null) => {
         for (const scheduledNotif of dueNotifications) {
             try {
                 // Send the notification
-                await createNotification(
+                const result = await createNotification(
                     scheduledNotif.userId,
                     scheduledNotif.type,
                     scheduledNotif.title,
@@ -87,18 +87,73 @@ const processScheduledNotifications = async (io = null) => {
                     io
                 );
 
-                // Mark as sent
-                await prisma.scheduledNotification.update({
-                    where: { id: scheduledNotif.id },
-                    data: {
-                        sent: true,
-                        sentAt: new Date()
-                    }
-                });
+                if (result) {
+                    // Mark as sent
+                    await prisma.scheduledNotification.update({
+                        where: { id: scheduledNotif.id },
+                        data: {
+                            sent: true,
+                            sentAt: new Date()
+                        }
+                    });
+                    sentCount++;
+                } else {
+                    // Notification was rate-limited or failed validation
+                    // Reschedule for 5 minutes later (up to 3 retries)
+                    const currentData = scheduledNotif.data || {};
+                    const retryCount = (currentData.retryCount || 0) + 1;
 
-                sentCount++;
+                    if (retryCount <= 3) {
+                        await prisma.scheduledNotification.update({
+                            where: { id: scheduledNotif.id },
+                            data: {
+                                scheduledAt: new Date(Date.now() + 5 * 60 * 1000), // 5 min later
+                                data: { ...currentData, retryCount }
+                            }
+                        });
+                        console.log(`⏰ Rescheduled notification ${scheduledNotif.id} (retry ${retryCount}/3)`);
+                    } else {
+                        // Max retries reached, mark as failed
+                        await prisma.scheduledNotification.update({
+                            where: { id: scheduledNotif.id },
+                            data: {
+                                sent: true, // Mark as "processed"
+                                data: { ...currentData, failed: true, failureReason: 'max_retries_exceeded' }
+                            }
+                        });
+                        console.error(`❌ Notification ${scheduledNotif.id} failed after 3 retries`);
+                    }
+                    failedCount++;
+                }
             } catch (error) {
                 console.error(`❌ Failed to send scheduled notification ${scheduledNotif.id}:`, error.message);
+                
+                // Track the error in the notification data
+                try {
+                    const currentData = scheduledNotif.data || {};
+                    const retryCount = (currentData.retryCount || 0) + 1;
+
+                    if (retryCount <= 3) {
+                        await prisma.scheduledNotification.update({
+                            where: { id: scheduledNotif.id },
+                            data: {
+                                scheduledAt: new Date(Date.now() + 5 * 60 * 1000),
+                                data: { ...currentData, retryCount, lastError: error.message }
+                            }
+                        });
+                    } else {
+                        await prisma.scheduledNotification.update({
+                            where: { id: scheduledNotif.id },
+                            data: {
+                                sent: true,
+                                data: { ...currentData, failed: true, failureReason: error.message }
+                            }
+                        });
+                    }
+                } catch (updateError) {
+                    console.error(`❌ Failed to update notification status:`, updateError.message);
+                }
+                
                 failedCount++;
             }
         }

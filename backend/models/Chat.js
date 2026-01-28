@@ -60,28 +60,28 @@ const messageSchema = new mongoose.Schema(
 
 const chatSchema = new mongoose.Schema(
     {
-        order: {
+        orderId: {
             type: String, // String reference to PostgreSQL Order ID
             required: true,
             unique: true
         },
-        customer: {
+        customerId: {
             type: String, // String reference to PostgreSQL User ID
             required: true
         },
-        rider: {
+        riderId: {
             type: String, // String reference to PostgreSQL User ID
             required: true
         },
-        messages: [messageSchema],
+        // Note: messages are now stored in separate ChatMessage collection for better scalability
     },
     {
         timestamps: true,
     }
 );
 
-
-chatSchema.index({ customer: 1 });
-chatSchema.index({ rider: 1 });
+chatSchema.index({ customerId: 1 });
+chatSchema.index({ riderId: 1 });
+chatSchema.index({ orderId: 1 });
 
 module.exports = mongoose.model("Chat", chatSchema);
