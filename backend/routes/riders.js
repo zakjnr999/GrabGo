@@ -100,6 +100,28 @@ router.get(
               latitude: true
             }
           },
+          // Grocery store info (for grocery orders)
+          groceryStore: {
+            select: {
+              storeName: true,
+              logo: true,
+              address: true,
+              city: true,
+              longitude: true,
+              latitude: true
+            }
+          },
+          // Pharmacy store info (for pharmacy orders)
+          pharmacyStore: {
+            select: {
+              storeName: true,
+              logo: true,
+              address: true,
+              city: true,
+              longitude: true,
+              latitude: true
+            }
+          },
           // Order items
           items: {
             select: {

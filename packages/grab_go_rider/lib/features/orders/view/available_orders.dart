@@ -434,7 +434,7 @@ class _AvailableOrdersState extends State<AvailableOrders> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  order.riderEarnings != null 
+                  order.riderEarnings != null
                       ? 'GHS ${order.riderEarnings!.toStringAsFixed(2)}'
                       : 'GHS ${order.totalAmount.toStringAsFixed(2)}',
                   style: TextStyle(color: colors.accentGreen, fontSize: 18.sp, fontWeight: FontWeight.w700),

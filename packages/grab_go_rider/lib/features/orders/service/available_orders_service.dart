@@ -60,6 +60,8 @@ class AvailableOrderDto {
   factory AvailableOrderDto.fromJson(Map<String, dynamic> json) {
     final customer = json['customer'] as Map<String, dynamic>?;
     final restaurant = json['restaurant'] as Map<String, dynamic>?;
+    final groceryStore = json['groceryStore'] as Map<String, dynamic>?;
+    final pharmacyStore = json['pharmacyStore'] as Map<String, dynamic>?;
 
     // Parse delivery address from top-level fields (not nested)
     final street = json['deliveryStreet']?.toString();
@@ -78,13 +80,19 @@ class AvailableOrderDto {
     final destinationLat = (json['deliveryLatitude'] as num?)?.toDouble();
     final destinationLng = (json['deliveryLongitude'] as num?)?.toDouble();
 
-    // Extract restaurant/pickup coordinates
+    // Extract pickup coordinates (restaurant, grocery, or pharmacy)
     double? pickupLat;
     double? pickupLng;
 
     if (restaurant != null) {
       pickupLat = (restaurant['latitude'] as num?)?.toDouble();
       pickupLng = (restaurant['longitude'] as num?)?.toDouble();
+    } else if (groceryStore != null) {
+      pickupLat = (groceryStore['latitude'] as num?)?.toDouble();
+      pickupLng = (groceryStore['longitude'] as num?)?.toDouble();
+    } else if (pharmacyStore != null) {
+      pickupLat = (pharmacyStore['latitude'] as num?)?.toDouble();
+      pickupLng = (pharmacyStore['longitude'] as num?)?.toDouble();
     }
 
     final items = (json['items'] as List<dynamic>? ?? [])
@@ -111,6 +119,16 @@ class AvailableOrderDto {
       }
     }
 
+    // Extract store name based on order type
+    String storeName = 'Store';
+    if (restaurant != null) {
+      storeName = restaurant['restaurantName']?.toString() ?? 'Restaurant';
+    } else if (groceryStore != null) {
+      storeName = groceryStore['storeName']?.toString() ?? 'Grocery Store';
+    } else if (pharmacyStore != null) {
+      storeName = pharmacyStore['storeName']?.toString() ?? 'Pharmacy';
+    }
+
     return AvailableOrderDto(
       id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
       orderNumber: json['orderNumber']?.toString() ?? '',
@@ -119,11 +137,10 @@ class AvailableOrderDto {
       customerAddress: customerAddress,
       customerArea: customerArea,
       customerPhone: customer != null ? (customer['phone']?.toString() ?? '') : '',
-      // Handle both restaurant_name and restaurantName
-      restaurantName: restaurant != null
-          ? (restaurant['restaurantName']?.toString() ?? restaurant['restaurant_name']?.toString() ?? 'Restaurant')
-          : 'Restaurant',
-      restaurantAddress: restaurant != null ? (restaurant['address']?.toString() ?? '') : '',
+      restaurantName: storeName,
+      restaurantAddress: restaurant?['address']?.toString() ?? 
+                        groceryStore?['address']?.toString() ?? 
+                        pharmacyStore?['address']?.toString() ?? '',
       totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0.0,
       orderItems: items,
       itemCount: items.length,
