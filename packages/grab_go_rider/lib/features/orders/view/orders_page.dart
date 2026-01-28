@@ -126,178 +126,178 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
-  Future<void> _showAvailableOrdersSheet(BuildContext ctx, AppColorsExtension colors) async {
-    await _loadAvailableOrders();
+  // Future<void> _showAvailableOrdersSheet(BuildContext ctx, AppColorsExtension colors) async {
+  //   await _loadAvailableOrders();
 
-    if (!ctx.mounted) return;
+  //   if (!ctx.mounted) return;
 
-    showModalBottomSheet(
-      context: ctx,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (sheetContext) {
-        return Container(
-          decoration: BoxDecoration(
-            color: colors.backgroundPrimary,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(KBorderSize.borderRadius20),
-              topRight: Radius.circular(KBorderSize.borderRadius20),
-            ),
-          ),
-          padding: EdgeInsets.only(
-            left: 20.w,
-            right: 20.w,
-            top: 16.h,
-            bottom: MediaQuery.of(sheetContext).padding.bottom + 16.h,
-          ),
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40.w,
-                    height: 4.h,
-                    margin: EdgeInsets.only(bottom: 16.h),
-                    decoration: BoxDecoration(
-                      color: colors.textSecondary.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(2.r),
-                    ),
-                  ),
-                ),
-                Text(
-                  'Available orders',
-                  style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w700),
-                ),
-                SizedBox(height: 12.h),
-                if (_isLoadingOrders)
-                  Center(
-                    child: SizedBox(
-                      width: 24.w,
-                      height: 24.w,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        valueColor: AlwaysStoppedAnimation<Color>(colors.accentGreen),
-                      ),
-                    ),
-                  )
-                else if (_availableOrders.isEmpty)
-                  Padding(
-                    padding: EdgeInsets.only(top: 12.h, bottom: 12.h),
-                    child: Text(
-                      _ordersError ?? 'No available orders at the moment.',
-                      style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400),
-                    ),
-                  )
-                else
-                  Flexible(
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      itemCount: _availableOrders.length,
-                      separatorBuilder: (context, index) => SizedBox(height: 12.h),
-                      itemBuilder: (context, index) {
-                        final order = _availableOrders[index];
-                        return Container(
-                          padding: EdgeInsets.all(16.w),
-                          decoration: BoxDecoration(
-                            color: colors.backgroundSecondary,
-                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                            border: Border.all(color: colors.border, width: 1),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          order.restaurantName,
-                                          style: TextStyle(
-                                            color: colors.textPrimary,
-                                            fontSize: 14.sp,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                        SizedBox(height: 4.h),
-                                        Text(
-                                          order.customerAddress,
-                                          style: TextStyle(
-                                            color: colors.textSecondary,
-                                            fontSize: 12.sp,
-                                            fontWeight: FontWeight.w400,
-                                          ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  SizedBox(width: 12.w),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text(
-                                        'GHS ${order.totalAmount.toStringAsFixed(2)}',
-                                        style: TextStyle(
-                                          color: colors.accentGreen,
-                                          fontSize: 14.sp,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      SizedBox(height: 4.h),
-                                      Text(
-                                        order.orderNumber,
-                                        style: TextStyle(
-                                          color: colors.textSecondary,
-                                          fontSize: 11.sp,
-                                          fontWeight: FontWeight.w400,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              if (order.orderItems.isNotEmpty) ...[
-                                SizedBox(height: 8.h),
-                                Text(
-                                  order.orderItems.join(', '),
-                                  style: TextStyle(
-                                    color: colors.textSecondary,
-                                    fontSize: 12.sp,
-                                    fontWeight: FontWeight.w400,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                              SizedBox(height: 12.h),
-                              SizedBox(
-                                height: 40.h,
-                                width: double.infinity,
-                                child: AppButton(
-                                  onPressed: () => _showAcceptOrderDialog(order, colors, context),
-                                  buttonText: 'View & Accept',
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
+  //   showModalBottomSheet(
+  //     context: ctx,
+  //     backgroundColor: Colors.transparent,
+  //     isScrollControlled: true,
+  //     builder: (sheetContext) {
+  //       return Container(
+  //         decoration: BoxDecoration(
+  //           color: colors.backgroundPrimary,
+  //           borderRadius: BorderRadius.only(
+  //             topLeft: Radius.circular(KBorderSize.borderRadius20),
+  //             topRight: Radius.circular(KBorderSize.borderRadius20),
+  //           ),
+  //         ),
+  //         padding: EdgeInsets.only(
+  //           left: 20.w,
+  //           right: 20.w,
+  //           top: 16.h,
+  //           bottom: MediaQuery.of(sheetContext).padding.bottom + 16.h,
+  //         ),
+  //         child: SafeArea(
+  //           child: Column(
+  //             mainAxisSize: MainAxisSize.min,
+  //             crossAxisAlignment: CrossAxisAlignment.start,
+  //             children: [
+  //               Center(
+  //                 child: Container(
+  //                   width: 40.w,
+  //                   height: 4.h,
+  //                   margin: EdgeInsets.only(bottom: 16.h),
+  //                   decoration: BoxDecoration(
+  //                     color: colors.textSecondary.withValues(alpha: 0.3),
+  //                     borderRadius: BorderRadius.circular(2.r),
+  //                   ),
+  //                 ),
+  //               ),
+  //               Text(
+  //                 'Available orders',
+  //                 style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w700),
+  //               ),
+  //               SizedBox(height: 12.h),
+  //               if (_isLoadingOrders)
+  //                 Center(
+  //                   child: SizedBox(
+  //                     width: 24.w,
+  //                     height: 24.w,
+  //                     child: CircularProgressIndicator(
+  //                       strokeWidth: 2.5,
+  //                       valueColor: AlwaysStoppedAnimation<Color>(colors.accentGreen),
+  //                     ),
+  //                   ),
+  //                 )
+  //               else if (_availableOrders.isEmpty)
+  //                 Padding(
+  //                   padding: EdgeInsets.only(top: 12.h, bottom: 12.h),
+  //                   child: Text(
+  //                     _ordersError ?? 'No available orders at the moment.',
+  //                     style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400),
+  //                   ),
+  //                 )
+  //               else
+  //                 Flexible(
+  //                   child: ListView.separated(
+  //                     shrinkWrap: true,
+  //                     physics: const AlwaysScrollableScrollPhysics(),
+  //                     itemCount: _availableOrders.length,
+  //                     separatorBuilder: (context, index) => SizedBox(height: 12.h),
+  //                     itemBuilder: (context, index) {
+  //                       final order = _availableOrders[index];
+  //                       return Container(
+  //                         padding: EdgeInsets.all(16.w),
+  //                         decoration: BoxDecoration(
+  //                           color: colors.backgroundSecondary,
+  //                           borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+  //                           border: Border.all(color: colors.border, width: 1),
+  //                         ),
+  //                         child: Column(
+  //                           crossAxisAlignment: CrossAxisAlignment.start,
+  //                           children: [
+  //                             Row(
+  //                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //                               children: [
+  //                                 Expanded(
+  //                                   child: Column(
+  //                                     crossAxisAlignment: CrossAxisAlignment.start,
+  //                                     children: [
+  //                                       Text(
+  //                                         order.restaurantName,
+  //                                         style: TextStyle(
+  //                                           color: colors.textPrimary,
+  //                                           fontSize: 14.sp,
+  //                                           fontWeight: FontWeight.w700,
+  //                                         ),
+  //                                       ),
+  //                                       SizedBox(height: 4.h),
+  //                                       Text(
+  //                                         order.customerAddress,
+  //                                         style: TextStyle(
+  //                                           color: colors.textSecondary,
+  //                                           fontSize: 12.sp,
+  //                                           fontWeight: FontWeight.w400,
+  //                                         ),
+  //                                         maxLines: 2,
+  //                                         overflow: TextOverflow.ellipsis,
+  //                                       ),
+  //                                     ],
+  //                                   ),
+  //                                 ),
+  //                                 SizedBox(width: 12.w),
+  //                                 Column(
+  //                                   crossAxisAlignment: CrossAxisAlignment.end,
+  //                                   children: [
+  //                                     Text(
+  //                                       'GHS ${order.totalAmount.toStringAsFixed(2)}',
+  //                                       style: TextStyle(
+  //                                         color: colors.accentGreen,
+  //                                         fontSize: 14.sp,
+  //                                         fontWeight: FontWeight.w700,
+  //                                       ),
+  //                                     ),
+  //                                     SizedBox(height: 4.h),
+  //                                     Text(
+  //                                       order.orderNumber,
+  //                                       style: TextStyle(
+  //                                         color: colors.textSecondary,
+  //                                         fontSize: 11.sp,
+  //                                         fontWeight: FontWeight.w400,
+  //                                       ),
+  //                                     ),
+  //                                   ],
+  //                                 ),
+  //                               ],
+  //                             ),
+  //                             if (order.orderItems.isNotEmpty) ...[
+  //                               SizedBox(height: 8.h),
+  //                               Text(
+  //                                 order.orderItems.join(', '),
+  //                                 style: TextStyle(
+  //                                   color: colors.textSecondary,
+  //                                   fontSize: 12.sp,
+  //                                   fontWeight: FontWeight.w400,
+  //                                 ),
+  //                                 maxLines: 2,
+  //                                 overflow: TextOverflow.ellipsis,
+  //                               ),
+  //                             ],
+  //                             SizedBox(height: 12.h),
+  //                             SizedBox(
+  //                               height: 40.h,
+  //                               width: double.infinity,
+  //                               child: AppButton(
+  //                                 onPressed: () => _showAcceptOrderDialog(order, colors, context),
+  //                                 buttonText: 'View & Accept',
+  //                               ),
+  //                             ),
+  //                           ],
+  //                         ),
+  //                       );
+  //                     },
+  //                   ),
+  //                 ),
+  //             ],
+  //           ),
+  //         ),
+  //       );
+  //     },
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -747,8 +747,7 @@ class _OrdersPageState extends State<OrdersPage> {
 
                   GestureDetector(
                     onTap: () {
-                      final colors = context.appColors;
-                      _showAvailableOrdersSheet(context, colors);
+                      context.push('/availableOrders');
                     },
                     child: Container(
                       width: double.infinity,

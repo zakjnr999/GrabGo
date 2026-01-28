@@ -188,6 +188,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/dollar.svg
   String get dollar => 'lib/assets/icons/dollar.svg';
 
+  /// File path: lib/assets/icons/dot-arrow-right.svg
+  String get dotArrowRight => 'lib/assets/icons/dot-arrow-right.svg';
+
   /// File path: lib/assets/icons/double-check.svg
   String get doubleCheck => 'lib/assets/icons/double-check.svg';
 
@@ -222,6 +225,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/fast-delivery.png
   AssetGenImage get fastDelivery =>
       const AssetGenImage('lib/assets/icons/fast-delivery.png');
+
+  /// File path: lib/assets/icons/filter-list.svg
+  String get filterList => 'lib/assets/icons/filter-list.svg';
 
   /// File path: lib/assets/icons/fingerprint-scan.svg
   String get fingerprintScan => 'lib/assets/icons/fingerprint-scan.svg';
@@ -570,6 +576,7 @@ class $LibAssetsIconsGen {
     deliveryTruck,
     deliveryGuyIcon,
     dollar,
+    dotArrowRight,
     doubleCheck,
     download,
     editPencil,
@@ -581,6 +588,7 @@ class $LibAssetsIconsGen {
     facebook,
     fastArrowDown,
     fastDelivery,
+    filterList,
     fingerprintScan,
     fireFlame,
     flame,

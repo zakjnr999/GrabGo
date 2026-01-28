@@ -64,16 +64,49 @@ router.get(
           riderId: null,
           status: { in: ["confirmed", "preparing", "ready"] },
         },
-        include: {
-          customer: { select: { username: true, email: true, phone: true } },
+        select: {
+          id: true,
+          orderNumber: true,
+          orderType: true,
+          totalAmount: true,
+          paymentMethod: true,
+          status: true,
+          notes: true,
+          createdAt: true,
+          // Delivery address
+          deliveryStreet: true,
+          deliveryCity: true,
+          deliveryState: true,
+          deliveryLatitude: true,
+          deliveryLongitude: true,
+          // Customer info
+          customer: {
+            select: {
+              id: true,
+              username: true,
+              email: true,
+              phone: true
+            }
+          },
+          // Restaurant info
           restaurant: {
             select: {
               restaurantName: true,
               logo: true,
               address: true,
               city: true,
+              area: true,
               longitude: true,
               latitude: true
+            }
+          },
+          // Order items
+          items: {
+            select: {
+              id: true,
+              name: true,
+              quantity: true,
+              price: true
             }
           }
         },

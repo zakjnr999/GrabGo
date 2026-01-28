@@ -10,12 +10,18 @@ class AvailableOrderDto {
   final String customerName;
   final String customerId;
   final String customerAddress;
+  final String customerArea; // For card display
   final String customerPhone;
   final String restaurantName;
   final String restaurantAddress;
   final double totalAmount;
   final List<String> orderItems;
   final String? notes;
+  final String orderStatus; // confirmed, preparing, ready
+  final String paymentMethod; // cash, card, mobile_money
+  final String? orderType; // food, grocery, pharmacy
+  final int itemCount;
+  final DateTime? createdAt;
 
   // Coordinates for tracking initialization
   final double? destinationLatitude;
@@ -29,12 +35,18 @@ class AvailableOrderDto {
     required this.customerName,
     required this.customerId,
     required this.customerAddress,
+    required this.customerArea,
     required this.customerPhone,
     required this.restaurantName,
     required this.restaurantAddress,
     required this.totalAmount,
     required this.orderItems,
     required this.notes,
+    required this.orderStatus,
+    required this.paymentMethod,
+    this.orderType,
+    required this.itemCount,
+    this.createdAt,
     this.destinationLatitude,
     this.destinationLongitude,
     this.pickupLatitude,
@@ -97,12 +109,28 @@ class AvailableOrderDto {
         .whereType<String>()
         .toList();
 
+    // Extract customer area (city or area field)
+    final customerArea = delivery != null
+        ? (delivery['area']?.toString() ?? delivery['city']?.toString() ?? city ?? 'Unknown Area')
+        : 'Unknown Area';
+
+    // Parse createdAt
+    DateTime? createdAt;
+    if (json['createdAt'] != null) {
+      try {
+        createdAt = DateTime.parse(json['createdAt'].toString());
+      } catch (e) {
+        debugPrint('Failed to parse createdAt: $e');
+      }
+    }
+
     return AvailableOrderDto(
-      id: json['_id']?.toString() ?? '',
+      id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
       orderNumber: json['orderNumber']?.toString() ?? '',
       customerName: customer != null ? (customer['username']?.toString() ?? 'Customer') : 'Customer',
-      customerId: customer != null ? (customer['_id']?.toString() ?? '') : '',
+      customerId: customer != null ? (customer['id']?.toString() ?? customer['_id']?.toString() ?? '') : '',
       customerAddress: customerAddress,
+      customerArea: customerArea,
       customerPhone: customer != null ? (customer['phone']?.toString() ?? '') : '',
       // Handle both restaurant_name and restaurantName
       restaurantName: restaurant != null
@@ -111,7 +139,12 @@ class AvailableOrderDto {
       restaurantAddress: restaurant != null ? (restaurant['address']?.toString() ?? '') : '',
       totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0.0,
       orderItems: items,
+      itemCount: items.length,
       notes: json['notes']?.toString(),
+      orderStatus: json['status']?.toString() ?? 'confirmed',
+      paymentMethod: json['paymentMethod']?.toString() ?? 'cash',
+      orderType: json['orderType']?.toString() ?? json['type']?.toString(),
+      createdAt: createdAt,
       destinationLatitude: destinationLat,
       destinationLongitude: destinationLng,
       pickupLatitude: pickupLat,

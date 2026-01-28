@@ -1,4 +1,5 @@
 import 'package:animations/animations.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_rider/features/auth/view/account_created.dart';
 import 'package:grab_go_rider/features/auth/view/forgot_password.dart';
@@ -15,6 +16,7 @@ import 'package:grab_go_rider/features/auth/view/verify_phone.dart';
 import 'package:grab_go_rider/features/home/view/bonuses_page.dart';
 import 'package:grab_go_rider/features/home/view/earnings_history_page.dart';
 import 'package:grab_go_rider/features/home/view/notifications_page.dart';
+import 'package:grab_go_rider/features/orders/view/available_orders.dart';
 import 'package:grab_go_rider/features/orders/view/orders_page.dart';
 import 'package:grab_go_rider/features/home/view/performance_page.dart';
 import 'package:grab_go_rider/features/settings/view/settings_page.dart';
@@ -309,6 +311,25 @@ final GoRouter appRouter = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: const OrdersPage(),
+          transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.scaled,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/availableOrders",
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const AvailableOrders(),
           transitionDuration: const Duration(milliseconds: 800),
           reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
