@@ -5,7 +5,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/status/view/story_viewer.dart';
 import 'package:grab_go_customer/shared/services/notification_service.dart';
-import 'package:grab_go_customer/shared/widgets/app_refresh_indicator.dart';
+import 'package:grab_go_shared/shared/widgets/app_refresh_indicator.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:intl/intl.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';

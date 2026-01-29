@@ -137,7 +137,7 @@ router.get(
       });
 
       // Calculate rider earnings for each order
-      const { calculateRiderEarnings } = require('../utils/riderEarningsCalculator');
+      const { calculateRiderEarnings, calculateDistance } = require('../utils/riderEarningsCalculator');
 
       const ordersWithEarnings = availableOrders.map(order => {
         const earnings = calculateRiderEarnings(order, 0); // No tip yet
@@ -156,10 +156,77 @@ router.get(
         };
       });
 
+      // Location-based filtering (optional)
+      const riderLat = parseFloat(req.query.lat);
+      const riderLon = parseFloat(req.query.lon);
+      let radius = parseFloat(req.query.radius) || 10; // Default 10 km
+
+      let filteredOrders = ordersWithEarnings;
+      let filterApplied = false;
+      let expandedRadius = false;
+
+      if (!isNaN(riderLat) && !isNaN(riderLon)) {
+        filterApplied = true;
+
+        // Calculate distance from rider to each restaurant/store
+        const ordersWithRiderDistance = ordersWithEarnings.map(order => {
+          const pickupLat = order.restaurant?.latitude || order.groceryStore?.latitude || order.pharmacyStore?.latitude;
+          const pickupLon = order.restaurant?.longitude || order.groceryStore?.longitude || order.pharmacyStore?.longitude;
+
+          const distanceToPickup = calculateDistance(riderLat, riderLon, pickupLat, pickupLon);
+
+          return {
+            ...order,
+            distanceToPickup: distanceToPickup
+          };
+        });
+
+        // Filter by radius
+        filteredOrders = ordersWithRiderDistance.filter(order => order.distanceToPickup <= radius);
+
+        // Smart radius expansion if too few orders
+        if (filteredOrders.length < 5 && radius === 10) {
+          radius = 15;
+          filteredOrders = ordersWithRiderDistance.filter(order => order.distanceToPickup <= radius);
+          expandedRadius = true;
+        }
+        if (filteredOrders.length < 5 && radius === 15) {
+          radius = 20;
+          filteredOrders = ordersWithRiderDistance.filter(order => order.distanceToPickup <= radius);
+          expandedRadius = true;
+        }
+
+        // Sort by distance to pickup (closest first)
+        filteredOrders.sort((a, b) => a.distanceToPickup - b.distanceToPickup);
+
+        console.log(`📍 Filtered ${filteredOrders.length} orders within ${radius} km of rider`);
+      }
+
+      // Calculate aggregate statistics
+      const statistics = {
+        totalOrders: filteredOrders.length,
+        totalDropPoints: filteredOrders.length,
+        totalEarnings: parseFloat(filteredOrders.reduce((sum, o) => sum + (o.riderEarnings || 0), 0).toFixed(2)),
+        totalTips: parseFloat(filteredOrders.reduce((sum, o) => sum + (o.earningsBreakdown?.tip || 0), 0).toFixed(2)),
+        totalDistance: parseFloat(filteredOrders.reduce((sum, o) => sum + (o.distance || 0), 0).toFixed(2)),
+        averageEarningsPerOrder: filteredOrders.length > 0
+          ? parseFloat((filteredOrders.reduce((sum, o) => sum + (o.riderEarnings || 0), 0) / filteredOrders.length).toFixed(2))
+          : 0,
+        averageDistance: filteredOrders.length > 0
+          ? parseFloat((filteredOrders.reduce((sum, o) => sum + (o.distance || 0), 0) / filteredOrders.length).toFixed(2))
+          : 0,
+        filterApplied: filterApplied,
+        radius: radius,
+        expandedRadius: expandedRadius
+      };
+
       res.json({
         success: true,
         message: "Available orders retrieved successfully",
-        data: ordersWithEarnings,
+        data: {
+          orders: filteredOrders,
+          statistics: statistics
+        }
       });
     } catch (error) {
       console.error("Get available orders error:", error);

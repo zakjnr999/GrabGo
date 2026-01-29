@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:grab_go_customer/shared/widgets/app_refresh_indicator.dart';
+import 'package:grab_go_shared/shared/widgets/app_refresh_indicator.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';

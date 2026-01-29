@@ -4,6 +4,63 @@ import 'package:flutter/foundation.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:http/http.dart' as http;
 
+class OrderStatistics {
+  final int totalOrders;
+  final int totalDropPoints;
+  final double totalEarnings;
+  final double totalTips;
+  final double totalDistance;
+  final double averageEarningsPerOrder;
+  final double averageDistance;
+  final bool filterApplied;
+  final double radius;
+  final bool expandedRadius;
+
+  OrderStatistics({
+    required this.totalOrders,
+    required this.totalDropPoints,
+    required this.totalEarnings,
+    required this.totalTips,
+    required this.totalDistance,
+    required this.averageEarningsPerOrder,
+    required this.averageDistance,
+    required this.filterApplied,
+    required this.radius,
+    required this.expandedRadius,
+  });
+
+  factory OrderStatistics.fromJson(Map<String, dynamic> json) {
+    return OrderStatistics(
+      totalOrders: json['totalOrders'] as int? ?? 0,
+      totalDropPoints: json['totalDropPoints'] as int? ?? 0,
+      totalEarnings: (json['totalEarnings'] as num?)?.toDouble() ?? 0.0,
+      totalTips: (json['totalTips'] as num?)?.toDouble() ?? 0.0,
+      totalDistance: (json['totalDistance'] as num?)?.toDouble() ?? 0.0,
+      averageEarningsPerOrder: (json['averageEarningsPerOrder'] as num?)?.toDouble() ?? 0.0,
+      averageDistance: (json['averageDistance'] as num?)?.toDouble() ?? 0.0,
+      filterApplied: json['filterApplied'] as bool? ?? false,
+      radius: (json['radius'] as num?)?.toDouble() ?? 10.0,
+      expandedRadius: json['expandedRadius'] as bool? ?? false,
+    );
+  }
+
+  factory OrderStatistics.empty() {
+    return OrderStatistics(
+      totalOrders: 0,
+      totalDropPoints: 0,
+      totalEarnings: 0.0,
+      totalTips: 0.0,
+      totalDistance: 0.0,
+      averageEarningsPerOrder: 0.0,
+      averageDistance: 0.0,
+      filterApplied: false,
+      radius: 10.0,
+      expandedRadius: false,
+    );
+  }
+}
+
+
 class AvailableOrderDto {
   final String id;
   final String orderNumber;
@@ -22,8 +79,9 @@ class AvailableOrderDto {
   final String? orderType; // food, grocery, pharmacy
   final int itemCount;
   final DateTime? createdAt;
-  final double? distance; // Distance in km
+  final double? distance; // Distance from pickup to delivery (km)
   final double? riderEarnings; // What the rider will earn
+  final double? distanceToPickup; // Distance from rider to pickup (km) - only when location filtering is used
 
   // Coordinates for tracking initialization
   final double? destinationLatitude;
@@ -51,6 +109,7 @@ class AvailableOrderDto {
     this.createdAt,
     this.distance,
     this.riderEarnings,
+    this.distanceToPickup,
     this.destinationLatitude,
     this.destinationLongitude,
     this.pickupLatitude,
@@ -179,45 +238,78 @@ class AvailableOrdersService {
     return headers;
   }
 
-  Future<List<AvailableOrderDto>> getAvailableOrders() async {
-    final uri = Uri.parse('$_baseUrl/riders/available-orders');
+  Future<Map<String, dynamic>> getAvailableOrders({double? lat, double? lon, double? radius}) async {
+    // Build query parameters
+    final queryParams = <String, String>{};
+    if (lat != null) queryParams['lat'] = lat.toString();
+    if (lon != null) queryParams['lon'] = lon.toString();
+    if (radius != null) queryParams['radius'] = radius.toString();
+
+    final uri = Uri.parse('$_baseUrl/riders/available-orders').replace(queryParameters: queryParams);
     debugPrint('🔍 Fetching available orders from: $uri');
+    
     try {
       final headers = await _buildHeaders();
       debugPrint('🔍 Headers: ${headers.keys.toList()}');
 
       final response = await _client.get(uri, headers: headers);
       debugPrint('🔍 Response status: ${response.statusCode}');
-      debugPrint(
-        '🔍 Response body: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}',
-      );
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body) as Map<String, dynamic>;
         final data = decoded['data'];
-        debugPrint('🔍 Data type: ${data.runtimeType}, length: ${data is List ? data.length : 'N/A'}');
-        if (data is List) {
-          final orders = data.whereType<Map<String, dynamic>>().map((e) {
+        
+        // New response structure: { orders: [...], statistics: {...} }
+        if (data is Map<String, dynamic>) {
+          final ordersList = data['orders'] as List<dynamic>? ?? [];
+          final statsJson = data['statistics'] as Map<String, dynamic>?;
+          
+          final orders = ordersList.whereType<Map<String, dynamic>>().map((e) {
             final order = AvailableOrderDto.fromJson(e);
-            debugPrint('📦 Parsed order ${order.orderNumber}:');
-            debugPrint('   Distance: ${order.distance} km');
-            debugPrint('   Rider Earnings: GHS ${order.riderEarnings}');
-            debugPrint('   Raw JSON distance: ${e['distance']}');
-            debugPrint('   Raw JSON riderEarnings: ${e['riderEarnings']}');
+            debugPrint('📦 Parsed order ${order.orderNumber}: ${order.distance} km, GHS ${order.riderEarnings}');
             return order;
           }).toList();
+          
+          final statistics = statsJson != null 
+              ? OrderStatistics.fromJson(statsJson)
+              : OrderStatistics.empty();
+          
           debugPrint('✅ Parsed ${orders.length} orders');
-          return orders;
+          debugPrint('📊 Statistics: ${statistics.totalOrders} orders, GHS ${statistics.totalEarnings} total');
+          
+          return {
+            'orders': orders,
+            'statistics': statistics,
+          };
         }
-        return [];
+        
+        // Fallback for old response structure (just a list)
+        if (data is List) {
+          final orders = data.whereType<Map<String, dynamic>>().map((e) => AvailableOrderDto.fromJson(e)).toList();
+          return {
+            'orders': orders,
+            'statistics': OrderStatistics.empty(),
+          };
+        }
+        
+        return {
+          'orders': <AvailableOrderDto>[],
+          'statistics': OrderStatistics.empty(),
+        };
       } else {
         debugPrint('❌ AvailableOrdersService.getAvailableOrders failed: ${response.statusCode} ${response.body}');
-        return [];
+        return {
+          'orders': <AvailableOrderDto>[],
+          'statistics': OrderStatistics.empty(),
+        };
       }
     } catch (e, stack) {
       debugPrint('❌ AvailableOrdersService.getAvailableOrders error: $e');
       debugPrint('Stack: $stack');
-      return [];
+      return {
+        'orders': <AvailableOrderDto>[],
+        'statistics': OrderStatistics.empty(),
+      };
     }
   }
 

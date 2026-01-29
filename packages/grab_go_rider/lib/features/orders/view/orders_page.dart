@@ -40,7 +40,7 @@ class _OrdersPageState extends State<OrdersPage> {
       final orders = await _availableOrdersService.getAvailableOrders();
       if (!mounted) return;
       setState(() {
-        _availableOrders = orders;
+        _availableOrders = orders as List<AvailableOrderDto>;
         if (orders.isEmpty) {
           _ordersError = 'No available orders at the moment.';
         }
@@ -420,7 +420,6 @@ class _OrdersPageState extends State<OrdersPage> {
                               decoration: BoxDecoration(
                                 color: colors.backgroundSecondary,
                                 borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                                border: Border.all(color: colors.border, width: 1),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -685,13 +684,6 @@ class _OrdersPageState extends State<OrdersPage> {
                         colors: [colors.accentGreen, colors.accentGreen.withValues(alpha: 0.85)],
                       ),
                       borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                      boxShadow: [
-                        BoxShadow(
-                          color: colors.accentGreen.withValues(alpha: 0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
                     ),
                     child: Material(
                       color: Colors.transparent,

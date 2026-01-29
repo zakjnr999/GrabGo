@@ -8,14 +8,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:grab_go_customer/shared/widgets/app_refresh_indicator.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
-import 'package:flutter/services.dart';
 
 class ReferralPage extends StatefulWidget {
   const ReferralPage({super.key});

@@ -19,7 +19,7 @@ import 'package:grab_go_customer/features/home/viewmodel/food_discovery_provider
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
-import 'package:grab_go_customer/shared/widgets/app_refresh_indicator.dart';
+import 'package:grab_go_shared/shared/widgets/app_refresh_indicator.dart';
 import 'package:grab_go_customer/shared/widgets/category_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';

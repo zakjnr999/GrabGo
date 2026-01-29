@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:grab_go_rider/features/orders/widgets/orders_list_skeleton.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import '../service/available_orders_service.dart';
@@ -18,9 +19,12 @@ class AvailableOrders extends StatefulWidget {
 class _AvailableOrdersState extends State<AvailableOrders> {
   final AvailableOrdersService _service = AvailableOrdersService();
   List<AvailableOrderDto> _availableOrders = [];
+  OrderStatistics? _statistics;
   bool _isLoading = true;
   bool _isRefreshing = false;
   String? _errorMessage;
+  double? _currentLat;
+  double? _currentLon;
 
   @override
   void initState() {
@@ -36,10 +40,16 @@ class _AvailableOrdersState extends State<AvailableOrders> {
     });
 
     try {
-      final orders = await _service.getAvailableOrders();
+      // Get rider's current location (optional)
+      // For now, we'll skip location to keep it simple
+      // You can add geolocator package later
+
+      final result = await _service.getAvailableOrders(lat: _currentLat, lon: _currentLon);
+
       if (!mounted) return;
       setState(() {
-        _availableOrders = orders;
+        _availableOrders = result['orders'] as List<AvailableOrderDto>;
+        _statistics = result['statistics'] as OrderStatistics?;
         _isLoading = false;
       });
     } catch (e) {
@@ -59,7 +69,7 @@ class _AvailableOrdersState extends State<AvailableOrders> {
       final orders = await _service.getAvailableOrders();
       if (!mounted) return;
       setState(() {
-        _availableOrders = orders;
+        _availableOrders = orders as List<AvailableOrderDto>;
         _isRefreshing = false;
         _errorMessage = null;
       });
@@ -200,14 +210,22 @@ class _AvailableOrdersState extends State<AvailableOrders> {
             ),
           ],
         ),
-        body: _buildBody(colors),
+        body: _buildBody(colors, isDark),
       ),
     );
   }
 
-  Widget _buildBody(AppColorsExtension colors) {
+  Widget _buildBody(AppColorsExtension colors, bool isDark) {
     if (_isLoading) {
-      return Center(child: CircularProgressIndicator(color: colors.accentGreen));
+      return SingleChildScrollView(
+        physics: const NeverScrollableScrollPhysics(),
+        child: Padding(
+          padding: EdgeInsets.only(top: 6.h),
+          child: Column(
+            children: List.generate(10, (index) => OrdersListSkeleton(colors: colors, isDark: isDark)),
+          ),
+        ),
+      );
     }
 
     if (_errorMessage != null) {
@@ -218,7 +236,12 @@ class _AvailableOrdersState extends State<AvailableOrders> {
       return _buildEmptyState(colors);
     }
 
-    return RefreshIndicator(onRefresh: _refreshOrders, color: colors.accentGreen, child: _buildOrdersList(colors));
+    return AppRefreshIndicator(
+      onRefresh: _refreshOrders,
+      iconPath: Assets.icons.deliveryTruck,
+      bgColor: colors.accentGreen,
+      child: _buildOrdersList(colors),
+    );
   }
 
   Widget _buildErrorState(AppColorsExtension colors) {
@@ -311,39 +334,24 @@ class _AvailableOrdersState extends State<AvailableOrders> {
 
     // Status display
     String statusText = '';
-    Color statusColor = colors.accentGreen;
     switch (order.orderStatus.toLowerCase()) {
       case 'ready':
-        statusText = 'Ready';
-        statusColor = colors.accentGreen;
+        statusText = 'Ready for pickup!';
         break;
       case 'preparing':
-        statusText = 'Preparing';
-        statusColor = Colors.orange;
+        statusText = 'Order is being prepared';
         break;
       case 'confirmed':
-        statusText = 'Confirmed';
-        statusColor = Colors.blue;
+        statusText = 'Order confirmed!';
+        break;
+      case 'delivered':
+        statusText = 'Order delivered!';
+        break;
+      case 'cancelled':
+        statusText = 'Order was cancelled';
         break;
       default:
-        statusText = order.orderStatus;
-    }
-
-    // Payment method display
-    String paymentIcon = '';
-    switch (order.paymentMethod.toLowerCase()) {
-      case 'cash':
-        paymentIcon = 'Cash';
-        break;
-      case 'card':
-        paymentIcon = 'Card';
-        break;
-      case 'mobile_money':
-      case 'mobilemoney':
-        paymentIcon = 'MoMo';
-        break;
-      default:
-        paymentIcon = order.paymentMethod;
+        statusText = 'Current status: ${order.orderStatus}';
     }
 
     return InkWell(
@@ -394,7 +402,6 @@ class _AvailableOrdersState extends State<AvailableOrders> {
             // Distance & Status Row
             Row(
               children: [
-                // Distance
                 SvgPicture.asset(
                   Assets.icons.mapPin,
                   package: 'grab_go_shared',
@@ -407,11 +414,16 @@ class _AvailableOrdersState extends State<AvailableOrders> {
                   order.distance != null ? '${order.distance!.toStringAsFixed(1)} km' : '-- km',
                   style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
                 ),
-                SizedBox(width: 16.w),
-                // Status
+                SizedBox(width: 10.w),
+                Container(
+                  height: 4.h,
+                  width: 4.h,
+                  decoration: BoxDecoration(color: colors.textSecondary, shape: BoxShape.circle),
+                ),
+                SizedBox(width: 10.w),
                 Text(
                   statusText,
-                  style: TextStyle(color: statusColor, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
                 ),
               ],
             ),
@@ -433,26 +445,34 @@ class _AvailableOrdersState extends State<AvailableOrders> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  order.riderEarnings != null && order.riderEarnings! > 0
-                      ? 'GHS ${order.riderEarnings!.toStringAsFixed(2)}'
-                      : 'GHS 5.00', // Base fee fallback
-                  style: TextStyle(color: colors.accentGreen, fontSize: 18.sp, fontWeight: FontWeight.w700),
+                Column(
+                  children: [
+                    Text(
+                      "YOUR EARNINGS :",
+                      style: TextStyle(fontSize: 10.sp, color: colors.textPrimary, fontWeight: FontWeight.w400),
+                    ),
+                    Text(
+                      order.riderEarnings != null && order.riderEarnings! > 0
+                          ? 'GHS ${order.riderEarnings!.toStringAsFixed(2)}'
+                          : 'unavailable',
+                      style: TextStyle(color: colors.accentGreen, fontSize: 18.sp, fontWeight: FontWeight.w700),
+                    ),
+                  ],
                 ),
 
                 Row(
                   children: [
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-                      decoration: BoxDecoration(
-                        color: colors.backgroundPrimary,
-                        borderRadius: BorderRadius.circular(6.r),
+                    if (timeSince.isNotEmpty) ...[
+                      SizedBox(height: 8.h),
+                      Text(
+                        timeSince,
+                        style: TextStyle(
+                          color: colors.textSecondary.withValues(alpha: 0.7),
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.w400,
+                        ),
                       ),
-                      child: Text(
-                        paymentIcon,
-                        style: TextStyle(color: colors.textPrimary, fontSize: 11.sp, fontWeight: FontWeight.w600),
-                      ),
-                    ),
+                    ],
                     if (order.itemCount > 0) ...[
                       SizedBox(width: 8.w),
                       Container(
@@ -471,19 +491,6 @@ class _AvailableOrdersState extends State<AvailableOrders> {
                 ),
               ],
             ),
-
-            // Time since order (optional)
-            if (timeSince.isNotEmpty) ...[
-              SizedBox(height: 8.h),
-              Text(
-                timeSince,
-                style: TextStyle(
-                  color: colors.textSecondary.withOpacity(0.7),
-                  fontSize: 10.sp,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ],
           ],
         ),
       ),

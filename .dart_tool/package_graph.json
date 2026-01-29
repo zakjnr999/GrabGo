@@ -28,7 +28,6 @@
         "confetti",
         "crypto",
         "cupertino_icons",
-        "custom_refresh_indicator",
         "device_info_plus",
         "dio",
         "dotted_line",
@@ -178,6 +177,7 @@
         "cached_network_image",
         "chopper",
         "crypto",
+        "custom_refresh_indicator",
         "device_info_plus",
         "dio",
         "emoji_picker_flutter",
@@ -534,6 +534,14 @@
       "version": "6.0.0",
       "dependencies": [
         "lints"
+      ]
+    },
+    {
+      "name": "custom_refresh_indicator",
+      "version": "4.0.1",
+      "dependencies": [
+        "flutter",
+        "meta"
       ]
     },
     {
@@ -1236,14 +1244,6 @@
       "version": "0.15.0",
       "dependencies": [
         "flutter"
-      ]
-    },
-    {
-      "name": "custom_refresh_indicator",
-      "version": "4.0.1",
-      "dependencies": [
-        "flutter",
-        "meta"
       ]
     },
     {
