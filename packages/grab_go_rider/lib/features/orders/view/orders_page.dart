@@ -32,7 +32,7 @@ class _OrdersPageState extends State<OrdersPage> {
   bool _isBatteryLow = false;
   bool _isCharging = false;
   StreamSubscription<BatteryState>? _batterySubscription;
-  String? _ordersError;
+  String? ordersError;
   double? _currentLat;
   double? _currentLon;
 
@@ -126,7 +126,7 @@ class _OrdersPageState extends State<OrdersPage> {
   Future<void> _loadAvailableOrders() async {
     setState(() {
       _isLoadingOrders = true;
-      _ordersError = null;
+      ordersError = null;
     });
 
     try {
@@ -138,13 +138,13 @@ class _OrdersPageState extends State<OrdersPage> {
         _statistics = result['statistics'] as OrderStatistics?;
 
         if (_availableOrders.isEmpty) {
-          _ordersError = 'No available orders at the moment.';
+          ordersError = 'No available orders at the moment.';
         }
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _ordersError = 'Failed to load available orders. Please try again.';
+        ordersError = 'Failed to load available orders. Please try again.';
       });
     } finally {
       if (mounted) {

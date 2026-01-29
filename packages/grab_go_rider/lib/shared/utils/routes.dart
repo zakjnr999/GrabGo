@@ -16,7 +16,6 @@ import 'package:grab_go_rider/features/home/view/bonuses_page.dart';
 import 'package:grab_go_rider/features/home/view/earnings_history_page.dart';
 import 'package:grab_go_rider/features/home/view/notifications_page.dart';
 import 'package:grab_go_rider/features/orders/service/available_order_dto.dart';
-import 'package:grab_go_rider/features/orders/service/available_orders_service.dart';
 import 'package:grab_go_rider/features/orders/service/order_statistics_service.dart';
 import 'package:grab_go_rider/features/orders/view/available_orders.dart';
 import 'package:grab_go_rider/features/orders/view/available_orders_map.dart';
@@ -636,7 +635,7 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
-      path: "/order-confirmation",
+      path: "/orderConfirmation",
       pageBuilder: (context, state) {
         final extra = state.extra as Map<String, dynamic>?;
         return CustomTransitionPage(
@@ -654,7 +653,6 @@ final GoRouter appRouter = GoRouter(
                 ? List<String>.from(extra!['orderItems'])
                 : const ["Pizza Margherita x1", "Coca Cola x2"],
             specialInstructions: extra?['specialInstructions'],
-            // Tracking data
             customerId: extra?['customerId'],
             riderId: extra?['riderId'],
             pickupLatitude: extra?['pickupLatitude'] as double?,

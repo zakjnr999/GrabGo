@@ -324,7 +324,15 @@ router.post(
         },
         include: {
           customer: { select: { username: true, email: true, phone: true } },
-          restaurant: { select: { restaurantName: true, logo: true, location: true } },
+          restaurant: {
+            select: {
+              restaurantName: true,
+              logo: true,
+              address: true,
+              latitude: true,
+              longitude: true
+            }
+          },
           rider: { select: { username: true, email: true, phone: true } }
         }
       });

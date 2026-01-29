@@ -7,7 +7,7 @@ import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 /// Bottom sheet widget for displaying order details when a map pin is tapped
-class OrderDetailBottomSheet extends StatelessWidget {
+class OrderDetailBottomSheet extends StatefulWidget {
   final AvailableOrderDto order;
   final VoidCallback onAccept;
   final VoidCallback onViewDetails;
@@ -36,7 +36,7 @@ class OrderDetailBottomSheet extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       isDismissible: true,
-      enableDrag: true,
+      enableDrag: false,
       builder: (context) => OrderDetailBottomSheet(
         order: order,
         onAccept: onAccept,
@@ -48,160 +48,192 @@ class OrderDetailBottomSheet extends StatelessWidget {
   }
 
   @override
+  State<OrderDetailBottomSheet> createState() => _OrderDetailBottomSheetState();
+}
+
+class _OrderDetailBottomSheetState extends State<OrderDetailBottomSheet> {
+  bool _isAccepting = false;
+
+  void _handleAccept() {
+    if (_isAccepting) return;
+
+    setState(() {
+      _isAccepting = true;
+    });
+
+    widget.onAccept();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.backgroundPrimary,
-        borderRadius: BorderRadius.only(topLeft: Radius.circular(20.r), topRight: Radius.circular(20.r)),
-        boxShadow: [
-          BoxShadow(
-            color: isDark ? Colors.black.withAlpha(40) : Colors.black.withAlpha(15),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Handle bar
-          Container(
-            margin: EdgeInsets.only(top: 12.h),
-            width: 40.w,
-            height: 4.h,
-            decoration: BoxDecoration(
-              color: colors.textSecondary.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(2.r),
+    return WillPopScope(
+      onWillPop: () async => !_isAccepting,
+      child: Container(
+        decoration: BoxDecoration(
+          color: colors.backgroundPrimary,
+          borderRadius: BorderRadius.only(topLeft: Radius.circular(20.r), topRight: Radius.circular(20.r)),
+          boxShadow: [
+            BoxShadow(
+              color: isDark ? Colors.black.withAlpha(40) : Colors.black.withAlpha(15),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
             ),
-          ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            GestureDetector(
+              onVerticalDragUpdate: _isAccepting ? null : (_) {},
+              child: Container(
+                margin: EdgeInsets.only(top: 12.h),
+                width: 40.w,
+                height: 4.h,
+                decoration: BoxDecoration(
+                  color: colors.textSecondary.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2.r),
+                ),
+              ),
+            ),
 
-          Padding(
-            padding: EdgeInsets.all(20.w),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        if (isClosest) ...[
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-                            decoration: BoxDecoration(
-                              color: colors.accentOrange.withValues(alpha: 0.15),
+            Padding(
+              padding: EdgeInsets.all(20.w),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          if (widget.isClosest) ...[
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                              decoration: BoxDecoration(
+                                color: colors.accentOrange.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SvgPicture.asset(
+                                    Assets.icons.starSolid,
+                                    package: 'grab_go_shared',
+                                    width: 14.w,
+                                    height: 14.w,
+                                    colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                  ),
+                                  SizedBox(width: 4.w),
+                                  Text(
+                                    'Closest',
+                                    style: TextStyle(
+                                      color: colors.accentOrange,
+                                      fontSize: 11.sp,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(width: 8.w),
+                          ],
+                          Text(
+                            widget.order.orderNumber,
+                            style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                      _buildTimeSinceOrder(colors),
+                    ],
+                  ),
+
+                  SizedBox(height: 16.h),
+
+                  _buildRouteVisualization(colors),
+
+                  SizedBox(height: 16.h),
+
+                  DottedLine(
+                    direction: Axis.horizontal,
+                    lineLength: double.infinity,
+                    lineThickness: 1.5,
+                    dashLength: 6,
+                    dashColor: colors.inputBorder.withValues(alpha: 0.5),
+                    dashGapLength: 4,
+                  ),
+
+                  SizedBox(height: 16.h),
+
+                  // Stats row: Distance, ETA, Items
+                  _buildStatsRow(colors),
+
+                  SizedBox(height: 16.h),
+
+                  // Earnings section
+                  _buildEarningsSection(colors),
+
+                  SizedBox(height: 20.h),
+
+                  // Action buttons
+                  Row(
+                    children: [
+                      // View Details button
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _isAccepting ? null : widget.onViewDetails,
+                          style: OutlinedButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 14.h),
+                            side: BorderSide(color: colors.border, width: 1.5),
+                            shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                SvgPicture.asset(
-                                  Assets.icons.starSolid,
-                                  package: 'grab_go_shared',
-                                  width: 14.w,
-                                  height: 14.w,
-                                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                                ),
-                                SizedBox(width: 4.w),
-                                Text(
-                                  'Closest',
-                                  style: TextStyle(
-                                    color: colors.accentOrange,
-                                    fontSize: 11.sp,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
                           ),
-                          SizedBox(width: 8.w),
-                        ],
-                        Text(
-                          order.orderNumber,
-                          style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
-                        ),
-                      ],
-                    ),
-                    // Time since order placed
-                    _buildTimeSinceOrder(colors),
-                  ],
-                ),
-
-                SizedBox(height: 16.h),
-
-                _buildRouteVisualization(colors),
-
-                SizedBox(height: 16.h),
-
-                DottedLine(
-                  direction: Axis.horizontal,
-                  lineLength: double.infinity,
-                  lineThickness: 1.5,
-                  dashLength: 6,
-                  dashColor: colors.inputBorder.withValues(alpha: 0.5),
-                  dashGapLength: 4,
-                ),
-
-                SizedBox(height: 16.h),
-
-                // Stats row: Distance, ETA, Items
-                _buildStatsRow(colors),
-
-                SizedBox(height: 16.h),
-
-                // Earnings section
-                _buildEarningsSection(colors),
-
-                SizedBox(height: 20.h),
-
-                // Action buttons
-                Row(
-                  children: [
-                    // View Details button
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: onViewDetails,
-                        style: OutlinedButton.styleFrom(
-                          padding: EdgeInsets.symmetric(vertical: 14.h),
-                          side: BorderSide(color: colors.border, width: 1.5),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.borderRadius4)),
-                        ),
-                        child: Text(
-                          'View Details',
-                          style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                          child: Text(
+                            'View Details',
+                            style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                          ),
                         ),
                       ),
-                    ),
-                    SizedBox(width: 12.w),
-                    // Accept Order button
-                    Expanded(
-                      flex: 2,
-                      child: ElevatedButton(
-                        onPressed: onAccept,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: colors.accentGreen,
-                          padding: EdgeInsets.symmetric(vertical: 14.h),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.borderRadius4)),
-                          elevation: 0,
-                        ),
-                        child: Text(
-                          'Accept Order',
-                          style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                      SizedBox(width: 12.w),
+                      // Accept Order button
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton(
+                          onPressed: _isAccepting ? null : _handleAccept,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colors.accentGreen,
+                            disabledBackgroundColor: colors.accentGreen.withValues(alpha: 0.7),
+                            padding: EdgeInsets.symmetric(vertical: 14.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: _isAccepting
+                              ? Text(
+                                  'Accepting order...',
+                                  style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                                )
+                              : Text(
+                                  'Accept Order',
+                                  style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                                ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
 
-                // Safe area padding
-                SizedBox(height: MediaQuery.of(context).padding.bottom > 0 ? 8.h : 0),
-              ],
+                  // Safe area padding
+                  SizedBox(height: MediaQuery.of(context).padding.bottom > 0 ? 8.h : 0),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -274,7 +306,7 @@ class OrderDetailBottomSheet extends StatelessWidget {
               ),
               SizedBox(height: 2.h),
               Text(
-                order.restaurantName,
+                widget.order.restaurantName,
                 style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -294,7 +326,7 @@ class OrderDetailBottomSheet extends StatelessWidget {
               ),
               SizedBox(height: 2.h),
               Text(
-                order.customerArea,
+                widget.order.customerArea,
                 style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -308,7 +340,7 @@ class OrderDetailBottomSheet extends StatelessWidget {
 
   Widget _buildStatsRow(AppColorsExtension colors) {
     // Calculate ETA estimate (rough: 3 min per km)
-    final distanceKm = order.distance ?? order.distanceToPickup ?? 0;
+    final distanceKm = widget.order.distance ?? widget.order.distanceToPickup ?? 0;
     final etaMinutes = (distanceKm * 3).round();
 
     return Row(
@@ -335,7 +367,12 @@ class OrderDetailBottomSheet extends StatelessWidget {
         Container(width: 1, height: 36.h, color: colors.border.withValues(alpha: 0.5)),
         // Items
         Expanded(
-          child: _buildStatItem(colors: colors, icon: Assets.icons.boxIso, label: 'Items', value: '${order.itemCount}'),
+          child: _buildStatItem(
+            colors: colors,
+            icon: Assets.icons.cart,
+            label: 'Items',
+            value: '${widget.order.itemCount}',
+          ),
         ),
       ],
     );
@@ -392,8 +429,8 @@ class OrderDetailBottomSheet extends StatelessWidget {
             ],
           ),
           Text(
-            order.riderEarnings != null && order.riderEarnings! > 0
-                ? 'GHS ${order.riderEarnings!.toStringAsFixed(2)}'
+            widget.order.riderEarnings != null && widget.order.riderEarnings! > 0
+                ? 'GHS ${widget.order.riderEarnings!.toStringAsFixed(2)}'
                 : 'Not set',
             style: TextStyle(color: colors.accentGreen, fontSize: 18.sp, fontWeight: FontWeight.w700),
           ),
@@ -403,9 +440,9 @@ class OrderDetailBottomSheet extends StatelessWidget {
   }
 
   Widget _buildTimeSinceOrder(AppColorsExtension colors) {
-    if (order.createdAt == null) return const SizedBox.shrink();
+    if (widget.order.createdAt == null) return const SizedBox.shrink();
 
-    final duration = DateTime.now().difference(order.createdAt!);
+    final duration = DateTime.now().difference(widget.order.createdAt!);
     final minutes = duration.inMinutes;
 
     String timeText;

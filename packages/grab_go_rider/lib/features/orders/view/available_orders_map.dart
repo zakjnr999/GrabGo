@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:grab_go_rider/features/orders/service/available_order_dto.dart';
 import 'package:grab_go_rider/features/orders/service/available_orders_service.dart';
+import 'package:grab_go_rider/features/orders/widgets/available_order_details_bottom_sheet.dart';
 import 'package:grab_go_rider/features/orders/widgets/order_detail_bottom_sheet.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -277,291 +278,62 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
       order: order,
       isClosest: isClosest,
       onAccept: () {
-        Navigator.of(context).pop();
         _acceptOrder(order);
       },
       onViewDetails: () {
         Navigator.of(context).pop();
-        _showFullOrderDetails(order);
+        AvailableOrderDetailsBottomSheet.show(context: context, order: order, onAccept: () => _acceptOrder(order));
       },
     );
   }
 
   Future<void> _acceptOrder(AvailableOrderDto order) async {
-    final colors = context.appColors;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Center(
-        child: Container(
-          padding: EdgeInsets.all(24.w),
-          decoration: BoxDecoration(color: colors.backgroundPrimary, borderRadius: BorderRadius.circular(12.r)),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(color: colors.accentGreen),
-              SizedBox(height: 16.h),
-              Text(
-                'Accepting order...',
-                style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-
     try {
       final acceptedOrder = await _service.acceptOrder(order.id);
       if (!mounted) return;
 
-      Navigator.of(context).pop();
-
       if (acceptedOrder != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Order accepted successfully!'),
-            backgroundColor: colors.accentGreen,
-            duration: const Duration(seconds: 2),
-          ),
+        Navigator.of(context).pop();
+        context.push(
+          '/orderConfirmation',
+          extra: {
+            'orderId': acceptedOrder.id,
+            'orderNumber': acceptedOrder.orderNumber,
+            'customerName': acceptedOrder.customerName,
+            'customerAddress': acceptedOrder.customerAddress,
+            'customerPhone': acceptedOrder.customerPhone,
+            'restaurantName': acceptedOrder.restaurantName,
+            'restaurantAddress': acceptedOrder.restaurantAddress,
+            'orderTotal': 'GHS ${acceptedOrder.totalAmount.toStringAsFixed(2)}',
+            'orderItems': acceptedOrder.orderItems,
+            'specialInstructions': acceptedOrder.notes,
+            'customerId': acceptedOrder.customerId,
+            'riderId': acceptedOrder.id,
+            'pickupLatitude': acceptedOrder.pickupLatitude,
+            'pickupLongitude': acceptedOrder.pickupLongitude,
+            'destinationLatitude': acceptedOrder.destinationLatitude,
+            'destinationLongitude': acceptedOrder.destinationLongitude,
+          },
         );
 
         await _loadOrders();
       } else {
-        _showErrorSnackbar('Failed to accept order. Please try again.');
+        Navigator.of(context).pop();
+        AppToastMessage.show(
+          context: context,
+          message: "Order is no longer available.",
+          backgroundColor: context.appColors.error,
+        );
       }
     } catch (e) {
       if (!mounted) return;
       Navigator.of(context).pop();
-      _showErrorSnackbar('Error accepting order: $e');
+      AppToastMessage.show(
+        context: context,
+        message: "Failed to accept order: $e",
+        backgroundColor: context.appColors.error,
+      );
     }
-  }
-
-  void _showErrorSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: context.appColors.error, duration: const Duration(seconds: 3)),
-    );
-  }
-
-  void _showFullOrderDetails(AvailableOrderDto order) {
-    final colors = context.appColors;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.75,
-        decoration: BoxDecoration(
-          color: colors.backgroundPrimary,
-          borderRadius: BorderRadius.only(topLeft: Radius.circular(20.r), topRight: Radius.circular(20.r)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              margin: EdgeInsets.only(top: 12.h),
-              width: 40.w,
-              height: 4.h,
-              decoration: BoxDecoration(
-                color: colors.textSecondary.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(2.r),
-              ),
-            ),
-            SizedBox(height: 20.h),
-
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.w),
-              child: Text(
-                'Order Details',
-                style: TextStyle(color: colors.textPrimary, fontSize: 20.sp, fontWeight: FontWeight.w700),
-              ),
-            ),
-
-            Divider(color: colors.border, height: 1),
-
-            // Content
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.all(20.w),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Order number and amount
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          order.orderNumber,
-                          style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w500),
-                        ),
-                        Text(
-                          'GHS ${order.totalAmount.toStringAsFixed(2)}',
-                          style: TextStyle(color: colors.accentGreen, fontSize: 20.sp, fontWeight: FontWeight.w700),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 24.h),
-
-                    // Restaurant info
-                    _buildDetailSection(
-                      colors,
-                      'Restaurant',
-                      order.restaurantName,
-                      order.restaurantAddress,
-                      Icons.restaurant,
-                    ),
-                    SizedBox(height: 20.h),
-
-                    // Customer info
-                    _buildDetailSection(
-                      colors,
-                      'Customer',
-                      order.customerName,
-                      order.customerAddress,
-                      Icons.person,
-                      subtitle2: order.customerPhone,
-                    ),
-                    SizedBox(height: 20.h),
-
-                    // Order items
-                    Text(
-                      'Order Items',
-                      style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
-                    ),
-                    SizedBox(height: 12.h),
-                    ...order.orderItems.map(
-                      (item) => Padding(
-                        padding: EdgeInsets.only(bottom: 8.h),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 6.w,
-                              height: 6.w,
-                              decoration: BoxDecoration(color: colors.accentGreen, shape: BoxShape.circle),
-                            ),
-                            SizedBox(width: 12.w),
-                            Expanded(
-                              child: Text(
-                                item,
-                                style: TextStyle(
-                                  color: colors.textSecondary,
-                                  fontSize: 14.sp,
-                                  fontWeight: FontWeight.w400,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    if (order.notes != null && order.notes!.isNotEmpty) ...[
-                      SizedBox(height: 20.h),
-                      Text(
-                        'Special Instructions',
-                        style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
-                      ),
-                      SizedBox(height: 8.h),
-                      Container(
-                        padding: EdgeInsets.all(12.w),
-                        decoration: BoxDecoration(
-                          color: colors.backgroundSecondary,
-                          borderRadius: BorderRadius.circular(8.r),
-                        ),
-                        child: Text(
-                          order.notes!,
-                          style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-
-            // Accept button
-            Container(
-              padding: EdgeInsets.all(20.w),
-              decoration: BoxDecoration(
-                color: colors.backgroundPrimary,
-                border: Border(top: BorderSide(color: colors.border, width: 1)),
-              ),
-              child: SafeArea(
-                child: SizedBox(
-                  height: 48.h,
-                  width: double.infinity,
-                  child: AppButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      _acceptOrder(order);
-                    },
-                    buttonText: 'Accept Order',
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailSection(
-    AppColorsExtension colors,
-    String title,
-    String mainText,
-    String? subtitle,
-    IconData icon, {
-    String? subtitle2,
-  }) {
-    return Container(
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(12.r)),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.all(12.w),
-            decoration: BoxDecoration(
-              color: colors.accentGreen.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8.r),
-            ),
-            child: Icon(icon, color: colors.accentGreen, size: 24.w),
-          ),
-          SizedBox(width: 16.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
-                ),
-                SizedBox(height: 4.h),
-                Text(
-                  mainText,
-                  style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
-                ),
-                if (subtitle != null && subtitle.isNotEmpty) ...[
-                  SizedBox(height: 4.h),
-                  Text(
-                    subtitle,
-                    style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
-                  ),
-                ],
-                if (subtitle2 != null && subtitle2.isNotEmpty) ...[
-                  SizedBox(height: 2.h),
-                  Text(
-                    subtitle2,
-                    style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   void _centerOnRider() {
