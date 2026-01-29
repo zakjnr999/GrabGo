@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
+import 'package:grab_go_shared/shared/utils/image_optimizer.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:grab_go_customer/features/status/model/status_model.dart';

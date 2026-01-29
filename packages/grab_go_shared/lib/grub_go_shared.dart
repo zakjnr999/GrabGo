@@ -48,3 +48,4 @@ export 'shared/services/webrtc_service.dart';
 export 'shared/widgets//story_stepper.dart';
 export 'shared/widgets/custom_switch.dart';
 export 'shared/widgets/app_refresh_indicator.dart';
+export 'shared/utils/image_optimizer.dart';

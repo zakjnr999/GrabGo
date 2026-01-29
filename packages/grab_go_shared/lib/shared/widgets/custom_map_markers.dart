@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -8,6 +9,193 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_svg/flutter_svg.dart';
 
 class CustomMapMarkers {
+  // ============================================================
+  // ORDER PIN MARKER - Modern floating card style with gradient
+  // ============================================================
+
+  /// Create order pin marker for available orders map
+  /// [isHighlighted] - true for closest/best ETA orders (accent color)
+  /// [itemCount] - number of items in the order
+  static Future<BitmapDescriptor> createOrderPinMarker({
+    required Color primaryColor,
+    required Color highlightColor,
+    bool isHighlighted = false,
+    int itemCount = 0,
+  }) async {
+    const double width = 140;
+    const double height = 168;
+    const double cardWidth = 98;
+    const double cardHeight = 98;
+    const double cornerRadius = 20;
+
+    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(pictureRecorder);
+    final Paint paint = Paint();
+
+    // Colors
+    final Color mainColor = isHighlighted ? highlightColor : primaryColor;
+    final Color gradientStart = isHighlighted ? highlightColor : const Color(0xFF6B7280); // Modern grey
+    final Color gradientEnd = isHighlighted ? highlightColor.withOpacity(0.8) : const Color(0xFF4B5563);
+
+    // Card position (centered)
+    final double cardX = (width - cardWidth) / 2;
+    const double cardY = 4.0;
+    final RRect cardRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(cardX, cardY, cardWidth, cardHeight),
+      Radius.circular(cornerRadius),
+    );
+
+    // 2. Draw card with solid color (no gradient)
+    paint.color = isHighlighted ? highlightColor : primaryColor;
+    canvas.drawRRect(cardRect, paint);
+
+    // 4. Draw store SVG icon
+    final iconCenter = Offset(width / 2, cardY + cardHeight / 2);
+
+    try {
+      final String svgString = await rootBundle.loadString('packages/grab_go_shared/lib/assets/icons/store.svg');
+      final SvgStringLoader loader = SvgStringLoader(svgString);
+      final PictureInfo pictureInfo = await vg.loadPicture(loader, null);
+
+      const double svgSize = 50.0;
+
+      canvas.save();
+      canvas.translate(iconCenter.dx - svgSize / 2, iconCenter.dy - svgSize / 2);
+      final double scale = svgSize / pictureInfo.size.width;
+      canvas.scale(scale, scale);
+
+      final Paint tintPaint = Paint()..colorFilter = const ColorFilter.mode(Colors.white, BlendMode.srcIn);
+      canvas.saveLayer(Rect.fromLTWH(0, 0, pictureInfo.size.width, pictureInfo.size.height), tintPaint);
+      canvas.drawPicture(pictureInfo.picture);
+      canvas.restore();
+      canvas.restore();
+    } catch (e) {
+      debugPrint('Error drawing store SVG: $e');
+      // Fallback to Material icon
+      final icon = Icons.local_shipping_rounded;
+      final iconPainter = TextPainter(
+        text: TextSpan(
+          text: String.fromCharCode(icon.codePoint),
+          style: TextStyle(fontSize: 44, fontFamily: icon.fontFamily, package: icon.fontPackage, color: Colors.white),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      iconPainter.layout();
+      iconPainter.paint(canvas, Offset(iconCenter.dx - iconPainter.width / 2, iconCenter.dy - iconPainter.height / 2));
+    }
+
+    // 5. Draw elegant pointer (curved triangle)
+    final pointerTop = cardY + cardHeight - 2;
+    final Path pointer = Path();
+    pointer.moveTo(width / 2 - 14, pointerTop);
+    pointer.quadraticBezierTo(width / 2 - 8, pointerTop + 8, width / 2, pointerTop + 22);
+    pointer.quadraticBezierTo(width / 2 + 8, pointerTop + 8, width / 2 + 14, pointerTop);
+    pointer.close();
+    paint.color = isHighlighted ? highlightColor : primaryColor;
+    canvas.drawPath(pointer, paint);
+
+    // 6. Draw item count badge (modern pill shape)
+    if (itemCount > 0) {
+      final badgeText = itemCount > 99 ? '99+' : '$itemCount';
+      final badgePainter = TextPainter(
+        text: TextSpan(
+          text: badgeText,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.3,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      badgePainter.layout();
+
+      final badgeWidth = badgePainter.width + 20;
+      final badgeHeight = 28.0;
+      final badgeX = cardX + cardWidth - badgeWidth / 2 - 4;
+      final badgeY = cardY - 2;
+
+      // Badge background with solid color
+      paint.color = isHighlighted
+          ? const Color(0xFF10B981) // Green
+          : const Color(0xFFEF4444); // Red
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(Rect.fromLTWH(badgeX, badgeY, badgeWidth, badgeHeight), const Radius.circular(9)),
+        paint,
+      );
+
+      // Badge text
+      badgePainter.paint(
+        canvas,
+        Offset(badgeX + (badgeWidth - badgePainter.width) / 2, badgeY + (badgeHeight - badgePainter.height) / 2),
+      );
+    }
+
+    // 7. Draw highlight ring for closest order
+    if (isHighlighted) {
+      paint.color = highlightColor.withOpacity(0.3);
+      paint.style = PaintingStyle.stroke;
+      paint.strokeWidth = 3;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(cardX - 4, cardY - 4, cardWidth + 8, cardHeight + 8),
+          Radius.circular(cornerRadius + 4),
+        ),
+        paint,
+      );
+      paint.style = PaintingStyle.fill;
+    }
+
+    // Convert to Bitmap
+    final ui.Image finalImage = await pictureRecorder.endRecording().toImage(width.toInt(), height.toInt());
+    final ByteData? byteData = await finalImage.toByteData(format: ui.ImageByteFormat.png);
+    return BitmapDescriptor.fromBytes(byteData!.buffer.asUint8List());
+  }
+
+  // ============================================================
+  // RIDER LOCATION MARKER - Modern pulsing navigation style
+  // ============================================================
+
+  /// Create rider location marker with simple clean circular design
+  static Future<BitmapDescriptor> createRiderLocationMarker({
+    required Color primaryColor,
+  }) async {
+    const double size = 60;
+    const double outerRing = 28;
+    const double innerDot = 16;
+
+    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(pictureRecorder);
+    final Paint paint = Paint();
+
+    final Offset center = Offset(size / 2, size / 2);
+
+    // 1. Outer subtle ring (semi-transparent)
+    paint.color = primaryColor.withOpacity(0.2);
+    canvas.drawCircle(center, outerRing, paint);
+
+    // 2. Middle ring (more opaque)
+    paint.color = primaryColor.withOpacity(0.4);
+    canvas.drawCircle(center, outerRing * 0.7, paint);
+
+    // 3. Inner solid dot
+    paint.color = primaryColor;
+    canvas.drawCircle(center, innerDot, paint);
+
+    // 4. White border around inner dot
+    paint.color = Colors.white;
+    paint.style = PaintingStyle.stroke;
+    paint.strokeWidth = 3;
+    canvas.drawCircle(center, innerDot, paint);
+    paint.style = PaintingStyle.fill;
+
+    // Convert to Bitmap
+    final ui.Image finalImage = await pictureRecorder.endRecording().toImage(size.toInt(), size.toInt());
+    final ByteData? byteData = await finalImage.toByteData(format: ui.ImageByteFormat.png);
+    return BitmapDescriptor.fromBytes(byteData!.buffer.asUint8List());
+  }
+
   /// Create custom rider marker with avatar and label
   static Future<BitmapDescriptor> createRiderMarker({
     String? imageUrl,

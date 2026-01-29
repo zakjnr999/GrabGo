@@ -4,7 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
+import 'package:grab_go_shared/shared/utils/image_optimizer.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:grab_go_customer/features/status/model/status_model.dart';

@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:http/http.dart' as http;
@@ -125,14 +124,12 @@ class TrackingInfo {
     LocationDto? parseLocation(dynamic loc) {
       if (loc == null) return null;
       if (loc is Map<String, dynamic>) {
-        // Handle GeoJSON format: { type: 'Point', coordinates: [lng, lat] }
         if (loc['type'] == 'Point' && loc['coordinates'] is List) {
           final coords = loc['coordinates'] as List;
           if (coords.length >= 2) {
             return LocationDto(longitude: (coords[0] as num).toDouble(), latitude: (coords[1] as num).toDouble());
           }
         }
-        // Handle simple format: { latitude, longitude }
         if (loc['latitude'] != null && loc['longitude'] != null) {
           return LocationDto.fromJson(loc);
         }
@@ -178,7 +175,6 @@ class RouteInfo {
 }
 
 /// Tracking status enum matching backend
-/// Values: preparing, picked_up, in_transit, nearby, delivered, cancelled
 enum TrackingStatus {
   preparing,
   pickedUp,
@@ -229,8 +225,6 @@ enum TrackingStatus {
 /// Service to interact with backend tracking API
 class RiderTrackingService {
   /// Create a tracking service
-  /// [authToken] - Optional auth token for background service usage
-  /// [client] - Optional HTTP client for testing
   RiderTrackingService({String? authToken, http.Client? client})
     : _authToken = authToken,
       _client = client ?? http.Client();

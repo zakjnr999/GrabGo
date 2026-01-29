@@ -1,16 +1,22 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:grab_go_rider/features/orders/service/available_order_dto.dart';
+import 'package:grab_go_rider/features/orders/service/order_statistics_service.dart';
 import 'package:grab_go_rider/features/orders/widgets/orders_list_skeleton.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import '../service/available_orders_service.dart';
 
 class AvailableOrders extends StatefulWidget {
-  const AvailableOrders({super.key});
+  final List<AvailableOrderDto>? preloadedOrders;
+  final OrderStatistics? preloadedStatistics;
+
+  const AvailableOrders({super.key, this.preloadedOrders, this.preloadedStatistics});
 
   @override
   State<AvailableOrders> createState() => _AvailableOrdersState();
@@ -29,7 +35,14 @@ class _AvailableOrdersState extends State<AvailableOrders> {
   @override
   void initState() {
     super.initState();
-    _loadOrders();
+    // Use preloaded data if available, otherwise load from API
+    if (widget.preloadedOrders != null) {
+      _availableOrders = widget.preloadedOrders!;
+      _statistics = widget.preloadedStatistics;
+      _isLoading = false;
+    } else {
+      _loadOrders();
+    }
   }
 
   Future<void> _loadOrders() async {
@@ -40,10 +53,6 @@ class _AvailableOrdersState extends State<AvailableOrders> {
     });
 
     try {
-      // Get rider's current location (optional)
-      // For now, we'll skip location to keep it simple
-      // You can add geolocator package later
-
       final result = await _service.getAvailableOrders(lat: _currentLat, lon: _currentLon);
 
       if (!mounted) return;
@@ -161,6 +170,7 @@ class _AvailableOrdersState extends State<AvailableOrders> {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    final size = MediaQuery.of(context).size;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -200,22 +210,34 @@ class _AvailableOrdersState extends State<AvailableOrders> {
           actions: [
             IconButton(
               icon: SvgPicture.asset(
+                Assets.icons.map,
+                package: 'grab_go_shared',
+                width: 22.w,
+                height: 22.w,
+                colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+              ),
+              onPressed: _isLoading ? null : () => context.push('/availableOrdersMap'),
+              tooltip: 'Map View',
+            ),
+            IconButton(
+              icon: SvgPicture.asset(
                 Assets.icons.filterList,
                 package: 'grab_go_shared',
-                width: 24.w,
-                height: 24.w,
+                width: 22.w,
+                height: 22.w,
                 colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
               ),
               onPressed: _isLoading ? null : _refreshOrders,
+              tooltip: 'Refresh',
             ),
           ],
         ),
-        body: _buildBody(colors, isDark),
+        body: _buildBody(colors, isDark, size),
       ),
     );
   }
 
-  Widget _buildBody(AppColorsExtension colors, bool isDark) {
+  Widget _buildBody(AppColorsExtension colors, bool isDark, Size size) {
     if (_isLoading) {
       return SingleChildScrollView(
         physics: const NeverScrollableScrollPhysics(),
@@ -240,7 +262,7 @@ class _AvailableOrdersState extends State<AvailableOrders> {
       onRefresh: _refreshOrders,
       iconPath: Assets.icons.deliveryTruck,
       bgColor: colors.accentGreen,
-      child: _buildOrdersList(colors),
+      child: _buildOrdersList(colors, size),
     );
   }
 
@@ -305,7 +327,7 @@ class _AvailableOrdersState extends State<AvailableOrders> {
     );
   }
 
-  Widget _buildOrdersList(AppColorsExtension colors) {
+  Widget _buildOrdersList(AppColorsExtension colors, Size size) {
     return ListView.separated(
       padding: EdgeInsets.all(16.w),
       physics: const AlwaysScrollableScrollPhysics(),
@@ -355,7 +377,11 @@ class _AvailableOrdersState extends State<AvailableOrders> {
     }
 
     return InkWell(
-      onTap: () => _showOrderDetails(order, colors),
+      onTap: () {
+        _showOrderDetails(order, colors, MediaQuery.of(context).size);
+        debugPrint('User image ${order.customerPhoto}');
+        debugPrint('Restaurant logo ${order.restaurantLogo}');
+      },
       borderRadius: BorderRadius.circular(12.r),
       child: Container(
         padding: EdgeInsets.all(16.w),
@@ -497,7 +523,7 @@ class _AvailableOrdersState extends State<AvailableOrders> {
     );
   }
 
-  void _showOrderDetails(AvailableOrderDto order, AppColorsExtension colors) {
+  void _showOrderDetails(AvailableOrderDto order, AppColorsExtension colors, Size size) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -516,31 +542,32 @@ class _AvailableOrdersState extends State<AvailableOrders> {
               width: 40.w,
               height: 4.h,
               decoration: BoxDecoration(
-                color: colors.textSecondary.withOpacity(0.3),
+                color: colors.textSecondary.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2.r),
               ),
             ),
             SizedBox(height: 20.h),
 
             // Header
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.w),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Order Details',
-                    style: TextStyle(color: colors.textPrimary, fontSize: 20.sp, fontWeight: FontWeight.w700),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.close, color: colors.textPrimary),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20.w),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Order Details',
+                      style: TextStyle(color: colors.textPrimary, fontSize: 20.sp, fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      order.orderNumber,
+                      style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
               ),
             ),
-
-            Divider(color: colors.border, height: 1),
 
             // Content
             Expanded(
@@ -549,44 +576,42 @@ class _AvailableOrdersState extends State<AvailableOrders> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Order number and amount
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          order.orderNumber,
-                          style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                          "YOUR EARNINGS :",
+                          style: TextStyle(fontSize: 12.sp, color: colors.textPrimary, fontWeight: FontWeight.w400),
                         ),
                         Text(
-                          'GHS ${order.totalAmount.toStringAsFixed(2)}',
+                          'GHS ${order.riderEarnings?.toStringAsFixed(2)}',
                           style: TextStyle(color: colors.accentGreen, fontSize: 20.sp, fontWeight: FontWeight.w700),
                         ),
                       ],
                     ),
-                    SizedBox(height: 24.h),
+                    SizedBox(height: 20.h),
 
-                    // Restaurant info
                     _buildDetailSection(
                       colors,
                       'Restaurant',
                       order.restaurantName,
                       order.restaurantAddress,
-                      Icons.restaurant,
+                      size,
+                      order.restaurantLogo ?? '',
+                      Assets.icons.store,
                     ),
                     SizedBox(height: 20.h),
-
-                    // Customer info
                     _buildDetailSection(
                       colors,
                       'Customer',
                       order.customerName,
                       order.customerAddress,
-                      Icons.person,
-                      subtitle2: order.customerPhone,
+                      size,
+                      order.customerPhoto ?? '',
+                      Assets.icons.user,
                     ),
                     SizedBox(height: 20.h),
 
-                    // Order items
                     Text(
                       'Order Items',
                       style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
@@ -625,16 +650,25 @@ class _AvailableOrdersState extends State<AvailableOrders> {
                         style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
                       ),
                       SizedBox(height: 8.h),
-                      Container(
-                        padding: EdgeInsets.all(12.w),
-                        decoration: BoxDecoration(
-                          color: colors.backgroundSecondary,
-                          borderRadius: BorderRadius.circular(8.r),
-                        ),
-                        child: Text(
-                          order.notes!,
-                          style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400),
-                        ),
+                      Row(
+                        children: [
+                          Container(
+                            width: 6.w,
+                            height: 6.w,
+                            decoration: BoxDecoration(color: colors.accentGreen, shape: BoxShape.circle),
+                          ),
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            child: Text(
+                              order.notes!,
+                              style: TextStyle(
+                                color: colors.textSecondary,
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ],
@@ -658,7 +692,10 @@ class _AvailableOrdersState extends State<AvailableOrders> {
                       Navigator.of(context).pop();
                       _acceptOrder(order);
                     },
+                    backgroundColor: colors.accentGreen,
+                    borderRadius: KBorderSize.borderRadius4,
                     buttonText: 'Accept Order',
+                    textStyle: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
@@ -674,55 +711,88 @@ class _AvailableOrdersState extends State<AvailableOrders> {
     String title,
     String mainText,
     String? subtitle,
-    IconData icon, {
+    Size size,
+    String? imageUrl,
+    String icon, {
     String? subtitle2,
   }) {
-    return Container(
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(12.r)),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.all(12.w),
-            decoration: BoxDecoration(
-              color: colors.accentGreen.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8.r),
+    return Row(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+          child: CachedNetworkImage(
+            height: size.width * 0.15,
+            width: size.width * 0.15,
+            fit: BoxFit.cover,
+            imageUrl: ImageOptimizer.getPreviewUrl(imageUrl ?? '', width: 200),
+            memCacheWidth: 200,
+            maxHeightDiskCache: 200,
+            placeholder: (context, url) => Container(
+              height: size.width * 0.15,
+              width: size.width * 0.15,
+              padding: EdgeInsets.all(12.r),
+              decoration: BoxDecoration(
+                color: colors.accentGreen.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+              ),
+              child: SvgPicture.asset(
+                icon,
+                package: 'grab_go_shared',
+                width: 24.w,
+                height: 24.w,
+                colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+              ),
             ),
-            child: Icon(icon, color: colors.accentGreen, size: 24.w),
+            errorWidget: (context, url, error) => Container(
+              height: size.width * 0.15,
+              width: size.width * 0.15,
+              padding: EdgeInsets.all(12.r),
+              decoration: BoxDecoration(
+                color: colors.accentGreen.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+              ),
+              child: SvgPicture.asset(
+                icon,
+                package: 'grab_go_shared',
+                width: 24.w,
+                height: 24.w,
+                colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+              ),
+            ),
           ),
-          SizedBox(width: 16.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
-                ),
+        ),
+        SizedBox(width: 16.w),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
+              ),
+              SizedBox(height: 4.h),
+              Text(
+                mainText,
+                style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
+              ),
+              if (subtitle != null && subtitle.isNotEmpty) ...[
                 SizedBox(height: 4.h),
                 Text(
-                  mainText,
-                  style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                  subtitle,
+                  style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
                 ),
-                if (subtitle != null && subtitle.isNotEmpty) ...[
-                  SizedBox(height: 4.h),
-                  Text(
-                    subtitle,
-                    style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
-                  ),
-                ],
-                if (subtitle2 != null && subtitle2.isNotEmpty) ...[
-                  SizedBox(height: 2.h),
-                  Text(
-                    subtitle2,
-                    style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
-                  ),
-                ],
               ],
-            ),
+              if (subtitle2 != null && subtitle2.isNotEmpty) ...[
+                SizedBox(height: 2.h),
+                Text(
+                  subtitle2,
+                  style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+                ),
+              ],
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

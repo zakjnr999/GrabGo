@@ -101,6 +101,7 @@
         "animations",
         "audioplayers",
         "awesome_dialog",
+        "battery_plus",
         "cached_network_image",
         "change_app_package_name",
         "chopper",
@@ -1014,6 +1015,18 @@
         "collection",
         "flutter",
         "nested"
+      ]
+    },
+    {
+      "name": "battery_plus",
+      "version": "7.0.0",
+      "dependencies": [
+        "battery_plus_platform_interface",
+        "flutter",
+        "flutter_web_plugins",
+        "meta",
+        "upower",
+        "web"
       ]
     },
     {
@@ -2546,6 +2559,22 @@
       "version": "1.0.0",
       "dependencies": [
         "flutter"
+      ]
+    },
+    {
+      "name": "upower",
+      "version": "0.7.0",
+      "dependencies": [
+        "dbus"
+      ]
+    },
+    {
+      "name": "battery_plus_platform_interface",
+      "version": "2.0.1",
+      "dependencies": [
+        "flutter",
+        "meta",
+        "plugin_platform_interface"
       ]
     },
     {

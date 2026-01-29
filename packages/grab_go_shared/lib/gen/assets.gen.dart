@@ -100,6 +100,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/ban.svg
   String get ban => 'lib/assets/icons/ban.svg';
 
+  /// File path: lib/assets/icons/battery25.svg
+  String get battery25 => 'lib/assets/icons/battery25.svg';
+
   /// File path: lib/assets/icons/bbq.svg
   String get bbq => 'lib/assets/icons/bbq.svg';
 
@@ -205,6 +208,9 @@ class $LibAssetsIconsGen {
 
   /// File path: lib/assets/icons/emoji.svg
   String get emoji => 'lib/assets/icons/emoji.svg';
+
+  /// File path: lib/assets/icons/expand.svg
+  String get expand => 'lib/assets/icons/expand.svg';
 
   /// File path: lib/assets/icons/eye-closed.svg
   String get eyeClosed => 'lib/assets/icons/eye-closed.svg';
@@ -313,6 +319,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/map-pin.svg
   String get mapPin => 'lib/assets/icons/map-pin.svg';
 
+  /// File path: lib/assets/icons/map.svg
+  String get map => 'lib/assets/icons/map.svg';
+
   /// File path: lib/assets/icons/media-image-plus.svg
   String get mediaImagePlus => 'lib/assets/icons/media-image-plus.svg';
 
@@ -404,6 +413,9 @@ class $LibAssetsIconsGen {
 
   /// File path: lib/assets/icons/plus.svg
   String get plus => 'lib/assets/icons/plus.svg';
+
+  /// File path: lib/assets/icons/position.svg
+  String get position => 'lib/assets/icons/position.svg';
 
   /// File path: lib/assets/icons/profile-circle.svg
   String get profileCircle => 'lib/assets/icons/profile-circle.svg';
@@ -547,6 +559,7 @@ class $LibAssetsIconsGen {
     badgeCheck,
     badgePercent,
     ban,
+    battery25,
     bbq,
     bellNotification,
     bell,
@@ -582,6 +595,7 @@ class $LibAssetsIconsGen {
     editPencil,
     edit,
     emoji,
+    expand,
     eyeClosed,
     eye,
     facebookTag,
@@ -616,6 +630,7 @@ class $LibAssetsIconsGen {
     logOut,
     mail,
     mapPin,
+    map,
     mediaImagePlus,
     mediaImageXmark,
     mediaImage,
@@ -645,6 +660,7 @@ class $LibAssetsIconsGen {
     phone,
     play,
     plus,
+    position,
     profileCircle,
     refresh,
     riderOnboardingOne,

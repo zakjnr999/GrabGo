@@ -11,7 +11,7 @@ import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
+import 'package:grab_go_shared/shared/utils/image_optimizer.dart';
 
 class CartItem extends StatefulWidget {
   const CartItem({super.key});

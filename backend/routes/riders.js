@@ -85,7 +85,8 @@ router.get(
               id: true,
               username: true,
               email: true,
-              phone: true
+              phone: true,
+              profilePicture: true
             }
           },
           // Restaurant info

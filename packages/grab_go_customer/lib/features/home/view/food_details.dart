@@ -14,7 +14,7 @@ import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
+import 'package:grab_go_shared/shared/utils/image_optimizer.dart';
 import 'package:provider/provider.dart';
 import 'package:readmore/readmore.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';

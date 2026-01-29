@@ -5,7 +5,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import '../model/vendor_model.dart';
-import '../../../shared/utils/image_optimizer.dart';
 
 class VendorCard extends StatelessWidget {
   final VendorModel vendor;
@@ -26,7 +25,6 @@ class VendorCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       width: width,

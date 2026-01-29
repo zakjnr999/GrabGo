@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -20,8 +19,8 @@ class TrackingConfig {
   final bool highAccuracy;
 
   const TrackingConfig({
-    this.updateIntervalMs = 5000, // 5 seconds
-    this.smallestDisplacementMeters = 10.0, // 10 meters
+    this.updateIntervalMs = 5000,
+    this.smallestDisplacementMeters = 10.0,
     this.highAccuracy = true,
   });
 
@@ -910,7 +909,7 @@ class RiderTrackingProvider with ChangeNotifier {
           icon: _markerIconCache['rider']!,
           infoWindow: const InfoWindow(title: 'You', snippet: 'Your location'),
           anchor: const Offset(0.5, 0.5),
-          zIndex: 10,
+          zIndexInt: 10,
         ),
       };
       _lastAnimatedPosition = newPosition;

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
-
 import 'package:flutter/widgets.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -9,7 +8,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:grab_go_rider/features/orders/service/rider_tracking_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Keys for shared preferences storage
 class _PrefsKeys {
   static const String orderId = 'fg_service_order_id';
   static const String riderId = 'fg_service_rider_id';
@@ -29,12 +27,9 @@ class RiderForegroundService {
   final FlutterBackgroundService _service = FlutterBackgroundService();
   bool _isInitialized = false;
 
-  /// Initialize the foreground service
-  /// Call this once during app startup
   Future<void> initialize() async {
     if (_isInitialized) return;
 
-    // Create notification channel for Android 13+ BEFORE configuring the service
     if (Platform.isAndroid) {
       await _createNotificationChannel();
     }
@@ -46,7 +41,6 @@ class RiderForegroundService {
         autoStart: false,
         isForegroundMode: true,
         autoStartOnBoot: false,
-        // Notification configuration
         notificationChannelId: 'grabgo_rider_tracking',
         initialNotificationTitle: 'GrabGo Rider',
         initialNotificationContent: 'Location tracking is active',
@@ -67,7 +61,7 @@ class RiderForegroundService {
       'grabgo_rider_tracking',
       'Rider Location Tracking',
       description: 'Shows when GrabGo is tracking your location for deliveries',
-      importance: Importance.low, // Low importance = no sound, minimal interruption
+      importance: Importance.low,
       playSound: false,
       enableVibration: false,
       showBadge: false,
@@ -80,7 +74,6 @@ class RiderForegroundService {
     debugPrint('✅ Rider tracking notification channel created');
   }
 
-  /// Start the foreground service for tracking
   Future<bool> startService({
     required String orderId,
     required String riderId,
@@ -106,7 +99,6 @@ class RiderForegroundService {
     return success;
   }
 
-  /// Stop the foreground service
   Future<void> stopService() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_PrefsKeys.isActive, false);
@@ -115,19 +107,16 @@ class RiderForegroundService {
     debugPrint('🛑 Foreground service stopped');
   }
 
-  /// Update the notification content
   void updateNotification({required String title, required String content}) {
     _service.invoke('updateNotification', {'title': title, 'content': content});
   }
 
-  /// Update the current status stored in prefs
   Future<void> updateStatus(String status) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_PrefsKeys.currentStatus, status);
     _service.invoke('statusUpdated', {'status': status});
   }
 
-  /// Check if service is running
   Future<bool> isRunning() async {
     return await _service.isRunning();
   }
@@ -135,10 +124,6 @@ class RiderForegroundService {
   /// Listen to service events from the UI
   Stream<Map<String, dynamic>?> get onEvent => _service.on('locationUpdate');
 }
-
-// ============================================
-// Background Service Entry Points
-// ============================================
 
 /// iOS background handler
 @pragma('vm:entry-point')
@@ -168,7 +153,6 @@ void _onStart(ServiceInstance service) async {
     return;
   }
 
-  // Create tracking service with auth token
   final trackingService = RiderTrackingService(authToken: authToken);
 
   // Track consecutive errors
@@ -182,9 +166,9 @@ void _onStart(ServiceInstance service) async {
       case 'in_transit':
       case 'inTransit':
       case 'nearby':
-        return 5000; // 5 seconds for active delivery
+        return 5000;
       default:
-        return 15000; // 15 seconds for waiting
+        return 15000;
     }
   }
 
@@ -252,7 +236,6 @@ void _onStart(ServiceInstance service) async {
     orderId = currentOrderId;
 
     try {
-      // Get current position
       final position = await Geolocator.getCurrentPosition(
         locationSettings: Platform.isAndroid
             ? AndroidSettings(
@@ -272,7 +255,6 @@ void _onStart(ServiceInstance service) async {
 
       debugPrint('📍 Background location: ${position.latitude}, ${position.longitude}');
 
-      // Send to backend
       final response = await trackingService.updateLocation(
         orderId: orderId!,
         latitude: position.latitude,

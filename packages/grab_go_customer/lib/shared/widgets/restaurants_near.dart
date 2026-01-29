@@ -4,7 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurants_model.dart';
-import 'package:grab_go_customer/shared/utils/image_optimizer.dart';
+import 'package:grab_go_shared/shared/utils/image_optimizer.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:shimmer/shimmer.dart';

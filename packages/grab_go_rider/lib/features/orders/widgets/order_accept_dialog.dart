@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:grab_go_rider/features/orders/service/available_orders_service.dart';
+import 'package:grab_go_rider/features/orders/service/available_order_dto.dart';
 import 'package:grab_go_rider/features/orders/widgets/accept_countdown_timer.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
