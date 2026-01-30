@@ -356,9 +356,16 @@ router.post(
         console.error("Ensure chat for accepted order error:", chatError);
       }
 
+
       // Initialize tracking for the order
       try {
+        const OrderTracking = require('../models/OrderTracking');
         const trackingService = require('../services/tracking_service');
+
+        // Delete any existing tracking (in case order was previously cancelled)
+        await OrderTracking.findOneAndDelete({ orderId: updatedOrder.id });
+
+        // Initialize fresh tracking
         await trackingService.initializeTracking(
           updatedOrder.id,
           updatedOrder.riderId,
@@ -469,14 +476,14 @@ router.post(
 
       console.log(`✅ Order ${order.orderNumber} released back to available pool`);
 
-      // Update tracking to cancelled
+      // Delete tracking record so it can be re-initialized if order is accepted again
       try {
-        const trackingService = require('../services/tracking_service');
-        await trackingService.updateOrderStatus(orderId, 'cancelled');
-        console.log(`📍 Tracking updated to cancelled for order ${orderId}`);
+        const OrderTracking = require('../models/OrderTracking');
+        await OrderTracking.findOneAndDelete({ orderId: orderId });
+        console.log(`�️ Tracking deleted for cancelled order ${orderId}`);
       } catch (trackingError) {
-        console.error("Update tracking on cancellation error:", trackingError);
-        // Don't fail the cancellation if tracking update fails
+        console.error("Delete tracking on cancellation error:", trackingError);
+        // Don't fail the cancellation if tracking deletion fails
       }
 
       // TODO: Notify customer about cancellation
