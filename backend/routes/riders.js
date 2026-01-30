@@ -356,6 +356,28 @@ router.post(
         console.error("Ensure chat for accepted order error:", chatError);
       }
 
+      // Initialize tracking for the order
+      try {
+        const trackingService = require('../services/tracking_service');
+        await trackingService.initializeTracking(
+          updatedOrder.id,
+          updatedOrder.riderId,
+          updatedOrder.customerId,
+          {
+            latitude: updatedOrder.restaurant.latitude,
+            longitude: updatedOrder.restaurant.longitude
+          },
+          {
+            latitude: updatedOrder.deliveryLatitude,
+            longitude: updatedOrder.deliveryLongitude
+          }
+        );
+        console.log(`📍 Tracking initialized for order ${updatedOrder.id}`);
+      } catch (trackingError) {
+        console.error("Initialize tracking for accepted order error:", trackingError);
+        // Don't fail the order acceptance if tracking init fails
+      }
+
       res.json({
         success: true,
         message: "Order accepted successfully",

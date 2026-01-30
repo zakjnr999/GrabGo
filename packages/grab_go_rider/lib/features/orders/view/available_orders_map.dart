@@ -281,7 +281,6 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
         _acceptOrder(order);
       },
       onViewDetails: () {
-        Navigator.of(context).pop();
         AvailableOrderDetailsBottomSheet.show(context: context, order: order, onAccept: () => _acceptOrder(order));
       },
     );
