@@ -323,10 +323,44 @@ router.post(
           riderEarnings: earnings.riderEarnings
         },
         include: {
-          customer: { select: { username: true, email: true, phone: true } },
+          items: {
+            select: {
+              id: true,
+              name: true,
+              quantity: true,
+              price: true,
+              specialInstructions: true
+            }
+          },
+          customer: {
+            select: {
+              username: true,
+              email: true,
+              phone: true,
+              photo: true
+            }
+          },
           restaurant: {
             select: {
               restaurantName: true,
+              logo: true,
+              address: true,
+              latitude: true,
+              longitude: true
+            }
+          },
+          groceryStore: {
+            select: {
+              storeName: true,
+              logo: true,
+              address: true,
+              latitude: true,
+              longitude: true
+            }
+          },
+          pharmacyStore: {
+            select: {
+              storeName: true,
               logo: true,
               address: true,
               latitude: true,

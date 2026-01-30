@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -7,18 +8,21 @@ import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class OrderConfirmationPage extends StatefulWidget {
-  final String orderId; // MongoDB _id for API calls
-  final String? orderNumber; // Human-readable order number for display
+  final String orderId;
+  final String? orderNumber;
+  final String? orderStatus;
+  final String orderInstructions;
   final String customerName;
   final String customerAddress;
   final String customerPhone;
+  final String? customerPhoto;
+  final double riderEarnings;
   final String restaurantName;
   final String restaurantAddress;
+  final String? restaurantLogo;
   final String orderTotal;
   final List<String> orderItems;
   final String? specialInstructions;
-
-  // Additional tracking data
   final String? customerId;
   final String? riderId;
   final double? pickupLatitude;
@@ -30,13 +34,13 @@ class OrderConfirmationPage extends StatefulWidget {
     super.key,
     this.orderId = "",
     this.orderNumber,
-    this.customerName = "John Doe",
-    this.customerAddress = "123 Main Street, Accra, Ghana",
-    this.customerPhone = "+233 123 456 789",
-    this.restaurantName = "Pizza Palace",
-    this.restaurantAddress = "456 Food Street, Accra, Ghana",
-    this.orderTotal = "GHS 45.00",
-    this.orderItems = const ["Pizza Margherita x1", "Coca Cola x2"],
+    required this.customerName,
+    required this.customerAddress,
+    required this.customerPhone,
+    required this.restaurantName,
+    required this.restaurantAddress,
+    required this.orderTotal,
+    required this.orderItems,
     this.specialInstructions,
     this.customerId,
     this.riderId,
@@ -44,9 +48,13 @@ class OrderConfirmationPage extends StatefulWidget {
     this.pickupLongitude,
     this.destinationLatitude,
     this.destinationLongitude,
+    this.orderStatus,
+    required this.riderEarnings,
+    required this.orderInstructions,
+    this.customerPhoto,
+    this.restaurantLogo,
   });
 
-  /// Display-friendly order identifier (orderNumber or orderId)
   String get displayOrderId => orderNumber ?? orderId;
 
   @override
@@ -57,366 +65,430 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    final size = MediaQuery.sizeOf(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         systemNavigationBarColor: colors.backgroundPrimary,
         systemNavigationBarDividerColor: Colors.transparent,
         systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       ),
       child: Scaffold(
         backgroundColor: colors.backgroundSecondary,
-        appBar: AppBar(
-          backgroundColor: colors.backgroundPrimary,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          leading: IconButton(
-            icon: SvgPicture.asset(
-              Assets.icons.navArrowLeft,
-              package: 'grab_go_shared',
-              width: 24.w,
-              height: 24.w,
-              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-            ),
-            onPressed: () => context.pop(),
-          ),
-          title: Text(
-            "Order Confirmation",
-            style: TextStyle(
-              fontFamily: "Lato",
-              package: "grab_go_shared",
-              color: colors.textPrimary,
-              fontSize: 18.sp,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          centerTitle: true,
-          actions: [
-            Container(
-              margin: EdgeInsets.all(8.w),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    _showCallOptions(context, colors);
-                  },
-                  customBorder: const CircleBorder(),
-                  child: Padding(
-                    padding: EdgeInsets.all(10.r),
-                    child: Icon(Icons.more_vert, size: 20.r, color: colors.textPrimary),
+        body: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverAppBar(
+              expandedHeight: size.height * 0.22,
+              floating: false,
+              pinned: true,
+              elevation: 0,
+              backgroundColor: colors.backgroundPrimary,
+              systemOverlayStyle: SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness: Brightness.light,
+              ),
+              leading: IconButton(
+                icon: SvgPicture.asset(
+                  Assets.icons.navArrowLeft,
+                  package: 'grab_go_shared',
+                  width: 24.w,
+                  height: 24.w,
+                  colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                ),
+                onPressed: () => context.pop(),
+              ),
+              actions: [
+                Container(
+                  margin: EdgeInsets.all(8.w),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        _showCallOptions(context, colors);
+                      },
+                      customBorder: const CircleBorder(),
+                      child: Padding(
+                        padding: EdgeInsets.all(10.r),
+                        child: Icon(Icons.more_vert, size: 20.r, color: Colors.white),
+                      ),
+                    ),
                   ),
+                ),
+              ],
+              flexibleSpace: FlexibleSpaceBar(
+                background: Container(
+                  color: colors.accentGreen,
+                  child: SafeArea(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(20.w, 60.h, 20.w, 16.h),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 6.w,
+                                  height: 6.w,
+                                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                                ),
+                                SizedBox(width: 6.w),
+                                Text(
+                                  widget.orderStatus ?? "Order Confirmed",
+                                  style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 8.h),
+                          Text(
+                            "Order #${widget.displayOrderId}",
+                            style: TextStyle(color: Colors.white, fontSize: 20.sp, fontWeight: FontWeight.w700),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: 4.h),
+                          Row(
+                            children: [
+                              Text(
+                                "EARNINGS : ",
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                "GHS ${widget.riderEarnings.toString()}",
+                                style: TextStyle(color: Colors.white, fontSize: 18.sp, fontWeight: FontWeight.w700),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.all(20.w),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Pickup & Delivery Timeline
+                    _buildDeliveryTimeline(colors),
+
+                    SizedBox(height: 24.h),
+
+                    // Order Items
+                    _buildOrderItems(colors),
+
+                    SizedBox(height: 20.h),
+
+                    // Special Instructions (if any)
+                    if (widget.specialInstructions != null) ...[
+                      _buildSpecialInstructions(colors),
+                      SizedBox(height: 20.h),
+                    ],
+
+                    // Action Buttons
+                    _buildActionButtons(colors),
+
+                    SizedBox(height: 20.h),
+                  ],
                 ),
               ),
             ),
           ],
         ),
-        body: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      ),
+    );
+  }
+
+  Widget _buildDeliveryTimeline(AppColorsExtension colors) {
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.backgroundPrimary,
+        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+        border: Border.all(color: colors.border.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        children: [
+          // Pickup Location
+          _buildTimelineItem(
+            colors: colors,
+            icon: Assets.icons.chefHat,
+            iconColor: colors.accentOrange,
+            iconBgColor: colors.accentOrange.withValues(alpha: 0.1),
+            title: "Pickup from",
+            name: widget.restaurantName,
+            address: widget.restaurantAddress,
+            size: MediaQuery.of(context).size,
+            imageUrl: widget.restaurantLogo,
+            showPhone: true,
+            isFirst: true,
+            isLast: false,
+          ),
+
+          Padding(
+            padding: EdgeInsets.only(left: 48.w),
+            child: Row(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Order ID",
-                          style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
-                        ),
-                        SizedBox(height: 4.h),
-                        Text(
-                          widget.displayOrderId,
-                          style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
-                        ),
-                      ],
-                    ),
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                      decoration: BoxDecoration(
-                        color: colors.accentOrange.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                      ),
-                      child: Text(
-                        "Pickup",
-                        style: TextStyle(color: colors.accentOrange, fontSize: 12.sp, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
+                Container(width: 2.w, height: 24.h, color: colors.accentGreen.withValues(alpha: 0.3)),
+                Expanded(
+                  child: Container(
+                    height: 1.h,
+                    margin: EdgeInsets.symmetric(horizontal: 16.w),
+                    color: colors.border.withValues(alpha: 0.3),
+                  ),
                 ),
-
-                SizedBox(height: 24.h),
-
-                _buildRestaurantInfo(colors),
-
-                SizedBox(height: 20.h),
-
-                _buildOrderDetails(colors),
-
-                SizedBox(height: 20.h),
-
-                _buildCustomerInfo(colors),
-
-                SizedBox(height: 32.h),
-
-                _buildActionButtons(colors),
-
-                SizedBox(height: 20.h),
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
 
-  Widget _buildRestaurantInfo(AppColorsExtension colors) {
-    return Container(
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: colors.backgroundPrimary,
-        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        border: Border.all(color: colors.border, width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(8.r),
-                decoration: BoxDecoration(
-                  color: colors.accentOrange.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                ),
-                child: SvgPicture.asset(
-                  Assets.icons.chefHat,
-                  package: 'grab_go_shared',
-                  width: 20.w,
-                  height: 20.w,
-                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                ),
-              ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Restaurant",
-                      style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w400),
-                    ),
-                    SizedBox(height: 2.h),
-                    Text(
-                      widget.restaurantName,
-                      style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w700),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                icon: SvgPicture.asset(
-                  Assets.icons.phone,
-                  package: 'grab_go_shared',
-                  width: 20.w,
-                  height: 20.w,
-                  colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
-                ),
-                onPressed: () {
-                  // Call restaurant
-                },
-              ),
-            ],
-          ),
-          SizedBox(height: 16.h),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SvgPicture.asset(
-                Assets.icons.mapPin,
-                package: 'grab_go_shared',
-                width: 16.w,
-                height: 16.w,
-                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-              ),
-              SizedBox(width: 8.w),
-              Expanded(
-                child: Text(
-                  widget.restaurantAddress,
-                  style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w400),
-                ),
-              ),
-            ],
+          // Delivery Location
+          _buildTimelineItem(
+            colors: colors,
+            icon: Assets.icons.user,
+            iconColor: colors.accentViolet,
+            iconBgColor: colors.accentViolet.withValues(alpha: 0.1),
+            title: "Deliver to",
+            name: widget.customerName,
+            address: widget.customerAddress,
+            size: MediaQuery.of(context).size,
+            imageUrl: widget.customerPhoto,
+            showPhone: true,
+            isFirst: false,
+            isLast: true,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildCustomerInfo(AppColorsExtension colors) {
-    return Container(
+  Widget _buildTimelineItem({
+    required AppColorsExtension colors,
+    required String icon,
+    required Color iconColor,
+    required Color iconBgColor,
+    required String title,
+    required String name,
+    required String address,
+    required Size size,
+    required String? imageUrl,
+    required bool showPhone,
+    required bool isFirst,
+    required bool isLast,
+  }) {
+    return Padding(
       padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: colors.backgroundPrimary,
-        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        border: Border.all(color: colors.border, width: 1),
-      ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(8.r),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+            child: CachedNetworkImage(
+              height: size.width * 0.15,
+              width: size.width * 0.15,
+              fit: BoxFit.cover,
+              imageUrl: ImageOptimizer.getPreviewUrl(imageUrl ?? '', width: 200),
+              memCacheWidth: 200,
+              maxHeightDiskCache: 200,
+              placeholder: (context, url) => Container(
+                height: size.width * 0.15,
+                width: size.width * 0.15,
+                padding: EdgeInsets.all(12.r),
                 decoration: BoxDecoration(
-                  color: colors.accentViolet.withValues(alpha: 0.1),
+                  color: colors.accentGreen.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                 ),
                 child: SvgPicture.asset(
-                  Assets.icons.user,
+                  icon,
                   package: 'grab_go_shared',
-                  width: 20.w,
-                  height: 20.w,
-                  colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
-                ),
-              ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Customer",
-                      style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w400),
-                    ),
-                    SizedBox(height: 2.h),
-                    Text(
-                      widget.customerName,
-                      style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w700),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                icon: SvgPicture.asset(
-                  Assets.icons.phone,
-                  package: 'grab_go_shared',
-                  width: 20.w,
-                  height: 20.w,
+                  width: 24.w,
+                  height: 24.w,
                   colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
                 ),
-                onPressed: () {
-                  // Call customer
-                },
               ),
-            ],
-          ),
-          SizedBox(height: 16.h),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SvgPicture.asset(
-                Assets.icons.mapPin,
-                package: 'grab_go_shared',
-                width: 16.w,
-                height: 16.w,
-                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-              ),
-              SizedBox(width: 8.w),
-              Expanded(
-                child: Text(
-                  widget.customerAddress,
-                  style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w400),
+              errorWidget: (context, url, error) => Container(
+                height: size.width * 0.15,
+                width: size.width * 0.15,
+                padding: EdgeInsets.all(12.r),
+                decoration: BoxDecoration(
+                  color: colors.accentGreen.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                ),
+                child: SvgPicture.asset(
+                  icon,
+                  package: 'grab_go_shared',
+                  width: 24.w,
+                  height: 24.w,
+                  colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
                 ),
               ),
-            ],
+            ),
+          ),
+          SizedBox(width: 16.w),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
+                ),
+                SizedBox(height: 4.h),
+                Text(
+                  name,
+                  style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                ),
+                SizedBox(height: 4.h),
+                Text(
+                  address,
+                  style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildOrderDetails(AppColorsExtension colors) {
+  Widget _buildOrderItems(AppColorsExtension colors) {
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        border: Border.all(color: colors.border, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "Order Details",
+                "Order Items",
                 style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w700),
               ),
+              const Spacer(),
               Text(
-                widget.orderTotal,
-                style: TextStyle(color: colors.accentOrange, fontSize: 18.sp, fontWeight: FontWeight.w700),
+                "${widget.orderItems.length} items",
+                style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w600),
               ),
             ],
           ),
+          SizedBox(height: 16.h),
+          Container(height: 1.h, color: colors.border.withValues(alpha: 0.3)),
           SizedBox(height: 12.h),
-          ...widget.orderItems.map(
-            (item) => Padding(
-              padding: EdgeInsets.only(bottom: 8.h),
-              child: Row(
-                children: [
-                  Container(
-                    width: 6.w,
-                    height: 6.w,
-                    decoration: BoxDecoration(color: colors.textSecondary, shape: BoxShape.circle),
-                  ),
-                  SizedBox(width: 12.w),
-                  Expanded(
-                    child: Text(
-                      item,
-                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w400),
-                    ),
-                  ),
-                ],
+          if (widget.orderItems.isEmpty)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 8.h),
+              child: Text(
+                "No items available",
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w400,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
+            )
+          else
+            ...widget.orderItems.asMap().entries.map(
+              (entry) => Padding(
+                padding: EdgeInsets.only(bottom: entry.key == widget.orderItems.length - 1 ? 0 : 12.h),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      margin: EdgeInsets.only(top: 6.h),
+                      width: 6.w,
+                      height: 6.w,
+                      decoration: BoxDecoration(
+                        color: colors.accentGreen.withValues(alpha: 0.6),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: Text(
+                        entry.value,
+                        style: TextStyle(
+                          color: colors.textPrimary,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w400,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpecialInstructions(AppColorsExtension colors) {
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: colors.backgroundPrimary,
+        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Special Instructions",
+                  style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w700),
+                ),
+                SizedBox(height: 6.h),
+                Row(
+                  children: [
+                    Container(
+                      margin: EdgeInsets.only(top: 6.h),
+                      width: 6.w,
+                      height: 6.w,
+                      decoration: BoxDecoration(
+                        color: colors.accentGreen.withValues(alpha: 0.6),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    SizedBox(width: 12.w),
+                    Text(
+                      widget.specialInstructions!,
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w400,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-          if (widget.specialInstructions != null) ...[
-            SizedBox(height: 12.h),
-            Container(
-              padding: EdgeInsets.all(12.w),
-              decoration: BoxDecoration(
-                color: colors.accentBlue.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SvgPicture.asset(
-                    Assets.icons.infoCircle,
-                    package: 'grab_go_shared',
-                    width: 16.w,
-                    height: 16.w,
-                    colorFilter: ColorFilter.mode(colors.accentBlue, BlendMode.srcIn),
-                  ),
-                  SizedBox(width: 8.w),
-                  Expanded(
-                    child: Text(
-                      widget.specialInstructions!,
-                      style: TextStyle(color: colors.textPrimary, fontSize: 12.sp, fontWeight: FontWeight.w400),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -425,35 +497,36 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
   Widget _buildActionButtons(AppColorsExtension colors) {
     return Column(
       children: [
-        _buildActionButton(
+        _buildPrimaryButton(
+          colors: colors,
           icon: Assets.icons.deliveryTruck,
           label: "Navigate to Restaurant",
+          color: colors.accentGreen,
           onPressed: () {
             _navigateToTracking(phase: "pickup");
           },
-          backgroundColor: colors.accentOrange,
-          colors: colors,
         ),
+
         SizedBox(height: 12.h),
-        _buildActionButton(
+        _buildSecondaryButton(
+          colors: colors,
           icon: Assets.icons.check,
           label: "Confirm Pickup",
+          color: colors.accentGreen,
           onPressed: () {
             _showPickupConfirmDialog(colors);
           },
-          backgroundColor: colors.accentGreen,
-          colors: colors,
         ),
       ],
     );
   }
 
-  Widget _buildActionButton({
+  Widget _buildPrimaryButton({
+    required AppColorsExtension colors,
     required String icon,
     required String label,
+    required Color color,
     required VoidCallback onPressed,
-    required Color backgroundColor,
-    required AppColorsExtension colors,
   }) {
     return Material(
       color: Colors.transparent,
@@ -461,9 +534,46 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
         onTap: onPressed,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
         child: Container(
-          padding: EdgeInsets.symmetric(vertical: 14.h),
+          padding: EdgeInsets.symmetric(vertical: 16.h),
+          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(KBorderSize.borderRadius4)),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SvgPicture.asset(
+                icon,
+                package: 'grab_go_shared',
+                width: 20.w,
+                height: 20.w,
+                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+              ),
+              SizedBox(width: 10.w),
+              Text(
+                label,
+                style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSecondaryButton({
+    required AppColorsExtension colors,
+    required String icon,
+    required String label,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+        child: Container(
+          padding: EdgeInsets.symmetric(vertical: 16.h),
           decoration: BoxDecoration(
-            color: backgroundColor,
+            color: colors.backgroundPrimary,
             borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
           ),
           child: Row(
@@ -472,14 +582,14 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
               SvgPicture.asset(
                 icon,
                 package: 'grab_go_shared',
-                width: 18.w,
-                height: 18.w,
-                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                width: 20.w,
+                height: 20.w,
+                colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
               ),
-              SizedBox(width: 8.w),
+              SizedBox(width: 10.w),
               Text(
                 label,
-                style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                style: TextStyle(color: color, fontSize: 15.sp, fontWeight: FontWeight.w700, letterSpacing: 0.3),
               ),
             ],
           ),

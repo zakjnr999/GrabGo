@@ -83,12 +83,18 @@ class AvailableOrdersService {
   Future<AvailableOrderDto?> acceptOrder(String orderId) async {
     final uri = Uri.parse('$_baseUrl/riders/accept-order/$orderId');
     try {
+      debugPrint('🎯 Accepting order: $orderId');
       final response = await _client.post(uri, headers: await _buildHeaders());
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body) as Map<String, dynamic>;
         final data = decoded['data'];
+        debugPrint('🎯 Accept Order Response Data: $data');
         if (data is Map<String, dynamic>) {
-          return AvailableOrderDto.fromJson(data);
+          debugPrint('🎯 Items in response: ${data['items']}');
+          final dto = AvailableOrderDto.fromJson(data);
+          debugPrint('🎯 DTO orderItems: ${dto.orderItems}');
+          debugPrint('🎯 DTO orderItems length: ${dto.orderItems.length}');
+          return dto;
         }
         return null;
       } else {
@@ -108,10 +114,7 @@ class AvailableOrdersService {
       final response = await _client.post(
         uri,
         headers: await _buildHeaders(),
-        body: jsonEncode({
-          'reason': reason,
-          'notes': notes,
-        }),
+        body: jsonEncode({'reason': reason, 'notes': notes}),
       );
 
       if (response.statusCode == 200) {
