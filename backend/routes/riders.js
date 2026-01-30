@@ -328,8 +328,7 @@ router.post(
               id: true,
               name: true,
               quantity: true,
-              price: true,
-              specialInstructions: true
+              price: true
             }
           },
           customer: {
@@ -337,7 +336,7 @@ router.post(
               username: true,
               email: true,
               phone: true,
-              photo: true
+              profilePicture: true
             }
           },
           restaurant: {
