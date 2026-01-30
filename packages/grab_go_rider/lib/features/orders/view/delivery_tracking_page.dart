@@ -6,6 +6,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:grab_go_rider/features/orders/service/available_orders_service.dart';
 import 'package:grab_go_rider/features/orders/viewmodel/rider_tracking_provider.dart';
 import 'package:grab_go_rider/features/orders/widgets/cancel_order_dialog.dart';
 import 'package:grab_go_rider/features/orders/widgets/external_navigation_helper.dart';
@@ -944,29 +945,43 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
     // Capture provider reference before showing dialog
     final trackingProvider = context.read<RiderTrackingProvider>();
     final messenger = ScaffoldMessenger.of(context);
+    final orderService = AvailableOrdersService();
 
     CancelOrderDialog.show(
       context: context,
       orderId: widget.orderId,
       orderNumber: 'Order ${widget.orderId}',
       onConfirm: (reason, notes) async {
-        // TODO: Send cancellation reason to backend
-        debugPrint('❌ Order cancelled: ${reason.apiValue}${notes != null ? " - $notes" : ""}');
+        debugPrint('🚫 Cancelling order: ${reason.apiValue}${notes != null ? " - $notes" : ""}');
 
-        final success = await trackingProvider.markAsCancelled();
+        // Call the backend to properly cancel and release the order
+        final success = await orderService.cancelOrder(
+          widget.orderId,
+          reason: reason.apiValue,
+          notes: notes,
+        );
 
         if (!mounted) return;
 
         if (success) {
+          // Stop tracking after successful cancellation
+          await trackingProvider.stopTracking();
+          
           messenger.showSnackBar(
-            SnackBar(content: const Text("Order has been cancelled."), backgroundColor: colors.error),
+            SnackBar(
+              content: const Text("Order cancelled and released for other riders."),
+              backgroundColor: colors.error,
+            ),
           );
           Future.delayed(const Duration(seconds: 1), () {
             if (mounted) context.pop();
           });
         } else {
           messenger.showSnackBar(
-            SnackBar(content: const Text("Failed to cancel order. Please try again."), backgroundColor: colors.error),
+            SnackBar(
+              content: const Text("Failed to cancel order. Please try again."),
+              backgroundColor: colors.error,
+            ),
           );
         }
       },

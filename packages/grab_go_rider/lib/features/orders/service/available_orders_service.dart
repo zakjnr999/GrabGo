@@ -100,4 +100,31 @@ class AvailableOrdersService {
       return null;
     }
   }
+
+  Future<bool> cancelOrder(String orderId, {String? reason, String? notes}) async {
+    final uri = Uri.parse('$_baseUrl/riders/cancel-order/$orderId');
+    try {
+      debugPrint('🚫 Cancelling order: $orderId');
+      final response = await _client.post(
+        uri,
+        headers: await _buildHeaders(),
+        body: jsonEncode({
+          'reason': reason,
+          'notes': notes,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+        debugPrint('✅ Order cancelled successfully: ${decoded['message']}');
+        return decoded['success'] == true;
+      } else {
+        debugPrint('❌ AvailableOrdersService.cancelOrder failed: ${response.statusCode} ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ AvailableOrdersService.cancelOrder error: $e');
+      return false;
+    }
+  }
 }

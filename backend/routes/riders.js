@@ -394,6 +394,115 @@ router.post(
   }
 );
 
+// Cancel order endpoint - Rider cancels an accepted order
+router.post(
+  "/cancel-order/:orderId",
+  protect,
+  authorize("rider", "admin"),
+  async (req, res) => {
+    try {
+      const { orderId } = req.params;
+      const { reason, notes } = req.body;
+
+      console.log(`🚫 Rider ${req.user.id} attempting to cancel order ${orderId}`);
+      console.log(`   Reason: ${reason}${notes ? ` - ${notes}` : ''}`);
+
+      // Find the order and verify it belongs to this rider
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: {
+          id: true,
+          riderId: true,
+          customerId: true,
+          status: true,
+          orderNumber: true,
+        }
+      });
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found"
+        });
+      }
+
+      // Verify the order is assigned to this rider
+      if (order.riderId !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          message: "You are not assigned to this order"
+        });
+      }
+
+      // Prevent cancellation if order is already delivered or cancelled
+      if (order.status === 'delivered' || order.status === 'cancelled') {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot cancel order with status: ${order.status}`
+        });
+      }
+
+      // Release the order back to available pool
+      // Preserve the original status (preparing, ready, etc.) before rider accepted
+      const resetStatus = order.status === 'picked_up' ? 'ready' : order.status;
+
+      const updatedOrder = await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          riderId: null,
+          status: resetStatus, // Restore to pre-acceptance status
+          riderBaseFee: 5.0, // Reset to default
+          riderDistanceFee: 0,
+          riderTip: 0,
+          platformFee: 0,
+          riderEarnings: 0,
+          cancelledDate: new Date(),
+          cancellationReason: notes
+            ? `${reason || 'rider_cancelled'}: ${notes}`
+            : (reason || 'rider_cancelled'),
+        },
+        include: {
+          customer: { select: { username: true, email: true, phone: true } },
+          restaurant: { select: { restaurantName: true } }
+        }
+      });
+
+      console.log(`✅ Order ${order.orderNumber} released back to available pool`);
+
+      // Update tracking to cancelled
+      try {
+        const trackingService = require('../services/tracking_service');
+        await trackingService.updateOrderStatus(orderId, 'cancelled');
+        console.log(`📍 Tracking updated to cancelled for order ${orderId}`);
+      } catch (trackingError) {
+        console.error("Update tracking on cancellation error:", trackingError);
+        // Don't fail the cancellation if tracking update fails
+      }
+
+      // TODO: Notify customer about cancellation
+      // TODO: Send push notification to nearby riders about available order
+
+      res.json({
+        success: true,
+        message: "Order cancelled successfully. It has been released for other riders.",
+        data: {
+          orderId: updatedOrder.id,
+          orderNumber: updatedOrder.orderNumber,
+          status: updatedOrder.status,
+          reason: reason,
+        }
+      });
+    } catch (error) {
+      console.error("Cancel order error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message,
+      });
+    }
+  }
+);
+
 router.get("/wallet", protect, authorize("rider"), async (req, res) => {
   try {
     let wallet = await prisma.riderWallet.findUnique({
