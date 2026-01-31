@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:grab_go_customer/features/Pickup/view/pickup_map.dart';
 import 'package:grab_go_customer/features/browse/view/browse_page.dart';
 import 'package:grab_go_customer/features/chat/view/chats.dart';
 import 'package:grab_go_customer/features/home/view/home_page.dart';
 import 'package:grab_go_customer/features/profile/view/account.dart';
-import 'package:grab_go_customer/features/vendors/view/vendors_page.dart';
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -25,9 +25,9 @@ class _BottomNavigatorState extends State<BottomNavigator> {
 
   final List<Widget> _screens = [
     const HomePage(),
+    const PickupMap(),
     const BrowsePage(),
     const Chats(),
-    const VendorsPage(),
     const Account(),
   ];
 
@@ -69,9 +69,9 @@ class _BottomNavigatorState extends State<BottomNavigator> {
           child: Row(
             children: [
               Expanded(child: _buildNavItem(Assets.icons.home, "Home", 0, context)),
-              Expanded(child: _buildNavItem(Assets.icons.search, "Browse", 1, context)),
-              Expanded(child: _buildNavItem(Assets.icons.squareMenu, "Orders", 2, context)),
-              Expanded(child: _buildNavItem(Assets.icons.store, "Vendors", 3, context)),
+              Expanded(child: _buildNavItem(Assets.icons.running, "Pickup", 1, context)),
+              Expanded(child: _buildNavItem(Assets.icons.search, "Browse", 2, context)),
+              Expanded(child: _buildNavItem(Assets.icons.squareMenu, "Orders", 3, context)),
               Expanded(child: _buildNavItem(Assets.icons.user, "Account", 4, context)),
             ],
           ),

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_rider/features/orders/service/available_order_dto.dart';
 import 'package:grab_go_rider/features/orders/service/order_statistics_service.dart';
@@ -220,7 +221,7 @@ class _OrdersPageState extends State<OrdersPage> {
                   opacity: _showBatteryWarning ? 1.0 : 0.0,
                   child: Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                     color: colors.warning,
                     child: Row(
                       children: [
@@ -301,442 +302,482 @@ class _OrdersPageState extends State<OrdersPage> {
   }
 
   Widget _buildOrdersContent(AppColorsExtension colors) {
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(height: 20.h),
-          Container(
-            padding: EdgeInsets.all(20.w),
-            decoration: BoxDecoration(
-              color: colors.backgroundPrimary,
-              borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-            ),
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 20.w,
-                      height: 20.w,
-                      decoration: BoxDecoration(
-                        color: colors.accentGreen,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: colors.backgroundSecondary, width: 3),
-                      ),
-                      child: Center(
-                        child: Container(
-                          width: 8.w,
-                          height: 8.w,
-                          decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 12.w),
-                    Text(
-                      "From your location",
-                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-
-                SizedBox(height: 16.h),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
+                SizedBox(height: 20.h),
+                Container(
+                  padding: EdgeInsets.all(20.w),
+                  decoration: BoxDecoration(
+                    color: colors.backgroundPrimary,
+                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
                           Container(
-                            height: 40.h,
-                            width: 2.w,
-                            decoration: BoxDecoration(color: colors.border, borderRadius: BorderRadius.circular(2)),
-                          ),
-                          SizedBox(height: 4.h),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: List.generate(3, (index) {
-                              return Container(
-                                width: 6.w,
-                                height: 6.w,
-                                decoration: BoxDecoration(color: colors.accentGreen, shape: BoxShape.circle),
-                              );
-                            }),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(width: 12.w),
-                    Expanded(
-                      flex: 4,
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _showDropPoints = !_showDropPoints;
-                          });
-                        },
-                        child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                          decoration: BoxDecoration(
-                            color: colors.backgroundSecondary,
-                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                _isLoadingOrders
-                                    ? "... DROP POINTS"
-                                    : "${_statistics?.totalDropPoints ?? 0} DROP POINTS",
-                                style: TextStyle(
-                                  color: colors.textSecondary,
-                                  fontSize: 12.sp,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              SizedBox(width: 6.w),
-                              Icon(
-                                _showDropPoints ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                                size: 16.w,
-                                color: colors.textSecondary,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  child: _showDropPoints && _availableOrders.isNotEmpty
-                      ? Column(
-                          children: [
-                            SizedBox(height: 12.h),
-                            ...List.generate(_availableOrders.length, (index) {
-                              final order = _availableOrders[index];
-                              return Padding(
-                                padding: EdgeInsets.only(bottom: 12.h),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      margin: EdgeInsets.only(top: 6.h),
-                                      width: 8.w,
-                                      height: 8.w,
-                                      decoration: BoxDecoration(color: colors.accentGreen, shape: BoxShape.circle),
-                                    ),
-                                    SizedBox(width: 12.w),
-                                    Expanded(
-                                      child: Text(
-                                        "${index + 1}. ${order.customerAddress}",
-                                        style: TextStyle(
-                                          color: colors.textSecondary,
-                                          fontSize: 12.sp,
-                                          fontWeight: FontWeight.w400,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }),
-                          ],
-                        )
-                      : const SizedBox.shrink(),
-                ),
-
-                SizedBox(height: 16.h),
-
-                Row(
-                  children: [
-                    Container(
-                      margin: EdgeInsets.only(top: 4.h),
-                      child: SvgPicture.asset(
-                        Assets.icons.mapPin,
-                        package: 'grab_go_shared',
-                        width: 20.w,
-                        height: 20.w,
-                        colorFilter: ColorFilter.mode(colors.error, BlendMode.srcIn),
-                      ),
-                    ),
-                    SizedBox(width: 12.w),
-                    Expanded(
-                      child: Text(
-                        _farthestDropAddress,
-                        style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          SizedBox(height: 24.h),
-
-          Container(
-            padding: EdgeInsets.all(20.w),
-            decoration: BoxDecoration(
-              color: colors.backgroundPrimary,
-              borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "DELIVERY EARNINGS",
-                          style: TextStyle(
-                            color: colors.textSecondary,
-                            fontSize: 11.sp,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        SizedBox(height: 6.h),
-                        Text(
-                          _isLoadingOrders
-                              ? "GHC ..."
-                              : "GHC ${_statistics?.totalEarnings.toStringAsFixed(2) ?? '0.00'}",
-                          style: TextStyle(
-                            color: colors.textPrimary,
-                            fontSize: 28.sp,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-
-                SizedBox(height: 24.h),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "TOTAL TIPS",
-                            style: TextStyle(
-                              color: colors.textSecondary,
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.5,
+                            width: 20.w,
+                            height: 20.w,
+                            decoration: BoxDecoration(
+                              color: colors.accentGreen,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: colors.backgroundSecondary, width: 3),
                             ),
-                          ),
-                          SizedBox(height: 6.h),
-                          Text(
-                            _isLoadingOrders ? "GHC ..." : "GHC ${_statistics?.totalTips.toStringAsFixed(2) ?? '0.00'}",
-                            style: TextStyle(color: colors.textPrimary, fontSize: 22.sp, fontWeight: FontWeight.w700),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(width: 20.w),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "TOTAL DISTANCE",
-                            style: TextStyle(
-                              color: colors.textSecondary,
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.5,
+                            child: Center(
+                              child: Container(
+                                width: 8.w,
+                                height: 8.w,
+                                decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
+                              ),
                             ),
-                          ),
-                          SizedBox(height: 6.h),
-                          Text(
-                            _isLoadingOrders
-                                ? "... km"
-                                : "${_statistics?.totalDistance.toStringAsFixed(1) ?? '0.0'} km",
-                            style: TextStyle(color: colors.textPrimary, fontSize: 22.sp, fontWeight: FontWeight.w700),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-                SizedBox(height: 24.h),
-                DottedLine(
-                  direction: Axis.horizontal,
-                  lineLength: double.infinity,
-                  lineThickness: 1.5,
-                  dashLength: 6,
-                  dashColor: colors.inputBorder.withValues(alpha: 0.65),
-                  dashGapLength: 4,
-                ),
-                SizedBox(height: 12.h),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "TOTAL EST. EARNINGS",
-                      style: TextStyle(
-                        color: colors.accentGreen,
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    SizedBox(width: 2.w),
-                    Text(
-                      _isLoadingOrders
-                          ? "GHC ..."
-                          : "GHC ${((_statistics?.totalEarnings ?? 0) + (_statistics?.totalTips ?? 0)).toStringAsFixed(2)}",
-                      style: TextStyle(
-                        color: colors.accentGreen,
-                        fontSize: 24.sp,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          SizedBox(height: 24.h),
-
-          Container(
-            padding: EdgeInsets.all(20.w),
-            decoration: BoxDecoration(
-              color: colors.backgroundPrimary,
-              borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-            ),
-            child: Row(
-              children: [
-                CustomSwitch(
-                  value: _routeOptimizationEnabled,
-                  onChanged: (value) {
-                    setState(() {
-                      _routeOptimizationEnabled = value;
-                    });
-                  },
-                  activeColor: colors.accentGreen,
-                  inactiveColor: colors.border,
-                  thumbColor: colors.backgroundPrimary,
-                ),
-                SizedBox(width: 12.w),
-                Expanded(
-                  child: Text(
-                    "Use traffic-aware route optimization to plan my deliveries",
-                    style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          SizedBox(height: 32.h),
-
-          Column(
-            children: [
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [colors.accentGreen, colors.accentGreen.withValues(alpha: 0.85)]),
-                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      context.push(
-                        '/order-confirmation',
-                        extra: {
-                          'orderId': 'ORD-12345',
-                          'restaurantName': 'Pizza Palace',
-                          'restaurantAddress': '456 Food Street, Accra',
-                          'customerName': 'John Doe',
-                          'customerAddress': '123 Main Street, Accra',
-                          'customerPhone': '+233 123 456 789',
-                          'orderTotal': 'GHS 45.00',
-                          'orderItems': ['Pizza Margherita x1', 'Coca Cola x2'],
-                          'specialInstructions': 'Ring doorbell twice',
-                          'customerId': 'test-customer-123',
-                          'riderId': 'test-rider-456',
-                          'pickupLatitude': 5.6037,
-                          'pickupLongitude': -0.1870,
-                          'destinationLatitude': 5.6145,
-                          'destinationLongitude': -0.2056,
-                        },
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius8),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 18.h, horizontal: 20.w),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SvgPicture.asset(
-                            Assets.icons.deliveryTruck,
-                            package: 'grab_go_shared',
-                            width: 24.w,
-                            height: 24.w,
-                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                           ),
                           SizedBox(width: 12.w),
                           Text(
-                            "Accept ${_isLoadingOrders ? "..." : _availableOrders.length} Available Orders",
-                            style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w700),
+                            "From your location",
+                            style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
                           ),
                         ],
+                      ),
+
+                      SizedBox(height: 16.h),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              children: [
+                                Container(
+                                  height: 40.h,
+                                  width: 2.w,
+                                  decoration: BoxDecoration(
+                                    color: colors.border,
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                                SizedBox(height: 4.h),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                  children: List.generate(3, (index) {
+                                    return Container(
+                                      width: 6.w,
+                                      height: 6.w,
+                                      decoration: BoxDecoration(color: colors.accentGreen, shape: BoxShape.circle),
+                                    );
+                                  }),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            flex: 4,
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _showDropPoints = !_showDropPoints;
+                                });
+                              },
+                              child: Container(
+                                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                                decoration: BoxDecoration(
+                                  color: colors.backgroundSecondary,
+                                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      _isLoadingOrders
+                                          ? "... DROP POINTS"
+                                          : "${_statistics?.totalDropPoints ?? 0} DROP POINTS",
+                                      style: TextStyle(
+                                        color: colors.textSecondary,
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    SizedBox(width: 6.w),
+                                    Icon(
+                                      _showDropPoints ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                                      size: 16.w,
+                                      color: colors.textSecondary,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                        child: _showDropPoints && _availableOrders.isNotEmpty
+                            ? Column(
+                                children: [
+                                  SizedBox(height: 12.h),
+                                  ...List.generate(_availableOrders.length, (index) {
+                                    final order = _availableOrders[index];
+                                    return Padding(
+                                      padding: EdgeInsets.only(bottom: 12.h),
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Container(
+                                            margin: EdgeInsets.only(top: 6.h),
+                                            width: 8.w,
+                                            height: 8.w,
+                                            decoration: BoxDecoration(
+                                              color: colors.accentGreen,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                          SizedBox(width: 12.w),
+                                          Expanded(
+                                            child: Text(
+                                              "${index + 1}. ${order.customerAddress}",
+                                              style: TextStyle(
+                                                color: colors.textSecondary,
+                                                fontSize: 12.sp,
+                                                fontWeight: FontWeight.w400,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }),
+                                ],
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+
+                      SizedBox(height: 16.h),
+
+                      Row(
+                        children: [
+                          Container(
+                            margin: EdgeInsets.only(top: 4.h),
+                            child: SvgPicture.asset(
+                              Assets.icons.mapPin,
+                              package: 'grab_go_shared',
+                              width: 20.w,
+                              height: 20.w,
+                              colorFilter: ColorFilter.mode(colors.error, BlendMode.srcIn),
+                            ),
+                          ),
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            child: Text(
+                              _farthestDropAddress,
+                              style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                SizedBox(height: 24.h),
+
+                Container(
+                  padding: EdgeInsets.all(20.w),
+                  decoration: BoxDecoration(
+                    color: colors.backgroundPrimary,
+                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "DELIVERY EARNINGS",
+                                style: TextStyle(
+                                  color: colors.textSecondary,
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              SizedBox(height: 6.h),
+                              Text(
+                                _isLoadingOrders
+                                    ? "GHC ..."
+                                    : "GHC ${_statistics?.totalEarnings.toStringAsFixed(2) ?? '0.00'}",
+                                style: TextStyle(
+                                  color: colors.textPrimary,
+                                  fontSize: 28.sp,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: 24.h),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "TOTAL TIPS",
+                                  style: TextStyle(
+                                    color: colors.textSecondary,
+                                    fontSize: 11.sp,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                SizedBox(height: 6.h),
+                                Text(
+                                  _isLoadingOrders
+                                      ? "GHC ..."
+                                      : "GHC ${_statistics?.totalTips.toStringAsFixed(2) ?? '0.00'}",
+                                  style: TextStyle(
+                                    color: colors.textPrimary,
+                                    fontSize: 22.sp,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(width: 20.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "TOTAL DISTANCE",
+                                  style: TextStyle(
+                                    color: colors.textSecondary,
+                                    fontSize: 11.sp,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                SizedBox(height: 6.h),
+                                Text(
+                                  _isLoadingOrders
+                                      ? "... km"
+                                      : "${_statistics?.totalDistance.toStringAsFixed(1) ?? '0.0'} km",
+                                  style: TextStyle(
+                                    color: colors.textPrimary,
+                                    fontSize: 22.sp,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: 24.h),
+                      DottedLine(
+                        direction: Axis.horizontal,
+                        lineLength: double.infinity,
+                        lineThickness: 1.5,
+                        dashLength: 6,
+                        dashColor: colors.inputBorder.withValues(alpha: 0.65),
+                        dashGapLength: 4,
+                      ),
+                      SizedBox(height: 12.h),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "TOTAL EST. EARNINGS",
+                            style: TextStyle(
+                              color: colors.accentGreen,
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          SizedBox(width: 2.w),
+                          Text(
+                            _isLoadingOrders
+                                ? "GHC ..."
+                                : "GHC ${((_statistics?.totalEarnings ?? 0) + (_statistics?.totalTips ?? 0)).toStringAsFixed(2)}",
+                            style: TextStyle(
+                              color: colors.accentGreen,
+                              fontSize: 24.sp,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                SizedBox(height: 24.h),
+
+                Container(
+                  padding: EdgeInsets.all(20.w),
+                  decoration: BoxDecoration(
+                    color: colors.backgroundPrimary,
+                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                  ),
+                  child: Row(
+                    children: [
+                      CustomSwitch(
+                        value: _routeOptimizationEnabled,
+                        onChanged: (value) {
+                          setState(() {
+                            _routeOptimizationEnabled = value;
+                          });
+                        },
+                        activeColor: colors.accentGreen,
+                        inactiveColor: colors.border,
+                        thumbColor: colors.backgroundPrimary,
+                      ),
+                      SizedBox(width: 12.w),
+                      Expanded(
+                        child: Text(
+                          "Use traffic-aware route optimization to plan my deliveries",
+                          style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: MediaQuery.paddingOf(context).bottom),
+              ],
+            ),
+          ),
+        ),
+
+        Container(
+          padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 0.h),
+          decoration: BoxDecoration(
+            color: colors.backgroundPrimary,
+            boxShadow: [
+              BoxShadow(color: colors.shadow.withValues(alpha: 0.1), blurRadius: 5, offset: const Offset(0, -2)),
+            ],
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              children: [
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: _isLoadingOrders ? colors.accentGreen.withValues(alpha: 0.4) : colors.accentGreen,
+                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        _isLoadingOrders
+                            ? AppToastMessage.show(
+                                context: context,
+                                showIcon: false,
+                                backgroundColor: colors.accentGreen,
+                                gravity: ToastGravity.CENTER,
+                                radius: KBorderSize.borderRadius4,
+                                message: "Loading available orders, please wait...",
+                              )
+                            : context.push(
+                                '/order-confirmation',
+                                extra: {
+                                  'orderId': 'ORD-12345',
+                                  'restaurantName': 'Pizza Palace',
+                                  'restaurantAddress': '456 Food Street, Accra',
+                                  'customerName': 'John Doe',
+                                  'customerAddress': '123 Main Street, Accra',
+                                  'customerPhone': '+233 123 456 789',
+                                  'orderTotal': 'GHS 45.00',
+                                  'orderItems': ['Pizza Margherita x1', 'Coca Cola x2'],
+                                  'specialInstructions': 'Ring doorbell twice',
+                                  'customerId': 'test-customer-123',
+                                  'riderId': 'test-rider-456',
+                                  'pickupLatitude': 5.6037,
+                                  'pickupLongitude': -0.1870,
+                                  'destinationLatitude': 5.6145,
+                                  'destinationLongitude': -0.2056,
+                                },
+                              );
+                      },
+                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius8),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 18.h, horizontal: 20.w),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SvgPicture.asset(
+                              Assets.icons.deliveryTruck,
+                              package: 'grab_go_shared',
+                              width: 24.w,
+                              height: 24.w,
+                              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                            ),
+                            SizedBox(width: 12.w),
+                            Text(
+                              "Accept ${_isLoadingOrders ? "..." : _availableOrders.length} Available Orders",
+                              style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
 
-              SizedBox(height: 16.h),
+                SizedBox(height: 16.h),
 
-              GestureDetector(
-                onTap: () {
-                  context.push('/availableOrders');
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.symmetric(vertical: 18.h, horizontal: 20.w),
-                  decoration: BoxDecoration(
-                    color: colors.inputBorder,
-                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                  ),
-                  child: Center(
-                    child: Text(
-                      "No, I'll custom select orders",
-                      style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                GestureDetector(
+                  onTap: () {
+                    context.push('/availableOrders');
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(vertical: 18.h, horizontal: 20.w),
+                    decoration: BoxDecoration(
+                      color: colors.inputBorder,
+                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                    ),
+                    child: Center(
+                      child: Text(
+                        "No, I'll custom select orders",
+                        style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                      ),
                     ),
                   ),
                 ),
-              ),
 
-              SizedBox(height: KSpacing.lg.h),
-            ],
+                SizedBox(height: KSpacing.lg.h),
+              ],
+            ),
           ),
-
-          SizedBox(height: 32.h),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

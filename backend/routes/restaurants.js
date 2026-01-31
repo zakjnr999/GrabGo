@@ -10,6 +10,29 @@ const {
 
 const router = express.Router();
 
+// Helper function to format restaurant for frontend compatibility
+const formatRestaurant = (restaurant) => {
+  if (!restaurant) return null;
+  return {
+    ...restaurant,
+    location: {
+      type: 'Point',
+      coordinates: [restaurant.longitude, restaurant.latitude],
+      lat: restaurant.latitude,
+      lng: restaurant.longitude,
+      address: restaurant.address || '',
+      city: restaurant.city || '',
+      area: restaurant.area || '',
+    },
+    // Map back some fields for legacy support
+    restaurant_name: restaurant.restaurantName,
+    is_open: restaurant.isOpen,
+    delivery_fee: restaurant.deliveryFee,
+    min_order: restaurant.minOrder,
+    totalReviews: restaurant.ratingCount || 0,
+  };
+};
+
 // Helper function to check if user is admin
 async function checkIsAdmin(req) {
   if (
@@ -78,7 +101,7 @@ router.get("/", async (req, res, next) => {
       success: true,
       message: "Restaurants retrieved successfully",
       count: restaurants.length,
-      data: restaurants,
+      data: restaurants.map(formatRestaurant),
     });
   } catch (error) {
     console.error("Get restaurants error:", error);
@@ -273,11 +296,12 @@ router.get("/stores", async (req, res) => {
       take: 20
     });
 
+    // Format restaurants to include location object
     res.json({
       success: true,
       message: "Restaurants retrieved successfully",
       count: restaurants.length,
-      data: restaurants,
+      data: restaurants.map(formatRestaurant),
     });
   } catch (error) {
     console.error("Get restaurants error:", error);
@@ -337,7 +361,7 @@ router.get("/stores/:id", async (req, res) => {
     res.json({
       success: true,
       message: "Restaurant retrieved successfully",
-      data: restaurant,
+      data: formatRestaurant(restaurant),
     });
   } catch (error) {
     console.error("Get restaurant error:", error);
@@ -429,8 +453,6 @@ router.get("/search", async (req, res) => {
           city: true,
           area: true,
         },
-        orderBy: { rating: 'desc' },
-        take: 50
       });
     }
 
@@ -438,7 +460,7 @@ router.get("/search", async (req, res) => {
       success: true,
       message: "Search results retrieved successfully",
       count: restaurants.length,
-      data: restaurants,
+      data: restaurants.map(formatRestaurant),
     });
   } catch (error) {
     console.error("Search restaurants error:", error);
@@ -490,7 +512,7 @@ router.get("/nearby", async (req, res) => {
       success: true,
       message: "Nearby restaurants retrieved successfully",
       count: restaurants.length,
-      data: restaurants,
+      data: restaurants.map(formatRestaurant),
     });
   } catch (error) {
     console.error("Get nearby restaurants error:", error);
@@ -685,7 +707,7 @@ router.get("/:restaurantId", async (req, res) => {
     res.json({
       success: true,
       message: "Restaurant retrieved successfully",
-      data: restaurant,
+      data: formatRestaurant(restaurant),
     });
   } catch (error) {
     console.error("Get restaurant error:", error);

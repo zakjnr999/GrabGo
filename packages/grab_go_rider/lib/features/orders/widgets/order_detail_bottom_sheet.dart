@@ -23,7 +23,6 @@ class OrderDetailBottomSheet extends StatefulWidget {
     this.isClosest = false,
   });
 
-  /// Show the bottom sheet
   static void show({
     required BuildContext context,
     required AvailableOrderDto order,
@@ -36,7 +35,7 @@ class OrderDetailBottomSheet extends StatefulWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       isDismissible: true,
-      enableDrag: false,
+      enableDrag: true,
       builder: (context) => OrderDetailBottomSheet(
         order: order,
         onAccept: onAccept,
@@ -369,7 +368,7 @@ class _OrderDetailBottomSheetState extends State<OrderDetailBottomSheet> {
         Expanded(
           child: _buildStatItem(
             colors: colors,
-            icon: Assets.icons.cart,
+            icon: Assets.icons.boxIso,
             label: 'Items',
             value: '${widget.order.itemCount}',
           ),

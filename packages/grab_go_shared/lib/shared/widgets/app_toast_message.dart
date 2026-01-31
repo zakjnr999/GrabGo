@@ -13,6 +13,8 @@ class AppToastMessage {
     int? maxLines,
     Duration? duration,
     ToastGravity? gravity,
+    double? radius,
+    bool showIcon = true,
   }) {
     final colors = context.appColors;
     final fToast = FToast();
@@ -27,7 +29,7 @@ class AppToastMessage {
       constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85, minWidth: 200.w),
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(KBorderSize.border),
+        borderRadius: radius != null ? BorderRadius.circular(radius) : BorderRadius.circular(KBorderSize.border),
         color: backgroundColor ?? colors.accentViolet,
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 2))],
       ),
@@ -36,17 +38,19 @@ class AppToastMessage {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: EdgeInsets.all(5.r),
-              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
-              child: Image.asset(
-                Assets.icons.appIconCustomer.path,
-                package: "grab_go_shared",
-                height: 20.h,
-                width: 20.w,
-                fit: BoxFit.cover,
-              ),
-            ),
+            showIcon
+                ? Container(
+                    padding: EdgeInsets.all(5.r),
+                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+                    child: Image.asset(
+                      Assets.icons.appIconCustomer.path,
+                      package: "grab_go_shared",
+                      height: 20.h,
+                      width: 20.w,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                : SizedBox.shrink(),
             SizedBox(width: 12.w),
             Flexible(
               child: Text(

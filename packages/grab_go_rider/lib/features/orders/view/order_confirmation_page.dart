@@ -76,140 +76,168 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
       ),
       child: Scaffold(
         backgroundColor: colors.backgroundSecondary,
-        body: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverAppBar(
-              expandedHeight: size.height * 0.22,
-              floating: false,
-              pinned: true,
-              elevation: 0,
-              backgroundColor: colors.backgroundPrimary,
-              systemOverlayStyle: SystemUiOverlayStyle(
-                statusBarColor: Colors.transparent,
-                statusBarIconBrightness: Brightness.light,
-              ),
-              leading: IconButton(
-                icon: SvgPicture.asset(
-                  Assets.icons.navArrowLeft,
-                  package: 'grab_go_shared',
-                  width: 24.w,
-                  height: 24.w,
-                  colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                ),
-                onPressed: () => context.pop(),
-              ),
-              actions: [
-                Container(
-                  margin: EdgeInsets.all(8.w),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        _showCallOptions(context, colors);
-                      },
-                      customBorder: const CircleBorder(),
-                      child: Padding(
-                        padding: EdgeInsets.all(10.r),
-                        child: Icon(Icons.more_vert, size: 20.r, color: Colors.white),
-                      ),
+        body: Column(
+          children: [
+            Expanded(
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverAppBar(
+                    expandedHeight: size.height * 0.20,
+                    floating: false,
+                    pinned: true,
+                    elevation: 0,
+                    backgroundColor: colors.backgroundPrimary,
+                    systemOverlayStyle: SystemUiOverlayStyle(
+                      statusBarColor: Colors.transparent,
+                      statusBarIconBrightness: Brightness.light,
                     ),
-                  ),
-                ),
-              ],
-              flexibleSpace: FlexibleSpaceBar(
-                background: Container(
-                  color: colors.accentGreen,
-                  child: SafeArea(
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(20.w, 60.h, 20.w, 16.h),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
+                    leading: IconButton(
+                      icon: SvgPicture.asset(
+                        Assets.icons.navArrowLeft,
+                        package: 'grab_go_shared',
+                        width: 24.w,
+                        height: 24.w,
+                        colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                      ),
+                      onPressed: () => context.pop(),
+                    ),
+                    actions: [
+                      IconButton(
+                        icon: SvgPicture.asset(
+                          Assets.icons.infoCircle,
+                          package: 'grab_go_shared',
+                          width: 20.w,
+                          height: 20.w,
+                          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                        ),
+
+                        onPressed: () => _showCallOptions(context, colors),
+                      ),
+                    ],
+
+                    flexibleSpace: FlexibleSpaceBar(
+                      background: Container(
+                        color: colors.accentGreen,
+                        child: SafeArea(
+                          child: Padding(
+                            padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 16.h),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.end,
                               children: [
                                 Container(
-                                  width: 6.w,
-                                  height: 6.w,
-                                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius20),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 6.w,
+                                        height: 6.w,
+                                        decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                                      ),
+                                      SizedBox(width: 6.w),
+                                      Text(
+                                        widget.orderStatus ?? "Order Confirmed",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12.sp,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                SizedBox(width: 6.w),
-                                Text(
-                                  widget.orderStatus ?? "Order Confirmed",
-                                  style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                                SizedBox(height: 8.h),
+                                Row(
+                                  children: [
+                                    Text(
+                                      "ORDER NO. : ",
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(alpha: 0.9),
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    Text(
+                                      widget.displayOrderId,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 20.sp,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 4.h),
+                                Row(
+                                  children: [
+                                    Text(
+                                      "EARNINGS : ",
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(alpha: 0.9),
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    Text(
+                                      "GHS ${widget.riderEarnings.toString()}",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18.sp,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
                           ),
-                          SizedBox(height: 8.h),
-                          Text(
-                            "Order #${widget.displayOrderId}",
-                            style: TextStyle(color: Colors.white, fontSize: 20.sp, fontWeight: FontWeight.w700),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          SizedBox(height: 4.h),
-                          Row(
-                            children: [
-                              Text(
-                                "EARNINGS : ",
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                  fontSize: 12.sp,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              Text(
-                                "GHS ${widget.riderEarnings.toString()}",
-                                style: TextStyle(color: Colors.white, fontSize: 18.sp, fontWeight: FontWeight.w700),
-                              ),
-                            ],
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
-                ),
+
+                  SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Low Battery Warning
+                        _buildLowBatteryWarning(colors),
+
+                        SizedBox(height: 20.h),
+
+                        // Pickup & Delivery Timeline
+                        _buildDeliveryTimeline(colors),
+
+                        SizedBox(height: 20.h),
+
+                        // Order Items
+                        _buildOrderItems(colors),
+
+                        SizedBox(height: 20.h),
+
+                        // Special Instructions (if any)
+                        if (widget.specialInstructions != null) ...[
+                          _buildSpecialInstructions(colors),
+                          SizedBox(height: 20.h),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.all(20.w),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Pickup & Delivery Timeline
-                    _buildDeliveryTimeline(colors),
-
-                    SizedBox(height: 24.h),
-
-                    // Order Items
-                    _buildOrderItems(colors),
-
-                    SizedBox(height: 20.h),
-
-                    // Special Instructions (if any)
-                    if (widget.specialInstructions != null) ...[
-                      _buildSpecialInstructions(colors),
-                      SizedBox(height: 20.h),
-                    ],
-
-                    // Action Buttons
-                    _buildActionButtons(colors),
-
-                    SizedBox(height: 20.h),
-                  ],
-                ),
-              ),
+            Container(
+              color: colors.backgroundPrimary,
+              padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 20.h),
+              child: SafeArea(top: false, child: _buildActionButtons(colors)),
             ),
           ],
         ),
@@ -217,12 +245,38 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
     );
   }
 
+  Container _buildLowBatteryWarning(AppColorsExtension colors) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+      color: colors.warning,
+      child: Row(
+        children: [
+          SvgPicture.asset(
+            Assets.icons.battery25,
+            package: 'grab_go_shared',
+            width: 16.w,
+            height: 16.w,
+            colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
+          ),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Low battery. Consider charging before starting your journey.',
+              style: TextStyle(fontSize: 11.sp, color: Colors.white, fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDeliveryTimeline(AppColorsExtension colors) {
     return Container(
+      margin: EdgeInsets.symmetric(horizontal: 20.w),
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        border: Border.all(color: colors.border.withValues(alpha: 0.5)),
       ),
       child: Column(
         children: [
@@ -370,6 +424,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
 
   Widget _buildOrderItems(AppColorsExtension colors) {
     return Container(
+      margin: EdgeInsets.symmetric(horizontal: 20.w),
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
@@ -392,8 +447,6 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
             ],
           ),
           SizedBox(height: 16.h),
-          Container(height: 1.h, color: colors.border.withValues(alpha: 0.3)),
-          SizedBox(height: 12.h),
           if (widget.orderItems.isEmpty)
             Padding(
               padding: EdgeInsets.symmetric(vertical: 8.h),
@@ -446,6 +499,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
 
   Widget _buildSpecialInstructions(AppColorsExtension colors) {
     return Container(
+      margin: EdgeInsets.symmetric(horizontal: 20.w),
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
@@ -462,7 +516,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                   "Special Instructions",
                   style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w700),
                 ),
-                SizedBox(height: 6.h),
+                SizedBox(height: 16.h),
                 Row(
                   children: [
                     Container(
@@ -495,35 +549,18 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
   }
 
   Widget _buildActionButtons(AppColorsExtension colors) {
-    return Column(
-      children: [
-        _buildPrimaryButton(
-          colors: colors,
-          icon: Assets.icons.deliveryTruck,
-          label: "Navigate to Restaurant",
-          color: colors.accentGreen,
-          onPressed: () {
-            _navigateToTracking(phase: "pickup");
-          },
-        ),
-
-        SizedBox(height: 12.h),
-        _buildSecondaryButton(
-          colors: colors,
-          icon: Assets.icons.check,
-          label: "Confirm Pickup",
-          color: colors.accentGreen,
-          onPressed: () {
-            _showPickupConfirmDialog(colors);
-          },
-        ),
-      ],
+    return _buildPrimaryButton(
+      colors: colors,
+      label: "Navigate to Restaurant",
+      color: colors.accentGreen,
+      onPressed: () {
+        _navigateToTracking(phase: "pickup");
+      },
     );
   }
 
   Widget _buildPrimaryButton({
     required AppColorsExtension colors,
-    required String icon,
     required String label,
     required Color color,
     required VoidCallback onPressed,
@@ -534,64 +571,14 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
         onTap: onPressed,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
         child: Container(
+          width: double.infinity,
           padding: EdgeInsets.symmetric(vertical: 16.h),
           decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(KBorderSize.borderRadius4)),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SvgPicture.asset(
-                icon,
-                package: 'grab_go_shared',
-                width: 20.w,
-                height: 20.w,
-                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-              ),
-              SizedBox(width: 10.w),
-              Text(
-                label,
-                style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSecondaryButton({
-    required AppColorsExtension colors,
-    required String icon,
-    required String label,
-    required Color color,
-    required VoidCallback onPressed,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: 16.h),
-          decoration: BoxDecoration(
-            color: colors.backgroundPrimary,
-            borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SvgPicture.asset(
-                icon,
-                package: 'grab_go_shared',
-                width: 20.w,
-                height: 20.w,
-                colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-              ),
-              SizedBox(width: 10.w),
-              Text(
-                label,
-                style: TextStyle(color: color, fontSize: 15.sp, fontWeight: FontWeight.w700, letterSpacing: 0.3),
-              ),
-            ],
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w600),
+            ),
           ),
         ),
       ),
@@ -621,25 +608,6 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
         'destinationLatitude': widget.destinationLatitude,
         'destinationLongitude': widget.destinationLongitude,
       },
-    );
-  }
-
-  void _showPickupConfirmDialog(AppColorsExtension colors) {
-    AppDialog.show(
-      context: context,
-      title: "Confirm Pickup?",
-      message: "Have you picked up the order from the restaurant?",
-      type: AppDialogType.question,
-      primaryButtonText: "Confirm",
-      secondaryButtonText: "Cancel",
-      primaryButtonColor: colors.accentGreen,
-      borderRadius: KBorderSize.borderRadius4,
-      buttonBorderRadius: KBorderSize.borderRadius4,
-      onPrimaryPressed: () {
-        Navigator.pop(context);
-        _navigateToTracking(phase: "delivery");
-      },
-      onSecondaryPressed: () => Navigator.pop(context),
     );
   }
 

@@ -435,6 +435,9 @@ class $LibAssetsIconsGen {
   AssetGenImage get riderOnboardingTwo =>
       const AssetGenImage('lib/assets/icons/rider_onboarding_two.png');
 
+  /// File path: lib/assets/icons/running.svg
+  String get running => 'lib/assets/icons/running.svg';
+
   /// File path: lib/assets/icons/scale.svg
   String get scale => 'lib/assets/icons/scale.svg';
 
@@ -666,6 +669,7 @@ class $LibAssetsIconsGen {
     riderOnboardingOne,
     riderOnboardingThree,
     riderOnboardingTwo,
+    running,
     scale,
     scanQrCode,
     search,

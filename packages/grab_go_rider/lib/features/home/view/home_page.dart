@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_rider/features/home/models/transaction_model.dart';
+import 'package:grab_go_rider/features/orders/service/available_order_dto.dart';
+import 'package:grab_go_rider/features/orders/service/available_orders_service.dart';
+import 'package:grab_go_rider/features/orders/service/order_statistics_service.dart';
 import 'package:grab_go_rider/shared/widgets/home_drawer.dart';
 import 'package:grab_go_rider/shared/widgets/home_sliver_appbar.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -22,12 +26,23 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   late Animation<double> _rippleAnimation;
+  bool onlineStatus = true;
+
+  double? _currentLat;
+  double? _currentLon;
+  bool isLoadingOrders = true;
+  String? ordersError;
+  List<AvailableOrderDto> _availableOrders = [];
+  final AvailableOrdersService _availableOrdersService = AvailableOrdersService();
+
+  OrderStatistics? _statistics;
 
   @override
   void initState() {
     super.initState();
     _loadSampleTransactions();
     _setupAnimations();
+    _initializeLocation();
   }
 
   void _setupAnimations() {
@@ -51,6 +66,81 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   void dispose() {
     _pulseController.dispose();
     super.dispose();
+  }
+
+  Future<void> _initializeLocation() async {
+    await _getCurrentLocation();
+    await _loadAvailableOrders();
+  }
+
+  Future<void> _getCurrentLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        debugPrint('Location services are disabled');
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          debugPrint('Location permission denied');
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        debugPrint('Location permission denied forever');
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 100),
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _currentLat = position.latitude;
+        _currentLon = position.longitude;
+      });
+
+      debugPrint('Location obtained: ${position.latitude}, ${position.longitude}');
+    } catch (e) {
+      debugPrint('Error getting location: $e');
+    }
+  }
+
+  Future<void> _loadAvailableOrders() async {
+    setState(() {
+      isLoadingOrders = true;
+      ordersError = null;
+    });
+
+    try {
+      final result = await _availableOrdersService.getAvailableOrders(lat: _currentLat, lon: _currentLon);
+
+      if (!mounted) return;
+      setState(() {
+        _availableOrders = result['orders'] as List<AvailableOrderDto>;
+        _statistics = result['statistics'] as OrderStatistics?;
+
+        if (_availableOrders.isEmpty) {
+          ordersError = 'No available orders at the moment.';
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        ordersError = 'Failed to load available orders. Please try again.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoadingOrders = false;
+        });
+      }
+    }
   }
 
   void _loadSampleTransactions() {
@@ -238,57 +328,96 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                       ),
                       child: Row(
                         children: [
-                          AnimatedBuilder(
-                            animation: _pulseController,
-                            builder: (context, child) {
-                              return Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  Container(
-                                    width: 48.w * _rippleAnimation.value,
-                                    height: 48.w * _rippleAnimation.value,
-                                    decoration: BoxDecoration(
-                                      color: colors.accentGreen.withValues(alpha: 0.15 * (1 - _rippleAnimation.value)),
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                  Container(
-                                    width: 48.w,
-                                    height: 48.w,
-                                    decoration: BoxDecoration(
-                                      color: colors.accentGreen.withValues(alpha: 0.1),
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                  Transform.scale(
-                                    scale: _pulseAnimation.value,
-                                    child: Container(
-                                      width: 12.w,
-                                      height: 12.w,
-                                      decoration: BoxDecoration(
-                                        color: colors.accentGreen,
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: colors.accentGreen.withValues(alpha: 0.3),
-                                            blurRadius: 8 * _pulseAnimation.value,
-                                            spreadRadius: 2 * _pulseAnimation.value,
+                          onlineStatus
+                              ? AnimatedBuilder(
+                                  animation: _pulseController,
+                                  builder: (context, child) {
+                                    return Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        Container(
+                                          width: 48.w * _rippleAnimation.value,
+                                          height: 48.w * _rippleAnimation.value,
+                                          decoration: BoxDecoration(
+                                            color: colors.accentGreen.withValues(
+                                              alpha: 0.15 * (1 - _rippleAnimation.value),
+                                            ),
+                                            shape: BoxShape.circle,
                                           ),
-                                        ],
+                                        ),
+                                        Container(
+                                          width: 48.w,
+                                          height: 48.w,
+                                          decoration: BoxDecoration(
+                                            color: colors.accentGreen.withValues(alpha: 0.1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                        Transform.scale(
+                                          scale: _pulseAnimation.value,
+                                          child: Container(
+                                            width: 12.w,
+                                            height: 12.w,
+                                            decoration: BoxDecoration(
+                                              color: colors.accentGreen,
+                                              shape: BoxShape.circle,
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: colors.accentGreen.withValues(alpha: 0.3),
+                                                  blurRadius: 8 * _pulseAnimation.value,
+                                                  spreadRadius: 2 * _pulseAnimation.value,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                )
+                              : Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    Container(
+                                      width: 48.w,
+                                      height: 48.w,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: colors.textSecondary.withValues(alpha: 0.1),
+                                          width: 2,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
+                                    Container(
+                                      width: 40.w,
+                                      height: 40.w,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: colors.textSecondary.withValues(alpha: 0.1),
+                                      ),
+                                      child: Center(
+                                        child: SvgPicture.asset(
+                                          Assets.icons.wifiOff,
+                                          package: 'grab_go_shared',
+                                          width: 20.w,
+                                          height: 20.w,
+                                          colorFilter: ColorFilter.mode(
+                                            colors.textSecondary.withValues(alpha: 0.6),
+                                            BlendMode.srcIn,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                           SizedBox(width: 16.w),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "You're Online",
+                                  onlineStatus ? "You're Online" : "You're Offline",
                                   style: TextStyle(
                                     color: colors.textPrimary,
                                     fontSize: 16.sp,
@@ -297,7 +426,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                 ),
                                 SizedBox(height: 4.h),
                                 Text(
-                                  "Ready to accept deliveries",
+                                  onlineStatus ? "Ready to accept deliveries" : "You won't receive new orders",
                                   style: TextStyle(
                                     color: colors.textSecondary,
                                     fontSize: 12.sp,
@@ -308,9 +437,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             ),
                           ),
                           CustomSwitch(
-                            value: true,
+                            value: onlineStatus,
                             onChanged: (value) {
-                              // Handle switch toggle
+                              setState(() {
+                                onlineStatus = value;
+                              });
                             },
                             activeColor: colors.accentGreen,
                             inactiveColor: colors.border,
@@ -381,26 +512,34 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                 children: [
                                   Row(
                                     children: [
-                                      Container(
-                                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                                        decoration: BoxDecoration(
-                                          color: colors.accentOrange.withValues(alpha: 0.2),
-                                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                                        ),
-                                        child: Text(
-                                          "Rush Hour",
-                                          style: TextStyle(
-                                            fontSize: 10.sp,
-                                            fontWeight: FontWeight.w600,
-                                            color: colors.accentOrange,
-                                          ),
-                                        ),
-                                      ),
+                                      _statistics!.totalOrders > 5
+                                          ? Container(
+                                              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                                              decoration: BoxDecoration(
+                                                color: colors.accentOrange.withValues(alpha: 0.2),
+                                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                                              ),
+                                              child: Text(
+                                                "Rush Hour",
+                                                style: TextStyle(
+                                                  fontSize: 10.sp,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: colors.accentOrange,
+                                                ),
+                                              ),
+                                            )
+                                          : SizedBox.shrink(),
                                     ],
                                   ),
                                   SizedBox(height: 8.h),
                                   Text(
-                                    "4 orders available",
+                                    isLoadingOrders
+                                        ? "..."
+                                        : ordersError != null
+                                        ? "An error occured loading orders"
+                                        : _statistics != null
+                                        ? "${_statistics!.totalOrders} orders available"
+                                        : "You have no available orders",
                                     style: TextStyle(
                                       color: colors.textPrimary,
                                       fontWeight: FontWeight.w700,
@@ -408,14 +547,16 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     ),
                                   ),
                                   SizedBox(height: 4.h),
-                                  Text(
-                                    "Tap to view and accept",
-                                    style: TextStyle(
-                                      color: colors.textSecondary,
-                                      fontSize: 12.sp,
-                                      fontWeight: FontWeight.w400,
-                                    ),
-                                  ),
+                                  ordersError == null
+                                      ? Text(
+                                          "Tap to view and accept",
+                                          style: TextStyle(
+                                            color: colors.textSecondary,
+                                            fontSize: 12.sp,
+                                            fontWeight: FontWeight.w400,
+                                          ),
+                                        )
+                                      : SizedBox.shrink(),
                                 ],
                               ),
                             ),

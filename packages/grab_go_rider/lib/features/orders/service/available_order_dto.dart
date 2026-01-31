@@ -128,11 +128,17 @@ class AvailableOrderDto {
       customerAddress: customerAddress,
       customerArea: customerArea,
       customerPhone: customer != null ? (customer['phone']?.toString() ?? '') : '',
-      customerPhoto: customer != null ? (customer['profilePicture']?.toString()) : null,
+      customerPhoto: customer != null
+          ? (customer['profilePicture']?.toString() ??
+              customer['profile_picture']?.toString() ??
+              customer['photo']?.toString())
+          : null,
       restaurantName: storeName,
-      restaurantLogo: restaurant != null ? (restaurant['logo']?.toString()) : null,
-      restaurantAddress:
-          restaurant?['address']?.toString() ??
+      restaurantLogo: (restaurant?['logo'] ??
+              groceryStore?['logo'] ??
+              pharmacyStore?['logo'])
+          ?.toString(),
+      restaurantAddress: restaurant?['address']?.toString() ??
           groceryStore?['address']?.toString() ??
           pharmacyStore?['address']?.toString() ??
           '',

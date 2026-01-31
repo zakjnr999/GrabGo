@@ -112,16 +112,21 @@ class _AvailableOrdersState extends State<AvailableOrders> {
           extra: {
             'orderId': acceptedOrder.id,
             'orderNumber': acceptedOrder.orderNumber,
+            'orderStatus': acceptedOrder.orderStatus,
+            'orderInstructions': acceptedOrder.notes,
             'customerName': acceptedOrder.customerName,
             'customerAddress': acceptedOrder.customerAddress,
             'customerPhone': acceptedOrder.customerPhone,
+            'customerPhoto': acceptedOrder.customerPhoto,
             'restaurantName': acceptedOrder.restaurantName,
             'restaurantAddress': acceptedOrder.restaurantAddress,
+            'restaurantLogo': acceptedOrder.restaurantLogo,
             'orderTotal': 'GHS ${acceptedOrder.totalAmount.toStringAsFixed(2)}',
             'orderItems': acceptedOrder.orderItems,
             'specialInstructions': acceptedOrder.notes,
             'customerId': acceptedOrder.customerId,
             'riderId': acceptedOrder.id,
+            'riderEarnings': acceptedOrder.riderEarnings,
             'pickupLatitude': acceptedOrder.pickupLatitude,
             'pickupLongitude': acceptedOrder.pickupLongitude,
             'destinationLatitude': acceptedOrder.destinationLatitude,
@@ -259,21 +264,43 @@ class _AvailableOrdersState extends State<AvailableOrders> {
   Widget _buildErrorState(AppColorsExtension colors) {
     return Center(
       child: Padding(
-        padding: EdgeInsets.all(24.w),
+        padding: EdgeInsets.symmetric(horizontal: 20.w),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 64.w, color: colors.textSecondary),
-            SizedBox(height: 16.h),
+            Container(
+              padding: EdgeInsets.all(32.w),
+              decoration: BoxDecoration(color: colors.error.withValues(alpha: 0.1), shape: BoxShape.circle),
+              child: SvgPicture.asset(
+                Assets.icons.circleAlert,
+                package: 'grab_go_shared',
+                width: 64.w,
+                height: 64.w,
+                colorFilter: ColorFilter.mode(colors.error, BlendMode.srcIn),
+              ),
+            ),
+            SizedBox(height: 32.h),
             Text(
-              _errorMessage ?? 'Something went wrong',
-              style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
+              "Network Error",
+              style: TextStyle(color: colors.textPrimary, fontSize: 20.sp, fontWeight: FontWeight.w800),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 24.h),
+            SizedBox(height: 12.h),
+            Text(
+              "An error occured while fetching available orders. Please check your connection and try again.",
+              style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400, height: 1.5),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 40.h),
             SizedBox(
-              height: 48.h,
-              child: AppButton(onPressed: _loadOrders, buttonText: 'Try Again'),
+              width: double.infinity,
+              height: 56.h,
+              child: AppButton(
+                onPressed: _loadOrders,
+                buttonText: "Try Again",
+                backgroundColor: colors.error,
+                textStyle: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w700),
+              ),
             ),
           ],
         ),
@@ -284,32 +311,43 @@ class _AvailableOrdersState extends State<AvailableOrders> {
   Widget _buildEmptyState(AppColorsExtension colors) {
     return Center(
       child: Padding(
-        padding: EdgeInsets.all(24.w),
+        padding: EdgeInsets.symmetric(horizontal: 20.w),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SvgPicture.asset(
-              Assets.icons.alarm,
-              package: 'grab_go_shared',
-              width: 120.w,
-              height: 120.w,
-              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+            Container(
+              padding: EdgeInsets.all(32.w),
+              decoration: BoxDecoration(color: colors.accentGreen.withValues(alpha: 0.1), shape: BoxShape.circle),
+              child: SvgPicture.asset(
+                Assets.icons.search,
+                package: 'grab_go_shared',
+                width: 64.w,
+                height: 64.w,
+                colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+              ),
             ),
-            SizedBox(height: 24.h),
+            SizedBox(height: 32.h),
             Text(
-              'No Available Orders',
-              style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
-            ),
-            SizedBox(height: 8.h),
-            Text(
-              'Check back soon for new delivery opportunities',
-              style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400),
+              "No Orders Nearby",
+              style: TextStyle(color: colors.textPrimary, fontSize: 20.sp, fontWeight: FontWeight.w800),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 24.h),
+            SizedBox(height: 12.h),
+            Text(
+              "We couldn't find any orders in your current area. Try moving to a busier location or refresh to check again.",
+              style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400, height: 1.5),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 40.h),
             SizedBox(
-              height: 48.h,
-              child: AppButton(onPressed: _refreshOrders, buttonText: 'Refresh'),
+              width: double.infinity,
+              height: 56.h,
+              child: AppButton(
+                onPressed: _refreshOrders,
+                buttonText: "Refresh Range",
+                backgroundColor: colors.accentGreen,
+                textStyle: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w700),
+              ),
             ),
           ],
         ),
