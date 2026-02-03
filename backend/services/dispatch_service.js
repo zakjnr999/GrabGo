@@ -584,7 +584,7 @@ async function handleExpiredReservations() {
 }
 
 /**
- * Update rider's acceptance rate
+ * Update rider's acceptance rate in MongoDB RiderStatus
  */
 async function updateRiderAcceptanceRate(riderId, accepted) {
     try {
@@ -599,16 +599,17 @@ async function updateRiderAcceptanceRate(riderId, accepted) {
         if (history.length === 0) return;
 
         const acceptedCount = history.filter(r => r.status === 'accepted').length;
-        const acceptanceRate = acceptedCount / history.length;
+        const acceptanceRate = (acceptedCount / history.length) * 100; // Store as percentage 0-100
 
-        await prisma.user.update({
-            where: { id: riderId },
-            data: { riderAcceptanceRate: acceptanceRate }
-        });
+        // Update MongoDB RiderStatus instead of Prisma User
+        await RiderStatus.findOneAndUpdate(
+            { riderId },
+            { $set: { 'metrics.acceptanceRate': acceptanceRate } }
+        );
 
-        console.log(`📊 [Dispatch] Updated acceptance rate for rider ${riderId}: ${(acceptanceRate * 100).toFixed(1)}%`);
+        console.log(`📊 [Dispatch] Updated acceptance rate for rider ${riderId}: ${acceptanceRate.toFixed(1)}%`);
     } catch (error) {
-        console.error(`⚠️ [Dispatch] Error updating acceptance rate for rider ${riderId}:`, error);
+        console.error(`⚠️ [Dispatch] Error updating acceptance rate for rider ${riderId}:`, error.message);
     }
 }
 

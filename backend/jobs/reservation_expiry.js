@@ -110,7 +110,7 @@ async function processExpiredReservations() {
  */
 async function updateRiderStats(riderId) {
     try {
-        const prisma = require('../config/prisma');
+        const RiderStatus = require('../models/RiderStatus');
         
         // Get rider's last 50 reservations
         const history = await OrderReservation.find({
@@ -123,12 +123,15 @@ async function updateRiderStats(riderId) {
         if (history.length === 0) return;
 
         const acceptedCount = history.filter(r => r.status === 'accepted').length;
-        const acceptanceRate = acceptedCount / history.length;
+        const acceptanceRate = (acceptedCount / history.length) * 100; // Store as percentage 0-100
 
-        await prisma.user.update({
-            where: { id: riderId },
-            data: { riderAcceptanceRate: acceptanceRate }
-        });
+        // Update MongoDB RiderStatus instead of Prisma User
+        await RiderStatus.findOneAndUpdate(
+            { riderId },
+            { $set: { 'metrics.acceptanceRate': acceptanceRate } }
+        );
+        
+        console.log(`📊 [ReservationExpiry] Updated acceptance rate for rider ${riderId}: ${acceptanceRate.toFixed(1)}%`);
     } catch (error) {
         console.error(`⚠️ [ReservationExpiry] Error updating rider stats:`, error.message);
     }
