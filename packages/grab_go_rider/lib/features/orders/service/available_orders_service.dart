@@ -80,30 +80,39 @@ class AvailableOrdersService {
     }
   }
 
-  Future<AvailableOrderDto?> acceptOrder(String orderId) async {
+  /// Result class for accept order operation
+  Future<AcceptOrderResult> acceptOrder(String orderId) async {
     final uri = Uri.parse('$_baseUrl/riders/accept-order/$orderId');
     try {
       debugPrint('🎯 Accepting order: $orderId');
       final response = await _client.post(uri, headers: await _buildHeaders());
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+
       if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
         final data = decoded['data'];
         debugPrint('🎯 Accept Order Response Data: $data');
         if (data is Map<String, dynamic>) {
-          debugPrint('🎯 Items in response: ${data['items']}');
           final dto = AvailableOrderDto.fromJson(data);
-          debugPrint('🎯 DTO orderItems: ${dto.orderItems}');
-          debugPrint('🎯 DTO orderItems length: ${dto.orderItems.length}');
-          return dto;
+          return AcceptOrderResult.success(dto);
         }
-        return null;
+        return AcceptOrderResult.error('Invalid response from server');
+      } else if (response.statusCode == 409) {
+        // Order is reserved by another rider
+        final message = decoded['message']?.toString() ?? 'Order is reserved by another rider';
+        debugPrint('⚠️ Order reserved: $message');
+        return AcceptOrderResult.reserved(message);
+      } else if (response.statusCode == 400) {
+        // Order already assigned or not available
+        final message = decoded['message']?.toString() ?? 'Order is no longer available';
+        debugPrint('⚠️ Order unavailable: $message');
+        return AcceptOrderResult.error(message);
       } else {
-        debugPrint('AvailableOrdersService.acceptOrder failed: ${response.statusCode} ${response.body}');
-        return null;
+        debugPrint('❌ AvailableOrdersService.acceptOrder failed: ${response.statusCode} ${response.body}');
+        return AcceptOrderResult.error(decoded['message']?.toString() ?? 'Failed to accept order');
       }
     } catch (e) {
-      debugPrint('AvailableOrdersService.acceptOrder error: $e');
-      return null;
+      debugPrint('❌ AvailableOrdersService.acceptOrder error: $e');
+      return AcceptOrderResult.error('Network error: $e');
     }
   }
 
@@ -129,5 +138,27 @@ class AvailableOrdersService {
       debugPrint('❌ AvailableOrdersService.cancelOrder error: $e');
       return false;
     }
+  }
+}
+
+/// Result of an accept order operation
+class AcceptOrderResult {
+  final bool isSuccess;
+  final bool isReserved;
+  final String? errorMessage;
+  final AvailableOrderDto? order;
+
+  AcceptOrderResult._({required this.isSuccess, required this.isReserved, this.errorMessage, this.order});
+
+  factory AcceptOrderResult.success(AvailableOrderDto order) {
+    return AcceptOrderResult._(isSuccess: true, isReserved: false, order: order);
+  }
+
+  factory AcceptOrderResult.reserved(String message) {
+    return AcceptOrderResult._(isSuccess: false, isReserved: true, errorMessage: message);
+  }
+
+  factory AcceptOrderResult.error(String message) {
+    return AcceptOrderResult._(isSuccess: false, isReserved: false, errorMessage: message);
   }
 }

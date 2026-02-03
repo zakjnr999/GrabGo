@@ -36,6 +36,14 @@ const SCORING = {
     ORDER_TYPE_MATCH_BONUS: 10,    // +10 points if rider prefers this order type
     RECENT_DELIVERY_BONUS: 5,      // +5 points if delivered in last 30 minutes (active)
     LOW_EARNINGS_TODAY_BONUS: 10,  // +10 points if rider has low earnings today (fairness)
+    // Battery level scoring
+    LOW_BATTERY_PENALTY: -25,      // -25 points if battery < 20% (may not complete delivery)
+    CRITICAL_BATTERY_PENALTY: -50, // -50 points if battery < 10% (very risky)
+    CHARGING_BONUS: 5,             // +5 points if currently charging (battery improving)
+    // Vehicle type scoring
+    VEHICLE_LONG_DISTANCE_BONUS: 15,   // +15 points for motorcycle/car on orders > 5km
+    VEHICLE_LARGE_ORDER_BONUS: 10,     // +10 points for car/scooter on large orders
+    BICYCLE_SHORT_DISTANCE_BONUS: 10,  // +10 points for bicycle on orders < 2km (eco-friendly, traffic)
 };
 
 /**
@@ -298,6 +306,54 @@ async function scoreRiders(riders, order) {
             score += SCORING.LOW_EARNINGS_TODAY_BONUS;
         }
 
+        // 8. Battery level scoring
+        const batteryLevel = rider._status?.batteryLevel ?? 100;
+        const isCharging = rider._status?.isCharging || false;
+        let batteryPenalty = 0;
+        
+        if (batteryLevel < 10) {
+            // Critical battery - high risk of not completing delivery
+            batteryPenalty = SCORING.CRITICAL_BATTERY_PENALTY;
+        } else if (batteryLevel < 20) {
+            // Low battery - some risk
+            batteryPenalty = SCORING.LOW_BATTERY_PENALTY;
+        }
+        
+        // If charging, reduce penalty and add bonus
+        if (isCharging) {
+            batteryPenalty = Math.round(batteryPenalty / 2); // Half penalty if charging
+            score += SCORING.CHARGING_BONUS;
+        }
+        score += batteryPenalty;
+
+        // 9. Vehicle type scoring
+        const vehicleType = rider._status?.vehicleType || null;
+        const deliveryDistance = order.deliveryDistance || distanceToPickup * 2; // Estimate if not provided
+        const orderItemCount = order.orderItems?.length || order.groceryItems?.length || order.pharmacyItems?.length || 1;
+        let vehicleBonus = 0;
+        
+        if (vehicleType) {
+            // Long distance orders (> 5km) - prefer motorized vehicles
+            if (deliveryDistance > 5) {
+                if (['motorcycle', 'car', 'scooter'].includes(vehicleType)) {
+                    vehicleBonus += SCORING.VEHICLE_LONG_DISTANCE_BONUS;
+                }
+            }
+            
+            // Large orders (many items) - prefer vehicles with more capacity
+            if (orderItemCount >= 5) {
+                if (['car', 'scooter'].includes(vehicleType)) {
+                    vehicleBonus += SCORING.VEHICLE_LARGE_ORDER_BONUS;
+                }
+            }
+            
+            // Short distance orders (< 2km) - bicycles can be faster (no traffic, parking)
+            if (deliveryDistance <= 2 && vehicleType === 'bicycle') {
+                vehicleBonus += SCORING.BICYCLE_SHORT_DISTANCE_BONUS;
+            }
+        }
+        score += vehicleBonus;
+
         scoredRiders.push({
             rider,
             score: Math.round(score * 10) / 10,
@@ -309,7 +365,12 @@ async function scoreRiders(riders, order) {
                 hadRecentDecline: !!recentDecline,
                 matchesPreference: preferredTypes.includes(orderType),
                 recentlyActive: !!recentDelivery,
-                lowEarningsToday: todayEarnings < 50
+                lowEarningsToday: todayEarnings < 50,
+                batteryLevel,
+                isCharging,
+                batteryPenalty,
+                vehicleType,
+                vehicleBonus
             }
         });
     }

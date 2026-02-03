@@ -117,6 +117,39 @@ const riderStatusSchema = new mongoose.Schema({
   isApproved: {
     type: Boolean,
     default: false
+  },
+  
+  // Battery level (0-100) - sent by rider app
+  batteryLevel: {
+    type: Number,
+    default: 100,
+    min: 0,
+    max: 100
+  },
+  
+  // Is currently charging
+  isCharging: {
+    type: Boolean,
+    default: false
+  },
+  
+  // Vehicle type (synced from Rider profile)
+  vehicleType: {
+    type: String,
+    enum: ['motorcycle', 'bicycle', 'car', 'scooter', null],
+    default: null
+  },
+  
+  // Auto-offline tracking
+  autoOfflineReason: {
+    type: String,
+    enum: ['inactivity', 'low_battery', 'unresponsive', null],
+    default: null
+  },
+  
+  autoOfflineAt: {
+    type: Date,
+    default: null
   }
   
 }, {
@@ -150,7 +183,7 @@ riderStatusSchema.statics.findAvailableNear = async function(longitude, latitude
 };
 
 // Static method: Set rider online
-riderStatusSchema.statics.goOnline = async function(riderId, longitude, latitude, isApproved = true) {
+riderStatusSchema.statics.goOnline = async function(riderId, longitude, latitude, isApproved = true, batteryLevel = 100, isCharging = false, vehicleType = null) {
   return this.findOneAndUpdate(
     { riderId },
     {
@@ -159,7 +192,10 @@ riderStatusSchema.statics.goOnline = async function(riderId, longitude, latitude
         isApproved: isApproved,
         lastActiveAt: new Date(),
         'location.coordinates': [longitude, latitude],
-        lastLocationUpdate: new Date()
+        lastLocationUpdate: new Date(),
+        batteryLevel: batteryLevel,
+        isCharging: isCharging,
+        vehicleType: vehicleType
       }
     },
     { upsert: true, new: true }

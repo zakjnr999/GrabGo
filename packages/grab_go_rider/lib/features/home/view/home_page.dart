@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:battery_plus/battery_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -28,7 +31,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   late Animation<double> _rippleAnimation;
-  bool onlineStatus = true;
+  bool onlineStatus = false; // Default to OFFLINE on app launch
+  bool _isCheckingStatus = true; // Loading state while checking server status
 
   double? _currentLat;
   double? _currentLon;
@@ -37,6 +41,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   List<AvailableOrderDto> _availableOrders = [];
   final AvailableOrdersService _availableOrdersService = AvailableOrdersService();
   final OrderReservationService _reservationService = OrderReservationService();
+
+  // Periodic location + battery update timer
+  Timer? _locationUpdateTimer;
+  final Battery _battery = Battery();
 
   OrderStatistics? _statistics;
 
@@ -47,6 +55,169 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     _setupAnimations();
     _initializeLocation();
     _initializeReservationService();
+    _checkOnlineStatus(); // Check server status on launch
+  }
+
+  /// Check rider's online status from server on app launch
+  Future<void> _checkOnlineStatus() async {
+    try {
+      final result = await _reservationService.checkOnlineStatus();
+
+      if (!mounted) return;
+
+      setState(() {
+        onlineStatus = result['isOnline'] ?? false;
+        _isCheckingStatus = false;
+      });
+
+      // Show message if rider was auto-offlined
+      if (result['autoOfflineInfo'] != null) {
+        final info = result['autoOfflineInfo'] as Map<String, dynamic>;
+        _showAutoOfflineMessage(info['reason'] as String?);
+      }
+
+      // Start location updates only if online
+      if (onlineStatus) {
+        _startLocationBatteryUpdates();
+      }
+
+      debugPrint('📊 Online status from server: $onlineStatus');
+    } catch (e) {
+      debugPrint('⚠️ Error checking online status: $e');
+      if (mounted) {
+        setState(() {
+          onlineStatus = false; // Default to offline on error
+          _isCheckingStatus = false;
+        });
+      }
+    }
+  }
+
+  /// Show message explaining why rider was auto-offlined
+  void _showAutoOfflineMessage(String? reason) {
+    if (!mounted) return;
+
+    String message;
+    switch (reason) {
+      case 'inactivity':
+        message = 'You were set offline due to inactivity. Go online when ready!';
+        break;
+      case 'low_battery':
+        message = 'You were set offline because your battery was critically low.';
+        break;
+      case 'unresponsive':
+        message = 'You were set offline after missing multiple order requests.';
+        break;
+      default:
+        message = 'You were set offline automatically. Go online when ready!';
+    }
+
+    // Show snackbar after build completes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'Go Online',
+              onPressed: () async {
+                final success = await _reservationService.goOnline();
+                if (success && mounted) {
+                  setState(() => onlineStatus = true);
+                  _startLocationBatteryUpdates();
+                }
+              },
+            ),
+          ),
+        );
+      }
+    });
+  }
+
+  /// Handle online/offline toggle switch
+  void _handleOnlineStatusToggle(bool value) async {
+    if (_isCheckingStatus) return;
+
+    // Optimistically update UI
+    setState(() {
+      onlineStatus = value;
+    });
+
+    // Call API
+    bool success;
+    if (value) {
+      success = await _reservationService.goOnline();
+      if (success) {
+        _startLocationBatteryUpdates(); // Start updates when going online
+      }
+    } else {
+      success = await _reservationService.goOffline();
+      if (success) {
+        _locationUpdateTimer?.cancel(); // Stop updates when going offline
+      }
+    }
+
+    // Revert if failed
+    if (!success && mounted) {
+      setState(() {
+        onlineStatus = !value;
+      });
+      AppToastMessage.show(
+        context: context,
+        message: 'Failed to ${value ? "go online" : "go offline"}. Please try again.',
+        backgroundColor: Colors.red,
+      );
+    }
+  }
+
+  /// Start periodic location and battery updates (every 60 seconds)
+  void _startLocationBatteryUpdates() {
+    _locationUpdateTimer?.cancel();
+    _locationUpdateTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+      if (onlineStatus) {
+        _updateLocationAndBattery();
+      }
+    });
+  }
+
+  /// Update location and battery level on server
+  Future<void> _updateLocationAndBattery() async {
+    try {
+      // Get current position
+      Position? position;
+      try {
+        position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 10)),
+        );
+      } catch (e) {
+        debugPrint('⚠️ Error getting location for update: $e');
+      }
+
+      // Get battery info
+      int batteryLevel = 100;
+      bool isCharging = false;
+      try {
+        batteryLevel = await _battery.batteryLevel;
+        final batteryState = await _battery.batteryState;
+        isCharging = batteryState == BatteryState.charging || batteryState == BatteryState.full;
+      } catch (e) {
+        debugPrint('⚠️ Error getting battery for update: $e');
+      }
+
+      // Update server with location + battery
+      if (position != null) {
+        await _reservationService.updateLocation(
+          position.latitude,
+          position.longitude,
+          batteryLevel: batteryLevel,
+          isCharging: isCharging,
+        );
+        debugPrint('📍🔋 Location & battery updated: (${position.latitude}, ${position.longitude}), $batteryLevel%');
+      }
+    } catch (e) {
+      debugPrint('Error in periodic update: $e');
+    }
   }
 
   void _initializeReservationService() {
@@ -95,14 +266,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       }
     };
 
-    // Go online when page loads if rider is active (with location)
-    _reservationService.goOnline().then((success) {
-      if (success) {
-        debugPrint('🟢 Rider successfully went online with location');
-      } else {
-        debugPrint('⚠️ Failed to go online');
-      }
-    });
+    // Listen for auto-offline events from server
+    _setupAutoOfflineListener();
+
+    // Don't auto-go-online here - we check status from server in _checkOnlineStatus()
+    // The rider's saved status will be restored from the server
 
     // Check for any existing active reservation (e.g., if app was backgrounded)
     _reservationService.fetchActiveReservation().then((reservation) {
@@ -141,7 +309,36 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   @override
   void dispose() {
     _pulseController.dispose();
+    _locationUpdateTimer?.cancel();
+    _removeAutoOfflineListener();
     super.dispose();
+  }
+
+  /// Set up listener for auto-offline events from server
+  void _setupAutoOfflineListener() {
+    final socket = SocketService().socket;
+    socket?.on('rider:auto_offline', (data) {
+      if (!mounted) return;
+
+      final reason = data['reason'] as String?;
+      final message = data['message'] as String?;
+
+      debugPrint('🔴 Auto-offlined by server: $reason - $message');
+
+      setState(() {
+        onlineStatus = false;
+      });
+      _locationUpdateTimer?.cancel();
+
+      // Show notification to user
+      _showAutoOfflineMessage(reason);
+    });
+  }
+
+  /// Remove auto-offline listener
+  void _removeAutoOfflineListener() {
+    final socket = SocketService().socket;
+    socket?.off('rider:auto_offline');
   }
 
   Future<void> _initializeLocation() async {
@@ -518,32 +715,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           ),
                           CustomSwitch(
                             value: onlineStatus,
-                            onChanged: (value) async {
-                              // Optimistically update UI
-                              setState(() {
-                                onlineStatus = value;
-                              });
-                              
-                              // Call API
-                              bool success;
-                              if (value) {
-                                success = await _reservationService.goOnline();
-                              } else {
-                                success = await _reservationService.goOffline();
-                              }
-                              
-                              // Revert if failed
-                              if (!success && mounted) {
-                                setState(() {
-                                  onlineStatus = !value;
-                                });
-                                AppToastMessage.show(
-                                  context: context,
-                                  message: 'Failed to ${value ? "go online" : "go offline"}. Please try again.',
-                                  backgroundColor: Colors.red,
-                                );
-                              }
-                            },
+                            onChanged: _isCheckingStatus
+                                ? (_) {} // Disabled state - do nothing
+                                : _handleOnlineStatusToggle,
                             activeColor: colors.accentGreen,
                             inactiveColor: colors.border,
                             thumbColor: colors.backgroundPrimary,

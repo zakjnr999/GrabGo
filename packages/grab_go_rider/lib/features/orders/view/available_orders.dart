@@ -74,10 +74,11 @@ class _AvailableOrdersState extends State<AvailableOrders> {
     setState(() => isRefreshing = true);
 
     try {
-      final orders = await _service.getAvailableOrders();
+      final result = await _service.getAvailableOrders(lat: _currentLat, lon: _currentLon);
       if (!mounted) return;
       setState(() {
-        _availableOrders = orders as List<AvailableOrderDto>;
+        _availableOrders = result['orders'] as List<AvailableOrderDto>;
+        statistics = result['statistics'] as OrderStatistics?;
         isRefreshing = false;
         _errorMessage = null;
       });
@@ -94,10 +95,11 @@ class _AvailableOrdersState extends State<AvailableOrders> {
     final colors = context.appColors;
 
     try {
-      final acceptedOrder = await _service.acceptOrder(order.id);
+      final result = await _service.acceptOrder(order.id);
       if (!mounted) return;
 
-      if (acceptedOrder != null) {
+      if (result.isSuccess && result.order != null) {
+        final acceptedOrder = result.order!;
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -135,13 +137,44 @@ class _AvailableOrdersState extends State<AvailableOrders> {
         );
 
         await _refreshOrders();
+      } else if (result.isReserved) {
+        // Order is reserved for another rider - refresh list and show info
+        await _refreshOrders();
+        _showReservedDialog(result.errorMessage ?? 'This order is currently reserved for another rider.');
       } else {
-        _showErrorDialog('Failed to accept order. Please try again.');
+        _showErrorDialog(result.errorMessage ?? 'Failed to accept order. Please try again.');
       }
     } catch (e) {
       if (!mounted) return;
       _showErrorDialog('Error accepting order: $e');
     }
+  }
+
+  void _showReservedDialog(String message) {
+    final colors = context.appColors;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: colors.backgroundPrimary,
+        title: Row(
+          children: [
+            Icon(Icons.schedule, color: colors.accentOrange),
+            SizedBox(width: 8),
+            Text('Order Reserved', style: TextStyle(color: colors.textPrimary)),
+          ],
+        ),
+        content: Text(
+          '$message\n\nThe order has been removed from your list. New orders will appear shortly.',
+          style: TextStyle(color: colors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('OK', style: TextStyle(color: colors.accentGreen)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showErrorDialog(String message) {

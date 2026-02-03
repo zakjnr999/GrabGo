@@ -325,8 +325,10 @@ router.get("/", protect, async (req, res) => {
     const orders = await prisma.order.findMany({
       where,
       include: {
-        customer: { select: { username: true, email: true, phone: true } },
-        restaurant: { select: { restaurantName: true, logo: true, location: true } },
+        customer: { select: { id: true, username: true, email: true, phone: true, profilePicture: true } },
+        restaurant: { select: { restaurantName: true, logo: true, location: true, address: true, latitude: true, longitude: true } },
+        groceryStore: { select: { storeName: true, logo: true, address: true, latitude: true, longitude: true } },
+        pharmacyStore: { select: { storeName: true, logo: true, address: true, latitude: true, longitude: true } },
         rider: { select: { username: true, email: true, phone: true } },
         items: {
           include: { food: true, groceryItem: true, pharmacyItem: true }
@@ -596,6 +598,20 @@ router.put(
       // Send push notification to customer about order status change
       const io = getIO();
       notifyOrderStatusChange(updatedOrder, status, null, io);
+
+      // Reset rider delivery status when order is delivered or cancelled
+      if ((status === 'delivered' || status === 'cancelled') && order.riderId) {
+        try {
+          const RiderStatus = require('../models/RiderStatus');
+          await RiderStatus.findOneAndUpdate(
+            { riderId: order.riderId },
+            { $set: { isOnDelivery: false, currentOrderId: null } }
+          );
+          console.log(`📍 Reset delivery status for rider ${order.riderId} (order ${status})`);
+        } catch (statusError) {
+          console.error("Reset rider delivery status error:", statusError);
+        }
+      }
 
       // Trigger dispatch when order is confirmed and doesn't have a rider yet
       if (['confirmed', 'preparing', 'ready'].includes(status) && !updatedOrder.riderId) {

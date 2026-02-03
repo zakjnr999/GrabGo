@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:battery_plus/battery_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -209,8 +210,9 @@ class OrderReservationService extends ChangeNotifier {
       _startCountdown();
       notifyListeners();
 
-      // Show high-priority notification with full-screen intent
-      _showOrderAlertNotification();
+      // When app is in foreground (socket connected), the modal sheet handles the UI
+      // No need for notification - it would be duplicate
+      // FCM handles notifications when app is in background
 
       onReservationReceived?.call(_activeReservation!);
       debugPrint(
@@ -221,26 +223,6 @@ class OrderReservationService extends ChangeNotifier {
       _error = 'Failed to parse reservation';
       notifyListeners();
     }
-  }
-
-  /// Show high-priority order alert notification
-  Future<void> _showOrderAlertNotification() async {
-    if (_activeReservation == null) return;
-
-    final res = _activeReservation!;
-    final order = res.order;
-
-    await _alertService.showOrderAlert(
-      title: '🚗 New Order Available!',
-      body:
-          '${order.storeName} → ${order.customerName}\n'
-          '${order.itemCount} items • ${res.distanceToPickup.toStringAsFixed(1)} km pickup\n'
-          'Respond within ${(res.timeoutMs / 1000).round()} seconds',
-      orderId: res.orderId,
-      reservationId: res.reservationId,
-      timeoutSeconds: (res.timeoutMs / 1000).round(),
-      earnings: res.estimatedEarnings,
-    );
   }
 
   /// Handle reservation cancelled by server
@@ -423,7 +405,7 @@ class OrderReservationService extends ChangeNotifier {
     return null;
   }
 
-  /// Notify server that rider is going online with current location
+  /// Notify server that rider is going online with current location and battery level
   Future<bool> goOnline() async {
     try {
       // Get current location first
@@ -452,20 +434,43 @@ class OrderReservationService extends ChangeNotifier {
         debugPrint('⚠️ Error getting location: $e');
       }
 
-      // Call the API with location
+      // Get battery level
+      int batteryLevel = 100;
+      bool isCharging = false;
+      try {
+        final battery = Battery();
+        batteryLevel = await battery.batteryLevel;
+        final batteryState = await battery.batteryState;
+        isCharging = batteryState == BatteryState.charging || batteryState == BatteryState.full;
+        debugPrint('🔋 Battery: $batteryLevel%${isCharging ? ' (charging)' : ''}');
+      } catch (e) {
+        debugPrint('⚠️ Error getting battery level: $e');
+      }
+
+      // Call the API with location and battery info
       final uri = Uri.parse('$_baseUrl/riders/go-online');
       final response = await _client.post(
         uri,
         headers: await _buildHeaders(),
-        body: jsonEncode({'latitude': position?.latitude ?? 5.6037, 'longitude': position?.longitude ?? -0.187}),
+        body: jsonEncode({
+          'latitude': position?.latitude ?? 5.6037,
+          'longitude': position?.longitude ?? -0.187,
+          'batteryLevel': batteryLevel,
+          'isCharging': isCharging,
+        }),
       );
 
       if (response.statusCode == 200) {
-        debugPrint('🟢 Rider is now online with location');
+        debugPrint('🟢 Rider is now online with location and battery info');
 
         // Also emit socket event for real-time tracking
         final socket = SocketService();
-        socket.socket?.emit('rider:go_online', {'latitude': position?.latitude, 'longitude': position?.longitude});
+        socket.socket?.emit('rider:go_online', {
+          'latitude': position?.latitude,
+          'longitude': position?.longitude,
+          'batteryLevel': batteryLevel,
+          'isCharging': isCharging,
+        });
 
         return true;
       } else {
@@ -496,19 +501,25 @@ class OrderReservationService extends ChangeNotifier {
     }
   }
 
-  /// Update rider location on server
-  Future<bool> updateLocation(double latitude, double longitude) async {
+  /// Update rider location on server (with optional battery level)
+  Future<bool> updateLocation(double latitude, double longitude, {int? batteryLevel, bool? isCharging}) async {
     try {
+      final body = <String, dynamic>{'latitude': latitude, 'longitude': longitude};
+
+      // Include battery info if provided
+      if (batteryLevel != null) {
+        body['batteryLevel'] = batteryLevel;
+      }
+      if (isCharging != null) {
+        body['isCharging'] = isCharging;
+      }
+
       final uri = Uri.parse('$_baseUrl/riders/location');
-      final response = await _client.post(
-        uri,
-        headers: await _buildHeaders(),
-        body: jsonEncode({'latitude': latitude, 'longitude': longitude}),
-      );
+      final response = await _client.post(uri, headers: await _buildHeaders(), body: jsonEncode(body));
 
       // Also emit socket event for real-time updates
       final socket = SocketService();
-      socket.socket?.emit('rider:location_update', {'latitude': latitude, 'longitude': longitude});
+      socket.socket?.emit('rider:location_update', body);
 
       return response.statusCode == 200;
     } catch (e) {
@@ -517,11 +528,25 @@ class OrderReservationService extends ChangeNotifier {
     }
   }
 
-  /// Dispose the service
-  @override
-  void dispose() {
-    _stopCountdown();
-    _activeReservation = null;
-    super.dispose();
+  /// Check rider's online status from server (for app launch)
+  Future<Map<String, dynamic>> checkOnlineStatus() async {
+    try {
+      final uri = Uri.parse('$_baseUrl/riders/online-status');
+      final response = await _client.get(uri, headers: await _buildHeaders());
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          debugPrint('📊 Online status check: ${data['data']}');
+          return data['data'] as Map<String, dynamic>;
+        }
+      }
+
+      debugPrint('⚠️ Failed to check online status: ${response.body}');
+      return {'isOnline': false};
+    } catch (e) {
+      debugPrint('❌ Error checking online status: $e');
+      return {'isOnline': false};
+    }
   }
 }

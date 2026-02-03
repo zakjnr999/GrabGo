@@ -553,6 +553,7 @@ const { initializeCartAbandonmentJob } = require("./jobs/cart_abandonment");
 const { initializeMealNudges } = require("./jobs/meal_nudges");
 const { initializeEngagementNudges } = require("./jobs/engagement_nudges");
 const reservationExpiryJob = require("./jobs/reservation_expiry");
+const { runAutoOfflineJob } = require("./jobs/rider_auto_offline");
 
 // Import cache utility
 const cache = require("./utils/cache");
@@ -580,6 +581,15 @@ initializeEngagementNudges(io);
 
 // Initialize order reservation expiry job (runs every 2 seconds)
 reservationExpiryJob.start();
+
+// Schedule rider auto-offline job (runs every 5 minutes)
+setInterval(() => {
+  runAutoOfflineJob().catch(err => console.error('Auto-offline job error:', err));
+}, 5 * 60 * 1000);
+// Run once at startup after a delay
+setTimeout(() => {
+  runAutoOfflineJob().catch(err => console.error('Auto-offline job startup error:', err));
+}, 10000);
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {

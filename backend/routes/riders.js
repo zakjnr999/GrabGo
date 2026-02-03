@@ -61,10 +61,22 @@ router.get(
   authorize("rider", "admin"),
   async (req, res) => {
     try {
+      // First, get IDs of orders that have active reservations (pending status, not expired)
+      const OrderReservation = require('../models/OrderReservation');
+      const activeReservations = await OrderReservation.find({
+        status: 'pending',
+        expiresAt: { $gt: new Date() }
+      }).select('orderId');
+      
+      const reservedOrderIds = activeReservations.map(r => r.orderId);
+      console.log(`🔒 ${reservedOrderIds.length} orders currently reserved, excluding from available list`);
+
       const availableOrders = await prisma.order.findMany({
         where: {
           riderId: null,
           status: { in: ["confirmed", "preparing", "ready"] },
+          // Exclude orders that have active reservations
+          id: { notIn: reservedOrderIds }
         },
         select: {
           id: true,
@@ -419,6 +431,18 @@ router.post(
         console.error("Initialize tracking error:", trackingError);
       }
 
+      // Mark rider as on delivery so they don't get more orders dispatched
+      try {
+        const RiderStatus = require('../models/RiderStatus');
+        await RiderStatus.findOneAndUpdate(
+          { riderId },
+          { $set: { isOnDelivery: true, currentOrderId: updatedOrder.id } }
+        );
+        console.log(`📍 Marked rider ${riderId} as on delivery`);
+      } catch (statusError) {
+        console.error("Update rider delivery status error:", statusError);
+      }
+
       // Notify customer
       const socketService = require('../services/socket_service');
       socketService.emitToUserRoom(updatedOrder.customerId, 'order_accepted', {
@@ -561,7 +585,7 @@ router.post(
   async (req, res) => {
     try {
       const userId = req.user.id;
-      const { latitude, longitude } = req.body;
+      const { latitude, longitude, batteryLevel, isCharging } = req.body;
       
       // Get rider profile
       const rider = await prisma.rider.findUnique({
@@ -588,12 +612,18 @@ router.post(
       const lat = latitude || 5.6037;
       const lon = longitude || -0.187;
       
-      // Set rider online in MongoDB RiderStatus
-      // goOnline expects (riderId, longitude, latitude)
-      const RiderStatus = require('../models/RiderStatus');
-      const status = await RiderStatus.goOnline(userId, lon, lat);
+      // Battery level (0-100), default to 100 if not provided
+      const battery = typeof batteryLevel === 'number' ? Math.min(100, Math.max(0, batteryLevel)) : 100;
+      const charging = isCharging === true;
       
-      console.log(`🟢 [Rider Online] ${rider.user.username} (${userId}) is now online at (${lat}, ${lon})`);
+      // Get vehicle type from rider profile
+      const vehicleType = rider.vehicleType || null;
+      
+      // Set rider online in MongoDB RiderStatus with battery and vehicle info
+      const RiderStatus = require('../models/RiderStatus');
+      const status = await RiderStatus.goOnline(userId, lon, lat, true, battery, charging, vehicleType);
+      
+      console.log(`🟢 [Rider Online] ${rider.user.username} (${userId}) is now online at (${lat}, ${lon}) | Battery: ${battery}%${charging ? ' (charging)' : ''} | Vehicle: ${vehicleType || 'unknown'}`);
       
       res.json({
         success: true,
@@ -602,6 +632,9 @@ router.post(
           riderId: userId,
           isOnline: true,
           location: { latitude: lat, longitude: lon },
+          batteryLevel: battery,
+          isCharging: charging,
+          vehicleType: vehicleType,
           statusId: status._id
         }
       });
@@ -652,8 +685,75 @@ router.post(
 );
 
 /**
+ * @route   GET /riders/online-status
+ * @desc    Check rider's current online status (for app launch)
+ * @access  Private (Rider)
+ */
+router.get(
+  "/online-status",
+  protect,
+  authorize("rider"),
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      
+      const RiderStatus = require('../models/RiderStatus');
+      const status = await RiderStatus.findOne({ riderId: userId });
+      
+      // Default to offline for new riders or if no status exists
+      if (!status) {
+        return res.json({
+          success: true,
+          data: {
+            isOnline: false,
+            isNewRider: true,
+            message: "Welcome! Go online when you're ready to receive orders."
+          }
+        });
+      }
+      
+      // Check if rider was auto-offlined
+      const wasAutoOfflined = status.autoOfflineReason && status.autoOfflineAt;
+      const autoOfflineInfo = wasAutoOfflined ? {
+        wasAutoOfflined: true,
+        reason: status.autoOfflineReason,
+        offlinedAt: status.autoOfflineAt
+      } : null;
+      
+      // Clear auto-offline reason after reading
+      if (wasAutoOfflined) {
+        await RiderStatus.findOneAndUpdate(
+          { riderId: userId },
+          { $unset: { autoOfflineReason: 1, autoOfflineAt: 1 } }
+        );
+      }
+      
+      res.json({
+        success: true,
+        data: {
+          isOnline: status.isOnline,
+          isOnDelivery: status.isOnDelivery,
+          currentOrderId: status.currentOrderId,
+          batteryLevel: status.batteryLevel,
+          lastActiveAt: status.lastActiveAt,
+          autoOfflineInfo
+        }
+      });
+      
+    } catch (error) {
+      console.error("Check online status error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to check online status",
+        error: error.message
+      });
+    }
+  }
+);
+
+/**
  * @route   POST /riders/location
- * @desc    Update rider's current location
+ * @desc    Update rider's current location (and optionally battery level)
  * @access  Private (Rider)
  */
 router.post(
@@ -663,7 +763,7 @@ router.post(
   async (req, res) => {
     try {
       const userId = req.user.id;
-      const { latitude, longitude } = req.body;
+      const { latitude, longitude, batteryLevel, isCharging } = req.body;
       
       if (!latitude || !longitude) {
         return res.status(400).json({
@@ -672,26 +772,41 @@ router.post(
         });
       }
       
+      // Build update object
+      const updateData = { 
+        location: {
+          type: 'Point',
+          coordinates: [parseFloat(longitude), parseFloat(latitude)]
+        },
+        lastActiveAt: new Date(),
+        lastLocationUpdate: new Date()
+      };
+      
+      // Include battery level if provided
+      if (typeof batteryLevel === 'number') {
+        updateData.batteryLevel = Math.min(100, Math.max(0, batteryLevel));
+      }
+      if (typeof isCharging === 'boolean') {
+        updateData.isCharging = isCharging;
+      }
+      
       const RiderStatus = require('../models/RiderStatus');
       const status = await RiderStatus.findOneAndUpdate(
         { riderId: userId },
-        { 
-          location: {
-            type: 'Point',
-            coordinates: [parseFloat(longitude), parseFloat(latitude)]
-          },
-          lastActiveAt: new Date()
-        },
+        updateData,
         { new: true, upsert: true }
       );
       
-      console.log(`📍 [Rider Location] ${userId} updated to (${latitude}, ${longitude})`);
+      const batteryInfo = typeof batteryLevel === 'number' ? ` | Battery: ${updateData.batteryLevel}%` : '';
+      console.log(`📍 [Rider Location] ${userId} updated to (${latitude}, ${longitude})${batteryInfo}`);
       
       res.json({
         success: true,
         message: "Location updated",
         data: {
           location: { latitude, longitude },
+          batteryLevel: status.batteryLevel,
+          isCharging: status.isCharging,
           lastActiveAt: status.lastActiveAt
         }
       });
@@ -855,6 +970,7 @@ router.post(
   async (req, res) => {
     try {
       const { orderId } = req.params;
+      const riderId = req.user.id;
 
       const order = await prisma.order.findUnique({
         where: { id: orderId }
@@ -879,6 +995,29 @@ router.post(
           success: false,
           message: "Order is not available for pickup",
         });
+      }
+
+      // Check if order has an active reservation by ANOTHER rider
+      const OrderReservation = require('../models/OrderReservation');
+      const activeReservation = await OrderReservation.findOne({
+        orderId: orderId,
+        status: 'pending',
+        expiresAt: { $gt: new Date() }
+      });
+
+      if (activeReservation && activeReservation.riderId !== riderId) {
+        return res.status(409).json({
+          success: false,
+          message: "This order is currently reserved for another rider. Please wait or choose a different order.",
+          reservedUntil: activeReservation.expiresAt
+        });
+      }
+
+      // If THIS rider has a reservation for this order, mark it as accepted
+      if (activeReservation && activeReservation.riderId === riderId) {
+        activeReservation.status = 'accepted';
+        await activeReservation.save();
+        console.log(`✅ Reservation ${activeReservation._id} marked as accepted`);
       }
 
       // Calculate rider earnings and lock them in
@@ -1026,6 +1165,18 @@ router.post(
         // Don't fail the order acceptance if tracking init fails
       }
 
+      // Mark rider as on delivery so they don't get more orders dispatched
+      try {
+        const RiderStatus = require('../models/RiderStatus');
+        await RiderStatus.findOneAndUpdate(
+          { riderId: req.user.id },
+          { $set: { isOnDelivery: true, currentOrderId: updatedOrder.id } }
+        );
+        console.log(`📍 Marked rider ${req.user.id} as on delivery`);
+      } catch (statusError) {
+        console.error("Update rider delivery status error:", statusError);
+      }
+
       res.json({
         success: true,
         message: "Order accepted successfully",
@@ -1121,14 +1272,41 @@ router.post(
       try {
         const OrderTracking = require('../models/OrderTracking');
         await OrderTracking.findOneAndDelete({ orderId: orderId });
-        console.log(`�️ Tracking deleted for cancelled order ${orderId}`);
+        console.log(`🗑️ Tracking deleted for cancelled order ${orderId}`);
       } catch (trackingError) {
         console.error("Delete tracking on cancellation error:", trackingError);
         // Don't fail the cancellation if tracking deletion fails
       }
 
+      // Reset rider delivery status so they can receive new orders
+      try {
+        const RiderStatus = require('../models/RiderStatus');
+        await RiderStatus.findOneAndUpdate(
+          { riderId: req.user.id },
+          { $set: { isOnDelivery: false, currentOrderId: null } }
+        );
+        console.log(`📍 Reset delivery status for rider ${req.user.id}`);
+      } catch (statusError) {
+        console.error("Reset rider delivery status error:", statusError);
+      }
+
+      // Re-dispatch the order to another rider since it's available again
+      try {
+        const dispatchService = require('../services/dispatch_service');
+        dispatchService.dispatchOrder(orderId).then(result => {
+          if (result.success) {
+            console.log(`🚀 Re-dispatched order ${order.orderNumber} to rider ${result.riderName}`);
+          } else {
+            console.log(`⚠️ Re-dispatch failed: ${result.error}`);
+          }
+        }).catch(err => {
+          console.error(`❌ Re-dispatch error:`, err.message);
+        });
+      } catch (dispatchError) {
+        console.error("Re-dispatch error:", dispatchError);
+      }
+
       // TODO: Notify customer about cancellation
-      // TODO: Send push notification to nearby riders about available order
 
       res.json({
         success: true,

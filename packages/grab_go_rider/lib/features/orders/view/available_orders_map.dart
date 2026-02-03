@@ -287,11 +287,13 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
   }
 
   Future<void> _acceptOrder(AvailableOrderDto order) async {
+    final colors = context.appColors;
     try {
-      final acceptedOrder = await _service.acceptOrder(order.id);
+      final result = await _service.acceptOrder(order.id);
       if (!mounted) return;
 
-      if (acceptedOrder != null) {
+      if (result.isSuccess && result.order != null) {
+        final acceptedOrder = result.order!;
         Navigator.of(context).pop();
         context.push(
           '/orderConfirmation',
@@ -321,11 +323,37 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
         );
 
         await _loadOrders();
+      } else if (result.isReserved) {
+        Navigator.of(context).pop();
+        await _loadOrders();
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: colors.backgroundPrimary,
+            title: Row(
+              children: [
+                Icon(Icons.schedule, color: colors.accentOrange),
+                SizedBox(width: 8),
+                Text('Order Reserved', style: TextStyle(color: colors.textPrimary)),
+              ],
+            ),
+            content: Text(
+              '${result.errorMessage}\n\nThe order has been removed from your map. New orders will appear shortly.',
+              style: TextStyle(color: colors.textSecondary),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('OK', style: TextStyle(color: colors.accentGreen)),
+              ),
+            ],
+          ),
+        );
       } else {
         Navigator.of(context).pop();
         AppToastMessage.show(
           context: context,
-          message: "Order is no longer available.",
+          message: result.errorMessage ?? "Order is no longer available.",
           backgroundColor: context.appColors.error,
         );
       }

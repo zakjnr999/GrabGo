@@ -292,13 +292,19 @@ class PushNotificationService {
       return;
     }
 
+    // Skip order_reserved in foreground - OrderAlertService handles it via Socket.IO
+    // with a better UI (action buttons, countdown, etc.)
+    if (data['type'] == 'order_reserved') {
+      debugPrint('Skipping order_reserved FCM notification in foreground - handled by OrderAlertService');
+      return;
+    }
+
     if (notification != null) {
       // Increment badge count
       await incrementBadge();
 
       // Get appropriate channel for this notification type
       final channelId = _getNotificationChannel(data['type']);
-      final isOrderAlert = data['type'] == 'order_reserved';
 
       await _localNotifications.show(
         message.hashCode,
@@ -308,13 +314,10 @@ class PushNotificationService {
           android: AndroidNotificationDetails(
             channelId,
             _getChannelName(channelId),
-            importance: isOrderAlert ? Importance.max : Importance.high,
-            priority: isOrderAlert ? Priority.max : Priority.high,
+            importance: Importance.high,
+            priority: Priority.high,
             playSound: true,
-            sound: isOrderAlert ? const RawResourceAndroidNotificationSound('rider_alert') : null,
             enableVibration: true,
-            fullScreenIntent: isOrderAlert, // Show over lock screen for order alerts
-            category: isOrderAlert ? AndroidNotificationCategory.call : null,
             visibility: NotificationVisibility.public,
             showWhen: true,
             icon: '@mipmap/ic_launcher',
@@ -325,7 +328,7 @@ class PushNotificationService {
             presentBadge: true,
             presentSound: true,
             badgeNumber: _badgeCount,
-            interruptionLevel: isOrderAlert ? InterruptionLevel.timeSensitive : InterruptionLevel.active,
+            interruptionLevel: InterruptionLevel.active,
           ),
         ),
         payload: jsonEncode(data),
