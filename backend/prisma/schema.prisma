@@ -272,17 +272,6 @@ model User {
   lastReengagementNudgeAt    DateTime?
   reengagementLevel          ReengagementLevel @default(none)
 
-  // Rider dispatch fields (for riders only)
-  riderLatitude            Float? // Current GPS latitude
-  riderLongitude           Float? // Current GPS longitude
-  riderIsOnline            Boolean   @default(false) // Is rider accepting orders?
-  riderLastActiveAt        DateTime? // Last activity timestamp
-  riderRating              Float     @default(4.5) // Average rider rating
-  riderTotalDeliveries     Int       @default(0) // Total completed deliveries
-  riderAcceptanceRate      Float     @default(0.8) // Order acceptance rate (0-1)
-  riderPreferredOrderTypes String[]  @default([]) // ["food", "grocery", "pharmacy"]
-  isApproved               Boolean   @default(false) // Is rider approved by admin?
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

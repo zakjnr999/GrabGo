@@ -292,20 +292,9 @@ async function scoreRiders(riders, order) {
         }
 
         // 7. Low earnings today bonus (fairness - give opportunities to those with less)
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        
-        const todayEarnings = await prisma.order.aggregate({
-            where: {
-                riderId: rider.id,
-                status: 'delivered',
-                deliveredDate: { gte: todayStart }
-            },
-            _sum: { riderEarnings: true }
-        });
-
-        const earnings = todayEarnings._sum.riderEarnings || 0;
-        if (earnings < 50) { // Less than GHS 50 today
+        // Use the todayEarnings from RiderStatus MongoDB model
+        const todayEarnings = rider._status?.metrics?.todayEarnings || 0;
+        if (todayEarnings < 50) { // Less than GHS 50 today
             score += SCORING.LOW_EARNINGS_TODAY_BONUS;
         }
 
@@ -320,7 +309,7 @@ async function scoreRiders(riders, order) {
                 hadRecentDecline: !!recentDecline,
                 matchesPreference: preferredTypes.includes(orderType),
                 recentlyActive: !!recentDelivery,
-                lowEarningsToday: earnings < 50
+                lowEarningsToday: todayEarnings < 50
             }
         });
     }
