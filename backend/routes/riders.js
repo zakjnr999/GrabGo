@@ -550,6 +550,106 @@ router.get(
 );
 
 /**
+ * @route   POST /riders/go-online
+ * @desc    Set rider as online (registers in RiderStatus for dispatch)
+ * @access  Private (Rider)
+ */
+router.post(
+  "/go-online",
+  protect,
+  authorize("rider"),
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { latitude, longitude } = req.body;
+      
+      // Get rider profile
+      const rider = await prisma.rider.findUnique({
+        where: { userId },
+        include: { user: true }
+      });
+      
+      if (!rider) {
+        return res.status(404).json({
+          success: false,
+          message: "Rider profile not found"
+        });
+      }
+      
+      if (rider.verificationStatus !== 'approved') {
+        return res.status(400).json({
+          success: false,
+          message: "Rider must be verified to go online"
+        });
+      }
+      
+      // Use provided location or default to Accra
+      const lat = latitude || 5.6037;
+      const lon = longitude || -0.187;
+      
+      // Set rider online in MongoDB RiderStatus
+      const RiderStatus = require('../models/RiderStatus');
+      const status = await RiderStatus.goOnline(userId, lat, lon);
+      
+      console.log(`🟢 [Rider Online] ${rider.user.username} (${userId}) is now online at (${lat}, ${lon})`);
+      
+      res.json({
+        success: true,
+        message: "You are now online and visible for orders",
+        data: {
+          riderId: userId,
+          isOnline: true,
+          location: { latitude: lat, longitude: lon },
+          statusId: status._id
+        }
+      });
+      
+    } catch (error) {
+      console.error("Go online error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to go online",
+        error: error.message
+      });
+    }
+  }
+);
+
+/**
+ * @route   POST /riders/go-offline
+ * @desc    Set rider as offline (removes from dispatch pool)
+ * @access  Private (Rider)
+ */
+router.post(
+  "/go-offline",
+  protect,
+  authorize("rider"),
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      
+      const RiderStatus = require('../models/RiderStatus');
+      await RiderStatus.goOffline(userId);
+      
+      console.log(`🔴 [Rider Offline] ${userId} is now offline`);
+      
+      res.json({
+        success: true,
+        message: "You are now offline"
+      });
+      
+    } catch (error) {
+      console.error("Go offline error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to go offline",
+        error: error.message
+      });
+    }
+  }
+);
+
+/**
  * @route   POST /riders/test-dispatch/:orderId
  * @desc    [DEV/TEST] Manually trigger dispatch for an order
  * @access  Private (Admin or Rider for testing)
