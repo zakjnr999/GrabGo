@@ -157,6 +157,7 @@
         "swipe_refresh",
         "url_launcher",
         "uuid",
+        "vibration",
         "webview_flutter"
       ],
       "devDependencies": [
@@ -1015,6 +1016,15 @@
         "collection",
         "flutter",
         "nested"
+      ]
+    },
+    {
+      "name": "vibration",
+      "version": "3.1.5",
+      "dependencies": [
+        "flutter",
+        "plugin_platform_interface",
+        "vibration_platform_interface"
       ]
     },
     {
@@ -2559,6 +2569,15 @@
       "version": "1.0.0",
       "dependencies": [
         "flutter"
+      ]
+    },
+    {
+      "name": "vibration_platform_interface",
+      "version": "0.1.1",
+      "dependencies": [
+        "device_info_plus",
+        "flutter",
+        "plugin_platform_interface"
       ]
     },
     {

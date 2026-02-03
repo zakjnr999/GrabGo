@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:http/http.dart' as http;
 
+import 'order_alert_service.dart';
+
 /// Represents an order reservation from the dispatch system
 class OrderReservation {
   final String reservationId;
@@ -115,6 +117,7 @@ class OrderReservationService extends ChangeNotifier {
   factory OrderReservationService() => _instance;
 
   final http.Client _client = http.Client();
+  final OrderAlertService _alertService = OrderAlertService();
   String get _baseUrl => AppConfig.apiBaseUrl;
 
   // Current active reservation
@@ -154,6 +157,9 @@ class OrderReservationService extends ChangeNotifier {
       return;
     }
     _isInitialized = true;
+
+    // Initialize the alert service for high-priority notifications
+    _alertService.initialize();
 
     final socket = SocketService();
 
@@ -202,6 +208,9 @@ class OrderReservationService extends ChangeNotifier {
       _startCountdown();
       notifyListeners();
 
+      // Show high-priority notification with full-screen intent
+      _showOrderAlertNotification();
+
       onReservationReceived?.call(_activeReservation!);
       debugPrint(
         '🎯 New reservation: ${_activeReservation!.orderNumber} - ${_activeReservation!.remainingMs}ms remaining',
@@ -211,6 +220,26 @@ class OrderReservationService extends ChangeNotifier {
       _error = 'Failed to parse reservation';
       notifyListeners();
     }
+  }
+
+  /// Show high-priority order alert notification
+  Future<void> _showOrderAlertNotification() async {
+    if (_activeReservation == null) return;
+
+    final res = _activeReservation!;
+    final order = res.order;
+
+    await _alertService.showOrderAlert(
+      title: '🚗 New Order Available!',
+      body:
+          '${order.storeName} → ${order.customerName}\n'
+          '${order.itemCount} items • ${res.distanceToPickup.toStringAsFixed(1)} km pickup\n'
+          'Respond within ${(res.timeoutMs / 1000).round()} seconds',
+      orderId: res.orderId,
+      reservationId: res.reservationId,
+      timeoutSeconds: (res.timeoutMs / 1000).round(),
+      earnings: res.estimatedEarnings,
+    );
   }
 
   /// Handle reservation cancelled by server
@@ -256,6 +285,10 @@ class OrderReservationService extends ChangeNotifier {
 
   /// Clear current reservation
   void _clearReservation() {
+    // Cancel alert notification and vibration
+    if (_activeReservation != null) {
+      _alertService.cancelOrderAlert(_activeReservation!.orderId);
+    }
     _stopCountdown();
     _activeReservation = null;
     _remainingSeconds = 0;

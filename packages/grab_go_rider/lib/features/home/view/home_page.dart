@@ -50,6 +50,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   void _initializeReservationService() {
+    // Re-initialize socket now that user is logged in
+    // (SocketService may have been initialized before user data was loaded)
+    SocketService().initialize();
+
     // Initialize the reservation service to listen for incoming orders
     _reservationService.initialize();
 

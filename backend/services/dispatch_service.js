@@ -17,9 +17,9 @@ const { sendToUser } = require('./fcm_service');
 
 // Configuration
 const CONFIG = {
-    DEFAULT_TIMEOUT_MS: 8000,      // 8 seconds default reservation window
-    MIN_TIMEOUT_MS: 5000,          // 5 seconds minimum
-    MAX_TIMEOUT_MS: 12000,         // 12 seconds maximum
+    DEFAULT_TIMEOUT_MS: 30000,     // 30 seconds default reservation window
+    MIN_TIMEOUT_MS: 20000,         // 20 seconds minimum
+    MAX_TIMEOUT_MS: 45000,         // 45 seconds maximum
     MAX_ATTEMPTS: 5,               // Max riders to try before marking order as unassignable
     DEFAULT_RADIUS_KM: 10,         // Default search radius for riders
     MAX_RADIUS_KM: 25,             // Maximum search radius

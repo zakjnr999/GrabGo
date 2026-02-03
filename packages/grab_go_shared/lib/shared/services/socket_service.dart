@@ -98,11 +98,26 @@ class SocketService {
 
   Future<void> initialize() async {
     try {
+      debugPrint('🔌 SocketService.initialize() called');
       _totalUnread = CacheService.getChatUnreadCount();
       _notifyUnreadChanged();
 
+      // Try to get user ID from UserService first
       _currentUserId = UserService().currentUser?.id;
+
+      // If UserService doesn't have the user, try loading from cache directly
       if (_currentUserId == null || _currentUserId!.isEmpty) {
+        final userData = CacheService.getUserData();
+        if (userData != null) {
+          // Try both '_id' (MongoDB style) and 'id' field names
+          _currentUserId = userData['_id']?.toString() ?? userData['id']?.toString();
+          debugPrint('🔌 SocketService: Loaded userId from cache: $_currentUserId');
+        }
+      }
+
+      debugPrint('🔌 SocketService: currentUserId = $_currentUserId');
+      if (_currentUserId == null || _currentUserId!.isEmpty) {
+        debugPrint('❌ SocketService: No user ID, skipping socket connection');
         return;
       }
 
@@ -359,12 +374,15 @@ class SocketService {
     _setConnectionState(_reconnectAttempts > 0 ? SocketConnectionState.reconnecting : SocketConnectionState.connecting);
 
     final socketUrl = _buildSocketUrl();
+    debugPrint('🔌 Socket connecting to: $socketUrl');
     final token = await CacheService.getAuthToken();
     if (token == null || token.isEmpty) {
+      debugPrint('❌ Socket: No auth token available');
       _connecting = false;
       _setConnectionState(SocketConnectionState.disconnected);
       return;
     }
+    debugPrint('🔑 Socket: Auth token found (${token.substring(0, 20)}...)');
 
     _socket = IO.io(
       socketUrl,
@@ -385,7 +403,7 @@ class SocketService {
       _joinAllCachedChats();
       // Note: Backend automatically joins user to `user:${userId}` room on connection
       // No need to emit anything - see server.js socket authentication middleware
-      debugPrint('🔌 Socket connected - user room joined automatically by backend');
+      debugPrint('🔌 Socket connected! User ID: $_currentUserId - user room joined automatically by backend');
       // Join any pending chats that were requested before connection
       _joinPendingChats();
       // Process any queued messages when connection is restored
