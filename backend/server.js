@@ -325,7 +325,7 @@ io.on("connection", (socket) => {
   // ==================== ORDER RESERVATION SOCKET HANDLERS ====================
 
   // Rider goes online (registers for order reservations)
-  socket.on("rider:go_online", async () => {
+  socket.on("rider:go_online", async (data) => {
     const userId = socket.data.userId;
     const userRole = socket.data.userRole;
 
@@ -335,19 +335,22 @@ io.on("connection", (socket) => {
     }
 
     try {
-      // Update rider's online status in database
-      await prisma.user.update({
-        where: { id: userId },
-        data: { 
-          riderIsOnline: true,
-          riderLastActiveAt: new Date()
-        }
-      });
+      // Update rider's online status in MongoDB RiderStatus
+      const RiderStatus = require('./models/RiderStatus');
+      const { latitude, longitude, batteryLevel, isCharging } = data || {};
+      
+      // Use provided location or default
+      const lat = latitude || 5.6037;
+      const lon = longitude || -0.187;
+      const battery = typeof batteryLevel === 'number' ? batteryLevel : 100;
+      const charging = isCharging === true;
+      
+      await RiderStatus.goOnline(userId, lon, lat, true, battery, charging);
 
       // Track rider socket
       socketService.addRiderSocket(userId, socket.id);
 
-      console.log(`🚴 Rider ${userId} is now online`);
+      console.log(`🚴 Rider ${userId} is now online via socket`);
       socket.emit('rider:status', { online: true });
     } catch (error) {
       console.error(`Error setting rider online: ${error.message}`);
@@ -362,19 +365,14 @@ io.on("connection", (socket) => {
     if (userRole !== 'rider') return;
 
     try {
-      // Update rider's online status in database
-      await prisma.user.update({
-        where: { id: userId },
-        data: { 
-          riderIsOnline: false,
-          riderLastActiveAt: new Date()
-        }
-      });
+      // Update rider's online status in MongoDB RiderStatus
+      const RiderStatus = require('./models/RiderStatus');
+      await RiderStatus.goOffline(userId);
 
       // Remove rider socket tracking
       socketService.removeRiderSocket(userId, socket.id);
 
-      console.log(`🚴 Rider ${userId} is now offline`);
+      console.log(`🚴 Rider ${userId} is now offline via socket`);
       socket.emit('rider:status', { online: false });
     } catch (error) {
       console.error(`Error setting rider offline: ${error.message}`);
@@ -382,22 +380,38 @@ io.on("connection", (socket) => {
   });
 
   // Rider updates their location
-  socket.on("rider:location_update", async ({ latitude, longitude }) => {
+  socket.on("rider:location_update", async (data) => {
     const userId = socket.data.userId;
     const userRole = socket.data.userRole;
 
     if (userRole !== 'rider') return;
+    
+    const { latitude, longitude, batteryLevel, isCharging } = data || {};
     if (!latitude || !longitude) return;
 
     try {
-      await prisma.user.update({
-        where: { id: userId },
-        data: { 
-          riderLatitude: latitude,
-          riderLongitude: longitude,
-          riderLastActiveAt: new Date()
-        }
-      });
+      // Update location in MongoDB RiderStatus
+      const RiderStatus = require('./models/RiderStatus');
+      
+      const updateData = {
+        'location.coordinates': [parseFloat(longitude), parseFloat(latitude)],
+        lastLocationUpdate: new Date(),
+        lastActiveAt: new Date()
+      };
+      
+      // Include battery if provided
+      if (typeof batteryLevel === 'number') {
+        updateData.batteryLevel = Math.min(100, Math.max(0, batteryLevel));
+      }
+      if (typeof isCharging === 'boolean') {
+        updateData.isCharging = isCharging;
+      }
+      
+      await RiderStatus.findOneAndUpdate(
+        { riderId: userId },
+        { $set: updateData },
+        { upsert: true }
+      );
     } catch (error) {
       console.error(`Error updating rider location: ${error.message}`);
     }
