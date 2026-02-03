@@ -48,7 +48,7 @@ const updateWalletBalance = async (userId) => {
     data: {
       totalEarnings: totals.earnings,
       totalWithdrawals: totals.withdrawals,
-      pendingWithdrawal: pendingWithdrawalsSum._sum.amount || 0,
+      pendingWithdrawals: pendingWithdrawalsSum._sum.amount || 0,
       balance: totals.earnings - totals.withdrawals,
       updatedAt: new Date()
     }
@@ -1350,7 +1350,7 @@ router.get("/wallet", protect, authorize("rider"), async (req, res) => {
         balance: wallet.balance,
         totalEarnings: wallet.totalEarnings,
         totalWithdrawals: wallet.totalWithdrawals,
-        pendingWithdrawals: wallet.pendingWithdrawal,
+        pendingWithdrawals: wallet.pendingWithdrawals,
       },
     });
   } catch (error) {

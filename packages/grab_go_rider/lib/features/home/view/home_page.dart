@@ -26,13 +26,14 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
+class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   List<TransactionModel> _recentTransactions = [];
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   late Animation<double> _rippleAnimation;
   bool onlineStatus = false; // Default to OFFLINE on app launch
   bool _isCheckingStatus = true; // Loading state while checking server status
+  bool _isAppInForeground = true; // Track app lifecycle
 
   double? _currentLat;
   double? _currentLon;
@@ -51,11 +52,33 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this); // Listen to app lifecycle
     _loadSampleTransactions();
     _setupAnimations();
     _initializeLocation();
     _initializeReservationService();
     _checkOnlineStatus(); // Check server status on launch
+  }
+
+  /// Handle app lifecycle changes (foreground/background)
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    if (state == AppLifecycleState.resumed) {
+      // App came to foreground
+      _isAppInForeground = true;
+      if (onlineStatus) {
+        _startLocationBatteryUpdates(); // Resume updates
+        _updateLocationAndBattery(); // Immediate update
+      }
+      debugPrint('📱 App resumed - location updates active');
+    } else if (state == AppLifecycleState.paused) {
+      // App went to background - pause updates to save battery
+      _isAppInForeground = false;
+      _locationUpdateTimer?.cancel();
+      debugPrint('📱 App paused - location updates paused');
+    }
   }
 
   /// Check rider's online status from server on app launch
@@ -175,7 +198,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   void _startLocationBatteryUpdates() {
     _locationUpdateTimer?.cancel();
     _locationUpdateTimer = Timer.periodic(const Duration(seconds: 60), (_) {
-      if (onlineStatus) {
+      // Only update if online AND app is in foreground
+      if (onlineStatus && _isAppInForeground) {
         _updateLocationAndBattery();
       }
     });
@@ -308,6 +332,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this); // Remove lifecycle observer
     _pulseController.dispose();
     _locationUpdateTimer?.cancel();
     _removeAutoOfflineListener();

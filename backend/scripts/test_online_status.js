@@ -22,8 +22,8 @@ const BASE_URL = process.argv[2] === 'production'
   : 'http://localhost:5000/api';
 
 // Test rider credentials - update these with a real test rider account
-const TEST_RIDER_EMAIL = 'rider@test.com';
-const TEST_RIDER_PASSWORD = 'password123';
+const TEST_RIDER_EMAIL = 'bosszak94@gmail.com';
+const TEST_RIDER_PASSWORD = 'Daddy@20033';
 
 console.log(`\n🧪 Testing Online Status System`);
 console.log(`📡 Base URL: ${BASE_URL}\n`);
@@ -55,7 +55,7 @@ async function login() {
   console.log('\n📝 Step 1: Login as Rider');
   console.log('-'.repeat(40));
   
-  const result = await makeRequest('POST', '/auth/login', {
+  const result = await makeRequest('POST', '/users/login', {
     email: TEST_RIDER_EMAIL,
     password: TEST_RIDER_PASSWORD
   });
