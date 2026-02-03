@@ -10,6 +10,7 @@
 
 const prisma = require('../config/prisma');
 const OrderReservation = require('../models/OrderReservation');
+const RiderStatus = require('../models/RiderStatus');
 const { calculateRiderEarnings, calculateDistance } = require('../utils/riderEarningsCalculator');
 const socketService = require('./socket_service');
 const { sendToUser } = require('./fcm_service');
@@ -153,60 +154,81 @@ async function findEligibleRiders(order, excludedRiderIds = []) {
     const pickupLat = order.restaurant?.latitude || order.groceryStore?.latitude || order.pharmacyStore?.latitude;
     const pickupLon = order.restaurant?.longitude || order.groceryStore?.longitude || order.pharmacyStore?.longitude;
 
-    // Get all active riders
-    let riders = await prisma.user.findMany({
-        where: {
-            role: 'rider',
-            isActive: true,
-            isApproved: true,
-            id: { notIn: excludedRiderIds }
-        },
-        select: {
-            id: true,
-            username: true,
-            email: true,
-            phone: true,
-            profilePicture: true,
-            riderLatitude: true,
-            riderLongitude: true,
-            riderRating: true,
-            riderTotalDeliveries: true,
-            riderAcceptanceRate: true,
-            riderLastActiveAt: true,
-            riderIsOnline: true,
-            riderVehicleType: true,
-            riderPreferredOrderTypes: true,
-        }
-    });
+    if (!pickupLat || !pickupLon) {
+        console.log('⚠️ [Dispatch] No pickup coordinates available');
+        return [];
+    }
 
-    // Filter to only online riders
-    riders = riders.filter(rider => rider.riderIsOnline === true);
-
-    // Filter riders who have active reservations already
+    // Get riders who have active reservations already (to exclude)
     const ridersWithActiveReservations = await OrderReservation.find({
         status: 'pending',
         expiresAt: { $gt: new Date() }
     }).distinct('riderId');
 
-    riders = riders.filter(rider => !ridersWithActiveReservations.includes(rider.id));
+    // Combine excluded IDs
+    const allExcludedIds = [...new Set([...excludedRiderIds, ...ridersWithActiveReservations])];
 
-    // Calculate distance to pickup for each rider
+    // Find online, available riders from MongoDB RiderStatus
     let radius = CONFIG.DEFAULT_RADIUS_KM;
     let eligibleRiders = [];
 
     while (eligibleRiders.length < CONFIG.MIN_RIDERS_BEFORE_EXPAND && radius <= CONFIG.MAX_RADIUS_KM) {
-        eligibleRiders = riders.filter(rider => {
-            if (!rider.riderLatitude || !rider.riderLongitude) return false;
-            
-            const distance = calculateDistance(
-                rider.riderLatitude, 
-                rider.riderLongitude, 
-                pickupLat, 
-                pickupLon
-            );
-            rider._distanceToPickup = distance;
-            return distance <= radius;
-        });
+        const radiusInMeters = radius * 1000;
+        
+        // Query MongoDB for online riders within radius
+        const riderStatuses = await RiderStatus.find({
+            isOnline: true,
+            isOnDelivery: false,
+            isApproved: true,
+            riderId: { $nin: allExcludedIds },
+            location: {
+                $near: {
+                    $geometry: {
+                        type: 'Point',
+                        coordinates: [pickupLon, pickupLat]
+                    },
+                    $maxDistance: radiusInMeters
+                }
+            }
+        }).limit(20); // Limit to prevent overload
+
+        // Fetch user details from Prisma for each rider
+        eligibleRiders = [];
+        for (const status of riderStatuses) {
+            const user = await prisma.user.findUnique({
+                where: { id: status.riderId },
+                select: {
+                    id: true,
+                    username: true,
+                    email: true,
+                    phone: true,
+                    profilePicture: true,
+                    rider: {
+                        select: {
+                            vehicleType: true,
+                            verificationStatus: true
+                        }
+                    }
+                }
+            });
+
+            if (user && user.rider?.verificationStatus === 'approved') {
+                // Calculate distance
+                const distance = status.distanceTo(pickupLon, pickupLat);
+                
+                eligibleRiders.push({
+                    ...user,
+                    _status: status,
+                    _distanceToPickup: distance,
+                    // Merge metrics from RiderStatus
+                    riderRating: status.metrics.rating,
+                    riderTotalDeliveries: status.metrics.totalDeliveries,
+                    riderAcceptanceRate: status.metrics.acceptanceRate,
+                    riderPreferredOrderTypes: status.preferredOrderTypes,
+                    recentDeclines: status.recentDeclines
+                });
+            }
+        }
 
         if (eligibleRiders.length < CONFIG.MIN_RIDERS_BEFORE_EXPAND) {
             radius += CONFIG.RADIUS_EXPANSION_KM;
