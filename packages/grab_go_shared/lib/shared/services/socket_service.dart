@@ -61,6 +61,12 @@ class SocketService {
   final List<void Function(dynamic)> _deleteListeners = [];
   final List<void Function(dynamic)> _notificationListeners = [];
 
+  // Order reservation listeners (for rider dispatch system)
+  final List<void Function(dynamic)> _orderReservedListeners = [];
+  final List<void Function(dynamic)> _reservationCancelledListeners = [];
+  final List<void Function(dynamic)> _reservationExpiredListeners = [];
+  final List<void Function(dynamic)> _orderTakenListeners = [];
+
   final Set<String> _joinedChats = <String>{};
   final Set<String> _pendingJoinChats = <String>{};
 
@@ -157,6 +163,40 @@ class SocketService {
 
   void removeNotificationListener(void Function(dynamic) listener) {
     _notificationListeners.remove(listener);
+  }
+
+  // ==================== ORDER RESERVATION LISTENERS ====================
+
+  void addOrderReservedListener(void Function(dynamic) listener) {
+    _orderReservedListeners.add(listener);
+  }
+
+  void removeOrderReservedListener(void Function(dynamic) listener) {
+    _orderReservedListeners.remove(listener);
+  }
+
+  void addReservationCancelledListener(void Function(dynamic) listener) {
+    _reservationCancelledListeners.add(listener);
+  }
+
+  void removeReservationCancelledListener(void Function(dynamic) listener) {
+    _reservationCancelledListeners.remove(listener);
+  }
+
+  void addReservationExpiredListener(void Function(dynamic) listener) {
+    _reservationExpiredListeners.add(listener);
+  }
+
+  void removeReservationExpiredListener(void Function(dynamic) listener) {
+    _reservationExpiredListeners.remove(listener);
+  }
+
+  void addOrderTakenListener(void Function(dynamic) listener) {
+    _orderTakenListeners.add(listener);
+  }
+
+  void removeOrderTakenListener(void Function(dynamic) listener) {
+    _orderTakenListeners.remove(listener);
   }
 
   void addRetryListener(void Function(String chatId, String tempId, bool success, String? newId) listener) {
@@ -343,6 +383,9 @@ class SocketService {
       _setConnectionState(SocketConnectionState.connected);
       _joinedChats.clear();
       _joinAllCachedChats();
+      // Note: Backend automatically joins user to `user:${userId}` room on connection
+      // No need to emit anything - see server.js socket authentication middleware
+      debugPrint('🔌 Socket connected - user room joined automatically by backend');
       // Join any pending chats that were requested before connection
       _joinPendingChats();
       // Process any queued messages when connection is restored
@@ -437,6 +480,52 @@ class SocketService {
           listener(data);
         } catch (e) {
           // Silent in production
+        }
+      }
+    });
+
+    // ==================== ORDER RESERVATION EVENTS ====================
+
+    _socket!.on('order_reserved', (data) {
+      debugPrint('📦 Socket received order_reserved: $data');
+      for (final listener in List.from(_orderReservedListeners)) {
+        try {
+          listener(data);
+        } catch (e) {
+          debugPrint('Error in order_reserved listener: $e');
+        }
+      }
+    });
+
+    _socket!.on('reservation_cancelled', (data) {
+      debugPrint('❌ Socket received reservation_cancelled: $data');
+      for (final listener in List.from(_reservationCancelledListeners)) {
+        try {
+          listener(data);
+        } catch (e) {
+          debugPrint('Error in reservation_cancelled listener: $e');
+        }
+      }
+    });
+
+    _socket!.on('reservation_expired', (data) {
+      debugPrint('⏰ Socket received reservation_expired: $data');
+      for (final listener in List.from(_reservationExpiredListeners)) {
+        try {
+          listener(data);
+        } catch (e) {
+          debugPrint('Error in reservation_expired listener: $e');
+        }
+      }
+    });
+
+    _socket!.on('order_taken', (data) {
+      debugPrint('🚴 Socket received order_taken: $data');
+      for (final listener in List.from(_orderTakenListeners)) {
+        try {
+          listener(data);
+        } catch (e) {
+          debugPrint('Error in order_taken listener: $e');
         }
       }
     });

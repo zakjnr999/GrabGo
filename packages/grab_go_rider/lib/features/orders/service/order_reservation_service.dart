@@ -144,35 +144,45 @@ class OrderReservationService extends ChangeNotifier {
   void Function()? onReservationDeclined;
   void Function(String orderId, String reason)? onReservationCancelled;
 
+  // Track if already initialized
+  bool _isInitialized = false;
+
   /// Initialize the service and set up socket listeners
   void initialize() {
+    if (_isInitialized) {
+      debugPrint('OrderReservationService already initialized');
+      return;
+    }
+    _isInitialized = true;
+
     final socket = SocketService();
 
-    // Listen for new order reservations
-    socket.socket?.on('order_reserved', (data) {
-      debugPrint('📦 Received order_reserved: $data');
+    // Listen for new order reservations using the listener pattern
+    // This ensures listeners are called even if socket connects later
+    socket.addOrderReservedListener((data) {
+      debugPrint('📦 OrderReservationService received order_reserved: $data');
       if (data is Map<String, dynamic>) {
         _handleNewReservation(data);
       }
     });
 
     // Listen for reservation cancellations
-    socket.socket?.on('reservation_cancelled', (data) {
-      debugPrint('❌ Received reservation_cancelled: $data');
+    socket.addReservationCancelledListener((data) {
+      debugPrint('❌ OrderReservationService received reservation_cancelled: $data');
       if (data is Map<String, dynamic>) {
         _handleReservationCancelled(data);
       }
     });
 
     // Listen for reservation expiry (from server)
-    socket.socket?.on('reservation_expired', (data) {
-      debugPrint('⏰ Received reservation_expired: $data');
+    socket.addReservationExpiredListener((data) {
+      debugPrint('⏰ OrderReservationService received reservation_expired: $data');
       _handleReservationExpired();
     });
 
     // Listen for order taken by another rider
-    socket.socket?.on('order_taken', (data) {
-      debugPrint('🚴 Received order_taken: $data');
+    socket.addOrderTakenListener((data) {
+      debugPrint('🚴 OrderReservationService received order_taken: $data');
       if (data is Map<String, dynamic>) {
         final takenOrderId = data['orderId']?.toString();
         if (_activeReservation?.orderId == takenOrderId) {
@@ -181,7 +191,7 @@ class OrderReservationService extends ChangeNotifier {
       }
     });
 
-    debugPrint('✅ OrderReservationService initialized');
+    debugPrint('✅ OrderReservationService initialized with socket listeners');
   }
 
   /// Handle incoming reservation from socket
