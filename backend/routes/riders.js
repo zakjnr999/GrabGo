@@ -549,6 +549,62 @@ router.get(
   }
 );
 
+/**
+ * @route   POST /riders/test-dispatch/:orderId
+ * @desc    [DEV/TEST] Manually trigger dispatch for an order
+ * @access  Private (Admin or Rider for testing)
+ */
+router.post(
+  "/test-dispatch/:orderId",
+  protect,
+  async (req, res) => {
+    try {
+      const { orderId } = req.params;
+      
+      console.log(`🧪 [Test Dispatch] Manually triggering dispatch for order: ${orderId}`);
+      
+      // Verify order exists
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        include: { restaurant: true }
+      });
+      
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found"
+        });
+      }
+      
+      if (order.riderId) {
+        return res.status(400).json({
+          success: false,
+          message: "Order already has a rider assigned"
+        });
+      }
+      
+      // Trigger dispatch
+      const result = await dispatchService.dispatchOrder(orderId);
+      
+      res.json({
+        success: result.success,
+        message: result.success 
+          ? `Dispatch triggered! Reservation sent to rider ${result.riderName}`
+          : `Dispatch failed: ${result.error}`,
+        data: result
+      });
+      
+    } catch (error) {
+      console.error("Test dispatch error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message
+      });
+    }
+  }
+);
+
 router.post(
   "/accept-order/:orderId",
   protect,
