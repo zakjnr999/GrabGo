@@ -584,12 +584,14 @@ router.post(
       }
       
       // Use provided location or default to Accra
+      // Note: GeoJSON uses [longitude, latitude] order
       const lat = latitude || 5.6037;
       const lon = longitude || -0.187;
       
       // Set rider online in MongoDB RiderStatus
+      // goOnline expects (riderId, longitude, latitude)
       const RiderStatus = require('../models/RiderStatus');
-      const status = await RiderStatus.goOnline(userId, lat, lon);
+      const status = await RiderStatus.goOnline(userId, lon, lat);
       
       console.log(`🟢 [Rider Online] ${rider.user.username} (${userId}) is now online at (${lat}, ${lon})`);
       
