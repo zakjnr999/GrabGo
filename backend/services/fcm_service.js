@@ -44,6 +44,7 @@ const getNotificationChannel = (type) => {
         'chat_message': 'chat_messages',
         'order': 'order_updates',
         'order_update': 'order_updates',
+        'order_reserved': 'order_alerts_v2', // High-priority for rider dispatch
         'delivery_arriving': 'order_updates',
         'comment_reply': 'social',
         'comment_reaction': 'social',
@@ -268,8 +269,12 @@ const sendToUser = async (userId, notification, data = {}) => {
                 priority: 'high',
                 notification: {
                     channelId: getNotificationChannel(data.type),
-                    priority: 'high',
-                    defaultSound: true,
+                    priority: data.type === 'order_reserved' ? 'max' : 'high',
+                    // Use custom sound for order alerts, default for others
+                    ...(data.type === 'order_reserved' 
+                        ? { sound: 'rider_alert' } 
+                        : { defaultSound: true }
+                    ),
                     defaultVibrateTimings: true,
                 },
             },
