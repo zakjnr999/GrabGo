@@ -652,6 +652,62 @@ router.post(
 );
 
 /**
+ * @route   POST /riders/location
+ * @desc    Update rider's current location
+ * @access  Private (Rider)
+ */
+router.post(
+  "/location",
+  protect,
+  authorize("rider"),
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { latitude, longitude } = req.body;
+      
+      if (!latitude || !longitude) {
+        return res.status(400).json({
+          success: false,
+          message: "Latitude and longitude are required"
+        });
+      }
+      
+      const RiderStatus = require('../models/RiderStatus');
+      const status = await RiderStatus.findOneAndUpdate(
+        { riderId: userId },
+        { 
+          location: {
+            type: 'Point',
+            coordinates: [parseFloat(longitude), parseFloat(latitude)]
+          },
+          lastActiveAt: new Date()
+        },
+        { new: true, upsert: true }
+      );
+      
+      console.log(`📍 [Rider Location] ${userId} updated to (${latitude}, ${longitude})`);
+      
+      res.json({
+        success: true,
+        message: "Location updated",
+        data: {
+          location: { latitude, longitude },
+          lastActiveAt: status.lastActiveAt
+        }
+      });
+      
+    } catch (error) {
+      console.error("Location update error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update location",
+        error: error.message
+      });
+    }
+  }
+);
+
+/**
  * @route   GET /riders/debug-status
  * @desc    [DEV/TEST] Check rider status in MongoDB
  * @access  Private (Rider)

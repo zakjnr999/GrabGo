@@ -60,5 +60,14 @@ abstract class RiderService extends ChopperService {
   @GET(path: '/riders/wallet')
   Future<Response<Map<String, dynamic>>> getWallet();
 
+  @POST(path: '/riders/go-online')
+  Future<Response<Map<String, dynamic>>> goOnline({@Body() required Map<String, dynamic> body});
+
+  @POST(path: '/riders/go-offline')
+  Future<Response<Map<String, dynamic>>> goOffline();
+
+  @POST(path: '/riders/location')
+  Future<Response<Map<String, dynamic>>> updateLocation({@Body() required Map<String, dynamic> body});
+
   static RiderService create([ChopperClient? client]) => _$RiderService(client);
 }

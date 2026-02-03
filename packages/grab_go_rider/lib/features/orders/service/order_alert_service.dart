@@ -16,17 +16,18 @@ class OrderAlertService {
   bool _isInitialized = false;
 
   /// High-priority order alerts channel - maximum attention
+  /// NOTE: Changed channel ID to force Android to use new settings (sound, etc.)
   static const AndroidNotificationChannel orderAlertsChannel = AndroidNotificationChannel(
-    'order_alerts',
+    'order_alerts_v2', // New ID to reset cached channel settings
     'Order Alerts',
     description: 'High-priority notifications for new order reservations',
     importance: Importance.max,
     playSound: true,
+    sound: RawResourceAndroidNotificationSound('rider_alert'), // Custom sound in res/raw/
     enableVibration: true,
     enableLights: true,
     ledColor: Color.fromARGB(255, 255, 165, 0), // Orange LED
     showBadge: true,
-    // This allows notification to show over other apps and lock screen
   );
 
   /// Vibration pattern: Long-Short-Long-Short-Long (attention-grabbing)
@@ -43,9 +44,6 @@ class OrderAlertService {
 
         // Create the high-priority order alerts channel
         await androidPlugin?.createNotificationChannel(orderAlertsChannel);
-
-        // Request exact alarms permission (for reliable timing)
-        await androidPlugin?.requestExactAlarmsPermission();
 
         debugPrint('✅ Order Alerts notification channel created (MAX priority)');
       }

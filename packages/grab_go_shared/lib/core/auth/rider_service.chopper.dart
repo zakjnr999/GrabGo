@@ -147,4 +147,31 @@ final class _$RiderService extends RiderService {
     final Request $request = Request('GET', $url, client.baseUrl);
     return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
   }
+
+  @override
+  Future<Response<Map<String, dynamic>>> goOnline({
+    required Map<String, dynamic> body,
+  }) {
+    final Uri $url = Uri.parse('/riders/go-online');
+    final $body = body;
+    final Request $request = Request('POST', $url, client.baseUrl, body: $body);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
+
+  @override
+  Future<Response<Map<String, dynamic>>> goOffline() {
+    final Uri $url = Uri.parse('/riders/go-offline');
+    final Request $request = Request('POST', $url, client.baseUrl);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
+
+  @override
+  Future<Response<Map<String, dynamic>>> updateLocation({
+    required Map<String, dynamic> body,
+  }) {
+    final Uri $url = Uri.parse('/riders/location');
+    final $body = body;
+    final Request $request = Request('POST', $url, client.baseUrl, body: $body);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
 }

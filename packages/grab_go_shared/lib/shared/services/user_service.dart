@@ -130,9 +130,24 @@ class UserService {
   /// Register FCM token after user logs in
   Future<void> _registerFcmTokenAfterLogin() async {
     try {
-      final token = await PushNotificationService().getToken();
+      // Small delay to ensure auth token is fully saved and available
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Force fetch a fresh token (important after reinstall)
+      final pushService = PushNotificationService();
+      await pushService.deleteToken(); // Clear any stale token
+      final token = await pushService.getToken();
       if (token != null) {
-        await registerFcmToken(token, platform: 'android');
+        debugPrint('📱 Registering fresh FCM token after login: ${token.substring(0, 20)}...');
+        final success = await registerFcmToken(token, platform: 'android');
+        if (!success) {
+          // Retry once after another delay
+          debugPrint('⏳ Retrying FCM registration in 1 second...');
+          await Future.delayed(const Duration(seconds: 1));
+          await registerFcmToken(token, platform: 'android');
+        }
+      } else {
+        debugPrint('❌ Failed to get FCM token after login');
       }
     } catch (e) {
       debugPrint('Error registering FCM token after login: $e');

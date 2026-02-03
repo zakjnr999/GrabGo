@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -160,6 +161,21 @@ class PushNotificationService {
       // Order updates channel
       await androidPlugin?.createNotificationChannel(_orderChannel);
 
+      // HIGH PRIORITY: Order alerts channel for rider dispatch (like incoming call)
+      await androidPlugin?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'order_alerts_v2',
+          'Order Alerts',
+          description: 'High-priority notifications for new order reservations',
+          importance: Importance.max,
+          playSound: true,
+          sound: RawResourceAndroidNotificationSound('rider_alert'),
+          enableVibration: true,
+          enableLights: true,
+          ledColor: Color.fromARGB(255, 255, 165, 0),
+        ),
+      );
+
       // Social notifications (comments, reactions)
       await androidPlugin?.createNotificationChannel(
         const AndroidNotificationChannel(
@@ -233,6 +249,7 @@ class PushNotificationService {
       'chat_message': 'chat_messages',
       'order': 'order_updates',
       'order_update': 'order_updates',
+      'order_reserved': 'order_alerts_v2', // High-priority order alerts for riders
       'delivery_arriving': 'order_updates',
       'comment_reply': 'social',
       'comment_reaction': 'social',
@@ -251,6 +268,7 @@ class PushNotificationService {
     const channelNames = {
       'chat_messages': 'Chat Messages',
       'order_updates': 'Order Updates',
+      'order_alerts_v2': 'Order Alerts', // High-priority for riders
       'social': 'Social Notifications',
       'promotions': 'Promotions',
       'referrals': 'Referrals',
@@ -280,6 +298,7 @@ class PushNotificationService {
 
       // Get appropriate channel for this notification type
       final channelId = _getNotificationChannel(data['type']);
+      final isOrderAlert = data['type'] == 'order_reserved';
 
       await _localNotifications.show(
         message.hashCode,
@@ -289,8 +308,14 @@ class PushNotificationService {
           android: AndroidNotificationDetails(
             channelId,
             _getChannelName(channelId),
-            importance: Importance.high,
-            priority: Priority.high,
+            importance: isOrderAlert ? Importance.max : Importance.high,
+            priority: isOrderAlert ? Priority.max : Priority.high,
+            playSound: true,
+            sound: isOrderAlert ? const RawResourceAndroidNotificationSound('rider_alert') : null,
+            enableVibration: true,
+            fullScreenIntent: isOrderAlert, // Show over lock screen for order alerts
+            category: isOrderAlert ? AndroidNotificationCategory.call : null,
+            visibility: NotificationVisibility.public,
             showWhen: true,
             icon: '@mipmap/ic_launcher',
             number: _badgeCount,
@@ -300,6 +325,7 @@ class PushNotificationService {
             presentBadge: true,
             presentSound: true,
             badgeNumber: _badgeCount,
+            interruptionLevel: isOrderAlert ? InterruptionLevel.timeSensitive : InterruptionLevel.active,
           ),
         ),
         payload: jsonEncode(data),

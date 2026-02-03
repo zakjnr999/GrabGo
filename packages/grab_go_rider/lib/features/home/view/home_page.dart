@@ -95,8 +95,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       }
     };
 
-    // Go online when page loads if rider is active
-    _reservationService.goOnline();
+    // Go online when page loads if rider is active (with location)
+    _reservationService.goOnline().then((success) {
+      if (success) {
+        debugPrint('🟢 Rider successfully went online with location');
+      } else {
+        debugPrint('⚠️ Failed to go online');
+      }
+    });
 
     // Check for any existing active reservation (e.g., if app was backgrounded)
     _reservationService.fetchActiveReservation().then((reservation) {
@@ -135,10 +141,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   @override
   void dispose() {
     _pulseController.dispose();
-    // Go offline when leaving the home page
-    if (!onlineStatus) {
-      _reservationService.goOffline();
-    }
     super.dispose();
   }
 
@@ -516,10 +518,31 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           ),
                           CustomSwitch(
                             value: onlineStatus,
-                            onChanged: (value) {
+                            onChanged: (value) async {
+                              // Optimistically update UI
                               setState(() {
                                 onlineStatus = value;
                               });
+                              
+                              // Call API
+                              bool success;
+                              if (value) {
+                                success = await _reservationService.goOnline();
+                              } else {
+                                success = await _reservationService.goOffline();
+                              }
+                              
+                              // Revert if failed
+                              if (!success && mounted) {
+                                setState(() {
+                                  onlineStatus = !value;
+                                });
+                                AppToastMessage.show(
+                                  context: context,
+                                  message: 'Failed to ${value ? "go online" : "go offline"}. Please try again.',
+                                  backgroundColor: Colors.red,
+                                );
+                              }
                             },
                             activeColor: colors.accentGreen,
                             inactiveColor: colors.border,

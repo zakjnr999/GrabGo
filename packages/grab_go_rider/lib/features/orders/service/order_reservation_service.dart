@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:http/http.dart' as http;
 
@@ -422,25 +423,98 @@ class OrderReservationService extends ChangeNotifier {
     return null;
   }
 
-  /// Notify server that rider is going online
-  void goOnline() {
-    final socket = SocketService();
-    socket.socket?.emit('rider:go_online');
-    debugPrint('🟢 Rider going online');
+  /// Notify server that rider is going online with current location
+  Future<bool> goOnline() async {
+    try {
+      // Get current location first
+      Position? position;
+      try {
+        bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+        if (!serviceEnabled) {
+          debugPrint('⚠️ Location services are disabled');
+        } else {
+          LocationPermission permission = await Geolocator.checkPermission();
+          if (permission == LocationPermission.denied) {
+            permission = await Geolocator.requestPermission();
+          }
+
+          if (permission != LocationPermission.denied && permission != LocationPermission.deniedForever) {
+            position = await Geolocator.getCurrentPosition(
+              locationSettings: const LocationSettings(
+                accuracy: LocationAccuracy.high,
+                timeLimit: Duration(seconds: 10),
+              ),
+            );
+            debugPrint('📍 Location obtained: ${position.latitude}, ${position.longitude}');
+          }
+        }
+      } catch (e) {
+        debugPrint('⚠️ Error getting location: $e');
+      }
+
+      // Call the API with location
+      final uri = Uri.parse('$_baseUrl/riders/go-online');
+      final response = await _client.post(
+        uri,
+        headers: await _buildHeaders(),
+        body: jsonEncode({'latitude': position?.latitude ?? 5.6037, 'longitude': position?.longitude ?? -0.187}),
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('🟢 Rider is now online with location');
+
+        // Also emit socket event for real-time tracking
+        final socket = SocketService();
+        socket.socket?.emit('rider:go_online', {'latitude': position?.latitude, 'longitude': position?.longitude});
+
+        return true;
+      } else {
+        debugPrint('❌ Failed to go online: ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ Error going online: $e');
+      return false;
+    }
   }
 
   /// Notify server that rider is going offline
-  void goOffline() {
-    final socket = SocketService();
-    socket.socket?.emit('rider:go_offline');
-    _clearReservation();
-    debugPrint('🔴 Rider going offline');
+  Future<bool> goOffline() async {
+    try {
+      final uri = Uri.parse('$_baseUrl/riders/go-offline');
+      final response = await _client.post(uri, headers: await _buildHeaders());
+
+      final socket = SocketService();
+      socket.socket?.emit('rider:go_offline');
+      _clearReservation();
+      debugPrint('🔴 Rider going offline');
+
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('❌ Error going offline: $e');
+      return false;
+    }
   }
 
-  /// Update rider location
-  void updateLocation(double latitude, double longitude) {
-    final socket = SocketService();
-    socket.socket?.emit('rider:location_update', {'latitude': latitude, 'longitude': longitude});
+  /// Update rider location on server
+  Future<bool> updateLocation(double latitude, double longitude) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/riders/location');
+      final response = await _client.post(
+        uri,
+        headers: await _buildHeaders(),
+        body: jsonEncode({'latitude': latitude, 'longitude': longitude}),
+      );
+
+      // Also emit socket event for real-time updates
+      final socket = SocketService();
+      socket.socket?.emit('rider:location_update', {'latitude': latitude, 'longitude': longitude});
+
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Error updating location: $e');
+      return false;
+    }
   }
 
   /// Dispose the service
