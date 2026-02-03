@@ -650,6 +650,83 @@ router.post(
 );
 
 /**
+ * @route   GET /riders/debug-status
+ * @desc    [DEV/TEST] Check rider status in MongoDB
+ * @access  Private (Rider)
+ */
+router.get(
+  "/debug-status",
+  protect,
+  authorize("rider"),
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const RiderStatus = require('../models/RiderStatus');
+      
+      // Get the rider's status from MongoDB
+      const status = await RiderStatus.findOne({ riderId: userId });
+      
+      // Also check all online riders
+      const allOnlineRiders = await RiderStatus.find({ isOnline: true });
+      const allApprovedOnlineRiders = await RiderStatus.find({ isOnline: true, isApproved: true });
+      
+      // Try a simple geospatial query to verify index works
+      let nearbyRiders = [];
+      try {
+        nearbyRiders = await RiderStatus.find({
+          isOnline: true,
+          isOnDelivery: false,
+          isApproved: true,
+          location: {
+            $near: {
+              $geometry: {
+                type: 'Point',
+                coordinates: [-0.187, 5.6037] // Accra coordinates
+              },
+              $maxDistance: 50000 // 50km
+            }
+          }
+        }).limit(10);
+      } catch (geoError) {
+        console.error('Geospatial query error:', geoError.message);
+      }
+      
+      res.json({
+        success: true,
+        yourStatus: status ? {
+          riderId: status.riderId,
+          isOnline: status.isOnline,
+          isApproved: status.isApproved,
+          isOnDelivery: status.isOnDelivery,
+          location: status.location,
+          lastActiveAt: status.lastActiveAt
+        } : null,
+        debug: {
+          totalOnlineRiders: allOnlineRiders.length,
+          totalApprovedOnlineRiders: allApprovedOnlineRiders.length,
+          onlineRiderIds: allOnlineRiders.map(r => ({
+            riderId: r.riderId,
+            isApproved: r.isApproved,
+            isOnDelivery: r.isOnDelivery,
+            location: r.location?.coordinates
+          })),
+          nearbyRidersFound: nearbyRiders.length,
+          nearbyRiders: nearbyRiders.map(r => r.riderId)
+        }
+      });
+      
+    } catch (error) {
+      console.error("Debug status error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to get debug status",
+        error: error.message
+      });
+    }
+  }
+);
+
+/**
  * @route   POST /riders/test-dispatch/:orderId
  * @desc    [DEV/TEST] Manually trigger dispatch for an order
  * @access  Private (Admin or Rider for testing)
