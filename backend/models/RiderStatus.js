@@ -150,12 +150,13 @@ riderStatusSchema.statics.findAvailableNear = async function(longitude, latitude
 };
 
 // Static method: Set rider online
-riderStatusSchema.statics.goOnline = async function(riderId, longitude, latitude) {
+riderStatusSchema.statics.goOnline = async function(riderId, longitude, latitude, isApproved = true) {
   return this.findOneAndUpdate(
     { riderId },
     {
       $set: {
         isOnline: true,
+        isApproved: isApproved,
         lastActiveAt: new Date(),
         'location.coordinates': [longitude, latitude],
         lastLocationUpdate: new Date()
