@@ -5,13 +5,12 @@ import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/widgets/horizontal_card_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/quick_reorder_card.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
-import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:provider/provider.dart';
 
 class OrderAgainSection extends StatelessWidget {
   final List<FoodItem> recentOrders;
-  final List<dynamic>? originalItems; // Original GroceryItem list for cart operations
+  final List<dynamic>? originalItems;
   final VoidCallback onSeeAll;
   final Function(FoodItem) onItemTap;
   final bool isLoading;
@@ -34,7 +33,6 @@ class OrderAgainSection extends StatelessWidget {
       children: [
         SectionHeader(
           title: "Order Again",
-          sectionIcon: Assets.icons.cart,
           sectionTotal: recentOrders.length,
           accentColor: colors.accentOrange,
           onSeeAll: onSeeAll,

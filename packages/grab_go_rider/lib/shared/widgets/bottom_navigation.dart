@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:grab_go_rider/features/chat/view/chat_page.dart';
 import 'package:grab_go_rider/features/home/view/home_page.dart';
 import 'package:grab_go_rider/features/home/view/profile_page.dart';
 import 'package:grab_go_rider/features/home/view/wallet_page.dart';
+import 'package:grab_go_rider/features/myorders/view/my_orders.dart';
 import 'package:grab_go_rider/shared/viewmodel/bottom_nav_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -18,7 +18,7 @@ class BottomNavigator extends StatefulWidget {
 }
 
 class _BottomNavigatorState extends State<BottomNavigator> {
-  final List<Widget> _screens = [const HomePage(), const WalletPage(), const ChatPage(), const ProfilePage()];
+  final List<Widget> _screens = [const HomePage(), const MyOrders(), const WalletPage(), const ProfilePage()];
 
   void _onItemSelected(int index) {
     setState(() {
@@ -79,8 +79,8 @@ class _BottomNavigatorState extends State<BottomNavigator> {
           child: Row(
             children: [
               Expanded(child: _buildNavItem(Assets.icons.home, "Home", 0, context)),
-              Expanded(child: _buildNavItem(Assets.icons.creditCard, "Wallet", 1, context)),
-              Expanded(child: _buildNavItem(Assets.icons.chatBubble, "Chat", 2, context)),
+              Expanded(child: _buildNavItem(Assets.icons.boxIso, "My Orders", 1, context)),
+              Expanded(child: _buildNavItem(Assets.icons.wallet, "Wallet", 2, context)),
               Expanded(child: _buildNavItem(Assets.icons.user, "Profile", 3, context)),
             ],
           ),
@@ -93,7 +93,6 @@ class _BottomNavigatorState extends State<BottomNavigator> {
     final bottomNavProvider = Provider.of<BottomNavProvider>(context);
     final bool selected = bottomNavProvider.selectedIndex == index;
     final colors = context.appColors;
-    final int unread = bottomNavProvider.chatUnreadCount;
 
     Widget iconWidget = AnimatedContainer(
       duration: const Duration(milliseconds: 300),
@@ -123,37 +122,6 @@ class _BottomNavigatorState extends State<BottomNavigator> {
         ),
       ),
     );
-
-    if (index == 2 && unread > 0 && !selected) {
-      iconWidget = Stack(
-        clipBehavior: Clip.none,
-        children: [
-          iconWidget,
-          Positioned(
-            right: -4,
-            top: -4,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: colors.accentGreen,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: colors.backgroundPrimary, width: 2),
-              ),
-              child: Text(
-                unread > 9 ? '9+' : unread.toString(),
-                style: TextStyle(
-                  fontFamily: 'Lato',
-                  package: 'grab_go_shared',
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: colors.backgroundPrimary,
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
 
     return GestureDetector(
       onTap: () => _onItemSelected(index),

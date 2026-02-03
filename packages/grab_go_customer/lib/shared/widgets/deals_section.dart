@@ -37,7 +37,6 @@ class DealsSection extends StatelessWidget {
       children: [
         SectionHeader(
           title: title ?? "Deals & Offers",
-          sectionIcon: icon ?? Assets.icons.tag,
           accentColor: colors.accentOrange,
           sectionTotal: dealItems.length,
           onSeeAll: onSeeAll,

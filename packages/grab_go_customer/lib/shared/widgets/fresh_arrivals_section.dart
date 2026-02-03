@@ -4,11 +4,8 @@ import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/shared/widgets/popular_item_card.dart';
 import 'package:grab_go_customer/shared/widgets/horizontal_card_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
-import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
-/// Fresh Arrivals Section
-/// Displays newly added grocery items (< 7 days old) with a "NEW" badge
 class FreshArrivalsSection extends StatelessWidget {
   final List<GroceryItem> items;
   final VoidCallback onSeeAll;
@@ -32,7 +29,6 @@ class FreshArrivalsSection extends StatelessWidget {
       children: [
         SectionHeader(
           title: 'Fresh Arrivals',
-          sectionIcon: Assets.icons.sparkles,
           sectionTotal: items.length,
           accentColor: colors.accentOrange,
           onSeeAll: onSeeAll,

@@ -55,12 +55,7 @@ class _BrowseAllGroceriesSectionState extends State<BrowseAllGroceriesSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionHeader(
-          title: 'Browse All Groceries',
-          sectionIcon: Assets.icons.squareMenu,
-          sectionTotal: widget.items.length,
-          accentColor: colors.accentBlue,
-        ),
+        SectionHeader(title: 'Browse All Groceries', sectionTotal: widget.items.length, accentColor: colors.accentBlue),
         SizedBox(height: 16.h),
 
         if (widget.isLoading)

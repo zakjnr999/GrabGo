@@ -183,72 +183,145 @@ class _WalletPageState extends State<WalletPage> {
             children: [
               SizedBox(height: 20.h),
 
-              Container(
-                padding: EdgeInsets.all(24.w),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [colors.accentGreen, colors.accentGreen.withValues(alpha: 0.85)],
-                  ),
-                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                  boxShadow: [
-                    BoxShadow(
-                      color: colors.accentGreen.withValues(alpha: 0.2),
-                      blurRadius: 12,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Total Balance",
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.5,
+              Stack(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(24.w),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [colors.accentGreen, colors.accentGreen.withValues(alpha: 0.85)],
                       ),
+                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                      boxShadow: [
+                        BoxShadow(
+                          color: colors.accentGreen.withValues(alpha: 0.2),
+                          blurRadius: 12,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
-                    SizedBox(height: 8.h),
-                    Row(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "GHC",
+                          "Total Balance",
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.9),
-                            fontSize: 20.sp,
-                            fontWeight: FontWeight.w600,
-                            height: 1,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0.5,
                           ),
                         ),
-                        SizedBox(width: 8.w),
-                        Expanded(
-                          child: Text(
-                            _totalBalance.toStringAsFixed(2),
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 40.sp,
-                              fontWeight: FontWeight.w800,
-                              height: 1,
-                              letterSpacing: -1,
+                        SizedBox(height: 8.h),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "GHC",
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                fontSize: 20.sp,
+                                fontWeight: FontWeight.w600,
+                                height: 1,
+                              ),
+                            ),
+                            SizedBox(width: 8.w),
+                            Expanded(
+                              child: Text(
+                                _totalBalance.toStringAsFixed(2),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 40.sp,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1,
+                                  letterSpacing: -1,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 20.h),
+                        Row(
+                          children: [
+                            Expanded(child: _buildBalanceStat("Today", _todayEarnings, colors)),
+                            SizedBox(width: 16.w),
+                            Expanded(child: _buildBalanceStat("This Week", _thisWeekEarnings, colors)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  Positioned(
+                    top: 10.r,
+                    right: 10.r,
+                    child: Opacity(
+                      opacity: 0.65,
+                      child: SvgPicture.asset(
+                        Assets.icons.wallet,
+                        package: "grab_go_shared",
+                        height: 40.h,
+                        width: 40.w,
+                        colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: 24.h),
+
+              Container(
+                decoration: BoxDecoration(
+                  color: colors.backgroundPrimary,
+                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => context.push("/loanApplication"),
+                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40.w,
+                            height: 40.w,
+                            decoration: BoxDecoration(
+                              color: colors.accentGreen.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                            ),
+                            child: Center(
+                              child: SvgPicture.asset(
+                                Assets.icons.handCash,
+                                package: 'grab_go_shared',
+                                width: 20.w,
+                                height: 20.w,
+                                colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                          SizedBox(width: 16.w),
+                          Expanded(
+                            child: Text(
+                              "Request for loan",
+                              style: TextStyle(color: colors.textPrimary, fontSize: 15.sp, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          SvgPicture.asset(
+                            Assets.icons.navArrowRight,
+                            package: 'grab_go_shared',
+                            width: 20.w,
+                            height: 20.w,
+                            colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                          ),
+                        ],
+                      ),
                     ),
-                    SizedBox(height: 20.h),
-                    Row(
-                      children: [
-                        Expanded(child: _buildBalanceStat("Today", _todayEarnings, colors)),
-                        SizedBox(width: 16.w),
-                        Expanded(child: _buildBalanceStat("This Week", _thisWeekEarnings, colors)),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
               ),
 
@@ -257,14 +330,12 @@ class _WalletPageState extends State<WalletPage> {
               Row(
                 children: [
                   Expanded(
-                    child: _buildQuickAction("Withdraw", Assets.icons.creditCard, colors.accentGreen, colors, () {
+                    child: _buildQuickAction("Withdraw", Assets.icons.wallet, colors.accentGreen, colors, () {
                       context.push("/withdrawal-page");
                     }),
                   ),
                   SizedBox(width: 12.w),
-                  Expanded(
-                    child: _buildQuickAction("Earnings", Assets.icons.dollar, colors.accentGreen, colors, () {}),
-                  ),
+                  Expanded(child: _buildQuickAction("Earnings", Assets.icons.cash, colors.accentGreen, colors, () {})),
                   SizedBox(width: 12.w),
                   Expanded(
                     child: _buildQuickAction("History", Assets.icons.clock, colors.accentGreen, colors, () {

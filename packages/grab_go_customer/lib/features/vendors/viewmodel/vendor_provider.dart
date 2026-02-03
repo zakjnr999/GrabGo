@@ -26,6 +26,9 @@ class VendorProvider extends ChangeNotifier {
   bool _is24HoursOnly = false;
   double? _minRating;
   double? _maxDistance;
+  int? _priceRange; // 1: GH₵, 2: GH₵GH₵, 3: GH₵GH₵GH₵
+  bool _fastDeliveryOnly = false;
+  VendorType? _mapCategoryFilter;
 
   // Getters
   List<VendorModel> get vendors => _vendors;
@@ -40,6 +43,9 @@ class VendorProvider extends ChangeNotifier {
   bool get is24HoursOnly => _is24HoursOnly;
   double? get minRating => _minRating;
   double? get maxDistance => _maxDistance;
+  int? get priceRange => _priceRange;
+  bool get fastDeliveryOnly => _fastDeliveryOnly;
+  VendorType? get mapCategoryFilter => _mapCategoryFilter;
 
   List<VendorModel> get exclusiveVendors {
     return _vendors.where((v) => v.isExclusive).toList();
@@ -76,6 +82,9 @@ class VendorProvider extends ChangeNotifier {
     if (_is24HoursOnly) count++;
     if (_minRating != null) count++;
     if (_maxDistance != null) count++;
+    if (_priceRange != null) count++;
+    if (_fastDeliveryOnly) count++;
+    if (_mapCategoryFilter != null) count++;
     return count;
   }
 
@@ -287,6 +296,51 @@ class VendorProvider extends ChangeNotifier {
     }
   }
 
+  /// Get all nearby vendors regardless of type
+  Future<void> getAllNearbyVendors(double lat, double lng, {double radius = 5}) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      // Execute all 4 calls in parallel
+      final results = await Future.wait([
+        _vendorService.getNearbyRestaurants(latitude: lat, longitude: lng, radius: radius),
+        _vendorService.getNearbyGroceryStores(latitude: lat, longitude: lng, radius: radius),
+        _vendorService.getNearbyPharmacies(latitude: lat, longitude: lng, radius: radius),
+        _vendorService.getNearbyGrabMarts(latitude: lat, longitude: lng, radius: radius),
+      ]);
+
+      final List<VendorModel> allVendors = [];
+
+      for (int i = 0; i < results.length; i++) {
+        final response = results[i];
+        final type = VendorType.values[i];
+
+        if (response.isSuccessful && response.body != null) {
+          final data = response.body!['data'] as List;
+          final typeVendors = data.map((json) {
+            final vendor = VendorModel.fromJson(
+              Map<String, dynamic>.from(json as Map),
+            ).copyWith(vendorTypeEnum: type);
+            final distanceInMeters = Geolocator.distanceBetween(lat, lng, vendor.latitude, vendor.longitude);
+            return vendor.copyWith(distance: distanceInMeters / 1000);
+          }).toList();
+          allVendors.addAll(typeVendors);
+        }
+      }
+
+      _vendors = allVendors;
+      _applyFilters();
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('Error fetching all nearby vendors: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   /// Get emergency pharmacies
   Future<void> getEmergencyPharmacies() async {
     _selectedType = VendorType.pharmacy;
@@ -375,6 +429,17 @@ class VendorProvider extends ChangeNotifier {
       if (_maxDistance != null && vendor.distance != null && vendor.distance! > _maxDistance!) {
         return false;
       }
+      if (_mapCategoryFilter != null && vendor.vendorTypeEnum != _mapCategoryFilter) {
+        return false;
+      }
+      if (_fastDeliveryOnly && (vendor.averageDeliveryTime ?? 60) > 30) {
+        return false;
+      }
+      if (_priceRange != null) {
+        // GH₵: Low budget (< 30 GHS), GH₵GH₵: Mid budget (< 80 GHS)
+        if (_priceRange == 1 && vendor.minOrder > 30) return false;
+        if (_priceRange == 2 && vendor.minOrder > 80) return false;
+      }
       if (_selectedCategoryId != null) {
         final matchesCategory = vendor.categories?.contains(_selectedCategoryId) ?? false;
         final matchesService = vendor.services?.contains(_selectedCategoryId) ?? false;
@@ -423,6 +488,24 @@ class VendorProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setMapCategoryFilter(VendorType? type) {
+    _mapCategoryFilter = type;
+    _applyFilters();
+    notifyListeners();
+  }
+
+  void setPriceRange(int? range) {
+    _priceRange = range;
+    _applyFilters();
+    notifyListeners();
+  }
+
+  void setFastDelivery(bool value) {
+    _fastDeliveryOnly = value;
+    _applyFilters();
+    notifyListeners();
+  }
+
   /// Clear all filters
   void clearFilters() {
     _openNowOnly = false;
@@ -431,6 +514,9 @@ class VendorProvider extends ChangeNotifier {
     _minRating = null;
     _maxDistance = null;
     _selectedCategoryId = null;
+    _priceRange = null;
+    _fastDeliveryOnly = false;
+    _mapCategoryFilter = null;
     _searchQuery = '';
     _applyFilters();
     notifyListeners();

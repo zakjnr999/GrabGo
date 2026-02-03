@@ -35,13 +35,7 @@ class VendorHorizontalSection extends StatelessWidget {
 
     return Column(
       children: [
-        SectionHeader(
-          title: title,
-          sectionIcon: icon,
-          sectionTotal: vendors.length,
-          accentColor: accentColor,
-          onSeeAll: () {},
-        ),
+        SectionHeader(title: title, sectionTotal: vendors.length, accentColor: accentColor, onSeeAll: () {}),
         SizedBox(height: 12.h),
         if (isLoading)
           HorizontalCardSkeleton(colors: colors, isDark: isDark, height: 230.h, itemCount: 5)

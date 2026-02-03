@@ -65,7 +65,6 @@ class _BrowseItemsGridState extends State<BrowseItemsGrid> {
       children: [
         SectionHeader(
           title: widget.title,
-          sectionIcon: widget.icon,
           sectionTotal: widget.items.length,
           accentColor: widget.accentColor ?? colors.accentOrange,
         ),

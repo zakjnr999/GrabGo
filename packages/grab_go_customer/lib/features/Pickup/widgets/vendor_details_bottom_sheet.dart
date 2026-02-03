@@ -1,22 +1,29 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:grab_go_customer/features/grabmart/repository/grabmart_repository.dart';
+import 'package:grab_go_customer/features/groceries/repository/grocery_repository.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
+import 'package:grab_go_customer/features/home/repository/food_repository.dart';
+import 'package:grab_go_customer/features/pharmacy/repository/pharmacy_repository.dart';
 import 'package:grab_go_customer/features/vendors/model/vendor_model.dart';
+import 'package:grab_go_customer/features/vendors/model/vendor_type.dart';
+import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
+import 'package:grab_go_customer/shared/widgets/section_header.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
-import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:grab_go_shared/grub_go_shared.dart' hide FoodRepository, FoodService;
+import 'package:provider/provider.dart';
 
 class VendorDetailBottomSheet extends StatefulWidget {
   final VendorModel vendor;
   const VendorDetailBottomSheet({super.key, required this.vendor});
-  static void show({required BuildContext context, required VendorModel vendor}) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
+  static PersistentBottomSheetController show({required BuildContext context, required VendorModel vendor}) {
+    return Scaffold.of(context).showBottomSheet(
+      (context) => VendorDetailBottomSheet(vendor: vendor),
       backgroundColor: Colors.transparent,
-      builder: (context) => VendorDetailBottomSheet(vendor: vendor),
+      elevation: 0,
     );
   }
 
@@ -25,45 +32,72 @@ class VendorDetailBottomSheet extends StatefulWidget {
 }
 
 class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
-  List<FoodItem> _latestItems = [];
+  List<FoodItem> _popularItems = [];
+  List<FoodItem> _quickPickupItems = [];
   bool _isLoadingItems = true;
+
   @override
   void initState() {
     super.initState();
-    _loadLatestItems();
+    _fetchVendorItems();
   }
 
-  Future<void> _loadLatestItems() async {
-    // TODO: Fetch latest items from vendor
-    // For now, using mock data
-    await Future.delayed(const Duration(milliseconds: 500));
-
+  Future<void> _fetchVendorItems() async {
+    if (!mounted) return;
     setState(() {
-      _latestItems = []; // Replace with actual items
-      _isLoadingItems = false;
+      _isLoadingItems = true;
     });
-  }
 
-  void _openDirections() async {
-    final vendor = widget.vendor;
-    if (vendor.location == null) return;
-    final url = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=${vendor.location!.lat},${vendor.location!.lng}',
-    );
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
+    try {
+      final vendorId = widget.vendor.id;
+      final vendorType = widget.vendor.vendorTypeEnum;
+      List<FoodItem> allVendorItems = [];
+
+      switch (vendorType) {
+        case VendorType.food:
+          final items = await FoodRepository().fetchFoods(restaurantId: vendorId);
+          allVendorItems = items;
+          break;
+        case VendorType.grocery:
+          final items = await GroceryRepository().fetchItems(store: vendorId);
+          allVendorItems = items.map((e) => e.toFoodItem()).toList();
+          break;
+        case VendorType.pharmacy:
+          final items = await PharmacyRepository().fetchItems(store: vendorId);
+          allVendorItems = items.map((e) => e.toFoodItem()).toList();
+          break;
+        case VendorType.grabmart:
+          final items = await GrabMartRepository().fetchItems(store: vendorId);
+          allVendorItems = items.map((e) => e.toFoodItem()).toList();
+          break;
+      }
+
+      if (mounted) {
+        setState(() {
+          final sortedByPopularity = List<FoodItem>.from(allVendorItems)
+            ..sort((a, b) => b.orderCount.compareTo(a.orderCount));
+
+          _popularItems = sortedByPopularity.take(5).toList();
+
+          _quickPickupItems = sortedByPopularity.skip(5).take(10).toList();
+
+          _isLoadingItems = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching vendor items: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingItems = false;
+        });
+      }
     }
-  }
-
-  void _viewFullMenu() {
-    Navigator.pop(context);
-    // Navigate to vendor page
-    context.push('/vendor/${widget.vendor.id}');
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    final size = MediaQuery.of(context).size;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final vendor = widget.vendor;
     return DraggableScrollableSheet(
@@ -85,274 +119,298 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
           ),
           child: Column(
             children: [
-              // Drag handle
               Container(
                 margin: EdgeInsets.only(top: 12.h),
                 width: 40.w,
                 height: 4.h,
                 decoration: BoxDecoration(
-                  color: colors.textSecondary.withOpacity(0.3),
+                  color: colors.textSecondary.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(2.r),
                 ),
               ),
               Expanded(
                 child: ListView(
                   controller: scrollController,
-                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+                  padding: EdgeInsets.symmetric(vertical: 16.h),
                   children: [
-                    // Vendor header
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Vendor logo
-                        Container(
-                          width: 80.w,
-                          height: 80.w,
-                          decoration: BoxDecoration(
-                            color: colors.backgroundSecondary,
-                            borderRadius: BorderRadius.circular(12.r),
-                            border: Border.all(color: colors.border.withOpacity(0.1), width: 1),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12.r),
-                            child: vendor.logo != null && vendor.logo!.isNotEmpty
-                                ? Image.network(
-                                    vendor.logo!,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Icon(Icons.store_rounded, size: 40.sp, color: colors.textSecondary);
-                                    },
-                                  )
-                                : Icon(Icons.store_rounded, size: 40.sp, color: colors.textSecondary),
-                          ),
-                        ),
-                        SizedBox(width: 12.w),
-                        // Vendor info
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20.w),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Stack(
                             children: [
-                              Text(
-                                vendor.displayName,
-                                style: TextStyle(
-                                  color: colors.textPrimary,
-                                  fontSize: 20.sp,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              SizedBox(height: 4.h),
-                              // Rating and reviews
-                              Row(
-                                children: [
-                                  Icon(Icons.star_rounded, size: 16.sp, color: const Color(0xFFFBBF24)),
-                                  SizedBox(width: 4.w),
-                                  Text(
-                                    '${vendor.rating.toStringAsFixed(1)} (${vendor.totalReviews})',
-                                    style: TextStyle(
-                                      color: colors.textSecondary,
-                                      fontSize: 14.sp,
-                                      fontWeight: FontWeight.w500,
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12.r),
+                                child: CachedNetworkImage(
+                                  height: 80.w,
+                                  width: 80.w,
+                                  fit: BoxFit.cover,
+                                  imageUrl: ImageOptimizer.getPreviewUrl(vendor.logo ?? '', width: 200),
+                                  memCacheWidth: 200,
+                                  maxHeightDiskCache: 200,
+                                  placeholder: (context, url) => Container(
+                                    height: 80.w,
+                                    width: 80.w,
+                                    padding: EdgeInsets.all(20.w),
+                                    decoration: BoxDecoration(
+                                      color: colors.backgroundSecondary,
+                                      borderRadius: BorderRadius.circular(12.r),
+                                    ),
+                                    child: SvgPicture.asset(
+                                      vendor.vendorType == VendorType.food.toString()
+                                          ? Assets.icons.chefHat
+                                          : vendor.vendorType == VendorType.grocery.toString()
+                                          ? Assets.icons.cart
+                                          : vendor.vendorType == VendorType.pharmacy.toString()
+                                          ? Assets.icons.pharmacyCrossCircle
+                                          : Assets.icons.store,
+                                      package: "grab_go_shared",
+                                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                                     ),
                                   ),
-                                ],
+                                  errorWidget: (context, url, error) => Container(
+                                    height: 80.w,
+                                    width: 80.w,
+                                    padding: EdgeInsets.all(20.w),
+                                    decoration: BoxDecoration(
+                                      color: colors.backgroundSecondary,
+                                      borderRadius: BorderRadius.circular(12.r),
+                                    ),
+                                    child: SvgPicture.asset(
+                                      vendor.vendorType == VendorType.food.toString()
+                                          ? Assets.icons.chefHat
+                                          : vendor.vendorType == VendorType.grocery.toString()
+                                          ? Assets.icons.cart
+                                          : vendor.vendorType == VendorType.pharmacy.toString()
+                                          ? Assets.icons.pharmacyCrossCircle
+                                          : Assets.icons.store,
+                                      package: "grab_go_shared",
+
+                                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                    ),
+                                  ),
+                                ),
                               ),
-                              SizedBox(height: 4.h),
-                              // Distance
-                              if (vendor.distance != null)
+                              _popularItems.isEmpty && _quickPickupItems.isEmpty
+                                  ? Container(
+                                      height: 80.w,
+                                      width: 80.w,
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(alpha: 0.6),
+                                        borderRadius: BorderRadius.circular(12.r),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          'Out of Stock',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 14.sp,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  : const SizedBox.shrink(),
+                            ],
+                          ),
+
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
                                 Row(
                                   children: [
-                                    Icon(Icons.location_on_rounded, size: 16.sp, color: colors.textSecondary),
+                                    Text(
+                                      vendor.displayName,
+                                      style: TextStyle(
+                                        color: colors.textPrimary,
+                                        fontSize: 18.sp,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    if (vendor.isVerified == true) ...[
+                                      SizedBox(width: 6.w),
+                                      SvgPicture.asset(
+                                        Assets.icons.badgeCheck,
+                                        package: 'grab_go_shared',
+                                        height: 14.sp,
+                                        width: 14.sp,
+                                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                SizedBox(height: 4.h),
+                                Row(
+                                  children: [
+                                    SvgPicture.asset(
+                                      Assets.icons.starSolid,
+                                      package: 'grab_go_shared',
+                                      height: 14.sp,
+                                      width: 14.sp,
+                                      colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                    ),
                                     SizedBox(width: 4.w),
                                     Text(
-                                      vendor.distanceText,
+                                      '${vendor.rating.toStringAsFixed(1)} (${vendor.totalReviews}+ ratings)',
                                       style: TextStyle(
                                         color: colors.textSecondary,
-                                        fontSize: 14.sp,
-                                        fontWeight: FontWeight.w400,
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.w500,
                                       ),
+                                    ),
+                                    Padding(
+                                      padding: EdgeInsets.symmetric(horizontal: 6.w),
+                                      child: Text('•', style: TextStyle(color: colors.textSecondary)),
+                                    ),
+
+                                    SvgPicture.asset(
+                                      Assets.icons.deliveryTruck,
+                                      package: 'grab_go_shared',
+                                      height: 14.sp,
+                                      width: 14.sp,
+                                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                    ),
+
+                                    SizedBox(width: 4.w),
+                                    Text(
+                                      vendor.deliveryTimeText,
+                                      style: TextStyle(color: colors.textSecondary, fontSize: 13.sp),
                                     ),
                                   ],
                                 ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 16.h),
-                    // Status badges
-                    Row(
-                      children: [
-                        // Open/Closed status
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                          decoration: BoxDecoration(
-                            color: vendor.isOpen ? colors.accentGreen.withOpacity(0.1) : colors.error.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20.r),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 6.w,
-                                height: 6.w,
-                                decoration: BoxDecoration(
-                                  color: vendor.isOpen ? colors.accentGreen : colors.error,
-                                  shape: BoxShape.circle,
+                                SizedBox(height: 6.h),
+                                Row(
+                                  children: [
+                                    SvgPicture.asset(
+                                      Assets.icons.timer,
+                                      package: 'grab_go_shared',
+                                      height: 14.sp,
+                                      width: 14.sp,
+                                      colorFilter: ColorFilter.mode(
+                                        vendor.isOpen ? colors.accentGreen : colors.error,
+                                        BlendMode.srcIn,
+                                      ),
+                                    ),
+
+                                    SizedBox(width: 6.w),
+                                    Text(
+                                      vendor.isOpen ? 'Open' : 'Closed',
+                                      style: TextStyle(
+                                        color: vendor.isOpen ? colors.accentGreen : colors.error,
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    Padding(
+                                      padding: EdgeInsets.symmetric(horizontal: 6.w),
+                                      child: Text('•', style: TextStyle(color: colors.textSecondary)),
+                                    ),
+                                    Text(
+                                      vendor.isOpen ? 'Closes at 11:00 PM' : 'Opens at 9:00 AM', // Dummy schedule
+                                      style: TextStyle(color: colors.textSecondary, fontSize: 13.sp),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              SizedBox(width: 6.w),
-                              Text(
-                                vendor.isOpen ? 'Open Now' : 'Closed',
-                                style: TextStyle(
-                                  color: vendor.isOpen ? colors.accentGreen : colors.error,
-                                  fontSize: 12.sp,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(width: 8.w),
-                        // Accepting orders
-                        if (vendor.isAcceptingOrders)
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                            decoration: BoxDecoration(
-                              color: colors.accentGreen.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20.r),
-                            ),
-                            child: Text(
-                              'Accepting Orders',
-                              style: TextStyle(color: colors.accentGreen, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                              ],
                             ),
                           ),
-                      ],
+                        ],
+                      ),
                     ),
                     SizedBox(height: 16.h),
-                    // Delivery info
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildInfoCard(
-                            icon: Assets.icons.clock,
-                            label: 'Delivery Time',
-                            value: vendor.deliveryTimeText,
-                            colors: colors,
-                          ),
-                        ),
-                        SizedBox(width: 12.w),
-                        Expanded(
-                          child: _buildInfoCard(
-                            icon: Assets.icons.deliveryTruck,
-                            label: 'Delivery Fee',
-                            value: vendor.deliveryFeeText,
-                            colors: colors,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 16.h),
-                    // Min order
-                    _buildInfoCard(
-                      icon: Assets.icons.cash,
-                      label: 'Minimum Order',
-                      value: vendor.minOrderText,
-                      colors: colors,
-                    ),
-                    SizedBox(height: 24.h),
-                    // Latest items section
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Popular Items',
-                          style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
-                        ),
-                        TextButton(
-                          onPressed: _viewFullMenu,
-                          child: Text(
-                            'View All',
-                            style: TextStyle(color: colors.accentGreen, fontSize: 14.sp, fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 12.h),
-                    // Items horizontal list
-                    if (_isLoadingItems)
+
+                    if (_isLoadingItems) ...[
+                      _buildHeaderSkeleton(colors),
+                      SizedBox(height: 12.h),
+                      SingleChildScrollView(scrollDirection: Axis.horizontal, child: _buildItemSkeleton(size, colors)),
+                      SizedBox(height: 20.h),
+                      _buildHeaderSkeleton(colors),
+                      SizedBox(height: 12.h),
+                      SingleChildScrollView(scrollDirection: Axis.horizontal, child: _buildItemSkeleton(size, colors)),
+                    ] else if (_popularItems.isEmpty && _quickPickupItems.isEmpty) ...[
                       SizedBox(
-                        height: 200.h,
-                        child: Center(child: CircularProgressIndicator(color: colors.accentGreen)),
-                      )
-                    else if (_latestItems.isEmpty)
-                      SizedBox(
-                        height: 200.h,
+                        height: 250.h,
                         child: Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(
-                                Icons.restaurant_menu_rounded,
-                                size: 48.sp,
-                                color: colors.textSecondary.withOpacity(0.5),
-                              ),
-                              SizedBox(height: 12.h),
                               Text(
-                                'No items available',
-                                style: TextStyle(color: colors.textSecondary, fontSize: 14.sp),
+                                'Vendor is currently out of stock',
+                                style: TextStyle(
+                                  color: colors.textSecondary,
+                                  fontSize: 15.sp,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              SizedBox(height: 4.h),
+                              Text(
+                                'Check back later for fresh items',
+                                style: TextStyle(color: colors.textSecondary.withValues(alpha: 0.6), fontSize: 13.sp),
                               ),
                             ],
                           ),
                         ),
-                      )
-                    else
-                      SizedBox(
-                        height: 220.h,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: _latestItems.length,
-                          itemBuilder: (context, index) {
-                            final item = _latestItems[index];
-                            return _buildItemCard(item, colors);
-                          },
-                        ),
                       ),
-                    SizedBox(height: 24.h),
-                    // Action buttons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: _openDirections,
-                            icon: Icon(Icons.directions_rounded, size: 20.sp),
-                            label: Text('Directions'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: colors.backgroundSecondary,
-                              foregroundColor: colors.textPrimary,
-                              padding: EdgeInsets.symmetric(vertical: 14.h),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                            ),
+                    ] else ...[
+                      if (_popularItems.isNotEmpty) ...[
+                        SectionHeader(
+                          title: 'Recommended For You',
+                          sectionTotal: _popularItems.length,
+                          accentColor: colors.accentOrange,
+                          showIcon: false,
+                          onSeeAll: () {},
+                        ),
+                        SizedBox(height: 12.h),
+                        SizedBox(
+                          height: 200.h,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _popularItems.length,
+                            padding: EdgeInsets.symmetric(horizontal: 20.w),
+                            itemBuilder: (context, index) {
+                              final item = _popularItems[index];
+                              return Padding(
+                                padding: EdgeInsets.only(right: index == _popularItems.length - 1 ? 0 : 6.w),
+                                child: _buildItemCard(item, colors, size, true),
+                              );
+                            },
                           ),
                         ),
-                        SizedBox(width: 12.w),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: _viewFullMenu,
-                            icon: Icon(Icons.restaurant_menu_rounded, size: 20.sp),
-                            label: Text('View Menu'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: colors.accentGreen,
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(vertical: 14.h),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                            ),
+                        SizedBox(height: 20.h),
+                      ],
+
+                      if (_quickPickupItems.isNotEmpty) ...[
+                        SectionHeader(
+                          title: 'More from Vendor',
+                          sectionTotal: _quickPickupItems.length,
+                          accentColor: colors.accentOrange,
+                          showIcon: false,
+                          onSeeAll: () {},
+                        ),
+                        SizedBox(height: 12.h),
+                        SizedBox(
+                          height: 220.h,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _quickPickupItems.length,
+                            padding: EdgeInsets.symmetric(horizontal: 20.w),
+                            itemBuilder: (context, index) {
+                              final item = _quickPickupItems[index];
+                              return Padding(
+                                padding: EdgeInsets.only(right: index == _quickPickupItems.length - 1 ? 0 : 6.w),
+                                child: _buildItemCard(item, colors, size, false),
+                              );
+                            },
                           ),
                         ),
                       ],
-                    ),
-                    SizedBox(height: 16.h),
+                    ],
                   ],
                 ),
               ),
@@ -363,39 +421,27 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
     );
   }
 
-  Widget _buildInfoCard({
-    required String icon,
-    required String label,
-    required String value,
-    required AppColorsExtension colors,
-  }) {
-    return Container(
-      padding: EdgeInsets.all(12.w),
-      decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(12.r)),
+  Widget _buildHeaderSkeleton(AppColorsExtension colors) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          SvgPicture.asset(
-            icon,
-            package: 'grab_go_shared',
-            width: 20.w,
-            height: 20.w,
-            colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+          Container(
+            height: 14.h,
+            width: 80.w,
+            decoration: BoxDecoration(
+              color: colors.backgroundSecondary,
+              borderRadius: BorderRadius.circular(KBorderSize.border),
+            ),
           ),
-          SizedBox(width: 8.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w400),
-                ),
-                SizedBox(height: 2.h),
-                Text(
-                  value,
-                  style: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w600),
-                ),
-              ],
+
+          Container(
+            height: 14.h,
+            width: 40.w,
+            decoration: BoxDecoration(
+              color: colors.backgroundSecondary,
+              borderRadius: BorderRadius.circular(KBorderSize.border),
             ),
           ),
         ],
@@ -403,67 +449,241 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
     );
   }
 
-  Widget _buildItemCard(FoodItem item, AppColorsExtension colors) {
-    return Container(
-      width: 160.w,
-      margin: EdgeInsets.only(right: 12.w),
-      decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(12.r)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Item image
-          ClipRRect(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(12.r)),
-            child: Container(
-              height: 120.h,
-              width: double.infinity,
-              color: colors.backgroundTertiary,
-              child: item.image.isNotEmpty
-                  ? Image.network(
-                      item.image,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Icon(Icons.restaurant_rounded, size: 40.sp, color: colors.textSecondary);
-                      },
-                    )
-                  : Icon(Icons.restaurant_rounded, size: 40.sp, color: colors.textSecondary),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.all(8.w),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.name,
-                  style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+  Widget _buildItemSkeleton(Size size, AppColorsExtension colors) {
+    return Row(
+      children: List.generate(
+        3,
+        (index) => Container(
+          height: 200.h,
+          width: size.width * 0.4,
+          margin: EdgeInsets.only(right: 6.w, left: index == 0 ? 20.w : 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: 120.h,
+                decoration: BoxDecoration(
+                  color: colors.backgroundSecondary,
+                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                 ),
-                SizedBox(height: 4.h),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'GHS ${item.price.toStringAsFixed(2)}',
-                      style: TextStyle(color: colors.accentGreen, fontSize: 14.sp, fontWeight: FontWeight.w700),
+              ),
+              SizedBox(height: 10.h),
+
+              Container(
+                height: 14.h,
+                width: 80.w,
+                decoration: BoxDecoration(
+                  color: colors.backgroundSecondary,
+                  borderRadius: BorderRadius.circular(KBorderSize.border),
+                ),
+              ),
+
+              SizedBox(height: 10.h),
+
+              Container(
+                height: 14.h,
+                width: 60.w,
+                decoration: BoxDecoration(
+                  color: colors.backgroundSecondary,
+                  borderRadius: BorderRadius.circular(KBorderSize.border),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItemCard(FoodItem item, AppColorsExtension colors, Size size, bool isPopular) {
+    return GestureDetector(
+      onTap: () {
+        context.push('/foodDetails', extra: item);
+      },
+      child: Container(
+        width: size.width * 0.4,
+        padding: EdgeInsets.all(2.r),
+        decoration: BoxDecoration(
+          color: colors.backgroundPrimary,
+          borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.5), width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(KBorderSize.borderMedium),
+                    topRight: Radius.circular(KBorderSize.borderMedium),
+                    bottomLeft: Radius.circular(KBorderSize.borderRadius4),
+                    bottomRight: Radius.circular(KBorderSize.borderRadius4),
+                  ),
+                  child: CachedNetworkImage(
+                    imageUrl: ImageOptimizer.getPreviewUrl(item.image, width: 400),
+                    height: 120.h,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    memCacheWidth: 400,
+                    maxHeightDiskCache: 800,
+                    placeholder: (context, url) => Container(
+                      height: 120.h,
+                      color: colors.inputBorder,
+                      child: Center(
+                        child: SvgPicture.asset(
+                          Assets.icons.utensilsCrossed,
+                          package: 'grab_go_shared',
+                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                          width: 30.w,
+                          height: 30.h,
+                        ),
+                      ),
                     ),
-                    Row(
+                    errorWidget: (context, url, error) => Container(
+                      height: 120.h,
+                      color: colors.inputBorder,
+                      child: Center(
+                        child: SvgPicture.asset(
+                          Assets.icons.utensilsCrossed,
+                          package: 'grab_go_shared',
+                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                          width: 30.w,
+                          height: 30.h,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Consumer<FavoritesProvider>(
+                  builder: (context, favoriteProvider, child) {
+                    final bool isFavorite = favoriteProvider.isFavorite(item);
+                    return Positioned(
+                      right: 6.r,
+                      top: 6.r,
+                      child: GestureDetector(
+                        onTap: () {
+                          if (isFavorite) {
+                            favoriteProvider.removeFromFavorites(item);
+                          } else {
+                            favoriteProvider.addToFavorites(item);
+                          }
+                        },
+                        child: SvgPicture.asset(
+                          isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
+                          package: 'grab_go_shared',
+                          height: 24.h,
+                          width: 24.w,
+                          colorFilter: ColorFilter.mode(isFavorite ? colors.error : Colors.white, BlendMode.srcIn),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+
+                isPopular
+                    ? Positioned(
+                        top: 0.h,
+                        left: 0.w,
+                        child: item.orderCount > 0
+                            ? Container(
+                                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [colors.error, colors.accentOrange],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: const BorderRadius.only(
+                                    bottomRight: Radius.circular(KBorderSize.borderMedium),
+                                    topLeft: Radius.circular(KBorderSize.borderMedium),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SvgPicture.asset(
+                                      Assets.icons.flame,
+                                      package: 'grab_go_shared',
+                                      height: 13.h,
+                                      width: 13.w,
+                                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                    ),
+                                    SizedBox(width: 4.w),
+                                    Text(
+                                      item.orderCount.toString(),
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                      )
+                    : const SizedBox.shrink(),
+              ],
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(10.r, 10.r, 10.r, 6.r),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.star_rounded, size: 14.sp, color: const Color(0xFFFBBF24)),
-                        SizedBox(width: 2.w),
                         Text(
-                          item.rating.toStringAsFixed(1),
-                          style: TextStyle(color: colors.textSecondary, fontSize: 12.sp),
+                          item.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                        ),
+                        SizedBox(height: isPopular ? 0.h : 8.h),
+                        if (!isPopular)
+                          Row(
+                            children: [
+                              SvgPicture.asset(
+                                Assets.icons.timer,
+                                package: 'grab_go_shared',
+                                height: 12.h,
+                                width: 12.w,
+                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                              ),
+                              SizedBox(width: 4.w),
+                              Text(
+                                "Pickup in ${'${item.deliveryTimeMinutes} mins'}",
+                                style: TextStyle(
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w500,
+                                  color: colors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        SizedBox(height: 8.h),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                          decoration: BoxDecoration(
+                            color: colors.accentOrange.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                          child: Text(
+                            "GHS ${item.price.toStringAsFixed(2)}",
+                            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800, color: colors.accentOrange),
+                          ),
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

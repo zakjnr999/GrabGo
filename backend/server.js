@@ -321,6 +321,147 @@ io.on("connection", (socket) => {
       socket.data.orderRooms.delete(roomName);
     }
   });
+
+  // ==================== ORDER RESERVATION SOCKET HANDLERS ====================
+
+  // Rider goes online (registers for order reservations)
+  socket.on("rider:go_online", async () => {
+    const userId = socket.data.userId;
+    const userRole = socket.data.userRole;
+
+    if (userRole !== 'rider') {
+      console.warn(`⚠️ Non-rider user ${userId} tried to go online`);
+      return;
+    }
+
+    try {
+      // Update rider's online status in database
+      await prisma.user.update({
+        where: { id: userId },
+        data: { 
+          riderIsOnline: true,
+          riderLastActiveAt: new Date()
+        }
+      });
+
+      // Track rider socket
+      socketService.addRiderSocket(userId, socket.id);
+
+      console.log(`🚴 Rider ${userId} is now online`);
+      socket.emit('rider:status', { online: true });
+    } catch (error) {
+      console.error(`Error setting rider online: ${error.message}`);
+    }
+  });
+
+  // Rider goes offline
+  socket.on("rider:go_offline", async () => {
+    const userId = socket.data.userId;
+    const userRole = socket.data.userRole;
+
+    if (userRole !== 'rider') return;
+
+    try {
+      // Update rider's online status in database
+      await prisma.user.update({
+        where: { id: userId },
+        data: { 
+          riderIsOnline: false,
+          riderLastActiveAt: new Date()
+        }
+      });
+
+      // Remove rider socket tracking
+      socketService.removeRiderSocket(userId, socket.id);
+
+      console.log(`🚴 Rider ${userId} is now offline`);
+      socket.emit('rider:status', { online: false });
+    } catch (error) {
+      console.error(`Error setting rider offline: ${error.message}`);
+    }
+  });
+
+  // Rider updates their location
+  socket.on("rider:location_update", async ({ latitude, longitude }) => {
+    const userId = socket.data.userId;
+    const userRole = socket.data.userRole;
+
+    if (userRole !== 'rider') return;
+    if (!latitude || !longitude) return;
+
+    try {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { 
+          riderLatitude: latitude,
+          riderLongitude: longitude,
+          riderLastActiveAt: new Date()
+        }
+      });
+    } catch (error) {
+      console.error(`Error updating rider location: ${error.message}`);
+    }
+  });
+
+  // Rider responds to order reservation (accept/decline)
+  socket.on("reservation:respond", async ({ reservationId, action, declineReason }) => {
+    const userId = socket.data.userId;
+    const userRole = socket.data.userRole;
+
+    if (userRole !== 'rider') {
+      socket.emit('reservation:response', { 
+        success: false, 
+        error: 'Only riders can respond to reservations' 
+      });
+      return;
+    }
+
+    try {
+      const dispatchService = require('./services/dispatch_service');
+      let result;
+
+      if (action === 'accept') {
+        result = await dispatchService.acceptReservation(reservationId, userId);
+      } else if (action === 'decline') {
+        result = await dispatchService.declineReservation(reservationId, userId, declineReason);
+      } else {
+        result = { success: false, error: 'Invalid action. Use "accept" or "decline".' };
+      }
+
+      socket.emit('reservation:response', result);
+
+      if (result.success && action === 'accept') {
+        // Broadcast that order was taken so other riders can remove it from their UI
+        socketService.broadcastOrderTaken(result.orderId, userId);
+      }
+    } catch (error) {
+      console.error(`Error responding to reservation: ${error.message}`);
+      socket.emit('reservation:response', { 
+        success: false, 
+        error: error.message 
+      });
+    }
+  });
+
+  // Get rider's active reservation (if any)
+  socket.on("reservation:get_active", async () => {
+    const userId = socket.data.userId;
+    const userRole = socket.data.userRole;
+
+    if (userRole !== 'rider') {
+      socket.emit('reservation:active', { reservation: null });
+      return;
+    }
+
+    try {
+      const dispatchService = require('./services/dispatch_service');
+      const reservation = await dispatchService.getActiveReservationForRider(userId);
+      socket.emit('reservation:active', { reservation });
+    } catch (error) {
+      console.error(`Error getting active reservation: ${error.message}`);
+      socket.emit('reservation:active', { reservation: null, error: error.message });
+    }
+  });
 });
 
 // SECURITY: Periodic cleanup of empty rooms (every hour)
@@ -411,6 +552,7 @@ const { initializeScheduler } = require("./jobs/notification_scheduler");
 const { initializeCartAbandonmentJob } = require("./jobs/cart_abandonment");
 const { initializeMealNudges } = require("./jobs/meal_nudges");
 const { initializeEngagementNudges } = require("./jobs/engagement_nudges");
+const reservationExpiryJob = require("./jobs/reservation_expiry");
 
 // Import cache utility
 const cache = require("./utils/cache");
@@ -435,6 +577,9 @@ initializeMealNudges(io);
 
 // Initialize engagement nudges (favorites, reorder, re-engagement)
 initializeEngagementNudges(io);
+
+// Initialize order reservation expiry job (runs every 2 seconds)
+reservationExpiryJob.start();
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {

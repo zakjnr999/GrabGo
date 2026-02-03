@@ -3,7 +3,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurants_model.dart';
 import 'package:grab_go_customer/shared/widgets/nearby_restaurant_card.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
-import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class NearbySection extends StatelessWidget {
@@ -24,13 +23,7 @@ class NearbySection extends StatelessWidget {
 
     return Column(
       children: [
-        SectionHeader(
-          title: "Nearby You",
-          sectionIcon: Assets.icons.tag,
-          sectionTotal: 1,
-          accentColor: colors.accentGreen,
-          onSeeAll: onSeeAll,
-        ),
+        SectionHeader(title: "Nearby You", sectionTotal: 1, accentColor: colors.accentGreen, onSeeAll: onSeeAll),
         SizedBox(height: 16.h),
         SizedBox(
           height: 120.h,

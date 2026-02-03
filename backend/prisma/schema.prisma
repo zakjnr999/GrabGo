@@ -109,15 +109,11 @@ enum ItemType {
   PharmacyItem
 }
 
-
-
 enum PromoType {
   percentage
   fixed
   free_delivery
 }
-
-
 
 enum ReengagementLevel {
   none
@@ -125,8 +121,6 @@ enum ReengagementLevel {
   one_month
   two_months
 }
-
-
 
 enum Currency {
   GHS
@@ -151,8 +145,6 @@ enum Platform {
   web
 }
 
-
-
 enum ReferralStatus {
   pending
   pending_order
@@ -163,19 +155,19 @@ enum ReferralStatus {
 // ==================== MODELS ====================
 
 model Referral {
-  id                 String         @id @default(cuid())
-  referrerId         String
-  refereeId          String
-  referralCode       String
-  status             ReferralStatus @default(pending)
-  rewardAmount           Float          @default(0)
-  refereeDiscountAmount  Float          @default(0)
-  expiresAt              DateTime?
-  refereeOrderId         String?
-  referrerCreditId       String?
-  refereeCreditId        String?
-  referrerCreditedAt     DateTime?
-  completedAt        DateTime?
+  id                    String         @id @default(cuid())
+  referrerId            String
+  refereeId             String
+  referralCode          String
+  status                ReferralStatus @default(pending)
+  rewardAmount          Float          @default(0)
+  refereeDiscountAmount Float          @default(0)
+  expiresAt             DateTime?
+  refereeOrderId        String?
+  referrerCreditId      String?
+  refereeCreditId       String?
+  referrerCreditedAt    DateTime?
+  completedAt           DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -216,13 +208,13 @@ enum CreditSource {
 }
 
 model UserCredit {
-  id          String   @id @default(cuid())
+  id          String       @id @default(cuid())
   userId      String
   amount      Float
   type        CreditSource
   description String?
-  isUsed      Boolean   @default(false)
-  isActive    Boolean   @default(true)
+  isUsed      Boolean      @default(false)
+  isActive    Boolean      @default(true)
   usedAt      DateTime?
   expiresAt   DateTime?
   referralId  String?
@@ -237,8 +229,6 @@ model UserCredit {
   @@index([isUsed])
   @@map("user_credits")
 }
-
-
 
 // ==================== MODELS ====================
 
@@ -265,7 +255,7 @@ model User {
   lastSeenAt                    DateTime?
   lastOrderDate                 DateTime?
   weekStartDate                 DateTime?
-  
+
   // Permissions
   canManageUsers    Boolean @default(false)
   canManageProducts Boolean @default(false)
@@ -282,33 +272,44 @@ model User {
   lastReengagementNudgeAt    DateTime?
   reengagementLevel          ReengagementLevel @default(none)
 
+  // Rider dispatch fields (for riders only)
+  riderLatitude            Float? // Current GPS latitude
+  riderLongitude           Float? // Current GPS longitude
+  riderIsOnline            Boolean   @default(false) // Is rider accepting orders?
+  riderLastActiveAt        DateTime? // Last activity timestamp
+  riderRating              Float     @default(4.5) // Average rider rating
+  riderTotalDeliveries     Int       @default(0) // Total completed deliveries
+  riderAcceptanceRate      Float     @default(0.8) // Order acceptance rate (0-1)
+  riderPreferredOrderTypes String[]  @default([]) // ["food", "grocery", "pharmacy"]
+  isApproved               Boolean   @default(false) // Is rider approved by admin?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  fcmTokens               UserFcmToken[]
-  notificationSettings    UserNotificationSettings?
-  mealTimePreferences     UserMealTimePreferences?
-  favoriteRestaurants     UserFavoriteRestaurant[]
-  favoriteStores          UserFavoriteStore[]
-  favoritePharmacies      UserFavoritePharmacy[]
-  favoriteFoods           UserFavoriteFood[]
-  favoriteGroceryItems    UserFavoriteGroceryItem[]
-  favoriteGrabMartItems   UserFavoriteGrabMartItem[]
-  orders                  Order[]                   @relation("CustomerOrders")
-  riderOrders             Order[]                   @relation("RiderOrders")
-  carts                   Cart[]
-  payments                Payment[]
-  rider                   Rider?
-  riderWallet             RiderWallet?
-  transactions            Transaction[]
-  referralsSent           Referral[]                @relation("ReferrerReferrals")
-  referralsReceived       Referral[]                @relation("RefereeReferrals")
-  referralCode            ReferralCode?
-  userCredits             UserCredit[]
-  promoCodesCreated       PromoCode[]               @relation("PromoCodeCreator")
-  targetedPromoCodes      PromoCodeTargetedUser[]
-  scheduledNotifications  ScheduledNotification[]
+  fcmTokens              UserFcmToken[]
+  notificationSettings   UserNotificationSettings?
+  mealTimePreferences    UserMealTimePreferences?
+  favoriteRestaurants    UserFavoriteRestaurant[]
+  favoriteStores         UserFavoriteStore[]
+  favoritePharmacies     UserFavoritePharmacy[]
+  favoriteFoods          UserFavoriteFood[]
+  favoriteGroceryItems   UserFavoriteGroceryItem[]
+  favoriteGrabMartItems  UserFavoriteGrabMartItem[]
+  orders                 Order[]                    @relation("CustomerOrders")
+  riderOrders            Order[]                    @relation("RiderOrders")
+  carts                  Cart[]
+  payments               Payment[]
+  rider                  Rider?
+  riderWallet            RiderWallet?
+  transactions           Transaction[]
+  referralsSent          Referral[]                 @relation("ReferrerReferrals")
+  referralsReceived      Referral[]                 @relation("RefereeReferrals")
+  referralCode           ReferralCode?
+  userCredits            UserCredit[]
+  promoCodesCreated      PromoCode[]                @relation("PromoCodeCreator")
+  targetedPromoCodes     PromoCodeTargetedUser[]
+  scheduledNotifications ScheduledNotification[]
 
   @@index([email])
   @@index([role])
@@ -484,7 +485,7 @@ model Restaurant {
   instagramUrl String?
   twitterUrl   String?
   websiteUrl   String?
-  
+
   // Verification & Priority
   isVerified            Boolean   @default(false)
   verifiedAt            DateTime?
@@ -493,36 +494,36 @@ model Restaurant {
   orderCancellationRate Float     @default(0)
   featured              Boolean   @default(false)
   featuredUntil         DateTime?
-  
+
   // Metadata & Features
-  features              String[]  @default([])
-  tags                  String[]  @default([])
-  whatsappNumber        String?
-  timezone              String    @default("Africa/Accra")
-  utcOffset             Int       @default(0)
-  
+  features       String[] @default([])
+  tags           String[] @default([])
+  whatsappNumber String?
+  timezone       String   @default("Africa/Accra")
+  utcOffset      Int      @default(0)
+
   // Stats
-  totalOrders          Int       @default(0)
-  totalCancelledOrders Int       @default(0)
-  totalRevenue         Float     @default(0)
-  monthlyRevenue       Float     @default(0)
-  last30DaysRevenue    Float     @default(0) 
-  averageOrderValue    Float     @default(0)
-  monthlyOrders        Int       @default(0)
-  
+  totalOrders          Int   @default(0)
+  totalCancelledOrders Int   @default(0)
+  totalRevenue         Float @default(0)
+  monthlyRevenue       Float @default(0)
+  last30DaysRevenue    Float @default(0)
+  averageOrderValue    Float @default(0)
+  monthlyOrders        Int   @default(0)
+
   // Operational & Legacy
-  ratingSum            Float     @default(0)
-  totalReviews         Int       @default(0)
-  isAcceptingOrders    Boolean   @default(true)
-  isGrabGoExclusive    Boolean   @default(false)
+  ratingSum              Float     @default(0)
+  totalReviews           Int       @default(0)
+  isAcceptingOrders      Boolean   @default(true)
+  isGrabGoExclusive      Boolean   @default(false)
   isGrabGoExclusiveUntil DateTime?
-  vendorType           String    @default("restaurant")
-  isDeleted            Boolean   @default(false)
-  lastOnlineAt         DateTime  @default(now())
-  
-  parentVendorId       String?
-  parentVendor         Restaurant? @relation("RestaurantHierarchy", fields: [parentVendorId], references: [id])
-  subVendors           Restaurant[] @relation("RestaurantHierarchy")
+  vendorType             String    @default("restaurant")
+  isDeleted              Boolean   @default(false)
+  lastOnlineAt           DateTime  @default(now())
+
+  parentVendorId String?
+  parentVendor   Restaurant?  @relation("RestaurantHierarchy", fields: [parentVendorId], references: [id])
+  subVendors     Restaurant[] @relation("RestaurantHierarchy")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -595,11 +596,11 @@ model Food {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  category       Category           @relation(fields: [categoryId], references: [id])
-  restaurant     Restaurant         @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  orderItems     OrderItem[]
-  cartItems      CartItem[]
-  favoritedBy    UserFavoriteFood[]
+  category    Category           @relation(fields: [categoryId], references: [id])
+  restaurant  Restaurant         @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+  cartItems   CartItem[]
+  favoritedBy UserFavoriteFood[]
 
   @@index([restaurantId])
   @@index([categoryId])
@@ -636,8 +637,8 @@ model GroceryStore {
   instagramUrl String?
   twitterUrl   String?
   websiteUrl   String?
-  
-  storeType            String?   // Added based on Mongoose schema
+
+  storeType String? // Added based on Mongoose schema
 
   // Verification & Priority
   isVerified            Boolean   @default(false)
@@ -647,36 +648,36 @@ model GroceryStore {
   orderCancellationRate Float     @default(0)
   featured              Boolean   @default(false)
   featuredUntil         DateTime?
-  
+
   // Metadata & Features
-  features              String[]  @default([])
-  tags                  String[]  @default([])
-  whatsappNumber        String?
-  timezone              String    @default("Africa/Accra")
-  utcOffset             Int       @default(0)
-  
+  features       String[] @default([])
+  tags           String[] @default([])
+  whatsappNumber String?
+  timezone       String   @default("Africa/Accra")
+  utcOffset      Int      @default(0)
+
   // Stats
-  totalOrders          Int       @default(0)
-  totalCancelledOrders Int       @default(0)
-  totalRevenue         Float     @default(0)
-  monthlyRevenue       Float     @default(0)
-  last30DaysRevenue    Float     @default(0) 
-  averageOrderValue    Float     @default(0)
-  monthlyOrders        Int       @default(0)
-  
+  totalOrders          Int   @default(0)
+  totalCancelledOrders Int   @default(0)
+  totalRevenue         Float @default(0)
+  monthlyRevenue       Float @default(0)
+  last30DaysRevenue    Float @default(0)
+  averageOrderValue    Float @default(0)
+  monthlyOrders        Int   @default(0)
+
   // Operational & Legacy
-  ratingSum            Float     @default(0)
-  totalReviews         Int       @default(0)
-  isAcceptingOrders    Boolean   @default(true)
-  isGrabGoExclusive    Boolean   @default(false)
+  ratingSum              Float     @default(0)
+  totalReviews           Int       @default(0)
+  isAcceptingOrders      Boolean   @default(true)
+  isGrabGoExclusive      Boolean   @default(false)
   isGrabGoExclusiveUntil DateTime?
-  vendorType           String    @default("grocery")
-  isDeleted            Boolean   @default(false)
-  lastOnlineAt         DateTime  @default(now())
-  
-  parentVendorId       String?
-  parentVendor         GroceryStore? @relation("GroceryStoreHierarchy", fields: [parentVendorId], references: [id])
-  subVendors           GroceryStore[] @relation("GroceryStoreHierarchy")
+  vendorType             String    @default("grocery")
+  isDeleted              Boolean   @default(false)
+  lastOnlineAt           DateTime  @default(now())
+
+  parentVendorId String?
+  parentVendor   GroceryStore?  @relation("GroceryStoreHierarchy", fields: [parentVendorId], references: [id])
+  subVendors     GroceryStore[] @relation("GroceryStoreHierarchy")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -757,10 +758,10 @@ model GroceryItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  category   GroceryCategory? @relation(fields: [categoryId], references: [id])
-  store      GroceryStore     @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  orderItems OrderItem[]
-  cartItems  CartItem[]
+  category    GroceryCategory?          @relation(fields: [categoryId], references: [id])
+  store       GroceryStore              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+  cartItems   CartItem[]
   favoritedBy UserFavoriteGroceryItem[]
 
   @@index([storeId])
@@ -791,7 +792,7 @@ model PharmacyStore {
   // Pharmacy Specific
   emergencyService     Boolean  @default(false)
   prescriptionRequired Boolean  @default(false)
-  operatingHoursString String?  // For legacy "24/7" support
+  operatingHoursString String? // For legacy "24/7" support
   bannerImages         String[] @default([])
 
   // Location
@@ -800,10 +801,10 @@ model PharmacyStore {
   address   String
   city      String
   area      String
-  
+
   // Pharmacy Specific
-  pharmacistLicense    String?
-  insuranceAccepted    String[] @default([])
+  pharmacistLicense String?
+  insuranceAccepted String[] @default([])
 
   // Verification & Priority
   isVerified            Boolean   @default(false)
@@ -813,36 +814,36 @@ model PharmacyStore {
   orderCancellationRate Float     @default(0)
   featured              Boolean   @default(false)
   featuredUntil         DateTime?
-  
+
   // Metadata & Features
-  features              String[]  @default([])
-  tags                  String[]  @default([])
-  whatsappNumber        String?
-  timezone              String    @default("Africa/Accra")
-  utcOffset             Int       @default(0)
-  
+  features       String[] @default([])
+  tags           String[] @default([])
+  whatsappNumber String?
+  timezone       String   @default("Africa/Accra")
+  utcOffset      Int      @default(0)
+
   // Stats
-  totalOrders          Int       @default(0)
-  totalCancelledOrders Int       @default(0)
-  totalRevenue         Float     @default(0)
-  monthlyRevenue       Float     @default(0)
-  last30DaysRevenue    Float     @default(0) 
-  averageOrderValue    Float     @default(0)
-  monthlyOrders        Int       @default(0)
-  
+  totalOrders          Int   @default(0)
+  totalCancelledOrders Int   @default(0)
+  totalRevenue         Float @default(0)
+  monthlyRevenue       Float @default(0)
+  last30DaysRevenue    Float @default(0)
+  averageOrderValue    Float @default(0)
+  monthlyOrders        Int   @default(0)
+
   // Operational & Legacy
-  ratingSum            Float     @default(0)
-  totalReviews         Int       @default(0)
-  isAcceptingOrders    Boolean   @default(true)
-  isGrabGoExclusive    Boolean   @default(false)
+  ratingSum              Float     @default(0)
+  totalReviews           Int       @default(0)
+  isAcceptingOrders      Boolean   @default(true)
+  isGrabGoExclusive      Boolean   @default(false)
   isGrabGoExclusiveUntil DateTime?
-  vendorType           String    @default("pharmacy")
-  isDeleted            Boolean   @default(false)
-  lastOnlineAt         DateTime  @default(now())
-  
-  parentVendorId       String?
-  parentVendor         PharmacyStore? @relation("PharmacyStoreHierarchy", fields: [parentVendorId], references: [id])
-  subVendors           PharmacyStore[] @relation("PharmacyStoreHierarchy")
+  vendorType             String    @default("pharmacy")
+  isDeleted              Boolean   @default(false)
+  lastOnlineAt           DateTime  @default(now())
+
+  parentVendorId String?
+  parentVendor   PharmacyStore?  @relation("PharmacyStoreHierarchy", fields: [parentVendorId], references: [id])
+  subVendors     PharmacyStore[] @relation("PharmacyStoreHierarchy")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -920,7 +921,7 @@ model PharmacyItem {
   updatedAt DateTime @updatedAt
 
   category   PharmacyCategory? @relation(fields: [categoryId], references: [id])
-  store      PharmacyStore    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  store      PharmacyStore     @relation(fields: [storeId], references: [id], onDelete: Cascade)
   orderItems OrderItem[]
   cartItems  CartItem[]
 
@@ -960,11 +961,11 @@ model Order {
   notes              String?
 
   // Rider Earnings Breakdown
-  riderBaseFee      Float @default(5.0)   // Base delivery fee (GHS)
-  riderDistanceFee  Float @default(0)     // Distance-based fee (calculated)
-  riderTip          Float @default(0)     // Customer tip
-  platformFee       Float @default(0)     // Platform commission
-  riderEarnings     Float @default(0)     // Total rider gets (baseFee + distanceFee + tip - platformFee)
+  riderBaseFee     Float @default(5.0) // Base delivery fee (GHS)
+  riderDistanceFee Float @default(0) // Distance-based fee (calculated)
+  riderTip         Float @default(0) // Customer tip
+  platformFee      Float @default(0) // Platform commission
+  riderEarnings    Float @default(0) // Total rider gets (baseFee + distanceFee + tip - platformFee)
 
   // Delivery Address
   deliveryStreet    String
@@ -1070,8 +1071,6 @@ model CartItem {
 
 // ==================== CHAT ====================
 
-
-
 // ==================== PAYMENT ====================
 
 model Payment {
@@ -1146,11 +1145,11 @@ model Rider {
 }
 
 model RiderWallet {
-  id                String @id @default(cuid())
-  userId            String @unique
-  balance           Float  @default(0)
-  totalEarnings     Float  @default(0)
-  totalWithdrawals  Float  @default(0)
+  id                 String @id @default(cuid())
+  userId             String @unique
+  balance            Float  @default(0)
+  totalEarnings      Float  @default(0)
+  totalWithdrawals   Float  @default(0)
   pendingWithdrawals Float  @default(0)
 
   createdAt DateTime @default(now())
@@ -1184,11 +1183,7 @@ model Transaction {
 
 // ==================== STATUS (Stories) ====================
 
-
-
 // ==================== NOTIFICATION ====================
-
-
 
 model ScheduledNotification {
   id          String    @id @default(cuid())
@@ -1264,17 +1259,17 @@ enum BannerAudience {
 }
 
 model PromotionalBanner {
-  id              String   @id @default(cuid())
+  id              String         @id @default(cuid())
   title           String
   subtitle        String?
   imageUrl        String
   discount        String?
-  backgroundColor String   @default("#FFFFFF")
+  backgroundColor String         @default("#FFFFFF")
   targetUrl       String?
   startDate       DateTime
   endDate         DateTime
-  isActive        Boolean  @default(true)
-  priority        Int      @default(0)
+  isActive        Boolean        @default(true)
+  priority        Int            @default(0)
   targetAudience  BannerAudience @default(all)
 
   createdAt DateTime @default(now())
@@ -1286,8 +1281,6 @@ model PromotionalBanner {
 }
 
 // ==================== ORDER TRACKING ====================
-
-
 
 // ==================== DELIVERY ANALYTICS ====================
 
@@ -1311,12 +1304,7 @@ model RiderDailyStats {
   @@map("rider_daily_stats")
 }
 
-
-
-
 // ==================== CALL LOG ====================
-
-
 
 // ==================== GRABMART (Separate store type) ====================
 
@@ -1350,13 +1338,13 @@ model GrabMartStore {
   address   String
   city      String
   area      String
-  
+
   // Socials
   facebookUrl  String?
   instagramUrl String?
   twitterUrl   String?
   websiteUrl   String?
-  
+
   paymentMethods String[] @default([])
 
   // Verification & Priority
@@ -1367,36 +1355,36 @@ model GrabMartStore {
   orderCancellationRate Float     @default(0)
   featured              Boolean   @default(false)
   featuredUntil         DateTime?
-  
+
   // Metadata & Features
-  features              String[]  @default([])
-  tags                  String[]  @default([])
-  whatsappNumber        String?
-  timezone              String    @default("Africa/Accra")
-  utcOffset             Int       @default(0)
-  
+  features       String[] @default([])
+  tags           String[] @default([])
+  whatsappNumber String?
+  timezone       String   @default("Africa/Accra")
+  utcOffset      Int      @default(0)
+
   // Stats
-  totalOrders          Int       @default(0)
-  totalCancelledOrders Int       @default(0)
-  totalRevenue         Float     @default(0)
-  monthlyRevenue       Float     @default(0)
-  last30DaysRevenue    Float     @default(0) 
-  averageOrderValue    Float     @default(0)
-  monthlyOrders        Int       @default(0)
-  
+  totalOrders          Int   @default(0)
+  totalCancelledOrders Int   @default(0)
+  totalRevenue         Float @default(0)
+  monthlyRevenue       Float @default(0)
+  last30DaysRevenue    Float @default(0)
+  averageOrderValue    Float @default(0)
+  monthlyOrders        Int   @default(0)
+
   // Operational & Legacy
-  ratingSum            Float     @default(0)
-  totalReviews         Int       @default(0)
-  isAcceptingOrders    Boolean   @default(true)
-  isGrabGoExclusive    Boolean   @default(false)
+  ratingSum              Float     @default(0)
+  totalReviews           Int       @default(0)
+  isAcceptingOrders      Boolean   @default(true)
+  isGrabGoExclusive      Boolean   @default(false)
   isGrabGoExclusiveUntil DateTime?
-  vendorType           String    @default("grabmart")
-  isDeleted            Boolean   @default(false)
-  lastOnlineAt         DateTime  @default(now())
-  
-  parentVendorId       String?
-  parentVendor         GrabMartStore? @relation("GrabMartStoreHierarchy", fields: [parentVendorId], references: [id])
-  subVendors           GrabMartStore[] @relation("GrabMartStoreHierarchy")
+  vendorType             String    @default("grabmart")
+  isDeleted              Boolean   @default(false)
+  lastOnlineAt           DateTime  @default(now())
+
+  parentVendorId String?
+  parentVendor   GrabMartStore?  @relation("GrabMartStoreHierarchy", fields: [parentVendorId], references: [id])
+  subVendors     GrabMartStore[] @relation("GrabMartStoreHierarchy")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1452,8 +1440,8 @@ model GrabMartItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  category GrabMartCategory? @relation(fields: [categoryId], references: [id])
-  store    GrabMartStore    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  category    GrabMartCategory?          @relation(fields: [categoryId], references: [id])
+  store       GrabMartStore              @relation(fields: [storeId], references: [id], onDelete: Cascade)
   favoritedBy UserFavoriteGrabMartItem[]
 
   @@index([storeId])

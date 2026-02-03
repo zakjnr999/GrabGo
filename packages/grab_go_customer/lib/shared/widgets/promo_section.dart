@@ -5,7 +5,6 @@ import 'package:grab_go_customer/features/home/model/promo_banner.dart';
 import 'package:grab_go_customer/shared/widgets/promo_banner_card.dart';
 import 'package:grab_go_customer/shared/widgets/promo_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
-import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class PromoSection extends StatefulWidget {
@@ -79,7 +78,6 @@ class _PromoSectionState extends State<PromoSection> {
         children: [
           SectionHeader(
             title: "Special Offers",
-            sectionIcon: Assets.icons.tag,
             sectionTotal: widget.banners.length,
             accentColor: colors.accentOrange,
             onSeeAll: widget.onSeeAll,
@@ -99,7 +97,6 @@ class _PromoSectionState extends State<PromoSection> {
       children: [
         SectionHeader(
           title: "Special Offers",
-          sectionIcon: Assets.icons.tag,
           sectionTotal: widget.banners.length,
           accentColor: colors.accentOrange,
           onSeeAll: widget.onSeeAll,

@@ -19,7 +19,6 @@ import 'package:grab_go_customer/features/home/viewmodel/food_discovery_provider
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
-import 'package:grab_go_shared/shared/widgets/app_refresh_indicator.dart';
 import 'package:grab_go_customer/shared/widgets/category_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
@@ -541,7 +540,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           children: [
             SectionHeader(
               title: "Food Categories",
-              sectionIcon: Assets.icons.viewGrid,
               accentColor: colors.accentOrange,
               sectionTotal: categoriesToShow.length.toInt(),
               onSeeAll: () {},
@@ -835,7 +833,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         children: [
           SectionHeader(
             title: "Categories",
-            sectionIcon: Assets.icons.viewGrid,
             accentColor: colors.accentOrange,
             sectionTotal: groceryProvider.categories.length.toInt(),
             onSeeAll: () {},
@@ -873,7 +870,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             children: [
               SectionHeader(
                 title: "Categories",
-                sectionIcon: Assets.icons.viewGrid,
                 accentColor: colors.accentOrange,
                 sectionTotal: pharmacyProvider.categories.length.toInt(),
                 onSeeAll: () {},
@@ -920,7 +916,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             children: [
               SectionHeader(
                 title: "Categories",
-                sectionIcon: Assets.icons.viewGrid,
                 accentColor: colors.accentOrange,
                 sectionTotal: grabMartProvider.categories.length.toInt(),
                 onSeeAll: () {},
@@ -1201,8 +1196,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SectionHeader(
-              title: "Recommended For You",
-              sectionIcon: Assets.icons.sparkles,
+              title: "Recommended for You",
               sectionTotal: foodProvider.recommendedItems.length,
               accentColor: colors.accentOrange,
               onSeeAll: () {},

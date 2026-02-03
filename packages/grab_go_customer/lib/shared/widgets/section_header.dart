@@ -6,18 +6,18 @@ import 'package:grab_go_shared/grub_go_shared.dart';
 
 class SectionHeader extends StatelessWidget {
   final String title;
-  final String sectionIcon;
   final int sectionTotal;
   final Color accentColor;
   final VoidCallback? onSeeAll;
+  final bool? showIcon;
 
   const SectionHeader({
     super.key,
     required this.title,
-    required this.sectionIcon,
     required this.sectionTotal,
     required this.accentColor,
     this.onSeeAll,
+    this.showIcon,
   });
 
   @override
@@ -30,21 +30,9 @@ class SectionHeader extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            children: [
-              SvgPicture.asset(
-                sectionIcon,
-                package: 'grab_go_shared',
-                height: 18.h,
-                width: 18.w,
-                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-              ),
-              SizedBox(width: 12.w),
-              Text(
-                title,
-                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
-              ),
-            ],
+          Text(
+            title,
+            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
           ),
           if (onSeeAll != null)
             Material(

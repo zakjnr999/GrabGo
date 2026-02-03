@@ -259,74 +259,93 @@ class _EarningsHistoryPageState extends State<EarningsHistoryPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(height: 20.h),
-              Container(
-                padding: EdgeInsets.all(24.w),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [colors.accentGreen, colors.accentGreen.withValues(alpha: 0.85)],
-                  ),
-                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                  boxShadow: [
-                    BoxShadow(
-                      color: colors.accentGreen.withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Total Earnings",
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.5,
+              Stack(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(24.w),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [colors.accentGreen, colors.accentGreen.withValues(alpha: 0.85)],
                       ),
+                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                      boxShadow: [
+                        BoxShadow(
+                          color: colors.accentGreen.withValues(alpha: 0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
-                    SizedBox(height: 8.h),
-                    Row(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "GHC",
+                          "Total Earnings",
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.9),
-                            fontSize: 20.sp,
-                            fontWeight: FontWeight.w600,
-                            height: 1,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0.5,
                           ),
                         ),
-                        SizedBox(width: 8.w),
-                        Expanded(
-                          child: Text(
-                            _getTotalEarnings().toStringAsFixed(2),
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 40.sp,
-                              fontWeight: FontWeight.w800,
-                              height: 1,
-                              letterSpacing: -1,
+                        SizedBox(height: 8.h),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "GHC",
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                fontSize: 20.sp,
+                                fontWeight: FontWeight.w600,
+                                height: 1,
+                              ),
                             ),
+                            SizedBox(width: 8.w),
+                            Expanded(
+                              child: Text(
+                                _getTotalEarnings().toStringAsFixed(2),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 40.sp,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1,
+                                  letterSpacing: -1,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 16.h),
+                        Text(
+                          "${_filteredEarnings.length} ${_filteredEarnings.length == 1 ? 'transaction' : 'transactions'}",
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: 16.h),
-                    Text(
-                      "${_filteredEarnings.length} ${_filteredEarnings.length == 1 ? 'transaction' : 'transactions'}",
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w500,
+                  ),
+
+                  Positioned(
+                    top: 10.r,
+                    right: 10.r,
+                    child: Opacity(
+                      opacity: 0.65,
+                      child: SvgPicture.asset(
+                        Assets.icons.cash,
+                        package: "grab_go_shared",
+                        height: 40.h,
+                        width: 40.w,
+                        colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
 
               SizedBox(height: 24.h),
@@ -367,7 +386,6 @@ class _EarningsHistoryPageState extends State<EarningsHistoryPage> {
                       decoration: BoxDecoration(
                         color: colors.backgroundPrimary,
                         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                        border: Border.all(color: colors.border, width: 1),
                       ),
                       child: Row(
                         children: [

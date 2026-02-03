@@ -55,7 +55,6 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
 
   Future<void> _loadRiderData() async {
     try {
-      // Check if auth token exists before making request
       final token = await CacheService.getAuthToken();
       if (token == null || token.isEmpty) {
         if (kDebugMode) {
@@ -80,7 +79,6 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
               _rider = response.body!.data;
               _isLoading = false;
             });
-            // Cache the vehicle type for next time
             if (_rider?.vehicleType != null) {
               await CacheService.saveVehicleType(_rider!.vehicleType!);
             }
@@ -146,14 +144,12 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
   String _getGreetingText() {
     final username = _user?.username ?? '';
     if (username.isEmpty) {
-      // Use cached vehicle type if rider data not loaded yet
       final vehicleType = _rider?.vehicleType ?? CacheService.getVehicleType();
       return vehicleType?.toLowerCase() == "car" ? "Driver!" : "Rider!";
     }
 
     final firstName = username.split(' ').first.trim();
 
-    // Use cached vehicle type if rider data not loaded yet
     final vehicleType = _rider?.vehicleType ?? CacheService.getVehicleType();
     return vehicleType?.toLowerCase() == "car" ? "Driver $firstName" : "Rider $firstName";
   }
@@ -480,31 +476,15 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
       leading: Center(
         child: Padding(
           padding: EdgeInsets.only(left: 14.w),
-          child: Material(
-            color: Colors.transparent,
-            child: Builder(
-              builder: (context) => InkWell(
-                onTap: () {
-                  Scaffold.of(context).openDrawer();
-                },
-                customBorder: const CircleBorder(),
-                borderRadius: BorderRadius.circular(30),
-                child: Container(
-                  width: 44.w,
-                  height: 44.w,
-                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), shape: BoxShape.circle),
-                  child: Center(
-                    child: SvgPicture.asset(
-                      Assets.icons.menu,
-                      package: 'grab_go_shared',
-                      width: 20.w,
-                      height: 20.w,
-                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                    ),
-                  ),
-                ),
-              ),
+          child: IconButton(
+            icon: SvgPicture.asset(
+              Assets.icons.menu,
+              package: 'grab_go_shared',
+              width: 24.w,
+              height: 24.w,
+              colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
             ),
+            onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
       ),
@@ -512,40 +492,15 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
         Center(
           child: Padding(
             padding: EdgeInsets.only(right: 14.w),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () {
-                  context.push("/notifications");
-                },
-                customBorder: const CircleBorder(),
-                borderRadius: BorderRadius.circular(30),
-                child: Container(
-                  width: 44.w,
-                  height: 44.w,
-                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), shape: BoxShape.circle),
-                  child: Stack(
-                    children: [
-                      Center(
-                        child: Badge(
-                          backgroundColor: Colors.red,
-                          label: Text(
-                            '3',
-                            style: TextStyle(color: Colors.white, fontSize: 10.sp, fontWeight: FontWeight.w600),
-                          ),
-                          child: SvgPicture.asset(
-                            Assets.icons.bell,
-                            package: 'grab_go_shared',
-                            width: 20.w,
-                            height: 20.w,
-                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+            child: IconButton(
+              icon: SvgPicture.asset(
+                Assets.icons.bell,
+                package: 'grab_go_shared',
+                width: 24.w,
+                height: 24.w,
+                colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
               ),
+              onPressed: () => context.push("/notifications"),
             ),
           ),
         ),

@@ -37,7 +37,6 @@ class TopRatedSection extends StatelessWidget {
       children: [
         SectionHeader(
           title: title ?? "Top Rated Dishes",
-          sectionIcon: icon ?? Assets.icons.star,
           sectionTotal: topRatedItems.length,
           accentColor: AppColors.accentOrange,
           onSeeAll: onSeeAll,

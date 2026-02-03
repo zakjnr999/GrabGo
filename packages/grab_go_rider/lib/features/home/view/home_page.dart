@@ -7,7 +7,9 @@ import 'package:go_router/go_router.dart';
 import 'package:grab_go_rider/features/home/models/transaction_model.dart';
 import 'package:grab_go_rider/features/orders/service/available_order_dto.dart';
 import 'package:grab_go_rider/features/orders/service/available_orders_service.dart';
+import 'package:grab_go_rider/features/orders/service/order_reservation_service.dart';
 import 'package:grab_go_rider/features/orders/service/order_statistics_service.dart';
+import 'package:grab_go_rider/features/orders/widgets/order_reservation_modal.dart';
 import 'package:grab_go_rider/shared/widgets/home_drawer.dart';
 import 'package:grab_go_rider/shared/widgets/home_sliver_appbar.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -34,6 +36,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   String? ordersError;
   List<AvailableOrderDto> _availableOrders = [];
   final AvailableOrdersService _availableOrdersService = AvailableOrdersService();
+  final OrderReservationService _reservationService = OrderReservationService();
 
   OrderStatistics? _statistics;
 
@@ -43,6 +46,69 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     _loadSampleTransactions();
     _setupAnimations();
     _initializeLocation();
+    _initializeReservationService();
+  }
+
+  void _initializeReservationService() {
+    // Initialize the reservation service to listen for incoming orders
+    _reservationService.initialize();
+
+    // Set up callbacks
+    _reservationService.onReservationReceived = (reservation) {
+      // Show the reservation modal when a new order is reserved for this rider
+      if (mounted) {
+        OrderReservationModal.show(
+          context,
+          reservation,
+          onAccepted: () {
+            // Refresh orders and navigate to active order
+            _loadAvailableOrders();
+            AppToastMessage.show(
+              context: context,
+              message: 'Order accepted! Navigate to pickup location.',
+              backgroundColor: AppColors.accentGreen,
+            );
+            // Navigate to the order tracking/delivery page
+            context.push('/orderConfirmation/${reservation.orderId}');
+          },
+          onDeclined: () {
+            AppToastMessage.show(
+              context: context,
+              message: 'Order declined. Waiting for new orders...',
+              backgroundColor: Colors.orange,
+            );
+          },
+          onExpired: () {
+            AppToastMessage.show(context: context, message: 'Order reservation expired.', backgroundColor: Colors.grey);
+          },
+        );
+      }
+    };
+
+    _reservationService.onReservationCancelled = (orderId, reason) {
+      if (mounted) {
+        AppToastMessage.show(context: context, message: 'Order was cancelled: $reason', backgroundColor: Colors.red);
+      }
+    };
+
+    // Go online when page loads if rider is active
+    _reservationService.goOnline();
+
+    // Check for any existing active reservation (e.g., if app was backgrounded)
+    _reservationService.fetchActiveReservation().then((reservation) {
+      if (reservation != null && mounted) {
+        OrderReservationModal.show(
+          context,
+          reservation,
+          onAccepted: () {
+            _loadAvailableOrders();
+            context.push('/orderConfirmation/${reservation.orderId}');
+          },
+          onDeclined: () {},
+          onExpired: () {},
+        );
+      }
+    });
   }
 
   void _setupAnimations() {
@@ -65,6 +131,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   @override
   void dispose() {
     _pulseController.dispose();
+    // Go offline when leaving the home page
+    if (!onlineStatus) {
+      _reservationService.goOffline();
+    }
     super.dispose();
   }
 
@@ -105,6 +175,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         _currentLon = position.longitude;
       });
 
+      // Update location on server for dispatch service
+      _reservationService.updateLocation(position.latitude, position.longitude);
+
       debugPrint('Location obtained: ${position.latitude}, ${position.longitude}');
     } catch (e) {
       debugPrint('Error getting location: $e');
@@ -112,6 +185,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   Future<void> _loadAvailableOrders() async {
+    if (!mounted) return;
     setState(() {
       isLoadingOrders = true;
       ordersError = null;
@@ -487,32 +561,39 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     padding: EdgeInsets.symmetric(horizontal: 20.w),
                     child: GestureDetector(
                       onTap: () {
-                        context.push("/orders");
+                        ordersError != null ? _loadAvailableOrders() : context.push("/orders");
                       },
                       child: Container(
                         padding: EdgeInsets.all(20.w),
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              colors.accentGreen.withValues(alpha: 0.15),
-                              colors.accentGreen.withValues(alpha: 0.05),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
+                          color: ordersError != null
+                              ? colors.error.withValues(alpha: 0.09)
+                              : colors.accentGreen.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                         ),
                         child: Row(
                           children: [
-                            Assets.images.deliveryPackage.image(height: 100.h, width: 100.w, package: 'grab_go_shared'),
-                            SizedBox(width: 10.w),
+                            ordersError != null
+                                ? SvgPicture.asset(
+                                    Assets.icons.wifiOff,
+                                    package: "grab_go_shared",
+                                    height: 40.h,
+                                    width: 40.w,
+                                    colorFilter: ColorFilter.mode(colors.error, BlendMode.srcIn),
+                                  )
+                                : Assets.images.deliveryPackage.image(
+                                    height: 100.h,
+                                    width: 100.w,
+                                    package: 'grab_go_shared',
+                                  ),
+                            SizedBox(width: ordersError != null ? 20.w : 10.w),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
                                     children: [
-                                      _statistics!.totalOrders > 5
+                                      (_statistics != null && _statistics!.totalOrders > 5)
                                           ? Container(
                                               padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                                               decoration: BoxDecoration(
@@ -536,37 +617,37 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     isLoadingOrders
                                         ? "..."
                                         : ordersError != null
-                                        ? "An error occured loading orders"
+                                        ? "Failed to load orders..."
                                         : _statistics != null
                                         ? "${_statistics!.totalOrders} orders available"
                                         : "You have no available orders",
                                     style: TextStyle(
-                                      color: colors.textPrimary,
+                                      color: ordersError == null ? colors.textPrimary : colors.error,
                                       fontWeight: FontWeight.w700,
                                       fontSize: 18.sp,
                                     ),
                                   ),
                                   SizedBox(height: 4.h),
-                                  ordersError == null
-                                      ? Text(
-                                          "Tap to view and accept",
-                                          style: TextStyle(
-                                            color: colors.textSecondary,
-                                            fontSize: 12.sp,
-                                            fontWeight: FontWeight.w400,
-                                          ),
-                                        )
-                                      : SizedBox.shrink(),
+                                  Text(
+                                    ordersError == null ? "Tap to view and accept" : "Tap to try again",
+                                    style: TextStyle(
+                                      color: colors.textSecondary,
+                                      fontSize: 12.sp,
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
-                            SvgPicture.asset(
-                              Assets.icons.navArrowRight,
-                              package: "grab_go_shared",
-                              width: 24.w,
-                              height: 24.w,
-                              colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
-                            ),
+                            ordersError == null
+                                ? SvgPicture.asset(
+                                    Assets.icons.navArrowRight,
+                                    package: "grab_go_shared",
+                                    width: 24.w,
+                                    height: 24.w,
+                                    colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                                  )
+                                : const SizedBox.shrink(),
                           ],
                         ),
                       ),

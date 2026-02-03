@@ -10,7 +10,7 @@ import 'package:grab_go_shared/grub_go_shared.dart';
 
 class PopularSection extends StatelessWidget {
   final List<FoodItem> popularItems;
-  final List<dynamic>? originalItems; // Original GroceryItem list for cart operations
+  final List<dynamic>? originalItems;
   final VoidCallback onSeeAll;
   final Function(FoodItem) onItemTap;
   final bool isLoading;
@@ -37,7 +37,6 @@ class PopularSection extends StatelessWidget {
       children: [
         SectionHeader(
           title: title ?? "Popular Right Now",
-          sectionIcon: icon ?? Assets.icons.flame,
           sectionTotal: popularItems.length,
           accentColor: AppColors.accentOrange,
           onSeeAll: onSeeAll,

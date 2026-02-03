@@ -6,6 +6,7 @@ const { sendOrderNotification, sendToUser } = require("../services/fcm_service")
 const { createNotification } = require("../services/notification_service");
 const ReferralService = require("../services/referral_service");
 const { getIO } = require("../utils/socket");
+const dispatchService = require("../services/dispatch_service");
 
 const router = express.Router();
 
@@ -595,6 +596,29 @@ router.put(
       // Send push notification to customer about order status change
       const io = getIO();
       notifyOrderStatusChange(updatedOrder, status, null, io);
+
+      // Trigger dispatch when order is confirmed and doesn't have a rider yet
+      if (['confirmed', 'preparing', 'ready'].includes(status) && !updatedOrder.riderId) {
+        console.log(`🚀 Triggering dispatch for order ${updatedOrder.orderNumber} (status: ${status})`);
+        
+        // Run dispatch asynchronously to not block the response
+        dispatchService.dispatchOrder(orderId).then(result => {
+          if (result.success) {
+            console.log(`✅ Dispatch initiated for order ${updatedOrder.orderNumber} -> rider ${result.riderName}`);
+          } else {
+            console.log(`⚠️ Dispatch failed for order ${updatedOrder.orderNumber}: ${result.error}`);
+          }
+        }).catch(err => {
+          console.error(`❌ Dispatch error for order ${updatedOrder.orderNumber}:`, err.message);
+        });
+      }
+
+      // Cancel reservations if order is cancelled
+      if (status === 'cancelled') {
+        dispatchService.cancelOrderReservations(orderId).catch(err => {
+          console.error(`Error cancelling reservations for order ${orderId}:`, err.message);
+        });
+      }
 
       res.json({
         success: true,

@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -12,6 +10,7 @@ import 'package:grab_go_customer/features/Pickup/widgets/vendor_details_bottom_s
 import 'package:grab_go_customer/features/vendors/model/vendor_model.dart';
 import 'package:grab_go_customer/features/vendors/model/vendor_type.dart';
 import 'package:grab_go_customer/features/vendors/viewmodel/vendor_provider.dart';
+import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
 import 'package:grab_go_shared/shared/utils/map_styles.dart';
@@ -30,11 +29,13 @@ class _PickupMapState extends State<PickupMap> {
   List<VendorModel> _vendors = [];
   List<VendorCluster> _clusters = [];
   bool _isLoading = true;
+  PersistentBottomSheetController? _sheetController;
+  String? _selectedVendorId;
   String? _errorMessage;
   Position? _currentPosition;
   StreamSubscription<Position>? _positionSubscription;
   Set<Marker> _markers = {};
-  BitmapDescriptor? _userLocationMarker;
+  Set<Polyline> _polylines = {};
   final Map<String, BitmapDescriptor> _markerCache = {};
   Timer? _debounceTimer;
   LatLngBounds? _lastLoadedBounds;
@@ -47,7 +48,15 @@ class _PickupMapState extends State<PickupMap> {
   }
 
   @override
+  void deactivate() {
+    _sheetController?.close();
+    super.deactivate();
+  }
+
+  @override
   void dispose() {
+    _sheetController?.close();
+    _markerCache.clear();
     _positionSubscription?.cancel();
     _mapController?.dispose();
     _debounceTimer?.cancel();
@@ -55,18 +64,9 @@ class _PickupMapState extends State<PickupMap> {
   }
 
   Future<void> _initializeMap() async {
-    await _loadUserMarker();
     await _getCurrentLocation();
     await _loadVendors();
     _startLocationUpdates();
-  }
-
-  Future<void> _loadUserMarker() async {
-    try {
-      _userLocationMarker = await CustomMapMarkers.createRiderLocationMarker(primaryColor: const Color(0xFF10B981));
-    } catch (e) {
-      debugPrint('Error loading user marker: $e');
-    }
   }
 
   Future<void> _getCurrentLocation() async {
@@ -127,40 +127,26 @@ class _PickupMapState extends State<PickupMap> {
       _errorMessage = null;
     });
     try {
-      debugPrint('📍 Current position: ${_currentPosition?.latitude}, ${_currentPosition?.longitude}');
-
       if (_currentPosition != null) {
-        debugPrint('🔍 Fetching nearby vendors within 10km...');
-        // Set vendor type first - VendorProvider requires this!
-        await vendorProvider.fetchVendors(VendorType.food, forceRefresh: false);
-        await vendorProvider.getNearbyVendors(_currentPosition!.latitude, _currentPosition!.longitude, radius: 10);
+        await vendorProvider.getAllNearbyVendors(_currentPosition!.latitude, _currentPosition!.longitude, radius: 10);
       } else {
-        debugPrint('🔍 No position, fetching all food vendors...');
         await vendorProvider.fetchVendors(VendorType.food, forceRefresh: true);
       }
 
-      debugPrint('📦 VendorProvider.filteredVendors length: ${vendorProvider.filteredVendors.length}');
-      debugPrint('📦 VendorProvider.vendors length: ${vendorProvider.vendors.length}');
-      debugPrint('📦 VendorProvider.isLoading: ${vendorProvider.isLoading}');
-      debugPrint('📦 VendorProvider.errorMessage: ${vendorProvider.error}');
       if (!mounted) return;
       setState(() {
         _vendors = vendorProvider.filteredVendors;
         _isLoading = false;
       });
 
-      // Debug logging
-      debugPrint('🗺️ Loaded ${_vendors.length} vendors');
       for (var vendor in _vendors) {
         debugPrint('  - ${vendor.displayName}: location=${vendor.location?.lat},${vendor.location?.lng}');
       }
 
       await _updateMarkers();
       _fitCameraToMarkers();
-    } catch (e, stackTrace) {
+    } catch (e) {
       if (!mounted) return;
-      debugPrint('❌ Error loading vendors: $e');
-      debugPrint('Stack trace: $stackTrace');
       setState(() {
         _errorMessage = 'Failed to load vendors: $e';
         _isLoading = false;
@@ -169,7 +155,22 @@ class _PickupMapState extends State<PickupMap> {
   }
 
   void _onCameraMove(CameraPosition position) {
+    final oldZoom = _currentZoom;
     _currentZoom = position.zoom;
+
+    const labelThreshold = 14.5;
+    const clusterThreshold = 14.0;
+
+    final bool crossedLabel =
+        (oldZoom < labelThreshold && _currentZoom >= labelThreshold) ||
+        (oldZoom >= labelThreshold && _currentZoom < labelThreshold);
+    final bool crossedCluster =
+        (oldZoom < clusterThreshold && _currentZoom >= clusterThreshold) ||
+        (oldZoom >= clusterThreshold && _currentZoom < clusterThreshold);
+
+    if (crossedLabel || crossedCluster) {
+      _updateMarkers();
+    }
 
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 500), () {
@@ -194,12 +195,7 @@ class _PickupMapState extends State<PickupMap> {
       if (!mounted) return;
       final vendorProvider = Provider.of<VendorProvider>(context, listen: false);
 
-      // Ensure vendor type is set before fetching nearby vendors
-      if (vendorProvider.selectedType == null) {
-        await vendorProvider.fetchVendors(VendorType.food, forceRefresh: false);
-      }
-
-      await vendorProvider.getNearbyVendors(center.latitude, center.longitude, radius: radius);
+      await vendorProvider.getAllNearbyVendors(center.latitude, center.longitude, radius: radius);
       if (!mounted) return;
       setState(() {
         _vendors = vendorProvider.filteredVendors;
@@ -229,22 +225,9 @@ class _PickupMapState extends State<PickupMap> {
 
   Future<void> _updateMarkers() async {
     if (!mounted) return;
-
-    debugPrint('🎯 _updateMarkers called with ${_vendors.length} vendors, zoom: $_currentZoom');
-
     final Set<Marker> markers = {};
     final colors = context.appColors;
-    if (_currentPosition != null && _userLocationMarker != null) {
-      markers.add(
-        Marker(
-          markerId: const MarkerId('user_location'),
-          position: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-          icon: _userLocationMarker!,
-          anchor: const Offset(0.5, 0.5),
-          zIndexInt: 100,
-        ),
-      );
-    }
+
     if (_currentZoom < 14) {
       _clusters = _clusterVendors(_vendors, _currentZoom);
 
@@ -256,7 +239,11 @@ class _PickupMapState extends State<PickupMap> {
           if (_markerCache.containsKey(cacheKey)) {
             markerIcon = _markerCache[cacheKey]!;
           } else {
-            markerIcon = await _createClusterMarker(cluster.vendors.length, colors.accentGreen);
+            markerIcon = await CustomMapMarkers.createStandardMarker(
+              primaryColor: colors.accentOrange.withValues(alpha: 0.6),
+              iconAsset: 'packages/grab_go_shared/lib/assets/icons/store.svg',
+              clusterCount: cluster.vendors.length,
+            );
             _markerCache[cacheKey] = markerIcon;
           }
           markers.add(
@@ -264,41 +251,109 @@ class _PickupMapState extends State<PickupMap> {
               markerId: MarkerId(cacheKey),
               position: cluster.center,
               icon: markerIcon,
-              anchor: const Offset(0.5, 0.5),
+              anchor: const Offset(0.5, 1.0),
               zIndexInt: 50,
               onTap: () => _onClusterTapped(cluster),
             ),
           );
         } else {
-          await _addVendorMarker(markers, cluster.vendors.first, colors);
+          await _addVendorMarker(markers, cluster.vendors.first, colors, showLabel: false);
         }
       }
     } else {
       for (final vendor in _vendors) {
-        await _addVendorMarker(markers, vendor, colors);
+        await _addVendorMarker(markers, vendor, colors, showLabel: _currentZoom >= 14.5);
       }
     }
-    if (!mounted) return;
 
-    debugPrint('✅ Created ${markers.length} markers total');
+    if (_currentPosition != null && _currentZoom >= 14.0) {
+      const String userCacheKey = 'user_location_marker';
+      BitmapDescriptor userIcon;
+      if (_markerCache.containsKey(userCacheKey)) {
+        userIcon = _markerCache[userCacheKey]!;
+      } else {
+        userIcon = await CustomMapMarkers.createRiderLocationMarker(primaryColor: colors.accentOrange);
+        _markerCache[userCacheKey] = userIcon;
+      }
+
+      markers.add(
+        Marker(
+          markerId: const MarkerId('user_location'),
+          position: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+          icon: userIcon,
+          anchor: const Offset(0.5, 0.5),
+          zIndexInt: 110,
+        ),
+      );
+    }
+
+    final Set<Polyline> polylines = {};
+    if (_selectedVendorId != null && _currentPosition != null) {
+      final selectedVendor = _vendors.firstWhere((v) => v.id == _selectedVendorId);
+      if (selectedVendor.location != null) {
+        polylines.add(
+          Polyline(
+            polylineId: const PolylineId('selected_vendor_route'),
+            points: [
+              LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+              LatLng(selectedVendor.location!.lat, selectedVendor.location!.lng),
+            ],
+            color: colors.accentOrange.withValues(alpha: 0.6),
+            width: 3,
+            patterns: [PatternItem.dash(15), PatternItem.gap(10)],
+          ),
+        );
+      }
+    }
+
+    if (!mounted) return;
 
     setState(() {
       _markers = markers;
+      _polylines = polylines;
     });
   }
 
-  Future<void> _addVendorMarker(Set<Marker> markers, VendorModel vendor, AppColorsExtension colors) async {
+  Future<void> _addVendorMarker(
+    Set<Marker> markers,
+    VendorModel vendor,
+    AppColorsExtension colors, {
+    bool showLabel = true,
+  }) async {
     if (vendor.location == null) return;
-    final cacheKey = 'vendor_${vendor.id}';
+
+    final bool isSelected = vendor.id == _selectedVendorId;
+    // Always show label if selected, otherwise honor the passed flag
+    final bool effectiveShowLabel = isSelected || showLabel;
+    final cacheKey = 'vendor_${vendor.id}${isSelected ? '_selected' : ''}${effectiveShowLabel ? '_labelled' : ''}';
 
     BitmapDescriptor markerIcon;
     if (_markerCache.containsKey(cacheKey)) {
       markerIcon = _markerCache[cacheKey]!;
     } else {
       try {
-        markerIcon = await CustomMapMarkers.createStoreMarker(
+        String iconAsset = 'packages/grab_go_shared/lib/assets/icons/store.svg';
+        switch (vendor.vendorTypeEnum) {
+          case VendorType.food:
+            iconAsset = 'packages/grab_go_shared/lib/assets/icons/chef-hat.svg';
+            break;
+          case VendorType.grocery:
+            iconAsset = 'packages/grab_go_shared/lib/assets/icons/cart.svg';
+            break;
+          case VendorType.grabmart:
+            iconAsset = 'packages/grab_go_shared/lib/assets/icons/store.svg';
+            break;
+          case VendorType.pharmacy:
+            iconAsset = 'packages/grab_go_shared/lib/assets/icons/pharmacy-cross-circle.svg';
+            break;
+        }
+
+        markerIcon = await CustomMapMarkers.createStandardMarker(
           name: vendor.displayName,
-          primaryColor: _getVendorColor(vendor.vendorType),
+          primaryColor: colors.accentOrange,
+          iconAsset: iconAsset,
+          isSelected: isSelected,
+          showLabel: effectiveShowLabel,
         );
         _markerCache[cacheKey] = markerIcon;
       } catch (e) {
@@ -307,34 +362,16 @@ class _PickupMapState extends State<PickupMap> {
       }
     }
 
-    debugPrint('  ➕ Added vendor marker: ${vendor.displayName} at ${vendor.location!.lat},${vendor.location!.lng}');
-
     markers.add(
       Marker(
         markerId: MarkerId('vendor_${vendor.id}'),
         position: LatLng(vendor.location!.lat, vendor.location!.lng),
         icon: markerIcon,
         anchor: const Offset(0.5, 1.0),
-        zIndexInt: 10,
+        zIndexInt: isSelected ? 100 : 10,
         onTap: () => _onVendorMarkerTapped(vendor),
       ),
     );
-  }
-
-  Color _getVendorColor(String? vendorType) {
-    switch (vendorType?.toLowerCase()) {
-      case 'restaurant':
-      case 'food':
-        return const Color(0xFFEF4444);
-      case 'pharmacy':
-        return const Color(0xFF10B981);
-      case 'grocery':
-        return const Color(0xFF3B82F6);
-      case 'grabmart':
-        return const Color(0xFFF59E0B);
-      default:
-        return const Color(0xFF6B7280);
-    }
   }
 
   List<VendorCluster> _clusterVendors(List<VendorModel> vendors, double zoomLevel) {
@@ -382,42 +419,32 @@ class _PickupMapState extends State<PickupMap> {
     return 1000;
   }
 
-  Future<BitmapDescriptor> _createClusterMarker(int count, Color color) async {
-    final pictureRecorder = ui.PictureRecorder();
-    final canvas = Canvas(pictureRecorder);
-    final paint = Paint();
-    const size = 120.0;
-    const radius = 50.0;
-    final center = const Offset(size / 2, size / 2);
-    paint.color = color.withValues(alpha: 0.3);
-    canvas.drawCircle(center, radius, paint);
-    paint.color = color;
-    canvas.drawCircle(center, radius * 0.7, paint);
-    paint.color = Colors.white;
-    paint.style = PaintingStyle.stroke;
-    paint.strokeWidth = 4;
-    canvas.drawCircle(center, radius * 0.7, paint);
-    paint.style = PaintingStyle.fill;
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: count > 99 ? '99+' : '$count',
-        style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
-      ),
-      textDirection: TextDirection.ltr,
-    );
-    textPainter.layout();
-    textPainter.paint(canvas, Offset(center.dx - textPainter.width / 2, center.dy - textPainter.height / 2));
-    final image = await pictureRecorder.endRecording().toImage(size.toInt(), size.toInt());
-    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-    return BitmapDescriptor.bytes(byteData!.buffer.asUint8List());
-  }
-
   void _onClusterTapped(VendorCluster cluster) {
     _mapController?.animateCamera(CameraUpdate.newLatLngZoom(cluster.center, _currentZoom + 2));
   }
 
   void _onVendorMarkerTapped(VendorModel vendor) {
-    VendorDetailBottomSheet.show(context: context, vendor: vendor);
+    if (_selectedVendorId == vendor.id) return;
+
+    setState(() {
+      _selectedVendorId = vendor.id;
+    });
+    _updateMarkers();
+
+    if (_sheetController != null) {
+      _sheetController?.close();
+      _sheetController = null;
+    }
+    _sheetController = VendorDetailBottomSheet.show(context: context, vendor: vendor);
+    _sheetController?.closed.then((_) {
+      if (mounted) {
+        setState(() {
+          _sheetController = null;
+          _selectedVendorId = null;
+        });
+        _updateMarkers();
+      }
+    });
   }
 
   void _fitCameraToMarkers() {
@@ -457,10 +484,158 @@ class _PickupMapState extends State<PickupMap> {
     );
   }
 
+  Widget _buildFilterChips(VendorProvider provider, AppColorsExtension colors, bool isDark) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
+      child: Row(
+        children: [
+          _buildFilterChip(
+            label: 'All',
+            isSelected: provider.mapCategoryFilter == null,
+            onTap: () => provider.setMapCategoryFilter(null),
+            colors: colors,
+            isDark: isDark,
+          ),
+          _buildFilterChip(
+            label: 'Food',
+            isSelected: provider.mapCategoryFilter == VendorType.food,
+            onTap: () => provider.setMapCategoryFilter(VendorType.food),
+            colors: colors,
+            isDark: isDark,
+          ),
+          _buildFilterChip(
+            label: 'Grocery',
+            isSelected: provider.mapCategoryFilter == VendorType.grocery,
+            onTap: () => provider.setMapCategoryFilter(VendorType.grocery),
+            colors: colors,
+            isDark: isDark,
+          ),
+          _buildFilterChip(
+            label: 'Pharmacy',
+            isSelected: provider.mapCategoryFilter == VendorType.pharmacy,
+            onTap: () => provider.setMapCategoryFilter(VendorType.pharmacy),
+            colors: colors,
+            isDark: isDark,
+          ),
+          _buildFilterChip(
+            label: 'GrabMart',
+            isSelected: provider.mapCategoryFilter == VendorType.grabmart,
+            onTap: () => provider.setMapCategoryFilter(VendorType.grabmart),
+            colors: colors,
+            isDark: isDark,
+          ),
+          _buildFilterChip(
+            label: 'Open Now',
+            isSelected: provider.openNowOnly,
+            onTap: () => provider.setOpenNowFilter(!provider.openNowOnly),
+            colors: colors,
+            isDark: isDark,
+          ),
+          _buildFilterChip(
+            label: 'Near Me',
+            isSelected: provider.maxDistance != null,
+            onTap: () => provider.setMaxDistance(provider.maxDistance == null ? 5.0 : null),
+            colors: colors,
+            isDark: isDark,
+          ),
+          _buildFilterChip(
+            label: 'Top Rated',
+            isSelected: provider.minRating != null,
+            onTap: () => provider.setMinRating(provider.minRating == null ? 4.5 : null),
+            colors: colors,
+            isDark: isDark,
+          ),
+          _buildFilterChip(
+            label: 'Fast Delivery',
+            isSelected: provider.fastDeliveryOnly,
+            onTap: () => provider.setFastDelivery(!provider.fastDeliveryOnly),
+            colors: colors,
+            isDark: isDark,
+          ),
+          _buildFilterChip(
+            label: 'Budget',
+            isSelected: provider.priceRange == 1,
+            onTap: () => provider.setPriceRange(provider.priceRange == 1 ? null : 1),
+            colors: colors,
+            isDark: isDark,
+          ),
+          _buildFilterChip(
+            label: 'Mid',
+            isSelected: provider.priceRange == 2,
+            onTap: () => provider.setPriceRange(provider.priceRange == 2 ? null : 2),
+            colors: colors,
+            isDark: isDark,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required AppColorsExtension colors,
+    required bool isDark,
+  }) {
+    return Padding(
+      padding: EdgeInsets.only(right: 8.w),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+          decoration: BoxDecoration(
+            color: isSelected ? colors.accentOrange : colors.backgroundPrimary,
+            borderRadius: BorderRadius.circular(20.r),
+            boxShadow: [
+              BoxShadow(
+                color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(15),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? Colors.white : colors.textPrimary,
+              fontSize: 13.sp,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    final vendorProvider = Provider.of<VendorProvider>(context);
+    final navigationProvider = Provider.of<NavigationProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (navigationProvider.selectedIndex != 1 && _sheetController != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_sheetController != null) {
+          _sheetController?.close();
+          _sheetController = null;
+          if (mounted) {
+            setState(() {
+              _selectedVendorId = null;
+            });
+            _updateMarkers();
+          }
+        }
+      });
+    }
+
+    if (vendorProvider.filteredVendors != _vendors) {
+      _vendors = vendorProvider.filteredVendors;
+      _markerCache.clear();
+      Future.microtask(() => _updateMarkers());
+    }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
@@ -474,59 +649,7 @@ class _PickupMapState extends State<PickupMap> {
         extendBodyBehindAppBar: true,
         extendBody: true,
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          systemOverlayStyle: SystemUiOverlayStyle(
-            statusBarColor: Colors.transparent,
-            systemNavigationBarColor: Colors.transparent,
-            statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-            statusBarBrightness: isDark ? Brightness.light : Brightness.dark,
-            systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-          ),
-          automaticallyImplyLeading: false,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          backgroundColor: Colors.transparent,
-          leadingWidth: 72,
-          centerTitle: true,
-          title: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8.w),
-            child: Row(
-              children: [
-                Container(
-                  height: 44.h,
-                  width: 44.w,
-                  decoration: BoxDecoration(
-                    color: colors.backgroundPrimary,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                        spreadRadius: 0,
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => Navigator.of(context).pop(),
-                      customBorder: const CircleBorder(),
-                      child: Padding(
-                        padding: EdgeInsets.all(10.r),
-                        child: SvgPicture.asset(
-                          Assets.icons.navArrowLeft,
-                          package: 'grab_go_shared',
-                          colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        appBar: null,
         body: Stack(
           children: [
             Positioned.fill(
@@ -538,6 +661,7 @@ class _PickupMapState extends State<PickupMap> {
                   zoom: 14,
                 ),
                 markers: _markers,
+                polylines: _polylines,
                 myLocationEnabled: false,
                 myLocationButtonEnabled: false,
                 zoomControlsEnabled: false,
@@ -558,21 +682,32 @@ class _PickupMapState extends State<PickupMap> {
                   Future.delayed(const Duration(milliseconds: 500), _fitCameraToMarkers);
                 },
                 onCameraMove: _onCameraMove,
+                onTap: (_) {
+                  if (_sheetController != null) {
+                    _sheetController?.close();
+                    _sheetController = null;
+                  }
+                  if (_selectedVendorId != null) {
+                    setState(() {
+                      _selectedVendorId = null;
+                    });
+                    _updateMarkers();
+                  }
+                },
               ),
             ),
 
-            // Loading overlay
             if (_isLoading)
               Positioned.fill(
                 child: Container(
                   color: colors.backgroundPrimary.withValues(alpha: 0.7),
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [SpinKitCubeGrid(color: colors.accentOrange, size: 35.r)],
                   ),
                 ),
               ),
 
-            // Error state
             if (_errorMessage != null && !_isLoading)
               Positioned(
                 left: 16.w,
@@ -604,24 +739,72 @@ class _PickupMapState extends State<PickupMap> {
                 ),
               ),
 
-            // Map Controls
             Positioned(
-              right: 16.w,
-              bottom: 120.h,
+              top: MediaQuery.of(context).padding.top + 10.h,
+              left: 0,
+              right: 0,
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  _buildMapControlButton(
-                    icon: Assets.icons.position,
-                    onTap: _centerOnUser,
-                    colors: colors,
-                    isDark: isDark,
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    child: Container(
+                      height: 48.h,
+                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      decoration: BoxDecoration(
+                        color: colors.backgroundPrimary,
+                        borderRadius: BorderRadius.circular(30.r),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(15),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          SvgPicture.asset(
+                            Assets.icons.search,
+                            package: 'grab_go_shared',
+                            width: 20.w,
+                            height: 20.w,
+                            colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                          ),
+                          SizedBox(width: 12.w),
+                          Text(
+                            'Search',
+                            style: TextStyle(color: colors.textSecondary, fontSize: 15.sp, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  SizedBox(height: 8.h),
-                  _buildMapControlButton(
-                    icon: Assets.icons.expand,
-                    onTap: _fitCameraToMarkers,
-                    colors: colors,
-                    isDark: isDark,
+                  SizedBox(height: 12.h),
+                  _buildFilterChips(vendorProvider, colors, isDark),
+
+                  SizedBox(height: 16.h),
+
+                  Padding(
+                    padding: EdgeInsets.only(right: 16.w),
+                    child: _buildMapControlButton(
+                      icon: Assets.icons.position,
+                      onTap: _centerOnUser,
+                      colors: colors,
+                      isDark: isDark,
+                    ),
+                  ),
+
+                  SizedBox(height: 12.h),
+
+                  Padding(
+                    padding: EdgeInsets.only(right: 16.w),
+                    child: _buildMapControlButton(
+                      icon: Assets.icons.expand,
+                      onTap: _fitCameraToMarkers,
+                      colors: colors,
+                      isDark: isDark,
+                    ),
                   ),
                 ],
               ),
@@ -673,7 +856,6 @@ Widget _buildMapControlButton({
   );
 }
 
-// Helper class for vendor clustering
 class VendorCluster {
   LatLng center;
   List<VendorModel> vendors;

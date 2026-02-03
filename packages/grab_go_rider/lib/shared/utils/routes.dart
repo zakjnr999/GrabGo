@@ -14,6 +14,7 @@ import 'package:grab_go_rider/features/auth/view/email_otp_verification.dart';
 import 'package:grab_go_rider/features/auth/view/verify_phone.dart';
 import 'package:grab_go_rider/features/home/view/bonuses_page.dart';
 import 'package:grab_go_rider/features/home/view/earnings_history_page.dart';
+import 'package:grab_go_rider/features/home/view/loan_application.dart';
 import 'package:grab_go_rider/features/home/view/notifications_page.dart';
 import 'package:grab_go_rider/features/orders/service/available_order_dto.dart';
 import 'package:grab_go_rider/features/orders/service/order_statistics_service.dart';
@@ -294,6 +295,25 @@ final GoRouter appRouter = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: const BottomNavigator(),
+          transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.scaled,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/loanApplication",
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const LoanApplication(),
           transitionDuration: const Duration(milliseconds: 800),
           reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {

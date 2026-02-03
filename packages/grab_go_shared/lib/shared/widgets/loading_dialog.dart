@@ -12,11 +12,11 @@ class LoadingDialog {
 
   LoadingDialogController? _controller;
 
-  void show({required BuildContext context, String text = "Loading"}) {
+  void show({required BuildContext context, String text = "Loading", Color? spinColor}) {
     if (_controller?.update(text) ?? false) {
       return;
     } else {
-      _controller = showOverlay(context: context, text: text);
+      _controller = showOverlay(context: context, text: text, spinColor: spinColor);
     }
   }
 
@@ -25,10 +25,7 @@ class LoadingDialog {
     _controller = null;
   }
 
-  LoadingDialogController? showOverlay({
-    required BuildContext context,
-    required String text,
-  }) {
+  LoadingDialogController? showOverlay({required BuildContext context, required String text, Color? spinColor}) {
     final textController = StreamController<String>();
     textController.add(text);
 
@@ -49,20 +46,14 @@ class LoadingDialog {
                 maxHeight: size.width * .8,
                 minWidth: size.width * .5,
               ),
-              decoration: BoxDecoration(
-                color: colors.backgroundPrimary,
-                borderRadius: BorderRadius.circular(8.r),
-              ),
+              decoration: BoxDecoration(color: colors.backgroundPrimary, borderRadius: BorderRadius.circular(8.r)),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const SizedBox(height: 10),
-                    SpinKitCubeGrid(
-                      color: colors.accentOrange,
-                      size: isTablet ? 30 : 35,
-                    ),
+                    SpinKitCubeGrid(color: spinColor ?? colors.accentOrange, size: isTablet ? 30 : 35),
                     const SizedBox(height: 20),
                     StreamBuilder<String>(
                       stream: textController.stream,
@@ -105,5 +96,3 @@ class LoadingDialog {
     );
   }
 }
-
-

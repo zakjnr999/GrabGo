@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -9,13 +8,6 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_svg/flutter_svg.dart';
 
 class CustomMapMarkers {
-  // ============================================================
-  // ORDER PIN MARKER - Modern floating card style with gradient
-  // ============================================================
-
-  /// Create order pin marker for available orders map
-  /// [isHighlighted] - true for closest/best ETA orders (accent color)
-  /// [itemCount] - number of items in the order
   static Future<BitmapDescriptor> createOrderPinMarker({
     required Color primaryColor,
     required Color highlightColor,
@@ -31,11 +23,6 @@ class CustomMapMarkers {
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
     final Paint paint = Paint();
-
-    // Colors
-    final Color mainColor = isHighlighted ? highlightColor : primaryColor;
-    final Color gradientStart = isHighlighted ? highlightColor : const Color(0xFF6B7280); // Modern grey
-    final Color gradientEnd = isHighlighted ? highlightColor.withOpacity(0.8) : const Color(0xFF4B5563);
 
     // Card position (centered)
     final double cardX = (width - cardWidth) / 2;
@@ -100,12 +87,7 @@ class CustomMapMarkers {
       final badgePainter = TextPainter(
         text: TextSpan(
           text: badgeText,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.3,
-          ),
+          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: -0.3),
         ),
         textDirection: TextDirection.ltr,
       );
@@ -134,7 +116,7 @@ class CustomMapMarkers {
 
     // 7. Draw highlight ring for closest order
     if (isHighlighted) {
-      paint.color = highlightColor.withOpacity(0.3);
+      paint.color = highlightColor.withValues(alpha: 0.3);
       paint.style = PaintingStyle.stroke;
       paint.strokeWidth = 3;
       canvas.drawRRect(
@@ -150,20 +132,14 @@ class CustomMapMarkers {
     // Convert to Bitmap
     final ui.Image finalImage = await pictureRecorder.endRecording().toImage(width.toInt(), height.toInt());
     final ByteData? byteData = await finalImage.toByteData(format: ui.ImageByteFormat.png);
-    return BitmapDescriptor.fromBytes(byteData!.buffer.asUint8List());
+    return BitmapDescriptor.bytes(byteData!.buffer.asUint8List());
   }
 
-  // ============================================================
-  // RIDER LOCATION MARKER - Modern pulsing navigation style
-  // ============================================================
-
   /// Create rider location marker with simple clean circular design
-  static Future<BitmapDescriptor> createRiderLocationMarker({
-    required Color primaryColor,
-  }) async {
-    const double size = 60;
-    const double outerRing = 28;
-    const double innerDot = 16;
+  static Future<BitmapDescriptor> createRiderLocationMarker({required Color primaryColor}) async {
+    const double size = 40;
+    const double outerRing = 18;
+    const double innerDot = 8;
 
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
@@ -172,11 +148,11 @@ class CustomMapMarkers {
     final Offset center = Offset(size / 2, size / 2);
 
     // 1. Outer subtle ring (semi-transparent)
-    paint.color = primaryColor.withOpacity(0.2);
+    paint.color = primaryColor.withValues(alpha: 0.2);
     canvas.drawCircle(center, outerRing, paint);
 
     // 2. Middle ring (more opaque)
-    paint.color = primaryColor.withOpacity(0.4);
+    paint.color = primaryColor.withValues(alpha: 0.4);
     canvas.drawCircle(center, outerRing * 0.7, paint);
 
     // 3. Inner solid dot
@@ -184,16 +160,16 @@ class CustomMapMarkers {
     canvas.drawCircle(center, innerDot, paint);
 
     // 4. White border around inner dot
-    paint.color = Colors.white;
+    paint.color = Colors.white.withValues(alpha: 1);
     paint.style = PaintingStyle.stroke;
-    paint.strokeWidth = 3;
+    paint.strokeWidth = 1.5;
     canvas.drawCircle(center, innerDot, paint);
     paint.style = PaintingStyle.fill;
 
     // Convert to Bitmap
     final ui.Image finalImage = await pictureRecorder.endRecording().toImage(size.toInt(), size.toInt());
     final ByteData? byteData = await finalImage.toByteData(format: ui.ImageByteFormat.png);
-    return BitmapDescriptor.fromBytes(byteData!.buffer.asUint8List());
+    return BitmapDescriptor.bytes(byteData!.buffer.asUint8List());
   }
 
   /// Create custom rider marker with avatar and label
@@ -295,7 +271,123 @@ class CustomMapMarkers {
     final ByteData? byteData = await finalImage.toByteData(format: ui.ImageByteFormat.png);
     final Uint8List uint8list = byteData!.buffer.asUint8List();
 
-    return BitmapDescriptor.fromBytes(uint8list);
+    return BitmapDescriptor.bytes(uint8list);
+  }
+
+  /// Create a standardized circular marker with an icon or count
+  static Future<BitmapDescriptor> createStandardMarker({
+    String? name,
+    required Color primaryColor,
+    required String iconAsset,
+    int? clusterCount,
+    bool isSelected = false,
+    bool showLabel = true,
+  }) async {
+    // Balanced scale factor for selection
+    final double scaleFactor = isSelected ? 1.2 : 1.0;
+    const double baseSize = 65;
+    const double baseRadius = 24;
+
+    final double size = baseSize * scaleFactor;
+    final double radius = baseRadius * scaleFactor;
+
+    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(pictureRecorder);
+    final Paint paint = Paint();
+
+    // 1. Draw individual vendor label bubble - only if NOT a cluster and showLabel is true
+    double labelOffset = 0;
+    if (name != null && clusterCount == null && showLabel) {
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: name,
+          style: TextStyle(color: Colors.black, fontSize: 11 * scaleFactor, fontWeight: FontWeight.w500),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+
+      final double labelHeight = textPainter.height;
+
+      // Label text
+      textPainter.paint(canvas, Offset((size - textPainter.width) / 2, 0));
+
+      labelOffset = labelHeight + (3 * scaleFactor);
+    }
+
+    final double centerY = labelOffset + radius;
+    final Offset center = Offset(size / 2, centerY);
+
+    // 2. Draw Shadow for the circle (Stronger if selected)
+    final Path shadowPath = Path()..addOval(Rect.fromCircle(center: center, radius: radius));
+    canvas.drawShadow(shadowPath, Colors.black.withValues(alpha: 0.3), 4, true);
+
+    // 3. Draw Circle Background (The main color)
+    paint.color = primaryColor;
+    paint.style = PaintingStyle.fill;
+    canvas.drawCircle(center, radius, paint);
+
+    if (clusterCount != null) {
+      // 4a. Draw Cluster Count
+      final countText = clusterCount > 99 ? '99+' : '$clusterCount';
+      final countPainter = TextPainter(
+        text: TextSpan(
+          text: countText,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: (clusterCount > 9 ? 16 : 22) * scaleFactor,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      countPainter.layout();
+      countPainter.paint(canvas, Offset(center.dx - countPainter.width / 2, center.dy - countPainter.height / 2));
+    } else {
+      // 4b. Draw SVG Icon
+      try {
+        final String svgString = await rootBundle.loadString(iconAsset);
+        final SvgStringLoader loader = SvgStringLoader(svgString);
+        final PictureInfo pictureInfo = await vg.loadPicture(loader, null);
+
+        final double svgSize = radius * 1.25;
+
+        canvas.save();
+        canvas.translate(center.dx - svgSize / 2, center.dy - svgSize / 2);
+        final double scale = svgSize / pictureInfo.size.width;
+        canvas.scale(scale, scale);
+
+        final Paint tintPaint = Paint()..colorFilter = const ColorFilter.mode(Colors.white, BlendMode.srcIn);
+        canvas.saveLayer(Rect.fromLTWH(0, 0, pictureInfo.size.width, pictureInfo.size.height), tintPaint);
+        canvas.drawPicture(pictureInfo.picture);
+        canvas.restore();
+        canvas.restore();
+      } catch (e) {
+        debugPrint('Error drawing SVG in StandardMarker: $e');
+        // Fallback
+        paint.color = Colors.white;
+        canvas.drawCircle(center, radius * 0.5, paint);
+      }
+    }
+
+    // 5. Draw small pointer at the bottom
+    final Path pointer = Path();
+    pointer.moveTo(size / 2 - (6 * scaleFactor), centerY + radius - (2 * scaleFactor));
+    pointer.lineTo(size / 2 + (6 * scaleFactor), centerY + radius - (2 * scaleFactor));
+    pointer.lineTo(size / 2, centerY + radius + (8 * scaleFactor));
+    pointer.close();
+
+    // Draw pointer background
+    paint.color = primaryColor;
+    paint.style = PaintingStyle.fill;
+    canvas.drawPath(pointer, paint);
+
+    final ui.Image finalImage = await pictureRecorder.endRecording().toImage(
+      size.toInt(),
+      (centerY + radius + (15 * scaleFactor)).toInt(),
+    );
+    final ByteData? byteData = await finalImage.toByteData(format: ui.ImageByteFormat.png);
+    return BitmapDescriptor.bytes(byteData!.buffer.asUint8List());
   }
 
   /// Create custom store/restaurant marker
@@ -392,7 +484,7 @@ class CustomMapMarkers {
 
     final ui.Image finalImage = await pictureRecorder.endRecording().toImage(width.toInt(), height.toInt());
     final ByteData? byteData = await finalImage.toByteData(format: ui.ImageByteFormat.png);
-    return BitmapDescriptor.fromBytes(byteData!.buffer.asUint8List());
+    return BitmapDescriptor.bytes(byteData!.buffer.asUint8List());
   }
 
   static Future<ui.Image?> _loadNetworkImage(String url) async {

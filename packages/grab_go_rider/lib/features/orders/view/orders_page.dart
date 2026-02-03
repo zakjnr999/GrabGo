@@ -257,7 +257,7 @@ class _OrdersPageState extends State<OrdersPage> {
   Widget _buildNoOrdersState(AppColorsExtension colors) {
     return Center(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 40.w),
+        padding: EdgeInsets.symmetric(horizontal: 20.w),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -292,6 +292,7 @@ class _OrdersPageState extends State<OrdersPage> {
                 onPressed: _loadAvailableOrders,
                 buttonText: "Refresh Range",
                 backgroundColor: colors.accentGreen,
+                borderRadius: KBorderSize.borderRadius4,
                 textStyle: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w700),
               ),
             ),

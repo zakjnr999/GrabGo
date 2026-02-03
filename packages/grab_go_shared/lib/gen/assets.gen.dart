@@ -529,6 +529,9 @@ class $LibAssetsIconsGen {
   AssetGenImage get vodafoneCash =>
       const AssetGenImage('lib/assets/icons/vodafone_cash.jpg');
 
+  /// File path: lib/assets/icons/wallet.svg
+  String get wallet => 'lib/assets/icons/wallet.svg';
+
   /// File path: lib/assets/icons/warning-circle.svg
   String get warningCircle => 'lib/assets/icons/warning-circle.svg';
 
@@ -700,6 +703,7 @@ class $LibAssetsIconsGen {
     utensilsCrossed,
     viewGrid,
     vodafoneCash,
+    wallet,
     warningCircle,
     weight,
     wifiOff,

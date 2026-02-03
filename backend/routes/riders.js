@@ -3,6 +3,8 @@ const { body, validationResult } = require("express-validator");
 const prisma = require("../config/prisma");
 const { protect, authorize } = require("../middleware/auth");
 const { uploadSingle, uploadToCloudinary } = require("../middleware/upload");
+const dispatchService = require("../services/dispatch_service");
+const OrderReservation = require("../models/OrderReservation");
 
 const router = express.Router();
 
@@ -235,6 +237,313 @@ router.get(
         success: false,
         message: "Server error",
         error: error.message,
+      });
+    }
+  }
+);
+
+// ==================== ORDER RESERVATION ENDPOINTS ====================
+
+/**
+ * @route   GET /riders/active-reservation
+ * @desc    Get rider's active order reservation (if any)
+ * @access  Private (Rider only)
+ */
+router.get(
+  "/active-reservation",
+  protect,
+  authorize("rider"),
+  async (req, res) => {
+    try {
+      const reservation = await dispatchService.getActiveReservationForRider(req.user.id);
+
+      if (!reservation) {
+        return res.json({
+          success: true,
+          hasReservation: false,
+          data: null
+        });
+      }
+
+      // Calculate remaining time
+      const now = new Date();
+      const expiresAt = new Date(reservation.expiresAt);
+      const remainingMs = Math.max(0, expiresAt - now);
+
+      res.json({
+        success: true,
+        hasReservation: true,
+        data: {
+          reservationId: reservation._id,
+          orderId: reservation.orderId,
+          orderNumber: reservation.orderNumber,
+          expiresAt: reservation.expiresAt,
+          remainingMs,
+          timeoutMs: reservation.timeoutMs,
+          attemptNumber: reservation.attemptNumber,
+          estimatedEarnings: reservation.estimatedEarnings,
+          distanceToPickup: reservation.distanceToPickup,
+          order: reservation.orderSnapshot
+        }
+      });
+    } catch (error) {
+      console.error("Get active reservation error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message
+      });
+    }
+  }
+);
+
+/**
+ * @route   POST /riders/reservation/:reservationId/accept
+ * @desc    Accept an order reservation
+ * @access  Private (Rider only)
+ */
+router.post(
+  "/reservation/:reservationId/accept",
+  protect,
+  authorize("rider"),
+  async (req, res) => {
+    try {
+      const { reservationId } = req.params;
+      const riderId = req.user.id;
+
+      // Accept the reservation
+      const acceptResult = await dispatchService.acceptReservation(reservationId, riderId);
+
+      if (!acceptResult.success) {
+        return res.status(400).json({
+          success: false,
+          message: acceptResult.error
+        });
+      }
+
+      // Now actually assign the order to the rider (same logic as accept-order)
+      const orderId = acceptResult.orderId;
+
+      const order = await prisma.order.findUnique({
+        where: { id: orderId }
+      });
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found"
+        });
+      }
+
+      if (order.riderId && order.riderId !== riderId) {
+        return res.status(400).json({
+          success: false,
+          message: "Order already assigned to another rider"
+        });
+      }
+
+      // Calculate rider earnings and lock them in
+      const { calculateRiderEarnings } = require('../utils/riderEarningsCalculator');
+
+      const fullOrder = await prisma.order.findUnique({
+        where: { id: orderId },
+        include: {
+          restaurant: { select: { restaurantName: true, latitude: true, longitude: true } },
+          groceryStore: { select: { storeName: true, latitude: true, longitude: true } },
+          pharmacyStore: { select: { storeName: true, latitude: true, longitude: true } }
+        }
+      });
+
+      const earnings = calculateRiderEarnings(fullOrder, 0);
+
+      const updatedOrder = await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          riderId: riderId,
+          status: order.status === "ready" ? "picked_up" : order.status,
+          riderBaseFee: earnings.riderBaseFee,
+          riderDistanceFee: earnings.riderDistanceFee,
+          riderTip: earnings.riderTip,
+          platformFee: earnings.platformFee,
+          riderEarnings: earnings.riderEarnings
+        },
+        include: {
+          items: { select: { id: true, name: true, quantity: true, price: true } },
+          customer: { select: { username: true, email: true, phone: true, profilePicture: true } },
+          restaurant: { select: { restaurantName: true, logo: true, address: true, latitude: true, longitude: true } },
+          groceryStore: { select: { storeName: true, logo: true, address: true, latitude: true, longitude: true } },
+          pharmacyStore: { select: { storeName: true, logo: true, address: true, latitude: true, longitude: true } },
+          rider: { select: { username: true, email: true, phone: true } }
+        }
+      });
+
+      // Create chat between customer and rider
+      try {
+        const existingChat = await prisma.chat.findUnique({
+          where: { orderId: updatedOrder.id }
+        });
+
+        if (!existingChat) {
+          await prisma.chat.create({
+            data: {
+              orderId: updatedOrder.id,
+              customerId: updatedOrder.customerId,
+              riderId: updatedOrder.riderId,
+            }
+          });
+        }
+      } catch (chatError) {
+        console.error("Ensure chat for accepted order error:", chatError);
+      }
+
+      // Initialize tracking
+      try {
+        const OrderTracking = require('../models/OrderTracking');
+        const trackingService = require('../services/tracking_service');
+
+        await OrderTracking.findOneAndDelete({ orderId: updatedOrder.id });
+
+        const pickupLat = updatedOrder.restaurant?.latitude || updatedOrder.groceryStore?.latitude || updatedOrder.pharmacyStore?.latitude;
+        const pickupLon = updatedOrder.restaurant?.longitude || updatedOrder.groceryStore?.longitude || updatedOrder.pharmacyStore?.longitude;
+
+        if (pickupLat && pickupLon && updatedOrder.deliveryLatitude && updatedOrder.deliveryLongitude) {
+          await trackingService.initializeTracking(
+            updatedOrder.id,
+            riderId,
+            updatedOrder.customerId,
+            { lat: pickupLat, lon: pickupLon },
+            { lat: updatedOrder.deliveryLatitude, lon: updatedOrder.deliveryLongitude }
+          );
+        }
+      } catch (trackingError) {
+        console.error("Initialize tracking error:", trackingError);
+      }
+
+      // Notify customer
+      const socketService = require('../services/socket_service');
+      socketService.emitToUserRoom(updatedOrder.customerId, 'order_accepted', {
+        orderId: updatedOrder.id,
+        orderNumber: updatedOrder.orderNumber,
+        rider: {
+          id: riderId,
+          name: updatedOrder.rider?.username,
+          phone: updatedOrder.rider?.phone
+        }
+      });
+
+      // Broadcast that order is taken
+      socketService.broadcastOrderTaken(orderId, riderId);
+
+      res.json({
+        success: true,
+        message: "Order accepted successfully via reservation",
+        data: updatedOrder
+      });
+
+    } catch (error) {
+      console.error("Accept reservation error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message
+      });
+    }
+  }
+);
+
+/**
+ * @route   POST /riders/reservation/:reservationId/decline
+ * @desc    Decline an order reservation
+ * @access  Private (Rider only)
+ */
+router.post(
+  "/reservation/:reservationId/decline",
+  protect,
+  authorize("rider"),
+  async (req, res) => {
+    try {
+      const { reservationId } = req.params;
+      const { reason } = req.body; // Optional: 'too_far', 'busy', 'low_pay', 'other'
+      const riderId = req.user.id;
+
+      const result = await dispatchService.declineReservation(reservationId, riderId, reason);
+
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          message: result.error
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Reservation declined",
+        nextDispatch: result.nextDispatch?.success ? {
+          riderId: result.nextDispatch.riderId,
+          riderName: result.nextDispatch.riderName,
+          attemptNumber: result.nextDispatch.attemptNumber
+        } : null
+      });
+
+    } catch (error) {
+      console.error("Decline reservation error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message
+      });
+    }
+  }
+);
+
+/**
+ * @route   GET /riders/reservation-history
+ * @desc    Get rider's reservation history (for stats)
+ * @access  Private (Rider only)
+ */
+router.get(
+  "/reservation-history",
+  protect,
+  authorize("rider"),
+  async (req, res) => {
+    try {
+      const riderId = req.user.id;
+      const { limit = 20, status } = req.query;
+
+      const query = { riderId };
+      if (status) {
+        query.status = status;
+      }
+
+      const reservations = await OrderReservation.find(query)
+        .sort({ createdAt: -1 })
+        .limit(parseInt(limit));
+
+      // Calculate stats
+      const allReservations = await OrderReservation.find({ riderId });
+      const stats = {
+        total: allReservations.length,
+        accepted: allReservations.filter(r => r.status === 'accepted').length,
+        declined: allReservations.filter(r => r.status === 'declined').length,
+        expired: allReservations.filter(r => r.status === 'expired').length,
+        acceptanceRate: allReservations.length > 0 
+          ? (allReservations.filter(r => r.status === 'accepted').length / allReservations.length * 100).toFixed(1)
+          : 0
+      };
+
+      res.json({
+        success: true,
+        data: {
+          reservations,
+          stats
+        }
+      });
+    } catch (error) {
+      console.error("Get reservation history error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message
       });
     }
   }

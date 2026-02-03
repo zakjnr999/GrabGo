@@ -7,7 +7,6 @@ import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_customer/features/auth/service/phone_auth_service.dart';
 import 'package:grab_go_customer/shared/viewmodels/theme_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:grab_go_shared/shared/utils/image_optimizer.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:provider/provider.dart';

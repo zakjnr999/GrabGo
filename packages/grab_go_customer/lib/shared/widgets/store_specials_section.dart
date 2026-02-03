@@ -37,7 +37,6 @@ class StoreSpecialsSection extends StatelessWidget {
         // Section Header
         SectionHeader(
           title: 'Store Specials',
-          sectionIcon: Assets.icons.tag,
           sectionTotal: storeSpecials.length,
           accentColor: colors.error,
           onSeeAll: onSeeAll,

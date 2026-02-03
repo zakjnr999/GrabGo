@@ -106,8 +106,7 @@ class _OnboardingOneState extends State<OnboardingOne> with TickerProviderStateM
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.25),
-                  borderRadius: BorderRadius.circular(20.r),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
+                  borderRadius: BorderRadius.circular(KBorderSize.border),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,

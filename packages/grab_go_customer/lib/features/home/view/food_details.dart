@@ -1,4 +1,3 @@
-// ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -14,7 +13,6 @@ import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:grab_go_shared/shared/utils/image_optimizer.dart';
 import 'package:provider/provider.dart';
 import 'package:readmore/readmore.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -362,9 +360,9 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                             Container(
                                               padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                                               decoration: BoxDecoration(
-                                                color: Colors.red.withOpacity(0.1),
+                                                color: Colors.red.withValues(alpha: 0.1),
                                                 borderRadius: BorderRadius.circular(6.r),
-                                                border: Border.all(color: Colors.red.withOpacity(0.3)),
+                                                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                                               ),
                                               child: Row(
                                                 mainAxisSize: MainAxisSize.min,
@@ -500,7 +498,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    _buildSectionHeader(colors, Assets.icons.notes, 'Description'),
+                                    _buildSectionHeader(colors, 'Description'),
                                     SizedBox(height: 12.h),
                                     ReadMoreText(
                                       itemDescription,
@@ -537,7 +535,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      _buildSectionHeader(colors, Assets.icons.chefHat, 'Ingredients'),
+                                      _buildSectionHeader(colors, 'Ingredients'),
                                       SizedBox(height: 12.h),
                                       Wrap(
                                         spacing: 8.w,
@@ -546,7 +544,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                           return Container(
                                             padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                                             decoration: BoxDecoration(
-                                              color: colors.accentOrange.withOpacity(0.1),
+                                              color: colors.accentOrange.withValues(alpha: 0.1),
                                               borderRadius: BorderRadius.circular(20.r),
                                             ),
                                             child: Row(
@@ -595,7 +593,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                       children: [
                                         Padding(
                                           padding: EdgeInsets.only(left: 20.w),
-                                          child: _buildSectionHeader(colors, Assets.icons.star, 'You May Like'),
+                                          child: _buildSectionHeader(colors, 'You May Like'),
                                         ),
                                         SizedBox(height: 12.h),
                                         SizedBox(
@@ -637,11 +635,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                       children: [
                                         Padding(
                                           padding: EdgeInsets.symmetric(horizontal: 20.w),
-                                          child: _buildSectionHeader(
-                                            colors,
-                                            Assets.icons.store,
-                                            'More From Restaurant',
-                                          ),
+                                          child: _buildSectionHeader(colors, 'More From Restaurant'),
                                         ),
                                         SizedBox(height: 12.h),
                                         Padding(
@@ -860,22 +854,10 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
     );
   }
 
-  Row _buildSectionHeader(AppColorsExtension colors, String icon, String name) {
-    return Row(
-      children: [
-        SvgPicture.asset(
-          icon,
-          package: 'grab_go_shared',
-          height: 18.h,
-          width: 18.w,
-          colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-        ),
-        SizedBox(width: 10.w),
-        Text(
-          name,
-          style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
-        ),
-      ],
+  Text _buildSectionHeader(AppColorsExtension colors, String name) {
+    return Text(
+      name,
+      style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
     );
   }
 

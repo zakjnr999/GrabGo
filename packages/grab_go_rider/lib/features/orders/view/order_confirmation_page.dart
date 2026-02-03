@@ -142,7 +142,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                                       ),
                                       SizedBox(width: 6.w),
                                       Text(
-                                        widget.orderStatus ?? "Order Confirmed",
+                                        widget.orderStatus?.toUpperCase() ?? "CONFIRMED",
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontSize: 12.sp,
