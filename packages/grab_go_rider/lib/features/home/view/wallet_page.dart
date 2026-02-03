@@ -418,21 +418,26 @@ class _WalletPageState extends State<WalletPage> {
                     "Transaction History",
                     style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
                   ),
-                  TextButton(
-                    onPressed: () {},
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                    decoration: BoxDecoration(
+                      color: colors.backgroundPrimary,
+                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                    ),
                     child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          "All",
-                          style: TextStyle(color: colors.accentGreen, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                          "This Week",
+                          style: TextStyle(color: colors.textPrimary, fontSize: 12.sp, fontWeight: FontWeight.w400),
                         ),
-                        SizedBox(width: 4.w),
+                        SizedBox(width: 10.w),
                         SvgPicture.asset(
-                          Assets.icons.navArrowRight,
+                          Assets.icons.navArrowDown,
                           package: 'grab_go_shared',
-                          width: 16.w,
-                          height: 16.w,
-                          colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                          width: 14.w,
+                          height: 14.h,
+                          colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                         ),
                       ],
                     ),

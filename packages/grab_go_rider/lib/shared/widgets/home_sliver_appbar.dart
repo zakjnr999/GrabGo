@@ -492,15 +492,23 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
         Center(
           child: Padding(
             padding: EdgeInsets.only(right: 14.w),
-            child: IconButton(
-              icon: SvgPicture.asset(
-                Assets.icons.bell,
-                package: 'grab_go_shared',
-                width: 24.w,
-                height: 24.w,
-                colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
+            child: Badge(
+              offset: Offset(-6.w, 6.h),
+              label: const Text(
+                '99+',
+                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
               ),
-              onPressed: () => context.push("/notifications"),
+              backgroundColor: colors.error,
+              child: IconButton(
+                icon: SvgPicture.asset(
+                  Assets.icons.bell,
+                  package: 'grab_go_shared',
+                  width: 24.w,
+                  height: 24.w,
+                  colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                ),
+                onPressed: () => context.push("/notifications"),
+              ),
             ),
           ),
         ),

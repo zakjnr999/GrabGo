@@ -54,7 +54,7 @@ class _OngoingOrdersState extends State<OngoingOrders> {
     final colors = context.appColors;
 
     if (_isLoading) {
-      return Center(child: CircularProgressIndicator(color: colors.accentGreen));
+      return _buildOngoingOrdersSkeleton(colors);
     }
 
     if (_error != null) {
@@ -332,6 +332,22 @@ class _OngoingOrdersState extends State<OngoingOrders> {
           ),
         ],
       ),
+    );
+  }
+
+  _buildOngoingOrdersSkeleton(AppColorsExtension colors) {
+    return ListView.separated(
+      padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
+      itemCount: 3,
+      separatorBuilder: (context, index) => SizedBox(height: 16.h),
+      itemBuilder: (context, index) {
+        // return SkeletonCard(
+        //   height: 180.h,
+        //   borderRadius: KBorderSize.borderRadius4,
+        //   baseColor: colors.backgroundSecondary,
+        //   highlightColor: colors.backgroundPrimary,
+        // );
+      },
     );
   }
 

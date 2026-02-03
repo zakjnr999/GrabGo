@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -353,8 +354,11 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
         Navigator.of(context).pop();
         AppToastMessage.show(
           context: context,
+          showIcon: false,
+          backgroundColor: colors.accentGreen,
+          gravity: ToastGravity.CENTER,
+          radius: KBorderSize.borderRadius4,
           message: result.errorMessage ?? "Order is no longer available.",
-          backgroundColor: context.appColors.error,
         );
       }
     } catch (e) {
@@ -362,8 +366,11 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
       Navigator.of(context).pop();
       AppToastMessage.show(
         context: context,
+        showIcon: false,
+        backgroundColor: colors.error,
+        gravity: ToastGravity.CENTER,
+        radius: KBorderSize.borderRadius4,
         message: "Failed to accept order: $e",
-        backgroundColor: context.appColors.error,
       );
     }
   }

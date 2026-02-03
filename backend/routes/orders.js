@@ -326,7 +326,7 @@ router.get("/", protect, async (req, res) => {
       where,
       include: {
         customer: { select: { id: true, username: true, email: true, phone: true, profilePicture: true } },
-        restaurant: { select: { restaurantName: true, logo: true, location: true, address: true, latitude: true, longitude: true } },
+        restaurant: { select: { restaurantName: true, logo: true, address: true, latitude: true, longitude: true } },
         groceryStore: { select: { storeName: true, logo: true, address: true, latitude: true, longitude: true } },
         pharmacyStore: { select: { storeName: true, logo: true, address: true, latitude: true, longitude: true } },
         rider: { select: { username: true, email: true, phone: true } },

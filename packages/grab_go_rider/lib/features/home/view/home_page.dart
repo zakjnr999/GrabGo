@@ -1,10 +1,10 @@
 import 'dart:async';
-
 import 'package:battery_plus/battery_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_rider/features/home/models/transaction_model.dart';
@@ -31,9 +31,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   late Animation<double> _rippleAnimation;
-  bool onlineStatus = false; // Default to OFFLINE on app launch
-  bool _isCheckingStatus = true; // Loading state while checking server status
-  bool _isAppInForeground = true; // Track app lifecycle
+  bool onlineStatus = false;
+  bool _isCheckingStatus = true;
+  bool _isTogglingStatus = false;
+  bool _isAppInForeground = true;
 
   double? _currentLat;
   double? _currentLon;
@@ -43,7 +44,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   final AvailableOrdersService _availableOrdersService = AvailableOrdersService();
   final OrderReservationService _reservationService = OrderReservationService();
 
-  // Periodic location + battery update timer
   Timer? _locationUpdateTimer;
   final Battery _battery = Battery();
 
@@ -52,36 +52,32 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this); // Listen to app lifecycle
+    WidgetsBinding.instance.addObserver(this);
     _loadSampleTransactions();
     _setupAnimations();
     _initializeLocation();
     _initializeReservationService();
-    _checkOnlineStatus(); // Check server status on launch
+    _checkOnlineStatus();
   }
 
-  /// Handle app lifecycle changes (foreground/background)
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
 
     if (state == AppLifecycleState.resumed) {
-      // App came to foreground
       _isAppInForeground = true;
       if (onlineStatus) {
-        _startLocationBatteryUpdates(); // Resume updates
-        _updateLocationAndBattery(); // Immediate update
+        _startLocationBatteryUpdates();
+        _updateLocationAndBattery();
       }
-      debugPrint('📱 App resumed - location updates active');
+      debugPrint('App resumed - location updates active');
     } else if (state == AppLifecycleState.paused) {
-      // App went to background - pause updates to save battery
       _isAppInForeground = false;
       _locationUpdateTimer?.cancel();
       debugPrint('📱 App paused - location updates paused');
     }
   }
 
-  /// Check rider's online status from server on app launch
   Future<void> _checkOnlineStatus() async {
     try {
       final result = await _reservationService.checkOnlineStatus();
@@ -93,31 +89,28 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         _isCheckingStatus = false;
       });
 
-      // Show message if rider was auto-offlined
       if (result['autoOfflineInfo'] != null) {
         final info = result['autoOfflineInfo'] as Map<String, dynamic>;
-        _showAutoOfflineMessage(info['reason'] as String?);
+        _showAutoOfflineMessage(info['reason'] as String?, context.appColors);
       }
 
-      // Start location updates only if online
       if (onlineStatus) {
         _startLocationBatteryUpdates();
       }
 
-      debugPrint('📊 Online status from server: $onlineStatus');
+      debugPrint('Online status from server: $onlineStatus');
     } catch (e) {
-      debugPrint('⚠️ Error checking online status: $e');
+      debugPrint('Error checking online status: $e');
       if (mounted) {
         setState(() {
-          onlineStatus = false; // Default to offline on error
+          onlineStatus = false;
           _isCheckingStatus = false;
         });
       }
     }
   }
 
-  /// Show message explaining why rider was auto-offlined
-  void _showAutoOfflineMessage(String? reason) {
+  void _showAutoOfflineMessage(String? reason, AppColorsExtension colors) {
     if (!mounted) return;
 
     String message;
@@ -135,90 +128,77 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         message = 'You were set offline automatically. Go online when ready!';
     }
 
-    // Show snackbar after build completes
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            duration: const Duration(seconds: 5),
-            action: SnackBarAction(
-              label: 'Go Online',
-              onPressed: () async {
-                final success = await _reservationService.goOnline();
-                if (success && mounted) {
-                  setState(() => onlineStatus = true);
-                  _startLocationBatteryUpdates();
-                }
-              },
-            ),
-          ),
-        );
-      }
-    });
+    AppToastMessage.show(
+      context: context,
+      showIcon: false,
+      backgroundColor: colors.accentGreen,
+      gravity: ToastGravity.CENTER,
+      radius: KBorderSize.borderRadius4,
+      duration: const Duration(seconds: 5),
+      message: message,
+    );
   }
 
-  /// Handle online/offline toggle switch
-  void _handleOnlineStatusToggle(bool value) async {
-    if (_isCheckingStatus) return;
+  void _handleOnlineStatusToggle(bool value, AppColorsExtension colors) async {
+    if (_isCheckingStatus || _isTogglingStatus) return;
 
-    // Optimistically update UI
     setState(() {
-      onlineStatus = value;
+      _isTogglingStatus = true;
     });
 
-    // Call API
     bool success;
     if (value) {
       success = await _reservationService.goOnline();
       if (success) {
-        _startLocationBatteryUpdates(); // Start updates when going online
+        _startLocationBatteryUpdates();
       }
     } else {
       success = await _reservationService.goOffline();
       if (success) {
-        _locationUpdateTimer?.cancel(); // Stop updates when going offline
+        _locationUpdateTimer?.cancel();
       }
     }
 
-    // Revert if failed
-    if (!success && mounted) {
-      setState(() {
-        onlineStatus = !value;
-      });
+    if (!mounted) return;
+
+    setState(() {
+      _isTogglingStatus = false;
+      if (success) {
+        onlineStatus = value;
+      }
+    });
+
+    if (!success) {
       AppToastMessage.show(
         context: context,
+        backgroundColor: colors.error,
+        gravity: ToastGravity.CENTER,
+        radius: KBorderSize.borderRadius4,
         message: 'Failed to ${value ? "go online" : "go offline"}. Please try again.',
-        backgroundColor: Colors.red,
       );
     }
   }
 
-  /// Start periodic location and battery updates (every 60 seconds)
   void _startLocationBatteryUpdates() {
     _locationUpdateTimer?.cancel();
     _locationUpdateTimer = Timer.periodic(const Duration(seconds: 60), (_) {
-      // Only update if online AND app is in foreground
       if (onlineStatus && _isAppInForeground) {
         _updateLocationAndBattery();
       }
     });
   }
 
-  /// Update location and battery level on server
   Future<void> _updateLocationAndBattery() async {
     try {
-      // Get current position
       Position? position;
       try {
         position = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 10)),
         );
       } catch (e) {
-        debugPrint('⚠️ Error getting location for update: $e');
+        debugPrint('Error getting location for update: $e');
       }
 
-      // Get battery info
       int batteryLevel = 100;
       bool isCharging = false;
       try {
@@ -226,10 +206,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         final batteryState = await _battery.batteryState;
         isCharging = batteryState == BatteryState.charging || batteryState == BatteryState.full;
       } catch (e) {
-        debugPrint('⚠️ Error getting battery for update: $e');
+        debugPrint('Error getting battery for update: $e');
       }
 
-      // Update server with location + battery
       if (position != null) {
         await _reservationService.updateLocation(
           position.latitude,
@@ -237,7 +216,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           batteryLevel: batteryLevel,
           isCharging: isCharging,
         );
-        debugPrint('📍🔋 Location & battery updated: (${position.latitude}, ${position.longitude}), $batteryLevel%');
+        debugPrint('Location & battery updated: (${position.latitude}, ${position.longitude}), $batteryLevel%');
       }
     } catch (e) {
       debugPrint('Error in periodic update: $e');
@@ -245,40 +224,42 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   void _initializeReservationService() {
-    // Re-initialize socket now that user is logged in
-    // (SocketService may have been initialized before user data was loaded)
     SocketService().initialize();
-
-    // Initialize the reservation service to listen for incoming orders
     _reservationService.initialize();
 
-    // Set up callbacks
     _reservationService.onReservationReceived = (reservation) {
-      // Show the reservation modal when a new order is reserved for this rider
       if (mounted) {
         OrderReservationModal.show(
           context,
           reservation,
           onAccepted: () {
-            // Refresh orders and navigate to active order
             _loadAvailableOrders();
             AppToastMessage.show(
               context: context,
+              gravity: ToastGravity.CENTER,
+              radius: KBorderSize.borderRadius4,
               message: 'Order accepted! Navigate to pickup location.',
               backgroundColor: AppColors.accentGreen,
             );
-            // Navigate to the order tracking/delivery page
             context.push('/orderConfirmation/${reservation.orderId}');
           },
           onDeclined: () {
             AppToastMessage.show(
               context: context,
+              gravity: ToastGravity.CENTER,
+              radius: KBorderSize.borderRadius4,
               message: 'Order declined. Waiting for new orders...',
-              backgroundColor: Colors.orange,
+              backgroundColor: AppColors.errorRed,
             );
           },
           onExpired: () {
-            AppToastMessage.show(context: context, message: 'Order reservation expired.', backgroundColor: Colors.grey);
+            AppToastMessage.show(
+              context: context,
+              message: 'Order reservation expired.',
+              backgroundColor: AppColors.errorRed,
+              gravity: ToastGravity.CENTER,
+              radius: KBorderSize.borderRadius4,
+            );
           },
         );
       }
@@ -286,17 +267,18 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
     _reservationService.onReservationCancelled = (orderId, reason) {
       if (mounted) {
-        AppToastMessage.show(context: context, message: 'Order was cancelled: $reason', backgroundColor: Colors.red);
+        AppToastMessage.show(
+          context: context,
+          message: 'Order was cancelled: $reason',
+          backgroundColor: AppColors.errorRed,
+          gravity: ToastGravity.CENTER,
+          radius: KBorderSize.borderRadius4,
+        );
       }
     };
 
-    // Listen for auto-offline events from server
     _setupAutoOfflineListener();
 
-    // Don't auto-go-online here - we check status from server in _checkOnlineStatus()
-    // The rider's saved status will be restored from the server
-
-    // Check for any existing active reservation (e.g., if app was backgrounded)
     _reservationService.fetchActiveReservation().then((reservation) {
       if (reservation != null && mounted) {
         OrderReservationModal.show(
@@ -332,14 +314,13 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this); // Remove lifecycle observer
+    WidgetsBinding.instance.removeObserver(this);
     _pulseController.dispose();
     _locationUpdateTimer?.cancel();
     _removeAutoOfflineListener();
     super.dispose();
   }
 
-  /// Set up listener for auto-offline events from server
   void _setupAutoOfflineListener() {
     final socket = SocketService().socket;
     socket?.on('rider:auto_offline', (data) {
@@ -348,19 +329,17 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       final reason = data['reason'] as String?;
       final message = data['message'] as String?;
 
-      debugPrint('🔴 Auto-offlined by server: $reason - $message');
+      debugPrint('Auto-offlined by server: $reason - $message');
 
       setState(() {
         onlineStatus = false;
       });
       _locationUpdateTimer?.cancel();
 
-      // Show notification to user
-      _showAutoOfflineMessage(reason);
+      _showAutoOfflineMessage(reason, context.appColors);
     });
   }
 
-  /// Remove auto-offline listener
   void _removeAutoOfflineListener() {
     final socket = SocketService().socket;
     socket?.off('rider:auto_offline');
@@ -403,7 +382,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         _currentLon = position.longitude;
       });
 
-      // Update location on server for dispatch service
       _reservationService.updateLocation(position.latitude, position.longitude);
 
       debugPrint('Location obtained: ${position.latitude}, ${position.longitude}');
@@ -718,17 +696,34 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  onlineStatus ? "You're Online" : "You're Offline",
-                                  style: TextStyle(
-                                    color: colors.textPrimary,
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
+                                _isCheckingStatus || _isTogglingStatus
+                                    ? Text(
+                                        _isCheckingStatus
+                                            ? "Checking status..."
+                                            : (onlineStatus ? "Going offline..." : "Going online..."),
+                                        style: TextStyle(
+                                          color: colors.textSecondary,
+                                          fontSize: 16.sp,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      )
+                                    : Text(
+                                        onlineStatus ? "You're Online" : "You're Offline",
+                                        style: TextStyle(
+                                          color: colors.textPrimary,
+                                          fontSize: 16.sp,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
                                 SizedBox(height: 4.h),
                                 Text(
-                                  onlineStatus ? "Ready to accept deliveries" : "You won't receive new orders",
+                                  _isCheckingStatus
+                                      ? "Please wait..."
+                                      : _isTogglingStatus
+                                      ? (onlineStatus ? "Stopping order alerts..." : "Preparing to receive orders...")
+                                      : onlineStatus
+                                      ? "Ready to accept deliveries"
+                                      : "You won't receive new orders",
                                   style: TextStyle(
                                     color: colors.textSecondary,
                                     fontSize: 12.sp,
@@ -740,11 +735,15 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           ),
                           CustomSwitch(
                             value: onlineStatus,
-                            onChanged: _isCheckingStatus
-                                ? (_) {} // Disabled state - do nothing
-                                : _handleOnlineStatusToggle,
-                            activeColor: colors.accentGreen,
-                            inactiveColor: colors.border,
+                            onChanged: (_isCheckingStatus || _isTogglingStatus)
+                                ? (_) {}
+                                : (value) => _handleOnlineStatusToggle(value, colors),
+                            activeColor: (_isCheckingStatus || _isTogglingStatus)
+                                ? colors.accentGreen.withValues(alpha: 0.5)
+                                : colors.accentGreen,
+                            inactiveColor: (_isCheckingStatus || _isTogglingStatus)
+                                ? colors.border.withValues(alpha: 0.5)
+                                : colors.border,
                             thumbColor: colors.backgroundPrimary,
                           ),
                         ],
@@ -893,25 +892,30 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                               "Recent Transactions",
                               style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
                             ),
-                            TextButton(
-                              onPressed: () {},
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                              decoration: BoxDecoration(
+                                color: colors.backgroundPrimary,
+                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                              ),
                               child: Row(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    "All",
+                                    "This Week",
                                     style: TextStyle(
-                                      color: colors.accentGreen,
-                                      fontSize: 14.sp,
-                                      fontWeight: FontWeight.w600,
+                                      color: colors.textPrimary,
+                                      fontSize: 12.sp,
+                                      fontWeight: FontWeight.w400,
                                     ),
                                   ),
-                                  SizedBox(width: 4.w),
+                                  SizedBox(width: 10.w),
                                   SvgPicture.asset(
-                                    Assets.icons.navArrowRight,
+                                    Assets.icons.navArrowDown,
                                     package: 'grab_go_shared',
-                                    width: 16.w,
-                                    height: 16.w,
-                                    colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                                    width: 14.w,
+                                    height: 14.h,
+                                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                                   ),
                                 ],
                               ),
@@ -919,6 +923,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                           ],
                         ),
                         SizedBox(height: 6.h),
+
                         ListView.separated(
                           padding: EdgeInsets.zero,
                           shrinkWrap: true,
@@ -939,7 +944,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                               decoration: BoxDecoration(
                                 color: colors.backgroundPrimary,
                                 borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                                border: Border.all(color: colors.border, width: 1),
                               ),
                               child: Row(
                                 children: [
@@ -1042,6 +1046,52 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               ),
             ),
           ],
+        ),
+
+        floatingActionButton: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(KBorderSize.border),
+            boxShadow: [
+              BoxShadow(
+                color: colors.accentGreen.withValues(alpha: 0.4),
+                blurRadius: 10,
+                spreadRadius: 0,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: FloatingActionButton.extended(
+            onPressed: () => context.push("/chatlist"),
+            extendedPadding: EdgeInsets.all(10.r),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.borderRadius4)),
+            backgroundColor: colors.accentGreen,
+            elevation: 0,
+            label: Text(
+              "Messages",
+              style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: colors.backgroundPrimary),
+            ),
+            icon: Badge(
+              backgroundColor: colors.error,
+              label: Text(
+                '2',
+                style: TextStyle(color: Colors.white, fontSize: 10.sp, fontWeight: FontWeight.w600),
+              ),
+              child: Container(
+                padding: EdgeInsets.all(8.r),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                ),
+                child: SvgPicture.asset(
+                  Assets.icons.chatBubble,
+                  height: 20.h,
+                  width: 20.w,
+                  package: 'grab_go_shared',
+                  colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
