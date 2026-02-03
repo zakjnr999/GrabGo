@@ -739,8 +739,16 @@ router.post(
   async (req, res) => {
     try {
       const { orderId } = req.params;
+      const { clearPrevious } = req.query; // ?clearPrevious=true to reset
       
       console.log(`🧪 [Test Dispatch] Manually triggering dispatch for order: ${orderId}`);
+      
+      // Clear previous reservations if requested (for testing)
+      if (clearPrevious === 'true') {
+        const OrderReservation = require('../models/OrderReservation');
+        await OrderReservation.deleteMany({ orderId });
+        console.log(`🧹 [Test Dispatch] Cleared previous reservations for order: ${orderId}`);
+      }
       
       // Verify order exists
       const order = await prisma.order.findUnique({
