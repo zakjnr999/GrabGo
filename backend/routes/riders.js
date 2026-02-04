@@ -2188,9 +2188,10 @@ router.put(
  * @access  Private (rider)
  */
 router.post("/test/delivery-warning", protect, authorize("rider"), async (req, res) => {
-  if (process.env.NODE_ENV === "production") {
-    return res.status(403).json({ success: false, message: "Not available in production" });
-  }
+  // Note: Remove this check if you need to test on staging/Render
+  // if (process.env.NODE_ENV === "production") {
+  //   return res.status(403).json({ success: false, message: "Not available in production" });
+  // }
 
   try {
     const riderId = req.user.id;
@@ -2225,9 +2226,10 @@ router.post("/test/delivery-warning", protect, authorize("rider"), async (req, r
  * @access  Private (rider)
  */
 router.post("/test/delivery-late", protect, authorize("rider"), async (req, res) => {
-  if (process.env.NODE_ENV === "production") {
-    return res.status(403).json({ success: false, message: "Not available in production" });
-  }
+  // Note: Remove this check if you need to test on staging/Render
+  // if (process.env.NODE_ENV === "production") {
+  //   return res.status(403).json({ success: false, message: "Not available in production" });
+  // }
 
   try {
     const { customerId, orderId, orderNumber, newEtaMinutes = 10 } = req.body;
