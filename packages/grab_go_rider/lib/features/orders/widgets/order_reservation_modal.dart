@@ -1,13 +1,13 @@
 import 'dart:async';
-
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:grab_go_rider/features/orders/service/order_reservation_service.dart';
+import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
-/// A modal bottom sheet that displays an incoming order reservation
-/// with a countdown timer for accepting or declining
 class OrderReservationModal extends StatefulWidget {
   final OrderReservation reservation;
   final VoidCallback? onAccepted;
@@ -16,7 +16,6 @@ class OrderReservationModal extends StatefulWidget {
 
   const OrderReservationModal({super.key, required this.reservation, this.onAccepted, this.onDeclined, this.onExpired});
 
-  /// Show the modal as a bottom sheet
   static Future<void> show(
     BuildContext context,
     OrderReservation reservation, {
@@ -24,7 +23,6 @@ class OrderReservationModal extends StatefulWidget {
     VoidCallback? onDeclined,
     VoidCallback? onExpired,
   }) {
-    // Vibrate to get rider's attention
     HapticFeedback.heavyImpact();
 
     return showModalBottomSheet(
@@ -57,11 +55,7 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
   @override
   void initState() {
     super.initState();
-
-    // Initialize countdown
     _remainingSeconds = (widget.reservation.remainingMs / 1000).ceil();
-
-    // Pulse animation for urgency
     _pulseController = AnimationController(duration: const Duration(milliseconds: 800), vsync: this)
       ..repeat(reverse: true);
 
@@ -81,7 +75,6 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
           timer.cancel();
           _handleExpired();
         } else if (_remainingSeconds <= 3) {
-          // Vibrate when running low on time
           HapticFeedback.lightImpact();
         }
       }
@@ -144,268 +137,237 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final order = widget.reservation.order;
+    final padding = MediaQuery.paddingOf(context);
+    final size = MediaQuery.sizeOf(context);
+    final screenHeight = MediaQuery.sizeOf(context).height;
 
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 24.h),
+      constraints: BoxConstraints(maxHeight: screenHeight * 0.85),
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
-        borderRadius: BorderRadius.circular(24.r),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, -5))],
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(KBorderSize.borderRadius20),
+          topRight: Radius.circular(KBorderSize.borderRadius20),
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Header with countdown
-          Container(
-            padding: EdgeInsets.all(20.w),
-            decoration: BoxDecoration(
-              color: AppColors.accentOrange,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-            ),
+          Padding(
+            padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 16.h),
             child: Column(
               children: [
                 Row(
                   children: [
-                    Icon(Icons.delivery_dining, color: Colors.white, size: 28.sp),
-                    SizedBox(width: 12.w),
-                    Expanded(
-                      child: Text(
-                        'New Order Available!',
-                        style: TextStyle(
-                          fontFamily: 'Lato',
-                          package: 'grab_go_shared',
-                          color: Colors.white,
-                          fontSize: 20.sp,
-                          fontWeight: FontWeight.w700,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'New Order Available!',
+                          style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
                         ),
-                      ),
+                        Text(
+                          order.storeName,
+                          style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+                        ),
+                      ],
                     ),
-                    // Countdown timer
+                    const Spacer(),
                     AnimatedBuilder(
                       animation: _pulseAnimation,
                       builder: (context, child) => Transform.scale(
                         scale: _remainingSeconds <= 5 ? _pulseAnimation.value : 1.0,
                         child: Container(
                           padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                          decoration: BoxDecoration(color: _getTimerColor(), borderRadius: BorderRadius.circular(20.r)),
+                          decoration: BoxDecoration(
+                            color: _getTimerColor(),
+                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                          ),
                           child: Text(
                             '${_remainingSeconds}s',
-                            style: TextStyle(
-                              fontFamily: 'Lato',
-                              package: 'grab_go_shared',
-                              color: Colors.white,
-                              fontSize: 18.sp,
-                              fontWeight: FontWeight.w800,
-                            ),
+                            style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w800),
                           ),
                         ),
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: 8.h),
-                // Progress bar
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4.r),
-                  child: LinearProgressIndicator(
-                    value: _remainingSeconds / (widget.reservation.timeoutMs / 1000),
-                    backgroundColor: Colors.white.withOpacity(0.3),
-                    valueColor: AlwaysStoppedAnimation<Color>(_getTimerColor()),
-                    minHeight: 4.h,
-                  ),
-                ),
+                SizedBox(height: 12.h),
+                _buildProgressBar(colors),
+                SizedBox(height: 16.h),
               ],
             ),
           ),
 
-          // Order details
-          Padding(
-            padding: EdgeInsets.all(20.w),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Flexible(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(horizontal: 20.w),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                        child: CachedNetworkImage(
+                          height: size.width * 0.12,
+                          width: size.width * 0.12,
+                          fit: BoxFit.cover,
+                          imageUrl: ImageOptimizer.getPreviewUrl(order.storeLogo!, width: 200),
+                          memCacheWidth: 200,
+                          maxHeightDiskCache: 200,
+                          placeholder: (context, url) => Container(
+                            height: size.width * 0.12,
+                            width: size.width * 0.12,
+                            padding: EdgeInsets.all(12.r),
+                            decoration: BoxDecoration(
+                              color: colors.accentGreen.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                            ),
+                            child: SvgPicture.asset(
+                              Assets.icons.store,
+                              package: 'grab_go_shared',
+                              width: 24.w,
+                              height: 24.w,
+                              colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            height: size.width * 0.12,
+                            width: size.width * 0.12,
+                            padding: EdgeInsets.all(12.r),
+                            decoration: BoxDecoration(
+                              color: colors.accentGreen.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                            ),
+                            child: SvgPicture.asset(
+                              Assets.icons.store,
+                              package: 'grab_go_shared',
+                              width: 24.w,
+                              height: 24.w,
+                              colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12.w),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              order.storeName,
+                              style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w700),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: 4.h),
+                            Text(
+                              '${order.itemCount} item${order.itemCount > 1 ? 's' : ''}  •  ${order.orderType}',
+                              style: TextStyle(color: colors.textSecondary, fontSize: 13.sp),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: 24.h),
+
+                  _buildAddressRow(
+                    iconColor: colors.accentGreen,
+                    label: 'PICKUP',
+                    address: order.pickupAddress,
+                    colors: colors,
+                  ),
+                  SizedBox(height: 12.h),
+                  Container(
+                    height: 24.h,
+                    width: 2.w,
+                    margin: EdgeInsets.symmetric(vertical: 4.h, horizontal: 8.w),
+                    decoration: BoxDecoration(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(1.r),
+                    ),
+                  ),
+                  SizedBox(height: 12.h),
+                  _buildAddressRow(
+                    iconColor: colors.error,
+                    label: 'DELIVER TO',
+                    address: order.deliveryAddress,
+                    colors: colors,
+                  ),
+
+                  SizedBox(height: 24.h),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatCard(
+                          label: 'EARNINGS',
+                          value: 'GHS ${widget.reservation.estimatedEarnings.toStringAsFixed(2)}',
+                          colors: colors,
+                        ),
+                      ),
+                      SizedBox(width: 12.w),
+                      Expanded(
+                        child: _buildStatCard(
+                          label: 'DISTANCE',
+                          value: '${order.distance.toStringAsFixed(1)} km',
+                          colors: colors,
+                        ),
+                      ),
+                      SizedBox(width: 12.w),
+                      Expanded(
+                        child: _buildStatCard(
+                          label: 'TO PICKUP',
+                          value: '${widget.reservation.distanceToPickup.toStringAsFixed(1)} km',
+                          colors: colors,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 24.h),
+                ],
+              ),
+            ),
+          ),
+
+          Container(
+            padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 16.h, bottom: padding.bottom + 20.h),
+            decoration: BoxDecoration(
+              color: colors.backgroundPrimary,
+              boxShadow: [
+                BoxShadow(color: colors.shadow.withValues(alpha: 0.1), blurRadius: 5, offset: const Offset(0, -2)),
+              ],
+            ),
+            child: Row(
               children: [
-                // Store info
-                Row(
-                  children: [
-                    // Store logo
-                    Container(
-                      width: 56.w,
-                      height: 56.w,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12.r),
-                        color: colors.backgroundSecondary,
-                      ),
-                      child: order.storeLogo != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(12.r),
-                              child: Image.network(
-                                order.storeLogo!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) =>
-                                    Icon(Icons.store, color: colors.textSecondary, size: 28.sp),
-                              ),
-                            )
-                          : Icon(Icons.store, color: colors.textSecondary, size: 28.sp),
-                    ),
-                    SizedBox(width: 12.w),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            order.storeName,
-                            style: TextStyle(
-                              fontFamily: 'Lato',
-                              package: 'grab_go_shared',
-                              color: colors.textPrimary,
-                              fontSize: 16.sp,
-                              fontWeight: FontWeight.w700,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          SizedBox(height: 4.h),
-                          Text(
-                            '${order.itemCount} item${order.itemCount > 1 ? 's' : ''} • ${order.paymentMethod.toUpperCase()}',
-                            style: TextStyle(
-                              fontFamily: 'Lato',
-                              package: 'grab_go_shared',
-                              color: colors.textSecondary,
-                              fontSize: 13.sp,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                Expanded(
+                  child: AppButton(
+                    onPressed: _handleDecline,
+                    buttonText: _isDeclining ? "Please wait..." : "Decline",
+                    backgroundColor: _isDeclining || _isAccepting
+                        ? colors.inputBorder.withValues(alpha: 0.5)
+                        : colors.inputBorder,
+                    borderRadius: KBorderSize.borderRadius4,
+                    textStyle: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                    height: 56.h,
+                  ),
                 ),
-
-                SizedBox(height: 16.h),
-                Divider(color: colors.divider),
-                SizedBox(height: 16.h),
-
-                // Pickup & Delivery addresses
-                _buildAddressRow(
-                  icon: Icons.store_mall_directory,
-                  iconColor: Colors.green,
-                  label: 'PICKUP',
-                  address: order.pickupAddress,
-                  colors: colors,
-                ),
-                SizedBox(height: 12.h),
-                _buildAddressRow(
-                  icon: Icons.location_on,
-                  iconColor: Colors.red,
-                  label: 'DELIVER TO',
-                  address: order.deliveryAddress,
-                  colors: colors,
-                ),
-
-                SizedBox(height: 16.h),
-                Divider(color: colors.divider),
-                SizedBox(height: 16.h),
-
-                // Earnings & Distance
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildStatCard(
-                        icon: Icons.monetization_on,
-                        iconColor: Colors.green,
-                        label: 'EARNINGS',
-                        value: 'GHS ${widget.reservation.estimatedEarnings.toStringAsFixed(2)}',
-                        colors: colors,
-                      ),
-                    ),
-                    SizedBox(width: 12.w),
-                    Expanded(
-                      child: _buildStatCard(
-                        icon: Icons.route,
-                        iconColor: Colors.blue,
-                        label: 'DISTANCE',
-                        value: '${order.distance.toStringAsFixed(1)} km',
-                        colors: colors,
-                      ),
-                    ),
-                    SizedBox(width: 12.w),
-                    Expanded(
-                      child: _buildStatCard(
-                        icon: Icons.directions_bike,
-                        iconColor: Colors.orange,
-                        label: 'TO PICKUP',
-                        value: '${widget.reservation.distanceToPickup.toStringAsFixed(1)} km',
-                        colors: colors,
-                      ),
-                    ),
-                  ],
-                ),
-
-                SizedBox(height: 24.h),
-
-                // Action buttons
-                Row(
-                  children: [
-                    // Decline button
-                    Expanded(
-                      child: SizedBox(
-                        height: 52.h,
-                        child: OutlinedButton(
-                          onPressed: _isDeclining || _isAccepting ? null : _handleDecline,
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: Colors.red.shade400, width: 2),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                          ),
-                          child: _isDeclining
-                              ? SizedBox(
-                                  width: 20.w,
-                                  height: 20.w,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.red.shade400),
-                                )
-                              : Text(
-                                  'Decline',
-                                  style: TextStyle(
-                                    fontFamily: 'Lato',
-                                    package: 'grab_go_shared',
-                                    color: Colors.red.shade400,
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 16.w),
-                    // Accept button
-                    Expanded(
-                      flex: 2,
-                      child: SizedBox(
-                        height: 52.h,
-                        child: ElevatedButton(
-                          onPressed: _isAccepting || _isDeclining ? null : _handleAccept,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                          ),
-                          child: _isAccepting
-                              ? SizedBox(
-                                  width: 20.w,
-                                  height: 20.w,
-                                  child: const CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                )
-                              : Text(
-                                  'Accept Order',
-                                  style: TextStyle(
-                                    fontFamily: 'Lato',
-                                    package: 'grab_go_shared',
-                                    color: Colors.white,
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                        ),
-                      ),
-                    ),
-                  ],
+                SizedBox(width: 12.w),
+                Expanded(
+                  flex: 2,
+                  child: AppButton(
+                    onPressed: _handleAccept,
+                    buttonText: _isAccepting ? "Please wait..." : "Accept Order",
+                    backgroundColor: _isAccepting || _isDeclining
+                        ? colors.accentGreen.withValues(alpha: 0.5)
+                        : colors.accentGreen,
+                    borderRadius: KBorderSize.borderRadius4,
+                    textStyle: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                    height: 56.h,
+                  ),
                 ),
               ],
             ),
@@ -416,7 +378,6 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
   }
 
   Widget _buildAddressRow({
-    required IconData icon,
     required Color iconColor,
     required String label,
     required String address,
@@ -425,12 +386,6 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: EdgeInsets.all(8.w),
-          decoration: BoxDecoration(color: iconColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8.r)),
-          child: Icon(icon, color: iconColor, size: 20.sp),
-        ),
-        SizedBox(width: 12.w),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -438,8 +393,6 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
               Text(
                 label,
                 style: TextStyle(
-                  fontFamily: 'Lato',
-                  package: 'grab_go_shared',
                   color: colors.textSecondary,
                   fontSize: 11.sp,
                   fontWeight: FontWeight.w600,
@@ -449,13 +402,7 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
               SizedBox(height: 2.h),
               Text(
                 address,
-                style: TextStyle(
-                  fontFamily: 'Lato',
-                  package: 'grab_go_shared',
-                  color: colors.textPrimary,
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -466,25 +413,18 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
     );
   }
 
-  Widget _buildStatCard({
-    required IconData icon,
-    required Color iconColor,
-    required String label,
-    required String value,
-    required AppColorsExtension colors,
-  }) {
+  Widget _buildStatCard({required String label, required String value, required AppColorsExtension colors}) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-      decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(10.r)),
+      decoration: BoxDecoration(
+        color: colors.backgroundSecondary,
+        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+      ),
       child: Column(
         children: [
-          Icon(icon, color: iconColor, size: 22.sp),
-          SizedBox(height: 6.h),
           Text(
             label,
             style: TextStyle(
-              fontFamily: 'Lato',
-              package: 'grab_go_shared',
               color: colors.textSecondary,
               fontSize: 9.sp,
               fontWeight: FontWeight.w600,
@@ -494,17 +434,27 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
           SizedBox(height: 2.h),
           Text(
             value,
-            style: TextStyle(
-              fontFamily: 'Lato',
-              package: 'grab_go_shared',
-              color: colors.textPrimary,
-              fontSize: 13.sp,
-              fontWeight: FontWeight.w700,
-            ),
+            style: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w700),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildProgressBar(AppColorsExtension colors) {
+    final totalSeconds = widget.reservation.timeoutMs / 1000;
+    final progress = (_remainingSeconds / totalSeconds).clamp(0.0, 1.0);
+    final timerColor = _getTimerColor();
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4.r),
+      child: LinearProgressIndicator(
+        value: progress,
+        backgroundColor: colors.backgroundSecondary,
+        valueColor: AlwaysStoppedAnimation<Color>(timerColor),
+        minHeight: 8.h,
       ),
     );
   }

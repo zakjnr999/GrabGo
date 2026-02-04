@@ -677,18 +677,17 @@ class OrderReservationService extends ChangeNotifier {
 
 /// Enum for delay reasons
 enum DelayReasonType {
-  traffic('traffic', 'Traffic', '🚗'),
-  vendorDelay('vendor_delay', 'Vendor Delay', '🏪'),
-  customerUnreachable('customer_unreachable', 'Customer Unreachable', '📞'),
-  weather('weather', 'Bad Weather', '🌧️'),
-  vehicleIssue('vehicle_issue', 'Vehicle Issue', '🏍️'),
-  other('other', 'Other', '📝');
+  traffic('traffic', 'Traffic'),
+  vendorDelay('vendor_delay', 'Vendor Delay'),
+  customerUnreachable('customer_unreachable', 'Customer Unreachable'),
+  weather('weather', 'Bad Weather'),
+  vehicleIssue('vehicle_issue', 'Vehicle Issue'),
+  other('other', 'Other');
 
   final String value;
   final String label;
-  final String icon;
 
-  const DelayReasonType(this.value, this.label, this.icon);
+  const DelayReasonType(this.value, this.label);
 
   static DelayReasonType? fromValue(String? value) {
     if (value == null) return null;

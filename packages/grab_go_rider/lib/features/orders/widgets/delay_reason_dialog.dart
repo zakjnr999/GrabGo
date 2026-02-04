@@ -6,8 +6,6 @@ import 'package:grab_go_shared/grub_go_shared.dart';
 
 import '../service/order_reservation_service.dart';
 
-/// Dialog for riders to select a delay reason when delivery is late
-/// Uses bottom sheet style similar to CancelOrderDialog
 class DelayReasonDialog extends StatefulWidget {
   final String orderId;
   final String orderNumber;
@@ -15,7 +13,6 @@ class DelayReasonDialog extends StatefulWidget {
 
   const DelayReasonDialog({super.key, required this.orderId, required this.orderNumber, this.onSubmitted});
 
-  /// Show the delay reason dialog as a bottom sheet
   static Future<bool?> show(
     BuildContext context, {
     required String orderId,
@@ -92,25 +89,11 @@ class _DelayReasonDialogState extends State<DelayReasonDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Padding(
             padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 16.h),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Drag handle
-                Center(
-                  child: Container(
-                    width: 40.w,
-                    height: 4.h,
-                    margin: EdgeInsets.only(bottom: 16.h),
-                    decoration: BoxDecoration(
-                      color: colors.textSecondary.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(2.r),
-                    ),
-                  ),
-                ),
-                // Title
                 Row(
                   children: [
                     Column(
@@ -129,7 +112,6 @@ class _DelayReasonDialogState extends State<DelayReasonDialog> {
                   ],
                 ),
                 SizedBox(height: 16.h),
-                // Info banner
                 Container(
                   padding: EdgeInsets.all(12.w),
                   decoration: BoxDecoration(
@@ -282,8 +264,6 @@ class _DelayReasonDialogState extends State<DelayReasonDialog> {
                     )
                   : null,
             ),
-            SizedBox(width: 12.w),
-            Text(reason.icon, style: TextStyle(fontSize: 18.sp)),
             SizedBox(width: 8.w),
             Expanded(
               child: Text(

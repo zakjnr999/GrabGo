@@ -376,75 +376,55 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       barrierDismissible: true,
       builder: (context) => AlertDialog(
         backgroundColor: colors.backgroundPrimary,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-        title: Row(
-          children: [
-            Icon(Icons.timer_outlined, color: colors.accentOrange, size: 28.sp),
-            SizedBox(width: 12.w),
-            Expanded(
-              child: Text(
-                'Delivery Window Ending!',
-                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: colors.textPrimary),
-              ),
-            ),
-          ],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.borderRadius4)),
+        title: Text(
+          'Delivery Window Ending!',
+          style: TextStyle(fontSize: 18.sp, color: colors.textPrimary, fontWeight: FontWeight.w700),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Container(
+              padding: EdgeInsets.all(20.w),
+              decoration: BoxDecoration(
+                color: colors.accentGreen.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+              ),
+              child: SvgPicture.asset(
+                Assets.icons.timer,
+                package: 'grab_go_shared',
+                colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                width: 40.w,
+                height: 40.h,
+              ),
+            ),
+            SizedBox(height: 24.h),
             Text(
               'Order #${warning.orderNumber}',
-              style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
-            ),
-            SizedBox(height: 8.h),
-            Container(
-              padding: EdgeInsets.all(12.w),
-              decoration: BoxDecoration(
-                color: colors.accentOrange.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8.r),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.access_time, color: colors.accentOrange, size: 24.sp),
-                  SizedBox(width: 8.w),
-                  Expanded(
-                    child: Text(
-                      '${warning.minutesRemaining} minutes remaining',
-                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: colors.accentOrange),
-                    ),
-                  ),
-                ],
-              ),
+              style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
             ),
             SizedBox(height: 12.h),
             Text(
-              'Please hurry to complete this delivery on time!',
-              style: TextStyle(fontSize: 14.sp, color: colors.textSecondary),
+              '${warning.minutesRemaining} minutes remaining to complete this delivery. Please hurry!',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, height: 1.5),
             ),
           ],
         ),
+        actionsAlignment: MainAxisAlignment.center,
         actions: [
-          TextButton(
+          AppButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              'Got it!',
-              style: TextStyle(color: colors.accentOrange, fontWeight: FontWeight.bold),
-            ),
+            buttonText: "Got it!",
+            width: double.infinity,
+            height: 46.h,
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+            backgroundColor: colors.accentGreen,
+            borderRadius: KBorderSize.borderRadius4,
+            textStyle: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
           ),
         ],
       ),
-    );
-
-    // Also show a persistent toast
-    AppToastMessage.show(
-      context: this.context,
-      message: '⏰ ${warning.minutesRemaining} mins left for order #${warning.orderNumber}!',
-      backgroundColor: colors.accentOrange,
-      gravity: ToastGravity.TOP,
-      radius: KBorderSize.borderRadius4,
-      maxLines: 2,
-      duration: const Duration(seconds: 5),
     );
   }
 
@@ -460,6 +440,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           backgroundColor: context.appColors.accentGreen,
           gravity: ToastGravity.CENTER,
           radius: KBorderSize.borderRadius4,
+          showIcon: false,
         );
       },
     );
@@ -467,7 +448,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   Future<void> _initializeLocation() async {
     await _getCurrentLocation();
-    // Don't load orders on init - wait until rider goes online
   }
 
   Future<void> _getCurrentLocation() async {
