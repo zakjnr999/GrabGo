@@ -16,6 +16,7 @@ const {
   sendSMS,
 } = require("../utils/emailService");
 const { registerToken, removeToken } = require("../services/fcm_service");
+const creditService = require("../services/credit_service");
 
 const router = express.Router();
 
@@ -95,6 +96,14 @@ router.post("/", async (req, res) => {
 
       const token = generateToken(user.id);
 
+      // Grant welcome credits to new user
+      try {
+        await creditService.grantWelcomeCredits(user.id, 5.0);
+        console.log(`🎁 Welcome credits granted to new user ${user.id}`);
+      } catch (creditError) {
+        console.error("Failed to grant welcome credits:", creditError.message);
+      }
+
       return res.status(201).json({
         message: "User registered successfully",
         user: formatUser(user),
@@ -153,6 +162,14 @@ router.post("/", async (req, res) => {
     });
 
     const token = generateToken(user.id);
+
+    // Grant welcome credits to new user
+    try {
+      await creditService.grantWelcomeCredits(user.id, 5.0);
+      console.log(`🎁 Welcome credits granted to new user ${user.id}`);
+    } catch (creditError) {
+      console.error("Failed to grant welcome credits:", creditError.message);
+    }
 
     res.status(201).json({
       message:

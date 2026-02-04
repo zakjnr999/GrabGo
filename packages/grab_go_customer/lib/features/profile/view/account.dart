@@ -25,6 +25,11 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
   bool _isLoading = true;
   late AnimationController _animationController;
 
+  // Credit balance
+  final CreditService _creditService = CreditService();
+  CreditBalance? _creditBalance;
+  bool _isLoadingCredits = true;
+
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
   static const double _collapsedHeight = 70.0;
@@ -46,6 +51,9 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
   Future<void> _loadUserData() async {
     try {
       await Future.delayed(const Duration(milliseconds: 100));
+
+      // Load credit balance in parallel
+      _loadCreditBalance();
 
       var user = await UserService().getCurrentUser();
 
@@ -69,6 +77,24 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
       if (mounted) {
         setState(() {
           _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadCreditBalance() async {
+    try {
+      final balance = await _creditService.getBalance();
+      if (mounted) {
+        setState(() {
+          _creditBalance = balance;
+          _isLoadingCredits = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingCredits = false;
         });
       }
     }
@@ -275,6 +301,10 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                             ),
                             SizedBox(height: 24.h),
 
+                            // Credit Balance Card
+                            _buildCreditBalanceCard(colors),
+                            SizedBox(height: 24.h),
+
                             Container(
                               width: double.infinity,
                               padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
@@ -466,6 +496,97 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCreditBalanceCard(AppColorsExtension colors) {
+    return GestureDetector(
+      onTap: () => context.push("/credits"),
+      child: Container(
+        margin: EdgeInsets.symmetric(horizontal: 20.w),
+        padding: EdgeInsets.all(16.w),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.85)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16.r),
+          boxShadow: [
+            BoxShadow(color: colors.accentOrange.withValues(alpha: 0.25), blurRadius: 10, offset: const Offset(0, 4)),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(12.r),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              child: Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 28.sp),
+            ),
+            SizedBox(width: 16.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "GrabGo Credits",
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  SizedBox(height: 4.h),
+                  _isLoadingCredits
+                      ? SizedBox(
+                          height: 24.h,
+                          width: 80.w,
+                          child: LinearProgressIndicator(
+                            backgroundColor: Colors.white.withValues(alpha: 0.3),
+                            valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Text(
+                          _creditBalance?.formatted ?? "₵0.00",
+                          style: TextStyle(color: Colors.white, fontSize: 24.sp, fontWeight: FontWeight.w700),
+                        ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20.r),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "View",
+                        style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                      ),
+                      SizedBox(width: 4.w),
+                      Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 12.sp),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                Text(
+                  "Tap to see history",
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 10.sp),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
