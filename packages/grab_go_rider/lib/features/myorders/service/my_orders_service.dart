@@ -128,6 +128,7 @@ class MyOrdersService {
       orderNumber: order['orderNumber']?.toString() ?? '',
       customerName: customer['username']?.toString() ?? 'Customer',
       customerId: order['customerId']?.toString() ?? customer['id']?.toString() ?? '',
+      riderId: order['riderId']?.toString(),
       customerAddress: finalAddress,
       customerArea: city,
       customerPhone: customer['phone']?.toString() ?? '',

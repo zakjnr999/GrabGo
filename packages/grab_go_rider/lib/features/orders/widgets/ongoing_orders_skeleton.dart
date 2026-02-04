@@ -12,45 +12,145 @@ class OngoingOrdersSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-      child: Container(
-        padding: EdgeInsets.all(16.w),
-        decoration: BoxDecoration(
-          color: colors.backgroundPrimary,
-          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        ),
+    final size = MediaQuery.sizeOf(context);
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: colors.backgroundPrimary,
+        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+      ),
+      child: Shimmer.fromColors(
+        baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+        highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  width: 80.w,
+                  height: 15.h,
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20.r)),
+                ),
+                Container(
+                  width: 80.w,
+                  height: 12.h,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                  ),
+                ),
+              ],
+            ),
 
-        child: Shimmer.fromColors(
-          baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-          highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
-          enabled: false,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    width: 120.w,
-                    height: 16.h,
+            SizedBox(height: 16.h),
+
+            Row(
+              children: [
+                Container(
+                  height: size.width * 0.12,
+                  width: size.width * 0.12,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 140.w,
+                        height: 15.h,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                        ),
+                      ),
+                      SizedBox(height: 4.h),
+                      Container(
+                        width: 100.w,
+                        height: 12.h,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            SizedBox(height: 12.h),
+
+            Row(
+              children: [
+                Container(
+                  height: size.width * 0.12,
+                  width: size.width * 0.12,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                  ),
+                ),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 120.w,
+                        height: 14.h,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                        ),
+                      ),
+                      SizedBox(height: 4.h),
+                      Container(
+                        width: 160.w,
+                        height: 12.h,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            SizedBox(height: 20.h),
+
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 40.h,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                     ),
                   ),
-                  Container(
-                    width: 200.w,
-                    height: 16.h,
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Container(
+                    height: 40.h,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                     ),
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

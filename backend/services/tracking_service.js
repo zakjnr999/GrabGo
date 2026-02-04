@@ -379,6 +379,7 @@ class TrackingService {
 
     /**
      * Fallback ETA calculation (straight line)
+     * Uses 15 km/h for city traffic (Ghana conditions)
      */
     calculateStraightLineETA(fromLat, fromLng, toCoordinates) {
         const distance = geolib.getDistance(
@@ -386,8 +387,8 @@ class TrackingService {
             { latitude: toCoordinates[1], longitude: toCoordinates[0] }
         );
 
-        // Assume average speed of 30 km/h (8.33 m/s)
-        const averageSpeed = 8.33;
+        // Assume average speed of 15 km/h (4.17 m/s) for Ghana city traffic
+        const averageSpeed = 4.17;
         const duration = Math.round(distance / averageSpeed);
 
         return {
@@ -396,6 +397,129 @@ class TrackingService {
             arrivalTime: new Date(Date.now() + duration * 1000),
             route: null
         };
+    }
+
+    /**
+     * Calculate initial delivery window when rider accepts order
+     * Uses 3-segment approach: Rider→Vendor + Prep Time + Vendor→Customer
+     * 
+     * @param {Object} riderLocation - {latitude, longitude}
+     * @param {Object} vendorLocation - {latitude, longitude}
+     * @param {Object} customerLocation - {latitude, longitude}
+     * @param {string} orderStatus - Current order status (affects prep time)
+     * @param {number} vendorPrepTime - Vendor's average preparation time in minutes (default 15)
+     * @returns {Object} Delivery window with min/max times
+     */
+    async calculateInitialDeliveryWindow(riderLocation, vendorLocation, customerLocation, orderStatus = 'confirmed', vendorPrepTime = 15) {
+        try {
+            // Phase 1: Rider → Vendor
+            const phase1 = await this.calculateETA(
+                riderLocation.latitude,
+                riderLocation.longitude,
+                [vendorLocation.longitude, vendorLocation.latitude]
+            );
+
+            // Phase 2: Prep/Wait Time (based on order status)
+            let prepTimeMinutes;
+            switch (orderStatus) {
+                case 'ready':
+                    prepTimeMinutes = 2; // Minimal buffer, already ready
+                    break;
+                case 'preparing':
+                    prepTimeMinutes = Math.ceil(vendorPrepTime / 2); // Halfway done
+                    break;
+                case 'confirmed':
+                case 'pending':
+                default:
+                    prepTimeMinutes = vendorPrepTime; // Full prep time
+                    break;
+            }
+            const prepTimeSeconds = prepTimeMinutes * 60;
+
+            // Phase 3: Vendor → Customer
+            const phase3 = await this.calculateETA(
+                vendorLocation.latitude,
+                vendorLocation.longitude,
+                [customerLocation.longitude, customerLocation.latitude]
+            );
+
+            // Total estimated time in seconds
+            const totalSeconds = phase1.duration + prepTimeSeconds + phase3.duration;
+            
+            // Add buffer: 5 minutes for city, gives realistic range
+            const bufferSeconds = 5 * 60;
+
+            // Calculate delivery window
+            const now = Date.now();
+            const minDeliveryTime = new Date(now + totalSeconds * 1000);
+            const maxDeliveryTime = new Date(now + (totalSeconds + bufferSeconds * 2) * 1000);
+            const expectedDeliveryTime = new Date(now + (totalSeconds + bufferSeconds) * 1000);
+
+            // Convert to minutes for display
+            const totalMinutes = Math.ceil(totalSeconds / 60);
+            const minMinutes = totalMinutes;
+            const maxMinutes = totalMinutes + 10; // +10 minute window
+
+            console.log(`📊 ETA Calculation:
+                Phase 1 (Rider→Vendor): ${Math.ceil(phase1.duration / 60)} mins (${phase1.distance}m)
+                Phase 2 (Prep Time): ${prepTimeMinutes} mins (status: ${orderStatus})
+                Phase 3 (Vendor→Customer): ${Math.ceil(phase3.duration / 60)} mins (${phase3.distance}m)
+                Total: ${totalMinutes} mins
+                Window: ${minMinutes}-${maxMinutes} mins`);
+
+            return {
+                // Breakdown
+                riderToVendorMinutes: Math.ceil(phase1.duration / 60),
+                riderToVendorDistance: phase1.distance,
+                prepTimeMinutes,
+                vendorToCustomerMinutes: Math.ceil(phase3.duration / 60),
+                vendorToCustomerDistance: phase3.distance,
+                
+                // Totals
+                totalMinutes,
+                totalDistance: phase1.distance + phase3.distance,
+                
+                // Delivery window
+                minMinutes,
+                maxMinutes,
+                minDeliveryTime,
+                maxDeliveryTime,
+                expectedDeliveryTime,
+                
+                // Display string
+                deliveryWindowText: `${minMinutes}-${maxMinutes} mins`,
+                
+                // Initial ETA in seconds (for analytics)
+                initialETASeconds: totalSeconds
+            };
+        } catch (error) {
+            console.error('❌ Error calculating delivery window:', error);
+            
+            // Fallback: Simple distance-based estimate
+            const totalDistance = geolib.getDistance(
+                { latitude: riderLocation.latitude, longitude: riderLocation.longitude },
+                { latitude: customerLocation.latitude, longitude: customerLocation.longitude }
+            );
+            
+            // Rough estimate: 15 km/h average + prep time
+            const travelMinutes = Math.ceil(totalDistance / 250); // ~15 km/h = 250m/min
+            const totalMinutes = travelMinutes + vendorPrepTime;
+            
+            return {
+                riderToVendorMinutes: Math.ceil(travelMinutes / 2),
+                prepTimeMinutes: vendorPrepTime,
+                vendorToCustomerMinutes: Math.ceil(travelMinutes / 2),
+                totalMinutes,
+                totalDistance,
+                minMinutes: totalMinutes,
+                maxMinutes: totalMinutes + 10,
+                minDeliveryTime: new Date(Date.now() + totalMinutes * 60 * 1000),
+                maxDeliveryTime: new Date(Date.now() + (totalMinutes + 10) * 60 * 1000),
+                expectedDeliveryTime: new Date(Date.now() + (totalMinutes + 5) * 60 * 1000),
+                deliveryWindowText: `${totalMinutes}-${totalMinutes + 10} mins`,
+                initialETASeconds: totalMinutes * 60
+            };
+        }
     }
 
     /**

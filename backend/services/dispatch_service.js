@@ -44,6 +44,10 @@ const SCORING = {
     VEHICLE_LONG_DISTANCE_BONUS: 15,   // +15 points for motorcycle/car on orders > 5km
     VEHICLE_LARGE_ORDER_BONUS: 10,     // +10 points for car/scooter on large orders
     BICYCLE_SHORT_DISTANCE_BONUS: 10,  // +10 points for bicycle on orders < 2km (eco-friendly, traffic)
+    // On-time performance scoring
+    ON_TIME_BONUS: 15,                 // +15 points for riders with 90%+ on-time rate
+    GOOD_ON_TIME_BONUS: 8,             // +8 points for riders with 80-89% on-time rate
+    LOW_ON_TIME_PENALTY: -20,          // -20 points for riders with <70% on-time rate (consistently late)
 };
 
 /**
@@ -252,6 +256,7 @@ async function findEligibleRiders(order, excludedRiderIds = []) {
  */
 async function scoreRiders(riders, order) {
     const scoredRiders = [];
+    const DeliveryAnalytics = require('../models/DeliveryAnalytics');
 
     for (const rider of riders) {
         let score = 100; // Base score
@@ -354,6 +359,31 @@ async function scoreRiders(riders, order) {
         }
         score += vehicleBonus;
 
+        // 10. On-time performance scoring (uses DeliveryAnalytics)
+        let onTimeBonus = 0;
+        let onTimeRate = 100;
+        let onTimeReliable = false;
+        
+        try {
+            const performanceStats = await DeliveryAnalytics.getRiderOnTimeRate(rider.id, 20);
+            onTimeRate = performanceStats.onTimeRate;
+            onTimeReliable = performanceStats.isReliable;
+            
+            // Only apply on-time scoring for riders with enough data
+            if (performanceStats.isReliable) {
+                if (onTimeRate >= 90) {
+                    onTimeBonus = SCORING.ON_TIME_BONUS; // Excellent - priority dispatch
+                } else if (onTimeRate >= 80) {
+                    onTimeBonus = SCORING.GOOD_ON_TIME_BONUS; // Good performance
+                } else if (onTimeRate < 70) {
+                    onTimeBonus = SCORING.LOW_ON_TIME_PENALTY; // Consistently late
+                }
+            }
+        } catch (e) {
+            console.error(`Error getting on-time rate for rider ${rider.id}:`, e.message);
+        }
+        score += onTimeBonus;
+
         scoredRiders.push({
             rider,
             score: Math.round(score * 10) / 10,
@@ -370,7 +400,10 @@ async function scoreRiders(riders, order) {
                 isCharging,
                 batteryPenalty,
                 vehicleType,
-                vehicleBonus
+                vehicleBonus,
+                onTimeRate,
+                onTimeBonus,
+                onTimeReliable
             }
         });
     }

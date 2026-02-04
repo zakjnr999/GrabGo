@@ -1,9 +1,14 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_rider/features/myorders/service/my_orders_service.dart';
 import 'package:grab_go_rider/features/orders/service/available_order_dto.dart';
+import 'package:grab_go_rider/features/orders/service/available_orders_service.dart';
+import 'package:grab_go_rider/features/orders/widgets/cancel_order_dialog.dart';
+import 'package:grab_go_rider/features/orders/widgets/ongoing_orders_skeleton.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
@@ -52,9 +57,10 @@ class _OngoingOrdersState extends State<OngoingOrders> {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (_isLoading) {
-      return _buildOngoingOrdersSkeleton(colors);
+      return _buildOngoingOrdersSkeleton(colors, isDark);
     }
 
     if (_error != null) {
@@ -125,13 +131,14 @@ class _OngoingOrdersState extends State<OngoingOrders> {
         separatorBuilder: (context, index) => SizedBox(height: 16.h),
         itemBuilder: (context, index) {
           final order = _orders[index];
-          return _buildOngoingCard(context, order, colors);
+          final size = MediaQuery.of(context).size;
+          return _buildOngoingCard(context, order, colors, size);
         },
       ),
     );
   }
 
-  Widget _buildOngoingCard(BuildContext context, AvailableOrderDto order, AppColorsExtension colors) {
+  Widget _buildOngoingCard(BuildContext context, AvailableOrderDto order, AppColorsExtension colors, Size size) {
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
@@ -183,29 +190,47 @@ class _OngoingOrdersState extends State<OngoingOrders> {
             children: [
               if (order.restaurantLogo != null && order.restaurantLogo!.isNotEmpty)
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(8.r),
-                  child: Image.network(
-                    order.restaurantLogo!,
-                    width: 40.w,
-                    height: 40.w,
+                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                  child: CachedNetworkImage(
+                    height: size.width * 0.12,
+                    width: size.width * 0.12,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      width: 40.w,
-                      height: 40.w,
-                      color: colors.backgroundSecondary,
-                      child: Icon(Icons.store, color: colors.textSecondary, size: 20.w),
+                    imageUrl: ImageOptimizer.getPreviewUrl(order.restaurantLogo!, width: 200),
+                    memCacheWidth: 200,
+                    maxHeightDiskCache: 200,
+                    placeholder: (context, url) => Container(
+                      height: size.width * 0.12,
+                      width: size.width * 0.12,
+                      padding: EdgeInsets.all(12.r),
+                      decoration: BoxDecoration(
+                        color: colors.accentGreen.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                      ),
+                      child: SvgPicture.asset(
+                        Assets.icons.store,
+                        package: 'grab_go_shared',
+                        width: 24.w,
+                        height: 24.w,
+                        colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      height: size.width * 0.12,
+                      width: size.width * 0.12,
+                      padding: EdgeInsets.all(12.r),
+                      decoration: BoxDecoration(
+                        color: colors.accentGreen.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                      ),
+                      child: SvgPicture.asset(
+                        Assets.icons.store,
+                        package: 'grab_go_shared',
+                        width: 24.w,
+                        height: 24.w,
+                        colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                      ),
                     ),
                   ),
-                )
-              else
-                Container(
-                  width: 40.w,
-                  height: 40.w,
-                  decoration: BoxDecoration(
-                    color: colors.backgroundSecondary,
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  child: Icon(Icons.store, color: colors.textSecondary, size: 20.w),
                 ),
               SizedBox(width: 12.w),
               Expanded(
@@ -230,7 +255,49 @@ class _OngoingOrdersState extends State<OngoingOrders> {
           SizedBox(height: 12.h),
           Row(
             children: [
-              Icon(Icons.person_outline, size: 16.w, color: colors.textSecondary),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                child: CachedNetworkImage(
+                  height: size.width * 0.12,
+                  width: size.width * 0.12,
+                  fit: BoxFit.cover,
+                  imageUrl: ImageOptimizer.getPreviewUrl(order.customerPhoto!, width: 200),
+                  memCacheWidth: 200,
+                  maxHeightDiskCache: 200,
+                  placeholder: (context, url) => Container(
+                    height: size.width * 0.12,
+                    width: size.width * 0.12,
+                    padding: EdgeInsets.all(12.r),
+                    decoration: BoxDecoration(
+                      color: colors.accentGreen.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                    ),
+                    child: SvgPicture.asset(
+                      Assets.icons.user,
+                      package: 'grab_go_shared',
+                      width: 24.w,
+                      height: 24.w,
+                      colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    height: size.width * 0.12,
+                    width: size.width * 0.12,
+                    padding: EdgeInsets.all(12.r),
+                    decoration: BoxDecoration(
+                      color: colors.accentGreen.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                    ),
+                    child: SvgPicture.asset(
+                      Assets.icons.user,
+                      package: 'grab_go_shared',
+                      width: 24.w,
+                      height: 24.w,
+                      colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                    ),
+                  ),
+                ),
+              ),
               SizedBox(width: 8.w),
               Expanded(
                 child: Column(
@@ -268,10 +335,32 @@ class _OngoingOrdersState extends State<OngoingOrders> {
                   ),
                 ],
               ),
-              Text(
-                "${order.itemCount} item${order.itemCount > 1 ? 's' : ''}",
-                style: TextStyle(color: colors.textSecondary, fontSize: 12.sp),
-              ),
+              // Delivery Window
+              if (order.deliveryWindowText != null)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      "DELIVERY WINDOW",
+                      style: TextStyle(color: colors.textSecondary, fontSize: 10.sp, fontWeight: FontWeight.w600),
+                    ),
+                    Row(
+                      children: [
+                        Icon(Icons.timer_outlined, color: colors.warning, size: 16.sp),
+                        SizedBox(width: 4.w),
+                        Text(
+                          order.deliveryWindowText!,
+                          style: TextStyle(color: colors.warning, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    ),
+                  ],
+                )
+              else
+                Text(
+                  "${order.itemCount} item${order.itemCount > 1 ? 's' : ''}",
+                  style: TextStyle(color: colors.textSecondary, fontSize: 12.sp),
+                ),
             ],
           ),
           SizedBox(height: 16.h),
@@ -279,9 +368,7 @@ class _OngoingOrdersState extends State<OngoingOrders> {
             children: [
               Expanded(
                 child: AppButton(
-                  onPressed: () {
-                    // TODO: Implement cancel order
-                  },
+                  onPressed: () => _showCancelOrderDialog(context, order, colors),
                   buttonText: "Cancel Order",
                   backgroundColor: colors.inputBorder,
                   borderRadius: KBorderSize.borderRadius4,
@@ -293,33 +380,7 @@ class _OngoingOrdersState extends State<OngoingOrders> {
               SizedBox(width: 12.w),
               Expanded(
                 child: AppButton(
-                  onPressed: () {
-                    context.push(
-                      '/orderConfirmation',
-                      extra: {
-                        'orderId': order.id,
-                        'orderNumber': order.orderNumber,
-                        'orderStatus': order.orderStatus,
-                        'orderInstructions': order.notes ?? '',
-                        'customerName': order.customerName,
-                        'customerAddress': order.customerAddress,
-                        'customerPhone': order.customerPhone,
-                        'profilePhoto': order.customerPhoto,
-                        'restaurantName': order.restaurantName,
-                        'restaurantAddress': order.restaurantAddress,
-                        'restaurantLogo': order.restaurantLogo,
-                        'orderTotal': 'GHS ${order.totalAmount.toStringAsFixed(2)}',
-                        'orderItems': order.orderItems,
-                        'specialInstructions': order.notes,
-                        'customerId': order.customerId,
-                        'riderEarnings': order.riderEarnings,
-                        'pickupLatitude': order.pickupLatitude,
-                        'pickupLongitude': order.pickupLongitude,
-                        'destinationLatitude': order.destinationLatitude,
-                        'destinationLongitude': order.destinationLongitude,
-                      },
-                    );
-                  },
+                  onPressed: () => _handleActionButton(context, order),
                   buttonText: _getActionButtonText(order.orderStatus),
                   backgroundColor: colors.accentGreen,
                   borderRadius: KBorderSize.borderRadius4,
@@ -335,18 +396,12 @@ class _OngoingOrdersState extends State<OngoingOrders> {
     );
   }
 
-  _buildOngoingOrdersSkeleton(AppColorsExtension colors) {
+  Widget _buildOngoingOrdersSkeleton(AppColorsExtension colors, bool isDark) {
     return ListView.separated(
-      padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
-      itemCount: 3,
+      itemCount: 10,
       separatorBuilder: (context, index) => SizedBox(height: 16.h),
       itemBuilder: (context, index) {
-        // return SkeletonCard(
-        //   height: 180.h,
-        //   borderRadius: KBorderSize.borderRadius4,
-        //   baseColor: colors.backgroundSecondary,
-        //   highlightColor: colors.backgroundPrimary,
-        // );
+        return OngoingOrdersSkeleton(colors: colors, isDark: isDark);
       },
     );
   }
@@ -383,5 +438,106 @@ class _OngoingOrdersState extends State<OngoingOrders> {
       default:
         return 'View Order';
     }
+  }
+
+  void _handleActionButton(BuildContext context, AvailableOrderDto order) {
+    final status = order.orderStatus.toLowerCase();
+
+    // For ready/picked_up/on_the_way - go directly to map tracking
+    if (status == 'ready' || status == 'picked_up' || status == 'on_the_way') {
+      final isDeliveryPhase = status == 'picked_up' || status == 'on_the_way';
+
+      context.push(
+        '/delivery-tracking',
+        extra: {
+          'orderId': order.id,
+          'customerName': order.customerName,
+          'customerAddress': order.customerAddress,
+          'customerPhone': order.customerPhone,
+          'restaurantName': order.restaurantName,
+          'restaurantAddress': order.restaurantAddress,
+          'orderTotal': 'GHS ${order.totalAmount.toStringAsFixed(2)}',
+          'orderItems': order.orderItems,
+          'specialInstructions': order.notes,
+          'phase': isDeliveryPhase ? 'delivery' : 'pickup',
+          'hasPickedUp': isDeliveryPhase,
+          'customerId': order.customerId,
+          'riderId': order.riderId,
+          'pickupLatitude': order.pickupLatitude,
+          'pickupLongitude': order.pickupLongitude,
+          'destinationLatitude': order.destinationLatitude,
+          'destinationLongitude': order.destinationLongitude,
+        },
+      );
+    } else {
+      context.push(
+        '/orderConfirmation',
+        extra: {
+          'orderId': order.id,
+          'orderNumber': order.orderNumber,
+          'orderStatus': order.orderStatus,
+          'orderInstructions': order.notes ?? '',
+          'customerName': order.customerName,
+          'customerAddress': order.customerAddress,
+          'customerPhone': order.customerPhone,
+          'profilePhoto': order.customerPhoto,
+          'restaurantName': order.restaurantName,
+          'restaurantAddress': order.restaurantAddress,
+          'restaurantLogo': order.restaurantLogo,
+          'orderTotal': 'GHS ${order.totalAmount.toStringAsFixed(2)}',
+          'orderItems': order.orderItems,
+          'specialInstructions': order.notes,
+          'customerId': order.customerId,
+          'riderId': order.riderId,
+          'riderEarnings': order.riderEarnings,
+          'pickupLatitude': order.pickupLatitude,
+          'pickupLongitude': order.pickupLongitude,
+          'destinationLatitude': order.destinationLatitude,
+          'destinationLongitude': order.destinationLongitude,
+        },
+      );
+    }
+  }
+
+  void _showCancelOrderDialog(BuildContext context, AvailableOrderDto order, AppColorsExtension colors) {
+    final orderService = AvailableOrdersService();
+
+    CancelOrderDialog.show(
+      context: context,
+      orderId: order.id,
+      orderNumber: '#${order.orderNumber}',
+      onConfirm: (reason, notes) async {
+        debugPrint('🚫 Cancelling order: ${reason.apiValue}${notes != null ? " - $notes" : ""}');
+        debugPrint('🚫 Cancelling order: ${order.id}');
+
+        final success = await orderService.cancelOrder(order.id, reason: reason.apiValue, notes: notes);
+
+        if (!mounted) return;
+
+        if (success) {
+          AppToastMessage.show(
+            context: context,
+            showIcon: false,
+            backgroundColor: colors.accentGreen,
+            gravity: ToastGravity.CENTER,
+            radius: KBorderSize.borderRadius4,
+            maxLines: 2,
+            message: "Order cancelled and released for other riders.",
+          );
+
+          _loadOrders();
+        } else {
+          AppToastMessage.show(
+            context: context,
+            showIcon: false,
+            backgroundColor: colors.error,
+            gravity: ToastGravity.CENTER,
+            radius: KBorderSize.borderRadius4,
+            maxLines: 2,
+            message: "Failed to cancel order. Please try again.",
+          );
+        }
+      },
+    );
   }
 }

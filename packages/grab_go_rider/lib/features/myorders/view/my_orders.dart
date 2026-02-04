@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:grab_go_rider/features/myorders/view/cancelled_orders.dart';
 import 'package:grab_go_rider/features/myorders/view/completed_orders.dart';
 import 'package:grab_go_rider/features/myorders/view/ongoing_orders.dart';
 import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
 import 'package:grab_go_shared/shared/utils/constants.dart';
 
-enum MyOrderFilters { ongoing, completed, cancelled }
+enum MyOrderFilters { ongoing, completed }
 
 class MyOrders extends StatefulWidget {
   const MyOrders({super.key});
@@ -18,7 +17,7 @@ class MyOrders extends StatefulWidget {
 
 class _MyOrdersState extends State<MyOrders> {
   MyOrderFilters _selectedPeriod = MyOrderFilters.ongoing;
-  final List<Widget> orderScreens = [const OngoingOrders(), const CompletedOrders(), const CancelledOrders()];
+  final List<Widget> orderScreens = [const OngoingOrders(), const CompletedOrders()];
 
   Widget _buildSelectedScreen() {
     return Expanded(
@@ -65,10 +64,8 @@ class _MyOrdersState extends State<MyOrders> {
               Row(
                 children: [
                   Expanded(child: _buildPeriodFilter("Ongoing", MyOrderFilters.ongoing, colors)),
-                  SizedBox(width: 8.w),
+                  SizedBox(width: 12.w),
                   Expanded(child: _buildPeriodFilter("Completed", MyOrderFilters.completed, colors)),
-                  SizedBox(width: 8.w),
-                  Expanded(child: _buildPeriodFilter("Cancelled", MyOrderFilters.cancelled, colors)),
                 ],
               ),
               const SizedBox(height: 20),

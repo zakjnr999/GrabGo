@@ -382,7 +382,7 @@ router.post(
         include: {
           items: { select: { id: true, name: true, quantity: true, price: true } },
           customer: { select: { username: true, email: true, phone: true, profilePicture: true } },
-          restaurant: { select: { restaurantName: true, logo: true, address: true, latitude: true, longitude: true } },
+          restaurant: { select: { restaurantName: true, logo: true, address: true, latitude: true, longitude: true, averagePreparationTime: true } },
           groceryStore: { select: { storeName: true, logo: true, address: true, latitude: true, longitude: true } },
           pharmacyStore: { select: { storeName: true, logo: true, address: true, latitude: true, longitude: true } },
           rider: { select: { username: true, email: true, phone: true } }
@@ -423,12 +423,57 @@ router.post(
             updatedOrder.id,
             riderId,
             updatedOrder.customerId,
-            { lat: pickupLat, lon: pickupLon },
-            { lat: updatedOrder.deliveryLatitude, lon: updatedOrder.deliveryLongitude }
+            { latitude: pickupLat, longitude: pickupLon },
+            { latitude: updatedOrder.deliveryLatitude, longitude: updatedOrder.deliveryLongitude }
           );
         }
       } catch (trackingError) {
         console.error("Initialize tracking error:", trackingError);
+      }
+
+      // Calculate delivery window ETA
+      let deliveryWindow = null;
+      try {
+        const RiderStatus = require('../models/RiderStatus');
+        const trackingService = require('../services/tracking_service');
+        
+        const riderStatus = await RiderStatus.findOne({ riderId });
+        
+        if (riderStatus?.location?.coordinates) {
+          const pickupLat = updatedOrder.restaurant?.latitude || updatedOrder.groceryStore?.latitude || updatedOrder.pharmacyStore?.latitude;
+          const pickupLon = updatedOrder.restaurant?.longitude || updatedOrder.groceryStore?.longitude || updatedOrder.pharmacyStore?.longitude;
+          
+          // Get vendor prep time
+          const vendorPrepTime = updatedOrder.restaurant?.averagePreparationTime || 
+                                  updatedOrder.groceryStore?.averagePreparationTime || 
+                                  updatedOrder.pharmacyStore?.averagePreparationTime || 15;
+          
+          if (pickupLat && pickupLon && updatedOrder.deliveryLatitude && updatedOrder.deliveryLongitude) {
+            deliveryWindow = await trackingService.calculateInitialDeliveryWindow(
+              { latitude: riderStatus.location.coordinates[1], longitude: riderStatus.location.coordinates[0] },
+              { latitude: pickupLat, longitude: pickupLon },
+              { latitude: updatedOrder.deliveryLatitude, longitude: updatedOrder.deliveryLongitude },
+              updatedOrder.status,
+              vendorPrepTime
+            );
+            
+            // Update order with delivery window
+            await prisma.order.update({
+              where: { id: updatedOrder.id },
+              data: {
+                deliveryWindowMin: deliveryWindow.minMinutes,
+                deliveryWindowMax: deliveryWindow.maxMinutes,
+                expectedDelivery: deliveryWindow.expectedDeliveryTime,
+                initialETASeconds: deliveryWindow.initialETASeconds,
+                riderAssignedAt: new Date()
+              }
+            });
+            
+            console.log(`📊 Delivery window set for order ${updatedOrder.id}: ${deliveryWindow.deliveryWindowText}`);
+          }
+        }
+      } catch (etaError) {
+        console.error("Calculate delivery window error:", etaError);
       }
 
       // Mark rider as on delivery so they don't get more orders dispatched
@@ -452,7 +497,13 @@ router.post(
           id: riderId,
           name: updatedOrder.rider?.username,
           phone: updatedOrder.rider?.phone
-        }
+        },
+        deliveryWindow: deliveryWindow ? {
+          minMinutes: deliveryWindow.minMinutes,
+          maxMinutes: deliveryWindow.maxMinutes,
+          expectedDelivery: deliveryWindow.expectedDeliveryTime,
+          displayText: deliveryWindow.deliveryWindowText
+        } : null
       });
 
       // Broadcast that order is taken
@@ -1092,7 +1143,8 @@ router.post(
               logo: true,
               address: true,
               latitude: true,
-              longitude: true
+              longitude: true,
+              averagePreparationTime: true
             }
           },
           groceryStore: {
@@ -1151,8 +1203,8 @@ router.post(
           updatedOrder.riderId,
           updatedOrder.customerId,
           {
-            latitude: updatedOrder.restaurant.latitude,
-            longitude: updatedOrder.restaurant.longitude
+            latitude: updatedOrder.restaurant?.latitude || updatedOrder.groceryStore?.latitude || updatedOrder.pharmacyStore?.latitude,
+            longitude: updatedOrder.restaurant?.longitude || updatedOrder.groceryStore?.longitude || updatedOrder.pharmacyStore?.longitude
           },
           {
             latitude: updatedOrder.deliveryLatitude,
@@ -1163,6 +1215,51 @@ router.post(
       } catch (trackingError) {
         console.error("Initialize tracking for accepted order error:", trackingError);
         // Don't fail the order acceptance if tracking init fails
+      }
+
+      // Calculate delivery window ETA
+      let deliveryWindow = null;
+      try {
+        const RiderStatus = require('../models/RiderStatus');
+        const trackingService = require('../services/tracking_service');
+        
+        const riderStatus = await RiderStatus.findOne({ riderId: req.user.id });
+        
+        if (riderStatus?.location?.coordinates) {
+          const pickupLat = updatedOrder.restaurant?.latitude || updatedOrder.groceryStore?.latitude || updatedOrder.pharmacyStore?.latitude;
+          const pickupLon = updatedOrder.restaurant?.longitude || updatedOrder.groceryStore?.longitude || updatedOrder.pharmacyStore?.longitude;
+          
+          // Get vendor prep time
+          const vendorPrepTime = updatedOrder.restaurant?.averagePreparationTime || 
+                                  updatedOrder.groceryStore?.averagePreparationTime || 
+                                  updatedOrder.pharmacyStore?.averagePreparationTime || 15;
+          
+          if (pickupLat && pickupLon && updatedOrder.deliveryLatitude && updatedOrder.deliveryLongitude) {
+            deliveryWindow = await trackingService.calculateInitialDeliveryWindow(
+              { latitude: riderStatus.location.coordinates[1], longitude: riderStatus.location.coordinates[0] },
+              { latitude: pickupLat, longitude: pickupLon },
+              { latitude: updatedOrder.deliveryLatitude, longitude: updatedOrder.deliveryLongitude },
+              updatedOrder.status,
+              vendorPrepTime
+            );
+            
+            // Update order with delivery window
+            await prisma.order.update({
+              where: { id: updatedOrder.id },
+              data: {
+                deliveryWindowMin: deliveryWindow.minMinutes,
+                deliveryWindowMax: deliveryWindow.maxMinutes,
+                expectedDelivery: deliveryWindow.expectedDeliveryTime,
+                initialETASeconds: deliveryWindow.initialETASeconds,
+                riderAssignedAt: new Date()
+              }
+            });
+            
+            console.log(`📊 Delivery window set for order ${updatedOrder.id}: ${deliveryWindow.deliveryWindowText}`);
+          }
+        }
+      } catch (etaError) {
+        console.error("Calculate delivery window error:", etaError);
       }
 
       // Mark rider as on delivery so they don't get more orders dispatched

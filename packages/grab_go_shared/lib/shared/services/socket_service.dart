@@ -67,6 +67,10 @@ class SocketService {
   final List<void Function(dynamic)> _reservationExpiredListeners = [];
   final List<void Function(dynamic)> _orderTakenListeners = [];
 
+  // Delivery timing listeners (for rider warnings and customer updates)
+  final List<void Function(dynamic)> _deliveryWarningListeners = [];
+  final List<void Function(dynamic)> _deliveryLateListeners = [];
+
   final Set<String> _joinedChats = <String>{};
   final Set<String> _pendingJoinChats = <String>{};
 
@@ -212,6 +216,24 @@ class SocketService {
 
   void removeOrderTakenListener(void Function(dynamic) listener) {
     _orderTakenListeners.remove(listener);
+  }
+
+  // ==================== DELIVERY TIMING LISTENERS ====================
+
+  void addDeliveryWarningListener(void Function(dynamic) listener) {
+    _deliveryWarningListeners.add(listener);
+  }
+
+  void removeDeliveryWarningListener(void Function(dynamic) listener) {
+    _deliveryWarningListeners.remove(listener);
+  }
+
+  void addDeliveryLateListener(void Function(dynamic) listener) {
+    _deliveryLateListeners.add(listener);
+  }
+
+  void removeDeliveryLateListener(void Function(dynamic) listener) {
+    _deliveryLateListeners.remove(listener);
   }
 
   void addRetryListener(void Function(String chatId, String tempId, bool success, String? newId) listener) {
@@ -544,6 +566,30 @@ class SocketService {
           listener(data);
         } catch (e) {
           debugPrint('Error in order_taken listener: $e');
+        }
+      }
+    });
+
+    // ==================== DELIVERY TIMING EVENTS ====================
+
+    _socket!.on('delivery_warning', (data) {
+      debugPrint('⏰ Socket received delivery_warning: $data');
+      for (final listener in List.from(_deliveryWarningListeners)) {
+        try {
+          listener(data);
+        } catch (e) {
+          debugPrint('Error in delivery_warning listener: $e');
+        }
+      }
+    });
+
+    _socket!.on('delivery_late', (data) {
+      debugPrint('🕐 Socket received delivery_late: $data');
+      for (final listener in List.from(_deliveryLateListeners)) {
+        try {
+          listener(data);
+        } catch (e) {
+          debugPrint('Error in delivery_late listener: $e');
         }
       }
     });

@@ -105,7 +105,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                     actions: [
                       IconButton(
                         icon: SvgPicture.asset(
-                          Assets.icons.infoCircle,
+                          Assets.icons.headsetHelp,
                           package: 'grab_go_shared',
                           width: 20.w,
                           height: 20.w,
@@ -235,8 +235,13 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
               ),
             ),
             Container(
-              color: colors.backgroundPrimary,
               padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 20.h),
+              decoration: BoxDecoration(
+                color: colors.backgroundPrimary,
+                boxShadow: [
+                  BoxShadow(color: colors.shadow.withValues(alpha: 0.1), blurRadius: 5, offset: const Offset(0, -2)),
+                ],
+              ),
               child: SafeArea(top: false, child: _buildActionButtons(colors)),
             ),
           ],
@@ -600,7 +605,6 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
         'specialInstructions': widget.specialInstructions,
         'phase': phase,
         'hasPickedUp': phase == "delivery",
-        // Tracking data
         'customerId': widget.customerId,
         'riderId': widget.riderId,
         'pickupLatitude': widget.pickupLatitude,
@@ -661,7 +665,6 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
               ),
               onTap: () {
                 Navigator.pop(context);
-                // Call restaurant
               },
             ),
             Divider(color: colors.border),
@@ -690,7 +693,6 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
               ),
               onTap: () {
                 Navigator.pop(context);
-                // Call customer
               },
             ),
             SizedBox(height: 20.h),

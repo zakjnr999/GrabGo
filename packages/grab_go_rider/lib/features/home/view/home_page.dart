@@ -96,6 +96,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
       if (onlineStatus) {
         _startLocationBatteryUpdates();
+        _loadAvailableOrders();
       }
 
       debugPrint('Online status from server: $onlineStatus');
@@ -165,6 +166,15 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       _isTogglingStatus = false;
       if (success) {
         onlineStatus = value;
+        // Clear orders when going offline, load when going online
+        if (value) {
+          _loadAvailableOrders();
+        } else {
+          _availableOrders = [];
+          _statistics = null;
+          ordersError = null;
+          isLoadingOrders = false;
+        }
       }
     });
 
@@ -277,6 +287,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       }
     };
 
+    _reservationService.onDeliveryWarning = (warning) {
+      if (mounted) {
+        _showDeliveryWarningDialog(warning);
+      }
+    };
+
     _setupAutoOfflineListener();
 
     _reservationService.fetchActiveReservation().then((reservation) {
@@ -345,9 +361,89 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     socket?.off('rider:auto_offline');
   }
 
+  void _showDeliveryWarningDialog(DeliveryWarning warning) {
+    final colors = context.appColors;
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => AlertDialog(
+        backgroundColor: colors.backgroundPrimary,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        title: Row(
+          children: [
+            Icon(Icons.timer_outlined, color: colors.accentOrange, size: 28.sp),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Text(
+                'Delivery Window Ending!',
+                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: colors.textPrimary),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Order #${warning.orderNumber}',
+              style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+            ),
+            SizedBox(height: 8.h),
+            Container(
+              padding: EdgeInsets.all(12.w),
+              decoration: BoxDecoration(
+                color: colors.accentOrange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.access_time, color: colors.accentOrange, size: 24.sp),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: Text(
+                      '${warning.minutesRemaining} minutes remaining',
+                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: colors.accentOrange),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 12.h),
+            Text(
+              'Please hurry to complete this delivery on time!',
+              style: TextStyle(fontSize: 14.sp, color: colors.textSecondary),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'Got it!',
+              style: TextStyle(color: colors.accentOrange, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // Also show a persistent toast
+    AppToastMessage.show(
+      context: this.context,
+      message: '⏰ ${warning.minutesRemaining} mins left for order #${warning.orderNumber}!',
+      backgroundColor: colors.accentOrange,
+      gravity: ToastGravity.TOP,
+      radius: KBorderSize.borderRadius4,
+      maxLines: 2,
+      duration: const Duration(seconds: 5),
+    );
+  }
+
   Future<void> _initializeLocation() async {
     await _getCurrentLocation();
-    await _loadAvailableOrders();
+    // Don't load orders on init - wait until rider goes online
   }
 
   Future<void> _getCurrentLocation() async {
@@ -785,20 +881,27 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 20.w),
                     child: GestureDetector(
-                      onTap: () {
-                        ordersError != null ? _loadAvailableOrders() : context.push("/orders");
-                      },
-                      child: Container(
+                      onTap: onlineStatus
+                          ? () {
+                              ordersError != null ? _loadAvailableOrders() : context.push("/orders");
+                            }
+                          : null,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
                         padding: EdgeInsets.all(20.w),
                         decoration: BoxDecoration(
-                          color: ordersError != null
+                          color: !onlineStatus
+                              ? colors.backgroundPrimary
+                              : ordersError != null
                               ? colors.error.withValues(alpha: 0.09)
                               : colors.accentGreen.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                         ),
                         child: Row(
                           children: [
-                            ordersError != null
+                            !onlineStatus
+                                ? const SizedBox.shrink()
+                                : ordersError != null
                                 ? SvgPicture.asset(
                                     Assets.icons.wifiOff,
                                     package: "grab_go_shared",
@@ -811,35 +914,44 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     width: 100.w,
                                     package: 'grab_go_shared',
                                   ),
-                            SizedBox(width: ordersError != null ? 20.w : 10.w),
+                            SizedBox(
+                              width: !onlineStatus
+                                  ? 16.w
+                                  : ordersError != null
+                                  ? 20.w
+                                  : 10.w,
+                            ),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
-                                    children: [
-                                      (_statistics != null && _statistics!.totalOrders > 5)
-                                          ? Container(
-                                              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                                              decoration: BoxDecoration(
-                                                color: colors.accentOrange.withValues(alpha: 0.2),
-                                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                                              ),
-                                              child: Text(
-                                                "Rush Hour",
-                                                style: TextStyle(
-                                                  fontSize: 10.sp,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: colors.accentOrange,
+                                  if (onlineStatus)
+                                    Row(
+                                      children: [
+                                        (_statistics != null && _statistics!.totalOrders > 5)
+                                            ? Container(
+                                                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                                                decoration: BoxDecoration(
+                                                  color: colors.accentOrange.withValues(alpha: 0.2),
+                                                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                                                 ),
-                                              ),
-                                            )
-                                          : SizedBox.shrink(),
-                                    ],
-                                  ),
-                                  SizedBox(height: 8.h),
+                                                child: Text(
+                                                  "Rush Hour",
+                                                  style: TextStyle(
+                                                    fontSize: 10.sp,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: colors.accentOrange,
+                                                  ),
+                                                ),
+                                              )
+                                            : SizedBox.shrink(),
+                                      ],
+                                    ),
+                                  if (onlineStatus) SizedBox(height: 8.h),
                                   Text(
-                                    isLoadingOrders
+                                    !onlineStatus
+                                        ? "No Orders Available"
+                                        : isLoadingOrders
                                         ? "..."
                                         : ordersError != null
                                         ? "Failed to load orders..."
@@ -847,14 +959,22 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                         ? "${_statistics!.totalOrders} orders available"
                                         : "You have no available orders",
                                     style: TextStyle(
-                                      color: ordersError == null ? colors.textPrimary : colors.error,
+                                      color: !onlineStatus
+                                          ? colors.textPrimary
+                                          : ordersError == null
+                                          ? colors.textPrimary
+                                          : colors.error,
                                       fontWeight: FontWeight.w700,
                                       fontSize: 18.sp,
                                     ),
                                   ),
                                   SizedBox(height: 4.h),
                                   Text(
-                                    ordersError == null ? "Tap to view and accept" : "Tap to try again",
+                                    !onlineStatus
+                                        ? "Go online to see available orders"
+                                        : ordersError == null
+                                        ? "Tap to view and accept"
+                                        : "Tap to try again",
                                     style: TextStyle(
                                       color: colors.textSecondary,
                                       fontSize: 12.sp,
@@ -864,15 +984,25 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                 ],
                               ),
                             ),
-                            ordersError == null
-                                ? SvgPicture.asset(
-                                    Assets.icons.navArrowRight,
-                                    package: "grab_go_shared",
-                                    width: 24.w,
-                                    height: 24.w,
-                                    colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
-                                  )
-                                : const SizedBox.shrink(),
+                            if (onlineStatus && ordersError == null)
+                              SvgPicture.asset(
+                                Assets.icons.navArrowRight,
+                                package: "grab_go_shared",
+                                width: 24.w,
+                                height: 24.w,
+                                colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                              ),
+                            if (!onlineStatus)
+                              SvgPicture.asset(
+                                Assets.icons.lock,
+                                package: "grab_go_shared",
+                                width: 50.w,
+                                height: 50.w,
+                                colorFilter: ColorFilter.mode(
+                                  colors.textSecondary.withValues(alpha: 0.4),
+                                  BlendMode.srcIn,
+                                ),
+                              ),
                           ],
                         ),
                       ),

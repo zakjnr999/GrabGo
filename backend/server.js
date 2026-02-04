@@ -524,6 +524,7 @@ app.use("/api/groceries", require("./routes/groceries"));
 app.use("/api/pharmacies", require("./routes/pharmacies"));
 app.use("/api/grabmart", require("./routes/grabmart"));
 app.use("/api/riders", require("./routes/riders"));
+app.use("/api/rider-analytics", require("./routes/rider_analytics"));
 app.use("/api/chats", require("./routes/chats"));
 app.use("/api/statuses", require("./routes/statuses"));
 app.use("/api/notifications", require("./routes/notifications"));
@@ -568,6 +569,7 @@ const { initializeMealNudges } = require("./jobs/meal_nudges");
 const { initializeEngagementNudges } = require("./jobs/engagement_nudges");
 const reservationExpiryJob = require("./jobs/reservation_expiry");
 const { runAutoOfflineJob } = require("./jobs/rider_auto_offline");
+const { initializeDeliveryMonitor } = require("./jobs/delivery_monitor");
 
 // Import cache utility
 const cache = require("./utils/cache");
@@ -595,6 +597,9 @@ initializeEngagementNudges(io);
 
 // Initialize order reservation expiry job (runs every 2 seconds)
 reservationExpiryJob.start();
+
+// Initialize delivery monitor (runs every minute - warns riders, notifies customers)
+initializeDeliveryMonitor();
 
 // Schedule rider auto-offline job (runs every 5 minutes)
 setInterval(() => {

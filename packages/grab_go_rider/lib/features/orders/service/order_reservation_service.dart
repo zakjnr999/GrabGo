@@ -112,6 +112,30 @@ class ReservationOrderSnapshot {
   }
 }
 
+/// Represents a delivery window warning from the backend
+class DeliveryWarning {
+  final String orderId;
+  final String orderNumber;
+  final int minutesRemaining;
+  final String message;
+
+  DeliveryWarning({
+    required this.orderId,
+    required this.orderNumber,
+    required this.minutesRemaining,
+    required this.message,
+  });
+
+  factory DeliveryWarning.fromJson(Map<String, dynamic> json) {
+    return DeliveryWarning(
+      orderId: json['orderId']?.toString() ?? '',
+      orderNumber: json['orderNumber']?.toString() ?? '',
+      minutesRemaining: (json['minutesRemaining'] as num?)?.toInt() ?? 5,
+      message: json['message']?.toString() ?? 'Delivery window ending soon',
+    );
+  }
+}
+
 /// Service for managing order reservations in the rider app
 class OrderReservationService extends ChangeNotifier {
   OrderReservationService._();
@@ -148,6 +172,7 @@ class OrderReservationService extends ChangeNotifier {
   void Function(String orderId)? onReservationAccepted;
   void Function()? onReservationDeclined;
   void Function(String orderId, String reason)? onReservationCancelled;
+  void Function(DeliveryWarning)? onDeliveryWarning;
 
   // Track if already initialized
   bool _isInitialized = false;
@@ -199,6 +224,14 @@ class OrderReservationService extends ChangeNotifier {
       }
     });
 
+    // Listen for delivery window warnings (5 mins before deadline)
+    socket.addDeliveryWarningListener((data) {
+      debugPrint('⏰ OrderReservationService received delivery_warning: $data');
+      if (data is Map<String, dynamic>) {
+        _handleDeliveryWarning(data);
+      }
+    });
+
     debugPrint('✅ OrderReservationService initialized with socket listeners');
   }
 
@@ -240,6 +273,17 @@ class OrderReservationService extends ChangeNotifier {
   void _handleReservationExpired() {
     _clearReservation();
     onReservationExpired?.call();
+  }
+
+  /// Handle delivery window warning (5 mins before deadline)
+  void _handleDeliveryWarning(Map<String, dynamic> data) {
+    try {
+      final warning = DeliveryWarning.fromJson(data);
+      debugPrint('⏰ Delivery warning for order #${warning.orderNumber}: ${warning.minutesRemaining} mins remaining');
+      onDeliveryWarning?.call(warning);
+    } catch (e) {
+      debugPrint('Error parsing delivery warning: $e');
+    }
   }
 
   /// Start countdown timer for the reservation

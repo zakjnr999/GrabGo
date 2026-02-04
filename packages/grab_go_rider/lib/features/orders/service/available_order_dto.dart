@@ -5,6 +5,7 @@ class AvailableOrderDto {
   final String orderNumber;
   final String customerName;
   final String customerId;
+  final String? riderId;
   final String customerAddress;
   final String customerArea;
   final String customerPhone;
@@ -28,11 +29,18 @@ class AvailableOrderDto {
   final double? pickupLatitude;
   final double? pickupLongitude;
 
+  // Delivery Window (calculated when rider accepts)
+  final int? deliveryWindowMin;
+  final int? deliveryWindowMax;
+  final DateTime? expectedDelivery;
+  final DateTime? riderAssignedAt;
+
   AvailableOrderDto({
     required this.id,
     required this.orderNumber,
     required this.customerName,
     required this.customerId,
+    this.riderId,
     required this.customerAddress,
     required this.customerArea,
     required this.customerPhone,
@@ -55,7 +63,26 @@ class AvailableOrderDto {
     this.pickupLatitude,
     this.pickupLongitude,
     this.restaurantLogo,
+    this.deliveryWindowMin,
+    this.deliveryWindowMax,
+    this.expectedDelivery,
+    this.riderAssignedAt,
   });
+
+  /// Returns the delivery window as a display string (e.g., "15-25 mins")
+  String? get deliveryWindowText {
+    if (deliveryWindowMin != null && deliveryWindowMax != null) {
+      return '$deliveryWindowMin-$deliveryWindowMax mins';
+    }
+    return null;
+  }
+
+  /// Returns remaining time to expected delivery in minutes
+  int? get remainingMinutes {
+    if (expectedDelivery == null) return null;
+    final diff = expectedDelivery!.difference(DateTime.now()).inMinutes;
+    return diff > 0 ? diff : 0;
+  }
 
   factory AvailableOrderDto.fromJson(Map<String, dynamic> json) {
     final customer = json['customer'] as Map<String, dynamic>?;
@@ -120,25 +147,43 @@ class AvailableOrderDto {
       storeName = pharmacyStore['storeName']?.toString() ?? 'Pharmacy';
     }
 
+    // Parse delivery window fields
+    DateTime? expectedDelivery;
+    if (json['expectedDelivery'] != null) {
+      try {
+        expectedDelivery = DateTime.parse(json['expectedDelivery'].toString());
+      } catch (e) {
+        debugPrint('Failed to parse expectedDelivery: $e');
+      }
+    }
+
+    DateTime? riderAssignedAt;
+    if (json['riderAssignedAt'] != null) {
+      try {
+        riderAssignedAt = DateTime.parse(json['riderAssignedAt'].toString());
+      } catch (e) {
+        debugPrint('Failed to parse riderAssignedAt: $e');
+      }
+    }
+
     return AvailableOrderDto(
       id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
       orderNumber: json['orderNumber']?.toString() ?? '',
       customerName: customer != null ? (customer['username']?.toString() ?? 'Customer') : 'Customer',
       customerId: customer != null ? (customer['id']?.toString() ?? customer['_id']?.toString() ?? '') : '',
+      riderId: json['riderId']?.toString(),
       customerAddress: customerAddress,
       customerArea: customerArea,
       customerPhone: customer != null ? (customer['phone']?.toString() ?? '') : '',
       customerPhoto: customer != null
           ? (customer['profilePicture']?.toString() ??
-              customer['profile_picture']?.toString() ??
-              customer['photo']?.toString())
+                customer['profile_picture']?.toString() ??
+                customer['photo']?.toString())
           : null,
       restaurantName: storeName,
-      restaurantLogo: (restaurant?['logo'] ??
-              groceryStore?['logo'] ??
-              pharmacyStore?['logo'])
-          ?.toString(),
-      restaurantAddress: restaurant?['address']?.toString() ??
+      restaurantLogo: (restaurant?['logo'] ?? groceryStore?['logo'] ?? pharmacyStore?['logo'])?.toString(),
+      restaurantAddress:
+          restaurant?['address']?.toString() ??
           groceryStore?['address']?.toString() ??
           pharmacyStore?['address']?.toString() ??
           '',
@@ -157,6 +202,10 @@ class AvailableOrderDto {
       destinationLongitude: destinationLng,
       pickupLatitude: pickupLat,
       pickupLongitude: pickupLng,
+      deliveryWindowMin: (json['deliveryWindowMin'] as num?)?.toInt(),
+      deliveryWindowMax: (json['deliveryWindowMax'] as num?)?.toInt(),
+      expectedDelivery: expectedDelivery,
+      riderAssignedAt: riderAssignedAt,
     );
   }
 }

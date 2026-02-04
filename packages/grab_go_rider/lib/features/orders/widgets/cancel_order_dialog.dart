@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/svg.dart';
+import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
-/// Cancellation reasons for riders
 enum CancellationReason {
   restaurantClosed('Restaurant is closed', 'store_closed'),
   itemsUnavailable('Items unavailable', 'items_unavailable'),
@@ -20,7 +21,6 @@ enum CancellationReason {
   const CancellationReason(this.displayText, this.apiValue);
 }
 
-/// A dialog for selecting a cancellation reason
 class CancelOrderDialog extends StatefulWidget {
   final String orderId;
   final String orderNumber;
@@ -60,9 +60,11 @@ class _CancelOrderDialogState extends State<CancelOrderDialog> {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+    final padding = MediaQuery.paddingOf(context);
+    final screenHeight = MediaQuery.sizeOf(context).height;
 
     return Container(
+      constraints: BoxConstraints(maxHeight: screenHeight * 0.75),
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.only(
@@ -70,40 +72,29 @@ class _CancelOrderDialogState extends State<CancelOrderDialog> {
           topRight: Radius.circular(KBorderSize.borderRadius20),
         ),
       ),
-      padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 16.h, bottom: bottomPadding + 20.h),
-      child: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Handle bar
-              Center(
-                child: Container(
-                  width: 40.w,
-                  height: 4.h,
-                  margin: EdgeInsets.only(bottom: 16.h),
-                  decoration: BoxDecoration(
-                    color: colors.textSecondary.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(2.r),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 16.h),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40.w,
+                    height: 4.h,
+                    margin: EdgeInsets.only(bottom: 16.h),
+                    decoration: BoxDecoration(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2.r),
+                    ),
                   ),
                 ),
-              ),
-              // Header
-              Row(
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(10.r),
-                    decoration: BoxDecoration(
-                      color: colors.error.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                    ),
-                    child: Icon(Icons.cancel_outlined, color: colors.error, size: 24.w),
-                  ),
-                  SizedBox(width: 12.w),
-                  Expanded(
-                    child: Column(
+                Row(
+                  children: [
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
@@ -116,128 +107,135 @@ class _CancelOrderDialogState extends State<CancelOrderDialog> {
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 16.h),
-              // Warning message
-              Container(
-                padding: EdgeInsets.all(12.w),
-                decoration: BoxDecoration(
-                  color: colors.accentOrange.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                  border: Border.all(color: colors.accentOrange.withValues(alpha: 0.3), width: 1),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.warning_amber_rounded, color: colors.accentOrange, size: 20.w),
-                    SizedBox(width: 8.w),
-                    Expanded(
-                      child: Text(
-                        'Frequent cancellations may affect your rider rating.',
-                        style: TextStyle(color: colors.accentOrange, fontSize: 12.sp, fontWeight: FontWeight.w500),
-                      ),
-                    ),
                   ],
                 ),
-              ),
-              SizedBox(height: 16.h),
-              // Reason selection
-              Text(
-                'Select a reason',
-                style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
-              ),
-              SizedBox(height: 12.h),
-              ...CancellationReason.values.map((reason) => _buildReasonTile(reason, colors)),
-              // Additional notes for "Other"
-              if (_selectedReason == CancellationReason.other) ...[
-                SizedBox(height: 12.h),
-                TextField(
-                  controller: _notesController,
-                  maxLines: 3,
-                  decoration: InputDecoration(
-                    hintText: 'Please provide more details...',
-                    hintStyle: TextStyle(color: colors.textSecondary, fontSize: 14.sp),
-                    filled: true,
-                    fillColor: colors.backgroundSecondary,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                      borderSide: BorderSide(color: colors.border),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                      borderSide: BorderSide(color: colors.border),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                      borderSide: BorderSide(color: colors.error),
-                    ),
+                SizedBox(height: 16.h),
+                Container(
+                  padding: EdgeInsets.all(12.w),
+                  decoration: BoxDecoration(
+                    color: colors.accentOrange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                   ),
-                  style: TextStyle(color: colors.textPrimary, fontSize: 14.sp),
+                  child: Row(
+                    children: [
+                      SvgPicture.asset(
+                        Assets.icons.warningCircle,
+                        package: "grab_go_shared",
+                        width: 20.w,
+                        height: 20.w,
+                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                      ),
+                      SizedBox(width: 8.w),
+                      Expanded(
+                        child: Text(
+                          'Frequent cancellations may affect your rider rating.',
+                          style: TextStyle(color: colors.accentOrange, fontSize: 12.sp, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                SizedBox(height: 16.h),
+                Text(
+                  'Select a reason :',
+                  style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                ),
+                SizedBox(height: 12.h),
               ],
-              SizedBox(height: 20.h),
-              // Action buttons
-              Row(
+            ),
+          ),
+
+          Flexible(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(horizontal: 20.w),
+              child: Column(
                 children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: colors.textPrimary,
-                        side: BorderSide(color: colors.border, width: 1.5),
-                        padding: EdgeInsets.symmetric(vertical: 14.h),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.borderRadius4)),
+                  ...CancellationReason.values.map((reason) => _buildReasonTile(reason, colors)),
+                  if (_selectedReason == CancellationReason.other) ...[
+                    SizedBox(height: 4.h),
+                    TextField(
+                      controller: _notesController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText: 'Please provide more details...',
+                        hintStyle: TextStyle(color: colors.textSecondary, fontSize: 14.sp),
+                        filled: true,
+                        fillColor: colors.backgroundSecondary,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                          borderSide: BorderSide(color: colors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                          borderSide: BorderSide(color: colors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                          borderSide: BorderSide(color: colors.error),
+                        ),
                       ),
-                      child: Text(
-                        'Go Back',
-                        style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600),
-                      ),
+                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp),
                     ),
-                  ),
-                  SizedBox(width: 12.w),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _selectedReason == null || _isSubmitting
-                          ? null
-                          : () async {
-                              setState(() {
-                                _isSubmitting = true;
-                              });
-                              Navigator.pop(context);
-                              widget.onConfirm(
-                                _selectedReason!,
-                                _selectedReason == CancellationReason.other ? _notesController.text : null,
-                              );
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colors.error,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: colors.error.withValues(alpha: 0.5),
-                        padding: EdgeInsets.symmetric(vertical: 14.h),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.borderRadius4)),
-                        elevation: 0,
-                      ),
-                      child: _isSubmitting
-                          ? SizedBox(
-                              width: 20.w,
-                              height: 20.w,
-                              child: const CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            )
-                          : Text(
-                              'Cancel Order',
-                              style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600),
-                            ),
-                    ),
-                  ),
+                    SizedBox(height: 8.h),
+                  ],
                 ],
               ),
-            ],
+            ),
           ),
-        ),
+
+          Container(
+            padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 16.h, bottom: padding.bottom + 20.h),
+            decoration: BoxDecoration(
+              color: colors.backgroundPrimary,
+              boxShadow: [
+                BoxShadow(color: colors.shadow.withValues(alpha: 0.1), blurRadius: 5, offset: const Offset(0, -2)),
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: AppButton(
+                    onPressed: () => Navigator.pop(context),
+                    buttonText: "Go Back",
+                    backgroundColor: colors.inputBorder,
+                    borderRadius: KBorderSize.borderRadius4,
+                    textStyle: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                    height: 56.h,
+                  ),
+                ),
+
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: AppButton(
+                    onPressed: () async {
+                      if (_selectedReason == null || _isSubmitting) return;
+
+                      setState(() {
+                        _isSubmitting = true;
+                      });
+
+                      await widget.onConfirm(
+                        _selectedReason!,
+                        _selectedReason == CancellationReason.other ? _notesController.text : null,
+                      );
+
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                      }
+                    },
+                    buttonText: _isSubmitting ? "Please wait..." : "Cancel Order",
+                    backgroundColor: _selectedReason != null && !_isSubmitting
+                        ? colors.accentGreen
+                        : colors.accentGreen.withValues(alpha: 0.5),
+                    borderRadius: KBorderSize.borderRadius4,
+                    textStyle: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                    height: 56.h,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -253,11 +251,10 @@ class _CancelOrderDialogState extends State<CancelOrderDialog> {
       },
       child: Container(
         margin: EdgeInsets.only(bottom: 8.h),
-        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 14.h),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 16.h),
         decoration: BoxDecoration(
           color: isSelected ? colors.error.withValues(alpha: 0.1) : colors.backgroundSecondary,
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-          border: Border.all(color: isSelected ? colors.error : colors.border, width: isSelected ? 1.5 : 1),
         ),
         child: Row(
           children: [
@@ -266,10 +263,18 @@ class _CancelOrderDialogState extends State<CancelOrderDialog> {
               height: 20.w,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: isSelected ? colors.error : colors.textSecondary, width: 2),
+                border: Border.all(color: isSelected ? colors.error : colors.textSecondary, width: 1.w),
                 color: isSelected ? colors.error : Colors.transparent,
               ),
-              child: isSelected ? Icon(Icons.check, color: Colors.white, size: 12.w) : null,
+              child: isSelected
+                  ? SvgPicture.asset(
+                      Assets.icons.check,
+                      package: "grab_go_shared",
+                      width: 12.w,
+                      height: 12.w,
+                      colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                    )
+                  : null,
             ),
             SizedBox(width: 12.w),
             Expanded(

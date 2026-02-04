@@ -949,6 +949,12 @@ model Order {
   promoType          PromoType?
   notes              String?
 
+  // Delivery Window (calculated when rider accepts)
+  deliveryWindowMin    Int?      // Minimum estimated delivery time in minutes
+  deliveryWindowMax    Int?      // Maximum estimated delivery time in minutes
+  initialETASeconds    Int?      // Initial ETA in seconds (for analytics)
+  riderAssignedAt      DateTime? // When rider accepted the order
+
   // Rider Earnings Breakdown
   riderBaseFee     Float @default(5.0) // Base delivery fee (GHS)
   riderDistanceFee Float @default(0) // Distance-based fee (calculated)
