@@ -2261,6 +2261,39 @@ router.post("/test/delivery-late", protect, authorize("rider"), async (req, res)
   }
 });
 
+/**
+ * @route   POST /api/riders/test/delivery-late-rider
+ * @desc    Test delivery late notification to rider (triggers delay reason dialog)
+ * @access  Private (rider)
+ */
+router.post("/test/delivery-late-rider", protect, authorize("rider"), async (req, res) => {
+  try {
+    const riderId = req.user.id;
+    const { orderId, orderNumber, newEtaMinutes = 10 } = req.body;
+
+    const socketService = require("../services/socket_service");
+
+    // Emit delivery late to rider via socket (triggers delay reason dialog)
+    socketService.emitToUserRoom(riderId, 'delivery_late', {
+      orderId: orderId || 'test-order-id',
+      orderNumber: orderNumber || 'TEST-001',
+      newEtaMinutes,
+      message: `Your delivery is running late. Please select a reason.`
+    });
+
+    console.log(`🧪 Test delivery_late sent to rider ${riderId} via user room`);
+
+    res.json({
+      success: true,
+      message: "Delivery late test sent to rider",
+      data: { riderId, orderId, orderNumber, newEtaMinutes }
+    });
+  } catch (error) {
+    console.error("Test delivery late rider error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // ==================== DELAY REASON ENDPOINTS ====================
 
 /**

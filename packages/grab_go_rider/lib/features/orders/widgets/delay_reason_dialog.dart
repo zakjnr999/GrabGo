@@ -1,37 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/svg.dart';
+import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 import '../service/order_reservation_service.dart';
 
 /// Dialog for riders to select a delay reason when delivery is late
+/// Uses bottom sheet style similar to CancelOrderDialog
 class DelayReasonDialog extends StatefulWidget {
   final String orderId;
   final String orderNumber;
   final VoidCallback? onSubmitted;
 
-  const DelayReasonDialog({
-    super.key,
-    required this.orderId,
-    required this.orderNumber,
-    this.onSubmitted,
-  });
+  const DelayReasonDialog({super.key, required this.orderId, required this.orderNumber, this.onSubmitted});
 
-  /// Show the delay reason dialog
+  /// Show the delay reason dialog as a bottom sheet
   static Future<bool?> show(
     BuildContext context, {
     required String orderId,
     required String orderNumber,
     VoidCallback? onSubmitted,
   }) {
-    return showDialog<bool>(
+    return showModalBottomSheet<bool>(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => DelayReasonDialog(
-        orderId: orderId,
-        orderNumber: orderNumber,
-        onSubmitted: onSubmitted,
-      ),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
+      builder: (context) => DelayReasonDialog(orderId: orderId, orderNumber: orderNumber, onSubmitted: onSubmitted),
     );
   }
 
@@ -43,7 +40,6 @@ class _DelayReasonDialogState extends State<DelayReasonDialog> {
   DelayReasonType? _selectedReason;
   final TextEditingController _noteController = TextEditingController();
   bool _isSubmitting = false;
-  String? _error;
 
   @override
   void dispose() {
@@ -52,21 +48,13 @@ class _DelayReasonDialogState extends State<DelayReasonDialog> {
   }
 
   Future<void> _submitReason() async {
-    if (_selectedReason == null) {
-      setState(() => _error = 'Please select a reason');
+    if (_selectedReason == null || _isSubmitting) return;
+
+    if (_selectedReason == DelayReasonType.other && _noteController.text.trim().length < 5) {
       return;
     }
 
-    if (_selectedReason == DelayReasonType.other && 
-        _noteController.text.trim().length < 5) {
-      setState(() => _error = 'Please provide more details (min 5 characters)');
-      return;
-    }
-
-    setState(() {
-      _isSubmitting = true;
-      _error = null;
-    });
+    setState(() => _isSubmitting = true);
 
     final service = OrderReservationService();
     final success = await service.submitDelayReason(
@@ -77,190 +65,237 @@ class _DelayReasonDialogState extends State<DelayReasonDialog> {
 
     if (!mounted) return;
 
-    setState(() => _isSubmitting = false);
-
     if (success) {
       widget.onSubmitted?.call();
       Navigator.of(context).pop(true);
     } else {
-      setState(() => _error = 'Failed to submit. Please try again.');
+      setState(() => _isSubmitting = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    final padding = MediaQuery.paddingOf(context);
+    final screenHeight = MediaQuery.sizeOf(context).height;
 
-    return AlertDialog(
-      backgroundColor: colors.backgroundPrimary,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16.r),
+    return Container(
+      constraints: BoxConstraints(maxHeight: screenHeight * 0.75),
+      decoration: BoxDecoration(
+        color: colors.backgroundPrimary,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(KBorderSize.borderRadius20),
+          topRight: Radius.circular(KBorderSize.borderRadius20),
+        ),
       ),
-      title: Column(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.schedule,
-            color: colors.accentOrange,
-            size: 48.sp,
-          ),
-          SizedBox(height: 12.h),
-          Text(
-            'Why was this delivery delayed?',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 18.sp,
-              fontWeight: FontWeight.bold,
-              color: colors.textPrimary,
+          // Header
+          Padding(
+            padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 16.h),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Drag handle
+                Center(
+                  child: Container(
+                    width: 40.w,
+                    height: 4.h,
+                    margin: EdgeInsets.only(bottom: 16.h),
+                    decoration: BoxDecoration(
+                      color: colors.textSecondary.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2.r),
+                    ),
+                  ),
+                ),
+                // Title
+                Row(
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Why was this delayed?',
+                          style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
+                        ),
+                        Text(
+                          widget.orderNumber,
+                          style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16.h),
+                // Info banner
+                Container(
+                  padding: EdgeInsets.all(12.w),
+                  decoration: BoxDecoration(
+                    color: colors.accentOrange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                  ),
+                  child: Row(
+                    children: [
+                      SvgPicture.asset(
+                        Assets.icons.warningCircle,
+                        package: "grab_go_shared",
+                        width: 20.w,
+                        height: 20.w,
+                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                      ),
+                      SizedBox(width: 8.w),
+                      Expanded(
+                        child: Text(
+                          'This helps us understand delays and protects you from unfair penalties.',
+                          style: TextStyle(color: colors.accentOrange, fontSize: 12.sp, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 16.h),
+                Text(
+                  'Select a reason :',
+                  style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                ),
+                SizedBox(height: 12.h),
+              ],
             ),
           ),
-          SizedBox(height: 4.h),
-          Text(
-            'Order #${widget.orderNumber}',
-            style: TextStyle(
-              fontSize: 14.sp,
-              color: colors.textSecondary,
+
+          // Reason list
+          Flexible(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(horizontal: 20.w),
+              child: Column(
+                children: [
+                  ...DelayReasonType.values.map((reason) => _buildReasonTile(reason, colors)),
+                  if (_selectedReason == DelayReasonType.other) ...[
+                    SizedBox(height: 4.h),
+                    TextField(
+                      controller: _noteController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText: 'Please provide more details...',
+                        hintStyle: TextStyle(color: colors.textSecondary, fontSize: 14.sp),
+                        filled: true,
+                        fillColor: colors.backgroundSecondary,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                          borderSide: BorderSide(color: colors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                          borderSide: BorderSide(color: colors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                          borderSide: BorderSide(color: colors.accentOrange),
+                        ),
+                      ),
+                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp),
+                    ),
+                    SizedBox(height: 8.h),
+                  ],
+                ],
+              ),
+            ),
+          ),
+
+          // Bottom buttons
+          Container(
+            padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 16.h, bottom: padding.bottom + 20.h),
+            decoration: BoxDecoration(
+              color: colors.backgroundPrimary,
+              boxShadow: [
+                BoxShadow(color: colors.shadow.withValues(alpha: 0.1), blurRadius: 5, offset: const Offset(0, -2)),
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: AppButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    buttonText: "Skip",
+                    backgroundColor: colors.inputBorder,
+                    borderRadius: KBorderSize.borderRadius4,
+                    textStyle: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                    height: 56.h,
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: AppButton(
+                    onPressed: _submitReason,
+                    buttonText: _isSubmitting ? "Please wait..." : "Submit",
+                    backgroundColor: _selectedReason != null && !_isSubmitting
+                        ? colors.accentGreen
+                        : colors.accentGreen.withValues(alpha: 0.5),
+                    borderRadius: KBorderSize.borderRadius4,
+                    textStyle: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                    height: 56.h,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'This helps us understand delays and protects you from unfair penalties.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12.sp,
-                color: colors.textSecondary,
-              ),
-            ),
-            SizedBox(height: 16.h),
-            
-            // Reason options
-            ...DelayReasonType.values.map((reason) => _buildReasonOption(reason, colors)),
-            
-            // Note field for "Other"
-            if (_selectedReason == DelayReasonType.other) ...[
-              SizedBox(height: 12.h),
-              TextField(
-                controller: _noteController,
-                maxLines: 3,
-                maxLength: 200,
-                decoration: InputDecoration(
-                  hintText: 'Please explain the reason...',
-                  hintStyle: TextStyle(color: colors.textSecondary),
-                  filled: true,
-                  fillColor: colors.backgroundSecondary,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8.r),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: EdgeInsets.all(12.w),
-                ),
-                style: TextStyle(color: colors.textPrimary),
-              ),
-            ],
-            
-            // Error message
-            if (_error != null) ...[
-              SizedBox(height: 8.h),
-              Text(
-                _error!,
-                style: TextStyle(
-                  color: colors.error,
-                  fontSize: 12.sp,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(false),
-          child: Text(
-            'Skip',
-            style: TextStyle(
-              color: colors.textSecondary,
-            ),
-          ),
-        ),
-        ElevatedButton(
-          onPressed: _isSubmitting ? null : _submitReason,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: colors.accentGreen,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8.r),
-            ),
-          ),
-          child: _isSubmitting
-              ? SizedBox(
-                  width: 20.w,
-                  height: 20.w,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : Text(
-                  'Submit',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-        ),
-      ],
     );
   }
 
-  Widget _buildReasonOption(DelayReasonType reason, AppColorsExtension colors) {
+  Widget _buildReasonTile(DelayReasonType reason, AppColorsExtension colors) {
     final isSelected = _selectedReason == reason;
-    
-    return Padding(
-      padding: EdgeInsets.only(bottom: 8.h),
-      child: InkWell(
-        onTap: () => setState(() {
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
           _selectedReason = reason;
-          _error = null;
-        }),
-        borderRadius: BorderRadius.circular(8.r),
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-          decoration: BoxDecoration(
-            color: isSelected ? colors.accentGreen.withValues(alpha: 0.1) : colors.backgroundSecondary,
-            borderRadius: BorderRadius.circular(8.r),
-            border: Border.all(
-              color: isSelected ? colors.accentGreen : Colors.transparent,
-              width: 2,
+        });
+      },
+      child: Container(
+        margin: EdgeInsets.only(bottom: 8.h),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 16.h),
+        decoration: BoxDecoration(
+          color: isSelected ? colors.accentOrange.withValues(alpha: 0.1) : colors.backgroundSecondary,
+          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 20.w,
+              height: 20.w,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: isSelected ? colors.accentOrange : colors.textSecondary, width: 1.w),
+                color: isSelected ? colors.accentOrange : Colors.transparent,
+              ),
+              child: isSelected
+                  ? SvgPicture.asset(
+                      Assets.icons.check,
+                      package: "grab_go_shared",
+                      width: 12.w,
+                      height: 12.w,
+                      colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                    )
+                  : null,
             ),
-          ),
-          child: Row(
-            children: [
-              Text(
-                reason.icon,
-                style: TextStyle(fontSize: 20.sp),
-              ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Text(
-                  reason.label,
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: colors.textPrimary,
-                  ),
+            SizedBox(width: 12.w),
+            Text(reason.icon, style: TextStyle(fontSize: 18.sp)),
+            SizedBox(width: 8.w),
+            Expanded(
+              child: Text(
+                reason.label,
+                style: TextStyle(
+                  color: isSelected ? colors.accentOrange : colors.textPrimary,
+                  fontSize: 14.sp,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 ),
               ),
-              if (isSelected)
-                Icon(
-                  Icons.check_circle,
-                  color: colors.accentGreen,
-                  size: 20.sp,
-                ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
