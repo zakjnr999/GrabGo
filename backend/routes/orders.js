@@ -204,59 +204,55 @@ router.post(
       }
 
       // Create order with Prisma transaction to handle nested items
-      const order = await prisma.$transaction(async (tx) => {
-        const newOrder = await tx.order.create({
-          data: {
-            orderNumber,
-            orderType: 'food',
-            customerId: req.user.id,
-            restaurantId: restaurant,
-            subtotal,
-            deliveryFee,
-            tax,
-            totalAmount,
-            deliveryStreet: deliveryAddress.street || deliveryAddress,
-            deliveryCity: deliveryAddress.city || 'Unknown',
-            deliveryState: deliveryAddress.state,
-            deliveryZipCode: deliveryAddress.zipCode,
-            deliveryLatitude: deliveryAddress.latitude,
-            deliveryLongitude: deliveryAddress.longitude,
-            paymentMethod,
-            notes,
-            status: "pending",
-            items: {
-              create: orderItemsData
+      const order = await prisma.order.create({
+        data: {
+          orderNumber,
+          orderType: 'food',
+          customerId: req.user.id,
+          restaurantId: restaurant,
+          subtotal,
+          deliveryFee,
+          tax,
+          totalAmount,
+          deliveryStreet: deliveryAddress.street || deliveryAddress,
+          deliveryCity: deliveryAddress.city || 'Unknown',
+          deliveryState: deliveryAddress.state,
+          deliveryZipCode: deliveryAddress.zipCode,
+          deliveryLatitude: deliveryAddress.latitude,
+          deliveryLongitude: deliveryAddress.longitude,
+          paymentMethod,
+          notes,
+          status: "pending",
+          items: {
+            create: orderItemsData
+          }
+        },
+        include: {
+          items: {
+            include: { food: true }
+          },
+          restaurant: {
+            select: {
+              restaurantName: true,
+              logo: true,
+              location: true,
+              phone: true
             }
           },
-          include: {
-            items: {
-              include: { food: true }
-            },
-            restaurant: {
-              select: {
-                restaurantName: true,
-                logo: true,
-                location: true,
-                phone: true
-              }
-            },
-            customer: {
-              select: {
-                username: true,
-                email: true,
-                phone: true
-              }
+          customer: {
+            select: {
+              username: true,
+              email: true,
+              phone: true
             }
           }
-        });
-
-        // Mark credits as used
-        if (creditApplied > 0 && creditResult.creditsUsed.length > 0) {
-          await ReferralService.markCreditsAsUsed(creditResult.creditsUsed, newOrder.id);
         }
-
-        return newOrder;
       });
+
+      // Mark credits as used and update cached balance (after order creation)
+      if (creditApplied > 0 && creditResult.creditsUsed.length > 0) {
+        await ReferralService.markCreditsAsUsed(creditResult.creditsUsed, order.id, req.user.id);
+      }
 
       // Check if this is user's first order and complete referral
       const userOrderCount = await prisma.order.count({

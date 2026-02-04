@@ -536,6 +536,7 @@ app.use("/api/favorites", require("./routes/favorites"));
 app.use("/api/promo", require("./routes/promo"));
 app.use("/api/test", require("./routes/test"));
 app.use("/api/tracking", require("./routes/tracking_routes"));
+app.use("/api/credits", require("./routes/credits"));
 app.use('/api/calls', callRoutes);
 
 app.set('webrtcSignaling', webrtcSignaling);

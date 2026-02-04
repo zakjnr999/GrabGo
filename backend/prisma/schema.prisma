@@ -214,6 +214,9 @@ enum CreditSource {
   promotion
   refund
   bonus
+  admin_grant
+  admin_deduct
+  order_payment
 }
 
 model UserCredit {
@@ -280,6 +283,9 @@ model User {
   reorderSuggestionsThisWeek Int               @default(0)
   lastReengagementNudgeAt    DateTime?
   reengagementLevel          ReengagementLevel @default(none)
+
+  // GrabGo Credits (in-app store credit)
+  creditBalance Float @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -61,6 +61,12 @@ class ReferralService {
                     }
                 });
 
+                // Update cached credit balance
+                await tx.user.update({
+                    where: { id: referral.referrerId },
+                    data: { creditBalance: { increment: REFERRAL_REWARD_AMOUNT } }
+                });
+
                 // Update referral status
                 await tx.referral.update({
                     where: { id: referral.id },
@@ -97,6 +103,12 @@ class ReferralService {
                             expiresAt: bonusExpiry,
                             description: `Milestone bonus - ${referrerCode.completedReferrals} referrals completed!`
                         }
+                    });
+
+                    // Update cached credit balance for milestone bonus
+                    await tx.user.update({
+                        where: { id: referral.referrerId },
+                        data: { creditBalance: { increment: MILESTONE_BONUS_AMOUNT } }
                     });
 
                     await tx.referralCode.update({
@@ -243,11 +255,15 @@ class ReferralService {
      * @param {Array} creditsUsed - Array of {creditId, amount}
      * @param {String} orderId - Order ID
      */
-    static async markCreditsAsUsed(creditsUsed, orderId) {
+    static async markCreditsAsUsed(creditsUsed, orderId, userId) {
         try {
-            await prisma.$transaction(
-                creditsUsed.map(({ creditId }) =>
-                    prisma.userCredit.update({
+            // Calculate total amount being used
+            const totalUsed = creditsUsed.reduce((sum, c) => sum + c.amount, 0);
+
+            await prisma.$transaction(async (tx) => {
+                // Mark individual credits as used
+                for (const { creditId } of creditsUsed) {
+                    await tx.userCredit.update({
                         where: { id: creditId },
                         data: {
                             isUsed: true,
@@ -255,9 +271,17 @@ class ReferralService {
                             isActive: false,
                             usedAt: new Date()
                         }
-                    })
-                )
-            );
+                    });
+                }
+
+                // Update cached credit balance
+                if (userId && totalUsed > 0) {
+                    await tx.user.update({
+                        where: { id: userId },
+                        data: { creditBalance: { decrement: totalUsed } }
+                    });
+                }
+            });
             return { success: true };
         } catch (error) {
             console.error('Error marking credits as used:', error);
@@ -266,26 +290,17 @@ class ReferralService {
     }
 
     /**
-     * Get user's total available credit balance
+     * Get user's total available credit balance (uses cached balance)
      * @param {String} userId - User ID
      * @returns {Number} - Total available credit
      */
     static async getUserCreditBalance(userId) {
         try {
-            const credits = await prisma.userCredit.findMany({
-                where: {
-                    userId: userId,
-                    isActive: true,
-                    isUsed: false,
-                    OR: [
-                        { expiresAt: null },
-                        { expiresAt: { gt: new Date() } }
-                    ]
-                }
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { creditBalance: true }
             });
-
-            const total = credits.reduce((sum, credit) => sum + credit.amount, 0);
-            return parseFloat(total.toFixed(2));
+            return user?.creditBalance || 0;
         } catch (error) {
             console.error('Error getting credit balance:', error);
             return 0;
