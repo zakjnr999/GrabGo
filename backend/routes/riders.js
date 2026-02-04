@@ -2180,4 +2180,83 @@ router.put(
   }
 );
 
+// ==================== TEST ENDPOINTS (Development Only) ====================
+
+/**
+ * @route   POST /api/riders/test/delivery-warning
+ * @desc    Test delivery warning notification (dev only)
+ * @access  Private (rider)
+ */
+router.post("/test/delivery-warning", protect, authorize("rider"), async (req, res) => {
+  if (process.env.NODE_ENV === "production") {
+    return res.status(403).json({ success: false, message: "Not available in production" });
+  }
+
+  try {
+    const riderId = req.user.id;
+    const { orderId, orderNumber, minutesRemaining = 5 } = req.body;
+
+    const socketService = require("../services/socket_service");
+
+    // Emit delivery warning via socket
+    socketService.emitToUser(riderId, 'delivery_warning', {
+      orderId: orderId || 'test-order-id',
+      orderNumber: orderNumber || 'TEST-001',
+      minutesRemaining,
+      message: `Delivery window ending in ${minutesRemaining} mins`
+    });
+
+    console.log(`🧪 Test delivery_warning sent to rider ${riderId}`);
+
+    res.json({
+      success: true,
+      message: "Delivery warning test sent",
+      data: { riderId, orderId, orderNumber, minutesRemaining }
+    });
+  } catch (error) {
+    console.error("Test delivery warning error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   POST /api/riders/test/delivery-late
+ * @desc    Test delivery late notification to customer (dev only)
+ * @access  Private (rider)
+ */
+router.post("/test/delivery-late", protect, authorize("rider"), async (req, res) => {
+  if (process.env.NODE_ENV === "production") {
+    return res.status(403).json({ success: false, message: "Not available in production" });
+  }
+
+  try {
+    const { customerId, orderId, orderNumber, newEtaMinutes = 10 } = req.body;
+
+    if (!customerId) {
+      return res.status(400).json({ success: false, message: "customerId is required" });
+    }
+
+    const socketService = require("../services/socket_service");
+
+    // Emit delivery late via socket
+    socketService.emitToUser(customerId, 'delivery_late', {
+      orderId: orderId || 'test-order-id',
+      orderNumber: orderNumber || 'TEST-001',
+      newEtaMinutes,
+      message: `Your delivery is running a bit late. New ETA: ${newEtaMinutes} minutes`
+    });
+
+    console.log(`🧪 Test delivery_late sent to customer ${customerId}`);
+
+    res.json({
+      success: true,
+      message: "Delivery late test sent",
+      data: { customerId, orderId, orderNumber, newEtaMinutes }
+    });
+  } catch (error) {
+    console.error("Test delivery late error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
