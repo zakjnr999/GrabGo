@@ -1,5 +1,4 @@
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+const prisma = require("../config/prisma");
 const { sendToUser } = require("./fcm_service");
 const { createNotification } = require("./notification_service");
 const { getIO } = require("../utils/socket");
