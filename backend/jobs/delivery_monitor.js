@@ -13,9 +13,8 @@ const trackingService = require('../services/tracking_service');
  * 3. Update customer with new ETA when past window
  */
 
-// Track which orders have already been warned (in-memory, resets on restart)
-const warnedOrders = new Set();
-const lateNotifiedOrders = new Set();
+// Note: We now use database fields (deliveryWarningSentAt, customerLateNotifiedAt) 
+// instead of in-memory Sets to persist across server restarts
 
 /**
  * Initialize the delivery monitor
@@ -64,6 +63,8 @@ async function checkDeliveryWindows() {
             deliveryWindowMin: true,
             deliveryWindowMax: true,
             riderAssignedAt: true,
+            deliveryWarningSentAt: true,
+            customerLateNotifiedAt: true,
             status: true,
             deliveryLatitude: true,
             deliveryLongitude: true,
@@ -105,15 +106,25 @@ async function processOrder(order, now) {
     const minutesUntilMax = (maxDeliveryTime - now) / (1000 * 60);
 
     // 1. SOFT WARNING TO RIDER (5 mins before max window)
-    if (minutesUntilMax <= 5 && minutesUntilMax > 0 && !warnedOrders.has(order.id)) {
+    // Use database field to prevent duplicate notifications across server restarts
+    if (minutesUntilMax <= 5 && minutesUntilMax > 0 && !order.deliveryWarningSentAt) {
         await sendRiderWarning(order, Math.ceil(minutesUntilMax));
-        warnedOrders.add(order.id);
+        // Mark as warned in database
+        await prisma.order.update({
+            where: { id: order.id },
+            data: { deliveryWarningSentAt: new Date() }
+        });
     }
 
     // 2. CUSTOMER NOTIFICATION WHEN LATE (past max window)
-    if (minutesUntilMax < 0 && !lateNotifiedOrders.has(order.id)) {
+    // Use database field to prevent duplicate notifications across server restarts
+    if (minutesUntilMax < 0 && !order.customerLateNotifiedAt) {
         await notifyCustomerLate(order);
-        lateNotifiedOrders.add(order.id);
+        // Mark as notified in database
+        await prisma.order.update({
+            where: { id: order.id },
+            data: { customerLateNotifiedAt: new Date() }
+        });
     }
 }
 
@@ -213,10 +224,21 @@ async function notifyCustomerLate(order) {
 
 /**
  * Clean up tracked orders (call when order is completed/cancelled)
+ * Resets the database fields so the order can be re-warned if needed
  */
-function clearOrderTracking(orderId) {
-    warnedOrders.delete(orderId);
-    lateNotifiedOrders.delete(orderId);
+async function clearOrderTracking(orderId) {
+    try {
+        await prisma.order.update({
+            where: { id: orderId },
+            data: {
+                deliveryWarningSentAt: null,
+                customerLateNotifiedAt: null
+            }
+        });
+        console.log(`🧹 Cleared delivery tracking for order ${orderId}`);
+    } catch (error) {
+        console.error(`Error clearing order tracking: ${error.message}`);
+    }
 }
 
 /**

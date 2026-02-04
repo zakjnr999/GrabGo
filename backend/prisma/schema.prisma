@@ -950,10 +950,12 @@ model Order {
   notes              String?
 
   // Delivery Window (calculated when rider accepts)
-  deliveryWindowMin    Int?      // Minimum estimated delivery time in minutes
-  deliveryWindowMax    Int?      // Maximum estimated delivery time in minutes
-  initialETASeconds    Int?      // Initial ETA in seconds (for analytics)
-  riderAssignedAt      DateTime? // When rider accepted the order
+  deliveryWindowMin      Int? // Minimum estimated delivery time in minutes
+  deliveryWindowMax      Int? // Maximum estimated delivery time in minutes
+  initialETASeconds      Int? // Initial ETA in seconds (for analytics)
+  riderAssignedAt        DateTime? // When rider accepted the order
+  deliveryWarningSentAt  DateTime? // When rider was warned about delivery window
+  customerLateNotifiedAt DateTime? // When customer was notified about late delivery
 
   // Rider Earnings Breakdown
   riderBaseFee     Float @default(5.0) // Base delivery fee (GHS)
