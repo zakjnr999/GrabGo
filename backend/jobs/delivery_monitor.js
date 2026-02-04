@@ -138,8 +138,8 @@ async function sendRiderWarning(order, minutesRemaining) {
         }
     );
 
-    // Also send via socket for immediate in-app notification
-    socketService.emitToUser(order.riderId, 'delivery_warning', {
+    // Also send via socket for immediate in-app notification (use room-based for riders)
+    socketService.emitToUserRoom(order.riderId, 'delivery_warning', {
         orderId: order.id,
         orderNumber: order.orderNumber,
         minutesRemaining,

@@ -2199,15 +2199,15 @@ router.post("/test/delivery-warning", protect, authorize("rider"), async (req, r
 
     const socketService = require("../services/socket_service");
 
-    // Emit delivery warning via socket
-    socketService.emitToUser(riderId, 'delivery_warning', {
+    // Emit delivery warning via socket (use room-based approach for riders)
+    socketService.emitToUserRoom(riderId, 'delivery_warning', {
       orderId: orderId || 'test-order-id',
       orderNumber: orderNumber || 'TEST-001',
       minutesRemaining,
       message: `Delivery window ending in ${minutesRemaining} mins`
     });
 
-    console.log(`🧪 Test delivery_warning sent to rider ${riderId}`);
+    console.log(`🧪 Test delivery_warning sent to rider ${riderId} via user room`);
 
     res.json({
       success: true,
