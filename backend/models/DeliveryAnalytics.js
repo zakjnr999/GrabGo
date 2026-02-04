@@ -23,6 +23,14 @@ const deliveryAnalyticsSchema = new mongoose.Schema({
     deliveryWindowMax: Number, // Expected max delivery time in minutes
     wasOnTime: Boolean, // Did rider deliver within window?
     minutesLate: Number, // If late, how many minutes late? (null if on time)
+    
+    // Delay reason tracking (for fair penalty assessment)
+    delayReason: { 
+        type: String, 
+        enum: ['traffic', 'vendor_delay', 'customer_unreachable', 'weather', 'vehicle_issue', 'other', null]
+    },
+    delayReasonNote: String, // Additional notes for "other" reason
+    isRiderFault: Boolean, // true if delay was rider's fault (vehicle_issue, other)
 
     // Performance metrics
     averageSpeed: Number,

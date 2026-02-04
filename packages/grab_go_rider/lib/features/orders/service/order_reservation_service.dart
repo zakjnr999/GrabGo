@@ -136,6 +136,25 @@ class DeliveryWarning {
   }
 }
 
+/// Represents a delivery late notification from the backend
+class DeliveryLate {
+  final String orderId;
+  final String orderNumber;
+  final int? newEtaMinutes;
+  final String message;
+
+  DeliveryLate({required this.orderId, required this.orderNumber, this.newEtaMinutes, required this.message});
+
+  factory DeliveryLate.fromJson(Map<String, dynamic> json) {
+    return DeliveryLate(
+      orderId: json['orderId']?.toString() ?? '',
+      orderNumber: json['orderNumber']?.toString() ?? '',
+      newEtaMinutes: (json['newEtaMinutes'] as num?)?.toInt(),
+      message: json['message']?.toString() ?? 'Delivery is running late',
+    );
+  }
+}
+
 /// Service for managing order reservations in the rider app
 class OrderReservationService extends ChangeNotifier {
   OrderReservationService._();
@@ -173,6 +192,7 @@ class OrderReservationService extends ChangeNotifier {
   void Function()? onReservationDeclined;
   void Function(String orderId, String reason)? onReservationCancelled;
   void Function(DeliveryWarning)? onDeliveryWarning;
+  void Function(DeliveryLate)? onDeliveryLate;
 
   // Track if already initialized
   bool _isInitialized = false;
@@ -232,6 +252,14 @@ class OrderReservationService extends ChangeNotifier {
       }
     });
 
+    // Listen for delivery late notifications (past deadline)
+    socket.addDeliveryLateListener((data) {
+      debugPrint('🕐 OrderReservationService received delivery_late: $data');
+      if (data is Map<String, dynamic>) {
+        _handleDeliveryLate(data);
+      }
+    });
+
     debugPrint('✅ OrderReservationService initialized with socket listeners');
   }
 
@@ -283,6 +311,17 @@ class OrderReservationService extends ChangeNotifier {
       onDeliveryWarning?.call(warning);
     } catch (e) {
       debugPrint('Error parsing delivery warning: $e');
+    }
+  }
+
+  /// Handle delivery late notification (past deadline)
+  void _handleDeliveryLate(Map<String, dynamic> data) {
+    try {
+      final lateInfo = DeliveryLate.fromJson(data);
+      debugPrint('🕐 Delivery late for order #${lateInfo.orderNumber}');
+      onDeliveryLate?.call(lateInfo);
+    } catch (e) {
+      debugPrint('Error parsing delivery late: $e');
     }
   }
 
@@ -592,5 +631,67 @@ class OrderReservationService extends ChangeNotifier {
       debugPrint('❌ Error checking online status: $e');
       return {'isOnline': false};
     }
+  }
+
+  /// Submit delay reason for a late delivery
+  Future<bool> submitDelayReason(String orderId, DelayReasonType reason, {String? note}) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/riders/orders/$orderId/delay-reason');
+      final body = <String, dynamic>{'reason': reason.value, if (note != null && note.isNotEmpty) 'note': note};
+
+      final response = await _client.post(uri, headers: await _buildHeaders(), body: jsonEncode(body));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        debugPrint('✅ Delay reason submitted: ${data['data']}');
+        return true;
+      }
+
+      debugPrint('⚠️ Failed to submit delay reason: ${response.body}');
+      return false;
+    } catch (e) {
+      debugPrint('❌ Error submitting delay reason: $e');
+      return false;
+    }
+  }
+
+  /// Check if delay reason has been submitted for an order
+  Future<Map<String, dynamic>?> getDelayReason(String orderId) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/riders/orders/$orderId/delay-reason');
+      final response = await _client.get(uri, headers: await _buildHeaders());
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          return data['data'] as Map<String, dynamic>;
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('❌ Error getting delay reason: $e');
+      return null;
+    }
+  }
+}
+
+/// Enum for delay reasons
+enum DelayReasonType {
+  traffic('traffic', 'Traffic', '🚗'),
+  vendorDelay('vendor_delay', 'Vendor Delay', '🏪'),
+  customerUnreachable('customer_unreachable', 'Customer Unreachable', '📞'),
+  weather('weather', 'Bad Weather', '🌧️'),
+  vehicleIssue('vehicle_issue', 'Vehicle Issue', '🏍️'),
+  other('other', 'Other', '📝');
+
+  final String value;
+  final String label;
+  final String icon;
+
+  const DelayReasonType(this.value, this.label, this.icon);
+
+  static DelayReasonType? fromValue(String? value) {
+    if (value == null) return null;
+    return DelayReasonType.values.firstWhere((e) => e.value == value, orElse: () => DelayReasonType.other);
   }
 }

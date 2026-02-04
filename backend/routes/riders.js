@@ -2261,4 +2261,150 @@ router.post("/test/delivery-late", protect, authorize("rider"), async (req, res)
   }
 });
 
+// ==================== DELAY REASON ENDPOINTS ====================
+
+/**
+ * @route   POST /api/riders/orders/:orderId/delay-reason
+ * @desc    Submit delay reason for a late delivery
+ * @access  Private (rider)
+ */
+router.post("/orders/:orderId/delay-reason", protect, authorize("rider"), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { reason, note } = req.body;
+    const riderId = req.user.id;
+
+    // Validate reason
+    const validReasons = ['traffic', 'vendor_delay', 'customer_unreachable', 'weather', 'vehicle_issue', 'other'];
+    if (!reason || !validReasons.includes(reason)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid delay reason. Must be one of: ${validReasons.join(', ')}`
+      });
+    }
+
+    // Require note for "other" reason
+    if (reason === 'other' && (!note || note.trim().length < 5)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a detailed explanation for "Other" reason (min 5 characters)'
+      });
+    }
+
+    // Find the order and verify it belongs to this rider
+    const order = await prisma.order.findFirst({
+      where: {
+        id: orderId,
+        riderId: riderId
+      }
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found or not assigned to you'
+      });
+    }
+
+    // Check if delay reason already submitted
+    if (order.delayReason) {
+      return res.status(400).json({
+        success: false,
+        message: 'Delay reason already submitted for this order'
+      });
+    }
+
+    // Update order with delay reason
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        delayReason: reason,
+        delayReasonNote: reason === 'other' ? note.trim() : null,
+        delayReasonSubmittedAt: new Date()
+      }
+    });
+
+    console.log(`📝 Rider ${riderId} submitted delay reason for order #${order.orderNumber}: ${reason}`);
+
+    // Also update the delivery analytics if it exists
+    try {
+      const DeliveryAnalytics = require('../models/DeliveryAnalytics');
+      await DeliveryAnalytics.findOneAndUpdate(
+        { orderId: orderId },
+        { 
+          $set: { 
+            delayReason: reason,
+            delayReasonNote: reason === 'other' ? note.trim() : null,
+            isRiderFault: !['traffic', 'vendor_delay', 'customer_unreachable', 'weather'].includes(reason)
+          }
+        }
+      );
+    } catch (analyticsError) {
+      console.error('Error updating analytics with delay reason:', analyticsError.message);
+    }
+
+    res.json({
+      success: true,
+      message: 'Delay reason submitted successfully',
+      data: {
+        orderId,
+        orderNumber: order.orderNumber,
+        delayReason: reason,
+        delayReasonNote: reason === 'other' ? note.trim() : null
+      }
+    });
+  } catch (error) {
+    console.error("Submit delay reason error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   GET /api/riders/orders/:orderId/delay-reason
+ * @desc    Get delay reason for an order
+ * @access  Private (rider)
+ */
+router.get("/orders/:orderId/delay-reason", protect, authorize("rider"), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const riderId = req.user.id;
+
+    const order = await prisma.order.findFirst({
+      where: {
+        id: orderId,
+        riderId: riderId
+      },
+      select: {
+        id: true,
+        orderNumber: true,
+        delayReason: true,
+        delayReasonNote: true,
+        delayReasonSubmittedAt: true
+      }
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found or not assigned to you'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        delayReason: order.delayReason,
+        delayReasonNote: order.delayReasonNote,
+        submittedAt: order.delayReasonSubmittedAt,
+        hasSubmitted: !!order.delayReason
+      }
+    });
+  } catch (error) {
+    console.error("Get delay reason error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

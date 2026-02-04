@@ -35,6 +35,15 @@ enum OrderStatus {
   cancelled
 }
 
+enum DelayReason {
+  traffic
+  vendor_delay
+  customer_unreachable
+  weather
+  vehicle_issue
+  other
+}
+
 enum PaymentMethod {
   cash
   card
@@ -956,6 +965,11 @@ model Order {
   riderAssignedAt        DateTime? // When rider accepted the order
   deliveryWarningSentAt  DateTime? // When rider was warned about delivery window
   customerLateNotifiedAt DateTime? // When customer was notified about late delivery
+
+  // Delay tracking (when rider is late)
+  delayReason            DelayReason? // Reason for delay (traffic, vendor_delay, etc.)
+  delayReasonNote        String? // Additional notes for "other" reason
+  delayReasonSubmittedAt DateTime? // When rider submitted the delay reason
 
   // Rider Earnings Breakdown
   riderBaseFee     Float @default(5.0) // Base delivery fee (GHS)

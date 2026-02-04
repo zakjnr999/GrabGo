@@ -12,6 +12,7 @@ import 'package:grab_go_rider/features/orders/service/available_order_dto.dart';
 import 'package:grab_go_rider/features/orders/service/available_orders_service.dart';
 import 'package:grab_go_rider/features/orders/service/order_reservation_service.dart';
 import 'package:grab_go_rider/features/orders/service/order_statistics_service.dart';
+import 'package:grab_go_rider/features/orders/widgets/delay_reason_dialog.dart';
 import 'package:grab_go_rider/features/orders/widgets/order_reservation_modal.dart';
 import 'package:grab_go_rider/shared/widgets/home_drawer.dart';
 import 'package:grab_go_rider/shared/widgets/home_sliver_appbar.dart';
@@ -293,6 +294,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       }
     };
 
+    _reservationService.onDeliveryLate = (lateInfo) {
+      if (mounted) {
+        _showDelayReasonDialog(lateInfo);
+      }
+    };
+
     _setupAutoOfflineListener();
 
     _reservationService.fetchActiveReservation().then((reservation) {
@@ -438,6 +445,23 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       radius: KBorderSize.borderRadius4,
       maxLines: 2,
       duration: const Duration(seconds: 5),
+    );
+  }
+
+  void _showDelayReasonDialog(DeliveryLate lateInfo) {
+    DelayReasonDialog.show(
+      context,
+      orderId: lateInfo.orderId,
+      orderNumber: lateInfo.orderNumber,
+      onSubmitted: () {
+        AppToastMessage.show(
+          context: context,
+          message: 'Thank you for letting us know!',
+          backgroundColor: context.appColors.accentGreen,
+          gravity: ToastGravity.CENTER,
+          radius: KBorderSize.borderRadius4,
+        );
+      },
     );
   }
 
