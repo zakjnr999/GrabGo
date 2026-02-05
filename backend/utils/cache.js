@@ -225,6 +225,7 @@ const CACHE_KEYS = {
     STORIES: 'grabgo:stories',
     STATUS: 'grabgo:status',
     // Food service cache keys
+    // Service cache keys
     FOOD_CATEGORIES: 'grabgo:food:categories',
     FOOD_DEALS: 'grabgo:food:deals',
     FOOD_POPULAR: 'grabgo:food:popular',
@@ -232,6 +233,10 @@ const CACHE_KEYS = {
     FOOD_RECOMMENDED: 'grabgo:food:recommended',
     FOOD_BANNERS: 'grabgo:food:banners',
     FOOD_ITEM: 'grabgo:food:item',
+    PHARMACY: 'grabgo:pharmacy',
+    GROCERY: 'grabgo:grocery',
+    GRABMART: 'grabgo:grabmart',
+    PROMOTIONS: 'grabgo:promotions',
     // Live tracking cache keys
     RIDER_LOCATION: 'grabgo:tracking:rider',
     ORDER_TRACKING: 'grabgo:tracking:order',

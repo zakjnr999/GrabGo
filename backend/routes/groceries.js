@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../config/prisma');
 const { protect } = require('../middleware/auth');
+const { cacheMiddleware } = require('../middleware/cache');
+const cache = require('../utils/cache');
 
 /**
  * Helper to format grocery store for frontend compatibility
@@ -51,7 +53,7 @@ const formatItem = (item) => {
  * @desc    Get grocery stores
  * @access  Public
  */
-router.get("/stores", async (req, res) => {
+router.get("/stores", cacheMiddleware(cache.CACHE_KEYS.GROCERY + ':stores', 300), async (req, res) => {
     try {
         const stores = await prisma.groceryStore.findMany({
             where: {
@@ -85,7 +87,7 @@ router.get("/stores", async (req, res) => {
  * @desc    Get nearby grocery stores using PostGIS
  * @access  Public
  */
-router.get("/nearby", async (req, res) => {
+router.get("/nearby", cacheMiddleware(cache.CACHE_KEYS.GROCERY + ':nearby', 180), async (req, res) => {
     try {
         const { lat, lng, radius = 5 } = req.query;
 
@@ -177,7 +179,7 @@ router.get("/stores/:id", async (req, res) => {
  * @desc    Get all grocery categories
  * @access  Public
  */
-router.get("/categories", async (req, res) => {
+router.get("/categories", cacheMiddleware(cache.CACHE_KEYS.GROCERY + ':categories', 600), async (req, res) => {
     try {
         const categories = await prisma.groceryCategory.findMany({
             where: { isActive: true },

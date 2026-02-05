@@ -20,9 +20,16 @@ const cacheMiddleware = (keyPrefix, ttl = 300, isPersonalized = false) => {
         }
 
         try {
-            // Generate cache key from URL and query params
+            // Normalize and sort query params to ensure consistent cache keys
+            const sortedQuery = Object.keys(req.query)
+                .sort()
+                .reduce((acc, key) => {
+                    acc[key] = req.query[key];
+                    return acc;
+                }, {});
+
             const userId = isPersonalized ? (req.user?.id || req.headers['x-user-id'] || 'guest') : 'global';
-            const queryString = JSON.stringify(req.query);
+            const queryString = JSON.stringify(sortedQuery);
             const cacheKey = `${userId}:${cache.makeKey(keyPrefix, queryString)}`;
 
             // Try to get from cache
@@ -40,8 +47,8 @@ const cacheMiddleware = (keyPrefix, ttl = 300, isPersonalized = false) => {
 
             // Override res.json to cache the response
             res.json = (data) => {
-                // Only cache successful responses
-                if (data.success !== false) {
+                // Only cache successful responses (where success is not explicitly false)
+                if (data && data.success !== false) {
                     cache.set(cacheKey, data, ttl).catch(err => {
                         console.error('[Cache] Set error:', err.message);
                     });
@@ -52,20 +59,20 @@ const cacheMiddleware = (keyPrefix, ttl = 300, isPersonalized = false) => {
             next();
         } catch (error) {
             console.error('[Cache Middleware] Error:', error.message);
-            // Continue without caching on error
             next();
         }
     };
 };
 
 /**
- * Helper to invalidate cache patterns
+ * Helper to invalidate cache patterns for all users
  * @param {string[]} patterns - Array of cache key patterns to delete
  */
 const invalidateCache = async (patterns) => {
     try {
         for (const pattern of patterns) {
-            const deleted = await cache.delByPattern(`${pattern}:*`);
+            // Using * at the beginning to catch all user prefixes (userId:prefix:* or global:prefix:*)
+            const deleted = await cache.delByPattern(`*:${pattern}:*`);
             if (deleted > 0) {
                 console.log(`🗑️  [Cache] Invalidated ${deleted} keys matching ${pattern}`);
             }

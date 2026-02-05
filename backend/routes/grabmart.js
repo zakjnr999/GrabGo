@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../config/prisma');
 const { protect } = require('../middleware/auth');
+const { cacheMiddleware } = require('../middleware/cache');
+const cache = require('../utils/cache');
 
 /**
  * Helper to format GrabMart store for frontend compatibility
@@ -51,7 +53,7 @@ const formatItem = (item) => {
  * @desc    Get all GrabMart stores
  * @access  Public
  */
-router.get("/stores", async (req, res) => {
+router.get("/stores", cacheMiddleware(cache.CACHE_KEYS.GRABMART + ':stores', 300), async (req, res) => {
     try {
         const { isOpen, is24Hours, minRating, limit = 20 } = req.query;
 
@@ -163,7 +165,7 @@ router.get("/search", async (req, res) => {
  * @desc    Get all GrabMart categories
  * @access  Public
  */
-router.get("/categories", async (req, res) => {
+router.get("/categories", cacheMiddleware(cache.CACHE_KEYS.GRABMART + ':categories', 600), async (req, res) => {
     try {
         const categories = await prisma.grabMartCategory.findMany({
             where: { isActive: true },
@@ -327,7 +329,7 @@ router.get("/with-services", async (req, res) => {
  * @desc    Get nearby GrabMart stores using PostGIS
  * @access  Public
  */
-router.get("/nearby", async (req, res) => {
+router.get("/nearby", cacheMiddleware(cache.CACHE_KEYS.GRABMART + ':nearby', 180), async (req, res) => {
     try {
         const { lat, lng, radius = 5 } = req.query;
 

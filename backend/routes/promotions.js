@@ -1,6 +1,8 @@
 const express = require("express");
 const prisma = require("../config/prisma");
 const { protect, authorize } = require("../middleware/auth");
+const { cacheMiddleware } = require("../middleware/cache");
+const cache = require("../utils/cache");
 
 const router = express.Router();
 
@@ -35,7 +37,7 @@ router.get("/banners/all", protect, authorize("admin"), async (req, res) => {
  * @desc    Get active promotional banners
  * @access  Public
  */
-router.get("/banners", async (req, res) => {
+router.get("/banners", cacheMiddleware(cache.CACHE_KEYS.FOOD_BANNERS, 600), async (req, res) => {
     try {
         const now = new Date();
 
