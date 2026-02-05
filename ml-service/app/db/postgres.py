@@ -4,6 +4,7 @@ PostgreSQL database connection using SQLAlchemy async.
 from typing import AsyncGenerator
 import ssl
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -54,7 +55,7 @@ async def init_db():
     try:
         async with engine.begin() as conn:
             # Test connection
-            await conn.execute("SELECT 1")
+            await conn.execute(text("SELECT 1"))
         logger.info("PostgreSQL connection established", url=settings.POSTGRES_HOST)
     except Exception as e:
         logger.error("Failed to connect to PostgreSQL", error=str(e))
