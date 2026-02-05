@@ -242,9 +242,9 @@ class FoodRepository {
   }
 
   /// Fetch recommended food items using smart algorithm
-  Future<List<FoodItem>> fetchRecommendedItems({int limit = 10}) async {
+  Future<List<FoodItem>> fetchRecommendedItems({int limit = 10, int page = 1}) async {
     try {
-      final response = await service.getRecommendedItems(limit);
+      final response = await service.getRecommendedItems(limit, page);
 
       if (response.isSuccessful && response.body != null) {
         final data = response.body as Map<String, dynamic>;

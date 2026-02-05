@@ -338,13 +338,13 @@ io.on("connection", (socket) => {
       // Update rider's online status in MongoDB RiderStatus
       const RiderStatus = require('./models/RiderStatus');
       const { latitude, longitude, batteryLevel, isCharging } = data || {};
-      
+
       // Use provided location or default
       const lat = latitude || 5.6037;
       const lon = longitude || -0.187;
       const battery = typeof batteryLevel === 'number' ? batteryLevel : 100;
       const charging = isCharging === true;
-      
+
       await RiderStatus.goOnline(userId, lon, lat, true, battery, charging);
 
       // Track rider socket
@@ -385,20 +385,20 @@ io.on("connection", (socket) => {
     const userRole = socket.data.userRole;
 
     if (userRole !== 'rider') return;
-    
+
     const { latitude, longitude, batteryLevel, isCharging } = data || {};
     if (!latitude || !longitude) return;
 
     try {
       // Update location in MongoDB RiderStatus
       const RiderStatus = require('./models/RiderStatus');
-      
+
       const updateData = {
         'location.coordinates': [parseFloat(longitude), parseFloat(latitude)],
         lastLocationUpdate: new Date(),
         lastActiveAt: new Date()
       };
-      
+
       // Include battery if provided
       if (typeof batteryLevel === 'number') {
         updateData.batteryLevel = Math.min(100, Math.max(0, batteryLevel));
@@ -406,7 +406,7 @@ io.on("connection", (socket) => {
       if (typeof isCharging === 'boolean') {
         updateData.isCharging = isCharging;
       }
-      
+
       await RiderStatus.findOneAndUpdate(
         { riderId: userId },
         { $set: updateData },
@@ -423,9 +423,9 @@ io.on("connection", (socket) => {
     const userRole = socket.data.userRole;
 
     if (userRole !== 'rider') {
-      socket.emit('reservation:response', { 
-        success: false, 
-        error: 'Only riders can respond to reservations' 
+      socket.emit('reservation:response', {
+        success: false,
+        error: 'Only riders can respond to reservations'
       });
       return;
     }
@@ -450,9 +450,9 @@ io.on("connection", (socket) => {
       }
     } catch (error) {
       console.error(`Error responding to reservation: ${error.message}`);
-      socket.emit('reservation:response', { 
-        success: false, 
-        error: error.message 
+      socket.emit('reservation:response', {
+        success: false,
+        error: error.message
       });
     }
   });

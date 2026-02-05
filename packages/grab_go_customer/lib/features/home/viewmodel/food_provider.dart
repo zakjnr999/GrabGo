@@ -145,10 +145,13 @@ class FoodProvider with ChangeNotifier {
 
   List<FoodItem> get recommendedItems => _discoveryProvider.recommendedItems;
   bool get isLoadingRecommended => _discoveryProvider.isLoadingRecommended;
+  int get recommendedPage => _discoveryProvider.recommendedPage;
+  bool get hasMoreRecommended => _discoveryProvider.hasMoreRecommended;
 
   Future<void> fetchRecentOrderItems() => _discoveryProvider.fetchRecentOrderItems();
   Future<void> fetchOrderHistory() => _discoveryProvider.fetchOrderHistory();
   Future<void> fetchPopularItems() => _discoveryProvider.fetchPopularItems();
   Future<void> fetchTopRatedItems() => _discoveryProvider.fetchTopRatedItems();
   Future<void> fetchRecommendedItems() => _discoveryProvider.fetchRecommendedItems();
+  Future<void> loadMoreRecommendedItems() => _discoveryProvider.loadMoreRecommendedItems();
 }

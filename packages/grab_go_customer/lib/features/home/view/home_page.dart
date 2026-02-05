@@ -1192,8 +1192,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   ) {
     final recommendedItems = itemsProvider.recommendedItems;
     final isLoading = itemsProvider.isLoadingRecommended;
+    final hasMore = itemsProvider.hasMoreRecommended;
 
-    // Show skeleton while loading
+    // Show skeleton while loading initial data
     if (isLoading && recommendedItems.isEmpty) {
       return [
         SliverToBoxAdapter(
@@ -1216,12 +1217,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       ];
     }
 
-    final displayedItems = recommendedItems.take(_recommendedDisplayedCount.clamp(0, recommendedItems.length)).toList();
-
     return [
       SliverList(
         delegate: SliverChildBuilderDelegate((context, index) {
-          final item = displayedItems[index];
+          final item = recommendedItems[index];
           return Consumer<CartProvider>(
             builder: (context, provider, _) {
               final bool isInCart = provider.cartItems.containsKey(item);
@@ -1255,17 +1254,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               );
             },
           );
-        }, childCount: displayedItems.length),
+        }, childCount: recommendedItems.length),
       ),
-      if (recommendedItems.length > _recommendedDisplayedCount)
+      // Load more indicator
+      if (hasMore)
         SliverToBoxAdapter(
           child: Builder(
             builder: (context) {
+              // Trigger load more when this widget is built
               Future.delayed(const Duration(milliseconds: 500), () {
-                if (mounted && recommendedItems.length > _recommendedDisplayedCount) {
-                  setState(() {
-                    _recommendedDisplayedCount = (_recommendedDisplayedCount + 10).clamp(0, recommendedItems.length);
-                  });
+                if (mounted && hasMore && !isLoading) {
+                  final provider = Provider.of<FoodDiscoveryProvider>(context, listen: false);
+                  provider.loadMoreRecommendedItems();
                 }
               });
               return Padding(

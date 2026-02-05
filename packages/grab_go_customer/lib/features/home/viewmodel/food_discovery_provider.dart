@@ -21,6 +21,8 @@ class FoodDiscoveryState {
 
   final List<FoodItem> recommendedItems;
   final bool isLoadingRecommended;
+  final int recommendedPage;
+  final bool hasMoreRecommended;
 
   const FoodDiscoveryState({
     this.recentOrderItems = const [],
@@ -34,6 +36,8 @@ class FoodDiscoveryState {
     this.isLoadingTopRated = false,
     this.recommendedItems = const [],
     this.isLoadingRecommended = false,
+    this.recommendedPage = 1,
+    this.hasMoreRecommended = true,
   });
 
   FoodDiscoveryState copyWith({
@@ -48,6 +52,8 @@ class FoodDiscoveryState {
     bool? isLoadingTopRated,
     List<FoodItem>? recommendedItems,
     bool? isLoadingRecommended,
+    int? recommendedPage,
+    bool? hasMoreRecommended,
   }) {
     return FoodDiscoveryState(
       recentOrderItems: recentOrderItems ?? this.recentOrderItems,
@@ -61,6 +67,8 @@ class FoodDiscoveryState {
       isLoadingTopRated: isLoadingTopRated ?? this.isLoadingTopRated,
       recommendedItems: recommendedItems ?? this.recommendedItems,
       isLoadingRecommended: isLoadingRecommended ?? this.isLoadingRecommended,
+      recommendedPage: recommendedPage ?? this.recommendedPage,
+      hasMoreRecommended: hasMoreRecommended ?? this.hasMoreRecommended,
     );
   }
 }
@@ -88,6 +96,8 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
 
   List<FoodItem> get recommendedItems => _state.recommendedItems;
   bool get isLoadingRecommended => _state.isLoadingRecommended;
+  int get recommendedPage => _state.recommendedPage;
+  bool get hasMoreRecommended => _state.hasMoreRecommended;
 
   /// Fetch recent order items
   Future<void> fetchRecentOrderItems({bool forceRefresh = false}) async {
@@ -336,7 +346,7 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
     }
   }
 
-  /// Fetch recommended items
+  /// Fetch recommended items (resets pagination)
   Future<void> fetchRecommendedItems({bool forceRefresh = false}) async {
     if (_state.isLoadingRecommended) return;
 
@@ -345,18 +355,49 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
       await _loadRecommendedFromCache();
     }
 
-    // Fetch fresh data from API
-    await _fetchFromApiRecommended();
+    // Reset pagination and fetch first page
+    _updateState(_state.copyWith(
+      recommendedPage: 1,
+      hasMoreRecommended: true,
+      recommendedItems: [], // Clear existing items
+    ));
+
+    // Fetch fresh data from API (page 1)
+    await _fetchFromApiRecommended(page: 1);
+  }
+
+  /// Load more recommended items (pagination)
+  Future<void> loadMoreRecommendedItems() async {
+    // Don't load if already loading or no more items
+    if (_state.isLoadingRecommended || !_state.hasMoreRecommended) return;
+
+    final nextPage = _state.recommendedPage + 1;
+    await _fetchFromApiRecommended(page: nextPage, append: true);
   }
 
   /// Private: Internal fetch for recommended items
-  Future<void> _fetchFromApiRecommended() async {
+  Future<void> _fetchFromApiRecommended({int page = 1, bool append = false}) async {
     _updateState(_state.copyWith(isLoadingRecommended: true));
 
     try {
-      final items = await _repository.fetchRecommendedItems(limit: 10);
-      _updateState(_state.copyWith(recommendedItems: items, isLoadingRecommended: false));
-      await _saveRecommendedToCache();
+      final items = await _repository.fetchRecommendedItems(limit: 20, page: page);
+      
+      // Append or replace items
+      final newItems = append ? [..._state.recommendedItems, ...items] : items;
+      
+      // Update hasMore flag (if we got less than requested, no more items)
+      final hasMore = items.length >= 20;
+      
+      _updateState(_state.copyWith(
+        recommendedItems: newItems,
+        isLoadingRecommended: false,
+        recommendedPage: page,
+        hasMoreRecommended: hasMore,
+      ));
+      
+      if (!append) {
+        await _saveRecommendedToCache();
+      }
     } catch (e) {
       if (kDebugMode) {
         print('Error fetching recommended items: $e');

@@ -201,8 +201,8 @@ router.get("/recommended", (req, res, next) => {
         include: includeRelations
       }),
       prisma.food.findMany({
-        where: { isAvailable: true, discount: { gt: 0 } },
-        orderBy: { discount: 'desc' },
+        where: { isAvailable: true, discountPercentage: { gt: 0 } },
+        orderBy: { discountPercentage: 'desc' },
         take: dealsCount,
         skip: Math.floor(skip * 0.2),
         include: includeRelations
@@ -240,6 +240,7 @@ router.get("/recommended", (req, res, next) => {
     });
   } catch (error) {
     console.error("Get recommended items error:", error);
+    console.error("Error stack:", error.stack);
     res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 });

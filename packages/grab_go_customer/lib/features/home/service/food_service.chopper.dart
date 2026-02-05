@@ -97,9 +97,12 @@ final class _$FoodService extends FoodService {
   }
 
   @override
-  Future<Response<dynamic>> getRecommendedItems(int? limit) {
+  Future<Response<dynamic>> getRecommendedItems(int? limit, int? page) {
     final Uri $url = Uri.parse('/foods/recommended');
-    final Map<String, dynamic> $params = <String, dynamic>{'limit': limit};
+    final Map<String, dynamic> $params = <String, dynamic>{
+      'limit': limit,
+      'page': page,
+    };
     final Request $request = Request(
       'GET',
       $url,
