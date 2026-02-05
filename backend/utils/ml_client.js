@@ -24,10 +24,11 @@ exports.predictDeliveryFactors = async (data) => {
             restaurant_location: data.restaurantLocation,
             delivery_location: data.deliveryLocation
         });
+        // Return the root fields like 'factors' or 'prediction'
         return response.data;
     } catch (error) {
         console.error('🤖 ML Service Error (Delivery Prediction):', error.message);
-        return null; // Fallback to traditional logic
+        return null;
     }
 };
 
@@ -40,7 +41,8 @@ exports.getFoodRecommendations = async (userId, limit = 10) => {
             user_id: userId,
             limit: limit
         });
-        return response.data;
+        // SUCCESS: The ML service puts the array inside the .data property
+        return response.data.data || [];
     } catch (error) {
         console.error('🤖 ML Service Error (Recommendations):', error.message);
         return [];
