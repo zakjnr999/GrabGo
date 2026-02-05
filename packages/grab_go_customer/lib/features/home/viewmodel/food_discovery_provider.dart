@@ -112,7 +112,15 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
     _updateState(_state.copyWith(isLoadingRecentItems: true));
 
     try {
-      final items = await _repository.fetchRecentOrderItems();
+      // Get user location from cache for distance-based delivery time calculation
+      final locationData = CacheService.getUserLocation();
+      final userLat = locationData?['latitude']?.toDouble();
+      final userLng = locationData?['longitude']?.toDouble();
+
+      final items = await _repository.fetchRecentOrderItems(
+        userLat: userLat,
+        userLng: userLng,
+      );
       _updateState(_state.copyWith(recentOrderItems: items, isLoadingRecentItems: false));
       await _saveRecentOrderItemsToCache();
     } catch (e) {
@@ -148,7 +156,15 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
     _updateState(_state.copyWith(isLoadingOrderHistory: true));
 
     try {
-      final items = await _repository.fetchOrderHistory();
+      // Get user location from cache for distance-based delivery time calculation
+      final locationData = CacheService.getUserLocation();
+      final userLat = locationData?['latitude']?.toDouble();
+      final userLng = locationData?['longitude']?.toDouble();
+
+      final items = await _repository.fetchOrderHistory(
+        userLat: userLat,
+        userLng: userLng,
+      );
       _updateState(_state.copyWith(orderHistoryItems: items, isLoadingOrderHistory: false));
 
       await _saveOrderHistoryToCache();
@@ -183,12 +199,20 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
     await _fetchFromApiPopular();
   }
 
-  /// Private: Internal fetch for popular items
   Future<void> _fetchFromApiPopular() async {
     _updateState(_state.copyWith(isLoadingPopular: true));
 
     try {
-      final items = await _repository.fetchPopularItems(limit: 10);
+      // Get user location from cache for distance-based delivery time calculation
+      final locationData = CacheService.getUserLocation();
+      final userLat = locationData?['latitude']?.toDouble();
+      final userLng = locationData?['longitude']?.toDouble();
+
+      final items = await _repository.fetchPopularItems(
+        limit: 10,
+        userLat: userLat,
+        userLng: userLng,
+      );
       _updateState(_state.copyWith(popularItems: items, isLoadingPopular: false));
       await _savePopularToCache();
     } catch (e) {
@@ -217,12 +241,21 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
     await _fetchFromApiTopRated();
   }
 
-  /// Private: Internal fetch for top-rated items
   Future<void> _fetchFromApiTopRated() async {
     _updateState(_state.copyWith(isLoadingTopRated: true));
 
     try {
-      final items = await _repository.fetchTopRatedItems(limit: 10, minRating: 4.5);
+      // Get user location from cache for distance-based delivery time calculation
+      final locationData = CacheService.getUserLocation();
+      final userLat = locationData?['latitude']?.toDouble();
+      final userLng = locationData?['longitude']?.toDouble();
+
+      final items = await _repository.fetchTopRatedItems(
+        limit: 10, 
+        minRating: 4.5,
+        userLat: userLat,
+        userLng: userLng,
+      );
       _updateState(_state.copyWith(topRatedItems: items, isLoadingTopRated: false));
       await _saveTopRatedToCache();
     } catch (e) {
@@ -380,7 +413,17 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
     _updateState(_state.copyWith(isLoadingRecommended: true));
 
     try {
-      final items = await _repository.fetchRecommendedItems(limit: 20, page: page);
+      // Get user location from cache for distance-based delivery time calculation
+      final locationData = CacheService.getUserLocation();
+      final userLat = locationData?['latitude']?.toDouble();
+      final userLng = locationData?['longitude']?.toDouble();
+
+      final items = await _repository.fetchRecommendedItems(
+        limit: 20, 
+        page: page,
+        userLat: userLat,
+        userLng: userLng,
+      );
       
       // Append or replace items
       final newItems = append ? [..._state.recommendedItems, ...items] : items;

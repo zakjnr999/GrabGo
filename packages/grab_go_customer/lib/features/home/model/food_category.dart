@@ -22,6 +22,7 @@ class FoodItem implements CartItem {
   final int orderCount;
   final DateTime? lastOrderedAt;
   final bool isRestaurantOpen;
+  final String estimatedDeliveryTime;
 
   // CartItem interface implementations
   @override
@@ -66,6 +67,7 @@ class FoodItem implements CartItem {
     this.orderCount = 0,
     this.lastOrderedAt,
     this.isRestaurantOpen = true,
+    this.estimatedDeliveryTime = '25-30 min',
   });
 
   factory FoodItem.fromJson(Map<String, dynamic> json) {
@@ -187,6 +189,7 @@ class FoodItem implements CartItem {
       isRestaurantOpen: json['isRestaurantOpen'] is bool
           ? json['isRestaurantOpen'] as bool
           : (json['isRestaurantOpen']?.toString().toLowerCase() == 'true' || json['isRestaurantOpen'] == null),
+      estimatedDeliveryTime: json['estimatedDeliveryTime']?.toString() ?? '25-30 min',
     );
   }
 

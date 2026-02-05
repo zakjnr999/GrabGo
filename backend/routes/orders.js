@@ -12,6 +12,8 @@ const dispatchService = require("../services/dispatch_service");
 
 const router = express.Router();
 
+const { FOOD_INCLUDE_RELATIONS, formatFoodResponse } = require('../utils/food_helpers');
+
 /**
  * Helper to send order status notification to customer
  */
@@ -384,9 +386,9 @@ router.get("/recent-items", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM 
       include: {
         items: {
           include: {
-            food: { include: { restaurant: true } },
-            groceryItem: { include: { store: true } },
-            pharmacyItem: { include: { store: true } }
+            food: { include: FOOD_INCLUDE_RELATIONS },
+            groceryItem: { include: { store: true, category: true } },
+            pharmacyItem: { include: { store: true, category: true } }
           }
         }
       },
@@ -418,7 +420,11 @@ router.get("/recent-items", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM 
 
         if (item.itemType === 'Food' && item.food) {
           itemId = `food_${item.food.id}`;
-          itemData = item.food;
+
+          // Format food item with dynamic status/delivery time
+          const formattedFoodArray = formatFoodResponse([item.food], req.query.userLat, req.query.userLng);
+          itemData = formattedFoodArray.length > 0 ? formattedFoodArray[0] : item.food;
+
           type = 'Food';
         } else if (item.itemType === 'GroceryItem' && item.groceryItem) {
           itemId = `grocery_${item.groceryItem.id}`;

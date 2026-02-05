@@ -76,10 +76,16 @@ class FoodRepository {
   }
 
   /// Fetch user's recent order items for "Order Again" section
-  Future<List<FoodItem>> fetchRecentOrderItems() async {
+  Future<List<FoodItem>> fetchRecentOrderItems({double? userLat, double? userLng}) async {
     try {
+      // Build URI with optional location parameters
+      String path = '/orders/recent-items';
+      if (userLat != null && userLng != null) {
+        path += '?userLat=$userLat&userLng=$userLng';
+      }
+
       // Use service client to make the request
-      final response = await chopperClient.get(Uri.parse('/orders/recent-items'));
+      final response = await chopperClient.get(Uri.parse(path));
 
       if (response.isSuccessful && response.body != null) {
         final body = response.body as Map<String, dynamic>;
@@ -177,9 +183,9 @@ class FoodRepository {
   }
 
   /// Fetch order history for Order Again section
-  Future<List<FoodItem>> fetchOrderHistory() async {
+  Future<List<FoodItem>> fetchOrderHistory({double? userLat, double? userLng}) async {
     try {
-      final response = await service.getOrderHistory();
+      final response = await service.getOrderHistory(userLat, userLng);
 
       if (response.isSuccessful && response.body != null) {
         final body = response.body as Map<String, dynamic>;
@@ -200,9 +206,13 @@ class FoodRepository {
   }
 
   /// Fetch popular food items sorted by order count
-  Future<List<FoodItem>> fetchPopularItems({int limit = 10}) async {
+  Future<List<FoodItem>> fetchPopularItems({
+    int limit = 10,
+    double? userLat,
+    double? userLng,
+  }) async {
     try {
-      final response = await service.getPopularItems(limit);
+      final response = await service.getPopularItems(limit, userLat, userLng);
 
       if (response.isSuccessful && response.body != null) {
         final data = response.body as Map<String, dynamic>;
@@ -221,9 +231,14 @@ class FoodRepository {
   }
 
   /// Fetch top-rated food items sorted by rating
-  Future<List<FoodItem>> fetchTopRatedItems({int limit = 10, double minRating = 4.5}) async {
+  Future<List<FoodItem>> fetchTopRatedItems({
+    int limit = 10,
+    double minRating = 4.5,
+    double? userLat,
+    double? userLng,
+  }) async {
     try {
-      final response = await service.getTopRatedItems(limit, minRating);
+      final response = await service.getTopRatedItems(limit, minRating, userLat, userLng);
 
       if (response.isSuccessful && response.body != null) {
         final data = response.body as Map<String, dynamic>;
@@ -242,9 +257,14 @@ class FoodRepository {
   }
 
   /// Fetch recommended food items using smart algorithm
-  Future<List<FoodItem>> fetchRecommendedItems({int limit = 10, int page = 1}) async {
+  Future<List<FoodItem>> fetchRecommendedItems({
+    int limit = 10,
+    int page = 1,
+    double? userLat,
+    double? userLng,
+  }) async {
     try {
-      final response = await service.getRecommendedItems(limit, page);
+      final response = await service.getRecommendedItems(limit, page, userLat, userLng);
 
       if (response.isSuccessful && response.body != null) {
         final data = response.body as Map<String, dynamic>;

@@ -462,13 +462,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             ),
                             icon: Container(
                               padding: EdgeInsets.all(8.r),
-                              decoration: BoxDecoration(color: colors.backgroundPrimary, shape: BoxShape.circle),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                shape: BoxShape.circle,
+                              ),
                               child: SvgPicture.asset(
                                 Assets.icons.cart,
                                 height: 20.h,
                                 width: 20.w,
                                 package: 'grab_go_shared',
-                                colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                               ),
                             ),
                           ),
@@ -780,7 +783,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             groceryProvider.fetchDeals();
           }
         } else if (service.id == 'food') {
-          // Load food data (already loaded in initState)
+          // Load food data
           if (foodProvider.categories.isEmpty) {
             foodProvider.fetchCategories();
             foodProvider.fetchRecentOrderItems();
@@ -788,7 +791,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             foodProvider.fetchDeals();
           }
         }
-        // Other services (pharmacy, stores) can be added later
       },
     );
   }

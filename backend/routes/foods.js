@@ -13,6 +13,8 @@ const mlClient = require("../utils/ml_client");
 
 const router = express.Router();
 
+const { FOOD_INCLUDE_RELATIONS, formatFoodResponse } = require('../utils/food_helpers');
+
 // Get all foods with caching (5 minutes)
 router.get("/", cacheMiddleware(cache.CACHE_KEYS.FOOD_CATEGORIES, 300), async (req, res) => {
   try {
@@ -31,21 +33,14 @@ router.get("/", cacheMiddleware(cache.CACHE_KEYS.FOOD_CATEGORIES, 300), async (r
 
     const foods = await prisma.food.findMany({
       where,
-      include: {
-        category: {
-          select: { id: true, name: true }
-        },
-        restaurant: {
-          select: { id: true, restaurantName: true, logo: true, address: true, city: true }
-        }
-      },
+      include: FOOD_INCLUDE_RELATIONS,
       orderBy: { createdAt: 'desc' }
     });
 
     res.json({
       success: true,
       message: "Foods retrieved successfully",
-      data: foods,
+      data: formatFoodResponse(foods, req.query.userLat, req.query.userLng),
     });
   } catch (error) {
     console.error("Get foods error:", error);
@@ -75,14 +70,7 @@ router.get("/deals", cacheMiddleware(cache.CACHE_KEYS.FOOD_DEALS, 120), async (r
           { discountEndDate: { gte: now } }
         ]
       },
-      include: {
-        category: {
-          select: { id: true, name: true }
-        },
-        restaurant: {
-          select: { id: true, restaurantName: true, logo: true, address: true, city: true }
-        }
-      },
+      include: FOOD_INCLUDE_RELATIONS,
       orderBy: { discountPercentage: 'desc' },
       take: 10
     });
@@ -90,7 +78,7 @@ router.get("/deals", cacheMiddleware(cache.CACHE_KEYS.FOOD_DEALS, 120), async (r
     res.json({
       success: true,
       message: "Deals retrieved successfully",
-      data: deals
+      data: formatFoodResponse(deals, req.query.userLat, req.query.userLng)
     });
   } catch (error) {
     console.error("Get deals error:", error);
@@ -116,7 +104,7 @@ router.get("/recommended", (req, res, next) => {
 }, cacheMiddleware(cache.CACHE_KEYS.FOOD_RECOMMENDED, 180, true), async (req, res) => {
   try {
     const userId = req.user?.id || req.headers['x-user-id'];
-    let { limit = 10, page = 1 } = req.query;
+    let { limit = 10, page = 1, userLat, userLng } = req.query;
 
     limit = parseInt(limit);
     if (isNaN(limit) || limit < 1) limit = 10;
@@ -124,39 +112,6 @@ router.get("/recommended", (req, res, next) => {
 
     page = parseInt(page);
     if (isNaN(page) || page < 1) page = 1;
-
-    const includeRelations = {
-      category: { select: { id: true, name: true } },
-      restaurant: {
-        select: {
-          id: true,
-          restaurantName: true,
-          logo: true,
-          rating: true,
-          address: true,
-          city: true,
-          isOpen: true,
-          openingHours: {
-            select: {
-              dayOfWeek: true,
-              openTime: true,
-              closeTime: true,
-              isClosed: true
-            }
-          }
-        }
-      }
-    };
-
-    const { isRestaurantOpen } = require('../utils/restaurant');
-
-    // Helper function to add isRestaurantOpen to food items
-    const addRestaurantStatus = (foods) => {
-      return foods.map(food => ({
-        ...food,
-        isRestaurantOpen: isRestaurantOpen(food.restaurant)
-      }));
-    };
 
     // 1. Try ML-based recommendations first
     if (userId) {
@@ -177,12 +132,12 @@ router.get("/recommended", (req, res, next) => {
           const foodIds = paginatedResults.map(rec => rec.food_id || rec.id);
           const foods = await prisma.food.findMany({
             where: { id: { in: foodIds }, isAvailable: true },
-            include: includeRelations
+            include: FOOD_INCLUDE_RELATIONS
           });
 
-          // Sort foods according to ML order and add restaurant status
+          // Sort foods according to ML order and format response
           const sortedFoods = foodIds.map(id => foods.find(f => f.id === id)).filter(f => !!f);
-          const foodsWithStatus = addRestaurantStatus(sortedFoods);
+          const foodsWithStatus = formatFoodResponse(sortedFoods, userLat, userLng);
 
           return res.json({
             success: true,
@@ -220,27 +175,27 @@ router.get("/recommended", (req, res, next) => {
         orderBy: { orderCount: 'desc' },
         take: popularCount,
         skip: Math.floor(skip * 0.4),
-        include: includeRelations
+        include: FOOD_INCLUDE_RELATIONS
       }),
       prisma.food.findMany({
         where: { isAvailable: true, rating: { gte: 4.5 } },
         orderBy: { rating: 'desc' },
         take: ratedCount,
         skip: Math.floor(skip * 0.3),
-        include: includeRelations
+        include: FOOD_INCLUDE_RELATIONS
       }),
       prisma.food.findMany({
         where: { isAvailable: true, discountPercentage: { gt: 0 } },
         orderBy: { discountPercentage: 'desc' },
         take: dealsCount,
         skip: Math.floor(skip * 0.2),
-        include: includeRelations
+        include: FOOD_INCLUDE_RELATIONS
       }),
       prisma.food.findMany({
         where: { isAvailable: true },
         take: randomCount,
         skip: Math.floor(skip * 0.1),
-        include: includeRelations
+        include: FOOD_INCLUDE_RELATIONS
       })
     ]);
 
@@ -258,7 +213,7 @@ router.get("/recommended", (req, res, next) => {
     }
 
     const finalRecommendations = uniqueFoods.slice(0, limit);
-    const finalWithStatus = addRestaurantStatus(finalRecommendations);
+    const finalWithStatus = formatFoodResponse(finalRecommendations, userLat, userLng);
 
     res.json({
       success: true,
@@ -279,7 +234,7 @@ router.get("/recommended", (req, res, next) => {
 
 router.get("/popular", cacheMiddleware(cache.CACHE_KEYS.FOOD_POPULAR, 300), async (req, res) => {
   try {
-    let { limit = 10 } = req.query;
+    let { limit = 10, userLat, userLng } = req.query;
     limit = parseInt(limit);
 
     if (isNaN(limit) || limit < 1) limit = 10;
@@ -287,14 +242,7 @@ router.get("/popular", cacheMiddleware(cache.CACHE_KEYS.FOOD_POPULAR, 300), asyn
 
     const popularItems = await prisma.food.findMany({
       where: { isAvailable: true },
-      include: {
-        category: {
-          select: { id: true, name: true }
-        },
-        restaurant: {
-          select: { id: true, restaurantName: true, logo: true, address: true, city: true }
-        }
-      },
+      include: FOOD_INCLUDE_RELATIONS,
       orderBy: [
         { orderCount: 'desc' },
         { rating: 'desc' }
@@ -303,22 +251,10 @@ router.get("/popular", cacheMiddleware(cache.CACHE_KEYS.FOOD_POPULAR, 300), asyn
       distinct: ['name']
     });
 
-    // Add aliases for frontend compatibility
-    const formattedItems = popularItems.map(item => ({
-      ...item,
-      food_image: item.foodImage,
-      image: item.foodImage,
-      restaurant: {
-        ...item.restaurant,
-        restaurant_name: item.restaurant.restaurantName,
-        image: item.restaurant.logo
-      }
-    }));
-
     res.json({
       success: true,
       message: "Popular items retrieved successfully",
-      data: formattedItems
+      data: formatFoodResponse(popularItems, userLat, userLng)
     });
   } catch (error) {
     console.error("Get popular items error:", error);
@@ -334,7 +270,7 @@ router.get("/popular", cacheMiddleware(cache.CACHE_KEYS.FOOD_POPULAR, 300), asyn
 
 router.get("/top-rated", cacheMiddleware(cache.CACHE_KEYS.FOOD_TOP_RATED, 600), async (req, res) => {
   try {
-    let { limit = 10, minRating = 4.5 } = req.query;
+    let { limit = 10, minRating = 4.5, userLat, userLng } = req.query;
     limit = parseInt(limit);
     minRating = parseFloat(minRating);
 
@@ -347,14 +283,7 @@ router.get("/top-rated", cacheMiddleware(cache.CACHE_KEYS.FOOD_TOP_RATED, 600), 
         isAvailable: true,
         rating: { gte: minRating }
       },
-      include: {
-        category: {
-          select: { id: true, name: true }
-        },
-        restaurant: {
-          select: { id: true, restaurantName: true, logo: true, address: true, city: true }
-        }
-      },
+      include: FOOD_INCLUDE_RELATIONS,
       orderBy: [
         { rating: 'desc' },
         { totalReviews: 'desc' }
@@ -363,22 +292,10 @@ router.get("/top-rated", cacheMiddleware(cache.CACHE_KEYS.FOOD_TOP_RATED, 600), 
       distinct: ['name']
     });
 
-    // Add aliases for frontend compatibility
-    const formattedItems = topRatedItems.map(item => ({
-      ...item,
-      food_image: item.foodImage,
-      image: item.foodImage,
-      restaurant: {
-        ...item.restaurant,
-        restaurant_name: item.restaurant.restaurantName,
-        image: item.restaurant.logo
-      }
-    }));
-
     res.json({
       success: true,
       message: "Top rated items retrieved successfully",
-      data: formattedItems
+      data: formatFoodResponse(topRatedItems, userLat, userLng)
     });
   } catch (error) {
     console.error("Get top rated items error:", error);
@@ -419,10 +336,7 @@ router.get("/order-history", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM
           where: { itemType: 'Food' },
           include: {
             food: {
-              include: {
-                category: true,
-                restaurant: true
-              }
+              include: FOOD_INCLUDE_RELATIONS
             }
           }
         }
@@ -491,15 +405,24 @@ router.get("/order-history", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM
     console.log(`📊 [DEBUG] Processed: ${processedCount}, Skipped: ${skippedCount} (null food relations)`);
 
     // Convert map to array and sort by last ordered date
-    const orderHistory = Array.from(itemsMap.values())
+    const uniqueFoodsList = Array.from(itemsMap.values())
       .sort((a, b) => b.lastOrdered - a.lastOrdered)
-      .slice(0, 20) // Limit to 20 most recent items
-      .map(({ item, lastOrdered, timesOrdered, totalQuantity }) => ({
+      .slice(0, 20); // Limit to 20 most recent items
+
+    // Extract items for formatting
+    const rawFoods = uniqueFoodsList.map(entry => entry.item);
+    const formattedFoods = formatFoodResponse(rawFoods, req.query.userLat, req.query.userLng);
+
+    // Re-attach metadata
+    const orderHistory = formattedFoods.map((item, index) => {
+      const entry = uniqueFoodsList[index];
+      return {
         ...item,
-        lastOrderedAt: lastOrdered,
-        timesOrdered,
-        totalQuantity
-      }));
+        lastOrderedAt: entry.lastOrdered,
+        timesOrdered: entry.timesOrdered,
+        totalQuantity: entry.totalQuantity
+      };
+    });
 
     console.log(`✅ [DEBUG] Returning ${orderHistory.length} unique food items from history`);
 

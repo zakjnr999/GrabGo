@@ -142,34 +142,31 @@ class FoodItemCard extends StatelessWidget {
                   ),
                   SizedBox(height: 8.h),
                   // Restaurant Name
-                  if (item.sellerName.isNotEmpty)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            item.sellerName,
-                            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                  Row(
+                    children: [
+                      Text(
+                        item.sellerName,
+                        style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(width: 8.w),
+                      Container(
+                        width: 3.w,
+                        height: 3.h,
+                        decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
+                      ),
+                      SizedBox(width: 8.w),
+                      Text(
+                        item.isRestaurantOpen ? "We're open" : "We're closed",
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w600,
+                          color: item.isRestaurantOpen ? colors.accentGreen : colors.error,
                         ),
-                        SizedBox(width: 8.w),
-                        Container(
-                          width: 3.w,
-                          height: 3.h,
-                          decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
-                        ),
-                        SizedBox(width: 8.w),
-                        Text(
-                          item.isRestaurantOpen ? "We're open" : "we're closed",
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w600,
-                            color: item.isRestaurantOpen ? colors.accentGreen : colors.error,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
+                  ),
                   SizedBox(height: 10.h),
                   // Delivery Time
                   Row(
@@ -202,7 +199,7 @@ class FoodItemCard extends StatelessWidget {
                       ),
                       SizedBox(width: 4.w),
                       Text(
-                        '25-30 min',
+                        item.estimatedDeliveryTime,
                         style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
                       ),
                     ],
