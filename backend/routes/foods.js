@@ -127,7 +127,35 @@ router.get("/recommended", (req, res, next) => {
 
     const includeRelations = {
       category: { select: { id: true, name: true } },
-      restaurant: { select: { id: true, restaurantName: true, logo: true, rating: true, address: true, city: true } }
+      restaurant: {
+        select: {
+          id: true,
+          restaurantName: true,
+          logo: true,
+          rating: true,
+          address: true,
+          city: true,
+          isOpen: true,
+          hours: {
+            select: {
+              dayOfWeek: true,
+              openTime: true,
+              closeTime: true,
+              isClosed: true
+            }
+          }
+        }
+      }
+    };
+
+    const { isRestaurantOpen } = require('../utils/restaurant');
+
+    // Helper function to add isRestaurantOpen to food items
+    const addRestaurantStatus = (foods) => {
+      return foods.map(food => ({
+        ...food,
+        isRestaurantOpen: isRestaurantOpen(food.restaurant)
+      }));
     };
 
     // 1. Try ML-based recommendations first
@@ -152,8 +180,9 @@ router.get("/recommended", (req, res, next) => {
             include: includeRelations
           });
 
-          // Sort foods according to ML order
+          // Sort foods according to ML order and add restaurant status
           const sortedFoods = foodIds.map(id => foods.find(f => f.id === id)).filter(f => !!f);
+          const foodsWithStatus = addRestaurantStatus(sortedFoods);
 
           return res.json({
             success: true,
@@ -162,7 +191,7 @@ router.get("/recommended", (req, res, next) => {
             limit: limit,
             total: mlRecommendations.length,
             hasMore: endIndex < mlRecommendations.length,
-            data: sortedFoods
+            data: foodsWithStatus
           });
         }
       } catch (mlError) {
@@ -229,6 +258,7 @@ router.get("/recommended", (req, res, next) => {
     }
 
     const finalRecommendations = uniqueFoods.slice(0, limit);
+    const finalWithStatus = addRestaurantStatus(finalRecommendations);
 
     res.json({
       success: true,
@@ -236,7 +266,7 @@ router.get("/recommended", (req, res, next) => {
       page: page,
       limit: limit,
       hasMore: page < 5, // Rough estimate - heuristic can provide ~5 pages
-      data: finalRecommendations
+      data: finalWithStatus
     });
   } catch (error) {
     console.error("Get recommended items error:", error);

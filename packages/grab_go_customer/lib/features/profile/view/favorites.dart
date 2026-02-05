@@ -10,7 +10,6 @@ import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
-import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
 
 class FavoritesPage extends StatefulWidget {
   const FavoritesPage({super.key});

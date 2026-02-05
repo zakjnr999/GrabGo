@@ -21,6 +21,7 @@ class FoodItem implements CartItem {
   final DateTime? discountEndDate;
   final int orderCount;
   final DateTime? lastOrderedAt;
+  final bool isRestaurantOpen;
 
   // CartItem interface implementations
   @override
@@ -64,6 +65,7 @@ class FoodItem implements CartItem {
     required this.restaurantImage,
     this.orderCount = 0,
     this.lastOrderedAt,
+    this.isRestaurantOpen = true,
   });
 
   factory FoodItem.fromJson(Map<String, dynamic> json) {
@@ -182,6 +184,9 @@ class FoodItem implements CartItem {
       discountEndDate: json['discountEndDate'] != null ? DateTime.tryParse(json['discountEndDate'].toString()) : null,
       orderCount: (json['orderCount'] as num?)?.toInt() ?? 0, // Parse from backend
       lastOrderedAt: json['lastOrderedAt'] != null ? DateTime.tryParse(json['lastOrderedAt'].toString()) : null,
+      isRestaurantOpen: json['isRestaurantOpen'] is bool
+          ? json['isRestaurantOpen'] as bool
+          : (json['isRestaurantOpen']?.toString().toLowerCase() == 'true' || json['isRestaurantOpen'] == null),
     );
   }
 
