@@ -621,7 +621,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         debugPrint("Service Selected: ${service.id}");
         serviceProvider.selectService(service);
 
-        // Load data for the selected service
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (service.id == 'groceries') {
             if (groceryProvider.items.isEmpty) {
@@ -733,46 +732,22 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ),
                 SizedBox(width: 12.w),
 
-                Row(
-                  children: [
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          context.push("/notification");
-                        },
-                        customBorder: const CircleBorder(),
-                        child: Padding(
-                          padding: EdgeInsets.all(10.r),
-                          child: SvgPicture.asset(
-                            Assets.icons.bellNotification,
-                            package: 'grab_go_shared',
-                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                          ),
-                        ),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      context.push("/notification");
+                    },
+                    customBorder: const CircleBorder(),
+                    child: Padding(
+                      padding: EdgeInsets.all(10.r),
+                      child: SvgPicture.asset(
+                        Assets.icons.bellNotification,
+                        package: 'grab_go_shared',
+                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                       ),
                     ),
-
-                    Material(
-                      color: Colors.transparent,
-                      child: Builder(
-                        builder: (context) => InkWell(
-                          onTap: () {
-                            context.push("/status");
-                          },
-                          customBorder: const CircleBorder(),
-                          child: Padding(
-                            padding: EdgeInsets.all(10.r),
-                            child: SvgPicture.asset(
-                              Assets.icons.styleBorder,
-                              package: 'grab_go_shared',
-                              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),

@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'secure_storage_service.dart';
 
-/// Credit transaction model
 class CreditTransaction {
   final String id;
   final double amount;
@@ -42,7 +41,6 @@ class CreditTransaction {
   }
 }
 
-/// Credit balance model
 class CreditBalance {
   final double balance;
   final String currency;
@@ -59,7 +57,6 @@ class CreditBalance {
   }
 }
 
-/// Credit calculation result for checkout
 class CreditCalculation {
   final double creditsApplied;
   final double remainingPayment;
@@ -89,8 +86,6 @@ class CreditCalculation {
   }
 }
 
-/// GrabGo Credit Service
-/// Manages in-app store credits for customers
 class CreditService {
   static final CreditService _instance = CreditService._internal();
   factory CreditService() => _instance;

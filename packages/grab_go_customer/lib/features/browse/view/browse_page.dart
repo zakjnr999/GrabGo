@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_category.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart';
@@ -11,20 +10,15 @@ import 'package:grab_go_customer/features/pharmacy/model/pharmacy_category.dart'
 import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
 import 'package:grab_go_customer/features/pharmacy/viewmodel/pharmacy_provider.dart';
 import 'package:grab_go_customer/features/grabmart/model/grabmart_category.dart';
+import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
 import 'package:grab_go_customer/features/grabmart/viewmodel/grabmart_provider.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
-import 'package:grab_go_customer/features/home/model/filter_model.dart';
-import 'package:grab_go_customer/features/home/model/service_model.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/service_provider.dart';
-import 'package:grab_go_customer/shared/widgets/browse_category_skeleton.dart';
-import 'package:grab_go_customer/shared/widgets/browse_grid_skeleton.dart';
-import 'package:grab_go_customer/shared/widgets/home_search.dart';
-import 'package:grab_go_customer/shared/widgets/popular_item_card.dart';
+import 'package:grab_go_customer/shared/widgets/browse_page_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:grab_go_customer/features/vendors/model/vendor_type.dart';
 import 'package:provider/provider.dart';
 
 class BrowsePage extends StatefulWidget {
@@ -34,58 +28,11 @@ class BrowsePage extends StatefulWidget {
   State<BrowsePage> createState() => _BrowsePageState();
 }
 
-class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMixin {
-  String _selectedCategoryId = 'all'; // Use 'all' for All category
-  final Set<String> _selectedQuickFilters = {}; // Support multiple filter selection
-  String _sortBy = 'Recommended';
-  final bool _isGridView = true;
-  String? _previousServiceId; // Track service changes
-  String? _selectedPriceRange;
-  String? _selectedRating;
-  String? _selectedDeliveryTime;
-  String? _selectedDietary;
-  String? _selectedDistance;
-  FilterModel _comprehensiveFilter = FilterModel(); // Comprehensive filter from bottom sheet
-
-  // Scroll tracking for collapsing header
+class _BrowsePageState extends State<BrowsePage> {
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
   static const double _collapsedHeight = 70.0;
   static const double _scrollThreshold = 150.0;
-
-  final List<Map<String, dynamic>> _quickFilters = [
-    {'icon': Assets.icons.dollar, 'label': 'Price', 'hasOptions': true},
-    {'icon': Assets.icons.badgePercent, 'label': 'On Sale', 'hasOptions': false},
-    {'icon': Assets.icons.star, 'label': 'Rating', 'hasOptions': true},
-    {'icon': Assets.icons.flame, 'label': 'Popular', 'hasOptions': false},
-    {'icon': Assets.icons.clock, 'label': 'Delivery', 'hasOptions': true},
-    {'icon': Assets.icons.utensilsCrossed, 'label': 'Dietary', 'hasOptions': true},
-    {'icon': Assets.icons.mapPin, 'label': 'Distance', 'hasOptions': true},
-    {'icon': Assets.icons.sparkles, 'label': 'New', 'hasOptions': false},
-    {'icon': Assets.icons.deliveryTruck, 'label': 'Fast', 'hasOptions': false},
-  ];
-
-  final List<String> _priceRanges = ['Under GH₵20', 'GH₵20 - GH₵50', 'GH₵50 - GH₵100', 'Over GH₵100'];
-
-  final List<String> _ratingOptions = ['4.5+ Stars', '4.0+ Stars', '3.5+ Stars', 'Any Rating'];
-
-  final List<String> _deliveryTimeOptions = ['Under 20 min', '20-30 min', '30-45 min', 'Any Time'];
-
-  final List<String> _dietaryOptions = ['Vegetarian', 'Vegan', 'Halal', 'Gluten-Free'];
-
-  final List<String> _distanceOptions = ['Under 1 km', '1-3 km', '3-5 km', 'Any Distance'];
-
-  final List<String> _sortOptions = [
-    'Recommended',
-    'Price: Low to High',
-    'Price: High to Low',
-    'Rating: High to Low',
-    'Delivery Time',
-    'Popularity',
-  ];
-
-  @override
-  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -106,104 +53,62 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
     super.dispose();
   }
 
-  VendorType _getVendorTypeFromService(String serviceId) {
-    switch (serviceId) {
-      case 'food':
-        return VendorType.food;
-      case 'groceries':
-        return VendorType.grocery;
-      case 'pharmacy':
-        return VendorType.pharmacy;
-      case 'convenience':
-        return VendorType.grabmart;
-      default:
-        return VendorType.food;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    super.build(context); // Required for AutomaticKeepAliveClientMixin
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final serviceProvider = Provider.of<ServiceProvider>(context);
-    Size size = MediaQuery.sizeOf(context);
+    final padding = MediaQuery.of(context).padding;
 
-    final vendorType = _getVendorTypeFromService(serviceProvider.currentService.id);
-    final accentColor = Color(vendorType.color);
+    final size = MediaQuery.sizeOf(context);
 
     final systemUiOverlayStyle = SystemUiOverlayStyle(
-      statusBarColor: accentColor,
+      statusBarColor: colors.accentOrange,
       statusBarIconBrightness: Brightness.light,
       systemNavigationBarColor: colors.backgroundSecondary,
       systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
 
-    if (_previousServiceId != null && _previousServiceId != serviceProvider.currentService.id) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          setState(() {
-            _selectedCategoryId = 'all';
-            _selectedQuickFilters.clear();
-            _selectedPriceRange = null;
-            _selectedRating = null;
-            _selectedDeliveryTime = null;
-            _selectedDietary = null;
-            _selectedDistance = null;
-            _comprehensiveFilter.reset();
-          });
-        }
-      });
-    }
-    _previousServiceId = serviceProvider.currentService.id;
-
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: systemUiOverlayStyle,
       child: Scaffold(
-        backgroundColor: colors.backgroundSecondary,
+        backgroundColor: colors.backgroundPrimary,
         body: SafeArea(
           top: false,
-          child: ClipRect(
-            child: Stack(
-              children: [
-                SingleChildScrollView(
-                  controller: _scrollController,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.only(top: size.height * 0.26),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Quick Filters
-                      _buildQuickFilters(colors),
-                      if (_selectedQuickFilters.isNotEmpty || _comprehensiveFilter.isActive) _buildResultsBar(colors),
+          child: Stack(
+            children: [
+              AppRefreshIndicator(
+                bgColor: colors.accentOrange,
+                iconPath: Assets.icons.search,
+                onRefresh: () async {
+                  if (serviceProvider.isFoodService) {
+                    await Provider.of<FoodProvider>(context, listen: false).fetchCategories();
+                  } else if (serviceProvider.isGroceryService) {
+                    await Provider.of<GroceryProvider>(context, listen: false).fetchCategories();
+                  } else if (serviceProvider.isPharmacyService) {
+                    await Provider.of<PharmacyProvider>(context, listen: false).fetchCategories();
+                  } else if (serviceProvider.isStoresService) {
+                    await Provider.of<GrabMartProvider>(context, listen: false).fetchCategories();
+                  }
+                },
+                child: _buildContent(colors, isDark, serviceProvider, size),
+              ),
 
-                      SizedBox(height: 16.h),
-                      _selectedQuickFilters.isNotEmpty || _comprehensiveFilter.isActive
-                          ? _buildItemGrid(colors, serviceProvider)
-                          : _buildCategoryList(colors, serviceProvider),
-                    ],
-                  ),
-                ),
-
-                Positioned(top: 0, left: 0, right: 0, child: _buildCollapsibleUmbrellaHeader(colors, size)),
-              ],
-            ),
+              Positioned(top: 0, left: 0, right: 0, child: _buildCollapsibleHeader(colors, size, padding)),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildCollapsibleUmbrellaHeader(AppColorsExtension colors, Size size) {
+  Widget _buildCollapsibleHeader(AppColorsExtension colors, Size size, EdgeInsets padding) {
     return ValueListenableBuilder<double>(
       valueListenable: _scrollOffsetNotifier,
       builder: (context, scrollOffset, _) {
         final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
-
-        final expandedHeight = size.height * 0.24;
-
+        final expandedHeight = size.height * 0.20;
         final currentHeight = expandedHeight - ((expandedHeight - _collapsedHeight) * collapseProgress);
-
         final contentOpacity = (1.0 - collapseProgress).clamp(0.0, 1.0);
 
         return SizedBox(
@@ -215,1251 +120,217 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
             child: AnimatedOpacity(
               duration: const Duration(milliseconds: 100),
               opacity: contentOpacity,
-              child: _buildHeader(colors),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildHeader(AppColorsExtension colors) {
-    final serviceProvider = Provider.of<ServiceProvider>(context);
-    final currentService = serviceProvider.currentService;
-    final statusBarHeight = MediaQuery.of(context).padding.top;
-
-    // Dynamic subtitle based on service
-    String subtitle;
-    switch (currentService.id) {
-      case 'food':
-        subtitle = "What are you craving today?";
-        break;
-      case 'groceries':
-        subtitle = "Stock up on fresh essentials";
-        break;
-      case 'pharmacy':
-        subtitle = "Health & wellness products";
-        break;
-      case 'convenience':
-        subtitle = "Quick picks for everyday needs";
-        break;
-      default:
-        subtitle = "Discover what you need";
-    }
-
-    return SizedBox.expand(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(20.w, statusBarHeight + 10.h, 20.w, 8.h),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Browse Title
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Browse',
-                        style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.w700, color: Colors.white),
-                      ),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          fontFamily: "Lato",
-                          package: 'grab_go_shared',
-                          color: Colors.white.withValues(alpha: 0.8),
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: 4.h),
-          // Search Bar integrated in header
-          if (serviceProvider.isFoodService)
-            Consumer<FoodProvider>(
-              builder: (context, foodProvider, _) {
-                return HomeSearch(
-                  categories: foodProvider.categories,
-                  activeFilter: _comprehensiveFilter,
-                  hintText: "Search by name or category...",
-                  onFilterApplied: (FilterModel filter) {
-                    setState(() {
-                      _comprehensiveFilter = filter.copyWith();
-                    });
-                  },
-                  isFood: true,
-                );
-              },
-            )
-          else if (serviceProvider.isGroceryService)
-            Consumer<GroceryProvider>(
-              builder: (context, groceryProvider, _) {
-                final groceryCategories = groceryProvider.categories
-                    .map(
-                      (cat) => FoodCategoryModel(
-                        id: cat.id,
-                        name: cat.name,
-                        emoji: cat.emoji,
-                        description: cat.description,
-                        isActive: cat.isActive,
-                        items: groceryProvider.items
-                            .where((item) => item.categoryId == cat.id)
-                            .map(
-                              (item) => FoodItem(
-                                id: item.id,
-                                name: item.name,
-                                description: item.description,
-                                price: item.price,
-                                discountPercentage: item.discountPercentage,
-                                image: item.image,
-                                rating: item.rating,
-                                deliveryTimeMinutes: 30,
-                                sellerName: item.storeName ?? 'Unknown Store',
-                                sellerId: item.storeId.hashCode % 1000000,
-                                restaurantId: item.storeId,
-                                restaurantImage: '',
-                                orderCount: item.orderCount,
-                              ),
-                            )
-                            .toList(),
-                      ),
-                    )
-                    .toList();
-                return HomeSearch(
-                  categories: groceryCategories,
-                  activeFilter: _comprehensiveFilter,
-                  hintText: "Search by name or category...",
-                  onFilterApplied: (FilterModel filter) {
-                    setState(() {
-                      _comprehensiveFilter = filter.copyWith();
-                    });
-                  },
-                  isFood: false,
-                );
-              },
-            )
-          else if (serviceProvider.isPharmacyService)
-            Consumer<PharmacyProvider>(
-              builder: (context, pharmacyProvider, _) {
-                final pharmacyCategories = pharmacyProvider.categories
-                    .map(
-                      (cat) => FoodCategoryModel(
-                        id: cat.id,
-                        name: cat.name,
-                        emoji: cat.emoji,
-                        description: cat.description,
-                        isActive: cat.isActive,
-                        items: [], // No items for now
-                      ),
-                    )
-                    .toList();
-                return HomeSearch(
-                  categories: pharmacyCategories,
-                  activeFilter: _comprehensiveFilter,
-                  hintText: "Search medicines & products...",
-                  onFilterApplied: (FilterModel filter) {
-                    setState(() {
-                      _comprehensiveFilter = filter.copyWith();
-                    });
-                  },
-                  isFood: false,
-                );
-              },
-            )
-          else if (serviceProvider.isStoresService)
-            Consumer<GrabMartProvider>(
-              builder: (context, grabMartProvider, _) {
-                final grabMartCategories = grabMartProvider.categories
-                    .map(
-                      (cat) => FoodCategoryModel(
-                        id: cat.id,
-                        name: cat.name,
-                        emoji: cat.emoji,
-                        description: cat.description,
-                        isActive: cat.isActive,
-                        items: [], // No items for now
-                      ),
-                    )
-                    .toList();
-                return HomeSearch(
-                  categories: grabMartCategories,
-                  activeFilter: _comprehensiveFilter,
-                  hintText: "Search snacks & essentials...",
-                  onFilterApplied: (FilterModel filter) {
-                    setState(() {
-                      _comprehensiveFilter = filter.copyWith();
-                    });
-                  },
-                  isFood: false,
-                );
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickFilters(AppColorsExtension colors) {
-    final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
-    final isFoodService = serviceProvider.isFoodService;
-
-    // Filter out Dietary chip for Groceries service
-    final visibleFilters = _quickFilters.where((filter) {
-      if (filter['label'] == 'Dietary' && !isFoodService) {
-        return false; // Hide Dietary for Groceries
-      }
-      return true;
-    }).toList();
-
-    return SizedBox(
-      height: 40.h,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.only(left: 20.w),
-        physics: const AlwaysScrollableScrollPhysics(),
-        itemCount: visibleFilters.length,
-        itemBuilder: (context, index) {
-          final filter = visibleFilters[index];
-          final isSelected = _selectedQuickFilters.contains(filter['label']);
-
-          return GestureDetector(
-            onTap: () {
-              // Show bottom sheet for filters with options
-              if (filter['hasOptions'] == true) {
-                _showFilterOptions(filter['label']!, colors);
-              } else {
-                // Toggle selection for simple filters
-                setState(() {
-                  if (isSelected) {
-                    _selectedQuickFilters.remove(filter['label']!);
-                  } else {
-                    _selectedQuickFilters.add(filter['label']!);
-                  }
-                });
-              }
-            },
-            child: Padding(
-              padding: EdgeInsets.only(right: 20.w),
-              child: AnimatedContainer(
-                key: ValueKey('filter_${filter['label']}'),
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeInOut,
-                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isSelected
-                        ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
-                        : [colors.backgroundPrimary, colors.backgroundPrimary],
-                  ),
-                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha(10),
-                      spreadRadius: 1,
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(20.w, padding.top + 16.h, 10.w, 0),
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SvgPicture.asset(
-                      filter['icon']!,
-                      package: 'grab_go_shared',
-                      height: 16.h,
-                      width: 16.w,
-                      colorFilter: ColorFilter.mode(
-                        isSelected ? colors.backgroundSecondary : colors.textPrimary,
-                        BlendMode.srcIn,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Browse',
+                            style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.w700, color: Colors.white),
+                          ),
+                          SizedBox(height: 4.h),
+                          Text(
+                            'Discover trending items',
+                            style: TextStyle(fontSize: 14.sp, color: Colors.white.withValues(alpha: 0.8)),
+                          ),
+                        ],
                       ),
                     ),
-                    SizedBox(width: 6.w),
-                    AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeInOut,
-                      style: TextStyle(
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w500,
-                        color: isSelected ? colors.backgroundPrimary : colors.textPrimary,
-                      ),
-                      child: Text(
-                        filter['label']!,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontFamily: "Lato",
+                    GestureDetector(
+                      onTap: () => context.push('/search'),
+                      child: IconButton(
+                        onPressed: () => context.push('/search'),
+                        icon: SvgPicture.asset(
+                          Assets.icons.search,
                           package: 'grab_go_shared',
+                          width: 20.w,
+                          height: 20.h,
+                          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                         ),
                       ),
                     ),
-                    // Show dropdown arrow for filters with options
-                    if (filter['hasOptions'] == true) ...[
-                      SizedBox(width: 4.w),
-                      SvgPicture.asset(
-                        Assets.icons.navArrowDown,
-                        package: 'grab_go_shared',
-                        colorFilter: ColorFilter.mode(
-                          isSelected ? Colors.white : colors.textSecondary,
-                          BlendMode.srcIn,
-                        ),
-                        width: 16.w,
-                        height: 16.h,
-                      ),
-                    ],
                   ],
                 ),
               ),
             ),
-          );
-        },
-      ),
-    );
-  }
-
-  void _showFilterOptions(String filterType, AppColorsExtension colors) {
-    List<String> options = [];
-    String? currentSelection;
-
-    switch (filterType) {
-      case 'Price':
-        options = _priceRanges;
-        currentSelection = _selectedPriceRange;
-        break;
-      case 'Rating':
-        options = _ratingOptions;
-        currentSelection = _selectedRating;
-        break;
-      case 'Delivery':
-        options = _deliveryTimeOptions;
-        currentSelection = _selectedDeliveryTime;
-        break;
-      case 'Dietary':
-        options = _dietaryOptions;
-        currentSelection = _selectedDietary;
-        break;
-      case 'Distance':
-        options = _distanceOptions;
-        currentSelection = _selectedDistance;
-        break;
-    }
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: colors.backgroundPrimary,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20.r))),
-      builder: (context) {
-        return Container(
-          padding: EdgeInsets.all(20.r),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  margin: EdgeInsets.only(bottom: 8.h),
-                  width: 40.w,
-                  height: 4.h,
-                  decoration: BoxDecoration(color: colors.inputBorder, borderRadius: BorderRadius.circular(2.r)),
-                ),
-              ),
-              SizedBox(height: KSpacing.md.h),
-
-              Text(
-                'Select $filterType',
-                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
-              ),
-              SizedBox(height: 16.h),
-              ...options.map((option) {
-                final isSelected = currentSelection == option;
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    option,
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                      color: isSelected ? colors.accentOrange : colors.textPrimary,
-                    ),
-                  ),
-                  trailing: isSelected ? Icon(Icons.check_circle, color: colors.accentOrange, size: 24.sp) : null,
-                  onTap: () {
-                    setState(() {
-                      switch (filterType) {
-                        case 'Price':
-                          _selectedPriceRange = isSelected ? null : option;
-                          if (_selectedPriceRange != null) {
-                            _selectedQuickFilters.add('Price');
-                          } else {
-                            _selectedQuickFilters.remove('Price');
-                          }
-                          break;
-                        case 'Rating':
-                          _selectedRating = isSelected ? null : option;
-                          if (_selectedRating != null) {
-                            _selectedQuickFilters.add('Rating');
-                          } else {
-                            _selectedQuickFilters.remove('Rating');
-                          }
-                          break;
-                        case 'Delivery':
-                          _selectedDeliveryTime = isSelected ? null : option;
-                          if (_selectedDeliveryTime != null) {
-                            _selectedQuickFilters.add('Delivery');
-                          } else {
-                            _selectedQuickFilters.remove('Delivery');
-                          }
-                          break;
-                        case 'Dietary':
-                          _selectedDietary = isSelected ? null : option;
-                          if (_selectedDietary != null) {
-                            _selectedQuickFilters.add('Dietary');
-                          } else {
-                            _selectedQuickFilters.remove('Dietary');
-                          }
-                          break;
-                        case 'Distance':
-                          _selectedDistance = isSelected ? null : option;
-                          if (_selectedDistance != null) {
-                            _selectedQuickFilters.add('Distance');
-                          } else {
-                            _selectedQuickFilters.remove('Distance');
-                          }
-                          break;
-                      }
-                    });
-                    Navigator.pop(context);
-                  },
-                );
-              }),
-            ],
           ),
         );
       },
     );
   }
 
-  Widget _buildVerticalCategoryCards(AppColorsExtension colors, List<Map<String, dynamic>> categories) {
-    return ListView.builder(
-      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-      itemCount: categories.length,
-      itemBuilder: (context, index) {
-        final category = categories[index];
-        final categoryId = category['id'] as String;
-        final categoryName = category['name'] as String;
-        final categoryEmoji = category['emoji'] as String;
-        final itemCount = category['itemCount'] as int;
-
-        return GestureDetector(
-          onTap: () {
-            // TODO: Navigate to category items page
-            setState(() {
-              _selectedCategoryId = categoryId;
-            });
-          },
-          child: Container(
-            margin: EdgeInsets.only(bottom: 12.h),
-            padding: EdgeInsets.all(16.r),
-            decoration: BoxDecoration(
-              color: colors.backgroundPrimary,
-              borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-              boxShadow: [BoxShadow(color: Colors.black.withAlpha(5), blurRadius: 8, offset: const Offset(0, 2))],
-            ),
-            child: Row(
-              children: [
-                // Category Icon/Emoji
-                Container(
-                  width: 56.w,
-                  height: 56.h,
-                  decoration: BoxDecoration(
-                    color: colors.accentOrange.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(KBorderSize.borderSmall),
-                  ),
-                  child: Center(
-                    child: Text(categoryEmoji, style: TextStyle(fontSize: 28.sp)),
-                  ),
-                ),
-                SizedBox(width: 16.w),
-                // Category Info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        categoryName,
-                        style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
-                      ),
-                      SizedBox(height: 4.h),
-                      Text(
-                        '$itemCount items',
-                        style: TextStyle(fontSize: 13.sp, color: colors.textSecondary),
-                      ),
-                    ],
-                  ),
-                ),
-                // Arrow Icon
-                SvgPicture.asset(
-                  Assets.icons.navArrowRight,
-                  package: 'grab_go_shared',
-                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                  width: 24.w,
-                  height: 24.h,
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildResultsBar(AppColorsExtension colors) {
-    final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
-    int itemCount = 0;
-
-    if (serviceProvider.isFoodService) {
-      final foodProvider = Provider.of<FoodProvider>(context, listen: false);
-      itemCount = _getFilteredFoodItems(foodProvider).length;
-    } else if (serviceProvider.isGroceryService) {
-      final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
-      itemCount = _getFilteredGroceryItems(groceryProvider).length;
-    } else if (serviceProvider.isPharmacyService) {
-      final pharmacyProvider = Provider.of<PharmacyProvider>(context, listen: false);
-      itemCount = _getFilteredPharmacyItems(pharmacyProvider).length;
-    } else if (serviceProvider.isStoresService) {
-      final grabMartProvider = Provider.of<GrabMartProvider>(context, listen: false);
-      itemCount = _getFilteredGrabMartItems(grabMartProvider).length;
-    }
-
-    return Padding(
-      padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 12.h),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            '$itemCount results',
-            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
-          ),
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedQuickFilters.clear();
-                _selectedCategoryId = 'all';
-                _selectedPriceRange = null;
-                _selectedRating = null;
-                _selectedDeliveryTime = null;
-                _selectedDietary = null;
-                _selectedDistance = null;
-                _comprehensiveFilter.reset();
-              });
-            },
-            child: Text(
-              'Reset',
-              style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.accentOrange),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<FoodItem> _getFilteredFoodItems(FoodProvider provider) {
-    List<FoodItem> items = [];
-
-    // Filter by category
-    if (_selectedCategoryId == 'all') {
-      // Show all items from all categories
-      for (var category in provider.categories) {
-        items.addAll(category.items);
-      }
-    } else {
-      // Show items from selected category only
-      try {
-        final selectedCategory = provider.categories.firstWhere((cat) => cat.id == _selectedCategoryId);
-        items = List.from(selectedCategory.items);
-      } catch (e) {
-        // Category not found, return empty list
-        items = [];
-      }
-    }
-
-    // Apply comprehensive filter from bottom sheet (if active)
-    if (_comprehensiveFilter.isActive) {
-      // Price range filter
-      if (_comprehensiveFilter.minPrice > 0 || _comprehensiveFilter.maxPrice < 10000) {
-        items = items.where((item) {
-          return item.price >= _comprehensiveFilter.minPrice && item.price <= _comprehensiveFilter.maxPrice;
-        }).toList();
-      }
-
-      // Rating filter
-      if (_comprehensiveFilter.minRating != null) {
-        items = items.where((item) => item.rating >= _comprehensiveFilter.minRating!).toList();
-      }
-
-      // Quick filters from comprehensive filter
-      if (_comprehensiveFilter.onSale) {
-        items = items.where((item) => item.discountPercentage > 0).toList();
-      }
-      if (_comprehensiveFilter.popular) {
-        items = items.where((item) => item.orderCount >= 50).toList();
-      }
-      if (_comprehensiveFilter.isNew) {
-        items = items.where((item) => item.orderCount < 10).toList();
-      }
-      if (_comprehensiveFilter.fast) {
-        items = items.where((item) => item.deliveryTimeMinutes <= 30).toList();
-      }
-
-      // Delivery time filter
-      if (_comprehensiveFilter.deliveryTime != null) {
-        items = items.where((item) {
-          switch (_comprehensiveFilter.deliveryTime) {
-            case 'Under 20 min':
-              return item.deliveryTimeMinutes < 20;
-            case '20-30 min':
-              return item.deliveryTimeMinutes >= 20 && item.deliveryTimeMinutes <= 30;
-            case '30-45 min':
-              return item.deliveryTimeMinutes > 30 && item.deliveryTimeMinutes <= 45;
-            case 'Any Time':
-            default:
-              return true;
-          }
-        }).toList();
-      }
-
-      // Dietary filter
-      if (_comprehensiveFilter.dietary != null) {
-        items = items.where((item) {
-          // Safe access in case dietaryTags doesn't exist
-          try {
-            return item.dietaryTags.contains(_comprehensiveFilter.dietary);
-          } catch (e) {
-            return false; // If property doesn't exist, exclude item
-          }
-        }).toList();
-      }
-
-      // Restaurant filter
-      if (_comprehensiveFilter.selectedRestaurants.isNotEmpty) {
-        items = items.where((item) {
-          return _comprehensiveFilter.selectedRestaurants.contains(item.sellerName);
-        }).toList();
-      }
-    }
-
-    // Apply quick filters - iterate through all selected filters
-    for (final filterName in _selectedQuickFilters) {
-      switch (filterName) {
-        case 'On Sale':
-          items = items.where((item) => item.discountPercentage > 0).toList();
-          break;
-        case 'Top Rated':
-          items = items.where((item) => item.rating >= 4.5).toList();
-          break;
-        case 'New':
-          items = items.where((item) => item.orderCount < 10).toList();
-          break;
-        case 'Fast':
-          items = items.where((item) => item.deliveryTimeMinutes <= 30).toList();
-          break;
-        case 'Popular':
-          items = items.where((item) => item.orderCount >= 50).toList();
-          break;
-        case 'Price':
-          if (_selectedPriceRange != null) {
-            items = items.where((item) {
-              switch (_selectedPriceRange) {
-                case 'Under GH₵20':
-                  return item.price < 20;
-                case 'GH₵20 - GH₵50':
-                  return item.price >= 20 && item.price <= 50;
-                case 'GH₵50 - GH₵100':
-                  return item.price > 50 && item.price <= 100;
-                case 'Over GH₵100':
-                  return item.price > 100;
-                default:
-                  return true;
-              }
-            }).toList();
-          }
-          break;
-        case 'Rating':
-          if (_selectedRating != null) {
-            items = items.where((item) {
-              switch (_selectedRating) {
-                case '4.5+ Stars':
-                  return item.rating >= 4.5;
-                case '4.0+ Stars':
-                  return item.rating >= 4.0;
-                case '3.5+ Stars':
-                  return item.rating >= 3.5;
-                case 'Any Rating':
-                default:
-                  return true;
-              }
-            }).toList();
-          }
-          break;
-        case 'Delivery':
-          if (_selectedDeliveryTime != null) {
-            items = items.where((item) {
-              switch (_selectedDeliveryTime) {
-                case 'Under 20 min':
-                  return item.deliveryTimeMinutes < 20;
-                case '20-30 min':
-                  return item.deliveryTimeMinutes >= 20 && item.deliveryTimeMinutes <= 30;
-                case '30-45 min':
-                  return item.deliveryTimeMinutes > 30 && item.deliveryTimeMinutes <= 45;
-                case 'Any Time':
-                default:
-                  return true;
-              }
-            }).toList();
-          }
-          break;
-      }
-    }
-
-    // Apply sort
-    _applySortToFoodItems(items);
-
-    return items;
-  }
-
-  List<GroceryItem> _getFilteredGroceryItems(GroceryProvider provider) {
-    List<GroceryItem> items = List.from(provider.items);
-
-    // Apply category filter
-    if (_selectedCategoryId != 'all') {
-      items = items.where((item) => item.categoryId == _selectedCategoryId).toList();
-    }
-
-    // Apply comprehensive filter from bottom sheet (if active)
-    if (_comprehensiveFilter.isActive) {
-      // Price range filter
-      if (_comprehensiveFilter.minPrice > 0 || _comprehensiveFilter.maxPrice < 10000) {
-        items = items.where((item) {
-          return item.price >= _comprehensiveFilter.minPrice && item.price <= _comprehensiveFilter.maxPrice;
-        }).toList();
-      }
-
-      // Rating filter
-      if (_comprehensiveFilter.minRating != null) {
-        items = items.where((item) => item.rating >= _comprehensiveFilter.minRating!).toList();
-      }
-
-      // Quick filters from comprehensive filter
-      if (_comprehensiveFilter.onSale) {
-        items = items.where((item) => item.discountPercentage > 0).toList();
-      }
-      if (_comprehensiveFilter.popular) {
-        items = items.where((item) => item.orderCount >= 100).toList();
-      }
-      if (_comprehensiveFilter.isNew) {
-        final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
-        items = items.where((item) => item.createdAt.isAfter(sevenDaysAgo)).toList();
-      }
-
-      // Store filter
-      if (_comprehensiveFilter.selectedRestaurants.isNotEmpty) {
-        items = items.where((item) {
-          return _comprehensiveFilter.selectedRestaurants.contains(item.storeName);
-        }).toList();
-      }
-    }
-
-    // Apply quick filters - iterate through all selected filters
-    for (final filterName in _selectedQuickFilters) {
-      switch (filterName) {
-        case 'On Sale':
-          items = items.where((item) => item.discountPercentage > 0).toList();
-          break;
-        case 'Top Rated':
-          items = items.where((item) => item.rating >= 4.5).toList();
-          break;
-        case 'New':
-          final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
-          items = items.where((item) => item.createdAt.isAfter(sevenDaysAgo)).toList();
-          break;
-        case 'Fast':
-          // For groceries, all items are relatively fast delivery
-          break;
-        case 'Popular':
-          items = items.where((item) => item.orderCount >= 100).toList();
-          break;
-        case 'Price':
-          if (_selectedPriceRange != null) {
-            items = items.where((item) {
-              switch (_selectedPriceRange) {
-                case 'Under GH₵20':
-                  return item.price < 20;
-                case 'GH₵20 - GH₵50':
-                  return item.price >= 20 && item.price <= 50;
-                case 'GH₵50 - GH₵100':
-                  return item.price > 50 && item.price <= 100;
-                case 'Over GH₵100':
-                  return item.price > 100;
-                default:
-                  return true;
-              }
-            }).toList();
-          }
-          break;
-        case 'Rating':
-          if (_selectedRating != null) {
-            items = items.where((item) {
-              switch (_selectedRating) {
-                case '4.5+ Stars':
-                  return item.rating >= 4.5;
-                case '4.0+ Stars':
-                  return item.rating >= 4.0;
-                case '3.5+ Stars':
-                  return item.rating >= 3.5;
-                case 'Any Rating':
-                default:
-                  return true;
-              }
-            }).toList();
-          }
-          break;
-        case 'Delivery':
-          // For groceries, delivery time filtering can be skipped or customized
-          break;
-      }
-    }
-
-    // Apply sort
-    _applySortToGroceryItems(items);
-
-    return items;
-  }
-
-  List<PharmacyItem> _getFilteredPharmacyItems(PharmacyProvider provider) {
-    List<PharmacyItem> items = List.from(provider.items);
-
-    // Apply category filter
-    if (_selectedCategoryId != 'all') {
-      items = items.where((item) => item.categoryId == _selectedCategoryId).toList();
-    }
-
-    // Apply comprehensive filter from bottom sheet (if active)
-    if (_comprehensiveFilter.isActive) {
-      // Price range filter
-      if (_comprehensiveFilter.minPrice > 0 || _comprehensiveFilter.maxPrice < 10000) {
-        items = items.where((item) {
-          return item.price >= _comprehensiveFilter.minPrice && item.price <= _comprehensiveFilter.maxPrice;
-        }).toList();
-      }
-
-      // Rating filter
-      if (_comprehensiveFilter.minRating != null) {
-        items = items.where((item) => item.rating >= _comprehensiveFilter.minRating!).toList();
-      }
-
-      // Quick filters from comprehensive filter
-      if (_comprehensiveFilter.onSale) {
-        items = items.where((item) => item.hasDiscount).toList();
-      }
-      if (_comprehensiveFilter.popular) {
-        items = items.where((item) => item.orderCount >= 50).toList();
-      }
-    }
-
-    // Apply quick filters - iterate through all selected filters
-    for (final filterName in _selectedQuickFilters) {
-      switch (filterName) {
-        case 'On Sale':
-          items = items.where((item) => item.hasDiscount).toList();
-          break;
-        case 'Top Rated':
-          items = items.where((item) => item.rating >= 4.5).toList();
-          break;
-        case 'Popular':
-          items = items.where((item) => item.orderCount >= 50).toList();
-          break;
-        case 'Price':
-          if (_selectedPriceRange != null) {
-            items = items.where((item) {
-              switch (_selectedPriceRange) {
-                case 'Under GH₵20':
-                  return item.price < 20;
-                case 'GH₵20 - GH₵50':
-                  return item.price >= 20 && item.price <= 50;
-                case 'GH₵50 - GH₵100':
-                  return item.price > 50 && item.price <= 100;
-                case 'Over GH₵100':
-                  return item.price > 100;
-                default:
-                  return true;
-              }
-            }).toList();
-          }
-          break;
-        case 'Rating':
-          if (_selectedRating != null) {
-            items = items.where((item) {
-              switch (_selectedRating) {
-                case '4.5+ Stars':
-                  return item.rating >= 4.5;
-                case '4.0+ Stars':
-                  return item.rating >= 4.0;
-                case '3.5+ Stars':
-                  return item.rating >= 3.5;
-                case 'Any Rating':
-                default:
-                  return true;
-              }
-            }).toList();
-          }
-          break;
-      }
-    }
-
-    // Apply sort
-    _applySortToPharmacyItems(items);
-
-    return items;
-  }
-
-  List<GrabMartItem> _getFilteredGrabMartItems(GrabMartProvider provider) {
-    List<GrabMartItem> items = List.from(provider.items);
-
-    // Apply category filter
-    if (_selectedCategoryId != 'all') {
-      items = items.where((item) => item.categoryId == _selectedCategoryId).toList();
-    }
-
-    // Apply comprehensive filter from bottom sheet (if active)
-    if (_comprehensiveFilter.isActive) {
-      // Price range filter
-      if (_comprehensiveFilter.minPrice > 0 || _comprehensiveFilter.maxPrice < 10000) {
-        items = items.where((item) {
-          return item.price >= _comprehensiveFilter.minPrice && item.price <= _comprehensiveFilter.maxPrice;
-        }).toList();
-      }
-
-      // Rating filter
-      if (_comprehensiveFilter.minRating != null) {
-        items = items.where((item) => item.rating >= _comprehensiveFilter.minRating!).toList();
-      }
-
-      // Quick filters from comprehensive filter
-      if (_comprehensiveFilter.onSale) {
-        items = items.where((item) => item.hasDiscount).toList();
-      }
-      if (_comprehensiveFilter.popular) {
-        items = items.where((item) => item.orderCount >= 50).toList();
-      }
-    }
-
-    // Apply quick filters - iterate through all selected filters
-    for (final filterName in _selectedQuickFilters) {
-      switch (filterName) {
-        case 'On Sale':
-          items = items.where((item) => item.hasDiscount).toList();
-          break;
-        case 'Top Rated':
-          items = items.where((item) => item.rating >= 4.5).toList();
-          break;
-        case 'Popular':
-          items = items.where((item) => item.orderCount >= 50).toList();
-          break;
-        case 'Price':
-          if (_selectedPriceRange != null) {
-            items = items.where((item) {
-              switch (_selectedPriceRange) {
-                case 'Under GH₵20':
-                  return item.price < 20;
-                case 'GH₵20 - GH₵50':
-                  return item.price >= 20 && item.price <= 50;
-                case 'GH₵50 - GH₵100':
-                  return item.price > 50 && item.price <= 100;
-                case 'Over GH₵100':
-                  return item.price > 100;
-                default:
-                  return true;
-              }
-            }).toList();
-          }
-          break;
-        case 'Rating':
-          if (_selectedRating != null) {
-            items = items.where((item) {
-              switch (_selectedRating) {
-                case '4.5+ Stars':
-                  return item.rating >= 4.5;
-                case '4.0+ Stars':
-                  return item.rating >= 4.0;
-                case '3.5+ Stars':
-                  return item.rating >= 3.5;
-                case 'Any Rating':
-                default:
-                  return true;
-              }
-            }).toList();
-          }
-          break;
-      }
-    }
-
-    // Apply sort
-    _applySortToGrabMartItems(items);
-
-    return items;
-  }
-
-  void _applySortToPharmacyItems(List<PharmacyItem> items) {
-    switch (_sortBy) {
-      case 'Price: Low to High':
-        items.sort((a, b) => a.price.compareTo(b.price));
-        break;
-      case 'Price: High to Low':
-        items.sort((a, b) => b.price.compareTo(a.price));
-        break;
-      case 'Rating: High to Low':
-        items.sort((a, b) => b.rating.compareTo(a.rating));
-        break;
-      case 'Popularity':
-        items.sort((a, b) => b.orderCount.compareTo(a.orderCount));
-        break;
-    }
-  }
-
-  void _applySortToGrabMartItems(List<GrabMartItem> items) {
-    switch (_sortBy) {
-      case 'Price: Low to High':
-        items.sort((a, b) => a.price.compareTo(b.price));
-        break;
-      case 'Price: High to Low':
-        items.sort((a, b) => b.price.compareTo(a.price));
-        break;
-      case 'Rating: High to Low':
-        items.sort((a, b) => b.rating.compareTo(a.rating));
-        break;
-      case 'Popularity':
-        items.sort((a, b) => b.orderCount.compareTo(a.orderCount));
-        break;
-    }
-  }
-
-  void _applySortToFoodItems(List<FoodItem> items) {
-    switch (_sortBy) {
-      case 'Price: Low to High':
-        items.sort((a, b) => a.price.compareTo(b.price));
-        break;
-      case 'Price: High to Low':
-        items.sort((a, b) => b.price.compareTo(a.price));
-        break;
-      case 'Rating: High to Low':
-        items.sort((a, b) => b.rating.compareTo(a.rating));
-        break;
-      case 'Popularity':
-        items.sort((a, b) => b.orderCount.compareTo(a.orderCount));
-        break;
-      case 'Delivery Time':
-        items.sort((a, b) => a.deliveryTimeMinutes.compareTo(b.deliveryTimeMinutes));
-        break;
-    }
-  }
-
-  void _applySortToGroceryItems(List<GroceryItem> items) {
-    switch (_sortBy) {
-      case 'Price: Low to High':
-        items.sort((a, b) => a.price.compareTo(b.price));
-        break;
-      case 'Price: High to Low':
-        items.sort((a, b) => b.price.compareTo(a.price));
-        break;
-      case 'Rating: High to Low':
-        items.sort((a, b) => b.rating.compareTo(a.rating));
-        break;
-      case 'Popularity':
-        items.sort((a, b) => b.orderCount.compareTo(a.orderCount));
-        break;
-    }
-  }
-
-  void _showSortOptions() {
-    final colors = context.appColors;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: colors.backgroundPrimary,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20.r))),
-      builder: (context) {
-        return Container(
-          padding: EdgeInsets.all(20.r),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Sort by',
-                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
-              ),
-              SizedBox(height: 16.h),
-              ..._sortOptions.map((option) {
-                final isSelected = _sortBy == option;
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    option,
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                      color: isSelected ? colors.accentOrange : colors.textPrimary,
-                    ),
-                  ),
-                  trailing: isSelected ? Icon(Icons.check, color: colors.accentOrange, size: 20.sp) : null,
-                  onTap: () {
-                    setState(() => _sortBy = option);
-                    Navigator.pop(context);
-                  },
-                );
-              }),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  // Non-sliver version for SingleChildScrollView
-  Widget _buildCategoryList(AppColorsExtension colors, ServiceProvider serviceProvider) {
-    final isFood = serviceProvider.isFoodService;
-    final isGrocery = serviceProvider.isGroceryService;
-    final isPharmacy = serviceProvider.isPharmacyService;
-    final isGrabMart = serviceProvider.isStoresService;
-
-    if (isFood) {
-      return Selector<FoodProvider, List<FoodCategoryModel>>(
-        selector: (_, provider) => provider.categories,
-        builder: (context, categories, _) {
-          if (categories.isEmpty) {
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            return BrowseCategorySkeleton(colors: colors, isDark: isDark);
-          }
-
-          final categoryData = categories
-              .map((cat) => {'id': cat.id, 'name': cat.name, 'emoji': cat.emoji, 'itemCount': cat.items.length})
-              .toList();
-
-          return Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: Column(children: categoryData.map((cat) => _buildCategoryCard(cat, colors)).toList()),
-          );
-        },
-      );
-    } else if (isGrocery) {
-      return Selector<GroceryProvider, List<GroceryCategory>>(
-        selector: (_, provider) => provider.categories,
-        builder: (context, categories, child) {
-          if (categories.isEmpty) {
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            return BrowseCategorySkeleton(colors: colors, isDark: isDark);
-          }
-
-          final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
-          final categoryData = categories.map((cat) {
-            final itemCount = groceryProvider.items.where((item) => item.categoryId == cat.id).length;
-            return {'id': cat.id, 'name': cat.name, 'emoji': cat.emoji, 'itemCount': itemCount};
-          }).toList();
-
-          return Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: Column(children: categoryData.map((cat) => _buildCategoryCard(cat, colors)).toList()),
-          );
-        },
-      );
-    } else if (isPharmacy) {
-      return Selector<PharmacyProvider, List<PharmacyCategory>>(
-        selector: (_, provider) => provider.categories,
-        builder: (context, categories, child) {
-          if (categories.isEmpty) {
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            return BrowseCategorySkeleton(colors: colors, isDark: isDark);
-          }
-
-          final pharmacyProvider = Provider.of<PharmacyProvider>(context, listen: false);
-          final categoryData = categories.map((cat) {
-            final itemCount = pharmacyProvider.items.where((item) => item.categoryId == cat.id).length;
-            return {'id': cat.id, 'name': cat.name, 'emoji': cat.emoji, 'itemCount': itemCount};
-          }).toList();
-
-          return Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: Column(children: categoryData.map((cat) => _buildCategoryCard(cat, colors)).toList()),
-          );
-        },
-      );
-    } else if (isGrabMart) {
-      return Selector<GrabMartProvider, List<GrabMartCategory>>(
-        selector: (_, provider) => provider.categories,
-        builder: (context, categories, child) {
-          if (categories.isEmpty) {
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            return BrowseCategorySkeleton(colors: colors, isDark: isDark);
-          }
-
-          final grabMartProvider = Provider.of<GrabMartProvider>(context, listen: false);
-          final categoryData = categories.map((cat) {
-            final itemCount = grabMartProvider.items.where((item) => item.categoryId == cat.id).length;
-            return {'id': cat.id, 'name': cat.name, 'emoji': cat.emoji, 'itemCount': itemCount};
-          }).toList();
-
-          return Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            child: Column(children: categoryData.map((cat) => _buildCategoryCard(cat, colors)).toList()),
-          );
-        },
-      );
-    }
-
-    // Fallback
-    return const SizedBox.shrink();
-  }
-
-  Widget _buildItemGrid(AppColorsExtension colors, ServiceProvider serviceProvider) {
+  Widget _buildContent(AppColorsExtension colors, bool isDark, ServiceProvider serviceProvider, Size size) {
     if (serviceProvider.isFoodService) {
       return Consumer<FoodProvider>(
         builder: (context, provider, _) {
           if (provider.isLoading) {
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            return BrowseGridSkeleton(colors: colors, isDark: isDark, isGridView: _isGridView);
+            return ListView(
+              controller: _scrollController,
+              padding: EdgeInsets.only(top: size.height * 0.22, bottom: 32.h),
+              children: const [BrowsePageSkeleton()],
+            );
+          }
+          return _buildLoadedContent(colors, isDark, serviceProvider, size);
+        },
+      );
+    } else if (serviceProvider.isGroceryService) {
+      return Consumer<GroceryProvider>(
+        builder: (context, provider, _) {
+          if (provider.isLoadingItems || provider.isLoadingCategories) {
+            return ListView(
+              controller: _scrollController,
+              padding: EdgeInsets.only(top: size.height * 0.22, bottom: 32.h),
+              children: const [BrowsePageSkeleton()],
+            );
+          }
+          return _buildLoadedContent(colors, isDark, serviceProvider, size);
+        },
+      );
+    } else if (serviceProvider.isPharmacyService) {
+      return Consumer<PharmacyProvider>(
+        builder: (context, provider, _) {
+          if (provider.isLoadingItems || provider.isLoadingCategories) {
+            return ListView(
+              controller: _scrollController,
+              padding: EdgeInsets.only(top: size.height * 0.22, bottom: 32.h),
+              children: const [BrowsePageSkeleton()],
+            );
+          }
+          return _buildLoadedContent(colors, isDark, serviceProvider, size);
+        },
+      );
+    } else if (serviceProvider.isStoresService) {
+      return Consumer<GrabMartProvider>(
+        builder: (context, provider, _) {
+          if (provider.isLoadingItems || provider.isLoadingCategories) {
+            return ListView(
+              controller: _scrollController,
+              padding: EdgeInsets.only(top: size.height * 0.22, bottom: 32.h),
+              children: const [BrowsePageSkeleton()],
+            );
+          }
+          return _buildLoadedContent(colors, isDark, serviceProvider, size);
+        },
+      );
+    }
+
+    return _buildLoadedContent(colors, isDark, serviceProvider, size);
+  }
+
+  Widget _buildLoadedContent(AppColorsExtension colors, bool isDark, ServiceProvider serviceProvider, Size size) {
+    return ListView(
+      controller: _scrollController,
+      padding: EdgeInsets.only(top: size.height * 0.22, bottom: 32.h),
+      children: [
+        // Trending Section
+        _buildSectionHeader(colors, 'Trending Now', 'Most ordered this week'),
+        SizedBox(height: 12.h),
+        _buildTrendingList(colors, isDark, serviceProvider),
+
+        SizedBox(height: KSpacing.lg.h),
+
+        // Popular Categories Section
+        _buildSectionHeader(colors, 'Popular Categories', 'Browse by category'),
+        SizedBox(height: 12.h),
+        _buildCategoriesList(colors, isDark, serviceProvider),
+
+        SizedBox(height: KSpacing.lg.h),
+
+        // Quick Searches Section
+        _buildSectionHeader(colors, 'Quick Searches', 'Popular filters'),
+        SizedBox(height: 12.h),
+        _buildQuickSearches(colors),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(AppColorsExtension colors, String title, String subtitle) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+          ),
+          SizedBox(height: 4.h),
+          Text(
+            subtitle,
+            style: TextStyle(fontSize: 13.sp, color: colors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrendingList(AppColorsExtension colors, bool isDark, ServiceProvider serviceProvider) {
+    if (serviceProvider.isFoodService) {
+      return Consumer<FoodProvider>(
+        builder: (context, provider, _) {
+          if (provider.isLoading) {
+            return const SizedBox.shrink();
           }
 
-          final items = _getFilteredFoodItems(provider);
+          final allItems = <FoodItem>[];
+          for (var category in provider.categories) {
+            allItems.addAll(category.items);
+          }
 
-          if (items.isEmpty) return _buildNoResults(colors);
+          allItems.sort((a, b) => b.orderCount.compareTo(a.orderCount));
+          final trending = allItems.take(10).toList();
 
-          return _buildGrid(items, (item) => context.push('/foodDetails', extra: item));
+          if (trending.isEmpty) {
+            return _buildEmptyState(colors, 'No trending items yet');
+          }
+
+          return Column(
+            children: trending.asMap().entries.map((entry) {
+              final index = entry.key;
+              final item = entry.value;
+              return _buildTrendingItem(
+                colors,
+                index + 1,
+                item.name,
+                '${item.orderCount} orders',
+                () => context.push('/foodDetails', extra: item),
+              );
+            }).toList(),
+          );
         },
       );
     } else if (serviceProvider.isGroceryService) {
       return Consumer<GroceryProvider>(
         builder: (context, provider, _) {
           if (provider.isLoadingItems) {
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            return BrowseGridSkeleton(colors: colors, isDark: isDark, isGridView: _isGridView);
+            return const SizedBox.shrink();
           }
 
-          final items = _getFilteredGroceryItems(provider);
+          final items = List<GroceryItem>.from(provider.items);
+          items.sort((a, b) => b.orderCount.compareTo(a.orderCount));
+          final trending = items.take(10).toList();
 
-          if (items.isEmpty) return _buildNoResults(colors);
+          if (trending.isEmpty) {
+            return _buildEmptyState(colors, 'No trending items yet');
+          }
 
-          return _buildGrid(
-            items,
-            (item) => context.push('/foodDetails', extra: item),
-            itemMapper: (item) => (item).toFoodItem(),
+          return Column(
+            children: trending.asMap().entries.map((entry) {
+              final index = entry.key;
+              final item = entry.value;
+              return _buildTrendingItem(
+                colors,
+                index + 1,
+                item.name,
+                '${item.orderCount} orders',
+                () => context.push('/foodDetails', extra: item),
+              );
+            }).toList(),
           );
         },
       );
@@ -1467,18 +338,29 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
       return Consumer<PharmacyProvider>(
         builder: (context, provider, _) {
           if (provider.isLoadingItems) {
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            return BrowseGridSkeleton(colors: colors, isDark: isDark, isGridView: _isGridView);
+            return const SizedBox.shrink();
           }
 
-          final items = _getFilteredPharmacyItems(provider);
+          final items = List<PharmacyItem>.from(provider.items);
+          items.sort((a, b) => b.orderCount.compareTo(a.orderCount));
+          final trending = items.take(10).toList();
 
-          if (items.isEmpty) return _buildNoResults(colors);
+          if (trending.isEmpty) {
+            return _buildEmptyState(colors, 'No trending items yet');
+          }
 
-          return _buildGrid(
-            items,
-            (item) => context.push('/foodDetails', extra: item),
-            itemMapper: (item) => (item).toFoodItem(),
+          return Column(
+            children: trending.asMap().entries.map((entry) {
+              final index = entry.key;
+              final item = entry.value;
+              return _buildTrendingItem(
+                colors,
+                index + 1,
+                item.name,
+                '${item.orderCount} orders',
+                () => context.push('/foodDetails', extra: item),
+              );
+            }).toList(),
           );
         },
       );
@@ -1486,18 +368,29 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
       return Consumer<GrabMartProvider>(
         builder: (context, provider, _) {
           if (provider.isLoadingItems) {
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            return BrowseGridSkeleton(colors: colors, isDark: isDark, isGridView: _isGridView);
+            return const SizedBox.shrink();
           }
 
-          final items = _getFilteredGrabMartItems(provider);
+          final items = List<GrabMartItem>.from(provider.items);
+          items.sort((a, b) => b.orderCount.compareTo(a.orderCount));
+          final trending = items.take(10).toList();
 
-          if (items.isEmpty) return _buildNoResults(colors);
+          if (trending.isEmpty) {
+            return _buildEmptyState(colors, 'No trending items yet');
+          }
 
-          return _buildGrid(
-            items,
-            (item) => context.push('/foodDetails', extra: item),
-            itemMapper: (item) => (item).toFoodItem(),
+          return Column(
+            children: trending.asMap().entries.map((entry) {
+              final index = entry.key;
+              final item = entry.value;
+              return _buildTrendingItem(
+                colors,
+                index + 1,
+                item.name,
+                '${item.orderCount} orders',
+                () => context.push('/foodDetails', extra: item),
+              );
+            }).toList(),
           );
         },
       );
@@ -1506,115 +399,347 @@ class _BrowsePageState extends State<BrowsePage> with AutomaticKeepAliveClientMi
     return const SizedBox.shrink();
   }
 
-  Widget _buildNoResults(AppColorsExtension colors) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.search_off, size: 64.sp, color: colors.textSecondary),
-          SizedBox(height: 16.h),
-          Text(
-            'No items found',
-            style: TextStyle(fontSize: 16.sp, color: colors.textSecondary),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGrid<T>(List<T> items, Function(T) onTap, {FoodItem Function(T)? itemMapper}) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 0.7,
-          crossAxisSpacing: 12.w,
-          mainAxisSpacing: 16.h,
-        ),
-        itemCount: items.length,
-        itemBuilder: (context, index) {
-          final item = items[index];
-          final foodItem = itemMapper != null ? itemMapper(item) : item as FoodItem;
-
-          return PopularItemCard(item: foodItem, orderCount: foodItem.orderCount, onTap: () => onTap(item));
-        },
-      ),
-    );
-  }
-
-  Widget _buildCategoryCard(Map<String, dynamic> category, AppColorsExtension colors) {
-    final categoryId = category['id'] as String;
-    final categoryName = category['name'] as String;
-    final categoryEmoji = category['emoji'] as String;
-    final itemCount = category['itemCount'] as int;
-
+  Widget _buildTrendingItem(AppColorsExtension colors, int rank, String name, String subtitle, VoidCallback onTap) {
     return GestureDetector(
-      onTap: () {
-        final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
-        context.push(
-          '/categoryItems',
-          extra: {
-            'categoryId': categoryId,
-            'categoryName': categoryName,
-            'categoryEmoji': categoryEmoji,
-            'serviceType': serviceProvider.currentService.id,
-            'isFood': serviceProvider.isFoodService,
-          },
-        );
-      },
+      onTap: onTap,
       child: Container(
-        margin: EdgeInsets.only(bottom: 12.h),
-        padding: EdgeInsets.all(16.r),
+        margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-          boxShadow: [BoxShadow(color: Colors.black.withAlpha(5), blurRadius: 8, offset: const Offset(0, 2))],
+          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
         ),
         child: Row(
           children: [
-            // Category Icon/Emoji
             Container(
-              width: 56.w,
-              height: 56.h,
+              width: 32.w,
+              height: 32.h,
               decoration: BoxDecoration(
-                color: colors.accentOrange.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(KBorderSize.borderSmall),
+                gradient: LinearGradient(
+                  colors: rank <= 3
+                      ? [colors.accentOrange, colors.accentOrange]
+                      : [colors.backgroundSecondary, colors.backgroundSecondary],
+                ),
+                shape: BoxShape.circle,
               ),
               child: Center(
-                child: Text(categoryEmoji, style: TextStyle(fontSize: 28.sp)),
+                child: Text(
+                  '$rank',
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
+                    color: rank <= 3 ? Colors.white : colors.textSecondary,
+                  ),
+                ),
               ),
             ),
             SizedBox(width: 16.w),
-            // Category Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    categoryName,
-                    style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                    name,
+                    style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   SizedBox(height: 4.h),
                   Text(
-                    '$itemCount items',
-                    style: TextStyle(fontSize: 13.sp, color: colors.textSecondary),
+                    subtitle,
+                    style: TextStyle(fontSize: 12.sp, color: colors.textSecondary),
                   ),
                 ],
               ),
             ),
-            // Arrow Icon
             SvgPicture.asset(
               Assets.icons.navArrowRight,
               package: 'grab_go_shared',
+              width: 20.w,
+              height: 20.h,
               colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-              width: 24.w,
-              height: 24.h,
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCategoriesList(AppColorsExtension colors, bool isDark, ServiceProvider serviceProvider) {
+    if (serviceProvider.isFoodService) {
+      return Consumer<FoodProvider>(
+        builder: (context, provider, _) {
+          if (provider.isLoading) {
+            return const SizedBox.shrink();
+          }
+
+          final categories = provider.categories.where((cat) => cat.items.isNotEmpty).toList();
+          categories.sort((a, b) => b.items.length.compareTo(a.items.length));
+
+          if (categories.isEmpty) {
+            return _buildEmptyState(colors, 'No categories available');
+          }
+
+          return _buildHorizontalCategoryList<FoodCategoryModel>(
+            categories: categories,
+            getName: (cat) => cat.name,
+            getEmoji: (cat) => cat.emoji,
+            onTap: (cat) => context.push(
+              '/categoryItems',
+              extra: {
+                'categoryId': cat.id,
+                'categoryName': cat.name,
+                'categoryEmoji': cat.emoji,
+                'serviceType': 'food',
+                'isFood': true,
+              },
+            ),
+            colors: colors,
+          );
+        },
+      );
+    } else if (serviceProvider.isGroceryService) {
+      return Consumer<GroceryProvider>(
+        builder: (context, provider, _) {
+          if (provider.isLoadingCategories) {
+            return const SizedBox.shrink();
+          }
+
+          final categories = provider.categories.where((cat) {
+            final count = provider.items.where((item) => item.categoryId == cat.id).length;
+            return count > 0;
+          }).toList();
+
+          categories.sort((a, b) {
+            final countA = provider.items.where((item) => item.categoryId == a.id).length;
+            final countB = provider.items.where((item) => item.categoryId == b.id).length;
+            return countB.compareTo(countA);
+          });
+
+          if (categories.isEmpty) {
+            return _buildEmptyState(colors, 'No categories available');
+          }
+
+          return _buildHorizontalCategoryList<GroceryCategory>(
+            categories: categories,
+            getName: (cat) => cat.name,
+            getEmoji: (cat) => cat.emoji,
+            onTap: (cat) => context.push(
+              '/categoryItems',
+              extra: {
+                'categoryId': cat.id,
+                'categoryName': cat.name,
+                'categoryEmoji': cat.emoji,
+                'serviceType': 'groceries',
+                'isFood': false,
+              },
+            ),
+            colors: colors,
+          );
+        },
+      );
+    } else if (serviceProvider.isPharmacyService) {
+      return Consumer<PharmacyProvider>(
+        builder: (context, provider, _) {
+          if (provider.isLoadingCategories) {
+            return const SizedBox.shrink();
+          }
+
+          final categories = provider.categories.where((cat) {
+            final count = provider.items.where((item) => item.categoryId == cat.id).length;
+            return count > 0;
+          }).toList();
+
+          categories.sort((a, b) {
+            final countA = provider.items.where((item) => item.categoryId == a.id).length;
+            final countB = provider.items.where((item) => item.categoryId == b.id).length;
+            return countB.compareTo(countA);
+          });
+
+          if (categories.isEmpty) {
+            return _buildEmptyState(colors, 'No categories available');
+          }
+
+          return _buildHorizontalCategoryList<PharmacyCategory>(
+            categories: categories,
+            getName: (cat) => cat.name,
+            getEmoji: (cat) => cat.emoji,
+            onTap: (cat) => context.push(
+              '/categoryItems',
+              extra: {
+                'categoryId': cat.id,
+                'categoryName': cat.name,
+                'categoryEmoji': cat.emoji,
+                'serviceType': 'pharmacy',
+                'isFood': false,
+              },
+            ),
+            colors: colors,
+          );
+        },
+      );
+    } else if (serviceProvider.isStoresService) {
+      return Consumer<GrabMartProvider>(
+        builder: (context, provider, _) {
+          if (provider.isLoadingCategories) {
+            return const SizedBox.shrink();
+          }
+
+          final categories = provider.categories.where((cat) {
+            final count = provider.items.where((item) => item.categoryId == cat.id).length;
+            return count > 0;
+          }).toList();
+
+          categories.sort((a, b) {
+            final countA = provider.items.where((item) => item.categoryId == a.id).length;
+            final countB = provider.items.where((item) => item.categoryId == b.id).length;
+            return countB.compareTo(countA);
+          });
+
+          if (categories.isEmpty) {
+            return _buildEmptyState(colors, 'No categories available');
+          }
+
+          return _buildHorizontalCategoryList<GrabMartCategory>(
+            categories: categories,
+            getName: (cat) => cat.name,
+            getEmoji: (cat) => cat.emoji,
+            onTap: (cat) => context.push(
+              '/categoryItems',
+              extra: {
+                'categoryId': cat.id,
+                'categoryName': cat.name,
+                'categoryEmoji': cat.emoji,
+                'serviceType': 'convenience',
+                'isFood': false,
+              },
+            ),
+            colors: colors,
+          );
+        },
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildHorizontalCategoryList<T>({
+    required List<T> categories,
+    required String Function(T) getName,
+    required String Function(T) getEmoji,
+    required Function(T) onTap,
+    required AppColorsExtension colors,
+  }) {
+    return SizedBox(
+      height: 110.h,
+      child: ListView.builder(
+        padding: EdgeInsets.symmetric(horizontal: 20.w),
+        scrollDirection: Axis.horizontal,
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: categories.length,
+        itemBuilder: (context, index) {
+          final category = categories[index];
+          return GestureDetector(
+            onTap: () => onTap(category),
+            child: Padding(
+              padding: EdgeInsets.only(right: index == categories.length - 1 ? 0 : 16.w),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(20.r),
+                    decoration: BoxDecoration(
+                      color: colors.accentOrange.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(getEmoji(category), style: TextStyle(fontSize: 28.sp)),
+                  ),
+                  SizedBox(height: 8.h),
+                  Text(
+                    getName(category),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w500,
+                      color: colors.textPrimary,
+                      fontFamily: 'Lato',
+                      package: 'grab_go_shared',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildQuickSearches(AppColorsExtension colors) {
+    final searches = [
+      {'label': 'Fast delivery', 'subtitle': 'Under 30 minutes'},
+      {'label': 'Under ₵20', 'subtitle': 'Budget-friendly options'},
+      {'label': 'Top rated', 'subtitle': '4.5+ stars'},
+      {'label': 'On sale', 'subtitle': 'Special discounts'},
+    ];
+
+    return Column(
+      children: searches.map((search) {
+        return GestureDetector(
+          onTap: () => context.push('/search'),
+          child: Container(
+            margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
+            decoration: BoxDecoration(
+              color: colors.backgroundPrimary,
+              borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        search['label']!,
+                        style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                      ),
+                      SizedBox(height: 2.h),
+                      Text(
+                        search['subtitle']!,
+                        style: TextStyle(fontSize: 12.sp, color: colors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                // Arrow
+                SvgPicture.asset(
+                  Assets.icons.navArrowRight,
+                  package: 'grab_go_shared',
+                  width: 20.w,
+                  height: 20.h,
+                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildEmptyState(AppColorsExtension colors, String message) {
+    return Container(
+      padding: EdgeInsets.all(40.r),
+      child: Column(
+        children: [
+          Icon(Icons.search_off, size: 48.sp, color: colors.textSecondary.withValues(alpha: 0.5)),
+          SizedBox(height: 16.h),
+          Text(
+            message,
+            style: TextStyle(fontSize: 14.sp, color: colors.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }

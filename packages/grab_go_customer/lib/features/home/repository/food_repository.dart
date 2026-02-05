@@ -130,9 +130,9 @@ class FoodRepository {
       if (kDebugMode) {
         print('📡 Calling API: /promotions/banners');
       }
-      
+
       final response = await service.getPromotionalBanners().timeout(
-        const Duration(seconds: 10),
+        const Duration(seconds: 30),
         onTimeout: () {
           throw Exception('Request timeout: /promotions/banners took too long to respond');
         },
@@ -145,11 +145,11 @@ class FoodRepository {
 
       if (response.isSuccessful && response.body != null) {
         final body = response.body as Map<String, dynamic>;
-        
+
         if (kDebugMode) {
           print('📦 Response body keys: ${body.keys.toList()}');
         }
-        
+
         final data = (body['data'] as List<dynamic>?) ?? [];
 
         if (kDebugMode) {
@@ -165,7 +165,7 @@ class FoodRepository {
         print('❌ API returned unsuccessful response: ${response.statusCode}');
         print('❌ Response body: ${response.body}');
       }
-      
+
       throw Exception('Failed to load promotional banners: ${response.statusCode}');
     } catch (e) {
       if (kDebugMode) {

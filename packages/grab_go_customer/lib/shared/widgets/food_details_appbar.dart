@@ -10,10 +10,8 @@ import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:grab_go_shared/shared/utils/image_optimizer.dart';
 import 'package:grab_go_customer/shared/services/food_share_link.dart';
 import 'package:provider/provider.dart';
-
 import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
 
 class FoodDetailsAppBar extends StatelessWidget {
@@ -36,7 +34,7 @@ class FoodDetailsAppBar extends StatelessWidget {
       ),
       elevation: 0,
       pinned: true,
-      stretch: true,
+      stretch: false,
       automaticallyImplyLeading: false,
       flexibleSpace: FlexibleSpaceBar(
         background: Stack(
@@ -88,7 +86,6 @@ class FoodDetailsAppBar extends StatelessWidget {
             ),
           ],
         ),
-        stretchModes: const [StretchMode.blurBackground, StretchMode.zoomBackground],
       ),
       bottom: PreferredSize(
         preferredSize: Size.fromHeight(24.h),

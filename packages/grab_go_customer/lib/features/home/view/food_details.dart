@@ -101,34 +101,6 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
     }
   }
 
-  List<FoodItem> _getSimilarFoods(List<FoodCategoryModel> categories) {
-    List<FoodItem> similarFoods = [];
-
-    for (var category in categories) {
-      for (var item in category.items) {
-        if (item.sellerId == widget.foodItem!.sellerId && item.name != widget.foodItem!.name) {
-          similarFoods.add(item);
-        }
-      }
-    }
-
-    return similarFoods.take(5).toList();
-  }
-
-  List<FoodItem> _getMoreFromRestaurant(List<FoodCategoryModel> categories) {
-    List<FoodItem> restaurantFoods = [];
-
-    for (var category in categories) {
-      for (var item in category.items) {
-        if (item.sellerId == widget.foodItem!.sellerId && item.name != widget.foodItem!.name) {
-          restaurantFoods.add(item);
-        }
-      }
-    }
-
-    return restaurantFoods;
-  }
-
   bool get isPharmacy => widget.isPharmacy;
   bool get isGrabMart => widget.isGrabMart;
   bool get isStoreItem => widget.isStoreItem;
@@ -219,7 +191,6 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
     }
   }
 
-  // Get CartItem for cart operations (use original type)
   dynamic get cartItem {
     if (widget.isGrocery) return widget.groceryItem!;
     if (isPharmacy) return widget.pharmacyItem!;
@@ -260,7 +231,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
             builder: (context, child) {
               return CustomScrollView(
                 controller: _scrollController,
-                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                physics: const AlwaysScrollableScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                 slivers: <Widget>[
                   FoodDetailsAppBar(foodItem: cartItem),
                   SliverToBoxAdapter(
@@ -579,12 +550,12 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
 
                               SizedBox(height: KSpacing.lg.h),
 
-                              if (!widget.isGrocery)
+                              if (!widget.isGrocery && widget.foodItem != null)
                                 Consumer<FoodProvider>(
                                   builder: (context, foodProvider, child) {
-                                    final similarFoods = _getSimilarFoods(foodProvider.categories);
+                                    final youMayLikeItems = foodProvider.getYouMayLikeItems(widget.foodItem!, limit: 5);
 
-                                    if (similarFoods.isEmpty) {
+                                    if (youMayLikeItems.isEmpty) {
                                       return const SizedBox.shrink();
                                     }
 
@@ -602,11 +573,16 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                             padding: EdgeInsets.only(left: 20.w),
                                             scrollDirection: Axis.horizontal,
                                             physics: const BouncingScrollPhysics(),
-                                            itemCount: similarFoods.length,
+                                            itemCount: youMayLikeItems.length,
                                             itemBuilder: (context, index) {
                                               return Padding(
                                                 padding: EdgeInsets.only(right: 12.w),
-                                                child: _buildSimilarFoodItem(colors, similarFoods[index], size, isDark),
+                                                child: _buildSimilarFoodItem(
+                                                  colors,
+                                                  youMayLikeItems[index],
+                                                  size,
+                                                  isDark,
+                                                ),
                                               );
                                             },
                                           ),
@@ -618,10 +594,13 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
 
                               SizedBox(height: KSpacing.lg.h),
 
-                              if (!widget.isGrocery)
+                              if (!widget.isGrocery && widget.foodItem != null)
                                 Consumer<FoodProvider>(
                                   builder: (context, foodProvider, child) {
-                                    final allRestaurantFoods = _getMoreFromRestaurant(foodProvider.categories);
+                                    final allRestaurantFoods = foodProvider.getItemsFromSeller(
+                                      widget.foodItem!.sellerId,
+                                      excludeItemId: widget.foodItem!.id,
+                                    );
 
                                     if (allRestaurantFoods.isEmpty) {
                                       return const SizedBox.shrink();

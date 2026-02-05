@@ -24,7 +24,6 @@ class CustomMapMarkers {
     final Canvas canvas = Canvas(pictureRecorder);
     final Paint paint = Paint();
 
-    // Card position (centered)
     final double cardX = (width - cardWidth) / 2;
     const double cardY = 4.0;
     final RRect cardRect = RRect.fromRectAndRadius(
@@ -32,11 +31,9 @@ class CustomMapMarkers {
       Radius.circular(cornerRadius),
     );
 
-    // 2. Draw card with solid color (no gradient)
     paint.color = isHighlighted ? highlightColor : primaryColor;
     canvas.drawRRect(cardRect, paint);
 
-    // 4. Draw store SVG icon
     final iconCenter = Offset(width / 2, cardY + cardHeight / 2);
 
     try {
@@ -58,7 +55,6 @@ class CustomMapMarkers {
       canvas.restore();
     } catch (e) {
       debugPrint('Error drawing store SVG: $e');
-      // Fallback to Material icon
       final icon = Icons.local_shipping_rounded;
       final iconPainter = TextPainter(
         text: TextSpan(
@@ -71,7 +67,6 @@ class CustomMapMarkers {
       iconPainter.paint(canvas, Offset(iconCenter.dx - iconPainter.width / 2, iconCenter.dy - iconPainter.height / 2));
     }
 
-    // 5. Draw elegant pointer (curved triangle)
     final pointerTop = cardY + cardHeight - 2;
     final Path pointer = Path();
     pointer.moveTo(width / 2 - 14, pointerTop);
@@ -81,7 +76,6 @@ class CustomMapMarkers {
     paint.color = isHighlighted ? highlightColor : primaryColor;
     canvas.drawPath(pointer, paint);
 
-    // 6. Draw item count badge (modern pill shape)
     if (itemCount > 0) {
       final badgeText = itemCount > 99 ? '99+' : '$itemCount';
       final badgePainter = TextPainter(
@@ -98,23 +92,18 @@ class CustomMapMarkers {
       final badgeX = cardX + cardWidth - badgeWidth / 2 - 4;
       final badgeY = cardY - 2;
 
-      // Badge background with solid color
-      paint.color = isHighlighted
-          ? const Color(0xFF10B981) // Green
-          : const Color(0xFFEF4444); // Red
+      paint.color = isHighlighted ? const Color(0xFF10B981) : const Color(0xFFEF4444);
       canvas.drawRRect(
         RRect.fromRectAndRadius(Rect.fromLTWH(badgeX, badgeY, badgeWidth, badgeHeight), const Radius.circular(9)),
         paint,
       );
 
-      // Badge text
       badgePainter.paint(
         canvas,
         Offset(badgeX + (badgeWidth - badgePainter.width) / 2, badgeY + (badgeHeight - badgePainter.height) / 2),
       );
     }
 
-    // 7. Draw highlight ring for closest order
     if (isHighlighted) {
       paint.color = highlightColor.withValues(alpha: 0.3);
       paint.style = PaintingStyle.stroke;
@@ -318,12 +307,14 @@ class CustomMapMarkers {
     final double centerY = labelOffset + radius;
     final Offset center = Offset(size / 2, centerY);
 
-    // 2. Draw Shadow for the circle (Stronger if selected)
+    // 2. Draw Shadow for the circle (Enhanced shadow for better depth)
     final Path shadowPath = Path()..addOval(Rect.fromCircle(center: center, radius: radius));
-    canvas.drawShadow(shadowPath, Colors.black.withValues(alpha: 0.3), 4, true);
+    canvas.drawShadow(shadowPath, Colors.black.withValues(alpha: isSelected ? 0.4 : 0.25), isSelected ? 6 : 4, true);
 
-    // 3. Draw Circle Background (The main color)
-    paint.color = primaryColor;
+    // 3. Draw Circle Background with proper opacity
+    final markerColor = primaryColor;
+
+    paint.color = markerColor;
     paint.style = PaintingStyle.fill;
     canvas.drawCircle(center, radius, paint);
 
@@ -377,8 +368,8 @@ class CustomMapMarkers {
     pointer.lineTo(size / 2, centerY + radius + (8 * scaleFactor));
     pointer.close();
 
-    // Draw pointer background
-    paint.color = primaryColor;
+    // Draw pointer background with same opacity as marker
+    paint.color = markerColor;
     paint.style = PaintingStyle.fill;
     canvas.drawPath(pointer, paint);
 

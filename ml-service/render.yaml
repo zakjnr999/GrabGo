@@ -1,0 +1,74 @@
+services:
+  # ML Service
+  - type: web
+    name: grabgo-ml-service
+    runtime: python
+    region: oregon  # Change to your preferred region
+    plan: free  # Change to 'starter' or higher for production
+    branch: main
+    rootDir: ml-service
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 2
+    envVars:
+      - key: ENV
+        value: production
+      - key: DEBUG
+        value: false
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: API_V1_PREFIX
+        value: /api/v1
+      - key: WORKERS
+        value: 2
+      - key: RELOAD
+        value: false
+      - key: LOG_LEVEL
+        value: INFO
+      - key: LOG_FORMAT
+        value: json
+      - key: ENABLE_METRICS
+        value: true
+      - key: RATE_LIMIT_ENABLED
+        value: true
+      - key: RATE_LIMIT_PER_MINUTE
+        value: 60
+      # Secrets (add these manually in Render dashboard)
+      - key: SECRET_KEY
+        sync: false
+      - key: API_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: grabgo-ml-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: grabgo-ml-redis
+          property: connectionString
+      - key: MONGODB_URL
+        sync: false  # Add manually (MongoDB Atlas)
+      - key: BACKEND_URL
+        sync: false
+      - key: BACKEND_API_KEY
+        sync: false
+    healthCheckPath: /health
+    autoDeploy: true
+
+  # PostgreSQL Database
+  - type: pserv
+    name: grabgo-ml-postgres
+    runtime: postgresql
+    plan: free  # Change to 'starter' or higher for production
+    region: oregon  # Same region as web service
+    databaseName: grabgo_ml
+    databaseUser: grabgo_ml_user
+    ipAllowList: []  # Empty = allow all
+
+  # Redis Cache
+  - type: redis
+    name: grabgo-ml-redis
+    region: oregon  # Same region as web service
+    plan: free  # Change to 'starter' or higher for production
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []  # Empty = allow all

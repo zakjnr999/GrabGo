@@ -50,6 +50,59 @@ class FoodProvider with ChangeNotifier {
   List<FoodItem> getAllFoods() => _categoryProvider.state.allFoods;
   List<FoodItem> getRandomFoods({int count = 5}) => _categoryProvider.state.getRandomFoods(count: count);
 
+  /// Get items from the same seller (restaurant), excluding the current item
+  List<FoodItem> getItemsFromSeller(int sellerId, {String? excludeItemId, int? limit}) {
+    final allFoods = getAllFoods();
+    final sellerItems = allFoods.where((item) => item.sellerId == sellerId && item.id != excludeItemId).toList();
+
+    if (limit != null && sellerItems.length > limit) {
+      return sellerItems.take(limit).toList();
+    }
+    return sellerItems;
+  }
+
+  /// Get similar items from the same category, excluding the current item
+  List<FoodItem> getSimilarItems(String categoryId, {String? excludeItemId, int limit = 5}) {
+    for (var category in categories) {
+      if (category.id == categoryId) {
+        final similarItems = category.items.where((item) => item.id != excludeItemId).toList();
+        return similarItems.take(limit).toList();
+      }
+    }
+    return [];
+  }
+
+  /// Get "You May Like" items - items from same seller, sorted by popularity
+  List<FoodItem> getYouMayLikeItems(FoodItem currentItem, {int limit = 5}) {
+    final allFoods = getAllFoods();
+
+    // Get items from same seller, sorted by order count (popularity)
+    final sellerItems = allFoods
+        .where((item) => item.sellerId == currentItem.sellerId && item.id != currentItem.id)
+        .toList();
+    sellerItems.sort((a, b) => b.orderCount.compareTo(a.orderCount));
+
+    return sellerItems.take(limit).toList();
+  }
+
+  /// Find which category contains a food item
+  FoodCategoryModel? getCategoryForItem(FoodItem item) {
+    for (var category in categories) {
+      if (category.items.any((i) => i.id == item.id)) {
+        return category;
+      }
+    }
+    return null;
+  }
+
+  /// Get items from same category as the given item
+  List<FoodItem> getItemsFromSameCategory(FoodItem currentItem, {int limit = 5}) {
+    final category = getCategoryForItem(currentItem);
+    if (category == null) return [];
+
+    return category.items.where((item) => item.id != currentItem.id).take(limit).toList();
+  }
+
   /// Refresh all data from all providers (cache-first on initial load)
   Future<void> refreshAll({bool forceRefresh = false}) async {
     await Future.wait([

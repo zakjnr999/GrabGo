@@ -240,7 +240,7 @@ class _PickupMapState extends State<PickupMap> {
             markerIcon = _markerCache[cacheKey]!;
           } else {
             markerIcon = await CustomMapMarkers.createStandardMarker(
-              primaryColor: colors.accentOrange.withValues(alpha: 0.6),
+              primaryColor: colors.accentOrange,
               iconAsset: 'packages/grab_go_shared/lib/assets/icons/store.svg',
               clusterCount: cluster.vendors.length,
             );

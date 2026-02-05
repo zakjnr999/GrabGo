@@ -25,7 +25,6 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
   bool _isLoading = true;
   late AnimationController _animationController;
 
-  // Credit balance
   final CreditService _creditService = CreditService();
   CreditBalance? _creditBalance;
   bool _isLoadingCredits = true;
@@ -52,7 +51,6 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
     try {
       await Future.delayed(const Duration(milliseconds: 100));
 
-      // Load credit balance in parallel
       _loadCreditBalance();
 
       var user = await UserService().getCurrentUser();
@@ -269,39 +267,37 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                       ),
                                     ),
 
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        color: colors.textPrimary.withValues(alpha: 0.1),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Material(
-                                        color: Colors.transparent,
-                                        child: InkWell(
-                                          onTap: () {
-                                            context.push("/editProfile");
-                                          },
-                                          customBorder: const CircleBorder(),
-                                          child: Padding(
-                                            padding: EdgeInsets.all(10.r),
+                                    // Container(
+                                    //   decoration: BoxDecoration(
+                                    //     color: colors.textPrimary.withValues(alpha: 0.1),
+                                    //     shape: BoxShape.circle,
+                                    //   ),
+                                    //   child: Material(
+                                    //     color: Colors.transparent,
+                                    //     child: InkWell(
+                                    //       onTap: () {
+                                    //         context.push("/editProfile");
+                                    //       },
+                                    //       customBorder: const CircleBorder(),
+                                    //       child: Padding(
+                                    //         padding: EdgeInsets.all(10.r),
 
-                                            child: SvgPicture.asset(
-                                              Assets.icons.editPencil,
-                                              package: 'grab_go_shared',
-                                              height: 20.h,
-                                              width: 20.w,
-                                              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
+                                    //         child: SvgPicture.asset(
+                                    //           Assets.icons.editPencil,
+                                    //           package: 'grab_go_shared',
+                                    //           height: 20.h,
+                                    //           width: 20.w,
+                                    //           colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                                    //         ),
+                                    //       ),
+                                    //     ),
+                                    //   ),
+                                    // ),
                                   ],
                                 ),
                               ),
                             ),
                             SizedBox(height: 24.h),
-
-                            // Credit Balance Card
                             _buildCreditBalanceCard(colors),
                             SizedBox(height: 24.h),
 
@@ -508,15 +504,8 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
         margin: EdgeInsets.symmetric(horizontal: 20.w),
         padding: EdgeInsets.all(16.w),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.85)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16.r),
-          boxShadow: [
-            BoxShadow(color: colors.accentOrange.withValues(alpha: 0.25), blurRadius: 10, offset: const Offset(0, 4)),
-          ],
+          color: colors.accentOrange,
+          borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
         ),
         child: Row(
           children: [
@@ -524,9 +513,15 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
               padding: EdgeInsets.all(12.r),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12.r),
+                borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
               ),
-              child: Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 28.sp),
+              child: SvgPicture.asset(
+                Assets.icons.wallet,
+                package: 'grab_go_shared',
+                height: 28.h,
+                width: 28.w,
+                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+              ),
             ),
             SizedBox(width: 16.w),
             Expanded(
@@ -542,19 +537,11 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                     ),
                   ),
                   SizedBox(height: 4.h),
-                  _isLoadingCredits
-                      ? SizedBox(
-                          height: 24.h,
-                          width: 80.w,
-                          child: LinearProgressIndicator(
-                            backgroundColor: Colors.white.withValues(alpha: 0.3),
-                            valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : Text(
-                          _creditBalance?.formatted ?? "₵0.00",
-                          style: TextStyle(color: Colors.white, fontSize: 24.sp, fontWeight: FontWeight.w700),
-                        ),
+
+                  Text(
+                    _isLoading ? "..." : _creditBalance?.formatted ?? "₵0.00",
+                    style: TextStyle(color: Colors.white, fontSize: 24.sp, fontWeight: FontWeight.w700),
+                  ),
                 ],
               ),
             ),
@@ -625,19 +612,6 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                           style: TextStyle(fontSize: 14.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
                         ),
                       ),
-                      // Favorites count badge
-                      if (favoritesProvider.favoritesCount > 0)
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-                          decoration: BoxDecoration(
-                            color: colors.accentOrange,
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          child: Text(
-                            "${favoritesProvider.favoritesCount}",
-                            style: TextStyle(fontSize: 12.sp, color: Colors.white, fontWeight: FontWeight.w700),
-                          ),
-                        ),
                       SizedBox(width: 8.w),
                       SvgPicture.asset(
                         Assets.icons.navArrowRight,

@@ -46,7 +46,7 @@ class AppServices {
     colorHex: '#9C27B0', // Purple
   );
 
-  /// List of all available services
+  /// List of all available services (main services only)
   static const List<ServiceModel> all = [food, groceries, pharmacy, convenience];
 
   /// Get service by ID

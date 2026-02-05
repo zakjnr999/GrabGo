@@ -145,10 +145,6 @@ class _ServiceSelectorState extends State<ServiceSelector> {
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                  // border: Border.all(
-                  //   color: isSelected ? colors.accentOrange : colors.accentOrange.withValues(alpha: 0.1),
-                  //   width: isSelected ? 1.w : 0.w,
-                  // ),
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
@@ -161,7 +157,6 @@ class _ServiceSelectorState extends State<ServiceSelector> {
                 ),
                 child: Stack(
                   children: [
-                    // Decorative background emoji
                     Positioned(
                       right: -8,
                       bottom: -8,
@@ -170,7 +165,6 @@ class _ServiceSelectorState extends State<ServiceSelector> {
                         child: Text(service.emoji, style: TextStyle(fontSize: 50.sp)),
                       ),
                     ),
-                    // Active checkmark indicator
                     if (isSelected)
                       Positioned(
                         top: 6.r,

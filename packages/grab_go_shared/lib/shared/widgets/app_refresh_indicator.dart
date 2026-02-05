@@ -31,7 +31,7 @@ class AppRefreshIndicator extends StatelessWidget {
             child,
             if (controller.state != IndicatorState.idle)
               Positioned(
-                top: size.height * 0.02 + (controller.value * 50),
+                top: size.height * 0.12 + (controller.value * 50),
                 left: 0,
                 right: 0,
                 child: _buildIndicator(controller, bgColor),

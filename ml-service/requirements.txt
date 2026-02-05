@@ -1,0 +1,73 @@
+# Core dependencies (Python 3.14 compatible)
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+pydantic>=2.10.0
+pydantic-settings>=2.6.0
+
+# Database
+sqlalchemy>=2.0.36
+asyncpg>=0.30.0
+motor>=3.6.0
+redis>=5.2.0
+alembic>=1.14.0
+
+# ML/Data Science (Python 3.14 compatible)
+scikit-learn>=1.6.0
+numpy>=2.2.0
+pandas>=2.2.3
+scipy>=1.15.0
+xgboost>=2.1.3
+lightgbm>=4.5.0
+
+# Deep Learning (optional - uncomment if needed)
+# torch>=2.5.0
+# tensorflow>=2.18.0
+
+# NLP (optional - can install later if needed)
+# transformers>=4.47.0
+# sentence-transformers>=3.3.0
+# nltk>=3.9.1
+
+# Feature Engineering
+category-encoders>=2.6.4
+imbalanced-learn>=0.12.4
+
+# Monitoring & Logging
+prometheus-client>=0.21.0
+structlog>=24.4.0
+python-json-logger>=3.2.1
+
+# Security
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+python-multipart>=0.0.20
+
+# HTTP Client
+httpx>=0.28.1
+aiohttp>=3.11.11
+
+# Utilities
+python-dotenv>=1.0.1
+tenacity>=9.0.0
+joblib>=1.4.2
+pytz>=2024.2
+
+# API Documentation
+fastapi-pagination>=0.12.30
+
+# Validation
+email-validator>=2.2.0
+
+# Testing
+pytest>=8.3.4
+pytest-asyncio>=0.25.2
+pytest-cov>=6.0.0
+
+# Code Quality
+black>=24.10.0
+flake8>=7.1.1
+mypy>=1.14.0
+isort>=5.13.2
+
+# Performance
+orjson>=3.10.12

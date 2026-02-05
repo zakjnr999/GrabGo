@@ -5,7 +5,6 @@ import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/status/view/story_viewer.dart';
 import 'package:grab_go_customer/shared/services/notification_service.dart';
-import 'package:grab_go_shared/shared/widgets/app_refresh_indicator.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:intl/intl.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -63,7 +62,6 @@ class NotificationModel {
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
-    // Validate required fields
     final id = json['_id']?.toString() ?? json['id']?.toString() ?? '';
     if (id.isEmpty) {
       throw const FormatException('Notification ID cannot be empty');
@@ -651,7 +649,7 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
                         Container(
                           width: 8.w,
                           height: 8.h,
-                          decoration: BoxDecoration(color: colors.accentViolet, shape: BoxShape.circle),
+                          decoration: const BoxDecoration(color: Colors.transparent, shape: BoxShape.circle),
                         ),
                     ],
                   ),

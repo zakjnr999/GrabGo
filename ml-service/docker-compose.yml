@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  ml-service:
+    build: .
+    container_name: grabgo-ml-service
+    ports:
+      - "8000:8000"
+      - "9090:9090"  # Metrics
+    environment:
+      - ENV=production
+      - DEBUG=False
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=grabgo
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - MONGODB_URL=mongodb://mongodb:27017
+      - MONGODB_DB=grabgo
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SECRET_KEY=${SECRET_KEY}
+      - API_KEY=${API_KEY}
+    depends_on:
+      - postgres
+      - mongodb
+      - redis
+    volumes:
+      - ./ml_models:/app/ml_models
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - grabgo-network
+
+  postgres:
+    image: postgres:14-alpine
+    container_name: grabgo-postgres
+    environment:
+      - POSTGRES_DB=grabgo
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - grabgo-network
+
+  mongodb:
+    image: mongo:6
+    container_name: grabgo-mongodb
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      - grabgo-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: grabgo-redis
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - grabgo-network
+
+volumes:
+  postgres_data:
+  mongodb_data:
+  redis_data:
+
+networks:
+  grabgo-network:
+    driver: bridge
