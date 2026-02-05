@@ -38,14 +38,14 @@ class RecommendationService:
             async with AsyncSessionLocal() as session:
                 # Get user's order history
                 user_orders_query = text("""
-                    SELECT DISTINCT oi.food_id, f.name, f.price, f.rating, 
+                    SELECT DISTINCT oi."foodId", f.name, f.price, f.rating, 
                            COUNT(*) as order_count
                     FROM order_items oi
-                    JOIN orders o ON oi.order_id = o.id
-                    JOIN foods f ON oi.food_id = f.id
-                    WHERE o.customer_id = :user_id
+                    JOIN orders o ON oi."orderId" = o.id
+                    JOIN foods f ON oi."foodId" = f.id
+                    WHERE o."customerId" = :user_id
                       AND o.status = 'delivered'
-                    GROUP BY oi.food_id, f.name, f.price, f.rating
+                    GROUP BY oi."foodId", f.name, f.price, f.rating
                     ORDER BY order_count DESC
                     LIMIT 20
                 """)
@@ -58,17 +58,17 @@ class RecommendationService:
                 
                 # Get popular foods (collaborative filtering baseline)
                 popular_query = text("""
-                    SELECT f.id, f.name, f.price, f.rating, f.category_id,
-                           f.restaurant_id, r.restaurant_name,
-                           COUNT(DISTINCT oi.order_id) as order_count
+                    SELECT f.id, f.name, f.price, f.rating, f."categoryId",
+                           f."restaurantId", r."restaurantName",
+                           COUNT(DISTINCT oi."orderId") as order_count
                     FROM foods f
-                    JOIN restaurants r ON f.restaurant_id = r.id
-                    LEFT JOIN order_items oi ON f.id = oi.food_id
-                    WHERE f.is_available = true
-                      AND r.is_open = true
+                    JOIN restaurants r ON f."restaurantId" = r.id
+                    LEFT JOIN order_items oi ON f.id = oi."foodId"
+                    WHERE f."isAvailable" = true
+                      AND r."isOpen" = true
                       AND r.status = 'approved'
-                    GROUP BY f.id, f.name, f.price, f.rating, f.category_id,
-                             f.restaurant_id, r.restaurant_name
+                    GROUP BY f.id, f.name, f.price, f.rating, f."categoryId",
+                             f."restaurantId", r."restaurantName"
                     ORDER BY order_count DESC, f.rating DESC
                     LIMIT :limit
                 """)
@@ -152,15 +152,15 @@ class RecommendationService:
                 
                 # Get popular restaurants
                 query = text(f"""
-                    SELECT r.id, r.{name_col}, r.rating, r.rating_count,
-                           r.delivery_fee, r.is_open, r.featured,
+                    SELECT r.id, r.{name_col}, r.rating, r."ratingCount",
+                           r."deliveryFee", r."isOpen", r.featured,
                            COUNT(DISTINCT o.id) as order_count
                     FROM {table} r
-                    LEFT JOIN orders o ON r.id = o.restaurant_id
+                    LEFT JOIN orders o ON r.id = o."restaurantId"
                     WHERE r.status = 'approved'
-                      AND r.is_open = true
-                    GROUP BY r.id, r.{name_col}, r.rating, r.rating_count,
-                             r.delivery_fee, r.is_open, r.featured
+                      AND r."isOpen" = true
+                    GROUP BY r.id, r.{name_col}, r.rating, r."ratingCount",
+                             r."deliveryFee", r."isOpen", r.featured
                     ORDER BY r.featured DESC, order_count DESC, r.rating DESC
                     LIMIT :limit
                 """)
@@ -215,7 +215,7 @@ class RecommendationService:
                 # Get item details
                 if item_type == "food":
                     query = text("""
-                        SELECT f.id, f.name, f.price, f.rating, f.category_id
+                        SELECT f.id, f.name, f.price, f.rating, f."categoryId"
                         FROM foods f
                         WHERE f.id = :item_id
                     """)
@@ -231,11 +231,11 @@ class RecommendationService:
                 
                 # Find similar items in same category with similar price
                 similar_query = text("""
-                    SELECT f.id, f.name, f.price, f.rating, f.category_id
+                    SELECT f.id, f.name, f.price, f.rating, f."categoryId"
                     FROM foods f
-                    WHERE f.category_id = :category_id
+                    WHERE f."categoryId" = :category_id
                       AND f.id != :item_id
-                      AND f.is_available = true
+                      AND f."isAvailable" = true
                       AND f.price BETWEEN :min_price AND :max_price
                     ORDER BY f.rating DESC, ABS(f.price - :target_price)
                     LIMIT :limit

@@ -206,15 +206,15 @@ class PredictionService:
                 # Get user statistics
                 query = text("""
                     SELECT 
-                        u.created_at,
-                        u.last_order_date,
+                        u."createdAt",
+                        u."lastOrderDate",
                         COUNT(DISTINCT o.id) as total_orders,
-                        AVG(o.total_amount) as avg_order_value,
-                        MAX(o.created_at) as last_order_date
+                        AVG(o."totalAmount") as avg_order_value,
+                        MAX(o."createdAt") as last_order_date
                     FROM users u
-                    LEFT JOIN orders o ON u.id = o.customer_id
+                    LEFT JOIN orders o ON u.id = o."customerId"
                     WHERE u.id = :user_id
-                    GROUP BY u.id, u.created_at, u.last_order_date
+                    GROUP BY u.id, u."createdAt", u."lastOrderDate"
                 """)
                 
                 result = await session.execute(query, {"user_id": user_id})
