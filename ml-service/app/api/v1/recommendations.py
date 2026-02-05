@@ -90,7 +90,8 @@ async def get_food_recommendations(
         cached_result = await redis.get_cached(cache_key)
         if cached_result and settings.ENABLE_RECOMMENDATIONS:
             logger.info("Returning cached food recommendations", user_id=request.user_id)
-            return RecommendationResponse(**cached_result, cached=True)
+            cached_result['cached'] = True
+            return RecommendationResponse(**cached_result)
         
         # Generate recommendations
         service = RecommendationService()
@@ -153,7 +154,8 @@ async def get_restaurant_recommendations(
         cached_result = await redis.get_cached(cache_key)
         if cached_result and settings.ENABLE_RECOMMENDATIONS:
             logger.info("Returning cached restaurant recommendations", user_id=request.user_id)
-            return RecommendationResponse(**cached_result, cached=True)
+            cached_result['cached'] = True
+            return RecommendationResponse(**cached_result)
         
         # Generate recommendations
         service = RecommendationService()
@@ -216,7 +218,8 @@ async def get_similar_items(
         cached_result = await redis.get_cached(cache_key)
         if cached_result:
             logger.info("Returning cached similar items", item_id=request.item_id)
-            return RecommendationResponse(**cached_result, cached=True)
+            cached_result['cached'] = True
+            return RecommendationResponse(**cached_result)
         
         # Generate recommendations
         service = RecommendationService()
