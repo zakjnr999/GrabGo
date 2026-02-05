@@ -5,6 +5,7 @@ const OrderTracking = require('../models/OrderTracking');
 const socketService = require('./socket_service');
 const prisma = require('../config/prisma');
 const cache = require('../utils/cache');
+const mlClient = require('../utils/ml_client');
 
 const googleMapsClient = new Client({});
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
@@ -121,12 +122,12 @@ class TrackingService {
             let eta = { duration: null, route: trackingMeta.route };
             const lastEtaKey = `${cacheKey}:lastEta`;
             const lastEtaTime = await cache.get(lastEtaKey);
-            
+
             // Only recalculate ETA every 30 seconds
             if (!lastEtaTime || (now - lastEtaTime) > 30000) {
                 eta = await this.calculateETA(latitude, longitude, trackingMeta.destination.coordinates);
                 await cache.set(lastEtaKey, now, 60);
-                
+
                 // Update route in cached metadata if changed
                 if (eta.route) {
                     trackingMeta.route = eta.route;
@@ -183,7 +184,7 @@ class TrackingService {
 
         const lastPersist = this.lastPersistTime.get(orderId) || 0;
         const now = Date.now();
-        const shouldPersist = 
+        const shouldPersist =
             queue.length >= LOCATION_HISTORY_BATCH_SIZE ||
             (now - lastPersist) >= MONGO_PERSIST_INTERVAL;
 
@@ -265,8 +266,8 @@ class TrackingService {
      * Flush pending locations to MongoDB (call on order completion or server shutdown)
      */
     async flushPendingLocations(orderId = null) {
-        const ordersToFlush = orderId 
-            ? [orderId] 
+        const ordersToFlush = orderId
+            ? [orderId]
             : Array.from(this.pendingLocations.keys());
 
         for (const oid of ordersToFlush) {
@@ -275,10 +276,10 @@ class TrackingService {
                 // Get latest tracking data for the flush
                 const cacheKey = cache.makeKey(cache.CACHE_KEYS.ORDER_TRACKING, oid);
                 const meta = await cache.get(cacheKey);
-                
+
                 await this._persistToMongoDB(
-                    oid, 
-                    queue, 
+                    oid,
+                    queue,
                     meta?.distanceRemaining || 0,
                     meta?.status || 'in_transit',
                     { arrivalTime: null, route: meta?.route }
@@ -401,40 +402,36 @@ class TrackingService {
 
     /**
      * Calculate initial delivery window when rider accepts order
-     * Uses 3-segment approach: Rider→Vendor + Prep Time + Vendor→Customer
+     * Uses hybrid approach: Google Maps for traffic + ML for human factors (Prep, Rider Performance)
      * 
      * @param {Object} riderLocation - {latitude, longitude}
      * @param {Object} vendorLocation - {latitude, longitude}
      * @param {Object} customerLocation - {latitude, longitude}
      * @param {string} orderStatus - Current order status (affects prep time)
      * @param {number} vendorPrepTime - Vendor's average preparation time in minutes (default 15)
+     * @param {string} riderId - (Optional) UUID of the rider
+     * @param {string} restaurantId - (Optional) UUID of the restaurant/store
+     * @param {number} itemsCount - (Optional) Number of items in order
      * @returns {Object} Delivery window with min/max times
      */
-    async calculateInitialDeliveryWindow(riderLocation, vendorLocation, customerLocation, orderStatus = 'confirmed', vendorPrepTime = 15) {
+    async calculateInitialDeliveryWindow(
+        riderLocation,
+        vendorLocation,
+        customerLocation,
+        orderStatus = 'confirmed',
+        vendorPrepTime = 15,
+        riderId = null,
+        restaurantId = null,
+        itemsCount = 1
+    ) {
         try {
+            // 1. Get Traffic-Aware Driving Times from Google Maps (King of Maps API)
             // Phase 1: Rider → Vendor
             const phase1 = await this.calculateETA(
                 riderLocation.latitude,
                 riderLocation.longitude,
                 [vendorLocation.longitude, vendorLocation.latitude]
             );
-
-            // Phase 2: Prep/Wait Time (based on order status)
-            let prepTimeMinutes;
-            switch (orderStatus) {
-                case 'ready':
-                    prepTimeMinutes = 2; // Minimal buffer, already ready
-                    break;
-                case 'preparing':
-                    prepTimeMinutes = Math.ceil(vendorPrepTime / 2); // Halfway done
-                    break;
-                case 'confirmed':
-                case 'pending':
-                default:
-                    prepTimeMinutes = vendorPrepTime; // Full prep time
-                    break;
-            }
-            const prepTimeSeconds = prepTimeMinutes * 60;
 
             // Phase 3: Vendor → Customer
             const phase3 = await this.calculateETA(
@@ -443,68 +440,107 @@ class TrackingService {
                 [customerLocation.longitude, customerLocation.latitude]
             );
 
-            // Total estimated time in seconds
-            const totalSeconds = phase1.duration + prepTimeSeconds + phase3.duration;
-            
-            // Add buffer: 5 minutes for city, gives realistic range
+            // 2. Get "Human Intelligence" from ML Service (Prep time & Rider speed patterns)
+            let mlFactors = null;
+            if (mlClient) {
+                mlFactors = await mlClient.predictDeliveryFactors({
+                    riderId,
+                    restaurantId,
+                    itemsCount,
+                    restaurantLocation: { latitude: vendorLocation.latitude, longitude: vendorLocation.longitude },
+                    deliveryLocation: { latitude: customerLocation.latitude, longitude: customerLocation.longitude }
+                });
+            }
+
+            // 3. Combine Google (Maps) + ML (Human Factors)
+
+            // Use ML prep time if available, otherwise use vendor average or fallback
+            let prepTimeMinutes = mlFactors?.factors?.preparation_time_minutes || vendorPrepTime;
+
+            // Adjust prep time based on current status
+            switch (orderStatus) {
+                case 'ready':
+                    prepTimeMinutes = 2; // Minimal buffer, already ready
+                    break;
+                case 'preparing':
+                    prepTimeMinutes = Math.ceil(prepTimeMinutes / 2); // Halfway done
+                    break;
+                case 'confirmed':
+                case 'pending':
+                default:
+                    // Use full ML predicted prep time
+                    break;
+            }
+
+            const riderMultiplier = mlFactors?.factors?.rider_multiplier || 1.0;
+            const trafficMultiplier = mlFactors?.factors?.traffic_multiplier || 1.0; // ML's view on time of day
+
+            // Calculate totals (applying rider multiplier to the travel phases)
+            const travelSeconds = (phase1.duration + phase3.duration) * riderMultiplier;
+            const prepSeconds = prepTimeMinutes * 60;
+
+            const totalSeconds = Math.round(travelSeconds + prepSeconds);
+
+            // Add safety buffer: 5 minutes default
             const bufferSeconds = 5 * 60;
 
             // Calculate delivery window
             const now = Date.now();
             const minDeliveryTime = new Date(now + totalSeconds * 1000);
-            const maxDeliveryTime = new Date(now + (totalSeconds + bufferSeconds * 2) * 1000);
             const expectedDeliveryTime = new Date(now + (totalSeconds + bufferSeconds) * 1000);
+            const maxDeliveryTime = new Date(now + (totalSeconds + bufferSeconds * 2) * 1000);
 
             // Convert to minutes for display
             const totalMinutes = Math.ceil(totalSeconds / 60);
             const minMinutes = totalMinutes;
             const maxMinutes = totalMinutes + 10; // +10 minute window
 
-            console.log(`📊 ETA Calculation:
-                Phase 1 (Rider→Vendor): ${Math.ceil(phase1.duration / 60)} mins (${phase1.distance}m)
-                Phase 2 (Prep Time): ${prepTimeMinutes} mins (status: ${orderStatus})
-                Phase 3 (Vendor→Customer): ${Math.ceil(phase3.duration / 60)} mins (${phase3.distance}m)
-                Total: ${totalMinutes} mins
+            console.log(`🤖 Hybrid ETA (Google + ML):
+                Phase 1 (Rider→Vendor): ${Math.ceil(phase1.duration / 60)} mins (Original)
+                Phase 2 (Prep Time): ${prepTimeMinutes} mins (ML Predicted)
+                Phase 3 (Vendor→Customer): ${Math.ceil(phase3.duration / 60)} mins (Original)
+                Rider Performance: x${riderMultiplier.toFixed(2)}
+                Total ETA: ${totalMinutes} mins
                 Window: ${minMinutes}-${maxMinutes} mins`);
 
             return {
                 // Breakdown
-                riderToVendorMinutes: Math.ceil(phase1.duration / 60),
+                riderToVendorMinutes: Math.ceil((phase1.duration * riderMultiplier) / 60),
                 riderToVendorDistance: phase1.distance,
                 prepTimeMinutes,
-                vendorToCustomerMinutes: Math.ceil(phase3.duration / 60),
+                vendorToCustomerMinutes: Math.ceil((phase3.duration * riderMultiplier) / 60),
                 vendorToCustomerDistance: phase3.distance,
-                
+
                 // Totals
                 totalMinutes,
                 totalDistance: phase1.distance + phase3.distance,
-                
+
                 // Delivery window
                 minMinutes,
                 maxMinutes,
                 minDeliveryTime,
                 maxDeliveryTime,
                 expectedDeliveryTime,
-                
+
                 // Display string
                 deliveryWindowText: `${minMinutes}-${maxMinutes} mins`,
-                
+
                 // Initial ETA in seconds (for analytics)
-                initialETASeconds: totalSeconds
+                initialETASeconds: totalSeconds,
+                usingML: !!mlFactors
             };
         } catch (error) {
-            console.error('❌ Error calculating delivery window:', error);
-            
-            // Fallback: Simple distance-based estimate
+            console.error('❌ Error calculating delivery window (falling back):', error);
+
+            // Standard fallback logic (the original one)
             const totalDistance = geolib.getDistance(
                 { latitude: riderLocation.latitude, longitude: riderLocation.longitude },
                 { latitude: customerLocation.latitude, longitude: customerLocation.longitude }
             );
-            
-            // Rough estimate: 15 km/h average + prep time
-            const travelMinutes = Math.ceil(totalDistance / 250); // ~15 km/h = 250m/min
+
+            const travelMinutes = Math.ceil(totalDistance / 250); // ~15 km/h
             const totalMinutes = travelMinutes + vendorPrepTime;
-            
+
             return {
                 riderToVendorMinutes: Math.ceil(travelMinutes / 2),
                 prepTimeMinutes: vendorPrepTime,
@@ -517,7 +553,8 @@ class TrackingService {
                 maxDeliveryTime: new Date(Date.now() + (totalMinutes + 10) * 60 * 1000),
                 expectedDeliveryTime: new Date(Date.now() + (totalMinutes + 5) * 60 * 1000),
                 deliveryWindowText: `${totalMinutes}-${totalMinutes + 10} mins`,
-                initialETASeconds: totalMinutes * 60
+                initialETASeconds: totalMinutes * 60,
+                usingML: false
             };
         }
     }
@@ -528,7 +565,7 @@ class TrackingService {
     async updateOrderStatus(orderId, status) {
         try {
             const orderIdStr = orderId.toString();
-            
+
             const tracking = await OrderTracking.findOneAndUpdate(
                 { orderId: orderIdStr },
                 {

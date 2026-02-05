@@ -67,7 +67,7 @@ router.get(
         status: 'pending',
         expiresAt: { $gt: new Date() }
       }).select('orderId');
-      
+
       const reservedOrderIds = activeReservations.map(r => r.orderId);
       console.log(`🔒 ${reservedOrderIds.length} orders currently reserved, excluding from available list`);
 
@@ -436,27 +436,30 @@ router.post(
       try {
         const RiderStatus = require('../models/RiderStatus');
         const trackingService = require('../services/tracking_service');
-        
+
         const riderStatus = await RiderStatus.findOne({ riderId });
-        
+
         if (riderStatus?.location?.coordinates) {
           const pickupLat = updatedOrder.restaurant?.latitude || updatedOrder.groceryStore?.latitude || updatedOrder.pharmacyStore?.latitude;
           const pickupLon = updatedOrder.restaurant?.longitude || updatedOrder.groceryStore?.longitude || updatedOrder.pharmacyStore?.longitude;
-          
+
           // Get vendor prep time
-          const vendorPrepTime = updatedOrder.restaurant?.averagePreparationTime || 
-                                  updatedOrder.groceryStore?.averagePreparationTime || 
-                                  updatedOrder.pharmacyStore?.averagePreparationTime || 15;
-          
+          const vendorPrepTime = updatedOrder.restaurant?.averagePreparationTime ||
+            updatedOrder.groceryStore?.averagePreparationTime ||
+            updatedOrder.pharmacyStore?.averagePreparationTime || 15;
+
           if (pickupLat && pickupLon && updatedOrder.deliveryLatitude && updatedOrder.deliveryLongitude) {
             deliveryWindow = await trackingService.calculateInitialDeliveryWindow(
               { latitude: riderStatus.location.coordinates[1], longitude: riderStatus.location.coordinates[0] },
               { latitude: pickupLat, longitude: pickupLon },
               { latitude: updatedOrder.deliveryLatitude, longitude: updatedOrder.deliveryLongitude },
               updatedOrder.status,
-              vendorPrepTime
+              vendorPrepTime,
+              riderId,
+              updatedOrder.restaurantId || updatedOrder.groceryStoreId || updatedOrder.pharmacyStoreId,
+              updatedOrder.items.length
             );
-            
+
             // Update order with delivery window
             await prisma.order.update({
               where: { id: updatedOrder.id },
@@ -468,7 +471,7 @@ router.post(
                 riderAssignedAt: new Date()
               }
             });
-            
+
             console.log(`📊 Delivery window set for order ${updatedOrder.id}: ${deliveryWindow.deliveryWindowText}`);
           }
         }
@@ -601,7 +604,7 @@ router.get(
         accepted: allReservations.filter(r => r.status === 'accepted').length,
         declined: allReservations.filter(r => r.status === 'declined').length,
         expired: allReservations.filter(r => r.status === 'expired').length,
-        acceptanceRate: allReservations.length > 0 
+        acceptanceRate: allReservations.length > 0
           ? (allReservations.filter(r => r.status === 'accepted').length / allReservations.length * 100).toFixed(1)
           : 0
       };
@@ -637,45 +640,45 @@ router.post(
     try {
       const userId = req.user.id;
       const { latitude, longitude, batteryLevel, isCharging } = req.body;
-      
+
       // Get rider profile
       const rider = await prisma.rider.findUnique({
         where: { userId },
         include: { user: true }
       });
-      
+
       if (!rider) {
         return res.status(404).json({
           success: false,
           message: "Rider profile not found"
         });
       }
-      
+
       if (rider.verificationStatus !== 'approved') {
         return res.status(400).json({
           success: false,
           message: "Rider must be verified to go online"
         });
       }
-      
+
       // Use provided location or default to Accra
       // Note: GeoJSON uses [longitude, latitude] order
       const lat = latitude || 5.6037;
       const lon = longitude || -0.187;
-      
+
       // Battery level (0-100), default to 100 if not provided
       const battery = typeof batteryLevel === 'number' ? Math.min(100, Math.max(0, batteryLevel)) : 100;
       const charging = isCharging === true;
-      
+
       // Get vehicle type from rider profile
       const vehicleType = rider.vehicleType || null;
-      
+
       // Set rider online in MongoDB RiderStatus with battery and vehicle info
       const RiderStatus = require('../models/RiderStatus');
       const status = await RiderStatus.goOnline(userId, lon, lat, true, battery, charging, vehicleType);
-      
+
       console.log(`🟢 [Rider Online] ${rider.user.username} (${userId}) is now online at (${lat}, ${lon}) | Battery: ${battery}%${charging ? ' (charging)' : ''} | Vehicle: ${vehicleType || 'unknown'}`);
-      
+
       res.json({
         success: true,
         message: "You are now online and visible for orders",
@@ -689,7 +692,7 @@ router.post(
           statusId: status._id
         }
       });
-      
+
     } catch (error) {
       console.error("Go online error:", error);
       res.status(500).json({
@@ -713,17 +716,17 @@ router.post(
   async (req, res) => {
     try {
       const userId = req.user.id;
-      
+
       const RiderStatus = require('../models/RiderStatus');
       await RiderStatus.goOffline(userId);
-      
+
       console.log(`🔴 [Rider Offline] ${userId} is now offline`);
-      
+
       res.json({
         success: true,
         message: "You are now offline"
       });
-      
+
     } catch (error) {
       console.error("Go offline error:", error);
       res.status(500).json({
@@ -747,10 +750,10 @@ router.get(
   async (req, res) => {
     try {
       const userId = req.user.id;
-      
+
       const RiderStatus = require('../models/RiderStatus');
       const status = await RiderStatus.findOne({ riderId: userId });
-      
+
       // Default to offline for new riders or if no status exists
       if (!status) {
         return res.json({
@@ -762,7 +765,7 @@ router.get(
           }
         });
       }
-      
+
       // Check if rider was auto-offlined
       const wasAutoOfflined = status.autoOfflineReason && status.autoOfflineAt;
       const autoOfflineInfo = wasAutoOfflined ? {
@@ -770,7 +773,7 @@ router.get(
         reason: status.autoOfflineReason,
         offlinedAt: status.autoOfflineAt
       } : null;
-      
+
       // Clear auto-offline reason after reading
       if (wasAutoOfflined) {
         await RiderStatus.findOneAndUpdate(
@@ -778,7 +781,7 @@ router.get(
           { $unset: { autoOfflineReason: 1, autoOfflineAt: 1 } }
         );
       }
-      
+
       res.json({
         success: true,
         data: {
@@ -790,7 +793,7 @@ router.get(
           autoOfflineInfo
         }
       });
-      
+
     } catch (error) {
       console.error("Check online status error:", error);
       res.status(500).json({
@@ -815,16 +818,16 @@ router.post(
     try {
       const userId = req.user.id;
       const { latitude, longitude, batteryLevel, isCharging } = req.body;
-      
+
       if (!latitude || !longitude) {
         return res.status(400).json({
           success: false,
           message: "Latitude and longitude are required"
         });
       }
-      
+
       // Build update object
-      const updateData = { 
+      const updateData = {
         location: {
           type: 'Point',
           coordinates: [parseFloat(longitude), parseFloat(latitude)]
@@ -832,7 +835,7 @@ router.post(
         lastActiveAt: new Date(),
         lastLocationUpdate: new Date()
       };
-      
+
       // Include battery level if provided
       if (typeof batteryLevel === 'number') {
         updateData.batteryLevel = Math.min(100, Math.max(0, batteryLevel));
@@ -840,17 +843,17 @@ router.post(
       if (typeof isCharging === 'boolean') {
         updateData.isCharging = isCharging;
       }
-      
+
       const RiderStatus = require('../models/RiderStatus');
       const status = await RiderStatus.findOneAndUpdate(
         { riderId: userId },
         updateData,
         { new: true, upsert: true }
       );
-      
+
       const batteryInfo = typeof batteryLevel === 'number' ? ` | Battery: ${updateData.batteryLevel}%` : '';
       console.log(`📍 [Rider Location] ${userId} updated to (${latitude}, ${longitude})${batteryInfo}`);
-      
+
       res.json({
         success: true,
         message: "Location updated",
@@ -861,7 +864,7 @@ router.post(
           lastActiveAt: status.lastActiveAt
         }
       });
-      
+
     } catch (error) {
       console.error("Location update error:", error);
       res.status(500).json({
@@ -886,14 +889,14 @@ router.get(
     try {
       const userId = req.user.id;
       const RiderStatus = require('../models/RiderStatus');
-      
+
       // Get the rider's status from MongoDB
       const status = await RiderStatus.findOne({ riderId: userId });
-      
+
       // Also check all online riders
       const allOnlineRiders = await RiderStatus.find({ isOnline: true });
       const allApprovedOnlineRiders = await RiderStatus.find({ isOnline: true, isApproved: true });
-      
+
       // Try a simple geospatial query to verify index works
       let nearbyRiders = [];
       try {
@@ -914,7 +917,7 @@ router.get(
       } catch (geoError) {
         console.error('Geospatial query error:', geoError.message);
       }
-      
+
       res.json({
         success: true,
         yourStatus: status ? {
@@ -938,7 +941,7 @@ router.get(
           nearbyRiders: nearbyRiders.map(r => r.riderId)
         }
       });
-      
+
     } catch (error) {
       console.error("Debug status error:", error);
       res.status(500).json({
@@ -962,47 +965,47 @@ router.post(
     try {
       const { orderId } = req.params;
       const { clearPrevious } = req.query; // ?clearPrevious=true to reset
-      
+
       console.log(`🧪 [Test Dispatch] Manually triggering dispatch for order: ${orderId}`);
-      
+
       // Clear previous reservations if requested (for testing)
       if (clearPrevious === 'true') {
         const OrderReservation = require('../models/OrderReservation');
         await OrderReservation.deleteMany({ orderId });
         console.log(`🧹 [Test Dispatch] Cleared previous reservations for order: ${orderId}`);
       }
-      
+
       // Verify order exists
       const order = await prisma.order.findUnique({
         where: { id: orderId },
         include: { restaurant: true }
       });
-      
+
       if (!order) {
         return res.status(404).json({
           success: false,
           message: "Order not found"
         });
       }
-      
+
       if (order.riderId) {
         return res.status(400).json({
           success: false,
           message: "Order already has a rider assigned"
         });
       }
-      
+
       // Trigger dispatch
       const result = await dispatchService.dispatchOrder(orderId);
-      
+
       res.json({
         success: result.success,
-        message: result.success 
+        message: result.success
           ? `Dispatch triggered! Reservation sent to rider ${result.riderName}`
           : `Dispatch failed: ${result.error}`,
         data: result
       });
-      
+
     } catch (error) {
       console.error("Test dispatch error:", error);
       res.status(500).json({
@@ -1222,27 +1225,30 @@ router.post(
       try {
         const RiderStatus = require('../models/RiderStatus');
         const trackingService = require('../services/tracking_service');
-        
+
         const riderStatus = await RiderStatus.findOne({ riderId: req.user.id });
-        
+
         if (riderStatus?.location?.coordinates) {
           const pickupLat = updatedOrder.restaurant?.latitude || updatedOrder.groceryStore?.latitude || updatedOrder.pharmacyStore?.latitude;
           const pickupLon = updatedOrder.restaurant?.longitude || updatedOrder.groceryStore?.longitude || updatedOrder.pharmacyStore?.longitude;
-          
+
           // Get vendor prep time
-          const vendorPrepTime = updatedOrder.restaurant?.averagePreparationTime || 
-                                  updatedOrder.groceryStore?.averagePreparationTime || 
-                                  updatedOrder.pharmacyStore?.averagePreparationTime || 15;
-          
+          const vendorPrepTime = updatedOrder.restaurant?.averagePreparationTime ||
+            updatedOrder.groceryStore?.averagePreparationTime ||
+            updatedOrder.pharmacyStore?.averagePreparationTime || 15;
+
           if (pickupLat && pickupLon && updatedOrder.deliveryLatitude && updatedOrder.deliveryLongitude) {
             deliveryWindow = await trackingService.calculateInitialDeliveryWindow(
               { latitude: riderStatus.location.coordinates[1], longitude: riderStatus.location.coordinates[0] },
               { latitude: pickupLat, longitude: pickupLon },
               { latitude: updatedOrder.deliveryLatitude, longitude: updatedOrder.deliveryLongitude },
               updatedOrder.status,
-              vendorPrepTime
+              vendorPrepTime,
+              riderId,
+              updatedOrder.restaurantId || updatedOrder.groceryStoreId || updatedOrder.pharmacyStoreId,
+              updatedOrder.items.length
             );
-            
+
             // Update order with delivery window
             await prisma.order.update({
               where: { id: updatedOrder.id },
@@ -1254,7 +1260,7 @@ router.post(
                 riderAssignedAt: new Date()
               }
             });
-            
+
             console.log(`📊 Delivery window set for order ${updatedOrder.id}: ${deliveryWindow.deliveryWindowText}`);
           }
         }
@@ -2364,8 +2370,8 @@ router.post("/orders/:orderId/delay-reason", protect, authorize("rider"), async 
       const DeliveryAnalytics = require('../models/DeliveryAnalytics');
       await DeliveryAnalytics.findOneAndUpdate(
         { orderId: orderId },
-        { 
-          $set: { 
+        {
+          $set: {
             delayReason: reason,
             delayReasonNote: reason === 'other' ? note.trim() : null,
             isRiderFault: !['traffic', 'vendor_delay', 'customer_unreachable', 'weather'].includes(reason)

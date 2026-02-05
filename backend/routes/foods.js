@@ -9,6 +9,7 @@ const {
 } = require("../middleware/upload");
 const { cacheMiddleware, invalidateCache } = require("../middleware/cache");
 const cache = require("../utils/cache");
+const mlClient = require("../utils/ml_client");
 
 const router = express.Router();
 
@@ -102,8 +103,72 @@ router.get("/deals", cacheMiddleware(cache.CACHE_KEYS.FOOD_DEALS, 120), async (r
 });
 
 /**
+ * @route   GET /api/foods/ml-recommended
+ * @desc    Get AI-powered personalized food recommendations from ML Service
+ * @access  Private (Optional)
+ */
+router.get("/ml-recommended", async (req, res) => {
+  try {
+    const userId = req.user?.id || req.headers['x-user-id'];
+    let { limit = 10 } = req.query;
+    limit = parseInt(limit);
+
+    // 1. Get recommendations IDs from ML Service
+    const mlRecs = await mlClient.getFoodRecommendations(userId, limit);
+
+    if (mlRecs && mlRecs.length > 0) {
+      const foodIds = mlRecs.map(rec => rec.food_id || rec.id);
+
+      // 2. Hydrate IDs with full data from Prisma
+      const foods = await prisma.food.findMany({
+        where: {
+          id: { in: foodIds },
+          isAvailable: true
+        },
+        include: {
+          category: { select: { id: true, name: true } },
+          restaurant: { select: { id: true, restaurantName: true, logo: true, rating: true, address: true, city: true } }
+        }
+      });
+
+      // Maintain ML's ranking order
+      const sortedFoods = foodIds
+        .map(id => foods.find(f => f.id === id))
+        .filter(f => !!f);
+
+      return res.json({
+        success: true,
+        message: "AI Recommendations retrieved successfully",
+        data: sortedFoods,
+        using_ml: true
+      });
+    }
+
+    // 3. Fallback to standard recommendations if ML fails or has no results
+    console.log("⚠️ ML Recommendations failed or empty, falling back to standard logic");
+    const fallbackPath = '/api/foods/recommended'; // Theoretical fallback
+    // Actually just return an empty array or the standard ones
+    return res.json({
+      success: true,
+      message: "Recommendations retrieved (Standard Fallback)",
+      data: [], // Front-end can decide to reload from /recommended
+      using_ml: false,
+      error: "ML service yielded no results"
+    });
+
+  } catch (error) {
+    console.error("ML recommendation route error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
+  }
+});
+
+/**
  * @route   GET /api/foods/recommended
- * @desc    Get personalized food recommendations
+ * @desc    Get personalized food recommendations (Heuristic-based)
  * @access  Public
  */
 router.get("/recommended", cacheMiddleware(cache.CACHE_KEYS.FOOD_RECOMMENDED, 180), async (req, res) => {
