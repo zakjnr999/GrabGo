@@ -398,15 +398,16 @@ router.get("/recent-items", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM 
         if (!itemId) return;
 
         if (!itemsMap.has(itemId)) {
-          const daysSince = order.deliveredDate || order.orderDate
-            ? Math.floor((Date.now() - new Date(order.deliveredDate || order.orderDate).getTime()) / (1000 * 60 * 60 * 24))
+          const orderTimestamp = order.deliveredDate || order.orderDate || order.createdAt;
+          const daysSince = orderTimestamp
+            ? Math.floor((Date.now() - new Date(orderTimestamp).getTime()) / (1000 * 60 * 60 * 24))
             : 0;
 
           itemsMap.set(itemId, {
             id: itemId,
             type: type,
             item: itemData,
-            lastOrderedAt: order.deliveredDate || order.orderDate,
+            lastOrderedAt: orderTimestamp,
             orderCount: 1,
             daysAgo: daysSince
           });

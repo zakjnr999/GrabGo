@@ -360,7 +360,7 @@ router.get("/order-history", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM
       where: {
         customerId: userId,
         orderType: 'food',
-        status: 'delivered'
+        status: { in: ['delivered', 'on_the_way', 'picked_up', 'confirmed'] }
       },
       include: {
         items: {
@@ -399,9 +399,10 @@ router.get("/order-history", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM
           const itemId = item.food.id;
 
           if (!itemsMap.has(itemId)) {
+            const orderTimestamp = order.deliveredDate || order.orderDate || order.createdAt;
             itemsMap.set(itemId, {
               item: item.food,
-              lastOrdered: order.deliveredDate || order.orderDate,
+              lastOrdered: orderTimestamp,
               timesOrdered: 1,
               totalQuantity: item.quantity
             });
@@ -410,9 +411,9 @@ router.get("/order-history", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM
             existing.timesOrdered += 1;
             existing.totalQuantity += item.quantity;
             // Update last ordered if this order is more recent
-            const orderDate = order.deliveredDate || order.orderDate;
-            if (orderDate > existing.lastOrdered) {
-              existing.lastOrdered = orderDate;
+            const orderTimestamp = order.deliveredDate || order.orderDate || order.createdAt;
+            if (orderTimestamp > existing.lastOrdered) {
+              existing.lastOrdered = orderTimestamp;
             }
           }
         }
