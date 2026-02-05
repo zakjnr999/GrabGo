@@ -1,0 +1,77 @@
+# ================================
+# RENDER ENVIRONMENT VARIABLES
+# Copy and paste these into Render Dashboard
+# ================================
+
+# ================================
+# SECURITY (REQUIRED)
+# ================================
+SECRET_KEY=341fcb1ef8b3667ada9e1199755de7ba2d6f45881b5cd864c3c63f6ae216f517
+API_KEY=b102a6829eef4aea7b8c8f46ef6f3d9b54524ee9649d27a87e0ea35df8c91951
+
+# ================================
+# DATABASE - SUPABASE POSTGRESQL (REQUIRED)
+# Note: SSL is handled in code, don't add sslmode parameter
+# ================================
+DATABASE_URL=postgresql+asyncpg://postgres.bbkstdqmjitpkqviojnm:Daddy%400536997662@aws-0-us-west-2.pooler.supabase.com:5432/postgres
+POSTGRES_HOST=aws-0-us-west-2.pooler.supabase.com
+POSTGRES_PORT=5432
+POSTGRES_DB=postgres
+POSTGRES_USER=postgres.bbkstdqmjitpkqviojnm
+POSTGRES_PASSWORD=Daddy@0536997662
+
+# ================================
+# DATABASE - MONGODB (REQUIRED)
+# ================================
+MONGODB_URL=mongodb+srv://zakjnr5_db_user:Daddy%4020033@cluster0.xyaehbw.mongodb.net/grabgo?appName=Cluster0
+MONGODB_DB=grabgo
+
+# ================================
+# DATABASE - REDIS (REQUIRED)
+# ================================
+REDIS_URL=redis://default:w0MV16BlOQFhfU6k2Ih8hLgdnS0K9mh4@redis-18898.c341.af-south-1-1.ec2.cloud.redislabs.com:18898
+REDIS_HOST=redis-18898.c341.af-south-1-1.ec2.cloud.redislabs.com
+REDIS_PORT=18898
+REDIS_PASSWORD=w0MV16BlOQFhfU6k2Ih8hLgdnS0K9mh4
+
+# ================================
+# CONFIGURATION (RECOMMENDED)
+# ================================
+ENV=production
+DEBUG=False
+WORKERS=2
+LOG_LEVEL=INFO
+LOG_FORMAT=json
+ENABLE_METRICS=True
+RATE_LIMIT_ENABLED=True
+RATE_LIMIT_PER_MINUTE=60
+
+# ================================
+# EXTERNAL SERVICES (OPTIONAL)
+# ================================
+GOOGLE_MAPS_API_KEY=AIzaSyBvSX6emxtbMNjweHsnetgASW7vCmBysGQ
+BACKEND_URL=<your-render-backend-url>
+BACKEND_API_KEY=GrabGo-API-Key-2024-Secure-Key-12345
+
+# ================================
+# CORS (OPTIONAL - Update with your domains)
+# ================================
+CORS_ORIGINS=https://your-frontend.com,https://admin.grabgo.com
+
+# ================================
+# FEATURE FLAGS (OPTIONAL)
+# ================================
+ENABLE_RECOMMENDATIONS=True
+ENABLE_PREDICTIONS=True
+ENABLE_FRAUD_DETECTION=True
+ENABLE_SENTIMENT_ANALYSIS=True
+ENABLE_CHURN_PREDICTION=True
+
+# ================================
+# ML SETTINGS (OPTIONAL)
+# ================================
+MODEL_DIR=./ml_models
+RECOMMENDATION_CACHE_TTL=300
+PREDICTION_CACHE_TTL=60
+CHURN_THRESHOLD=0.6
+FRAUD_THRESHOLD=0.5

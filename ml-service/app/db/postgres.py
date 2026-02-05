@@ -2,6 +2,7 @@
 PostgreSQL database connection using SQLAlchemy async.
 """
 from typing import AsyncGenerator
+import ssl
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -12,13 +13,27 @@ from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-# Create async engine
+# Clean DATABASE_URL (remove sslmode parameter if present)
+database_url = settings.DATABASE_URL
+if "?" in database_url:
+    # Remove query parameters like sslmode
+    base_url = database_url.split("?")[0]
+else:
+    base_url = database_url
+
+# Create async engine with SSL support for Supabase
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    base_url,
     echo=settings.DEBUG,
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20,
+    connect_args={
+        "ssl": "require",  # For Supabase SSL connections
+        "server_settings": {
+            "application_name": "grabgo_ml_service"
+        }
+    }
 )
 
 # Create async session factory
