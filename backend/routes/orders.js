@@ -357,6 +357,24 @@ router.get("/recent-items", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM 
   try {
     console.log(`\n🔍 [DEBUG] Fetching recent items for user: ${req.user.id}`);
 
+    // First, check what statuses this user's orders actually have
+    const allUserOrders = await prisma.order.findMany({
+      where: { customerId: req.user.id },
+      select: { status: true, orderType: true, id: true },
+      take: 10
+    });
+
+    if (allUserOrders.length > 0) {
+      const statusBreakdown = {};
+      allUserOrders.forEach(o => {
+        const key = `${o.orderType}:${o.status}`;
+        statusBreakdown[key] = (statusBreakdown[key] || 0) + 1;
+      });
+      console.log(`📊 [DEBUG] User's order status breakdown:`, statusBreakdown);
+    } else {
+      console.log(`⚠️ [DEBUG] User has NO orders in database at all`);
+    }
+
     // Get user's recent orders (delivered or on_the_way to show what they like)
     const orders = await prisma.order.findMany({
       where: {

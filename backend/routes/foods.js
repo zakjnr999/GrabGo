@@ -116,118 +116,127 @@ router.get("/recommended", (req, res, next) => {
 }, cacheMiddleware(cache.CACHE_KEYS.FOOD_RECOMMENDED, 180, true), async (req, res) => {
   try {
     const userId = req.user?.id || req.headers['x-user-id'];
-    let { limit = 10 } = req.query;
+    let { limit = 10, page = 1 } = req.query;
+
     limit = parseInt(limit);
     if (isNaN(limit) || limit < 1) limit = 10;
     if (limit > 50) limit = 50;
+
+    page = parseInt(page);
+    if (isNaN(page) || page < 1) page = 1;
 
     const includeRelations = {
       category: { select: { id: true, name: true } },
       restaurant: { select: { id: true, restaurantName: true, logo: true, rating: true, address: true, city: true } }
     };
 
-    // 1. Try ML Service First (Personalized Intelligence)
-    try {
-      const mlRecs = await mlClient.getFoodRecommendations(userId, limit);
+    // 1. Try ML-based recommendations first
+    if (userId) {
+      try {
+        // Request more items from ML to support pagination (up to 50)
+        const mlLimit = 50;
+        const mlRecommendations = await mlClient.getFoodRecommendations(userId, mlLimit);
 
-      if (mlRecs && mlRecs.length > 0) {
-        const foodIds = mlRecs.map(rec => rec.food_id || rec.id);
-        const foods = await prisma.food.findMany({
-          where: { id: { in: foodIds }, isAvailable: true },
-          include: includeRelations
-        });
+        if (mlRecommendations && mlRecommendations.length > 0) {
+          // Apply pagination to ML results
+          const startIndex = (page - 1) * limit;
+          const endIndex = startIndex + limit;
+          const paginatedResults = mlRecommendations.slice(startIndex, endIndex);
 
-        if (foods.length > 0) {
+          console.log(`🤖 Homepage AI: Providing ${paginatedResults.length} ML-sourced recommendations (page ${page}/${Math.ceil(mlRecommendations.length / limit)}, total: ${mlRecommendations.length})`);
+
+          // Fetch full food details for the paginated ML results
+          const foodIds = paginatedResults.map(rec => rec.food_id || rec.id);
+          const foods = await prisma.food.findMany({
+            where: { id: { in: foodIds }, isAvailable: true },
+            include: includeRelations
+          });
+
+          // Sort foods according to ML order
           const sortedFoods = foodIds.map(id => foods.find(f => f.id === id)).filter(f => !!f);
-          console.log(`🤖 Homepage AI: Providing ${sortedFoods.length} ML-sourced recommendations`);
+
           return res.json({
             success: true,
-            message: "AI Recommendations retrieved successfully",
-            data: sortedFoods,
-            using_ml: true
+            source: 'ml',
+            page: page,
+            limit: limit,
+            total: mlRecommendations.length,
+            hasMore: endIndex < mlRecommendations.length,
+            data: sortedFoods
           });
         }
+      } catch (mlError) {
+        console.error("🤖 ML Recommendation attempt failed, falling back to heuristics:", mlError.message);
       }
-    } catch (mlError) {
-      console.error("🤖 ML Recommendation attempt failed, falling back to heuristics:", mlError.message);
     }
 
-    // 2. Fallback: Heuristic-based logic
+    // 2. Fallback: Heuristic-based logic with pagination
     if (userId) {
-      console.log(`⚡ Homepage Fallback: ML service returned no specific results for user ${userId}, using standard logic`);
+      console.log(`⚡ Homepage Fallback: ML service returned no specific results for user ${userId}, using standard logic (page ${page})`);
     } else {
-      console.log("⚡ Homepage Fallback: No User ID found, providing general guest recommendations");
+      console.log(`⚡ Homepage Fallback: No User ID found, providing general guest recommendations (page ${page})`);
     }
 
     const popularCount = Math.ceil(limit * 0.4);
     const ratedCount = Math.ceil(limit * 0.3);
     const dealsCount = Math.ceil(limit * 0.2);
-    const randomCount = limit - popularCount - ratedCount - dealsCount;
+    const randomCount = limit - (popularCount + ratedCount + dealsCount);
 
-    // Get popular items
-    const popular = await prisma.food.findMany({
-      where: { isAvailable: true },
-      include: includeRelations,
-      orderBy: { orderCount: 'desc' },
-      take: popularCount
-    });
+    // Calculate skip for pagination
+    const skip = (page - 1) * limit;
 
-    const popularIds = popular.map(f => f.id);
+    const [popular, topRated, deals, random] = await Promise.all([
+      prisma.food.findMany({
+        where: { isAvailable: true },
+        orderBy: { orderCount: 'desc' },
+        take: popularCount,
+        skip: Math.floor(skip * 0.4),
+        include: includeRelations
+      }),
+      prisma.food.findMany({
+        where: { isAvailable: true, rating: { gte: 4.5 } },
+        orderBy: { rating: 'desc' },
+        take: ratedCount,
+        skip: Math.floor(skip * 0.3),
+        include: includeRelations
+      }),
+      prisma.food.findMany({
+        where: { isAvailable: true, discount: { gt: 0 } },
+        orderBy: { discount: 'desc' },
+        take: dealsCount,
+        skip: Math.floor(skip * 0.2),
+        include: includeRelations
+      }),
+      prisma.food.findMany({
+        where: { isAvailable: true },
+        take: randomCount,
+        skip: Math.floor(skip * 0.1),
+        include: includeRelations
+      })
+    ]);
 
-    // Get highly rated items
-    const rated = await prisma.food.findMany({
-      where: { isAvailable: true, rating: { gte: 4.5 }, id: { notIn: popularIds } },
-      include: includeRelations,
-      orderBy: [{ rating: 'desc' }, { totalReviews: 'desc' }],
-      take: ratedCount
-    });
+    const combined = [...popular, ...topRated, ...deals, ...random];
 
-    const selectedIds = [...popularIds, ...rated.map(f => f.id)];
-    const now = new Date();
+    // Shuffle and deduplicate
+    const uniqueMap = new Map();
+    combined.forEach(food => uniqueMap.set(food.id, food));
+    const uniqueFoods = Array.from(uniqueMap.values());
 
-    // Get deals
-    const deals = await prisma.food.findMany({
-      where: {
-        isAvailable: true,
-        discountPercentage: { gt: 0 },
-        id: { notIn: selectedIds },
-        OR: [{ discountEndDate: null }, { discountEndDate: { gte: now } }]
-      },
-      include: includeRelations,
-      orderBy: { discountPercentage: 'desc' },
-      take: dealsCount
-    });
-
-    const allSelectedIds = [...selectedIds, ...deals.map(f => f.id)];
-
-    // Get random items
-    const totalCount = await prisma.food.count({
-      where: { isAvailable: true, id: { notIn: allSelectedIds } }
-    });
-
-    let random = [];
-    if (totalCount > 0 && randomCount > 0) {
-      const skip = Math.max(0, Math.floor(Math.random() * (totalCount - randomCount)));
-      random = await prisma.food.findMany({
-        where: { isAvailable: true, id: { notIn: allSelectedIds } },
-        include: includeRelations,
-        skip,
-        take: randomCount
-      });
-    }
-
-    // Combine and shuffle
-    const recommended = [...popular, ...rated, ...deals, ...random];
-    for (let i = recommended.length - 1; i > 0; i--) {
+    // Shuffle for variety
+    for (let i = uniqueFoods.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [recommended[i], recommended[j]] = [recommended[j], recommended[i]];
+      [uniqueFoods[i], uniqueFoods[j]] = [uniqueFoods[j], uniqueFoods[i]];
     }
+
+    const finalRecommendations = uniqueFoods.slice(0, limit);
 
     res.json({
       success: true,
-      message: "Recommended items retrieved successfully (Fallback)",
-      data: recommended.slice(0, limit),
-      using_ml: false
+      source: 'heuristic',
+      page: page,
+      limit: limit,
+      hasMore: page < 5, // Rough estimate - heuristic can provide ~5 pages
+      data: finalRecommendations
     });
   } catch (error) {
     console.error("Get recommended items error:", error);
@@ -411,9 +420,19 @@ router.get("/order-history", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM
     // Extract unique food items from orders
     const itemsMap = new Map();
 
+    let skippedCount = 0;
+    let processedCount = 0;
+
     orders.forEach(order => {
       order.items.forEach(item => {
-        if (item.itemType === 'Food' && item.food) {
+        if (item.itemType === 'Food') {
+          if (!item.food) {
+            skippedCount++;
+            console.log(`⚠️ [DEBUG] Skipping item - foodId: ${item.foodId}, food relation: ${item.food ? 'exists' : 'NULL'}`);
+            return;
+          }
+
+          processedCount++;
           const itemId = item.food.id;
 
           if (!itemsMap.has(itemId)) {
@@ -437,6 +456,8 @@ router.get("/order-history", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM
         }
       });
     });
+
+    console.log(`📊 [DEBUG] Processed: ${processedCount}, Skipped: ${skippedCount} (null food relations)`);
 
     // Convert map to array and sort by last ordered date
     const orderHistory = Array.from(itemsMap.values())
