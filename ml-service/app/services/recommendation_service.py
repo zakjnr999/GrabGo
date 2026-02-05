@@ -142,13 +142,13 @@ class RecommendationService:
                 # Determine table based on service type
                 if service_type == "grocery":
                     table = "grocery_stores"
-                    name_col = "store_name"
+                    name_col = '"storeName"'
                 elif service_type == "pharmacy":
                     table = "pharmacy_stores"
-                    name_col = "store_name"
+                    name_col = '"storeName"'
                 else:
                     table = "restaurants"
-                    name_col = "restaurant_name"
+                    name_col = '"restaurantName"'
                 
                 # Get popular restaurants
                 query = text(f"""
