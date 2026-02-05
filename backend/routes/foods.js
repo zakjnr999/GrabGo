@@ -103,91 +103,55 @@ router.get("/deals", cacheMiddleware(cache.CACHE_KEYS.FOOD_DEALS, 120), async (r
 });
 
 /**
- * @route   GET /api/foods/ml-recommended
- * @desc    Get AI-powered personalized food recommendations from ML Service
- * @access  Private (Optional)
- */
-router.get("/ml-recommended", async (req, res) => {
-  try {
-    const userId = req.user?.id || req.headers['x-user-id'];
-    let { limit = 10 } = req.query;
-    limit = parseInt(limit);
-
-    // 1. Get recommendations IDs from ML Service
-    const mlRecs = await mlClient.getFoodRecommendations(userId, limit);
-
-    if (mlRecs && mlRecs.length > 0) {
-      const foodIds = mlRecs.map(rec => rec.food_id || rec.id);
-
-      // 2. Hydrate IDs with full data from Prisma
-      const foods = await prisma.food.findMany({
-        where: {
-          id: { in: foodIds },
-          isAvailable: true
-        },
-        include: {
-          category: { select: { id: true, name: true } },
-          restaurant: { select: { id: true, restaurantName: true, logo: true, rating: true, address: true, city: true } }
-        }
-      });
-
-      // Maintain ML's ranking order
-      const sortedFoods = foodIds
-        .map(id => foods.find(f => f.id === id))
-        .filter(f => !!f);
-
-      return res.json({
-        success: true,
-        message: "AI Recommendations retrieved successfully",
-        data: sortedFoods,
-        using_ml: true
-      });
-    }
-
-    // 3. Fallback to standard recommendations if ML fails or has no results
-    console.log("⚠️ ML Recommendations failed or empty, falling back to standard logic");
-    const fallbackPath = '/api/foods/recommended'; // Theoretical fallback
-    // Actually just return an empty array or the standard ones
-    return res.json({
-      success: true,
-      message: "Recommendations retrieved (Standard Fallback)",
-      data: [], // Front-end can decide to reload from /recommended
-      using_ml: false,
-      error: "ML service yielded no results"
-    });
-
-  } catch (error) {
-    console.error("ML recommendation route error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message
-    });
-  }
-});
-
-/**
  * @route   GET /api/foods/recommended
- * @desc    Get personalized food recommendations (Heuristic-based)
+ * @desc    Get AI-powered personalized food recommendations (with Heuristic Fallback)
  * @access  Public
  */
 router.get("/recommended", cacheMiddleware(cache.CACHE_KEYS.FOOD_RECOMMENDED, 180), async (req, res) => {
   try {
+    const userId = req.user?.id || req.headers['x-user-id'];
     let { limit = 10 } = req.query;
     limit = parseInt(limit);
     if (isNaN(limit) || limit < 1) limit = 10;
-    if (limit > 50) limit = 50;
-
-    // Smart recommendation: mix popular (40%), rated (30%), deals (20%), random (10%)
-    const popularCount = Math.ceil(limit * 0.4);
-    const ratedCount = Math.ceil(limit * 0.3);
-    const dealsCount = Math.ceil(limit * 0.2);
-    const randomCount = limit - popularCount - ratedCount - dealsCount;
 
     const includeRelations = {
       category: { select: { id: true, name: true } },
       restaurant: { select: { id: true, restaurantName: true, logo: true, rating: true, address: true, city: true } }
     };
+
+    // 1. Try ML Service First (Personalized Intelligence)
+    try {
+      const mlRecs = await mlClient.getFoodRecommendations(userId, limit);
+
+      if (mlRecs && mlRecs.length > 0) {
+        const foodIds = mlRecs.map(rec => rec.food_id || rec.id);
+        const foods = await prisma.food.findMany({
+          where: { id: { in: foodIds }, isAvailable: true },
+          include: includeRelations
+        });
+
+        if (foods.length > 0) {
+          const sortedFoods = foodIds.map(id => foods.find(f => f.id === id)).filter(f => !!f);
+          console.log(`🤖 Homepage AI: Providing ${sortedFoods.length} ML-sourced recommendations`);
+          return res.json({
+            success: true,
+            message: "AI Recommendations retrieved successfully",
+            data: sortedFoods,
+            using_ml: true
+          });
+        }
+      }
+    } catch (mlError) {
+      console.error("🤖 ML Recommendation attempt failed, falling back to heuristics:", mlError.message);
+    }
+
+    // 2. Fallback: Heuristic-based logic (mix popular, rated, deals, random)
+    console.log("⚡ Homepage Fallback: Using standard recommendation logic");
+
+    const popularCount = Math.ceil(limit * 0.4);
+    const ratedCount = Math.ceil(limit * 0.3);
+    const dealsCount = Math.ceil(limit * 0.2);
+    const randomCount = limit - popularCount - ratedCount - dealsCount;
 
     // Get popular items
     const popular = await prisma.food.findMany({
@@ -201,16 +165,9 @@ router.get("/recommended", cacheMiddleware(cache.CACHE_KEYS.FOOD_RECOMMENDED, 18
 
     // Get highly rated items
     const rated = await prisma.food.findMany({
-      where: {
-        isAvailable: true,
-        rating: { gte: 4.5 },
-        id: { notIn: popularIds }
-      },
+      where: { isAvailable: true, rating: { gte: 4.5 }, id: { notIn: popularIds } },
       include: includeRelations,
-      orderBy: [
-        { rating: 'desc' },
-        { totalReviews: 'desc' }
-      ],
+      orderBy: [{ rating: 'desc' }, { totalReviews: 'desc' }],
       take: ratedCount
     });
 
@@ -223,10 +180,7 @@ router.get("/recommended", cacheMiddleware(cache.CACHE_KEYS.FOOD_RECOMMENDED, 18
         isAvailable: true,
         discountPercentage: { gt: 0 },
         id: { notIn: selectedIds },
-        OR: [
-          { discountEndDate: null },
-          { discountEndDate: { gte: now } }
-        ]
+        OR: [{ discountEndDate: null }, { discountEndDate: { gte: now } }]
       },
       include: includeRelations,
       orderBy: { discountPercentage: 'desc' },
@@ -237,20 +191,14 @@ router.get("/recommended", cacheMiddleware(cache.CACHE_KEYS.FOOD_RECOMMENDED, 18
 
     // Get random items
     const totalCount = await prisma.food.count({
-      where: {
-        isAvailable: true,
-        id: { notIn: allSelectedIds }
-      }
+      where: { isAvailable: true, id: { notIn: allSelectedIds } }
     });
 
     let random = [];
     if (totalCount > 0 && randomCount > 0) {
       const skip = Math.max(0, Math.floor(Math.random() * (totalCount - randomCount)));
       random = await prisma.food.findMany({
-        where: {
-          isAvailable: true,
-          id: { notIn: allSelectedIds }
-        },
+        where: { isAvailable: true, id: { notIn: allSelectedIds } },
         include: includeRelations,
         skip,
         take: randomCount
@@ -266,16 +214,13 @@ router.get("/recommended", cacheMiddleware(cache.CACHE_KEYS.FOOD_RECOMMENDED, 18
 
     res.json({
       success: true,
-      message: "Recommended items retrieved successfully",
-      data: recommended.slice(0, limit)
+      message: "Recommended items retrieved successfully (Fallback)",
+      data: recommended.slice(0, limit),
+      using_ml: false
     });
   } catch (error) {
     console.error("Get recommended items error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 });
 
