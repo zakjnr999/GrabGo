@@ -23,8 +23,7 @@ class PredictionService:
     async def predict_delivery_time(
         self,
         restaurant_location: Tuple[float, float],
-        delivery_location: Tuple[float, float],
-        rider_id: Optional[str] = None,
+        delivery_location: Tuple[float, float], "riderId": Optional[str] = None,
         preparation_time: int = 15,
         order_items_count: int = 1
     ) -> Dict:
@@ -117,12 +116,11 @@ class PredictionService:
             async with AsyncSessionLocal() as session:
                 # Get historical order data
                 query = text("""
-                    SELECT 
-                        DATE_TRUNC('hour', created_at) as hour,
+                    SELECT DATE_TRUNC('hour', "createdAt") as hour,
                         COUNT(*) as order_count
                     FROM orders
-                    WHERE order_type = :service_type
-                      AND created_at >= NOW() - INTERVAL '30 days'
+                    WHERE "orderType" = :service_type
+                      AND "createdAt" >= NOW() - INTERVAL '30 days'
                     GROUP BY hour
                     ORDER BY hour
                 """)
@@ -205,12 +203,11 @@ class PredictionService:
             async with AsyncSessionLocal() as session:
                 # Get user statistics
                 query = text("""
-                    SELECT 
-                        u."createdAt",
+                    SELECT u."createdAt",
                         u."lastOrderDate",
                         COUNT(DISTINCT o.id) as total_orders,
                         AVG(o."totalAmount") as avg_order_value,
-                        MAX(o."createdAt") as last_order_date
+                        MAX(o."createdAt") as "lastOrderDate"
                     FROM users u
                     LEFT JOIN orders o ON u.id = o."customerId"
                     WHERE u.id = :user_id
@@ -327,13 +324,13 @@ class PredictionService:
             async with AsyncSessionLocal() as session:
                 query = text("""
                     SELECT AVG(
-                        EXTRACT(EPOCH FROM (delivered_date - created_at)) / 60
+                        EXTRACT(EPOCH FROM ("deliveredDate" - "createdAt")) / 60
                     ) as avg_delivery_minutes
                     FROM orders
-                    WHERE rider_id = :rider_id
+                    WHERE "riderId" = :rider_id
                       AND status = 'delivered'
-                      AND delivered_date IS NOT NULL
-                      AND created_at >= NOW() - INTERVAL '30 days'
+                      AND "deliveredDate" IS NOT NULL
+                      AND "createdAt" >= NOW() - INTERVAL '30 days'
                 """)
                 
                 result = await session.execute(query, {"rider_id": rider_id})

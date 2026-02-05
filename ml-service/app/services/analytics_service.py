@@ -112,13 +112,12 @@ class AnalyticsService:
             async with AsyncSessionLocal() as session:
                 # Get user order history
                 query = text("""
-                    SELECT 
-                        COUNT(*) as total_orders,
+                    SELECT COUNT(*) as total_orders,
                         COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled_orders,
-                        AVG(total_amount) as avg_amount,
-                        MAX(created_at) as last_order
+                        AVG("totalAmount") as avg_amount,
+                        MAX("createdAt") as last_order
                     FROM orders
-                    WHERE customer_id = :user_id
+                    WHERE "customerId" = :user_id
                 """)
                 
                 result = await session.execute(query, {"user_id": user_id})
@@ -209,11 +208,10 @@ class AnalyticsService:
                 if metric == "orders":
                     # Get order metrics
                     query = text("""
-                        SELECT 
-                            COUNT(*) as total_orders,
-                            COUNT(CASE WHEN created_at >= NOW() - INTERVAL ':days days' THEN 1 END) as recent_orders,
-                            COUNT(CASE WHEN created_at >= NOW() - INTERVAL ':prev_days days' 
-                                  AND created_at < NOW() - INTERVAL ':days days' THEN 1 END) as prev_period_orders
+                        SELECT COUNT(*) as total_orders,
+                            COUNT(CASE WHEN "createdAt" >= NOW() - INTERVAL ':days days' THEN 1 END) as recent_orders,
+                            COUNT(CASE WHEN "createdAt" >= NOW() - INTERVAL ':prev_days days' 
+                                  AND "createdAt" < NOW() - INTERVAL ':days days' THEN 1 END) as prev_period_orders
                         FROM orders
                     """)
                     
