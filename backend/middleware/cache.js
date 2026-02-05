@@ -9,9 +9,10 @@ const cache = require('../utils/cache');
  * Cache middleware for GET requests
  * @param {string} keyPrefix - Cache key prefix from cache.CACHE_KEYS
  * @param {number} ttl - Time to live in seconds (default: 300 = 5 minutes)
+ * @param {boolean} isPersonalized - Whether to include user ID in cache key
  * @returns {Function} Express middleware
  */
-const cacheMiddleware = (keyPrefix, ttl = 300) => {
+const cacheMiddleware = (keyPrefix, ttl = 300, isPersonalized = false) => {
     return async (req, res, next) => {
         // Only cache GET requests
         if (req.method !== 'GET') {
@@ -20,8 +21,9 @@ const cacheMiddleware = (keyPrefix, ttl = 300) => {
 
         try {
             // Generate cache key from URL and query params
+            const userId = isPersonalized ? (req.user?.id || req.headers['x-user-id'] || 'guest') : 'global';
             const queryString = JSON.stringify(req.query);
-            const cacheKey = cache.makeKey(keyPrefix, queryString);
+            const cacheKey = `${userId}:${cache.makeKey(keyPrefix, queryString)}`;
 
             // Try to get from cache
             const cachedData = await cache.get(cacheKey);

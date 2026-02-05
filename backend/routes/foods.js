@@ -107,7 +107,7 @@ router.get("/deals", cacheMiddleware(cache.CACHE_KEYS.FOOD_DEALS, 120), async (r
  * @desc    Get AI-powered personalized food recommendations (with Heuristic Fallback)
  * @access  Public
  */
-router.get("/recommended", cacheMiddleware(cache.CACHE_KEYS.FOOD_RECOMMENDED, 180), async (req, res) => {
+router.get("/recommended", cacheMiddleware(cache.CACHE_KEYS.FOOD_RECOMMENDED, 180, true), async (req, res) => {
   try {
     const userId = req.user?.id || req.headers['x-user-id'];
     let { limit = 10 } = req.query;
@@ -342,7 +342,7 @@ router.get("/top-rated", cacheMiddleware(cache.CACHE_KEYS.FOOD_TOP_RATED, 600), 
 
 // ==================== ORDER HISTORY ====================
 
-router.get("/order-history", protect, async (req, res) => {
+router.get("/order-history", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM + ':history', 300, true), async (req, res) => {
   try {
     // Return empty array if no user authentication
     if (!req.user && !req.headers['x-user-id']) {

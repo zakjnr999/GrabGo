@@ -43,8 +43,8 @@ router.get("/banners", async (req, res) => {
             where: {
                 isActive: true,
                 AND: [
-                    { OR: [{ startDate: null }, { startDate: { lte: now } }] },
-                    { OR: [{ endDate: null }, { endDate: { gte: now } }] }
+                    { startDate: { lte: now } },
+                    { endDate: { gte: now } }
                 ]
             },
             orderBy: [

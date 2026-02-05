@@ -9,7 +9,7 @@ const mlClient = axios.create({
         'X-API-Key': process.env.ML_API_KEY,
         'Content-Type': 'application/json'
     },
-    timeout: 5000 // 5 second timeout for ML calls
+    timeout: 10000 // 10 second timeout for ML calls
 });
 
 /**
@@ -61,10 +61,12 @@ exports.getFoodRecommendations = async (userId, limit = 10) => {
         return response.data.data || [];
     } catch (error) {
         const status = error.response?.status;
-        console.error(`🤖 ML Service Error (Recommendations): ${error.message} (Status: ${status})`);
+        const details = error.response?.data?.detail || error.response?.data || error.message;
+        console.error(`🤖 ML Service Error (Recommendations): (Status: ${status})`, details);
         return [];
     }
 };
+
 
 
 /**
