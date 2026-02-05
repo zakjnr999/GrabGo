@@ -457,7 +457,8 @@ router.post(
               vendorPrepTime,
               riderId,
               updatedOrder.restaurantId || updatedOrder.groceryStoreId || updatedOrder.pharmacyStoreId,
-              updatedOrder.items.length
+              updatedOrder.items.length,
+              updatedOrder.id
             );
 
             // Update order with delivery window
@@ -1246,7 +1247,8 @@ router.post(
               vendorPrepTime,
               riderId,
               updatedOrder.restaurantId || updatedOrder.groceryStoreId || updatedOrder.pharmacyStoreId,
-              updatedOrder.items.length
+              updatedOrder.items.length,
+              updatedOrder.id
             );
 
             // Update order with delivery window

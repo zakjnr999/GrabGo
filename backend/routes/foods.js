@@ -113,6 +113,7 @@ router.get("/recommended", cacheMiddleware(cache.CACHE_KEYS.FOOD_RECOMMENDED, 18
     let { limit = 10 } = req.query;
     limit = parseInt(limit);
     if (isNaN(limit) || limit < 1) limit = 10;
+    if (limit > 50) limit = 50;
 
     const includeRelations = {
       category: { select: { id: true, name: true } },
@@ -363,7 +364,7 @@ router.get("/order-history", protect, async (req, res) => {
       },
       include: {
         items: {
-          where: { itemType: 'food' },
+          where: { itemType: 'Food' },
           include: {
             food: {
               include: {
@@ -394,7 +395,7 @@ router.get("/order-history", protect, async (req, res) => {
 
     orders.forEach(order => {
       order.items.forEach(item => {
-        if (item.itemType === 'food' && item.food) {
+        if (item.itemType === 'Food' && item.food) {
           const itemId = item.food.id;
 
           if (!itemsMap.has(itemId)) {

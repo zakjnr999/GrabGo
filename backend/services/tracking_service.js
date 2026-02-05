@@ -422,7 +422,8 @@ class TrackingService {
         vendorPrepTime = 15,
         riderId = null,
         restaurantId = null,
-        itemsCount = 1
+        itemsCount = 1,
+        orderId = null
     ) {
         try {
             // 1. Get Traffic-Aware Driving Times from Google Maps (King of Maps API)
@@ -444,6 +445,7 @@ class TrackingService {
             let mlFactors = null;
             if (mlClient) {
                 mlFactors = await mlClient.predictDeliveryFactors({
+                    orderId,
                     riderId,
                     restaurantId,
                     itemsCount,
