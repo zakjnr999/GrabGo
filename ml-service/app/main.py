@@ -64,8 +64,8 @@ app = FastAPI(
     title=settings.API_TITLE,
     version=settings.API_VERSION,
     description="Production-ready ML service for GrabGo delivery platform",
-    docs_url="/docs" if settings.DEBUG else None,
-    redoc_url="/redoc" if settings.DEBUG else None,
+    docs_url="/docs",  # Always enable docs
+    redoc_url="/redoc",  # Always enable redoc
     lifespan=lifespan,
 )
 
@@ -166,7 +166,8 @@ async def root():
         "service": settings.API_TITLE,
         "version": settings.API_VERSION,
         "status": "running",
-        "docs": "/docs" if settings.DEBUG else "disabled",
+        "docs": "/docs",
+        "redoc": "/redoc",
         "health": "/health"
     }
 
