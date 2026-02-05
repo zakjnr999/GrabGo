@@ -105,9 +105,15 @@ router.get("/deals", cacheMiddleware(cache.CACHE_KEYS.FOOD_DEALS, 120), async (r
 /**
  * @route   GET /api/foods/recommended
  * @desc    Get AI-powered personalized food recommendations (with Heuristic Fallback)
- * @access  Public
+ * @access  Public (Optional Auth)
  */
-router.get("/recommended", cacheMiddleware(cache.CACHE_KEYS.FOOD_RECOMMENDED, 180, true), async (req, res) => {
+router.get("/recommended", (req, res, next) => {
+  // Try to authenticate if token exists, but don't block if it doesn't
+  if (req.headers.authorization) {
+    return protect(req, res, next);
+  }
+  next();
+}, cacheMiddleware(cache.CACHE_KEYS.FOOD_RECOMMENDED, 180, true), async (req, res) => {
   try {
     const userId = req.user?.id || req.headers['x-user-id'];
     let { limit = 10 } = req.query;
@@ -146,8 +152,12 @@ router.get("/recommended", cacheMiddleware(cache.CACHE_KEYS.FOOD_RECOMMENDED, 18
       console.error("🤖 ML Recommendation attempt failed, falling back to heuristics:", mlError.message);
     }
 
-    // 2. Fallback: Heuristic-based logic (mix popular, rated, deals, random)
-    console.log("⚡ Homepage Fallback: Using standard recommendation logic");
+    // 2. Fallback: Heuristic-based logic
+    if (userId) {
+      console.log(`⚡ Homepage Fallback: ML service returned no specific results for user ${userId}, using standard logic`);
+    } else {
+      console.log("⚡ Homepage Fallback: No User ID found, providing general guest recommendations");
+    }
 
     const popularCount = Math.ceil(limit * 0.4);
     const ratedCount = Math.ceil(limit * 0.3);
