@@ -4,7 +4,7 @@
 
 /**
  * Check if a restaurant is currently open based on hours
- * @param {Object} restaurant - Restaurant object with hours relation
+ * @param {Object} restaurant - Restaurant object with openingHours relation
  * @returns {boolean} - True if restaurant is open
  */
 function isRestaurantOpen(restaurant) {
@@ -14,7 +14,7 @@ function isRestaurantOpen(restaurant) {
     }
 
     // If no hours defined, assume open (fallback to isOpen field)
-    if (!restaurant.hours || restaurant.hours.length === 0) {
+    if (!restaurant.openingHours || restaurant.openingHours.length === 0) {
         return restaurant.isOpen;
     }
 
@@ -23,7 +23,7 @@ function isRestaurantOpen(restaurant) {
     const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
     // Find today's hours
-    const todayHours = restaurant.hours.find(h => h.dayOfWeek === dayOfWeek);
+    const todayHours = restaurant.openingHours.find(h => h.dayOfWeek === dayOfWeek);
 
     // If no hours for today or marked as closed, restaurant is closed
     if (!todayHours || todayHours.isClosed) {
@@ -45,7 +45,7 @@ function isRestaurantOpen(restaurant) {
 
 /**
  * Get restaurant status text
- * @param {Object} restaurant - Restaurant object with hours relation
+ * @param {Object} restaurant - Restaurant object with openingHours relation
  * @returns {string} - Status text like "Open now", "Closed", "Opens at 09:00"
  */
 function getRestaurantStatus(restaurant) {
@@ -53,7 +53,7 @@ function getRestaurantStatus(restaurant) {
         return "Closed";
     }
 
-    if (!restaurant.hours || restaurant.hours.length === 0) {
+    if (!restaurant.openingHours || restaurant.openingHours.length === 0) {
         return restaurant.isOpen ? "Open now" : "Closed";
     }
 
@@ -61,13 +61,13 @@ function getRestaurantStatus(restaurant) {
     const dayOfWeek = now.getDay();
     const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-    const todayHours = restaurant.hours.find(h => h.dayOfWeek === dayOfWeek);
+    const todayHours = restaurant.openingHours.find(h => h.dayOfWeek === dayOfWeek);
 
     if (!todayHours || todayHours.isClosed) {
         // Find next open day
         for (let i = 1; i <= 7; i++) {
             const nextDay = (dayOfWeek + i) % 7;
-            const nextDayHours = restaurant.hours.find(h => h.dayOfWeek === nextDay);
+            const nextDayHours = restaurant.openingHours.find(h => h.dayOfWeek === nextDay);
             if (nextDayHours && !nextDayHours.isClosed) {
                 const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                 return `Opens ${i === 1 ? 'tomorrow' : days[nextDay]} at ${nextDayHours.openTime}`;
@@ -94,7 +94,7 @@ function getRestaurantStatus(restaurant) {
         // Already closed for today, find next open day
         for (let i = 1; i <= 7; i++) {
             const nextDay = (dayOfWeek + i) % 7;
-            const nextDayHours = restaurant.hours.find(h => h.dayOfWeek === nextDay);
+            const nextDayHours = restaurant.openingHours.find(h => h.dayOfWeek === nextDay);
             if (nextDayHours && !nextDayHours.isClosed) {
                 const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                 return `Opens ${i === 1 ? 'tomorrow' : days[nextDay]} at ${nextDayHours.openTime}`;

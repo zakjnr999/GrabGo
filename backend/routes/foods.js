@@ -136,7 +136,7 @@ router.get("/recommended", (req, res, next) => {
           address: true,
           city: true,
           isOpen: true,
-          hours: {
+          openingHours: {
             select: {
               dayOfWeek: true,
               openTime: true,
