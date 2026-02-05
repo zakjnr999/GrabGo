@@ -7,6 +7,7 @@ A **production-ready, ML-powered AI service** for the GrabGo delivery platform u
 ## 📊 Project Overview
 
 ### Architecture
+
 - **Framework**: FastAPI (async, high-performance)
 - **Databases**: PostgreSQL (SQLAlchemy), MongoDB (Motor), Redis (caching)
 - **ML Stack**: scikit-learn, pandas, numpy, transformers
@@ -17,6 +18,7 @@ A **production-ready, ML-powered AI service** for the GrabGo delivery platform u
 ### Key Features Implemented
 
 #### 1. **Smart Recommendations** 🎯
+
 - **Food Recommendations**: Personalized suggestions using hybrid algorithm
   - Collaborative filtering (user behavior)
   - Content-based filtering (item attributes)
@@ -26,6 +28,7 @@ A **production-ready, ML-powered AI service** for the GrabGo delivery platform u
 - **Caching**: Redis-based caching for performance
 
 #### 2. **Predictive Analytics** 📈
+
 - **Delivery Time Prediction**: ML-based ETA estimation
   - Distance calculation (Haversine formula)
   - Traffic patterns (time-based)
@@ -41,6 +44,7 @@ A **production-ready, ML-powered AI service** for the GrabGo delivery platform u
   - Retention recommendations
 
 #### 3. **Fraud Detection** 🔒
+
 - **Order Fraud Detection**: Anomaly detection
   - Pattern analysis
   - Risk scoring
@@ -48,6 +52,7 @@ A **production-ready, ML-powered AI service** for the GrabGo delivery platform u
 - **User Behavior Analysis**: Suspicious activity detection
 
 #### 4. **Sentiment Analysis** 💬
+
 - **Review Analysis**: Understand customer feedback
 - **Chat Sentiment**: Monitor customer satisfaction
 - **Emotion Detection**: Identify joy, anger, sadness
@@ -99,23 +104,27 @@ ml-service/
 ## 🚀 API Endpoints
 
 ### Health & Monitoring
+
 - `GET /health` - Service health check
 - `GET /health/ready` - Kubernetes readiness probe
 - `GET /health/live` - Kubernetes liveness probe
 - `GET /metrics` - Prometheus metrics
 
 ### Recommendations
+
 - `POST /api/v1/recommendations/food` - Get food recommendations
 - `POST /api/v1/recommendations/restaurants` - Get restaurant recommendations
 - `POST /api/v1/recommendations/similar-items` - Find similar items
 - `DELETE /api/v1/recommendations/cache/{user_id}` - Clear user cache
 
 ### Predictions
+
 - `POST /api/v1/predictions/delivery-time` - Predict delivery ETA
 - `POST /api/v1/predictions/demand` - Forecast demand
 - `POST /api/v1/predictions/churn` - Predict customer churn
 
 ### Analytics
+
 - `POST /api/v1/analytics/sentiment` - Analyze sentiment
 - `POST /api/v1/analytics/fraud-check` - Check for fraud
 - `POST /api/v1/analytics/insights` - Get business insights
@@ -123,6 +132,7 @@ ml-service/
 ## 🔧 Quick Start
 
 ### 1. Setup
+
 ```bash
 # Clone and navigate
 cd ml-service
@@ -133,6 +143,7 @@ chmod +x quickstart.sh
 ```
 
 ### 2. Configuration
+
 ```bash
 # Copy environment file
 cp .env.example .env
@@ -142,6 +153,7 @@ nano .env
 ```
 
 ### 3. Run Development Server
+
 ```bash
 # Activate virtual environment
 source venv/bin/activate
@@ -151,6 +163,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### 4. Access Documentation
+
 - API Docs: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
 - Health: http://localhost:8000/health
@@ -171,32 +184,34 @@ docker-compose down
 ## 🔗 Backend Integration
 
 ### Install in Node.js Backend
+
 ```bash
 cd backend
 npm install axios
 ```
 
 ### Example Usage
+
 ```javascript
-const axios = require('axios');
+const axios = require("axios");
 
 const mlClient = axios.create({
-  baseURL: 'http://ml-service:8000',
+  baseURL: "http://ml-service:8000",
   headers: {
-    'X-API-Key': process.env.ML_API_KEY
-  }
+    "X-API-Key": process.env.ML_API_KEY,
+  },
 });
 
 // Get recommendations
-const recommendations = await mlClient.post('/api/v1/recommendations/food', {
+const recommendations = await mlClient.post("/api/v1/recommendations/food", {
   user_id: userId,
-  limit: 10
+  limit: 10,
 });
 
 // Predict delivery time
-const eta = await mlClient.post('/api/v1/predictions/delivery-time', {
+const eta = await mlClient.post("/api/v1/predictions/delivery-time", {
   restaurant_location: { latitude: 5.6037, longitude: -0.187 },
-  delivery_location: { latitude: 5.6100, longitude: -0.190 }
+  delivery_location: { latitude: 5.61, longitude: -0.19 },
 });
 ```
 
@@ -244,12 +259,14 @@ ab -n 1000 -c 10 http://localhost:8000/health
 ## 🎯 ML Models
 
 ### Current Implementation
+
 - **Recommendation**: Hybrid collaborative + content-based filtering
 - **Prediction**: Statistical models with historical data
 - **Sentiment**: Keyword-based (ready for transformer models)
 - **Fraud**: Anomaly detection with pattern recognition
 
 ### Future Enhancements
+
 - Deep learning models (TensorFlow/PyTorch)
 - Fine-tuned BERT for sentiment
 - Advanced time series forecasting
@@ -266,23 +283,27 @@ ab -n 1000 -c 10 http://localhost:8000/health
 ## 🛠️ Technology Stack
 
 ### Core
+
 - Python 3.11+
 - FastAPI 0.109+
 - Uvicorn (ASGI server)
 - Pydantic (validation)
 
 ### Databases
+
 - PostgreSQL 14+ (SQLAlchemy async)
 - MongoDB 6+ (Motor async)
 - Redis 7+ (caching)
 
 ### ML/Data Science
+
 - scikit-learn
 - pandas, numpy
 - transformers (NLP)
 - XGBoost, LightGBM
 
 ### DevOps
+
 - Docker
 - Docker Compose
 - Kubernetes-ready
@@ -299,18 +320,21 @@ ab -n 1000 -c 10 http://localhost:8000/health
 ## 📝 Next Steps
 
 ### Immediate
+
 1. Configure `.env` with your database credentials
 2. Run `quickstart.sh` to set up the service
 3. Test endpoints using `/docs`
 4. Integrate with Node.js backend using examples
 
 ### Short-term
+
 1. Train initial ML models with your data
 2. Fine-tune hyperparameters
 3. Set up monitoring (Prometheus + Grafana)
 4. Deploy to staging environment
 
 ### Long-term
+
 1. Implement deep learning models
 2. Add more ML features (image recognition, etc.)
 3. Real-time model updates
@@ -341,12 +365,12 @@ You now have a **complete, production-ready ML service** that:
 ✅ Includes comprehensive monitoring  
 ✅ Has security built-in  
 ✅ Is fully documented  
-✅ Is ready for production deployment  
+✅ Is ready for production deployment
 
 **Total Files Created**: 25+  
 **Lines of Code**: 3000+  
 **API Endpoints**: 12+  
-**Features**: 6 major ML capabilities  
+**Features**: 6 major ML capabilities
 
 The service is **clean, modular, and production-ready**. You can start using it immediately or customize it further based on your specific needs.
 

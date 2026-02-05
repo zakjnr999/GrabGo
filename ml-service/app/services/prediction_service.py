@@ -23,7 +23,8 @@ class PredictionService:
     async def predict_delivery_time(
         self,
         restaurant_location: Tuple[float, float],
-        delivery_location: Tuple[float, float], "riderId": Optional[str] = None,
+        delivery_location: Tuple[float, float],
+        rider_id: Optional[str] = None,
         preparation_time: int = 15,
         order_items_count: int = 1
     ) -> Dict:
