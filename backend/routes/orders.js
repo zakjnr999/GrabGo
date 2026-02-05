@@ -2,6 +2,8 @@ const express = require("express");
 const { body, validationResult } = require("express-validator");
 const prisma = require("../config/prisma");
 const { protect, authorize } = require("../middleware/auth");
+const { cacheMiddleware } = require("../middleware/cache");
+const cache = require("../utils/cache");
 const { sendOrderNotification, sendToUser } = require("../services/fcm_service");
 const { createNotification } = require("../services/notification_service");
 const ReferralService = require("../services/referral_service");
@@ -351,64 +353,81 @@ router.get("/", protect, async (req, res) => {
 /**
  * Get user's recent order items for "Order Again" section
  */
-router.get("/recent-items", protect, async (req, res) => {
+router.get("/recent-items", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM + ':recent', 300, true), async (req, res) => {
   try {
-    // Get user's delivered orders with food items
+    // Get user's recent orders (delivered or on_the_way to show what they like)
     const orders = await prisma.order.findMany({
       where: {
         customerId: req.user.id,
-        status: "delivered"
+        status: { in: ["delivered", "on_the_way", "picked_up"] }
       },
       include: {
         items: {
-          where: { itemType: 'Food' },
-          include: { food: true }
+          include: {
+            food: { include: { restaurant: true } },
+            groceryItem: { include: { store: true } },
+            pharmacyItem: { include: { store: true } }
+          }
         }
       },
-      orderBy: { deliveredDate: 'desc' },
-      take: 50
+      orderBy: { orderDate: 'desc' },
+      take: 30
     });
 
-    const foodItemsMap = new Map();
+    const itemsMap = new Map();
 
     orders.forEach(order => {
       order.items.forEach(item => {
-        if (!item.food) return;
+        // Universal unique key based on item type and id
+        let itemId, itemData, type;
 
-        const foodId = item.food.id;
-        if (!foodItemsMap.has(foodId)) {
-          const daysSince = order.deliveredDate
-            ? Math.floor((Date.now() - new Date(order.deliveredDate).getTime()) / (1000 * 60 * 60 * 24))
+        if (item.itemType === 'Food' && item.food) {
+          itemId = `food_${item.food.id}`;
+          itemData = item.food;
+          type = 'Food';
+        } else if (item.itemType === 'GroceryItem' && item.groceryItem) {
+          itemId = `grocery_${item.groceryItem.id}`;
+          itemData = item.groceryItem;
+          type = 'GroceryItem';
+        } else if (item.itemType === 'PharmacyItem' && item.pharmacyItem) {
+          itemId = `pharmacy_${item.pharmacyItem.id}`;
+          itemData = item.pharmacyItem;
+          type = 'PharmacyItem';
+        }
+
+        if (!itemId) return;
+
+        if (!itemsMap.has(itemId)) {
+          const daysSince = order.deliveredDate || order.orderDate
+            ? Math.floor((Date.now() - new Date(order.deliveredDate || order.orderDate).getTime()) / (1000 * 60 * 60 * 24))
             : 0;
 
-          foodItemsMap.set(foodId, {
-            foodItem: item.food,
-            lastOrderedAt: order.deliveredDate || new Date(),
+          itemsMap.set(itemId, {
+            id: itemId,
+            type: type,
+            item: itemData,
+            lastOrderedAt: order.deliveredDate || order.orderDate,
             orderCount: 1,
             daysAgo: daysSince
           });
         } else {
-          const existing = foodItemsMap.get(foodId);
+          const existing = itemsMap.get(itemId);
           existing.orderCount++;
-          if (order.deliveredDate && new Date(order.deliveredDate) > new Date(existing.lastOrderedAt)) {
-            existing.lastOrderedAt = order.deliveredDate;
-            existing.daysAgo = Math.floor(
-              (Date.now() - new Date(order.deliveredDate).getTime()) / (1000 * 60 * 60 * 24)
-            );
-          }
         }
       });
     });
 
-    const recentItems = Array.from(foodItemsMap.values())
+    const recentItems = Array.from(itemsMap.values())
       .sort((a, b) => new Date(b.lastOrderedAt) - new Date(a.lastOrderedAt))
-      .slice(0, 10);
+      .slice(0, 15);
 
     res.json({
       success: true,
-      message: "Recent items retrieved successfully",
+      message: "Unified recent items retrieved successfully",
+      count: recentItems.length,
       data: recentItems
     });
+
   } catch (error) {
     console.error("Get recent items error:", error);
     res.status(500).json({
@@ -612,7 +631,7 @@ router.put(
       // Trigger dispatch when order is confirmed and doesn't have a rider yet
       if (['confirmed', 'preparing', 'ready'].includes(status) && !updatedOrder.riderId) {
         console.log(`🚀 Triggering dispatch for order ${updatedOrder.orderNumber} (status: ${status})`);
-        
+
         // Run dispatch asynchronously to not block the response
         dispatchService.dispatchOrder(orderId).then(result => {
           if (result.success) {
