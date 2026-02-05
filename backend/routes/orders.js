@@ -355,6 +355,8 @@ router.get("/", protect, async (req, res) => {
  */
 router.get("/recent-items", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM + ':recent', 300, true), async (req, res) => {
   try {
+    console.log(`\n🔍 [DEBUG] Fetching recent items for user: ${req.user.id}`);
+
     // Get user's recent orders (delivered or on_the_way to show what they like)
     const orders = await prisma.order.findMany({
       where: {
@@ -373,6 +375,21 @@ router.get("/recent-items", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM 
       orderBy: { orderDate: 'desc' },
       take: 30
     });
+
+    console.log(`📦 [DEBUG] Found ${orders.length} orders`);
+    if (orders.length > 0) {
+      const totalItems = orders.reduce((sum, o) => sum + o.items.length, 0);
+      console.log(`📦 [DEBUG] Total order items: ${totalItems}`);
+
+      // Log item type breakdown
+      const itemTypes = {};
+      orders.forEach(o => {
+        o.items.forEach(item => {
+          itemTypes[item.itemType] = (itemTypes[item.itemType] || 0) + 1;
+        });
+      });
+      console.log(`📦 [DEBUG] Item types:`, itemTypes);
+    }
 
     const itemsMap = new Map();
 
@@ -421,6 +438,11 @@ router.get("/recent-items", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM 
     const recentItems = Array.from(itemsMap.values())
       .sort((a, b) => new Date(b.lastOrderedAt) - new Date(a.lastOrderedAt))
       .slice(0, 15);
+
+    console.log(`✅ [DEBUG] Returning ${recentItems.length} unique recent items`);
+    if (recentItems.length > 0) {
+      console.log(`✅ [DEBUG] Sample item types:`, recentItems.slice(0, 3).map(i => i.type));
+    }
 
     res.json({
       success: true,

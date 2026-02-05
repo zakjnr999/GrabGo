@@ -365,6 +365,8 @@ router.get("/order-history", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM
 
     const userId = req.user?.id || req.headers['x-user-id'];
 
+    console.log(`\n🔍 [DEBUG] Fetching food order history for user: ${userId}`);
+
     // Get completed food orders for the user
     const orders = await prisma.order.findMany({
       where: {
@@ -391,6 +393,12 @@ router.get("/order-history", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM
       ],
       take: 50
     });
+
+    console.log(`🍔 [DEBUG] Found ${orders.length} food orders`);
+    if (orders.length > 0) {
+      const totalItems = orders.reduce((sum, o) => sum + o.items.length, 0);
+      console.log(`🍔 [DEBUG] Total food items in orders: ${totalItems}`);
+    }
 
     if (!orders || orders.length === 0) {
       return res.status(200).json({
@@ -440,6 +448,8 @@ router.get("/order-history", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM
         timesOrdered,
         totalQuantity
       }));
+
+    console.log(`✅ [DEBUG] Returning ${orderHistory.length} unique food items from history`);
 
     res.status(200).json({
       success: true,
