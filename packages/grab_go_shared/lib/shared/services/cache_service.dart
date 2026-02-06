@@ -62,6 +62,26 @@ class CacheService {
     return _prefs!;
   }
 
+  /// Save generic string data
+  static Future<bool> saveData(String key, String value) async {
+    try {
+      return await _instance.setString(key, value);
+    } catch (e) {
+      debugPrint('Error saving data to cache: $e');
+      return false;
+    }
+  }
+
+  /// Get generic string data
+  static String? getData(String key) {
+    try {
+      return _instance.getString(key);
+    } catch (e) {
+      debugPrint('Error getting data from cache: $e');
+      return null;
+    }
+  }
+
   // ==================== CACHE AGE UTILITIES ====================
   
   /// Check if cache is stale based on timestamp key and max age

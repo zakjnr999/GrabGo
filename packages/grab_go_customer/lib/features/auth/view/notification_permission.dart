@@ -88,12 +88,12 @@ class _NotificationPermissionState extends State<NotificationPermission> with Si
 
       if (!mounted) return;
       await StorageService.setNotificationPermissionScreenShown();
-      context.go("/homepage");
+      context.go("/location-picker", extra: {"goHomeOnComplete": true});
     } catch (e) {
       debugPrint('❌ Error initializing push notifications: $e');
       if (mounted) {
         await StorageService.setNotificationPermissionScreenShown();
-        context.go("/homepage");
+        context.go("/location-picker", extra: {"goHomeOnComplete": true});
       }
     }
   }
@@ -137,7 +137,7 @@ class _NotificationPermissionState extends State<NotificationPermission> with Si
           debugPrint('❌ Permission denied, proceeding to homepage');
           if (!mounted) return;
           await StorageService.setNotificationPermissionScreenShown();
-          context.go("/homepage");
+          context.go("/location-picker", extra: {"goHomeOnComplete": true});
           return;
         }
       }
@@ -156,7 +156,7 @@ class _NotificationPermissionState extends State<NotificationPermission> with Si
   void _skip() async {
     await StorageService.setNotificationPermissionScreenShown();
     if (mounted) {
-      context.go("/homepage");
+      context.go("/location-picker", extra: {"goHomeOnComplete": true});
     }
   }
 

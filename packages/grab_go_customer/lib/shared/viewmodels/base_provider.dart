@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:grab_go_shared/shared/services/cache_service.dart';
 
 /// Base provider with common state management patterns
 abstract class BaseProvider<T> extends ChangeNotifier {

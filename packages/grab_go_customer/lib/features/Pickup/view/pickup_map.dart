@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
@@ -17,7 +16,6 @@ import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
 import 'package:grab_go_shared/shared/utils/constants.dart';
 import 'package:grab_go_shared/shared/utils/map_styles.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
-import 'package:grab_go_customer/shared/widgets/area_unavailable_screen.dart';
 import 'package:grab_go_customer/shared/widgets/pickup_map_skeleton.dart';
 import 'package:grab_go_shared/shared/widgets/app_button.dart';
 import 'package:grab_go_shared/shared/widgets/custom_map_markers.dart';
@@ -49,7 +47,6 @@ class _PickupMapState extends State<PickupMap> {
   double _currentZoom = 14;
   static const LatLng _defaultPosition = LatLng(5.6037, -0.1870);
 
-  // Track location to detect changes
   double? _lastLat;
   double? _lastLng;
 

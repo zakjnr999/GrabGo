@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:grab_go_customer/core/native/native_location_service.dart';
+import 'package:grab_go_customer/shared/models/address_model.dart';
 import 'package:grab_go_customer/shared/services/location_service.dart';
 import 'package:grab_go_shared/shared/services/cache_service.dart';
 
@@ -28,6 +30,7 @@ class NativeLocationProvider with ChangeNotifier {
   double? _accuracy;
   double? _speed;
   double? _bearing;
+  AddressModel? _confirmedAddress;
 
   bool _isFetching = false;
   bool _isTracking = false;
@@ -55,6 +58,7 @@ class NativeLocationProvider with ChangeNotifier {
 
   // Native service
   final NativeLocationService _nativeService = NativeLocationService();
+  final Completer<void> _initCompleter = Completer<void>();
 
   // ============================================
   // Getters
@@ -66,6 +70,7 @@ class NativeLocationProvider with ChangeNotifier {
   double? get accuracy => _accuracy;
   double? get speed => _speed;
   double? get bearing => _bearing;
+  AddressModel? get confirmedAddress => _confirmedAddress;
 
   bool get isFetching => _isFetching;
   bool get isTracking => _isTracking;
@@ -118,6 +123,9 @@ class NativeLocationProvider with ChangeNotifier {
     // Check location accuracy in background
     _checkLocationAccuracy();
 
+    if (!_initCompleter.isCompleted) {
+      _initCompleter.complete();
+    }
     notifyListeners();
   }
 
@@ -598,6 +606,47 @@ class NativeLocationProvider with ChangeNotifier {
     }
   }
 
+  /// Check if the current (coarse) location is significantly different from the confirmed address
+  Future<bool> hasSignificantLocationChange({double thresholdMeters = 2000}) async {
+    // Wait for initialization to ensure _confirmedAddress is loaded from cache
+    await _initCompleter.future;
+
+    if (_confirmedAddress == null) return true;
+
+    // Get current coarse location without blocking too much
+    final currentLocation = await getCurrentLocation(mode: LocationTrackingMode.balanced, timeoutMs: 5000);
+    if (currentLocation == null) return false; // Can't determine, assume no change for stability
+
+    final distance = _haversineDistance(
+      _confirmedAddress!.latitude,
+      _confirmedAddress!.longitude,
+      currentLocation.latitude,
+      currentLocation.longitude,
+    );
+
+    return distance > thresholdMeters;
+  }
+
+  /// Save confirmed address details
+  Future<void> setConfirmedAddress(AddressModel address) async {
+    _confirmedAddress = address;
+    _latitude = address.latitude;
+    _longitude = address.longitude;
+    _address = address.formattedAddress;
+
+    // Save to cache
+    await CacheService.saveUserLocation(
+      latitude: address.latitude,
+      longitude: address.longitude,
+      address: address.formattedAddress,
+    );
+
+    final addressJson = jsonEncode(address.toJson());
+    await CacheService.saveData('confirmed_address_details', addressJson);
+
+    notifyListeners();
+  }
+
   // ============================================
   // Utility Methods
   // ============================================
@@ -645,8 +694,15 @@ class NativeLocationProvider with ChangeNotifier {
         _address = locationData['address'] ?? '';
         _latitude = locationData['latitude']?.toDouble();
         _longitude = locationData['longitude']?.toDouble();
-        notifyListeners();
       }
+
+      // Load detailed confirmed address
+      final confirmedAddressJson = CacheService.getData('confirmed_address_details');
+      if (confirmedAddressJson != null) {
+        _confirmedAddress = AddressModel.fromJson(jsonDecode(confirmedAddressJson));
+      }
+
+      notifyListeners();
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Error loading cached location: $e');

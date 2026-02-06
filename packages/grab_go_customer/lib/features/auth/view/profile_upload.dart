@@ -6,8 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
-import 'package:grab_go_customer/shared/services/location_service.dart';
-import 'package:grab_go_customer/shared/services/storage_service.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -68,22 +66,9 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
   }
 
   Future<void> _navigateAfterProfileUpload(BuildContext context) async {
-    final hasShownLocationScreen = StorageService.hasLocationPermissionScreenShown();
-
-    if (!hasShownLocationScreen) {
-      final hasPermission = await LocationService.hasPermission();
-      if (!hasPermission) {
-        if (context.mounted) {
-          context.go("/locationPermission");
-        }
-        return;
-      } else {
-        await StorageService.setLocationPermissionScreenShown();
-      }
-    }
-
+    // New flow: Move directly to confirm-address
     if (context.mounted) {
-      context.go("/homepage");
+      context.go("/confirm-address");
     }
   }
 
@@ -190,7 +175,7 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
         }
 
         if (mounted) {
-          context.push("/location-picker", extra: true);
+          context.go("/confirm-address");
         }
       } else {
         String errorMessage = "Failed to upload profile image. Please try again.";
@@ -207,11 +192,7 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
 
         if (mounted) {
           LoadingDialog.instance().hide();
-          AppToastMessage.show(
-            context: context,
-            message: errorMessage,
-            backgroundColor: context.appColors.error,
-          );
+          AppToastMessage.show(context: context, message: errorMessage, backgroundColor: context.appColors.error);
         }
       }
     } catch (e) {

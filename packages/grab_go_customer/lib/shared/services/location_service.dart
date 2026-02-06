@@ -79,10 +79,17 @@ class LocationService {
   static String _formatAddress(Placemark place) {
     final parts = <String>[];
 
-    if (place.locality?.isNotEmpty == true) parts.add(place.locality!);
-    if (place.administrativeArea?.isNotEmpty == true) {
-      parts.add(place.administrativeArea!);
+    // Try to get a specific location name or street
+    if (place.name?.isNotEmpty == true && place.name != place.locality) {
+      parts.add(place.name!);
+    } else if (place.street?.isNotEmpty == true && place.street != place.locality) {
+      parts.add(place.street!);
     }
+
+    if (place.subLocality?.isNotEmpty == true) parts.add(place.subLocality!);
+    if (place.locality?.isNotEmpty == true) parts.add(place.locality!);
+    if (place.administrativeArea?.isNotEmpty == true) parts.add(place.administrativeArea!);
+
     return parts.isNotEmpty ? parts.join(', ') : "Address not available";
   }
 

@@ -5,7 +5,6 @@ import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
-import 'package:grab_go_shared/shared/utils/constants.dart';
 
 class ItemReviewsPage extends StatefulWidget {
   const ItemReviewsPage({super.key});

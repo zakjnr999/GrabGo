@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/gestures.dart';
@@ -9,8 +7,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
-import 'package:grab_go_customer/shared/services/location_service.dart';
-import 'package:grab_go_customer/shared/services/storage_service.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -200,22 +196,9 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
   }
 
   Future<void> _navigateAfterRegistration(BuildContext context) async {
-    final hasShownLocationScreen = StorageService.hasLocationPermissionScreenShown();
-
-    if (!hasShownLocationScreen) {
-      final hasPermission = await LocationService.hasPermission();
-      if (!hasPermission) {
-        if (context.mounted) {
-          context.go("/locationPermission");
-        }
-        return;
-      } else {
-        await StorageService.setLocationPermissionScreenShown();
-      }
-    }
-
+    // New flow: Move directly to confirm-address
     if (context.mounted) {
-      context.go("/homepage");
+      context.go("/confirm-address");
     }
   }
 

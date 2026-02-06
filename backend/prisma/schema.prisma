@@ -161,6 +161,21 @@ enum ReferralStatus {
   expired
 }
 
+enum AddressLabel {
+  home
+  work
+  other
+}
+
+enum BuildingType {
+  house
+  apartment
+  office
+  villa
+  hostel
+  other
+}
+
 // ==================== MODELS ====================
 
 model Referral {
@@ -314,6 +329,7 @@ model User {
   promoCodesCreated      PromoCode[]                @relation("PromoCodeCreator")
   targetedPromoCodes     PromoCodeTargetedUser[]
   scheduledNotifications ScheduledNotification[]
+  addresses              UserAddress[]
 
   @@index([email])
   @@index([role])
@@ -448,6 +464,29 @@ model UserFavoriteGrabMartItem {
 
   @@unique([userId, grabMartItemId])
   @@map("user_favorite_grabmart_items")
+}
+
+model UserAddress {
+  id               String       @id @default(cuid())
+  userId           String
+  latitude         Float
+  longitude        Float
+  formattedAddress String
+  city             String?
+  area             String?
+  label            AddressLabel @default(home)
+  buildingType     BuildingType @default(house)
+  unitNumber       String?
+  floor            String?
+  instructions     String?
+  isDefault        Boolean      @default(false)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_addresses")
 }
 
 // ==================== RESTAURANT & FOOD ====================

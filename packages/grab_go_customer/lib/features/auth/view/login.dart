@@ -7,11 +7,12 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
-import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:grab_go_customer/shared/services/location_service.dart';
-import 'package:grab_go_customer/shared/services/storage_service.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
+import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_customer/shared/services/storage_service.dart';
+import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
+import 'package:provider/provider.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -298,22 +299,17 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
   }
 
   Future<void> _navigateAfterLogin(BuildContext context) async {
-    final hasShownLocationScreen = StorageService.hasLocationPermissionScreenShown();
+    final locationProvider = Provider.of<NativeLocationProvider>(context, listen: false);
 
-    if (!hasShownLocationScreen) {
-      final hasPermission = await LocationService.hasPermission();
-      if (!hasPermission) {
-        if (context.mounted) {
-          context.go("/locationPermission");
-        }
-        return;
-      } else {
-        await StorageService.setLocationPermissionScreenShown();
-      }
-    }
+    // Check if there's a significant location change or no confirmed address
+    final hasChange = await locationProvider.hasSignificantLocationChange();
 
     if (context.mounted) {
-      context.go("/homepage");
+      if (hasChange) {
+        context.go("/confirm-address");
+      } else {
+        context.go("/homepage");
+      }
     }
   }
 

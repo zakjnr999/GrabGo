@@ -49,7 +49,8 @@ import 'package:grab_go_customer/features/restaurant/view/restaurants.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/splash_screen.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
-import 'package:grab_go_customer/features/location/view/location_picker_page.dart';
+import 'package:grab_go_customer/features/auth/view/confirm_address_page.dart';
+import 'package:grab_go_customer/features/auth/view/location_picker_page.dart';
 import 'package:grab_go_customer/features/browse/view/category_items_page.dart';
 import 'package:flutter/material.dart';
 
@@ -955,12 +956,40 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
-      path: "/location-picker",
+      path: "/confirm-address",
       pageBuilder: (context, state) {
-        final isFromRegistration = state.extra as bool? ?? false;
         return CustomTransitionPage(
           key: state.pageKey,
-          child: LocationPickerPage(isFromRegistration: isFromRegistration),
+          child: const ConfirmAddressPage(),
+          transitionDuration: const Duration(milliseconds: 400),
+          reverseTransitionDuration: const Duration(milliseconds: 400),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.vertical,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/location-picker",
+      pageBuilder: (context, state) {
+        final extra = state.extra;
+        bool isFromRegistration = false;
+        bool goHomeOnComplete = false;
+
+        if (extra is bool) {
+          isFromRegistration = extra;
+        } else if (extra is Map<String, dynamic>) {
+          isFromRegistration = extra['isFromRegistration'] == true;
+          goHomeOnComplete = extra['goHomeOnComplete'] == true;
+        }
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: LocationPickerPage(isFromRegistration: isFromRegistration, goHomeOnComplete: goHomeOnComplete),
           transitionDuration: const Duration(milliseconds: 400),
           reverseTransitionDuration: const Duration(milliseconds: 400),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {

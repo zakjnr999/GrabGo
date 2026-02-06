@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_places_flutter/google_places_flutter.dart';
 import 'package:google_places_flutter/model/prediction.dart';
+import 'package:grab_go_customer/shared/services/location_service.dart';
 import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -12,8 +13,9 @@ import 'package:provider/provider.dart';
 
 class LocationPickerPage extends StatefulWidget {
   final bool isFromRegistration;
+  final bool goHomeOnComplete;
 
-  const LocationPickerPage({super.key, this.isFromRegistration = false});
+  const LocationPickerPage({super.key, this.isFromRegistration = false, this.goHomeOnComplete = false});
 
   @override
   State<LocationPickerPage> createState() => _LocationPickerPageState();
@@ -23,12 +25,14 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   bool _isLoadingCurrentLocation = false;
+  bool _handledPermissionCheck = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _searchFocusNode.requestFocus();
+      _ensureLocationPermissionIfNeeded();
     });
   }
 
@@ -37,6 +41,22 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _ensureLocationPermissionIfNeeded() async {
+    if (_handledPermissionCheck) return;
+    _handledPermissionCheck = true;
+    if (!widget.goHomeOnComplete) return;
+
+    final hasPermission = await LocationService.hasPermission();
+    if (hasPermission) return;
+
+    final permissionResult = await LocationService.requestPermissionAndCheck();
+    if (permissionResult == true) return;
+
+    if (mounted) {
+      context.go("/homepage");
+    }
   }
 
   Future<void> _useCurrentLocation() async {
@@ -51,6 +71,8 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
       if (mounted) {
         if (widget.isFromRegistration) {
           context.go("/accountCreated");
+        } else if (widget.goHomeOnComplete) {
+          context.go("/homepage");
         } else {
           context.pop(true); // Return true to indicate location changed
         }
@@ -82,7 +104,7 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
       // Fallback: show error if coordinates are not available
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('Unable to get coordinates for this location. Please try another location.'),
             backgroundColor: Colors.red,
           ),
@@ -91,15 +113,13 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
       return;
     }
 
-    await locationProvider.updateLocation(
-      latitude: lat,
-      longitude: lng,
-      address: prediction.description ?? '',
-    );
+    await locationProvider.updateLocation(latitude: lat, longitude: lng, address: prediction.description ?? '');
 
     if (mounted) {
       if (widget.isFromRegistration) {
         context.go("/accountCreated");
+      } else if (widget.goHomeOnComplete) {
+        context.go("/homepage");
       } else {
         context.pop(true); // Return true to indicate location changed
       }
