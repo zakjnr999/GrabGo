@@ -111,6 +111,13 @@ class GrabMartProvider extends ChangeNotifier {
       final userLat = locationData?['latitude']?.toDouble();
       final userLng = locationData?['longitude']?.toDouble();
 
+      if (kDebugMode) {
+        print('🌍 [GRABMART] Fetching items with location:');
+        print('   📍 Latitude: $userLat');
+        print('   📍 Longitude: $userLng');
+        print('   📦 Category: $category, Store: $store');
+      }
+
       final items = await _repository.fetchItems(
         category: category,
         store: store,
@@ -122,6 +129,10 @@ class GrabMartProvider extends ChangeNotifier {
       );
       
       _items = items;
+
+      if (kDebugMode) {
+        print('✅ [GRABMART] Received ${items.length} items from API');
+      }
       
       if (isBaseFetch) {
         await CacheService.saveGrabMartItems(_items.map((i) => i.toJson()).toList());

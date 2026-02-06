@@ -109,6 +109,13 @@ class PharmacyProvider extends ChangeNotifier {
       final userLat = locationData?['latitude']?.toDouble();
       final userLng = locationData?['longitude']?.toDouble();
 
+      if (kDebugMode) {
+        print('🌍 [PHARMACY] Fetching items with location:');
+        print('   📍 Latitude: $userLat');
+        print('   📍 Longitude: $userLng');
+        print('   📦 Category: $category, Store: $store');
+      }
+
       final items = await _repository.fetchItems(
         category: category,
         store: store,
@@ -120,6 +127,10 @@ class PharmacyProvider extends ChangeNotifier {
       );
 
       _items = items;
+
+      if (kDebugMode) {
+        print('✅ [PHARMACY] Received ${items.length} items from API');
+      }
 
       if (isBaseFetch) {
         await CacheService.savePharmacyItems(_items.map((i) => i.toJson()).toList());

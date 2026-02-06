@@ -36,8 +36,12 @@ class PromoBanner {
       discount: json['discount'] as String?,
       backgroundColor: json['backgroundColor'] as String? ?? '#FFFFFF',
       targetUrl: json['targetUrl'] as String?,
-      startDate: DateTime.parse(json['startDate'] as String),
-      endDate: DateTime.parse(json['endDate'] as String),
+      startDate: json['startDate'] != null 
+          ? DateTime.parse(json['startDate'] as String)
+          : DateTime.now(),
+      endDate: json['endDate'] != null
+          ? DateTime.parse(json['endDate'] as String)
+          : DateTime.now().add(const Duration(days: 30)),
       isActive: json['isActive'] as bool? ?? true,
       priority: json['priority'] as int? ?? 0,
       targetAudience: json['targetAudience'] as String? ?? 'all',

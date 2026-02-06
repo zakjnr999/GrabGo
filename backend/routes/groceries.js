@@ -232,6 +232,10 @@ router.get("/items", async (req, res) => {
 
         // Filter by nearby stores if user location provided
         if (userLatitude && userLongitude && !isNaN(userLatitude) && !isNaN(userLongitude) && !store) {
+            console.log('🌍 [GROCERY ITEMS] Location-based filtering enabled');
+            console.log(`   📍 User location: (${userLatitude}, ${userLongitude})`);
+            console.log(`   📏 Max distance: ${maxDistanceKm}km`);
+
             const { getBoundingBox, filterVendorsByDistance } = require('../utils/vendor_distance_filter');
             const bbox = getBoundingBox(userLatitude, userLongitude, maxDistanceKm);
 
@@ -240,8 +244,10 @@ router.get("/items", async (req, res) => {
                     latitude: { gte: bbox.minLat, lte: bbox.maxLat },
                     longitude: { gte: bbox.minLng, lte: bbox.maxLng }
                 },
-                select: { id: true, latitude: true, longitude: true }
+                select: { id: true, latitude: true, longitude: true, storeName: true }
             });
+
+            console.log(`   🏪 Found ${nearbyStores.length} stores in bounding box`);
 
             const filteredStores = filterVendorsByDistance(
                 nearbyStores,
@@ -250,9 +256,15 @@ router.get("/items", async (req, res) => {
                 maxDistanceKm
             );
 
+            console.log(`   ✅ ${filteredStores.length} stores within ${maxDistanceKm}km radius`);
+            if (filteredStores.length > 0) {
+                console.log(`   📋 Store names: ${filteredStores.map(s => s.storeName).join(', ')}`);
+            }
+
             const storeIds = filteredStores.map(s => s.id);
 
             if (storeIds.length === 0) {
+                console.log('   ⚠️  No stores found in area - returning empty array');
                 return res.json({
                     success: true,
                     message: "No grocery items available in your area",
@@ -262,7 +274,10 @@ router.get("/items", async (req, res) => {
 
             where.storeId = { in: storeIds };
         } else if (store) {
+            console.log(`🏪 [GROCERY ITEMS] Filtering by specific store: ${store}`);
             where.storeId = store;
+        } else if (!userLatitude || !userLongitude) {
+            console.log('📍 [GROCERY ITEMS] No location provided - showing all items');
         }
 
         const items = await prisma.groceryItem.findMany({
@@ -288,6 +303,8 @@ router.get("/items", async (req, res) => {
             orderBy: { rating: 'desc' },
             take: 50
         });
+
+        console.log(`✅ [GROCERY ITEMS] Returning ${items.length} items to frontend`);
 
         res.json({
             success: true,
@@ -442,6 +459,9 @@ router.get("/deals", async (req, res) => {
 
         // Filter by nearby stores if user location provided
         if (userLatitude && userLongitude && !isNaN(userLatitude) && !isNaN(userLongitude)) {
+            console.log('🌍 [GROCERY DEALS] Location-based filtering enabled');
+            console.log(`   📍 User location: (${userLatitude}, ${userLongitude})`);
+
             const { getBoundingBox, filterVendorsByDistance } = require('../utils/vendor_distance_filter');
             const bbox = getBoundingBox(userLatitude, userLongitude, maxDistanceKm);
 
@@ -460,9 +480,12 @@ router.get("/deals", async (req, res) => {
                 maxDistanceKm
             );
 
+            console.log(`   ✅ ${filteredStores.length} stores within ${maxDistanceKm}km`);
+
             const storeIds = filteredStores.map(s => s.id);
 
             if (storeIds.length === 0) {
+                console.log('   ⚠️  No stores found - returning empty deals');
                 return res.json({
                     success: true,
                     message: "No grocery deals available in your area",
@@ -471,6 +494,8 @@ router.get("/deals", async (req, res) => {
             }
 
             where.storeId = { in: storeIds };
+        } else {
+            console.log('📍 [GROCERY DEALS] No location - showing all deals');
         }
 
         const deals = await prisma.groceryItem.findMany({
@@ -491,6 +516,8 @@ router.get("/deals", async (req, res) => {
             orderBy: { discountPercentage: 'desc' },
             take: 10
         });
+
+        console.log(`✅ [GROCERY DEALS] Returning ${deals.length} deals to frontend`);
 
         res.json({
             success: true,
@@ -767,6 +794,9 @@ router.get("/popular", async (req, res) => {
 
         // Filter by nearby stores if user location provided
         if (userLatitude && userLongitude && !isNaN(userLatitude) && !isNaN(userLongitude)) {
+            console.log('🌍 [GROCERY POPULAR] Location-based filtering enabled');
+            console.log(`   📍 User location: (${userLatitude}, ${userLongitude})`);
+
             const { getBoundingBox, filterVendorsByDistance } = require('../utils/vendor_distance_filter');
             const bbox = getBoundingBox(userLatitude, userLongitude, maxDistanceKm);
 
@@ -785,9 +815,12 @@ router.get("/popular", async (req, res) => {
                 maxDistanceKm
             );
 
+            console.log(`   ✅ ${filteredStores.length} stores within ${maxDistanceKm}km`);
+
             const storeIds = filteredStores.map(s => s.id);
 
             if (storeIds.length === 0) {
+                console.log('   ⚠️  No stores found - returning empty popular items');
                 return res.json({
                     success: true,
                     message: "No popular grocery items available in your area",
@@ -796,6 +829,8 @@ router.get("/popular", async (req, res) => {
             }
 
             where.storeId = { in: storeIds };
+        } else {
+            console.log('📍 [GROCERY POPULAR] No location - showing all popular items');
         }
 
         const popularItems = await prisma.groceryItem.findMany({
@@ -820,6 +855,8 @@ router.get("/popular", async (req, res) => {
                 }
             }
         });
+
+        console.log(`✅ [GROCERY POPULAR] Returning ${popularItems.length} popular items to frontend`);
 
         res.json({
             success: true,

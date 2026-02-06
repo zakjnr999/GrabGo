@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -19,6 +20,7 @@ import 'package:grab_go_customer/features/home/viewmodel/food_discovery_provider
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
+import 'package:grab_go_shared/shared/services/cache_service.dart';
 import 'package:grab_go_customer/shared/widgets/category_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
 import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
@@ -217,6 +219,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Future<void> _refreshData() async {
     final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
 
+    if (kDebugMode) {
+      print('🔄 [HOME] Refreshing data after location change...');
+      final locationData = CacheService.getUserLocation();
+      print('📍 [HOME] Current location: ${locationData?['latitude']}, ${locationData?['longitude']}');
+      print('🏪 [HOME] Active service: ${serviceProvider.currentService}');
+    }
+
     if (serviceProvider.isFoodService) {
       // Refresh all food data
       final provider = Provider.of<FoodProvider>(context, listen: false);
@@ -233,6 +242,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       // Refresh GrabMart data
       final grabMartProvider = Provider.of<GrabMartProvider>(context, listen: false);
       await grabMartProvider.refreshAll(forceRefresh: true);
+    }
+
+    if (kDebugMode) {
+      print('✅ [HOME] Data refresh complete!');
     }
   }
 
@@ -303,7 +316,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               sliver: SliverToBoxAdapter(
                                 child: Container(
                                   color: colors.backgroundPrimary,
-                                  child: shouldShowSkeleton
+                                  child: shouldShowSkeleton && _isRefreshingLocation
                                       ? const HomePageSkeleton()
                                       : Column(
                                           children: [
@@ -431,10 +444,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         },
                       ),
 
-                      if (_isRefreshingLocation)
-                        Positioned.fill(
-                          child: Container(color: colors.backgroundPrimary, child: const HomePageSkeleton()),
-                        ),
+                      // if (_isRefreshingLocation)
+                      //   Positioned.fill(
+                      //     child: Container(
+                      //       color: colors.backgroundPrimary,
+                      //       child: const SingleChildScrollView(child: const HomePageSkeleton()),
+                      //     ),
+                      //   ),
                     ],
                   ),
                 ),

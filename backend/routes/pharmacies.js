@@ -249,6 +249,9 @@ router.get("/items", async (req, res) => {
 
         // Filter by nearby stores if user location provided
         if (userLatitude && userLongitude && !isNaN(userLatitude) && !isNaN(userLongitude) && !store) {
+            console.log('🌍 [PHARMACY ITEMS] Location-based filtering enabled');
+            console.log(`   📍 User location: (${userLatitude}, ${userLongitude})`);
+
             const { getBoundingBox, filterVendorsByDistance } = require('../utils/vendor_distance_filter');
             const bbox = getBoundingBox(userLatitude, userLongitude, maxDistanceKm);
 
@@ -257,8 +260,10 @@ router.get("/items", async (req, res) => {
                     latitude: { gte: bbox.minLat, lte: bbox.maxLat },
                     longitude: { gte: bbox.minLng, lte: bbox.maxLng }
                 },
-                select: { id: true, latitude: true, longitude: true }
+                select: { id: true, latitude: true, longitude: true, storeName: true }
             });
+
+            console.log(`   🏪 Found ${nearbyStores.length} stores in bounding box`);
 
             const filteredStores = filterVendorsByDistance(
                 nearbyStores,
@@ -267,9 +272,12 @@ router.get("/items", async (req, res) => {
                 maxDistanceKm
             );
 
+            console.log(`   ✅ ${filteredStores.length} stores within ${maxDistanceKm}km radius`);
+
             const storeIds = filteredStores.map(s => s.id);
 
             if (storeIds.length === 0) {
+                console.log('   ⚠️  No pharmacies found in area - returning empty array');
                 return res.json({
                     success: true,
                     message: "No pharmacy items available in your area",
@@ -279,7 +287,10 @@ router.get("/items", async (req, res) => {
 
             where.storeId = { in: storeIds };
         } else if (store) {
+            console.log(`🏪 [PHARMACY ITEMS] Filtering by specific store: ${store}`);
             where.storeId = store;
+        } else if (!userLatitude || !userLongitude) {
+            console.log('📍 [PHARMACY ITEMS] No location provided - showing all items');
         }
 
         const items = await prisma.pharmacyItem.findMany({
@@ -300,6 +311,8 @@ router.get("/items", async (req, res) => {
             orderBy: { orderCount: 'desc' },
             take: 50
         });
+
+        console.log(`✅ [PHARMACY ITEMS] Returning ${items.length} items to frontend`);
 
         res.json({
             success: true,

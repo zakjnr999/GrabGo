@@ -181,6 +181,13 @@ class GroceryProvider extends ChangeNotifier {
       final userLat = locationData?['latitude']?.toDouble();
       final userLng = locationData?['longitude']?.toDouble();
 
+      if (kDebugMode) {
+        print('🌍 [GROCERY] Fetching items with location:');
+        print('   📍 Latitude: $userLat');
+        print('   📍 Longitude: $userLng');
+        print('   📦 Category: $category, Store: $store');
+      }
+
       final freshItems = await _repository.fetchItems(
         category: category,
         store: store,
@@ -191,6 +198,10 @@ class GroceryProvider extends ChangeNotifier {
         userLng: userLng,
       );
       _items = freshItems;
+
+      if (kDebugMode) {
+        print('✅ [GROCERY] Received ${freshItems.length} items from API');
+      }
 
       if (isBaseFetch) {
         await CacheService.saveGroceryItems(freshItems.map((i) => i.toJson()).toList());
@@ -245,11 +256,19 @@ class GroceryProvider extends ChangeNotifier {
       final userLat = locationData?['latitude']?.toDouble();
       final userLng = locationData?['longitude']?.toDouble();
 
+      if (kDebugMode) {
+        print('🌍 [GROCERY DEALS] Fetching with location: ($userLat, $userLng)');
+      }
+
       final freshDeals = await _repository.fetchDeals(
         userLat: userLat,
         userLng: userLng,
       );
       _deals = freshDeals;
+      
+      if (kDebugMode) {
+        print('✅ [GROCERY DEALS] Received ${freshDeals.length} deals');
+      }
       await CacheService.saveGroceryDeals(freshDeals.map((d) => d.toJson()).toList());
     } catch (e) {
       if (kDebugMode) {
@@ -412,12 +431,20 @@ class GroceryProvider extends ChangeNotifier {
       final userLat = locationData?['latitude']?.toDouble();
       final userLng = locationData?['longitude']?.toDouble();
 
+      if (kDebugMode) {
+        print('🌍 [GROCERY POPULAR] Fetching with location: ($userLat, $userLng)');
+      }
+
       final items = await _repository.fetchPopularItems(
         limit: 10,
         userLat: userLat,
         userLng: userLng,
       );
       _popularItems = items;
+      
+      if (kDebugMode) {
+        print('✅ [GROCERY POPULAR] Received ${items.length} popular items');
+      }
       await CacheService.saveGroceryPopularItems(items.map((i) => i.toJson()).toList());
     } catch (e) {
       if (kDebugMode) {
