@@ -33,9 +33,18 @@ final class _$GroceryService extends GroceryService {
   }
 
   @override
-  Future<Response<dynamic>> getCategories() {
+  Future<Response<dynamic>> getCategories({double? userLat, double? userLng}) {
     final Uri $url = Uri.parse('/groceries/categories');
-    final Request $request = Request('GET', $url, client.baseUrl);
+    final Map<String, dynamic> $params = <String, dynamic>{
+      'userLat': userLat,
+      'userLng': userLng,
+    };
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+      parameters: $params,
+    );
     return client.send<dynamic, dynamic>($request);
   }
 

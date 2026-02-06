@@ -19,9 +19,18 @@ final class _$GrabMartService extends GrabMartService {
   final Type definitionType = GrabMartService;
 
   @override
-  Future<Response<dynamic>> getCategories() {
+  Future<Response<dynamic>> getCategories({double? userLat, double? userLng}) {
     final Uri $url = Uri.parse('/grabmart/categories');
-    final Request $request = Request('GET', $url, client.baseUrl);
+    final Map<String, dynamic> $params = <String, dynamic>{
+      'userLat': userLat,
+      'userLng': userLng,
+    };
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+      parameters: $params,
+    );
     return client.send<dynamic, dynamic>($request);
   }
 

@@ -10,9 +10,9 @@ class PharmacyRepository {
   PharmacyRepository() : _pharmacyService = PharmacyService.create(chopper_client_service.chopperClient);
 
   /// Fetch all pharmacy categories
-  Future<List<PharmacyCategory>> fetchCategories() async {
+  Future<List<PharmacyCategory>> fetchCategories({double? userLat, double? userLng}) async {
     try {
-      final response = await _pharmacyService.getCategories();
+      final response = await _pharmacyService.getCategories(userLat: userLat, userLng: userLng);
 
       if (response.isSuccessful && response.body != null) {
         final data = response.body as Map<String, dynamic>;

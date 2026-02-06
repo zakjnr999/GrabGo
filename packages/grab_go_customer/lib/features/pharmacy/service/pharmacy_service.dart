@@ -5,7 +5,10 @@ part 'pharmacy_service.chopper.dart';
 @ChopperApi()
 abstract class PharmacyService extends ChopperService {
   @GET(path: '/pharmacies/categories')
-  Future<Response> getCategories();
+  Future<Response> getCategories({
+    @Query('userLat') double? userLat,
+    @Query('userLng') double? userLng,
+  });
 
   @GET(path: '/pharmacies/items')
   Future<Response> getItems({

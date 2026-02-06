@@ -100,22 +100,31 @@ class FoodCategoryProvider extends ChangeNotifier with CacheMixin {
   /// Fetch from API
   Future<void> _fetchFromApi() async {
     _updateState(_state.copyWith(isLoading: true, error: null));
-
     try {
-      final categories = await _repository.fetchCategoriesWithFoods();
+      final locationData = CacheService.getUserLocation();
+      final userLat = locationData?['latitude']?.toDouble();
+      final userLng = locationData?['longitude']?.toDouble();
+
+      final categories = await _repository.fetchCategoriesWithFoods(
+        userLat: userLat,
+        userLng: userLng,
+      );
 
       // Enhance food items with restaurant details
       final enhancedCategories = await _enhanceFoodItemsWithRestaurantDetails(categories);
-
       _updateState(_state.copyWith(categories: enhancedCategories, isLoading: false, error: null));
-
       await _saveToCache();
     } catch (e) {
-      // If we have existing data, keep it. Otherwise try fallback/cache
       if (_state.categories.isEmpty) {
-        // Try fallback without foods
         try {
-          final categories = await _repository.fetchCategories();
+          final locationData = CacheService.getUserLocation();
+          final userLat = locationData?['latitude']?.toDouble();
+          final userLng = locationData?['longitude']?.toDouble();
+
+          final categories = await _repository.fetchCategories(
+            userLat: userLat,
+            userLng: userLng,
+          );
           _updateState(
             _state.copyWith(categories: categories, isLoading: false, error: 'Loaded categories without items'),
           );

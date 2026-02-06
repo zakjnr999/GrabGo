@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -263,14 +264,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final grabMartProvider = Provider.of<GrabMartProvider>(context);
 
     bool shouldShowSkeleton = false;
+    bool shouldShowEmptyState = false;
+
     if (serviceProvider.isGroceryService) {
-      shouldShowSkeleton = groceryProvider.items.isEmpty;
+      shouldShowSkeleton = groceryProvider.isLoadingItems && groceryProvider.items.isEmpty;
+      shouldShowEmptyState = !groceryProvider.isLoadingItems && groceryProvider.categories.isEmpty;
     } else if (serviceProvider.isPharmacyService) {
-      shouldShowSkeleton = pharmacyProvider.items.isEmpty;
+      shouldShowSkeleton = pharmacyProvider.isLoadingItems && pharmacyProvider.items.isEmpty;
+      shouldShowEmptyState = !pharmacyProvider.isLoadingItems && pharmacyProvider.categories.isEmpty;
     } else if (serviceProvider.isStoresService) {
-      shouldShowSkeleton = grabMartProvider.items.isEmpty;
+      shouldShowSkeleton = grabMartProvider.isLoadingItems && grabMartProvider.items.isEmpty;
+      shouldShowEmptyState = !grabMartProvider.isLoadingItems && grabMartProvider.categories.isEmpty;
     } else if (serviceProvider.isFoodService) {
-      shouldShowSkeleton = foodProvider.categories.isEmpty;
+      shouldShowSkeleton = foodProvider.isLoading && foodProvider.categories.isEmpty;
+      shouldShowEmptyState = !foodProvider.isLoading && foodProvider.categories.isEmpty;
     }
 
     final systemUiOverlayStyle = SystemUiOverlayStyle(
@@ -316,7 +323,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               sliver: SliverToBoxAdapter(
                                 child: Container(
                                   color: colors.backgroundPrimary,
-                                  child: shouldShowSkeleton && _isRefreshingLocation
+                                  child: shouldShowSkeleton
                                       ? const HomePageSkeleton()
                                       : Column(
                                           children: [
@@ -348,43 +355,48 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                   ),
                                                 );
                                               },
-                                              child: Column(
-                                                key: ValueKey<bool>(serviceProvider.isFoodService),
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  _buildCategories(
-                                                    serviceProvider,
-                                                    foodProvider,
-                                                    groceryProvider,
-                                                    isDark,
-                                                    size,
-                                                    colors,
-                                                  ),
-                                                  SizedBox(height: KSpacing.md.h),
-                                                  // Service-specific sections
-                                                  if (serviceProvider.isFoodService ||
-                                                      serviceProvider.isGroceryService) ...[
-                                                    _buildDealsSection(serviceProvider, groceryProvider),
-                                                    _buildFreshArrivalsSection(serviceProvider, groceryProvider),
-                                                    _buildOrderAgainSection(serviceProvider),
-                                                    _buildPopularSection(serviceProvider, foodProvider),
-                                                    _buildBuyAgainSection(serviceProvider, groceryProvider),
-                                                    _buildPromoBanners(serviceProvider),
-                                                    _buildTopRatedSection(serviceProvider, foodProvider),
-                                                    _buildBrowseAllGroceriesSection(serviceProvider, groceryProvider),
-                                                  ] else if (serviceProvider.isPharmacyService) ...[
-                                                    _buildPharmacyOnSaleSection(),
-                                                    _buildPharmacyPopularSection(),
-                                                    _buildPharmacyTopRatedSection(),
-                                                    _buildPharmacyItemsGrid(),
-                                                  ] else if (serviceProvider.isStoresService) ...[
-                                                    _buildGrabMartSpecialOffersSection(),
-                                                    _buildGrabMartQuickPicksSection(),
-                                                    _buildGrabMartTopRatedSection(),
-                                                    _buildGrabMartItemsGrid(),
-                                                  ],
-                                                ],
-                                              ),
+                                              child: shouldShowEmptyState
+                                                  ? _buildServiceEmptyState(serviceProvider, colors)
+                                                  : Column(
+                                                      key: ValueKey<bool>(serviceProvider.isFoodService),
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        _buildCategories(
+                                                          serviceProvider,
+                                                          foodProvider,
+                                                          groceryProvider,
+                                                          isDark,
+                                                          size,
+                                                          colors,
+                                                        ),
+                                                        SizedBox(height: KSpacing.md.h),
+                                                        // Service-specific sections
+                                                        if (serviceProvider.isFoodService ||
+                                                            serviceProvider.isGroceryService) ...[
+                                                          _buildDealsSection(serviceProvider, groceryProvider),
+                                                          _buildFreshArrivalsSection(serviceProvider, groceryProvider),
+                                                          _buildOrderAgainSection(serviceProvider),
+                                                          _buildPopularSection(serviceProvider, foodProvider),
+                                                          _buildBuyAgainSection(serviceProvider, groceryProvider),
+                                                          _buildPromoBanners(serviceProvider),
+                                                          _buildTopRatedSection(serviceProvider, foodProvider),
+                                                          _buildBrowseAllGroceriesSection(
+                                                            serviceProvider,
+                                                            groceryProvider,
+                                                          ),
+                                                        ] else if (serviceProvider.isPharmacyService) ...[
+                                                          _buildPharmacyOnSaleSection(),
+                                                          _buildPharmacyPopularSection(),
+                                                          _buildPharmacyTopRatedSection(),
+                                                          _buildPharmacyItemsGrid(),
+                                                        ] else if (serviceProvider.isStoresService) ...[
+                                                          _buildGrabMartSpecialOffersSection(),
+                                                          _buildGrabMartQuickPicksSection(),
+                                                          _buildGrabMartTopRatedSection(),
+                                                          _buildGrabMartItemsGrid(),
+                                                        ],
+                                                      ],
+                                                    ),
                                             ),
                                           ],
                                         ),
@@ -444,13 +456,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         },
                       ),
 
-                      // if (_isRefreshingLocation)
-                      //   Positioned.fill(
-                      //     child: Container(
-                      //       color: colors.backgroundPrimary,
-                      //       child: const SingleChildScrollView(child: const HomePageSkeleton()),
-                      //     ),
-                      //   ),
+                      if (_isRefreshingLocation)
+                        Positioned.fill(
+                          child: Container(
+                            color: colors.backgroundPrimary.withValues(alpha: 0.6),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                              child: Container(
+                                color: colors.backgroundPrimary.withValues(alpha: 0.1),
+                                child: const Center(child: HomePageSkeleton()),
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -1662,6 +1680,60 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildServiceEmptyState(ServiceProvider serviceProvider, AppColorsExtension colors) {
+    String serviceName = "this service";
+    if (serviceProvider.isFoodService)
+      serviceName = "Foods";
+    else if (serviceProvider.isGroceryService)
+      serviceName = "Groceries";
+    else if (serviceProvider.isPharmacyService)
+      serviceName = "Pharmacy";
+    else if (serviceProvider.isStoresService)
+      serviceName = "GrabMart";
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 40.w, vertical: 60.h),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: EdgeInsets.all(24.r),
+            decoration: BoxDecoration(color: colors.accentOrange.withValues(alpha: 0.1), shape: BoxShape.circle),
+            child: Icon(Icons.location_off_rounded, size: 64.r, color: colors.accentOrange),
+          ),
+          SizedBox(height: 24.h),
+          Text(
+            "Service Unavailable",
+            style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 12.h),
+          Text(
+            "We're sorry! $serviceName are not available in your current location yet. Try changing your address to see what we offer elsewhere.",
+            style: TextStyle(fontSize: 14.sp, color: colors.textSecondary, height: 1.5),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 32.h),
+          SizedBox(
+            width: 200.w,
+            child: ElevatedButton(
+              onPressed: () => context.push('/address_picker'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.accentOrange,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 12.h),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.border)),
+                elevation: 0,
+              ),
+              child: const Text("Change Location", style: TextStyle(fontWeight: FontWeight.w600)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

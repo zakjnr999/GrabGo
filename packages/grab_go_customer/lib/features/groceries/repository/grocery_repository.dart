@@ -37,9 +37,9 @@ class GroceryRepository {
   }
 
   /// Fetch all grocery categories
-  Future<List<GroceryCategory>> fetchCategories() async {
+  Future<List<GroceryCategory>> fetchCategories({double? userLat, double? userLng}) async {
     try {
-      final response = await _groceryService.getCategories();
+      final response = await _groceryService.getCategories(userLat: userLat, userLng: userLng);
 
       if (response.isSuccessful && response.body != null) {
         final data = response.body as Map<String, dynamic>;

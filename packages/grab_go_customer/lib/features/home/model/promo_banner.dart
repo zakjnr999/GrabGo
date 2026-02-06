@@ -1,11 +1,11 @@
 class PromoBanner {
   final String id;
   final String title;
-  final String? subtitle;
+  final String subtitle;
   final String imageUrl;
-  final String? discount;
+  final String discount;
   final String backgroundColor;
-  final String? targetUrl;
+  final String targetUrl;
   final DateTime startDate;
   final DateTime endDate;
   final bool isActive;
@@ -15,11 +15,11 @@ class PromoBanner {
   PromoBanner({
     required this.id,
     required this.title,
-    this.subtitle,
+    required this.subtitle,
     required this.imageUrl,
-    this.discount,
+    required this.discount,
     required this.backgroundColor,
-    this.targetUrl,
+    required this.targetUrl,
     required this.startDate,
     required this.endDate,
     required this.isActive,
@@ -29,22 +29,22 @@ class PromoBanner {
 
   factory PromoBanner.fromJson(Map<String, dynamic> json) {
     return PromoBanner(
-      id: json['_id'] as String,
-      title: json['title'] as String,
-      subtitle: json['subtitle'] as String?,
-      imageUrl: json['imageUrl'] as String,
-      discount: json['discount'] as String?,
-      backgroundColor: json['backgroundColor'] as String? ?? '#FFFFFF',
-      targetUrl: json['targetUrl'] as String?,
+      id: (json['id'] ?? json['_id'] ?? '').toString(),
+      title: (json['title'] ?? '').toString(),
+      subtitle: (json['subtitle'] ?? json['description'] ?? '').toString(),
+      imageUrl: (json['imageUrl'] ?? '').toString(),
+      discount: (json['discount'] ?? '').toString(),
+      backgroundColor: (json['backgroundColor'] ?? json['bgColor'] ?? '#FFFFFF').toString(),
+      targetUrl: (json['targetUrl'] ?? json['linkValue'] ?? '').toString(),
       startDate: json['startDate'] != null 
-          ? DateTime.parse(json['startDate'] as String)
+          ? (json['startDate'] is DateTime ? json['startDate'] as DateTime : DateTime.parse(json['startDate'].toString()))
           : DateTime.now(),
       endDate: json['endDate'] != null
-          ? DateTime.parse(json['endDate'] as String)
+          ? (json['endDate'] is DateTime ? json['endDate'] as DateTime : DateTime.parse(json['endDate'].toString()))
           : DateTime.now().add(const Duration(days: 30)),
-      isActive: json['isActive'] as bool? ?? true,
-      priority: json['priority'] as int? ?? 0,
-      targetAudience: json['targetAudience'] as String? ?? 'all',
+      isActive: json['isActive'] is bool ? json['isActive'] as bool : true,
+      priority: json['priority'] is int ? json['priority'] as int : 0,
+      targetAudience: (json['targetAudience'] ?? 'all').toString(),
     );
   }
 

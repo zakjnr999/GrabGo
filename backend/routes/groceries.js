@@ -181,8 +181,63 @@ router.get("/stores/:id", async (req, res) => {
  */
 router.get("/categories", cacheMiddleware(cache.CACHE_KEYS.GROCERY + ':categories', 600), async (req, res) => {
     try {
+        const { userLat, userLng, maxDistance = 15 } = req.query;
+        const userLatitude = userLat ? parseFloat(userLat) : null;
+        const userLongitude = userLng ? parseFloat(userLng) : null;
+        const maxDistanceKm = parseFloat(maxDistance);
+
+        let where = { isActive: true };
+
+        // If location provided, only show categories that have items in nearby stores
+        if (userLatitude && userLongitude && !isNaN(userLatitude) && !isNaN(userLongitude)) {
+            console.log('🌍 [GROCERY CATEGORIES] Location-based filtering enabled');
+
+            const { getBoundingBox, filterVendorsByDistance } = require('../utils/vendor_distance_filter');
+            const bbox = getBoundingBox(userLatitude, userLongitude, maxDistanceKm);
+
+            const nearbyStores = await prisma.groceryStore.findMany({
+                where: {
+                    latitude: { gte: bbox.minLat, lte: bbox.maxLat },
+                    longitude: { gte: bbox.minLng, lte: bbox.maxLng }
+                },
+                select: { id: true, latitude: true, longitude: true }
+            });
+
+            const filteredStores = filterVendorsByDistance(
+                nearbyStores,
+                userLatitude,
+                userLongitude,
+                maxDistanceKm
+            );
+
+            const storeIds = filteredStores.map(s => s.id);
+
+            if (storeIds.length > 0) {
+                // Find categories that have at least one item in these stores
+                const categoriesWithItems = await prisma.groceryItem.findMany({
+                    where: {
+                        storeId: { in: storeIds },
+                        isAvailable: true
+                    },
+                    select: { categoryId: true },
+                    distinct: ['categoryId']
+                });
+
+                const activeCategoryIds = categoriesWithItems.map(c => c.categoryId);
+                where.id = { in: activeCategoryIds };
+                console.log(`   ✅ Filtered to ${activeCategoryIds.length} active categories nearby`);
+            } else {
+                console.log('   ⚠️ No stores nearby - returning 0 categories');
+                return res.json({
+                    success: true,
+                    message: "No grocery categories available in your area",
+                    data: []
+                });
+            }
+        }
+
         const categories = await prisma.groceryCategory.findMany({
-            where: { isActive: true },
+            where,
             orderBy: { sortOrder: 'asc' }
         });
 

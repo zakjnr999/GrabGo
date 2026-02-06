@@ -10,9 +10,9 @@ class GrabMartRepository {
   GrabMartRepository() : _grabMartService = GrabMartService.create(chopper_client_service.chopperClient);
 
   /// Fetch all GrabMart categories
-  Future<List<GrabMartCategory>> fetchCategories() async {
+  Future<List<GrabMartCategory>> fetchCategories({double? userLat, double? userLng}) async {
     try {
-      final response = await _grabMartService.getCategories();
+      final response = await _grabMartService.getCategories(userLat: userLat, userLng: userLng);
 
       if (response.isSuccessful && response.body != null) {
         final data = response.body as Map<String, dynamic>;

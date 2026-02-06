@@ -8,8 +8,54 @@ const router = express.Router();
 // GET /api/categories - Get all active categories
 router.get('/', async (req, res) => {
   try {
+    const { userLat, userLng, maxDistance = 15 } = req.query;
+
+    const userLatitude = userLat ? parseFloat(userLat) : null;
+    const userLongitude = userLng ? parseFloat(userLng) : null;
+    const maxDistanceKm = parseFloat(maxDistance);
+
+    let where = { isActive: true };
+
+    // Filter by nearby restaurants if location is provided
+    if (userLatitude && userLongitude && !isNaN(userLatitude) && !isNaN(userLongitude)) {
+      const { getBoundingBox, filterVendorsByDistance } = require('../utils/vendor_distance_filter');
+      const bbox = getBoundingBox(userLatitude, userLongitude, maxDistanceKm);
+
+      const nearbyRestaurants = await prisma.restaurant.findMany({
+        where: {
+          latitude: { gte: bbox.minLat, lte: bbox.maxLat },
+          longitude: { gte: bbox.minLng, lte: bbox.maxLng }
+        },
+        select: { id: true, latitude: true, longitude: true }
+      });
+
+      const filteredRestaurants = filterVendorsByDistance(
+        nearbyRestaurants,
+        userLatitude,
+        userLongitude,
+        maxDistanceKm
+      );
+
+      if (filteredRestaurants.length > 0) {
+        const restaurantIds = filteredRestaurants.map(r => r.id);
+        where.foods = {
+          some: {
+            restaurantId: { in: restaurantIds },
+            isAvailable: true
+          }
+        };
+      } else {
+        // No restaurants nearby, return empty list of categories
+        return res.json({
+          success: true,
+          message: 'No services available in your area',
+          data: []
+        });
+      }
+    }
+
     const categories = await prisma.category.findMany({
-      where: { isActive: true },
+      where,
       orderBy: { sortOrder: 'asc' },
       include: {
         _count: {

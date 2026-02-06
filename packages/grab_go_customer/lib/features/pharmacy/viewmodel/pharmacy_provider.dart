@@ -59,7 +59,14 @@ class PharmacyProvider extends ChangeNotifier {
     }
 
     try {
-      final categories = await _repository.fetchCategories();
+      final locationData = CacheService.getUserLocation();
+      final userLat = locationData?['latitude']?.toDouble();
+      final userLng = locationData?['longitude']?.toDouble();
+
+      final categories = await _repository.fetchCategories(
+        userLat: userLat,
+        userLng: userLng,
+      );
       _categories = categories;
       await CacheService.savePharmacyCategories(_categories.map((c) => c.toJson()).toList());
     } catch (e) {

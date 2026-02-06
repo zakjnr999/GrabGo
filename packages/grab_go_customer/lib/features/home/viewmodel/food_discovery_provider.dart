@@ -156,15 +156,7 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
     _updateState(_state.copyWith(isLoadingOrderHistory: true));
 
     try {
-      // Get user location from cache for distance-based delivery time calculation
-      final locationData = CacheService.getUserLocation();
-      final userLat = locationData?['latitude']?.toDouble();
-      final userLng = locationData?['longitude']?.toDouble();
-
-      final items = await _repository.fetchOrderHistory(
-        userLat: userLat,
-        userLng: userLng,
-      );
+      final items = await _repository.fetchOrderHistory();
       _updateState(_state.copyWith(orderHistoryItems: items, isLoadingOrderHistory: false));
 
       await _saveOrderHistoryToCache();

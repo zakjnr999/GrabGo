@@ -128,7 +128,14 @@ class GroceryProvider extends ChangeNotifier {
     }
 
     try {
-      final freshCategories = await _repository.fetchCategories();
+      final locationData = CacheService.getUserLocation();
+      final userLat = locationData?['latitude']?.toDouble();
+      final userLng = locationData?['longitude']?.toDouble();
+
+      final freshCategories = await _repository.fetchCategories(
+        userLat: userLat,
+        userLng: userLng,
+      );
       _categories = freshCategories;
       await CacheService.saveGroceryCategories(freshCategories.map((c) => c.toJson()).toList());
     } catch (e) {

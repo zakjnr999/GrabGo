@@ -19,9 +19,18 @@ final class _$FoodService extends FoodService {
   final Type definitionType = FoodService;
 
   @override
-  Future<Response<dynamic>> getCategories() {
+  Future<Response<dynamic>> getCategories({double? userLat, double? userLng}) {
     final Uri $url = Uri.parse('/categories');
-    final Request $request = Request('GET', $url, client.baseUrl);
+    final Map<String, dynamic> $params = <String, dynamic>{
+      'userLat': userLat,
+      'userLng': userLng,
+    };
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+      parameters: $params,
+    );
     return client.send<dynamic, dynamic>($request);
   }
 
@@ -61,18 +70,9 @@ final class _$FoodService extends FoodService {
   }
 
   @override
-  Future<Response<dynamic>> getOrderHistory(double? userLat, double? userLng) {
+  Future<Response<dynamic>> getOrderHistory() {
     final Uri $url = Uri.parse('/foods/order-history');
-    final Map<String, dynamic> $params = <String, dynamic>{
-      'userLat': userLat,
-      'userLng': userLng,
-    };
-    final Request $request = Request(
-      'GET',
-      $url,
-      client.baseUrl,
-      parameters: $params,
-    );
+    final Request $request = Request('GET', $url, client.baseUrl);
     return client.send<dynamic, dynamic>($request);
   }
 

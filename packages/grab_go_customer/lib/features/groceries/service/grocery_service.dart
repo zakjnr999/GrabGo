@@ -11,7 +11,10 @@ abstract class GroceryService extends ChopperService {
   Future<Response> getStoreById(@Path('id') String id);
 
   @GET(path: '/groceries/categories')
-  Future<Response> getCategories();
+  Future<Response> getCategories({
+    @Query('userLat') double? userLat,
+    @Query('userLng') double? userLng,
+  });
 
   @GET(path: '/groceries/items')
   Future<Response> getItems({

@@ -5,7 +5,10 @@ part 'food_service.chopper.dart';
 @ChopperApi()
 abstract class FoodService extends ChopperService {
   @GET(path: '/categories')
-  Future<Response> getCategories();
+  Future<Response> getCategories({
+    @Query('userLat') double? userLat,
+    @Query('userLng') double? userLng,
+  });
 
   @GET(path: '/foods')
   Future<Response> getFoods({
@@ -21,10 +24,7 @@ abstract class FoodService extends ChopperService {
   Future<Response> getPromotionalBanners();
 
   @GET(path: '/foods/order-history')
-  Future<Response> getOrderHistory(
-    @Query('userLat') double? userLat,
-    @Query('userLng') double? userLng,
-  );
+  Future<Response> getOrderHistory();
 
   @GET(path: '/foods/popular')
   Future<Response> getPopularItems(

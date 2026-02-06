@@ -11,8 +11,8 @@ class FoodRepository {
 
   FoodRepository({FoodService? service}) : service = service ?? foodService;
 
-  Future<List<FoodCategoryModel>> fetchCategories() async {
-    final Response response = await service.getCategories();
+  Future<List<FoodCategoryModel>> fetchCategories({double? userLat, double? userLng}) async {
+    final Response response = await service.getCategories(userLat: userLat, userLng: userLng);
     if (response.isSuccessful) {
       final body = response.body;
       final data = (body['data'] as List<dynamic>?) ?? [];
@@ -37,8 +37,8 @@ class FoodRepository {
     }
   }
 
-  Future<List<FoodCategoryModel>> fetchCategoriesWithFoods() async {
-    final categories = await fetchCategories();
+  Future<List<FoodCategoryModel>> fetchCategoriesWithFoods({double? userLat, double? userLng}) async {
+    final categories = await fetchCategories(userLat: userLat, userLng: userLng);
 
     if (categories.isEmpty) {
       return [];
@@ -183,9 +183,9 @@ class FoodRepository {
   }
 
   /// Fetch order history for Order Again section
-  Future<List<FoodItem>> fetchOrderHistory({double? userLat, double? userLng}) async {
+  Future<List<FoodItem>> fetchOrderHistory() async {
     try {
-      final response = await service.getOrderHistory(userLat, userLng);
+      final response = await service.getOrderHistory();
 
       if (response.isSuccessful && response.body != null) {
         final body = response.body as Map<String, dynamic>;

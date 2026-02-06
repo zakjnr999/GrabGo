@@ -5,7 +5,10 @@ part 'grabmart_service.chopper.dart';
 @ChopperApi()
 abstract class GrabMartService extends ChopperService {
   @GET(path: '/grabmart/categories')
-  Future<Response> getCategories();
+  Future<Response> getCategories({
+    @Query('userLat') double? userLat,
+    @Query('userLng') double? userLng,
+  });
 
   @GET(path: '/grabmart/items')
   Future<Response> getItems({
