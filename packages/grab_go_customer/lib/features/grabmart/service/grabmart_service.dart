@@ -14,6 +14,8 @@ abstract class GrabMartService extends ChopperService {
     @Query('minPrice') String? minPrice,
     @Query('maxPrice') String? maxPrice,
     @Query('tags') String? tags,
+    @Query('userLat') double? userLat,
+    @Query('userLng') double? userLng,
   });
 
   static GrabMartService create([ChopperClient? client]) => _$GrabMartService(client);

@@ -32,6 +32,8 @@ final class _$PharmacyService extends PharmacyService {
     String? minPrice,
     String? maxPrice,
     String? tags,
+    double? userLat,
+    double? userLng,
   }) {
     final Uri $url = Uri.parse('/pharmacies/items');
     final Map<String, dynamic> $params = <String, dynamic>{
@@ -40,6 +42,8 @@ final class _$PharmacyService extends PharmacyService {
       'minPrice': minPrice,
       'maxPrice': maxPrice,
       'tags': tags,
+      'userLat': userLat,
+      'userLng': userLng,
     };
     final Request $request = Request(
       'GET',

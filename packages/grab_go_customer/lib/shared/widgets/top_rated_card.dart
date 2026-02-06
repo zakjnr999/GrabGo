@@ -125,7 +125,7 @@ class TopRatedCard extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         SvgPicture.asset(
-                          Assets.icons.starSolid,
+                          Assets.icons.star,
                           package: 'grab_go_shared',
                           height: 13.h,
                           width: 13.w,

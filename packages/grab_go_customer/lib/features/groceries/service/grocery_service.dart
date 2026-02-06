@@ -20,6 +20,8 @@ abstract class GroceryService extends ChopperService {
     @Query('minPrice') String? minPrice,
     @Query('maxPrice') String? maxPrice,
     @Query('tags') String? tags,
+    @Query('userLat') double? userLat,
+    @Query('userLng') double? userLng,
   });
 
   @GET(path: '/groceries/items/{id}')
@@ -29,7 +31,10 @@ abstract class GroceryService extends ChopperService {
   Future<Response> searchItems(@Query('q') String query);
 
   @GET(path: '/groceries/deals')
-  Future<Response> getDeals();
+  Future<Response> getDeals({
+    @Query('userLat') double? userLat,
+    @Query('userLng') double? userLng,
+  });
 
   @GET(path: '/groceries/stores/{id}/items')
   Future<Response> getStoreItems(@Path('id') String storeId);
@@ -41,7 +46,11 @@ abstract class GroceryService extends ChopperService {
   Future<Response> getStoreSpecials();
 
   @GET(path: '/groceries/popular')
-  Future<Response> getPopularItems(@Query('limit') int? limit);
+  Future<Response> getPopularItems({
+    @Query('limit') int? limit,
+    @Query('userLat') double? userLat,
+    @Query('userLng') double? userLng,
+  });
 
   @GET(path: '/groceries/top-rated')
   Future<Response> getTopRatedItems(@Query('limit') int? limit, @Query('minRating') double? minRating);

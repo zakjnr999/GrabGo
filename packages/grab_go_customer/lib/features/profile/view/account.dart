@@ -266,33 +266,6 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                         ],
                                       ),
                                     ),
-
-                                    // Container(
-                                    //   decoration: BoxDecoration(
-                                    //     color: colors.textPrimary.withValues(alpha: 0.1),
-                                    //     shape: BoxShape.circle,
-                                    //   ),
-                                    //   child: Material(
-                                    //     color: Colors.transparent,
-                                    //     child: InkWell(
-                                    //       onTap: () {
-                                    //         context.push("/editProfile");
-                                    //       },
-                                    //       customBorder: const CircleBorder(),
-                                    //       child: Padding(
-                                    //         padding: EdgeInsets.all(10.r),
-
-                                    //         child: SvgPicture.asset(
-                                    //           Assets.icons.editPencil,
-                                    //           package: 'grab_go_shared',
-                                    //           height: 20.h,
-                                    //           width: 20.w,
-                                    //           colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                                    //         ),
-                                    //       ),
-                                    //     ),
-                                    //   ),
-                                    // ),
                                   ],
                                 ),
                               ),
@@ -322,9 +295,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                   context.push("/mapTracking");
                                 }),
                                 _favoritesTile(context),
-                                itemTile("My Orders", Assets.icons.boxIso, context, () {
-                                  context.push("/orders");
-                                }),
+
                                 itemTile("Payment Methods", Assets.icons.cash, context, () {
                                   context.push("/paymentMethod");
                                 }),

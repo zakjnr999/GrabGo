@@ -197,12 +197,15 @@ router.get("/categories", cacheMiddleware(cache.CACHE_KEYS.GRABMART + ':categori
  */
 router.get("/items", async (req, res) => {
     try {
-        const { category, store, minPrice, maxPrice, tags } = req.query;
+        const { category, store, minPrice, maxPrice, tags, userLat, userLng, maxDistance = 15 } = req.query;
+
+        const userLatitude = userLat ? parseFloat(userLat) : null;
+        const userLongitude = userLng ? parseFloat(userLng) : null;
+        const maxDistanceKm = parseFloat(maxDistance);
 
         const where = { isAvailable: true };
 
         if (category) where.categoryId = category;
-        if (store) where.storeId = store;
 
         if (minPrice || maxPrice) {
             where.price = {};
@@ -212,6 +215,41 @@ router.get("/items", async (req, res) => {
 
         if (tags) {
             where.tags = { hasSome: tags.split(',') };
+        }
+
+        // Filter by nearby stores if user location provided
+        if (userLatitude && userLongitude && !isNaN(userLatitude) && !isNaN(userLongitude) && !store) {
+            const { getBoundingBox, filterVendorsByDistance } = require('../utils/vendor_distance_filter');
+            const bbox = getBoundingBox(userLatitude, userLongitude, maxDistanceKm);
+
+            const nearbyStores = await prisma.grabMartStore.findMany({
+                where: {
+                    latitude: { gte: bbox.minLat, lte: bbox.maxLat },
+                    longitude: { gte: bbox.minLng, lte: bbox.maxLng }
+                },
+                select: { id: true, latitude: true, longitude: true }
+            });
+
+            const filteredStores = filterVendorsByDistance(
+                nearbyStores,
+                userLatitude,
+                userLongitude,
+                maxDistanceKm
+            );
+
+            const storeIds = filteredStores.map(s => s.id);
+
+            if (storeIds.length === 0) {
+                return res.json({
+                    success: true,
+                    message: "No GrabMart items available in your area",
+                    data: []
+                });
+            }
+
+            where.storeId = { in: storeIds };
+        } else if (store) {
+            where.storeId = store;
         }
 
         const items = await prisma.grabMartItem.findMany({

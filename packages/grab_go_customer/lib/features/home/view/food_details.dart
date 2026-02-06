@@ -385,6 +385,17 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                                   fontWeight: FontWeight.w400,
                                                 ),
                                               ),
+                                              SizedBox(width: 4.w),
+                                              GestureDetector(
+                                                onTap: () => context.push("/vendorRatings"),
+                                                child: SvgPicture.asset(
+                                                  Assets.icons.navArrowRight,
+                                                  package: 'grab_go_shared',
+                                                  height: 12.h,
+                                                  width: 12.w,
+                                                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                                                ),
+                                              ),
                                             ],
                                           ),
                                           SizedBox(height: 8.h),
@@ -399,28 +410,16 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                                 colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                                               ),
                                               SizedBox(width: 4.w),
-                                              RichText(
-                                                text: TextSpan(
-                                                  text: '25-30',
-                                                  style: TextStyle(
-                                                    fontFamily: 'Lato',
-                                                    package: 'grab_go_shared',
-                                                    color: colors.accentOrange,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 14.sp,
-                                                  ),
-                                                  children: [
-                                                    TextSpan(
-                                                      text: ' min delivery',
-                                                      style: TextStyle(
-                                                        fontFamily: 'Lato',
-                                                        package: 'grab_go_shared',
-                                                        color: colors.textPrimary,
-                                                        fontWeight: FontWeight.w400,
-                                                        fontSize: 14.sp,
-                                                      ),
-                                                    ),
-                                                  ],
+                                              Text(
+                                                widget.foodItem != null
+                                                    ? widget.foodItem!.estimatedDeliveryTime
+                                                    : "25-30",
+                                                style: TextStyle(
+                                                  fontFamily: 'Lato',
+                                                  package: 'grab_go_shared',
+                                                  color: colors.accentOrange,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 14.sp,
                                                 ),
                                               ),
                                               SizedBox(width: 10.w),
@@ -428,7 +427,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                                 height: 4.h,
                                                 width: 4.w,
                                                 decoration: BoxDecoration(
-                                                  color: colors.backgroundSecondary,
+                                                  color: colors.textSecondary,
                                                   shape: BoxShape.circle,
                                                 ),
                                               ),
@@ -793,18 +792,8 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                           flex: 2,
                           child: Container(
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [colors.accentOrange, colors.accentOrange.withOpacity(0.8)],
-                              ),
+                              color: colors.accentOrange,
                               borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: colors.accentOrange.withOpacity(0.4),
-                                  blurRadius: 12,
-                                  spreadRadius: 0,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
                             ),
                             child: AppButton(
                               onPressed: () {

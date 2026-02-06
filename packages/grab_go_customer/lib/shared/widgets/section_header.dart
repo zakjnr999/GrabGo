@@ -43,7 +43,7 @@ class SectionHeader extends StatelessWidget {
                 child: Row(
                   children: [
                     Text(
-                      "See All ($sectionTotal)",
+                      "See All",
                       style: TextStyle(color: accentColor, fontSize: 12.sp, fontWeight: FontWeight.w600),
                     ),
                     SizedBox(width: 4.w),

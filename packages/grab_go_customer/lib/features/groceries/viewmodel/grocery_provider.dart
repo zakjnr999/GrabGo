@@ -176,12 +176,19 @@ class GroceryProvider extends ChangeNotifier {
     }
 
     try {
+      // Get user location from cache
+      final locationData = CacheService.getUserLocation();
+      final userLat = locationData?['latitude']?.toDouble();
+      final userLng = locationData?['longitude']?.toDouble();
+
       final freshItems = await _repository.fetchItems(
         category: category,
         store: store,
         minPrice: minPrice,
         maxPrice: maxPrice,
         tags: tags,
+        userLat: userLat,
+        userLng: userLng,
       );
       _items = freshItems;
 
@@ -233,7 +240,15 @@ class GroceryProvider extends ChangeNotifier {
     }
 
     try {
-      final freshDeals = await _repository.fetchDeals();
+      // Get user location from cache
+      final locationData = CacheService.getUserLocation();
+      final userLat = locationData?['latitude']?.toDouble();
+      final userLng = locationData?['longitude']?.toDouble();
+
+      final freshDeals = await _repository.fetchDeals(
+        userLat: userLat,
+        userLng: userLng,
+      );
       _deals = freshDeals;
       await CacheService.saveGroceryDeals(freshDeals.map((d) => d.toJson()).toList());
     } catch (e) {
@@ -392,7 +407,16 @@ class GroceryProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final items = await _repository.fetchPopularItems(limit: 10);
+      // Get user location from cache
+      final locationData = CacheService.getUserLocation();
+      final userLat = locationData?['latitude']?.toDouble();
+      final userLng = locationData?['longitude']?.toDouble();
+
+      final items = await _repository.fetchPopularItems(
+        limit: 10,
+        userLat: userLat,
+        userLng: userLng,
+      );
       _popularItems = items;
       await CacheService.saveGroceryPopularItems(items.map((i) => i.toJson()).toList());
     } catch (e) {

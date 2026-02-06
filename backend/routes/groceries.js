@@ -210,12 +210,15 @@ router.get("/categories", cacheMiddleware(cache.CACHE_KEYS.GROCERY + ':categorie
  */
 router.get("/items", async (req, res) => {
     try {
-        const { category, store, minPrice, maxPrice, tags } = req.query;
+        const { category, store, minPrice, maxPrice, tags, userLat, userLng, maxDistance = 15 } = req.query;
+
+        const userLatitude = userLat ? parseFloat(userLat) : null;
+        const userLongitude = userLng ? parseFloat(userLng) : null;
+        const maxDistanceKm = parseFloat(maxDistance);
 
         const where = { isAvailable: true };
 
         if (category) where.categoryId = category;
-        if (store) where.storeId = store;
 
         if (minPrice || maxPrice) {
             where.price = {};
@@ -225,6 +228,41 @@ router.get("/items", async (req, res) => {
 
         if (tags) {
             where.tags = { hasSome: tags.split(',') };
+        }
+
+        // Filter by nearby stores if user location provided
+        if (userLatitude && userLongitude && !isNaN(userLatitude) && !isNaN(userLongitude) && !store) {
+            const { getBoundingBox, filterVendorsByDistance } = require('../utils/vendor_distance_filter');
+            const bbox = getBoundingBox(userLatitude, userLongitude, maxDistanceKm);
+
+            const nearbyStores = await prisma.groceryStore.findMany({
+                where: {
+                    latitude: { gte: bbox.minLat, lte: bbox.maxLat },
+                    longitude: { gte: bbox.minLng, lte: bbox.maxLng }
+                },
+                select: { id: true, latitude: true, longitude: true }
+            });
+
+            const filteredStores = filterVendorsByDistance(
+                nearbyStores,
+                userLatitude,
+                userLongitude,
+                maxDistanceKm
+            );
+
+            const storeIds = filteredStores.map(s => s.id);
+
+            if (storeIds.length === 0) {
+                return res.json({
+                    success: true,
+                    message: "No grocery items available in your area",
+                    data: []
+                });
+            }
+
+            where.storeId = { in: storeIds };
+        } else if (store) {
+            where.storeId = store;
         }
 
         const items = await prisma.groceryItem.findMany({
@@ -386,17 +424,57 @@ router.get("/search", async (req, res) => {
  */
 router.get("/deals", async (req, res) => {
     try {
+        const { userLat, userLng, maxDistance = 15 } = req.query;
         const now = new Date();
 
+        const userLatitude = userLat ? parseFloat(userLat) : null;
+        const userLongitude = userLng ? parseFloat(userLng) : null;
+        const maxDistanceKm = parseFloat(maxDistance);
+
+        let where = {
+            isAvailable: true,
+            discountPercentage: { gt: 0 },
+            OR: [
+                { discountEndDate: null },
+                { discountEndDate: { gte: now } }
+            ]
+        };
+
+        // Filter by nearby stores if user location provided
+        if (userLatitude && userLongitude && !isNaN(userLatitude) && !isNaN(userLongitude)) {
+            const { getBoundingBox, filterVendorsByDistance } = require('../utils/vendor_distance_filter');
+            const bbox = getBoundingBox(userLatitude, userLongitude, maxDistanceKm);
+
+            const nearbyStores = await prisma.groceryStore.findMany({
+                where: {
+                    latitude: { gte: bbox.minLat, lte: bbox.maxLat },
+                    longitude: { gte: bbox.minLng, lte: bbox.maxLng }
+                },
+                select: { id: true, latitude: true, longitude: true }
+            });
+
+            const filteredStores = filterVendorsByDistance(
+                nearbyStores,
+                userLatitude,
+                userLongitude,
+                maxDistanceKm
+            );
+
+            const storeIds = filteredStores.map(s => s.id);
+
+            if (storeIds.length === 0) {
+                return res.json({
+                    success: true,
+                    message: "No grocery deals available in your area",
+                    data: []
+                });
+            }
+
+            where.storeId = { in: storeIds };
+        }
+
         const deals = await prisma.groceryItem.findMany({
-            where: {
-                isAvailable: true,
-                discountPercentage: { gt: 0 },
-                OR: [
-                    { discountEndDate: null },
-                    { discountEndDate: { gte: now } }
-                ]
-            },
+            where,
             include: {
                 category: { select: { name: true, emoji: true } },
                 store: {
@@ -678,11 +756,50 @@ router.get("/order-history", protect, async (req, res) => {
  */
 router.get("/popular", async (req, res) => {
     try {
-        let { limit = 10 } = req.query;
+        let { limit = 10, userLat, userLng, maxDistance = 15 } = req.query;
         limit = Math.min(parseInt(limit) || 10, 50);
 
+        const userLatitude = userLat ? parseFloat(userLat) : null;
+        const userLongitude = userLng ? parseFloat(userLng) : null;
+        const maxDistanceKm = parseFloat(maxDistance);
+
+        let where = { isAvailable: true };
+
+        // Filter by nearby stores if user location provided
+        if (userLatitude && userLongitude && !isNaN(userLatitude) && !isNaN(userLongitude)) {
+            const { getBoundingBox, filterVendorsByDistance } = require('../utils/vendor_distance_filter');
+            const bbox = getBoundingBox(userLatitude, userLongitude, maxDistanceKm);
+
+            const nearbyStores = await prisma.groceryStore.findMany({
+                where: {
+                    latitude: { gte: bbox.minLat, lte: bbox.maxLat },
+                    longitude: { gte: bbox.minLng, lte: bbox.maxLng }
+                },
+                select: { id: true, latitude: true, longitude: true }
+            });
+
+            const filteredStores = filterVendorsByDistance(
+                nearbyStores,
+                userLatitude,
+                userLongitude,
+                maxDistanceKm
+            );
+
+            const storeIds = filteredStores.map(s => s.id);
+
+            if (storeIds.length === 0) {
+                return res.json({
+                    success: true,
+                    message: "No popular grocery items available in your area",
+                    data: []
+                });
+            }
+
+            where.storeId = { in: storeIds };
+        }
+
         const popularItems = await prisma.groceryItem.findMany({
-            where: { isAvailable: true },
+            where,
             orderBy: [
                 { orderCount: 'desc' },
                 { rating: 'desc' }

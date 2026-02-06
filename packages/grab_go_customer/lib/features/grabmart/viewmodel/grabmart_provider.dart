@@ -106,12 +106,19 @@ class GrabMartProvider extends ChangeNotifier {
     }
 
     try {
+      // Get user location from cache
+      final locationData = CacheService.getUserLocation();
+      final userLat = locationData?['latitude']?.toDouble();
+      final userLng = locationData?['longitude']?.toDouble();
+
       final items = await _repository.fetchItems(
         category: category,
         store: store,
         minPrice: minPrice,
         maxPrice: maxPrice,
         tags: tags,
+        userLat: userLat,
+        userLng: userLng,
       );
       
       _items = items;

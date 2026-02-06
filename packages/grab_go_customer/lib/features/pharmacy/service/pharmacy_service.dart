@@ -14,6 +14,8 @@ abstract class PharmacyService extends ChopperService {
     @Query('minPrice') String? minPrice,
     @Query('maxPrice') String? maxPrice,
     @Query('tags') String? tags,
+    @Query('userLat') double? userLat,
+    @Query('userLng') double? userLng,
   });
 
   static PharmacyService create([ChopperClient? client]) => _$PharmacyService(client);

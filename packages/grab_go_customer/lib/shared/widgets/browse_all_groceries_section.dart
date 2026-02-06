@@ -3,9 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/shared/widgets/popular_item_card.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
-import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:shimmer/shimmer.dart';
 
 class BrowseAllGroceriesSection extends StatefulWidget {
   final List<GroceryItem> items;
@@ -50,7 +48,6 @@ class _BrowseAllGroceriesSectionState extends State<BrowseAllGroceriesSection> {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -58,12 +55,7 @@ class _BrowseAllGroceriesSectionState extends State<BrowseAllGroceriesSection> {
         SectionHeader(title: 'Browse All Groceries', sectionTotal: widget.items.length, accentColor: colors.accentBlue),
         SizedBox(height: 16.h),
 
-        if (widget.isLoading)
-          _buildLoadingGrid(isDark)
-        else if (widget.items.isEmpty)
-          _buildEmptyState(colors)
-        else
-          _buildItemsGrid(),
+        if (widget.items.isNotEmpty) _buildItemsGrid(),
 
         // Loading more indicator
         if (!widget.isLoading && widget.items.length > _displayedItemsCount) ...[
@@ -72,53 +64,6 @@ class _BrowseAllGroceriesSectionState extends State<BrowseAllGroceriesSection> {
           SizedBox(height: 16.h),
         ],
       ],
-    );
-  }
-
-  Widget _buildLoadingGrid(bool isDark) {
-    return Shimmer.fromColors(
-      baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-      highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 20.w),
-        child: GridView.builder(
-          shrinkWrap: true,
-          physics: const AlwaysScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 0.65,
-            crossAxisSpacing: 12.w,
-            mainAxisSpacing: 16.h,
-          ),
-          itemCount: 6,
-          itemBuilder: (context, index) {
-            return Container(
-              decoration: BoxDecoration(
-                color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(12.r),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(AppColorsExtension colors) {
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 40.h),
-        child: Column(
-          children: [
-            Icon(Icons.shopping_basket_outlined, size: 64.r, color: colors.textSecondary),
-            SizedBox(height: 16.h),
-            Text(
-              'No items available',
-              style: TextStyle(fontSize: 16.sp, color: colors.textSecondary, fontWeight: FontWeight.w500),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

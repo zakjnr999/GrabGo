@@ -61,16 +61,12 @@ final class _$FoodService extends FoodService {
   }
 
   @override
-  Future<Response<dynamic>> getOrderHistory() {
+  Future<Response<dynamic>> getOrderHistory(double? userLat, double? userLng) {
     final Uri $url = Uri.parse('/foods/order-history');
-    final Request $request = Request('GET', $url, client.baseUrl);
-    return client.send<dynamic, dynamic>($request);
-  }
-
-  @override
-  Future<Response<dynamic>> getPopularItems(int? limit) {
-    final Uri $url = Uri.parse('/foods/popular');
-    final Map<String, dynamic> $params = <String, dynamic>{'limit': limit};
+    final Map<String, dynamic> $params = <String, dynamic>{
+      'userLat': userLat,
+      'userLng': userLng,
+    };
     final Request $request = Request(
       'GET',
       $url,
@@ -81,11 +77,39 @@ final class _$FoodService extends FoodService {
   }
 
   @override
-  Future<Response<dynamic>> getTopRatedItems(int? limit, double? minRating) {
+  Future<Response<dynamic>> getPopularItems(
+    int? limit,
+    double? userLat,
+    double? userLng,
+  ) {
+    final Uri $url = Uri.parse('/foods/popular');
+    final Map<String, dynamic> $params = <String, dynamic>{
+      'limit': limit,
+      'userLat': userLat,
+      'userLng': userLng,
+    };
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+      parameters: $params,
+    );
+    return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
+  Future<Response<dynamic>> getTopRatedItems(
+    int? limit,
+    double? minRating,
+    double? userLat,
+    double? userLng,
+  ) {
     final Uri $url = Uri.parse('/foods/top-rated');
     final Map<String, dynamic> $params = <String, dynamic>{
       'limit': limit,
       'minRating': minRating,
+      'userLat': userLat,
+      'userLng': userLng,
     };
     final Request $request = Request(
       'GET',

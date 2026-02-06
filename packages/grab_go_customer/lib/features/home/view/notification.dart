@@ -420,11 +420,7 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
                         Container(
                           height: 44.h,
                           width: 44.w,
-                          decoration: BoxDecoration(
-                            color: colors.backgroundSecondary,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-                          ),
+                          decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(

@@ -52,7 +52,7 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
         if (widget.isFromRegistration) {
           context.go("/accountCreated");
         } else {
-          context.pop();
+          context.pop(true); // Return true to indicate location changed
         }
       }
     } catch (e) {
@@ -73,9 +73,27 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
   void _onPlaceSelected(Prediction prediction) async {
     final locationProvider = Provider.of<NativeLocationProvider>(context, listen: false);
 
+    // Extract lat/lng from the prediction object
+    // The google_places_flutter package provides lat/lng in the prediction
+    final lat = prediction.lat != null ? double.tryParse(prediction.lat!) : null;
+    final lng = prediction.lng != null ? double.tryParse(prediction.lng!) : null;
+
+    if (lat == null || lng == null) {
+      // Fallback: show error if coordinates are not available
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Unable to get coordinates for this location. Please try another location.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
     await locationProvider.updateLocation(
-      latitude: 0.0, // TODO: Get from place details
-      longitude: 0.0, // TODO: Get from place details
+      latitude: lat,
+      longitude: lng,
       address: prediction.description ?? '',
     );
 
@@ -83,7 +101,7 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
       if (widget.isFromRegistration) {
         context.go("/accountCreated");
       } else {
-        context.pop();
+        context.pop(true); // Return true to indicate location changed
       }
     }
   }

@@ -18,17 +18,60 @@ const { FOOD_INCLUDE_RELATIONS, formatFoodResponse } = require('../utils/food_he
 // Get all foods with caching (5 minutes)
 router.get("/", cacheMiddleware(cache.CACHE_KEYS.FOOD_CATEGORIES, 300), async (req, res) => {
   try {
-    const { restaurant, category, isAvailable } = req.query;
+    const { restaurant, category, isAvailable, userLat, userLng, maxDistance = 15 } = req.query;
+
+    const userLatitude = userLat ? parseFloat(userLat) : null;
+    const userLongitude = userLng ? parseFloat(userLng) : null;
+    const maxDistanceKm = parseFloat(maxDistance);
+
     const where = {};
 
-    if (restaurant) {
-      where.restaurantId = restaurant;
-    }
     if (category) {
       where.categoryId = category;
     }
     if (isAvailable !== undefined) {
       where.isAvailable = isAvailable === "true";
+    }
+
+    // If user location provided, filter by nearby restaurants
+    if (userLatitude && userLongitude && !isNaN(userLatitude) && !isNaN(userLongitude)) {
+      // Step 1: Get bounding box for quick pre-filter
+      const { getBoundingBox, filterVendorsByDistance } = require('../utils/vendor_distance_filter');
+      const bbox = getBoundingBox(userLatitude, userLongitude, maxDistanceKm);
+
+      // Step 2: Fetch restaurants within bounding box
+      const nearbyRestaurants = await prisma.restaurant.findMany({
+        where: {
+          latitude: { gte: bbox.minLat, lte: bbox.maxLat },
+          longitude: { gte: bbox.minLng, lte: bbox.maxLng }
+        },
+        select: { id: true, latitude: true, longitude: true }
+      });
+
+      // Step 3: Apply precise Haversine filter
+      const filteredRestaurants = filterVendorsByDistance(
+        nearbyRestaurants,
+        userLatitude,
+        userLongitude,
+        maxDistanceKm
+      );
+
+      const restaurantIds = filteredRestaurants.map(r => r.id);
+
+      if (restaurantIds.length === 0) {
+        // No restaurants nearby
+        return res.json({
+          success: true,
+          message: "No foods available in your area",
+          data: []
+        });
+      }
+
+      // Add restaurant filter
+      where.restaurantId = { in: restaurantIds };
+    } else if (restaurant) {
+      // Specific restaurant requested
+      where.restaurantId = restaurant;
     }
 
     const foods = await prisma.food.findMany({
@@ -59,17 +102,57 @@ router.get("/", cacheMiddleware(cache.CACHE_KEYS.FOOD_CATEGORIES, 300), async (r
  */
 router.get("/deals", cacheMiddleware(cache.CACHE_KEYS.FOOD_DEALS, 120), async (req, res) => {
   try {
+    const { userLat, userLng, maxDistance = 15 } = req.query;
     const now = new Date();
 
+    const userLatitude = userLat ? parseFloat(userLat) : null;
+    const userLongitude = userLng ? parseFloat(userLng) : null;
+    const maxDistanceKm = parseFloat(maxDistance);
+
+    let where = {
+      isAvailable: true,
+      discountPercentage: { gt: 0 },
+      OR: [
+        { discountEndDate: null },
+        { discountEndDate: { gte: now } }
+      ]
+    };
+
+    // Filter by nearby restaurants if user location provided
+    if (userLatitude && userLongitude && !isNaN(userLatitude) && !isNaN(userLongitude)) {
+      const { getBoundingBox, filterVendorsByDistance } = require('../utils/vendor_distance_filter');
+      const bbox = getBoundingBox(userLatitude, userLongitude, maxDistanceKm);
+
+      const nearbyRestaurants = await prisma.restaurant.findMany({
+        where: {
+          latitude: { gte: bbox.minLat, lte: bbox.maxLat },
+          longitude: { gte: bbox.minLng, lte: bbox.maxLng }
+        },
+        select: { id: true, latitude: true, longitude: true }
+      });
+
+      const filteredRestaurants = filterVendorsByDistance(
+        nearbyRestaurants,
+        userLatitude,
+        userLongitude,
+        maxDistanceKm
+      );
+
+      const restaurantIds = filteredRestaurants.map(r => r.id);
+
+      if (restaurantIds.length === 0) {
+        return res.json({
+          success: true,
+          message: "No deals available in your area",
+          data: []
+        });
+      }
+
+      where.restaurantId = { in: restaurantIds };
+    }
+
     const deals = await prisma.food.findMany({
-      where: {
-        isAvailable: true,
-        discountPercentage: { gt: 0 },
-        OR: [
-          { discountEndDate: null },
-          { discountEndDate: { gte: now } }
-        ]
-      },
+      where,
       include: FOOD_INCLUDE_RELATIONS,
       orderBy: { discountPercentage: 'desc' },
       take: 10
@@ -104,7 +187,7 @@ router.get("/recommended", (req, res, next) => {
 }, cacheMiddleware(cache.CACHE_KEYS.FOOD_RECOMMENDED, 180, true), async (req, res) => {
   try {
     const userId = req.user?.id || req.headers['x-user-id'];
-    let { limit = 10, page = 1, userLat, userLng } = req.query;
+    let { limit = 10, page = 1, userLat, userLng, maxDistance = 15 } = req.query;
 
     limit = parseInt(limit);
     if (isNaN(limit) || limit < 1) limit = 10;
@@ -112,6 +195,10 @@ router.get("/recommended", (req, res, next) => {
 
     page = parseInt(page);
     if (isNaN(page) || page < 1) page = 1;
+
+    const userLatitude = userLat ? parseFloat(userLat) : null;
+    const userLongitude = userLng ? parseFloat(userLng) : null;
+    const maxDistanceKm = parseFloat(maxDistance);
 
     // 1. Try ML-based recommendations first
     if (userId) {
@@ -135,8 +222,29 @@ router.get("/recommended", (req, res, next) => {
             include: FOOD_INCLUDE_RELATIONS
           });
 
+          // Filter by nearby restaurants if user location provided
+          let filteredFoods = foods;
+          if (userLatitude && userLongitude && !isNaN(userLatitude) && !isNaN(userLongitude)) {
+            const { filterVendorsByDistance } = require('../utils/vendor_distance_filter');
+
+            // Extract unique restaurants from foods
+            const restaurants = [...new Map(
+              foods.map(f => [f.restaurant.id, f.restaurant])
+            ).values()];
+
+            const nearbyRestaurants = filterVendorsByDistance(
+              restaurants,
+              userLatitude,
+              userLongitude,
+              maxDistanceKm
+            );
+
+            const nearbyRestaurantIds = new Set(nearbyRestaurants.map(r => r.id));
+            filteredFoods = foods.filter(f => nearbyRestaurantIds.has(f.restaurantId));
+          }
+
           // Sort foods according to ML order and format response
-          const sortedFoods = foodIds.map(id => foods.find(f => f.id === id)).filter(f => !!f);
+          const sortedFoods = foodIds.map(id => filteredFoods.find(f => f.id === id)).filter(f => !!f);
           const foodsWithStatus = formatFoodResponse(sortedFoods, userLat, userLng);
 
           return res.json({
@@ -169,30 +277,67 @@ router.get("/recommended", (req, res, next) => {
     // Calculate skip for pagination
     const skip = (page - 1) * limit;
 
+    // Build where clause for location filtering
+    let locationWhere = {};
+    if (userLatitude && userLongitude && !isNaN(userLatitude) && !isNaN(userLongitude)) {
+      const { getBoundingBox, filterVendorsByDistance } = require('../utils/vendor_distance_filter');
+      const bbox = getBoundingBox(userLatitude, userLongitude, maxDistanceKm);
+
+      const nearbyRestaurants = await prisma.restaurant.findMany({
+        where: {
+          latitude: { gte: bbox.minLat, lte: bbox.maxLat },
+          longitude: { gte: bbox.minLng, lte: bbox.maxLng }
+        },
+        select: { id: true, latitude: true, longitude: true }
+      });
+
+      const filteredRestaurants = filterVendorsByDistance(
+        nearbyRestaurants,
+        userLatitude,
+        userLongitude,
+        maxDistanceKm
+      );
+
+      const restaurantIds = filteredRestaurants.map(r => r.id);
+
+      if (restaurantIds.length === 0) {
+        return res.json({
+          success: true,
+          source: 'heuristic',
+          page: page,
+          limit: limit,
+          hasMore: false,
+          data: []
+        });
+      }
+
+      locationWhere.restaurantId = { in: restaurantIds };
+    }
+
     const [popular, topRated, deals, random] = await Promise.all([
       prisma.food.findMany({
-        where: { isAvailable: true },
+        where: { isAvailable: true, ...locationWhere },
         orderBy: { orderCount: 'desc' },
         take: popularCount,
         skip: Math.floor(skip * 0.4),
         include: FOOD_INCLUDE_RELATIONS
       }),
       prisma.food.findMany({
-        where: { isAvailable: true, rating: { gte: 4.5 } },
+        where: { isAvailable: true, rating: { gte: 4.5 }, ...locationWhere },
         orderBy: { rating: 'desc' },
         take: ratedCount,
         skip: Math.floor(skip * 0.3),
         include: FOOD_INCLUDE_RELATIONS
       }),
       prisma.food.findMany({
-        where: { isAvailable: true, discountPercentage: { gt: 0 } },
+        where: { isAvailable: true, discountPercentage: { gt: 0 }, ...locationWhere },
         orderBy: { discountPercentage: 'desc' },
         take: dealsCount,
         skip: Math.floor(skip * 0.2),
         include: FOOD_INCLUDE_RELATIONS
       }),
       prisma.food.findMany({
-        where: { isAvailable: true },
+        where: { isAvailable: true, ...locationWhere },
         take: randomCount,
         skip: Math.floor(skip * 0.1),
         include: FOOD_INCLUDE_RELATIONS
@@ -230,18 +375,58 @@ router.get("/recommended", (req, res, next) => {
   }
 });
 
+
 // ==================== POPULAR ITEMS ====================
 
 router.get("/popular", cacheMiddleware(cache.CACHE_KEYS.FOOD_POPULAR, 300), async (req, res) => {
   try {
-    let { limit = 10, userLat, userLng } = req.query;
+    let { limit = 10, userLat, userLng, maxDistance = 15 } = req.query;
     limit = parseInt(limit);
 
     if (isNaN(limit) || limit < 1) limit = 10;
     if (limit > 50) limit = 50;
 
+    const userLatitude = userLat ? parseFloat(userLat) : null;
+    const userLongitude = userLng ? parseFloat(userLng) : null;
+    const maxDistanceKm = parseFloat(maxDistance);
+
+    let where = { isAvailable: true };
+
+    // Filter by nearby restaurants if user location provided
+    if (userLatitude && userLongitude && !isNaN(userLatitude) && !isNaN(userLongitude)) {
+      const { getBoundingBox, filterVendorsByDistance } = require('../utils/vendor_distance_filter');
+      const bbox = getBoundingBox(userLatitude, userLongitude, maxDistanceKm);
+
+      const nearbyRestaurants = await prisma.restaurant.findMany({
+        where: {
+          latitude: { gte: bbox.minLat, lte: bbox.maxLat },
+          longitude: { gte: bbox.minLng, lte: bbox.maxLng }
+        },
+        select: { id: true, latitude: true, longitude: true }
+      });
+
+      const filteredRestaurants = filterVendorsByDistance(
+        nearbyRestaurants,
+        userLatitude,
+        userLongitude,
+        maxDistanceKm
+      );
+
+      const restaurantIds = filteredRestaurants.map(r => r.id);
+
+      if (restaurantIds.length === 0) {
+        return res.json({
+          success: true,
+          message: "No popular items available in your area",
+          data: []
+        });
+      }
+
+      where.restaurantId = { in: restaurantIds };
+    }
+
     const popularItems = await prisma.food.findMany({
-      where: { isAvailable: true },
+      where,
       include: FOOD_INCLUDE_RELATIONS,
       orderBy: [
         { orderCount: 'desc' },
@@ -270,7 +455,7 @@ router.get("/popular", cacheMiddleware(cache.CACHE_KEYS.FOOD_POPULAR, 300), asyn
 
 router.get("/top-rated", cacheMiddleware(cache.CACHE_KEYS.FOOD_TOP_RATED, 600), async (req, res) => {
   try {
-    let { limit = 10, minRating = 4.5, userLat, userLng } = req.query;
+    let { limit = 10, minRating = 4.5, userLat, userLng, maxDistance = 15 } = req.query;
     limit = parseInt(limit);
     minRating = parseFloat(minRating);
 
@@ -278,11 +463,50 @@ router.get("/top-rated", cacheMiddleware(cache.CACHE_KEYS.FOOD_TOP_RATED, 600), 
     if (limit > 50) limit = 50;
     if (isNaN(minRating) || minRating < 0 || minRating > 5) minRating = 4.5;
 
+    const userLatitude = userLat ? parseFloat(userLat) : null;
+    const userLongitude = userLng ? parseFloat(userLng) : null;
+    const maxDistanceKm = parseFloat(maxDistance);
+
+    let where = {
+      isAvailable: true,
+      rating: { gte: minRating }
+    };
+
+    // Filter by nearby restaurants if user location provided
+    if (userLatitude && userLongitude && !isNaN(userLatitude) && !isNaN(userLongitude)) {
+      const { getBoundingBox, filterVendorsByDistance } = require('../utils/vendor_distance_filter');
+      const bbox = getBoundingBox(userLatitude, userLongitude, maxDistanceKm);
+
+      const nearbyRestaurants = await prisma.restaurant.findMany({
+        where: {
+          latitude: { gte: bbox.minLat, lte: bbox.maxLat },
+          longitude: { gte: bbox.minLng, lte: bbox.maxLng }
+        },
+        select: { id: true, latitude: true, longitude: true }
+      });
+
+      const filteredRestaurants = filterVendorsByDistance(
+        nearbyRestaurants,
+        userLatitude,
+        userLongitude,
+        maxDistanceKm
+      );
+
+      const restaurantIds = filteredRestaurants.map(r => r.id);
+
+      if (restaurantIds.length === 0) {
+        return res.json({
+          success: true,
+          message: "No top rated items available in your area",
+          data: []
+        });
+      }
+
+      where.restaurantId = { in: restaurantIds };
+    }
+
     const topRatedItems = await prisma.food.findMany({
-      where: {
-        isAvailable: true,
-        rating: { gte: minRating }
-      },
+      where,
       include: FOOD_INCLUDE_RELATIONS,
       orderBy: [
         { rating: 'desc' },

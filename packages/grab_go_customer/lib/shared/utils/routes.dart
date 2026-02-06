@@ -40,7 +40,7 @@ import 'package:grab_go_customer/features/restaurant/view/restaurant_registratio
 import 'package:grab_go_customer/features/restaurant/view/restaurant_review_page.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurant_registration_data.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurants_model.dart';
-import 'package:grab_go_customer/features/profile/view/orders.dart';
+import 'package:grab_go_customer/features/order/view/orders.dart';
 import 'package:grab_go_customer/features/profile/view/payment.dart';
 import 'package:grab_go_customer/features/profile/view/referral_page.dart';
 import 'package:grab_go_customer/features/profile/view/credits_screen.dart';
@@ -499,6 +499,26 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: "/mapTracking",
+      pageBuilder: (context, state) {
+        final orderId = state.uri.queryParameters['orderId'] ?? '';
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: MapTracking(orderId: orderId),
+          transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.vertical,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/vendorRatings",
       pageBuilder: (context, state) {
         final orderId = state.uri.queryParameters['orderId'] ?? '';
         return CustomTransitionPage(

@@ -68,6 +68,8 @@ class GroceryRepository {
     String? minPrice,
     String? maxPrice,
     String? tags,
+    double? userLat,
+    double? userLng,
   }) async {
     try {
       final response = await _groceryService.getItems(
@@ -76,6 +78,8 @@ class GroceryRepository {
         minPrice: minPrice,
         maxPrice: maxPrice,
         tags: tags,
+        userLat: userLat,
+        userLng: userLng,
       );
 
       if (response.isSuccessful && response.body != null) {
@@ -124,9 +128,15 @@ class GroceryRepository {
   }
 
   /// Fetch grocery deals (items with discounts)
-  Future<List<GroceryItem>> fetchDeals() async {
+  Future<List<GroceryItem>> fetchDeals({
+    double? userLat,
+    double? userLng,
+  }) async {
     try {
-      final response = await _groceryService.getDeals();
+      final response = await _groceryService.getDeals(
+        userLat: userLat,
+        userLng: userLng,
+      );
 
       if (response.isSuccessful && response.body != null) {
         final data = response.body as Map<String, dynamic>;
@@ -220,9 +230,17 @@ class GroceryRepository {
   }
 
   /// Fetch popular grocery items sorted by order count
-  Future<List<GroceryItem>> fetchPopularItems({int limit = 10}) async {
+  Future<List<GroceryItem>> fetchPopularItems({
+    int limit = 10,
+    double? userLat,
+    double? userLng,
+  }) async {
     try {
-      final response = await _groceryService.getPopularItems(limit);
+      final response = await _groceryService.getPopularItems(
+        limit: limit,
+        userLat: userLat,
+        userLng: userLng,
+      );
 
       if (response.isSuccessful && response.body != null) {
         final data = response.body as Map<String, dynamic>;

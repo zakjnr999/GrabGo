@@ -41,6 +41,8 @@ class GrabMartRepository {
     String? minPrice,
     String? maxPrice,
     String? tags,
+    double? userLat,
+    double? userLng,
   }) async {
     try {
       final response = await _grabMartService.getItems(
@@ -49,6 +51,8 @@ class GrabMartRepository {
         minPrice: minPrice,
         maxPrice: maxPrice,
         tags: tags,
+        userLat: userLat,
+        userLng: userLng,
       );
 
       if (response.isSuccessful && response.body != null) {

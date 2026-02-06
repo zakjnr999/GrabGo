@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:grab_go_customer/features/home/model/promo_banner.dart';
 import 'package:grab_go_customer/shared/widgets/promo_banner_card.dart';
-import 'package:grab_go_customer/shared/widgets/promo_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
@@ -71,22 +70,6 @@ class _PromoSectionState extends State<PromoSection> {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-
-    // Show skeleton ONLY if loading AND no banners
-    if (widget.isLoading && widget.banners.isEmpty) {
-      return Column(
-        children: [
-          SectionHeader(
-            title: "Special Offers",
-            sectionTotal: widget.banners.length,
-            accentColor: colors.accentOrange,
-            onSeeAll: widget.onSeeAll,
-          ),
-          SizedBox(height: 15.h),
-          PromoSkeleton(colors: colors, isDark: Theme.of(context).brightness == Brightness.dark),
-        ],
-      );
-    }
 
     // Hide section if no banners
     if (widget.banners.isEmpty) {

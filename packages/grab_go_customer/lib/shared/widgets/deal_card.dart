@@ -12,11 +12,19 @@ import 'package:provider/provider.dart';
 
 class DealCard extends StatelessWidget {
   final FoodItem item;
+  final String? deliveryTime;
   final CartItem? cartItem;
   final int discountPercent;
   final VoidCallback onTap;
 
-  const DealCard({super.key, required this.item, this.cartItem, required this.discountPercent, required this.onTap});
+  const DealCard({
+    super.key,
+    required this.item,
+    this.cartItem,
+    required this.discountPercent,
+    required this.onTap,
+    this.deliveryTime,
+  });
 
   @override
   Widget build(BuildContext context) {

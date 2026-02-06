@@ -3,9 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:grab_go_customer/features/Pickup/view/pickup_map.dart';
 import 'package:grab_go_customer/features/browse/view/browse_page.dart';
-import 'package:grab_go_customer/features/chat/view/chats.dart';
 import 'package:grab_go_customer/features/home/view/home_page.dart';
 import 'package:grab_go_customer/features/profile/view/account.dart';
+import 'package:grab_go_customer/features/order/view/orders.dart';
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -27,7 +27,7 @@ class _BottomNavigatorState extends State<BottomNavigator> {
     const HomePage(),
     const PickupMap(),
     const BrowsePage(),
-    const Chats(),
+    const Orders(),
     const Account(),
   ];
 
