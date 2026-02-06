@@ -15,6 +15,7 @@ import 'package:grab_go_customer/features/grabmart/viewmodel/grabmart_provider.d
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/service_provider.dart';
+import 'package:grab_go_customer/shared/widgets/area_unavailable_screen.dart';
 import 'package:grab_go_customer/shared/widgets/browse_page_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -165,6 +166,17 @@ class _BrowsePageState extends State<BrowsePage> {
   }
 
   Widget _buildContent(AppColorsExtension colors, bool isDark, ServiceProvider serviceProvider, Size size) {
+    final foodProvider = Provider.of<FoodProvider>(context);
+    final bool isFoodUnavailable = !foodProvider.isLoading && foodProvider.categories.isEmpty && foodProvider.hasAttemptedFetch;
+
+    if (isFoodUnavailable) {
+      return ListView(
+        controller: _scrollController,
+        padding: EdgeInsets.only(top: size.height * 0.22, bottom: 32.h),
+        children: const [AreaUnavailableScreen(isAreaUnavailable: true)],
+      );
+    }
+
     if (serviceProvider.isFoodService) {
       return Consumer<FoodProvider>(
         builder: (context, provider, _) {

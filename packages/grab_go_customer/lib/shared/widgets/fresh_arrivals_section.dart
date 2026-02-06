@@ -22,7 +22,6 @@ class FreshArrivalsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
       children: [
@@ -33,8 +32,7 @@ class FreshArrivalsSection extends StatelessWidget {
           onSeeAll: onSeeAll,
         ),
         SizedBox(height: 16.h),
-        if (items.isNotEmpty)
-          _buildItemsList(),
+        if (items.isNotEmpty) _buildItemsList(),
       ],
     );
   }
@@ -64,5 +62,4 @@ class FreshArrivalsSection extends StatelessWidget {
       ),
     );
   }
-
 }

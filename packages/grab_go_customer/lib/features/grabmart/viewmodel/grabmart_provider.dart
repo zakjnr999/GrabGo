@@ -23,6 +23,13 @@ class GrabMartProvider extends ChangeNotifier {
   List<GrabMartItem> _quickPicks = [];
   bool _isLoadingQuickPicks = false;
 
+  // Top Rated items
+  List<GrabMartItem> _topRatedItems = [];
+
+  // Final fetch state
+  bool _hasAttemptedFetch = false;
+  bool get hasAttemptedFetch => _hasAttemptedFetch;
+
   // Getters
   List<GrabMartCategory> get categories => _categories;
   bool get isLoadingCategories => _isLoadingCategories;
@@ -37,12 +44,11 @@ class GrabMartProvider extends ChangeNotifier {
   bool get isLoadingQuickPicks => _isLoadingQuickPicks;
 
   // Top Rated items
-  List<GrabMartItem> _topRatedItems = [];
   List<GrabMartItem> get topRatedItems => _topRatedItems;
 
   /// Fetch all GrabMart categories
   Future<void> fetchCategories({bool forceRefresh = false}) async {
-    // Always load from cache first if empty, even if forcing refresh, 
+    // Always load from cache first if empty, even if forcing refresh,
     // to show something while fetching
     if (_categories.isEmpty) {
       final cached = CacheService.getGrabMartCategories();
@@ -65,10 +71,7 @@ class GrabMartProvider extends ChangeNotifier {
       final userLat = locationData?['latitude']?.toDouble();
       final userLng = locationData?['longitude']?.toDouble();
 
-      final categories = await _repository.fetchCategories(
-        userLat: userLat,
-        userLng: userLng,
-      );
+      final categories = await _repository.fetchCategories(userLat: userLat, userLng: userLng);
       _categories = categories;
       await CacheService.saveGrabMartCategories(_categories.map((c) => c.toJson()).toList());
     } catch (e) {
@@ -134,13 +137,13 @@ class GrabMartProvider extends ChangeNotifier {
         userLat: userLat,
         userLng: userLng,
       );
-      
+
       _items = items;
 
       if (kDebugMode) {
         print('✅ [GRABMART] Received ${items.length} items from API');
       }
-      
+
       if (isBaseFetch) {
         await CacheService.saveGrabMartItems(_items.map((i) => i.toJson()).toList());
         _loadSpecialOffers();
@@ -153,6 +156,7 @@ class GrabMartProvider extends ChangeNotifier {
       }
     } finally {
       _isLoadingItems = false;
+      _hasAttemptedFetch = true;
       notifyListeners();
     }
   }
@@ -173,8 +177,7 @@ class GrabMartProvider extends ChangeNotifier {
 
   /// Load top-rated items (4.5+ rating)
   void _loadTopRatedItems() {
-    _topRatedItems = _items.where((item) => item.rating >= 4.5).toList()
-      ..sort((a, b) => b.rating.compareTo(a.rating));
+    _topRatedItems = _items.where((item) => item.rating >= 4.5).toList()..sort((a, b) => b.rating.compareTo(a.rating));
     notifyListeners();
   }
 
@@ -191,10 +194,7 @@ class GrabMartProvider extends ChangeNotifier {
   /// Refresh all GrabMart data
   Future<void> refreshAll({bool forceRefresh = false}) async {
     // Smart caching: Check if cache is stale (> 5 minutes)
-    final cacheIsStale = CacheService.isCacheStale(
-      CacheService.grabmartItemsTimestampKey,
-      const Duration(minutes: 5),
-    );
+    final cacheIsStale = CacheService.isCacheStale(CacheService.grabmartItemsTimestampKey, const Duration(minutes: 5));
 
     // ONLY show loading states (skeletons) if data is actually empty
     // This prevents skeletons from showing during pull-to-refresh when data is already visible
@@ -212,10 +212,7 @@ class GrabMartProvider extends ChangeNotifier {
 
   /// Check if we should show skeleton loader based on cache age
   bool shouldShowSkeleton() {
-    final cacheIsStale = CacheService.isCacheStale(
-      CacheService.grabmartItemsTimestampKey,
-      const Duration(minutes: 5),
-    );
+    final cacheIsStale = CacheService.isCacheStale(CacheService.grabmartItemsTimestampKey, const Duration(minutes: 5));
     return cacheIsStale && _items.isEmpty;
   }
 }

@@ -10,14 +10,26 @@ class FoodCategoryState {
   final List<FoodCategoryModel> categories;
   final bool isLoading;
   final String? error;
+  final bool hasAttemptedFetch;
 
-  const FoodCategoryState({this.categories = const [], this.isLoading = false, this.error});
+  const FoodCategoryState({
+    this.categories = const [],
+    this.isLoading = false,
+    this.error,
+    this.hasAttemptedFetch = false,
+  });
 
-  FoodCategoryState copyWith({List<FoodCategoryModel>? categories, bool? isLoading, String? error}) {
+  FoodCategoryState copyWith({
+    List<FoodCategoryModel>? categories,
+    bool? isLoading,
+    String? error,
+    bool? hasAttemptedFetch,
+  }) {
     return FoodCategoryState(
       categories: categories ?? this.categories,
       isLoading: isLoading ?? this.isLoading,
       error: error,
+      hasAttemptedFetch: hasAttemptedFetch ?? this.hasAttemptedFetch,
     );
   }
 
@@ -45,6 +57,7 @@ class FoodCategoryProvider extends ChangeNotifier with CacheMixin {
   List<FoodCategoryModel> get categories => _state.categories;
   bool get isLoading => _state.isLoading;
   String? get error => _state.error;
+  bool get hasAttemptedFetch => _state.hasAttemptedFetch;
 
   /// Fetch categories with caching (Offline-First pattern)
   Future<void> fetchCategories() async {
@@ -99,7 +112,7 @@ class FoodCategoryProvider extends ChangeNotifier with CacheMixin {
 
   /// Fetch from API
   Future<void> _fetchFromApi() async {
-    _updateState(_state.copyWith(isLoading: true, error: null));
+    _updateState(_state.copyWith(isLoading: true, error: null, hasAttemptedFetch: true));
     try {
       final locationData = CacheService.getUserLocation();
       final userLat = locationData?['latitude']?.toDouble();

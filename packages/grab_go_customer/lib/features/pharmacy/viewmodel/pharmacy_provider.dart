@@ -22,6 +22,10 @@ class PharmacyProvider extends ChangeNotifier {
   // Popular items
   List<PharmacyItem> _popularItems = [];
   final bool _isLoadingPopular = false;
+  
+  // Final fetch state
+  bool _hasAttemptedFetch = false;
+  bool get hasAttemptedFetch => _hasAttemptedFetch;
 
   // Getters
   List<PharmacyCategory> get categories => _categories;
@@ -151,6 +155,7 @@ class PharmacyProvider extends ChangeNotifier {
       }
     } finally {
       _isLoadingItems = false;
+      _hasAttemptedFetch = true;
       notifyListeners();
     }
   }

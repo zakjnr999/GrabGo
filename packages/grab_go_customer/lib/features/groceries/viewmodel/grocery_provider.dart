@@ -41,6 +41,10 @@ class GroceryProvider extends ChangeNotifier {
   List<GroceryItem> _popularItems = [];
   bool _isLoadingPopular = false;
 
+  // Final fetch state
+  bool _hasAttemptedFetch = false;
+  bool get hasAttemptedFetch => _hasAttemptedFetch;
+
   // Getters
   List<GroceryStore> get stores => _stores;
   bool get isLoadingStores => _isLoadingStores;
@@ -219,6 +223,7 @@ class GroceryProvider extends ChangeNotifier {
       }
     } finally {
       _isLoadingItems = false;
+      _hasAttemptedFetch = true;
       notifyListeners();
 
       fetchFreshArrivals();

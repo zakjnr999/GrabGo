@@ -41,6 +41,7 @@ class FoodProvider with ChangeNotifier {
   List<FoodCategoryModel> get categories => _categoryProvider.categories;
   bool get isLoading => _categoryProvider.isLoading;
   String? get error => _categoryProvider.error;
+  bool get hasAttemptedFetch => _categoryProvider.hasAttemptedFetch;
 
   Future<void> fetchCategories() => _categoryProvider.fetchCategories();
   Future<void> refreshCategories() => _categoryProvider.refreshCategories();

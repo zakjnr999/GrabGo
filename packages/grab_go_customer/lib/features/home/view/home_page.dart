@@ -22,6 +22,7 @@ import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_shared/shared/services/cache_service.dart';
+import 'package:grab_go_customer/shared/widgets/area_unavailable_screen.dart';
 import 'package:grab_go_customer/shared/widgets/category_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
 import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
@@ -71,10 +72,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool _isFabVisible = true;
   double _lastScrollOffset = 0.0;
   FilterModel _activeFilter = FilterModel();
-  int _recommendedDisplayedCount = 10;
   int _previousCartCount = 0;
   bool _hasNoInternet = false;
   bool _isRefreshingLocation = false;
+  bool _isSwipeRefreshing = false;
 
   late final ValueNotifier<double> _scrollOffsetNotifier;
   static const double _collapsedHeight = 70.0;
@@ -218,31 +219,46 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Future<void> _refreshData() async {
+    // Only set swipe refresh if we're not already refreshing from location change
+    if (!_isRefreshingLocation && mounted) {
+      setState(() {
+        _isSwipeRefreshing = true;
+      });
+    }
+
     final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
 
     if (kDebugMode) {
-      print('🔄 [HOME] Refreshing data after location change...');
+      print('🔄 [HOME] Refreshing data...');
       final locationData = CacheService.getUserLocation();
       print('📍 [HOME] Current location: ${locationData?['latitude']}, ${locationData?['longitude']}');
       print('🏪 [HOME] Active service: ${serviceProvider.currentService}');
     }
 
-    if (serviceProvider.isFoodService) {
-      // Refresh all food data
-      final provider = Provider.of<FoodProvider>(context, listen: false);
-      await provider.refreshAll(forceRefresh: true);
-    } else if (serviceProvider.isGroceryService) {
-      // Refresh grocery data
-      final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
-      await groceryProvider.refreshAll(forceRefresh: true);
-    } else if (serviceProvider.isPharmacyService) {
-      // Refresh pharmacy data
-      final pharmacyProvider = Provider.of<PharmacyProvider>(context, listen: false);
-      await pharmacyProvider.refreshAll(forceRefresh: true);
-    } else if (serviceProvider.isStoresService) {
-      // Refresh GrabMart data
-      final grabMartProvider = Provider.of<GrabMartProvider>(context, listen: false);
-      await grabMartProvider.refreshAll(forceRefresh: true);
+    try {
+      if (serviceProvider.isFoodService) {
+        // Refresh all food data
+        final provider = Provider.of<FoodProvider>(context, listen: false);
+        await provider.refreshAll(forceRefresh: true);
+      } else if (serviceProvider.isGroceryService) {
+        // Refresh grocery data
+        final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
+        await groceryProvider.refreshAll(forceRefresh: true);
+      } else if (serviceProvider.isPharmacyService) {
+        // Refresh pharmacy data
+        final pharmacyProvider = Provider.of<PharmacyProvider>(context, listen: false);
+        await pharmacyProvider.refreshAll(forceRefresh: true);
+      } else if (serviceProvider.isStoresService) {
+        // Refresh GrabMart data
+        final grabMartProvider = Provider.of<GrabMartProvider>(context, listen: false);
+        await grabMartProvider.refreshAll(forceRefresh: true);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSwipeRefreshing = false;
+        });
+      }
     }
 
     if (kDebugMode) {
@@ -266,18 +282,47 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     bool shouldShowSkeleton = false;
     bool shouldShowEmptyState = false;
 
-    if (serviceProvider.isGroceryService) {
-      shouldShowSkeleton = groceryProvider.isLoadingItems && groceryProvider.items.isEmpty;
-      shouldShowEmptyState = !groceryProvider.isLoadingItems && groceryProvider.categories.isEmpty;
-    } else if (serviceProvider.isPharmacyService) {
-      shouldShowSkeleton = pharmacyProvider.isLoadingItems && pharmacyProvider.items.isEmpty;
-      shouldShowEmptyState = !pharmacyProvider.isLoadingItems && pharmacyProvider.categories.isEmpty;
-    } else if (serviceProvider.isStoresService) {
-      shouldShowSkeleton = grabMartProvider.isLoadingItems && grabMartProvider.items.isEmpty;
-      shouldShowEmptyState = !grabMartProvider.isLoadingItems && grabMartProvider.categories.isEmpty;
-    } else if (serviceProvider.isFoodService) {
-      shouldShowSkeleton = foodProvider.isLoading && foodProvider.categories.isEmpty;
-      shouldShowEmptyState = !foodProvider.isLoading && foodProvider.categories.isEmpty;
+    // Check if main service (Food) is available first
+    final bool isFoodLoading = foodProvider.isLoading;
+    final bool hasNoFood = foodProvider.categories.isEmpty;
+    final bool isFoodUnavailable = !isFoodLoading && hasNoFood && foodProvider.hasAttemptedFetch;
+
+    if (isFoodLoading) {
+      // Globally show skeleton if we haven't finished determining the status
+      shouldShowSkeleton = true;
+    } else if (isFoodUnavailable) {
+      shouldShowEmptyState = true;
+    } else {
+      // Otherwise, show state based on the current service
+      if (serviceProvider.isGroceryService) {
+        shouldShowSkeleton =
+            (groceryProvider.isLoadingItems || !groceryProvider.hasAttemptedFetch) && groceryProvider.items.isEmpty;
+        shouldShowEmptyState =
+            !groceryProvider.isLoadingItems && groceryProvider.categories.isEmpty && groceryProvider.hasAttemptedFetch;
+      } else if (serviceProvider.isPharmacyService) {
+        shouldShowSkeleton =
+            (pharmacyProvider.isLoadingItems || !pharmacyProvider.hasAttemptedFetch) && pharmacyProvider.items.isEmpty;
+        shouldShowEmptyState =
+            !pharmacyProvider.isLoadingItems &&
+            pharmacyProvider.categories.isEmpty &&
+            pharmacyProvider.hasAttemptedFetch;
+      } else if (serviceProvider.isStoresService) {
+        shouldShowSkeleton =
+            (grabMartProvider.isLoadingItems || !grabMartProvider.hasAttemptedFetch) && grabMartProvider.items.isEmpty;
+        shouldShowEmptyState =
+            !grabMartProvider.isLoadingItems &&
+            grabMartProvider.categories.isEmpty &&
+            grabMartProvider.hasAttemptedFetch;
+      } else if (serviceProvider.isFoodService) {
+        shouldShowSkeleton = (isFoodLoading || !foodProvider.hasAttemptedFetch) && hasNoFood;
+        shouldShowEmptyState = hasNoFood && foodProvider.hasAttemptedFetch;
+      }
+    }
+
+    // Force skeleton if refreshing location or swipe refresh
+    if (_isRefreshingLocation || _isSwipeRefreshing) {
+      shouldShowSkeleton = true;
+      shouldShowEmptyState = false;
     }
 
     final systemUiOverlayStyle = SystemUiOverlayStyle(
@@ -318,46 +363,68 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               ? const NeverScrollableScrollPhysics()
                               : const AlwaysScrollableScrollPhysics(),
                           slivers: [
-                            SliverPadding(
-                              padding: EdgeInsets.only(top: size.height * 0.16),
-                              sliver: SliverToBoxAdapter(
-                                child: Container(
-                                  color: colors.backgroundPrimary,
-                                  child: shouldShowSkeleton
-                                      ? const HomePageSkeleton()
-                                      : Column(
-                                          children: [
-                                            SizedBox(height: KSpacing.lg.h),
-                                            _buildServiceSelector(),
-                                            SizedBox(height: KSpacing.lg.h),
-                                            PromotionalBannerCarousel(
-                                              banners: AppPromotionalBanners.getDefaultBanners(
-                                                onReferralTap: () => context.push('/referral'),
-                                                onWelcomeTap: () {},
-                                                onFlashDealTap: () {},
-                                                onGrabMartTap: () {},
-                                              ),
-                                            ),
-                                            SizedBox(height: KSpacing.lg.h),
-                                            AnimatedSwitcher(
-                                              duration: const Duration(milliseconds: 300),
-                                              switchInCurve: Curves.easeInOut,
-                                              switchOutCurve: Curves.easeInOut,
-                                              transitionBuilder: (Widget child, Animation<double> animation) {
-                                                return FadeTransition(
-                                                  opacity: animation,
-                                                  child: SlideTransition(
-                                                    position: Tween<Offset>(
-                                                      begin: const Offset(0.0, 0.02),
-                                                      end: Offset.zero,
-                                                    ).animate(animation),
-                                                    child: child,
+                            if (shouldShowEmptyState)
+                              SliverPadding(
+                                padding: EdgeInsets.only(top: size.height * 0.16),
+                                sliver: SliverFillRemaining(
+                                  hasScrollBody: false,
+                                  child: Center(
+                                    child: AreaUnavailableScreen(
+                                      serviceName: serviceProvider.isFoodService
+                                          ? "Foods"
+                                          : serviceProvider.isGroceryService
+                                              ? "Groceries"
+                                              : serviceProvider.isPharmacyService
+                                                  ? "Pharmacy"
+                                                  : "GrabMart",
+                                      isAreaUnavailable: isFoodUnavailable,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else
+                              SliverPadding(
+                                padding: EdgeInsets.only(top: size.height * 0.16),
+                                sliver: SliverToBoxAdapter(
+                                  child: Container(
+                                    color: colors.backgroundPrimary,
+                                    child: shouldShowSkeleton
+                                        ? const HomePageSkeleton()
+                                        : Column(
+                                            children: [
+                                              if (!isFoodUnavailable) ...[
+                                                SizedBox(height: KSpacing.lg.h),
+                                                _buildServiceSelector(),
+                                              ],
+                                              if (!shouldShowEmptyState) ...[
+                                                SizedBox(height: KSpacing.lg.h),
+                                                PromotionalBannerCarousel(
+                                                  banners: AppPromotionalBanners.getDefaultBanners(
+                                                    onReferralTap: () => context.push('/referral'),
+                                                    onWelcomeTap: () {},
+                                                    onFlashDealTap: () {},
+                                                    onGrabMartTap: () {},
                                                   ),
-                                                );
-                                              },
-                                              child: shouldShowEmptyState
-                                                  ? _buildServiceEmptyState(serviceProvider, colors)
-                                                  : Column(
+                                                ),
+                                                SizedBox(height: KSpacing.lg.h),
+                                              ],
+                                              AnimatedSwitcher(
+                                                duration: const Duration(milliseconds: 300),
+                                                switchInCurve: Curves.easeInOut,
+                                                switchOutCurve: Curves.easeInOut,
+                                                transitionBuilder: (Widget child, Animation<double> animation) {
+                                                  return FadeTransition(
+                                                    opacity: animation,
+                                                    child: SlideTransition(
+                                                      position: Tween<Offset>(
+                                                        begin: const Offset(0.0, 0.02),
+                                                        end: Offset.zero,
+                                                      ).animate(animation),
+                                                      child: child,
+                                                    ),
+                                                  );
+                                                },
+                                                child: Column(
                                                       key: ValueKey<bool>(serviceProvider.isFoodService),
                                                       crossAxisAlignment: CrossAxisAlignment.start,
                                                       children: [
@@ -456,19 +523,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         },
                       ),
 
-                      if (_isRefreshingLocation)
-                        Positioned.fill(
-                          child: Container(
-                            color: colors.backgroundPrimary.withValues(alpha: 0.6),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                              child: Container(
-                                color: colors.backgroundPrimary.withValues(alpha: 0.1),
-                                child: const Center(child: HomePageSkeleton()),
-                              ),
-                            ),
-                          ),
-                        ),
+
                     ],
                   ),
                 ),
@@ -1680,60 +1735,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ],
         );
       },
-    );
-  }
-
-  Widget _buildServiceEmptyState(ServiceProvider serviceProvider, AppColorsExtension colors) {
-    String serviceName = "this service";
-    if (serviceProvider.isFoodService)
-      serviceName = "Foods";
-    else if (serviceProvider.isGroceryService)
-      serviceName = "Groceries";
-    else if (serviceProvider.isPharmacyService)
-      serviceName = "Pharmacy";
-    else if (serviceProvider.isStoresService)
-      serviceName = "GrabMart";
-
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: 40.w, vertical: 60.h),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: EdgeInsets.all(24.r),
-            decoration: BoxDecoration(color: colors.accentOrange.withValues(alpha: 0.1), shape: BoxShape.circle),
-            child: Icon(Icons.location_off_rounded, size: 64.r, color: colors.accentOrange),
-          ),
-          SizedBox(height: 24.h),
-          Text(
-            "Service Unavailable",
-            style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 12.h),
-          Text(
-            "We're sorry! $serviceName are not available in your current location yet. Try changing your address to see what we offer elsewhere.",
-            style: TextStyle(fontSize: 14.sp, color: colors.textSecondary, height: 1.5),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 32.h),
-          SizedBox(
-            width: 200.w,
-            child: ElevatedButton(
-              onPressed: () => context.push('/address_picker'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.accentOrange,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(vertical: 12.h),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.border)),
-                elevation: 0,
-              ),
-              child: const Text("Change Location", style: TextStyle(fontWeight: FontWeight.w600)),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -16,13 +16,13 @@ class LocationAccuracyPopup extends StatelessWidget {
     required this.onDismiss,
   });
 
-  String _getDistanceText() {
-    if (distanceInMeters < 1000) {
-      return '${distanceInMeters.toStringAsFixed(0)}m';
-    } else {
-      return '${(distanceInMeters / 1000).toStringAsFixed(1)}km';
-    }
-  }
+  // String _getDistanceText() {
+  //   if (distanceInMeters < 1000) {
+  //     return '${distanceInMeters.toStringAsFixed(0)}m';
+  //   } else {
+  //     return '${(distanceInMeters / 1000).toStringAsFixed(1)}km';
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {

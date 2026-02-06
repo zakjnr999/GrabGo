@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:grab_go_customer/features/Pickup/widgets/vendor_details_bottom_sheet.dart';
 import 'package:grab_go_customer/features/vendors/model/vendor_model.dart';
@@ -13,8 +14,14 @@ import 'package:grab_go_customer/features/vendors/viewmodel/vendor_provider.dart
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
+import 'package:grab_go_shared/shared/utils/constants.dart';
 import 'package:grab_go_shared/shared/utils/map_styles.dart';
+import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
+import 'package:grab_go_customer/shared/widgets/area_unavailable_screen.dart';
+import 'package:grab_go_customer/shared/widgets/pickup_map_skeleton.dart';
+import 'package:grab_go_shared/shared/widgets/app_button.dart';
 import 'package:grab_go_shared/shared/widgets/custom_map_markers.dart';
+import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart';
 import 'package:provider/provider.dart';
 
 class PickupMap extends StatefulWidget {
@@ -41,6 +48,47 @@ class _PickupMapState extends State<PickupMap> {
   LatLngBounds? _lastLoadedBounds;
   double _currentZoom = 14;
   static const LatLng _defaultPosition = LatLng(5.6037, -0.1870);
+
+  // Track location to detect changes
+  double? _lastLat;
+  double? _lastLng;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locationProvider = Provider.of<NativeLocationProvider>(context);
+
+    // If location changed in the global provider (e.g. via Address Picker), refresh the map
+    if (locationProvider.latitude != _lastLat || locationProvider.longitude != _lastLng) {
+      final oldLat = _lastLat;
+      final oldLng = _lastLng;
+
+      _lastLat = locationProvider.latitude;
+      _lastLng = locationProvider.longitude;
+
+      if (_lastLat != null && _lastLng != null) {
+        // Update current position for UI
+        _currentPosition = Position(
+          latitude: _lastLat!,
+          longitude: _lastLng!,
+          timestamp: DateTime.now(),
+          accuracy: 0,
+          altitude: 0,
+          heading: 0,
+          speed: 0,
+          speedAccuracy: 0,
+          altitudeAccuracy: 0,
+          headingAccuracy: 0,
+        );
+
+        if (oldLat != null && oldLng != null && _mapController != null) {
+          _mapController!.animateCamera(CameraUpdate.newLatLngZoom(LatLng(_lastLat!, _lastLng!), 14));
+        }
+        _loadVendors();
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -71,29 +119,48 @@ class _PickupMapState extends State<PickupMap> {
 
   Future<void> _getCurrentLocation() async {
     try {
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        debugPrint('Location services are disabled');
+      final locationProvider = Provider.of<NativeLocationProvider>(context, listen: false);
+
+      if (locationProvider.hasLocation) {
+        _lastLat = locationProvider.latitude;
+        _lastLng = locationProvider.longitude;
+
+        _currentPosition = Position(
+          latitude: _lastLat!,
+          longitude: _lastLng!,
+          timestamp: DateTime.now(),
+          accuracy: 0,
+          altitude: 0,
+          heading: 0,
+          speed: 0,
+          speedAccuracy: 0,
+          altitudeAccuracy: 0,
+          headingAccuracy: 0,
+        );
+
+        if (mounted) setState(() {});
         return;
       }
+
+      // Fallback to direct GPS if provider has no location
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          debugPrint('Location permission denied');
-          return;
-        }
       }
-      if (permission == LocationPermission.deniedForever) {
-        debugPrint('Location permission permanently denied');
-        return;
-      }
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) return;
+
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
       );
+
       if (!mounted) return;
       setState(() {
         _currentPosition = position;
+        _lastLat = position.latitude;
+        _lastLng = position.longitude;
       });
       _mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(position.latitude, position.longitude), 14));
     } catch (e) {
@@ -228,41 +295,46 @@ class _PickupMapState extends State<PickupMap> {
     final Set<Marker> markers = {};
     final colors = context.appColors;
 
-    if (_currentZoom < 14) {
-      _clusters = _clusterVendors(_vendors, _currentZoom);
+    final foodProvider = Provider.of<FoodProvider>(context, listen: false);
+    final bool isFoodUnavailable = foodProvider.categories.isEmpty && foodProvider.hasAttemptedFetch;
 
-      for (final cluster in _clusters) {
-        if (cluster.vendors.length > 1) {
-          final cacheKey = 'cluster_${cluster.vendors.length}_${cluster.center.latitude}_${cluster.center.longitude}';
+    // Only show vendor markers if the area is available
+    if (!isFoodUnavailable) {
+      if (_currentZoom < 14) {
+        _clusters = _clusterVendors(_vendors, _currentZoom);
 
-          BitmapDescriptor markerIcon;
-          if (_markerCache.containsKey(cacheKey)) {
-            markerIcon = _markerCache[cacheKey]!;
-          } else {
-            markerIcon = await CustomMapMarkers.createStandardMarker(
-              primaryColor: colors.accentOrange,
-              iconAsset: 'packages/grab_go_shared/lib/assets/icons/store.svg',
-              clusterCount: cluster.vendors.length,
+        for (final cluster in _clusters) {
+          if (cluster.vendors.length > 1) {
+            final cacheKey = 'cluster_${cluster.vendors.length}_${cluster.center.latitude}_${cluster.center.longitude}';
+
+            BitmapDescriptor markerIcon;
+            if (_markerCache.containsKey(cacheKey)) {
+              markerIcon = _markerCache[cacheKey]!;
+            } else {
+              markerIcon = await CustomMapMarkers.createStandardMarker(
+                primaryColor: colors.accentOrange,
+                iconAsset: 'packages/grab_go_shared/lib/assets/icons/store.svg',
+                clusterCount: cluster.vendors.length,
+              );
+              _markerCache[cacheKey] = markerIcon;
+            }
+            markers.add(
+              Marker(
+                markerId: MarkerId(cacheKey),
+                position: cluster.center,
+                icon: markerIcon,
+                anchor: const Offset(0.5, 1.0),
+                zIndexInt: 50,
+                onTap: () => _onClusterTapped(cluster),
+              ),
             );
-            _markerCache[cacheKey] = markerIcon;
+          } else {
+            await _addVendorMarker(markers, cluster.vendors.first, colors, showLabel: false);
           }
-          markers.add(
-            Marker(
-              markerId: MarkerId(cacheKey),
-              position: cluster.center,
-              icon: markerIcon,
-              anchor: const Offset(0.5, 1.0),
-              zIndexInt: 50,
-              onTap: () => _onClusterTapped(cluster),
-            ),
-          );
-        } else {
-          await _addVendorMarker(markers, cluster.vendors.first, colors, showLabel: false);
         }
-      }
-    } else {
-      for (final vendor in _vendors) {
-        await _addVendorMarker(markers, vendor, colors, showLabel: _currentZoom >= 14.5);
+        for (final vendor in _vendors) {
+          await _addVendorMarker(markers, vendor, colors, showLabel: _currentZoom >= 14.5);
+        }
       }
     }
 
@@ -611,10 +683,19 @@ class _PickupMapState extends State<PickupMap> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.appColors;
     final vendorProvider = Provider.of<VendorProvider>(context);
     final navigationProvider = Provider.of<NavigationProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.appColors;
+
+    // Sync vendors from provider if changed
+    if (vendorProvider.filteredVendors != _vendors) {
+      _vendors = vendorProvider.filteredVendors;
+      // Schedule an update for the next frame
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _updateMarkers();
+      });
+    }
 
     if (navigationProvider.selectedIndex != 1 && _sheetController != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -629,12 +710,6 @@ class _PickupMapState extends State<PickupMap> {
           }
         }
       });
-    }
-
-    if (vendorProvider.filteredVendors != _vendors) {
-      _vendors = vendorProvider.filteredVendors;
-      _markerCache.clear();
-      Future.microtask(() => _updateMarkers());
     }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -697,16 +772,7 @@ class _PickupMapState extends State<PickupMap> {
               ),
             ),
 
-            if (_isLoading)
-              Positioned.fill(
-                child: Container(
-                  color: colors.backgroundPrimary.withValues(alpha: 0.7),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [SpinKitCubeGrid(color: colors.accentOrange, size: 35.r)],
-                  ),
-                ),
-              ),
+            if (_isLoading) const Positioned.fill(child: PickupMapSkeleton()),
 
             if (_errorMessage != null && !_isLoading)
               Positioned(
@@ -808,6 +874,81 @@ class _PickupMapState extends State<PickupMap> {
                   ),
                 ],
               ),
+            ),
+
+            Consumer<FoodProvider>(
+              builder: (context, foodProvider, child) {
+                final bool isFoodUnavailable = foodProvider.categories.isEmpty && foodProvider.hasAttemptedFetch;
+
+                if (!isFoodUnavailable || _isLoading) return const SizedBox.shrink();
+
+                return Positioned(
+                  bottom: 120.h,
+                  left: 20.w,
+                  right: 20.w,
+                  child: Container(
+                    padding: EdgeInsets.all(20.r),
+                    decoration: BoxDecoration(
+                      color: colors.backgroundPrimary,
+                      borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha(isDark ? 50 : 20),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(12.r),
+                              decoration: BoxDecoration(
+                                color: colors.accentOrange.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.map_outlined, color: colors.accentOrange, size: 24.r),
+                            ),
+                            SizedBox(width: 16.w),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "GrabGo is Not Here Yet",
+                                    style: TextStyle(
+                                      fontSize: 16.sp,
+                                      fontWeight: FontWeight.w700,
+                                      color: colors.textPrimary,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4.h),
+                                  Text(
+                                    "We haven't launched in this area yet.",
+                                    style: TextStyle(fontSize: 13.sp, color: colors.textSecondary),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 16.h),
+                        AppButton(
+                          width: double.infinity,
+                          onPressed: () => context.push('/address_picker'),
+                          backgroundColor: colors.accentOrange,
+                          borderRadius: KBorderSize.borderMedium,
+                          buttonText: "Change Location",
+                          textStyle: TextStyle(fontSize: 15.sp, color: Colors.white, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),

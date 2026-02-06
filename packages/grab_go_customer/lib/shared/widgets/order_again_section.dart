@@ -26,7 +26,6 @@ class OrderAgainSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (recentOrders.isEmpty) return const SizedBox.shrink();
 
@@ -40,44 +39,44 @@ class OrderAgainSection extends StatelessWidget {
         ),
         SizedBox(height: 10.h),
         SizedBox(
-            height: 220.h,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.only(left: 20.w),
-              physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: recentOrders.length,
-              itemBuilder: (context, index) {
-                final item = recentOrders[index];
-                final originalItem = originalItems != null && index < originalItems!.length
-                    ? originalItems![index]
-                    : null;
-                final daysAgo = item.lastOrderedAt != null ? DateTime.now().difference(item.lastOrderedAt!).inDays : 0;
+          height: 220.h,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.only(left: 20.w),
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemCount: recentOrders.length,
+            itemBuilder: (context, index) {
+              final item = recentOrders[index];
+              final originalItem = originalItems != null && index < originalItems!.length
+                  ? originalItems![index]
+                  : null;
+              final daysAgo = item.lastOrderedAt != null ? DateTime.now().difference(item.lastOrderedAt!).inDays : 0;
 
-                return Consumer<CartProvider>(
-                  builder: (context, cartProvider, child) {
-                    final itemForCart = originalItem ?? item;
-                    final bool isInCart = cartProvider.cartItems.containsKey(itemForCart);
-                    return Padding(
-                      padding: EdgeInsets.only(right: 15.w),
-                      child: QuickReorderCard(
-                        item: item,
-                        daysAgo: daysAgo,
-                        onTap: () => onItemTap(item),
-                        isInCart: isInCart,
-                        onAddToCart: () {
-                          if (isInCart) {
-                            cartProvider.removeItemCompletely(itemForCart);
-                          } else {
-                            cartProvider.addToCart(itemForCart, context: context);
-                          }
-                        },
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
+              return Consumer<CartProvider>(
+                builder: (context, cartProvider, child) {
+                  final itemForCart = originalItem ?? item;
+                  final bool isInCart = cartProvider.cartItems.containsKey(itemForCart);
+                  return Padding(
+                    padding: EdgeInsets.only(right: 15.w),
+                    child: QuickReorderCard(
+                      item: item,
+                      daysAgo: daysAgo,
+                      onTap: () => onItemTap(item),
+                      isInCart: isInCart,
+                      onAddToCart: () {
+                        if (isInCart) {
+                          cartProvider.removeItemCompletely(itemForCart);
+                        } else {
+                          cartProvider.addToCart(itemForCart, context: context);
+                        }
+                      },
+                    ),
+                  );
+                },
+              );
+            },
           ),
+        ),
       ],
     );
   }
