@@ -7,6 +7,7 @@ abstract class CartApiService extends ChopperService {
   /// Get user's active cart
   @GET()
   Future<Response<Map<String, dynamic>>> getCart({
+    @Query('type') String? type,
     @Query('lat') double? lat,
     @Query('lng') double? lng,
   });

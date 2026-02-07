@@ -15,6 +15,7 @@ class CartProvider extends ChangeNotifier {
   double? _total;
   double? _deliveryLatitude;
   double? _deliveryLongitude;
+  String? _cartType;
 
   Map<CartItem, int> get cartItems => _cartItems;
   bool get isSyncing => _isSyncing;
@@ -56,6 +57,7 @@ class CartProvider extends ChangeNotifier {
         _cartItems[cartItem] = quantity;
       }
 
+      _cartType = _inferCartType();
       _recalculateLocalPricing();
       notifyListeners();
 
@@ -72,7 +74,11 @@ class CartProvider extends ChangeNotifier {
 
     try {
       _isSyncing = true;
-      final response = await cartApiService.getCart(lat: _deliveryLatitude, lng: _deliveryLongitude);
+      final response = await cartApiService.getCart(
+        type: _cartType ?? _inferCartType(),
+        lat: _deliveryLatitude,
+        lng: _deliveryLongitude,
+      );
 
       if (response.isSuccessful && response.body != null) {
         final cartData = response.body!['cart'];
@@ -80,17 +86,23 @@ class CartProvider extends ChangeNotifier {
           _cartItems.clear();
 
           for (var item in cartData['items']) {
-            // Extract the populated itemId (Food or GroceryItem)
-            final itemData = item['itemId'];
+            // Extract the populated item (Food/Grocery/Pharmacy)
+            final itemData = item['itemId'] ?? item['food'] ?? item['groceryItem'] ?? item['pharmacyItem'];
             if (itemData == null) continue; // Skip if item was deleted
 
-            final itemType = item['itemType']; // Get type from backend
+            String? itemType = item['itemType'];
+            if (itemType == null) {
+              if (item['food'] != null) itemType = 'Food';
+              if (item['groceryItem'] != null) itemType = 'GroceryItem';
+              if (item['pharmacyItem'] != null) itemType = 'PharmacyItem';
+            }
+
             CartItem? cartItem;
 
             if (itemType == 'Food') {
-              cartItem = _createFoodItemFromBackend(itemData, item);
+              cartItem = _createFoodItemFromBackend(Map<String, dynamic>.from(itemData), item);
             } else if (itemType == 'GroceryItem') {
-              cartItem = _createGroceryItemFromBackend(itemData, item);
+              cartItem = _createGroceryItemFromBackend(Map<String, dynamic>.from(itemData), item);
             } else {
               debugPrint('Unknown item type: $itemType');
               continue; // Skip unknown types
@@ -99,6 +111,7 @@ class CartProvider extends ChangeNotifier {
             _cartItems[cartItem] = item['quantity'] as int;
           }
 
+          _cartType = _inferCartType();
           final pricing = cartData['pricing'];
           if (pricing is Map) {
             _applyPricing(Map<String, dynamic>.from(pricing));
@@ -139,6 +152,16 @@ class CartProvider extends ChangeNotifier {
     _total = _subtotal! + _deliveryFee + _serviceFee + _tax;
   }
 
+  String? _inferCartType() {
+    if (_cartItems.isEmpty) return _cartType;
+
+    final itemType = _cartItems.keys.first.itemType;
+    if (itemType == 'Food') return 'food';
+    if (itemType == 'GroceryItem') return 'grocery';
+    if (itemType == 'PharmacyItem') return 'pharmacy';
+    return _cartType;
+  }
+
   void updateDeliveryLocation({double? latitude, double? longitude}) {
     if (latitude == null || longitude == null) return;
 
@@ -168,8 +191,12 @@ class CartProvider extends ChangeNotifier {
     String restaurantImage = '';
 
     if (restaurantData != null) {
-      restaurantId = restaurantData['_id']?.toString() ?? '';
-      restaurantName = restaurantData['name']?.toString() ?? restaurantData['restaurant_name']?.toString() ?? '';
+      restaurantId = restaurantData['_id']?.toString() ?? restaurantData['id']?.toString() ?? '';
+      restaurantName =
+          restaurantData['name']?.toString() ??
+          restaurantData['restaurant_name']?.toString() ??
+          restaurantData['restaurantName']?.toString() ??
+          '';
       restaurantImage =
           restaurantData['logo']?.toString() ??
           restaurantData['image']?.toString() ??
@@ -178,10 +205,19 @@ class CartProvider extends ChangeNotifier {
     }
 
     return FoodItem(
-      id: itemData['_id']?.toString() ?? cartItem['itemId'],
+      id:
+          itemData['_id']?.toString() ??
+          itemData['id']?.toString() ??
+          cartItem['itemId']?.toString() ??
+          cartItem['foodId']?.toString() ??
+          '',
       name: itemData['name']?.toString() ?? '',
       price: (itemData['price'] as num?)?.toDouble() ?? 0.0,
-      image: itemData['food_image']?.toString() ?? itemData['image']?.toString() ?? '',
+      image:
+          itemData['food_image']?.toString() ??
+          itemData['image']?.toString() ??
+          itemData['foodImage']?.toString() ??
+          '',
       rating: (itemData['rating'] as num?)?.toDouble() ?? 4.5,
       description: itemData['description']?.toString() ?? '',
       sellerName: restaurantName,
@@ -204,20 +240,20 @@ class CartProvider extends ChangeNotifier {
     String? storeLogo;
 
     if (storeData != null) {
-      storeId = storeData['_id']?.toString() ?? '';
-      storeName = storeData['store_name']?.toString() ?? storeData['name']?.toString();
+      storeId = storeData['_id']?.toString() ?? storeData['id']?.toString() ?? '';
+      storeName = storeData['store_name']?.toString() ?? storeData['storeName']?.toString() ?? storeData['name']?.toString();
       storeLogo = storeData['logo']?.toString() ?? storeData['image']?.toString();
     }
 
     return GroceryItem.fromJson({
-      '_id': itemData['_id'] ?? cartItem['itemId'],
+      '_id': itemData['_id'] ?? itemData['id'] ?? cartItem['itemId'] ?? cartItem['groceryItemId'],
       'name': itemData['name'] ?? '',
       'description': itemData['description'] ?? '',
-      'image': itemData['image'] ?? '',
+      'image': itemData['image'] ?? itemData['imageUrl'] ?? '',
       'price': itemData['price'] ?? 0.0,
       'unit': itemData['unit'] ?? 'piece',
       'category': itemData['category'],
-      'store': storeId,
+      'store': storeId.isNotEmpty ? storeId : itemData['storeId'],
       'brand': itemData['brand'] ?? '',
       'stock': itemData['stock'] ?? 0,
       'isAvailable': itemData['isAvailable'] ?? true,
@@ -290,6 +326,13 @@ class CartProvider extends ChangeNotifier {
   }
 
   Future<void> addToCart(CartItem item, {BuildContext? context}) async {
+    _cartType = item.itemType == 'Food'
+        ? 'food'
+        : item.itemType == 'GroceryItem'
+        ? 'grocery'
+        : item.itemType == 'PharmacyItem'
+        ? 'pharmacy'
+        : _cartType;
     // Check for store/restaurant mismatch
     if (context != null && _cartItems.isNotEmpty) {
       final existingItem = _cartItems.keys.first;
@@ -355,6 +398,9 @@ class CartProvider extends ChangeNotifier {
       await _updateQuantityOnBackend(item.id, _cartItems[item]!);
     } else {
       _cartItems.remove(item);
+      if (_cartItems.isEmpty) {
+        _cartType = null;
+      }
       _recalculateLocalPricing();
       _saveCart();
       notifyListeners();
@@ -372,6 +418,9 @@ class CartProvider extends ChangeNotifier {
     debugPrint('  Was in cart: ${_cartItems.containsKey(item)}');
 
     _cartItems.remove(item);
+    if (_cartItems.isEmpty) {
+      _cartType = null;
+    }
     _recalculateLocalPricing();
     _saveCart();
     notifyListeners();
@@ -383,6 +432,7 @@ class CartProvider extends ChangeNotifier {
 
   Future<void> clearCart() async {
     _cartItems.clear();
+    _cartType = null;
     _applyPricing(null);
     _saveCart();
     notifyListeners();

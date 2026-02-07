@@ -736,10 +736,7 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
                                 _buildPriceRow("Delivery Fee", deliveryFee, colors, Assets.icons.deliveryTruck, false),
                                 SizedBox(height: 10.h),
                                 _buildPriceRow("Service Fee", serviceFee, colors, Assets.icons.deliveryTruck, false),
-                                if (tax > 0) ...[
-                                  SizedBox(height: 10.h),
-                                  _buildPriceRow("Tax", tax, colors, Assets.icons.cash, false),
-                                ],
+                                // Tax removed (kept in pricing for backend compatibility)
                                 if (widget.tipAmount > 0) ...[
                                   SizedBox(height: 10.h),
                                   _buildPriceRow("Driver Tip", widget.tipAmount, colors, Assets.icons.handCash, false),

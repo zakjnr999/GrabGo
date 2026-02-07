@@ -199,7 +199,7 @@ class Cart extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                                SizedBox(height: 16.h),
+                                SizedBox(height: 20.h),
 
                                 Column(
                                   children: [
@@ -229,17 +229,7 @@ class Cart extends StatelessWidget {
                                       false,
                                       true,
                                     ),
-                                    if (tax > 0) ...[
-                                      SizedBox(height: 6.h),
-                                      _buildPriceRow(
-                                        "Tax",
-                                        tax,
-                                        colors,
-                                        Assets.icons.cash,
-                                        false,
-                                        false,
-                                      ),
-                                    ],
+                                    // Tax removed (kept in pricing for backend compatibility)
                                     SizedBox(height: 6.h),
                                     _buildPriceRow(
                                       "Total Amount",

@@ -20,11 +20,13 @@ final class _$CartApiService extends CartApiService {
 
   @override
   Future<Response<Map<String, dynamic>>> getCart({
+    String? type,
     double? lat,
     double? lng,
   }) {
     final Uri $url = Uri.parse('/cart');
     final Map<String, dynamic> $params = <String, dynamic>{
+      'type': type,
       'lat': lat,
       'lng': lng,
     };

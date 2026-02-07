@@ -523,10 +523,7 @@ class _CheckoutState extends State<Checkout> {
                                   Assets.icons.deliveryTruck,
                                   false,
                                 ),
-                                if (tax > 0) ...[
-                                  SizedBox(height: 10.h),
-                                  _buildPriceRowWithIcon("Tax", tax, colors, Assets.icons.cash, false),
-                                ],
+                                // Tax removed (kept in pricing for backend compatibility)
                                 if (_tipAmount > 0) ...[
                                   SizedBox(height: 10.h),
                                   _buildPriceRowWithIcon("Tip", _tipAmount, colors, Assets.icons.handCash, false),

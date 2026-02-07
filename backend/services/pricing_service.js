@@ -10,13 +10,14 @@ const roundCurrency = (value) => {
     return Math.round((value + Number.EPSILON) * 100) / 100;
 };
 
-const TAX_RATE = toNumber(process.env.TAX_RATE, 0.05);
+const TAX_RATE = toNumber(process.env.TAX_RATE, 0);
 const SERVICE_FEE_RATE = toNumber(process.env.SERVICE_FEE_RATE, 0);
 const SERVICE_FEE_MIN = toNumber(process.env.SERVICE_FEE_MIN, 0);
 const SERVICE_FEE_MAX = toNumber(process.env.SERVICE_FEE_MAX, 0);
 const DELIVERY_FEE_PER_KM = toNumber(process.env.DELIVERY_FEE_PER_KM, 0);
 const DELIVERY_FEE_MIN = toNumber(process.env.DELIVERY_FEE_MIN, 0);
 const DELIVERY_FEE_MAX = toNumber(process.env.DELIVERY_FEE_MAX, 0);
+const DELIVERY_DISTANCE_MAX_KM = toNumber(process.env.DELIVERY_DISTANCE_MAX_KM, 50);
 
 const calculateSubtotal = (items = []) => {
     const subtotal = items.reduce((sum, item) => {
@@ -57,12 +58,17 @@ const normalizeLocation = (location) => {
     const latitude = toNumber(location.latitude ?? location.lat, NaN);
     const longitude = toNumber(location.longitude ?? location.lng, NaN);
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+    if (Math.abs(latitude) < 0.0001 && Math.abs(longitude) < 0.0001) return null;
+    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return null;
     return { latitude, longitude };
 };
 
 const calculateDistanceKm = (from, to) => {
     if (!from || !to) return null;
-    return roundCurrency(calculateDistance(from.latitude, from.longitude, to.latitude, to.longitude));
+    const distance = roundCurrency(calculateDistance(from.latitude, from.longitude, to.latitude, to.longitude));
+    if (!Number.isFinite(distance) || distance <= 0) return null;
+    if (DELIVERY_DISTANCE_MAX_KM > 0 && distance > DELIVERY_DISTANCE_MAX_KM) return null;
+    return distance;
 };
 
 const calculateDeliveryFee = ({ baseFee, distanceKm }) => {

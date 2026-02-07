@@ -1002,7 +1002,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         try {
                           await _refreshData();
 
-                          // Show feedback to user
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(

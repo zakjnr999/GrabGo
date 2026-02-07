@@ -269,10 +269,7 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
             SizedBox(height: 16.h),
             _buildEnhancedDetailRow("Service Fee", "\GHC ${widget.serviceFee.toStringAsFixed(2)}", colors, false),
           ],
-          if (widget.tax > 0) ...[
-            SizedBox(height: 16.h),
-            _buildEnhancedDetailRow("Tax", "\GHC ${widget.tax.toStringAsFixed(2)}", colors, false),
-          ],
+          // Tax removed (kept in pricing for backend compatibility)
           if (widget.tip > 0) ...[
             SizedBox(height: 16.h),
             _buildEnhancedDetailRow("Driver Tip", "\GHC ${widget.tip.toStringAsFixed(2)}", colors, false),
