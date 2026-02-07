@@ -239,7 +239,19 @@ router.get("/categories", cacheMiddleware(cache.CACHE_KEYS.PHARMACY + ':categori
                     distinct: ['categoryId']
                 });
 
-                const activeCategoryIds = categoriesWithItems.map(c => c.categoryId);
+                const activeCategoryIds = categoriesWithItems
+                    .map(c => c.categoryId)
+                    .filter(Boolean);
+
+                if (activeCategoryIds.length === 0) {
+                    console.log('   ⚠️ No valid pharmacy categories nearby - returning 0 categories');
+                    return res.json({
+                        success: true,
+                        message: "No pharmacy categories available in your area",
+                        data: []
+                    });
+                }
+
                 where.id = { in: activeCategoryIds };
                 console.log(`   ✅ Filtered to ${activeCategoryIds.length} active pharmacy categories nearby`);
             } else {

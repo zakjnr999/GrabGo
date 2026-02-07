@@ -40,20 +40,23 @@ class PickupMapSkeleton extends StatelessWidget {
               SizedBox(height: 12.h),
 
               // Filter chips placeholder
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                physics: const NeverScrollableScrollPhysics(),
-                child: Row(
-                  children: List.generate(
-                    4,
-                    (index) => Padding(
-                      padding: EdgeInsets.only(right: 8.w),
-                      child: _buildShimmerBox(
-                        width: index == 0 ? 60.w : 100.w,
-                        height: 36.h,
-                        colors: colors,
-                        isDark: isDark,
-                        borderRadius: 20.r,
+              SizedBox(
+                width: double.infinity,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const NeverScrollableScrollPhysics(),
+                  child: Row(
+                    children: List.generate(
+                      4,
+                      (index) => Padding(
+                        padding: EdgeInsets.only(right: 8.w),
+                        child: _buildShimmerBox(
+                          width: index == 0 ? 60.w : 100.w,
+                          height: 36.h,
+                          colors: colors,
+                          isDark: isDark,
+                          borderRadius: 20.r,
+                        ),
                       ),
                     ),
                   ),

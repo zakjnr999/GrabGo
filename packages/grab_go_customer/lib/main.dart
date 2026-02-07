@@ -39,7 +39,6 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await Firebase.initializeApp();
 
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -56,7 +55,6 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (context) => ThemeProvider()),
         ChangeNotifierProvider(create: (context) => CartProvider()),
-        // Native location provider with geofencing support (replaces old LocationProvider)
         ChangeNotifierProvider(create: (context) => NativeLocationProvider()),
         ChangeNotifierProvider(create: (context) => FoodCategoryProvider()),
         ChangeNotifierProvider(create: (context) => FoodBannerProvider()),

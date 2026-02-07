@@ -1,6 +1,6 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:geolocator/geolocator.dart';
@@ -10,16 +10,11 @@ import 'package:grab_go_customer/features/Pickup/widgets/vendor_details_bottom_s
 import 'package:grab_go_customer/features/vendors/model/vendor_model.dart';
 import 'package:grab_go_customer/features/vendors/model/vendor_type.dart';
 import 'package:grab_go_customer/features/vendors/viewmodel/vendor_provider.dart';
-import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
-import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
-import 'package:grab_go_shared/shared/utils/constants.dart';
-import 'package:grab_go_shared/shared/utils/map_styles.dart';
-import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
-import 'package:grab_go_customer/shared/widgets/pickup_map_skeleton.dart';
-import 'package:grab_go_shared/shared/widgets/app_button.dart';
+import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/shared/widgets/custom_map_markers.dart';
 import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart';
+import 'package:grab_go_customer/shared/widgets/pickup_map_skeleton.dart';
 import 'package:provider/provider.dart';
 
 class PickupMap extends StatefulWidget {
@@ -37,9 +32,11 @@ class _PickupMapState extends State<PickupMap> {
   PersistentBottomSheetController? _sheetController;
   String? _selectedVendorId;
   String? _errorMessage;
+  bool _hasAttemptedVendorFetch = false;
   Position? _currentPosition;
   StreamSubscription<Position>? _positionSubscription;
-  Set<Marker> _markers = {};
+  Set<Marker> _vendorMarkers = {};
+  Marker? _userMarker;
   Set<Polyline> _polylines = {};
   final Map<String, BitmapDescriptor> _markerCache = {};
   Timer? _debounceTimer;
@@ -51,13 +48,21 @@ class _PickupMapState extends State<PickupMap> {
 
   double? _lastLat;
   double? _lastLng;
+  LatLng? _lastUserMarkerPosition;
+  bool _pendingLocationUpdate = false;
+
+  bool _isValidLatLng(double? lat, double? lng) {
+    if (lat == null || lng == null) return false;
+    if (lat.isNaN || lng.isNaN) return false;
+    if (lat.abs() > 90 || lng.abs() > 180) return false;
+    return true;
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final locationProvider = Provider.of<NativeLocationProvider>(context);
 
-    // If location changed in the global provider (e.g. via Address Picker), refresh the map
     if (locationProvider.latitude != _lastLat || locationProvider.longitude != _lastLng) {
       final oldLat = _lastLat;
       final oldLng = _lastLng;
@@ -65,9 +70,9 @@ class _PickupMapState extends State<PickupMap> {
       _lastLat = locationProvider.latitude;
       _lastLng = locationProvider.longitude;
 
-      if (_lastLat != null && _lastLng != null) {
-        // Update current position for UI
-        _currentPosition = Position(
+      if (_isValidLatLng(_lastLat, _lastLng) && !_pendingLocationUpdate) {
+        _pendingLocationUpdate = true;
+        final nextPosition = Position(
           latitude: _lastLat!,
           longitude: _lastLng!,
           timestamp: DateTime.now(),
@@ -80,10 +85,21 @@ class _PickupMapState extends State<PickupMap> {
           headingAccuracy: 0,
         );
 
-        if (oldLat != null && oldLng != null && _mapController != null) {
-          _mapController!.animateCamera(CameraUpdate.newLatLngZoom(LatLng(_lastLat!, _lastLng!), 14));
-        }
-        _loadVendors();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) {
+            _pendingLocationUpdate = false;
+            return;
+          }
+          setState(() {
+            _currentPosition = nextPosition;
+          });
+          if (oldLat != null && oldLng != null && _mapController != null) {
+            _mapController!.animateCamera(CameraUpdate.newLatLngZoom(LatLng(_lastLat!, _lastLng!), 14));
+          }
+          _updateUserMarker();
+          _loadVendors();
+          _pendingLocationUpdate = false;
+        });
       }
     }
   }
@@ -91,7 +107,13 @@ class _PickupMapState extends State<PickupMap> {
   @override
   void initState() {
     super.initState();
-    _initializeMap();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _initPosition();
+        _loadVendors();
+      }
+    });
+    _startLocationUpdates();
   }
 
   @override
@@ -113,8 +135,43 @@ class _PickupMapState extends State<PickupMap> {
 
   Future<void> _initializeMap() async {
     await _getCurrentLocation();
+    await _updateUserMarker();
     await _loadVendors();
     _startLocationUpdates();
+  }
+
+  void _onMapCreated(GoogleMapController controller) {
+    _mapController = controller;
+    if (mounted) {
+      _updateMarkers();
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) _fitCameraToMarkers();
+      });
+    }
+  }
+
+  Future<void> _initPosition() async {
+    try {
+      Position? position =
+          await Geolocator.getCurrentPosition(
+                locationSettings: AndroidSettings(
+                  accuracy: LocationAccuracy.medium,
+                  intervalDuration: const Duration(seconds: 5),
+                  distanceFilter: 20,
+                ),
+              )
+              .catchError((Object e) {
+                return null;
+              })
+              .then((value) => value as Position?);
+
+      if (position != null && mounted) {
+        setState(() => _currentPosition = position);
+        _mapController?.animateCamera(CameraUpdate.newLatLng(LatLng(position.latitude, position.longitude)));
+      }
+    } catch (e) {
+      // Handle error quietly
+    }
   }
 
   Future<void> _getCurrentLocation() async {
@@ -142,7 +199,6 @@ class _PickupMapState extends State<PickupMap> {
         return;
       }
 
-      // Fallback to direct GPS if provider has no location
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) return;
 
@@ -164,7 +220,7 @@ class _PickupMapState extends State<PickupMap> {
       });
       _mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(position.latitude, position.longitude), 14));
     } catch (e) {
-      debugPrint('Error getting current location: $e');
+      // Error getting current location
     }
   }
 
@@ -178,10 +234,10 @@ class _PickupMapState extends State<PickupMap> {
             setState(() {
               _currentPosition = position;
             });
-            _updateMarkers();
+            _updateUserMarker();
           },
           onError: (error) {
-            debugPrint('Location stream error: $error');
+            // Location stream error
           },
         );
   }
@@ -192,6 +248,7 @@ class _PickupMapState extends State<PickupMap> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _hasAttemptedVendorFetch = true;
     });
     try {
       if (_currentPosition != null) {
@@ -201,14 +258,21 @@ class _PickupMapState extends State<PickupMap> {
       }
 
       if (!mounted) return;
+
+      if (vendorProvider.error != null) {
+        setState(() {
+          _errorMessage = vendorProvider.error;
+          _isLoading = false;
+        });
+        return;
+      }
+
       setState(() {
-        _vendors = vendorProvider.filteredVendors;
+        _vendors = vendorProvider.filteredVendors
+            .where((v) => _isValidLatLng(v.location?.lat, v.location?.lng))
+            .toList();
         _isLoading = false;
       });
-
-      for (var vendor in _vendors) {
-        debugPrint('  - ${vendor.displayName}: location=${vendor.location?.lat},${vendor.location?.lng}');
-      }
 
       await _updateMarkers();
       _fitCameraToMarkers();
@@ -224,6 +288,14 @@ class _PickupMapState extends State<PickupMap> {
   void _onCameraMove(CameraPosition position) {
     final oldZoom = _currentZoom;
     _currentZoom = position.zoom;
+
+    if (_currentZoom < 14.0 && _userMarker != null) {
+      setState(() {
+        _userMarker = null;
+      });
+    } else if (_currentZoom >= 14.0 && _userMarker == null && _currentPosition != null) {
+      _updateUserMarker();
+    }
 
     const labelThreshold = 14.5;
     const clusterThreshold = 14.0;
@@ -276,11 +348,14 @@ class _PickupMapState extends State<PickupMap> {
       await vendorProvider.getAllNearbyVendors(center.latitude, center.longitude, radius: radius);
       if (!mounted) return;
       setState(() {
-        _vendors = vendorProvider.filteredVendors;
+        _hasAttemptedVendorFetch = true;
+        _vendors = vendorProvider.filteredVendors
+            .where((v) => _isValidLatLng(v.location?.lat, v.location?.lng))
+            .toList();
       });
       await _updateMarkers();
     } catch (e) {
-      debugPrint('Error loading vendors in bounds: $e');
+      // Error loading vendors in bounds
     }
   }
 
@@ -303,85 +378,58 @@ class _PickupMapState extends State<PickupMap> {
 
   Future<void> _updateMarkers() async {
     if (!mounted) return;
-    final Set<Marker> markers = {};
+    final Set<Marker> vendorMarkers = {};
     final colors = context.appColors;
 
-    final foodProvider = Provider.of<FoodProvider>(context, listen: false);
-    final bool isFoodUnavailable = foodProvider.categories.isEmpty && foodProvider.hasAttemptedFetch;
+    if (_currentZoom < 14) {
+      _clusters = _clusterVendors(_vendors, _currentZoom);
 
-    // Only show vendor markers if the area is available
-    if (!isFoodUnavailable) {
-      if (_currentZoom < 14) {
-        _clusters = _clusterVendors(_vendors, _currentZoom);
+      for (final cluster in _clusters) {
+        if (cluster.vendors.length > 1) {
+          final cacheKey = 'cluster_${cluster.vendors.length}_${cluster.center.latitude}_${cluster.center.longitude}';
 
-        for (final cluster in _clusters) {
-          if (cluster.vendors.length > 1) {
-            final cacheKey = 'cluster_${cluster.vendors.length}_${cluster.center.latitude}_${cluster.center.longitude}';
-
-            BitmapDescriptor markerIcon;
-            if (_markerCache.containsKey(cacheKey)) {
-              markerIcon = _markerCache[cacheKey]!;
-            } else {
-              markerIcon = await CustomMapMarkers.createStandardMarker(
-                primaryColor: colors.accentOrange,
-                iconAsset: 'packages/grab_go_shared/lib/assets/icons/store.svg',
-                clusterCount: cluster.vendors.length,
-              );
-              _markerCache[cacheKey] = markerIcon;
-            }
-            markers.add(
-              Marker(
-                markerId: MarkerId(cacheKey),
-                position: cluster.center,
-                icon: markerIcon,
-                anchor: const Offset(0.5, 1.0),
-                zIndexInt: 50,
-                onTap: () => _onClusterTapped(cluster),
-              ),
-            );
+          BitmapDescriptor markerIcon;
+          if (_markerCache.containsKey(cacheKey)) {
+            markerIcon = _markerCache[cacheKey]!;
           } else {
-            await _addVendorMarker(markers, cluster.vendors.first, colors, showLabel: false);
+            markerIcon = await CustomMapMarkers.createStandardMarker(
+              primaryColor: colors.accentOrange,
+              iconAsset: 'packages/grab_go_shared/lib/assets/icons/store.svg',
+              clusterCount: cluster.vendors.length,
+            );
+            _markerCache[cacheKey] = markerIcon;
           }
-        }
-      } else {
-        // Individual markers for zoom >= 14
-        for (final vendor in _vendors) {
-          await _addVendorMarker(markers, vendor, colors, showLabel: _currentZoom >= 14.5);
+          vendorMarkers.add(
+            Marker(
+              markerId: MarkerId(cacheKey),
+              position: cluster.center,
+              icon: markerIcon,
+              anchor: const Offset(0.5, 1.0),
+              zIndexInt: 50,
+              onTap: () => _onClusterTapped(cluster),
+            ),
+          );
+        } else {
+          await _addVendorMarker(vendorMarkers, cluster.vendors.first, colors, showLabel: false);
         }
       }
-    }
-
-    if (_currentPosition != null && _currentZoom >= 14.0) {
-      const String userCacheKey = 'user_location_marker';
-      BitmapDescriptor userIcon;
-      if (_markerCache.containsKey(userCacheKey)) {
-        userIcon = _markerCache[userCacheKey]!;
-      } else {
-        userIcon = await CustomMapMarkers.createRiderLocationMarker(primaryColor: colors.accentOrange);
-        _markerCache[userCacheKey] = userIcon;
+    } else {
+      for (final vendor in _vendors) {
+        await _addVendorMarker(vendorMarkers, vendor, colors, showLabel: _currentZoom >= 14.5);
       }
-
-      markers.add(
-        Marker(
-          markerId: const MarkerId('user_location'),
-          position: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-          icon: userIcon,
-          anchor: const Offset(0.5, 0.5),
-          zIndexInt: 110,
-        ),
-      );
     }
 
     final Set<Polyline> polylines = {};
     if (_selectedVendorId != null && _currentPosition != null) {
-      final selectedVendor = _vendors.firstWhere((v) => v.id == _selectedVendorId);
-      if (selectedVendor.location != null) {
+      final vendor = _vendors.cast<VendorModel?>().firstWhere((v) => v?.id == _selectedVendorId, orElse: () => null);
+
+      if (vendor != null && vendor.location != null) {
         polylines.add(
           Polyline(
             polylineId: const PolylineId('selected_vendor_route'),
             points: [
               LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-              LatLng(selectedVendor.location!.lat, selectedVendor.location!.lng),
+              LatLng(vendor.location!.lat, vendor.location!.lng),
             ],
             color: colors.accentOrange.withValues(alpha: 0.6),
             width: 3,
@@ -393,9 +441,51 @@ class _PickupMapState extends State<PickupMap> {
 
     if (!mounted) return;
 
+    final bool markersChanged = !setEquals(_vendorMarkers, vendorMarkers);
+    final bool polylinesChanged = !setEquals(_polylines, polylines);
+    if (markersChanged || polylinesChanged) {
+      setState(() {
+        _vendorMarkers = vendorMarkers;
+        _polylines = polylines;
+      });
+    }
+  }
+
+  Future<void> _updateUserMarker() async {
+    if (!mounted || _currentPosition == null || _currentZoom < 14.0) return;
+    final LatLng newPosition = LatLng(_currentPosition!.latitude, _currentPosition!.longitude);
+
+    if (_lastUserMarkerPosition != null) {
+      final distance = Geolocator.distanceBetween(
+        _lastUserMarkerPosition!.latitude,
+        _lastUserMarkerPosition!.longitude,
+        newPosition.latitude,
+        newPosition.longitude,
+      );
+      if (distance < 10) return;
+    }
+
+    _lastUserMarkerPosition = newPosition;
+
+    const String userCacheKey = 'user_location_marker';
+    final colors = context.appColors;
+    BitmapDescriptor userIcon;
+    if (_markerCache.containsKey(userCacheKey)) {
+      userIcon = _markerCache[userCacheKey]!;
+    } else {
+      userIcon = await CustomMapMarkers.createRiderLocationMarker(primaryColor: colors.accentOrange);
+      _markerCache[userCacheKey] = userIcon;
+    }
+
+    if (!mounted) return;
     setState(() {
-      _markers = markers;
-      _polylines = polylines;
+      _userMarker = Marker(
+        markerId: const MarkerId('user_location'),
+        position: newPosition,
+        icon: userIcon,
+        anchor: const Offset(0.5, 0.5),
+        zIndexInt: 110,
+      );
     });
   }
 
@@ -408,7 +498,6 @@ class _PickupMapState extends State<PickupMap> {
     if (vendor.location == null) return;
 
     final bool isSelected = vendor.id == _selectedVendorId;
-    // Always show label if selected, otherwise honor the passed flag
     final bool effectiveShowLabel = isSelected || showLabel;
     final cacheKey = 'vendor_${vendor.id}${isSelected ? '_selected' : ''}${effectiveShowLabel ? '_labelled' : ''}';
 
@@ -442,7 +531,7 @@ class _PickupMapState extends State<PickupMap> {
         );
         _markerCache[cacheKey] = markerIcon;
       } catch (e) {
-        debugPrint('Error creating marker for vendor ${vendor.id}: $e');
+        // Error creating marker for vendor
         markerIcon = BitmapDescriptor.defaultMarker;
       }
     }
@@ -533,16 +622,19 @@ class _PickupMapState extends State<PickupMap> {
   }
 
   void _fitCameraToMarkers() {
-    if (_markers.isEmpty || _mapController == null) return;
-    if (_markers.length == 1) {
-      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(_markers.first.position, 15));
+    final Set<Marker> markers = _userMarker == null ? _vendorMarkers : <Marker>{..._vendorMarkers, _userMarker!};
+    if (_mapController == null || markers.isEmpty) {
+      return;
+    }
+    if (markers.length == 1) {
+      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(markers.first.position, 15));
       return;
     }
     double minLat = double.infinity;
     double maxLat = -double.infinity;
     double minLng = double.infinity;
     double maxLng = -double.infinity;
-    for (final marker in _markers) {
+    for (final marker in markers) {
       final lat = marker.position.latitude;
       final lng = marker.position.longitude;
       minLat = lat < minLat ? lat : minLat;
@@ -673,13 +765,7 @@ class _PickupMapState extends State<PickupMap> {
           decoration: BoxDecoration(
             color: isSelected ? colors.accentOrange : colors.backgroundPrimary,
             borderRadius: BorderRadius.circular(20.r),
-            boxShadow: [
-              BoxShadow(
-                color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(15),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 8, offset: const Offset(0, 2))],
           ),
           child: Text(
             label,
@@ -697,272 +783,204 @@ class _PickupMapState extends State<PickupMap> {
   @override
   Widget build(BuildContext context) {
     final vendorProvider = Provider.of<VendorProvider>(context);
-    final navigationProvider = Provider.of<NavigationProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final colors = context.appColors;
 
-    // Sync vendors from provider if changed
     if (vendorProvider.filteredVendors != _vendors) {
       _vendors = vendorProvider.filteredVendors;
-      // Schedule an update for the next frame
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _updateMarkers();
       });
     }
 
-    if (navigationProvider.selectedIndex != 1 && _sheetController != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_sheetController != null) {
-          _sheetController?.close();
-          _sheetController = null;
-          if (mounted) {
-            setState(() {
-              _selectedVendorId = null;
-            });
-            _updateMarkers();
-          }
-        }
-      });
-    }
+    return Scaffold(
+      backgroundColor: colors.backgroundPrimary,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: GoogleMap(
+              onMapCreated: _onMapCreated,
+              onCameraMove: _onCameraMoveDebounced,
+              initialCameraPosition: CameraPosition(
+                target: _currentPosition != null
+                    ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
+                    : const LatLng(5.6037, -0.1870),
+                zoom: 13,
+              ),
+              markers: _userMarker == null ? _vendorMarkers : <Marker>{..._vendorMarkers, _userMarker!},
+              rotateGesturesEnabled: false,
+              scrollGesturesEnabled: true,
+              zoomGesturesEnabled: true,
+              tiltGesturesEnabled: false,
+              indoorViewEnabled: false,
+              trafficEnabled: false,
+              buildingsEnabled: false,
+              liteModeEnabled: false,
+              polylines: _polylines,
+              myLocationEnabled: true,
+              myLocationButtonEnabled: false,
+              zoomControlsEnabled: false,
+              mapToolbarEnabled: false,
+              compassEnabled: false,
+              mapType: MapType.normal,
+              style: GrabGoMapStyles.forBrightness(Theme.of(context).brightness),
+            ),
+          ),
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-        systemNavigationBarColor: colors.backgroundPrimary,
-        systemNavigationBarDividerColor: Colors.transparent,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-      ),
-      child: Scaffold(
-        extendBodyBehindAppBar: true,
-        extendBody: true,
-        backgroundColor: colors.backgroundPrimary,
-        appBar: null,
-        body: Stack(
-          children: [
-            Positioned.fill(
-              child: RepaintBoundary(
-                child: GoogleMap(
-                  initialCameraPosition: CameraPosition(
-                    target: _currentPosition != null
-                        ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
-                        : _defaultPosition,
-                    zoom: 14,
+          if (_isLoading) const Positioned.fill(child: IgnorePointer(child: PickupMapSkeleton())),
+
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 10.h,
+            left: 0,
+            right: 0,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w),
+                  child: Container(
+                    width: double.infinity,
+                    height: 48.h,
+                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    decoration: BoxDecoration(
+                      color: colors.backgroundPrimary,
+                      borderRadius: BorderRadius.circular(30.r),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 8, offset: const Offset(0, 2)),
+                      ],
+                    ),
+
+                    child: Row(
+                      children: [
+                        SvgPicture.asset(
+                          Assets.icons.search,
+                          package: 'grab_go_shared',
+                          width: 20.w,
+                          height: 20.w,
+                          colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                        ),
+                        SizedBox(width: 12.w),
+                        Text(
+                          'Search stores and restaurants',
+                          style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.normal),
+                        ),
+                      ],
+                    ),
                   ),
-                  markers: _markers,
-                  polylines: _polylines,
-                  myLocationEnabled: false,
-                  myLocationButtonEnabled: false,
-                  zoomControlsEnabled: false,
-                  mapToolbarEnabled: false,
-                  compassEnabled: false,
-                  rotateGesturesEnabled: true,
-                  scrollGesturesEnabled: true,
-                  zoomGesturesEnabled: true,
-                  tiltGesturesEnabled: false,
-                  indoorViewEnabled: false,
-                  trafficEnabled: false,
-                  buildingsEnabled: false,
-                  liteModeEnabled: false,
-                  style: GrabGoMapStyles.forBrightness(Theme.of(context).brightness),
-                  padding: EdgeInsets.only(bottom: 100.h),
-                  onMapCreated: (controller) {
-                    _mapController = controller;
-                    Future.delayed(const Duration(milliseconds: 500), _fitCameraToMarkers);
-                  },
-                  onCameraMove: _onCameraMoveDebounced,
-                  onTap: (_) {
-                    if (_sheetController != null) {
-                      _sheetController?.close();
-                      _sheetController = null;
-                    }
-                    if (_selectedVendorId != null) {
-                      setState(() {
-                        _selectedVendorId = null;
-                      });
-                      _updateMarkers();
-                    }
-                  },
+                ),
+                SizedBox(height: 12.h),
+
+                _buildFilterChips(vendorProvider, colors, isDark),
+
+                SizedBox(height: 12.h),
+
+                Padding(
+                  padding: EdgeInsets.only(right: 16.w),
+                  child: _buildMapControlButton(
+                    icon: Assets.icons.sendDiagonal,
+                    onTap: _centerOnUser,
+                    colors: colors,
+                    isDark: isDark,
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                Padding(
+                  padding: EdgeInsets.only(right: 16.w),
+                  child: _buildMapControlButton(
+                    icon: Assets.icons.expand,
+                    onTap: _fitCameraToMarkers,
+                    colors: colors,
+                    isDark: isDark,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          if (_hasAttemptedVendorFetch && !_isLoading && _errorMessage == null && _vendors.isEmpty)
+            Positioned(
+              left: 20.w,
+              right: 20.w,
+              bottom: 120.h,
+              child: Container(
+                padding: EdgeInsets.all(18.r),
+                decoration: BoxDecoration(
+                  color: colors.backgroundPrimary,
+                  borderRadius: BorderRadius.circular(16.r),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(isDark ? 45 : 18),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(10.r),
+                          decoration: BoxDecoration(
+                            color: colors.accentOrange.withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.map_outlined, color: colors.accentOrange, size: 22.r),
+                        ),
+                        SizedBox(width: 14.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'GrabGo is Not Here Yet',
+                                style: TextStyle(
+                                  fontSize: 15.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: colors.textPrimary,
+                                ),
+                              ),
+                              SizedBox(height: 4.h),
+                              Text(
+                                "We haven't launched in this area yet.",
+                                style: TextStyle(fontSize: 12.5.sp, color: colors.textSecondary),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 14.h),
+                    AppButton(
+                      width: double.infinity,
+                      onPressed: () => context.push('/confirm-address'),
+                      backgroundColor: colors.accentOrange,
+                      borderRadius: KBorderSize.borderMedium,
+                      buttonText: 'Change Location',
+                      textStyle: TextStyle(fontSize: 14.5.sp, color: Colors.white, fontWeight: FontWeight.w600),
+                    ),
+                  ],
                 ),
               ),
             ),
 
-            // Removed PickupMapSkeleton to ensure the map and UI are immediately visible while markers load in the background.
-
-            // Errors and offline states are now handled by the bottom status card for a consistent premium feel.
-
-
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 10.h,
-              left: 0,
-              right: 0,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16.w),
-                    child: Container(
-                      height: 48.h,
-                      padding: EdgeInsets.symmetric(horizontal: 16.w),
-                      decoration: BoxDecoration(
-                        color: colors.backgroundPrimary,
-                        borderRadius: BorderRadius.circular(30.r),
-                        boxShadow: [
-                          BoxShadow(
-                            color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(15),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          SvgPicture.asset(
-                            Assets.icons.search,
-                            package: 'grab_go_shared',
-                            width: 20.w,
-                            height: 20.w,
-                            colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                          ),
-                          SizedBox(width: 12.w),
-                          Text(
-                            'Search',
-                            style: TextStyle(color: colors.textSecondary, fontSize: 15.sp, fontWeight: FontWeight.w500),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 12.h),
-                  _buildFilterChips(vendorProvider, colors, isDark),
-
-                  SizedBox(height: 16.h),
-
-                  Padding(
-                    padding: EdgeInsets.only(right: 16.w),
-                    child: _buildMapControlButton(
-                      icon: Assets.icons.position,
-                      onTap: _centerOnUser,
-                      colors: colors,
-                      isDark: isDark,
-                    ),
-                  ),
-
-                  SizedBox(height: 12.h),
-
-                  Padding(
-                    padding: EdgeInsets.only(right: 16.w),
-                    child: _buildMapControlButton(
-                      icon: Assets.icons.expand,
-                      onTap: _fitCameraToMarkers,
-                      colors: colors,
-                      isDark: isDark,
-                    ),
-                  ),
-                ],
+          if (_errorMessage != null && !_isLoading)
+            Center(
+              child: Container(
+                margin: EdgeInsets.symmetric(horizontal: 32.w),
+                padding: EdgeInsets.all(16.r),
+                decoration: BoxDecoration(color: colors.backgroundPrimary, borderRadius: BorderRadius.circular(12.r)),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(_errorMessage!, textAlign: TextAlign.center),
+                    TextButton(onPressed: _loadVendors, child: const Text('Retry')),
+                  ],
+                ),
               ),
             ),
-
-            Consumer<FoodProvider>(
-              builder: (context, foodProvider, child) {
-                final bool isFoodUnavailable = foodProvider.categories.isEmpty && foodProvider.hasAttemptedFetch;
-                final bool isOffline = _errorMessage != null && (_errorMessage!.toLowerCase().contains('connection') || _errorMessage!.toLowerCase().contains('internet'));
-                final bool hasError = _errorMessage != null && !isOffline;
-
-                // Only show this overlay if we're not loading (to let skeletons work)
-                // and if there's a problem (unavailable area, offline, or general error)
-                if ((!isFoodUnavailable && !isOffline && !hasError) || _isLoading) return const SizedBox.shrink();
-
-                String title = "GrabGo is Not Here Yet";
-                String description = "We haven't launched in this area yet.";
-                IconData icon = Icons.map_outlined;
-                String buttonText = "Change Location";
-                VoidCallback onButtonPressed = () => context.push('/confirm-address');
-
-                if (isOffline) {
-                  title = "No Internet Connection";
-                  description = "Please check your network settings and try again.";
-                  icon = Icons.wifi_off_rounded;
-                  buttonText = "Try Again";
-                  onButtonPressed = _loadVendors;
-                } else if (hasError) {
-                  title = "Unable to Load Area";
-                  description = "Something went wrong while fetching stores.";
-                  icon = Icons.error_outline_rounded;
-                  buttonText = "Try Again";
-                  onButtonPressed = _loadVendors;
-                }
-
-                return Positioned(
-                  bottom: 120.h,
-                  left: 20.w,
-                  right: 20.w,
-                  child: Container(
-                    padding: EdgeInsets.all(20.r),
-                    decoration: BoxDecoration(
-                      color: colors.backgroundPrimary,
-                      borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withAlpha(isDark ? 50 : 20),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(12.r),
-                              decoration: BoxDecoration(
-                                color: colors.accentOrange.withValues(alpha: 0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(icon, color: colors.accentOrange, size: 24.r),
-                            ),
-                            SizedBox(width: 16.w),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    title,
-                                    style: TextStyle(
-                                      fontSize: 16.sp,
-                                      fontWeight: FontWeight.w700,
-                                      color: colors.textPrimary,
-                                    ),
-                                  ),
-                                  SizedBox(height: 4.h),
-                                  Text(
-                                    description,
-                                    style: TextStyle(fontSize: 13.sp, color: colors.textSecondary),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 16.h),
-                        AppButton(
-                          width: double.infinity,
-                          onPressed: onButtonPressed,
-                          backgroundColor: colors.accentOrange,
-                          borderRadius: KBorderSize.borderMedium,
-                          buttonText: buttonText,
-                          textStyle: TextStyle(fontSize: 15.sp, color: Colors.white, fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }

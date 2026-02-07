@@ -59,6 +59,8 @@ class _BottomNavigatorState extends State<BottomNavigator> {
     final bool shouldShowNoInternet = _hasNoInternet && selectedIndex != 4;
     Size size = MediaQuery.sizeOf(context);
 
+    debugPrint('📍 BottomNavigator: build - index: $selectedIndex, noInternet: $_hasNoInternet');
+
     if (_lastCheckedIndex != selectedIndex) {
       _lastCheckedIndex = selectedIndex;
       WidgetsBinding.instance.addPostFrameCallback((_) {
