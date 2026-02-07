@@ -8,9 +8,21 @@ import 'package:grab_go_shared/grub_go_shared.dart';
 class CartProvider extends ChangeNotifier {
   final Map<CartItem, int> _cartItems = {};
   bool _isSyncing = false;
+  double? _subtotal;
+  double _deliveryFee = 0.0;
+  double _serviceFee = 0.0;
+  double _tax = 0.0;
+  double? _total;
+  double? _deliveryLatitude;
+  double? _deliveryLongitude;
 
   Map<CartItem, int> get cartItems => _cartItems;
   bool get isSyncing => _isSyncing;
+  double get subtotal => _subtotal ?? totalPrice;
+  double get deliveryFee => _deliveryFee;
+  double get serviceFee => _serviceFee;
+  double get tax => _tax;
+  double get total => _total ?? (subtotal + deliveryFee + serviceFee + tax);
 
   CartProvider() {
     // Load cart data asynchronously without blocking
@@ -44,6 +56,7 @@ class CartProvider extends ChangeNotifier {
         _cartItems[cartItem] = quantity;
       }
 
+      _recalculateLocalPricing();
       notifyListeners();
 
       // Then sync from backend in background
@@ -59,11 +72,11 @@ class CartProvider extends ChangeNotifier {
 
     try {
       _isSyncing = true;
-      final response = await cartApiService.getCart();
+      final response = await cartApiService.getCart(lat: _deliveryLatitude, lng: _deliveryLongitude);
 
       if (response.isSuccessful && response.body != null) {
         final cartData = response.body!['cart'];
-        if (cartData != null && cartData['items'] != null && cartData['items'].isNotEmpty) {
+        if (cartData != null && cartData['items'] != null) {
           _cartItems.clear();
 
           for (var item in cartData['items']) {
@@ -86,6 +99,12 @@ class CartProvider extends ChangeNotifier {
             _cartItems[cartItem] = item['quantity'] as int;
           }
 
+          final pricing = cartData['pricing'];
+          if (pricing is Map) {
+            _applyPricing(Map<String, dynamic>.from(pricing));
+          } else {
+            _recalculateLocalPricing();
+          }
           await _saveCart();
           notifyListeners();
         }
@@ -95,6 +114,48 @@ class CartProvider extends ChangeNotifier {
       // Continue with local cache on error
     } finally {
       _isSyncing = false;
+    }
+  }
+
+  void _applyPricing(Map<String, dynamic>? pricing) {
+    if (pricing == null) {
+      _subtotal = null;
+      _deliveryFee = 0.0;
+      _serviceFee = 0.0;
+      _tax = 0.0;
+      _total = null;
+      return;
+    }
+
+    _subtotal = (pricing['subtotal'] as num?)?.toDouble();
+    _deliveryFee = (pricing['deliveryFee'] as num?)?.toDouble() ?? 0.0;
+    _serviceFee = (pricing['serviceFee'] as num?)?.toDouble() ?? 0.0;
+    _tax = (pricing['tax'] as num?)?.toDouble() ?? 0.0;
+    _total = (pricing['total'] as num?)?.toDouble();
+  }
+
+  void _recalculateLocalPricing() {
+    _subtotal = totalPrice;
+    _total = _subtotal! + _deliveryFee + _serviceFee + _tax;
+  }
+
+  void updateDeliveryLocation({double? latitude, double? longitude}) {
+    if (latitude == null || longitude == null) return;
+
+    const double threshold = 0.0001; // ~11m, avoids frequent refreshes
+    final bool changed =
+        _deliveryLatitude == null ||
+        _deliveryLongitude == null ||
+        (_deliveryLatitude! - latitude).abs() > threshold ||
+        (_deliveryLongitude! - longitude).abs() > threshold;
+
+    if (!changed) return;
+
+    _deliveryLatitude = latitude;
+    _deliveryLongitude = longitude;
+
+    if (_cartItems.isNotEmpty) {
+      syncFromBackend();
     }
   }
 
@@ -269,34 +330,41 @@ class CartProvider extends ChangeNotifier {
       _cartItems[item] = 1;
     }
 
+    _recalculateLocalPricing();
     _saveCart();
     notifyListeners();
 
     // Sync to backend async
     if (previousQuantity == 0) {
-      _addToBackend(item, 1);
+      await _addToBackend(item, 1);
     } else {
-      _updateQuantityOnBackend(item.id, _cartItems[item]!);
+      await _updateQuantityOnBackend(item.id, _cartItems[item]!);
     }
+
+    await syncFromBackend();
   }
 
-  void removeFromCart(CartItem item) {
+  Future<void> removeFromCart(CartItem item) async {
     if (!_cartItems.containsKey(item)) return;
 
     if (_cartItems[item]! > 1) {
       _cartItems[item] = _cartItems[item]! - 1;
+      _recalculateLocalPricing();
       _saveCart();
       notifyListeners();
-      _updateQuantityOnBackend(item.id, _cartItems[item]!);
+      await _updateQuantityOnBackend(item.id, _cartItems[item]!);
     } else {
       _cartItems.remove(item);
+      _recalculateLocalPricing();
       _saveCart();
       notifyListeners();
-      _removeFromBackend(item.id);
+      await _removeFromBackend(item.id);
     }
+
+    await syncFromBackend();
   }
 
-  void removeItemCompletely(CartItem item) {
+  Future<void> removeItemCompletely(CartItem item) async {
     debugPrint('🗑️ Removing item completely:');
     debugPrint('  Item ID: ${item.id}');
     debugPrint('  Item Type: ${item.itemType}');
@@ -304,21 +372,28 @@ class CartProvider extends ChangeNotifier {
     debugPrint('  Was in cart: ${_cartItems.containsKey(item)}');
 
     _cartItems.remove(item);
+    _recalculateLocalPricing();
     _saveCart();
     notifyListeners();
-    _removeFromBackend(item.id);
+    await _removeFromBackend(item.id);
     debugPrint('✅ Remove operation completed');
+
+    await syncFromBackend();
   }
 
-  void clearCart() {
+  Future<void> clearCart() async {
     _cartItems.clear();
+    _applyPricing(null);
     _saveCart();
     notifyListeners();
 
     // Clear backend cart async
-    cartApiService.clearCart().catchError((e) {
+    try {
+      await cartApiService.clearCart();
+      await syncFromBackend();
+    } catch (e) {
       debugPrint('Error clearing backend cart: $e');
-    });
+    }
   }
 
   double get totalPrice {

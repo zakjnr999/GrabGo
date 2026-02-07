@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -21,7 +20,6 @@ import 'package:grab_go_customer/features/home/viewmodel/food_discovery_provider
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
-import 'package:grab_go_shared/shared/services/cache_service.dart';
 import 'package:grab_go_customer/shared/widgets/area_unavailable_screen.dart';
 import 'package:grab_go_customer/shared/widgets/category_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
@@ -50,6 +48,10 @@ import 'package:grab_go_customer/shared/widgets/home_page_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/location_accuracy_popup.dart';
 import 'package:grab_go_customer/shared/widgets/no_internet_screen.dart';
 import 'package:grab_go_customer/shared/services/connectivity_service.dart';
+import 'package:grab_go_customer/features/vendors/viewmodel/vendor_provider.dart';
+import 'package:grab_go_customer/features/vendors/model/vendor_type.dart';
+import 'package:grab_go_customer/features/vendors/widgets/vendor_horizontal_section.dart';
+import 'package:grab_go_customer/features/Pickup/widgets/vendor_details_bottom_sheet.dart';
 import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
@@ -79,6 +81,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool _isRetrying = false;
   double? _lastLat;
   double? _lastLng;
+  VendorType? _previousVendorType;
 
   late final ValueNotifier<double> _scrollOffsetNotifier;
   static const double _collapsedHeight = 70.0;
@@ -212,6 +215,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       Provider.of<NativeLocationProvider>(context, listen: false).fetchAddress();
 
+      final vendorProvider = Provider.of<VendorProvider>(context, listen: false);
+      final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
+      final locationProvider = Provider.of<NativeLocationProvider>(context, listen: false);
       final foodProvider = Provider.of<FoodProvider>(context, listen: false);
       final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
       final pharmacyProvider = Provider.of<PharmacyProvider>(context, listen: false);
@@ -258,6 +264,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       groceryProvider.refreshAll();
       pharmacyProvider.refreshAll();
       grabMartProvider.refreshAll();
+
+      if (locationProvider.latitude != null && locationProvider.longitude != null) {
+        final vendorType = _getVendorTypeFromService(serviceProvider.currentService.id);
+        _previousVendorType = vendorType;
+        vendorProvider.fetchVendors(vendorType, lat: locationProvider.latitude, lng: locationProvider.longitude);
+      }
     });
   }
 
@@ -278,6 +290,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
 
     final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
+    final locationProvider = Provider.of<NativeLocationProvider>(context, listen: false);
+    final vendorProvider = Provider.of<VendorProvider>(context, listen: false);
 
     if (kDebugMode) {
       print('🔄 [HOME] Refreshing data (all services: $refreshAllServices)...');
@@ -316,6 +330,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         // Refresh only active service
         final grabMartProvider = Provider.of<GrabMartProvider>(context, listen: false);
         await grabMartProvider.refreshAll(forceRefresh: true);
+      }
+
+      if (locationProvider.latitude != null && locationProvider.longitude != null) {
+        final vendorType = _getVendorTypeFromService(serviceProvider.currentService.id);
+        _previousVendorType = vendorType;
+        await vendorProvider.fetchVendors(
+          vendorType,
+          lat: locationProvider.latitude,
+          lng: locationProvider.longitude,
+          forceRefresh: true,
+        );
       }
     } catch (e) {
       if (kDebugMode) {
@@ -510,8 +535,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                         serviceProvider.isGroceryService) ...[
                                                       _buildDealsSection(serviceProvider, groceryProvider),
                                                       _buildFreshArrivalsSection(serviceProvider, groceryProvider),
-                                                      _buildOrderAgainSection(serviceProvider),
                                                       _buildPopularSection(serviceProvider, foodProvider),
+                                                      _buildOrderAgainSection(serviceProvider),
+                                                      _buildNearbyVendorsSection(serviceProvider, locationProvider),
+                                                      SizedBox(height: KSpacing.md.h),
                                                       _buildBuyAgainSection(serviceProvider, groceryProvider),
                                                       _buildPromoBanners(serviceProvider),
                                                       _buildTopRatedSection(serviceProvider, foodProvider),
@@ -519,11 +546,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                     ] else if (serviceProvider.isPharmacyService) ...[
                                                       _buildPharmacyOnSaleSection(),
                                                       _buildPharmacyPopularSection(),
+                                                      _buildNearbyVendorsSection(serviceProvider, locationProvider),
+                                                      SizedBox(height: KSpacing.md.h),
                                                       _buildPharmacyTopRatedSection(),
                                                       _buildPharmacyItemsGrid(),
                                                     ] else if (serviceProvider.isStoresService) ...[
                                                       _buildGrabMartSpecialOffersSection(),
                                                       _buildGrabMartQuickPicksSection(),
+                                                      _buildNearbyVendorsSection(serviceProvider, locationProvider),
+                                                      SizedBox(height: KSpacing.md.h),
                                                       _buildGrabMartTopRatedSection(),
                                                       _buildGrabMartItemsGrid(),
                                                     ],
@@ -803,6 +834,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final foodProvider = Provider.of<FoodProvider>(context, listen: false);
     final pharmacyProvider = Provider.of<PharmacyProvider>(context, listen: false);
     final grabMartProvider = Provider.of<GrabMartProvider>(context, listen: false);
+    final vendorProvider = Provider.of<VendorProvider>(context, listen: false);
+    final locationProvider = Provider.of<NativeLocationProvider>(context, listen: false);
 
     return ServiceSelector(
       services: AppServices.all,
@@ -829,7 +862,78 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               grabMartProvider.refreshAll();
             }
           }
+
+          if (locationProvider.latitude != null && locationProvider.longitude != null) {
+            final vendorType = _getVendorTypeFromService(service.id);
+            _previousVendorType = vendorType;
+            vendorProvider.fetchVendors(vendorType, lat: locationProvider.latitude, lng: locationProvider.longitude);
+          }
         });
+      },
+    );
+  }
+
+  VendorType _getVendorTypeFromService(String serviceId) {
+    switch (serviceId) {
+      case 'food':
+        return VendorType.food;
+      case 'groceries':
+        return VendorType.grocery;
+      case 'pharmacy':
+        return VendorType.pharmacy;
+      case 'convenience':
+        return VendorType.grabmart;
+      default:
+        return VendorType.food;
+    }
+  }
+
+  String _nearbyTitleForService(String serviceId) {
+    switch (serviceId) {
+      case 'food':
+        return 'Restaurants Near You';
+      case 'groceries':
+        return 'Groceries Near You';
+      case 'pharmacy':
+        return 'Pharmacies Near You';
+      case 'convenience':
+        return 'GrabMart Near You';
+      default:
+        return 'Restaurants Near You';
+    }
+  }
+
+  Widget _buildNearbyVendorsSection(ServiceProvider serviceProvider, NativeLocationProvider locationProvider) {
+    if (!locationProvider.hasLocation) return const SizedBox.shrink();
+
+    final vendorType = _getVendorTypeFromService(serviceProvider.currentService.id);
+    final accentColor = Color(vendorType.color);
+
+    return Consumer<VendorProvider>(
+      builder: (context, provider, _) {
+        final isMatchingType = provider.selectedType == vendorType;
+
+        if (!isMatchingType && !provider.isLoading) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            if (locationProvider.latitude == null || locationProvider.longitude == null) return;
+            _previousVendorType = vendorType;
+            provider.fetchVendors(vendorType, lat: locationProvider.latitude, lng: locationProvider.longitude);
+          });
+          return const SizedBox.shrink();
+        }
+
+        final vendors = provider.nearestVendors.take(10).toList();
+        if (!provider.isLoading && vendors.isEmpty) return const SizedBox.shrink();
+
+        return VendorHorizontalSection(
+          title: _nearbyTitleForService(serviceProvider.currentService.id),
+          icon: Assets.icons.mapPin,
+          vendors: vendors,
+          isLoading: provider.isLoading,
+          accentColor: accentColor,
+          onItemTap: (vendor) => VendorDetailBottomSheet.show(context: context, vendor: vendor),
+        );
       },
     );
   }
@@ -882,7 +986,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       child: Column(
         children: [
           Padding(
-            padding: EdgeInsets.fromLTRB(20.w, MediaQuery.of(context).padding.top + 10.h, 20.w, 6.h),
+            padding: EdgeInsets.fromLTRB(20.w, MediaQuery.of(context).padding.top + 10.h, 10.w, 6.h),
             child: Row(
               children: [
                 Expanded(

@@ -142,9 +142,6 @@ class PopularItemCard extends StatelessWidget {
                             }
                           } else {
                             // TODO: Implement favorites for non-food items if needed
-                            ScaffoldMessenger.of(
-                              context,
-                            ).showSnackBar(const SnackBar(content: Text('Favorites coming soon for this service!')));
                           }
                         },
                         child: SvgPicture.asset(

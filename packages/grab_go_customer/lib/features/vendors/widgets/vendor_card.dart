@@ -46,16 +46,13 @@ class VendorCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Vendor Image Section (Full Width Top)
                   _buildVendorImage(colors),
 
-                  // Vendor Info Section (Bottom Content)
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+                    padding: EdgeInsets.only(left: 10.r, right: 10.r, top: 10.r),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Row 1: Name and Rating d
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -99,7 +96,6 @@ class VendorCard extends StatelessWidget {
 
                         SizedBox(height: 4.h),
 
-                        // Row 2: Category · Distance text
                         Row(
                           children: [
                             if (vendor.vendorCategories.isNotEmpty)
@@ -132,16 +128,37 @@ class VendorCard extends StatelessWidget {
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
+                            SizedBox(width: 8.w),
+                            Container(
+                              width: 3.w,
+                              height: 3.h,
+                              decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
+                            ),
+                            SizedBox(width: 8.w),
+                            SvgPicture.asset(
+                              Assets.icons.timer,
+                              package: 'grab_go_shared',
+                              height: 12.h,
+                              width: 12.w,
+                              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                            ),
+                            SizedBox(width: 4.w),
+                            Text(
+                              "${vendor.averageDeliveryTime.toString()} mins",
+                              style: TextStyle(
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w500,
+                                color: colors.textSecondary,
+                              ),
+                            ),
                           ],
                         ),
 
-                        SizedBox(height: 12.h),
+                        SizedBox(height: 8.h),
 
-                        // Row 3: 🚚 Delivery: GHS 6 | Min: GHS 18       Open Now
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            // Left side: Delivery and Min Order
                             Row(
                               children: [
                                 SvgPicture.asset(
@@ -188,38 +205,18 @@ class VendorCard extends StatelessWidget {
                               ],
                             ),
 
-                            // Right side: Open Now status
-                            vendor.isOpen
-                                ? Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                                    decoration: BoxDecoration(
-                                      color: colors.accentGreen.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(8.r),
-                                    ),
-                                    child: Text(
-                                      "Open Now",
-                                      style: TextStyle(
-                                        color: colors.accentGreen,
-                                        fontSize: 13.sp,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  )
-                                : Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                                    decoration: BoxDecoration(
-                                      color: colors.error.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(8.r),
-                                    ),
-                                    child: Text(
-                                      "Closed",
-                                      style: TextStyle(
-                                        color: colors.error,
-                                        fontSize: 13.sp,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+
+                              child: Text(
+                                "We're open",
+                                style: TextStyle(
+                                  color: colors.accentGreen,
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -237,7 +234,6 @@ class VendorCard extends StatelessWidget {
   Widget _buildVendorImage(AppColorsExtension colors) {
     return Stack(
       children: [
-        // Image
         ClipRRect(
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(KBorderSize.borderMedium),
@@ -286,7 +282,7 @@ class VendorCard extends StatelessWidget {
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.55),
+                color: Colors.black.withValues(alpha: 0.55),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(KBorderSize.borderMedium),
                   topRight: Radius.circular(KBorderSize.borderMedium),
@@ -296,7 +292,7 @@ class VendorCard extends StatelessWidget {
               ),
               child: Center(
                 child: Text(
-                  'CLOSED',
+                  "We're closed",
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 13.sp,
@@ -307,37 +303,6 @@ class VendorCard extends StatelessWidget {
               ),
             ),
           ),
-
-        // Special Badges (Top Right)
-        // Positioned(
-        //   top: 6.h,
-        //   right: 6.w,
-        //   child: Row(
-        //     children: [
-        //       if (vendor.is24Hours == true || vendor.operatingHours == '24/7')
-        //         Container(
-        //           padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-        //           decoration: BoxDecoration(
-        //             color: Colors.white.withValues(alpha: 0.95),
-        //             borderRadius: BorderRadius.circular(8.r),
-        //             boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
-        //           ),
-        //           child: Text(
-        //             '24/7',
-        //             style: TextStyle(fontSize: 12.sp, color: accentColor, fontWeight: FontWeight.w800),
-        //           ),
-        //         ),
-        //       if (vendor.emergencyService == true) ...[
-        //         SizedBox(width: 8.w),
-        //         Container(
-        //           padding: EdgeInsets.all(8.r),
-        //           decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.95), shape: BoxShape.circle),
-        //           child: Icon(Icons.emergency, size: 16.sp, color: Colors.white),
-        //         ),
-        //       ],
-        //     ],
-        //   ),
-        // ),
         Positioned(
           right: 6.r,
           top: 6.r,

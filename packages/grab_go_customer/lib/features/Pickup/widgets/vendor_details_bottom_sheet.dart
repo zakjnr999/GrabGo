@@ -279,7 +279,7 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
 
                                     SizedBox(width: 4.w),
                                     Text(
-                                      vendor.deliveryTimeText,
+                                      '${vendor.averageDeliveryTime} mins',
                                       style: TextStyle(color: colors.textSecondary, fontSize: 13.sp),
                                     ),
                                   ],

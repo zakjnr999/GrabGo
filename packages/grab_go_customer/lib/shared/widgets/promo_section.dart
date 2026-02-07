@@ -71,7 +71,6 @@ class _PromoSectionState extends State<PromoSection> {
   Widget build(BuildContext context) {
     final colors = context.appColors;
 
-    // Hide section if no banners
     if (widget.banners.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -86,7 +85,7 @@ class _PromoSectionState extends State<PromoSection> {
         ),
         SizedBox(height: 15.h),
         SizedBox(
-          height: 140.h,
+          height: 150.h,
           child: PageView.builder(
             controller: _pageController,
             onPageChanged: (index) {
@@ -106,7 +105,7 @@ class _PromoSectionState extends State<PromoSection> {
                     value = (1 - (value.abs() * 0.1)).clamp(0.9, 1.0);
                   }
                   return Center(
-                    child: SizedBox(height: Curves.easeInOut.transform(value) * 180.h, child: child),
+                    child: SizedBox(height: Curves.easeInOut.transform(value) * 190.h, child: child),
                   );
                 },
                 child: Padding(

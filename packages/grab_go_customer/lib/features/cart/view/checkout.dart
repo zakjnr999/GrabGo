@@ -58,9 +58,11 @@ class _CheckoutState extends State<Checkout> {
         backgroundColor: colors.backgroundPrimary,
         body: Consumer<CartProvider>(
           builder: (context, provider, child) {
-            const double deliveryFee = 2.0;
-            final double subtotal = provider.totalPrice;
-            final double total = subtotal + deliveryFee + _tipAmount;
+            final double subtotal = provider.subtotal;
+            final double deliveryFee = provider.deliveryFee;
+            final double serviceFee = provider.serviceFee;
+            final double tax = provider.tax;
+            final double total = provider.total + _tipAmount;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -513,6 +515,18 @@ class _CheckoutState extends State<Checkout> {
                                   Assets.icons.deliveryTruck,
                                   false,
                                 ),
+                                SizedBox(height: 10.h),
+                                _buildPriceRowWithIcon(
+                                  "Service Fee",
+                                  serviceFee,
+                                  colors,
+                                  Assets.icons.deliveryTruck,
+                                  false,
+                                ),
+                                if (tax > 0) ...[
+                                  SizedBox(height: 10.h),
+                                  _buildPriceRowWithIcon("Tax", tax, colors, Assets.icons.cash, false),
+                                ],
                                 if (_tipAmount > 0) ...[
                                   SizedBox(height: 10.h),
                                   _buildPriceRowWithIcon("Tip", _tipAmount, colors, Assets.icons.handCash, false),

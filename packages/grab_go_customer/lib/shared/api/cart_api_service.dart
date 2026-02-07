@@ -6,7 +6,10 @@ part 'cart_api_service.chopper.dart';
 abstract class CartApiService extends ChopperService {
   /// Get user's active cart
   @GET()
-  Future<Response<Map<String, dynamic>>> getCart();
+  Future<Response<Map<String, dynamic>>> getCart({
+    @Query('lat') double? lat,
+    @Query('lng') double? lng,
+  });
 
   /// Add item to cart
   @POST(path: '/add')

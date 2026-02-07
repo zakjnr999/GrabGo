@@ -36,9 +36,11 @@ class Cart extends StatelessWidget {
         backgroundColor: colors.backgroundPrimary,
         body: Consumer<CartProvider>(
           builder: (context, provider, child) {
-            const double deliveryFee = 2.0;
-            final double subtotal = provider.totalPrice;
-            final double total = subtotal + deliveryFee;
+            final double subtotal = provider.subtotal;
+            final double deliveryFee = provider.deliveryFee;
+            final double serviceFee = provider.serviceFee;
+            final double tax = provider.tax;
+            final double total = provider.total;
 
             return Column(
               children: [
@@ -112,32 +114,6 @@ class Cart extends StatelessWidget {
                           const CartItem(),
                           Padding(
                             padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                            child: Row(
-                              children: [
-                                SvgPicture.asset(
-                                  Assets.icons.squareMenu,
-                                  package: 'grab_go_shared',
-                                  height: 18.h,
-                                  width: 18.w,
-                                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                                ),
-                                SizedBox(width: 12.w),
-                                Text(
-                                  "Order Summary",
-                                  style: TextStyle(
-                                    fontFamily: "Lato",
-                                    package: 'grab_go_shared',
-                                    color: colors.textPrimary,
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 20.w),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -225,70 +201,55 @@ class Cart extends StatelessWidget {
                                 ),
                                 SizedBox(height: 16.h),
 
-                                Container(
-                                  padding: EdgeInsets.all(14.r),
-                                  decoration: BoxDecoration(
-                                    color: colors.backgroundPrimary,
-                                    borderRadius: BorderRadius.circular(12.r),
-                                    border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      _buildPriceRowWithIcon(
-                                        AppStrings.cartSubtotal,
-                                        subtotal,
+                                Column(
+                                  children: [
+                                    _buildPriceRow(
+                                      AppStrings.cartSubtotal,
+                                      subtotal,
+                                      colors,
+                                      Assets.icons.cash,
+                                      false,
+                                      false,
+                                    ),
+                                    SizedBox(height: 6.h),
+                                    _buildPriceRow(
+                                      AppStrings.cartDeliveryFee,
+                                      deliveryFee,
+                                      colors,
+                                      Assets.icons.deliveryTruck,
+                                      false,
+                                      true,
+                                    ),
+                                    SizedBox(height: 6.h),
+                                    _buildPriceRow(
+                                      "Service Fee",
+                                      serviceFee,
+                                      colors,
+                                      Assets.icons.deliveryTruck,
+                                      false,
+                                      true,
+                                    ),
+                                    if (tax > 0) ...[
+                                      SizedBox(height: 6.h),
+                                      _buildPriceRow(
+                                        "Tax",
+                                        tax,
                                         colors,
                                         Assets.icons.cash,
                                         false,
-                                      ),
-                                      SizedBox(height: 10.h),
-                                      _buildPriceRowWithIcon(
-                                        AppStrings.cartDeliveryFee,
-                                        deliveryFee,
-                                        colors,
-                                        Assets.icons.deliveryTruck,
                                         false,
                                       ),
-                                      SizedBox(height: 12.h),
-                                      DottedLine(
-                                        direction: Axis.horizontal,
-                                        lineLength: double.infinity,
-                                        lineThickness: 1.5,
-                                        dashLength: 6,
-                                        dashColor: colors.inputBorder.withOpacity(0.5),
-                                        dashGapLength: 4,
-                                      ),
-                                      SizedBox(height: 12.h),
-                                      Container(
-                                        padding: EdgeInsets.all(12.r),
-                                        decoration: BoxDecoration(
-                                          color: colors.accentOrange.withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(8.r),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Text(
-                                              AppStrings.cartTotalAmount,
-                                              style: TextStyle(
-                                                color: colors.textPrimary,
-                                                fontSize: 14.sp,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                            const Spacer(),
-                                            Text(
-                                              "${AppStrings.currencySymbol} ${total.toStringAsFixed(2)}",
-                                              style: TextStyle(
-                                                color: colors.accentOrange,
-                                                fontSize: 18.sp,
-                                                fontWeight: FontWeight.w800,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
                                     ],
-                                  ),
+                                    SizedBox(height: 6.h),
+                                    _buildPriceRow(
+                                      "Total Amount",
+                                      total,
+                                      colors,
+                                      Assets.icons.deliveryTruck,
+                                      true,
+                                      false,
+                                    ),
+                                  ],
                                 ),
                                 SizedBox(height: 12.h),
                                 // Estimated delivery time
@@ -436,29 +397,37 @@ class Cart extends StatelessWidget {
     );
   }
 
-  Widget _buildPriceRowWithIcon(String label, double amount, AppColorsExtension colors, String icon, bool isTotal) {
+  Widget _buildPriceRow(String label, double amount, AppColorsExtension colors, String icon, bool isTotal, bool info) {
     return Row(
       children: [
-        Container(
-          padding: EdgeInsets.all(8.r),
-          decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(10.r)),
-          child: SvgPicture.asset(
-            icon,
-            package: 'grab_go_shared',
-            height: 18.h,
-            width: 18.w,
-            colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-          ),
-        ),
-        SizedBox(width: 8.w),
         Text(
           label,
-          style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w500),
+          style: TextStyle(
+            color: colors.textSecondary,
+            fontSize: 13.sp,
+            fontWeight: isTotal ? FontWeight.w600 : FontWeight.w400,
+          ),
         ),
+        info
+            ? Padding(
+                padding: EdgeInsets.all(8.0.r),
+                child: SvgPicture.asset(
+                  Assets.icons.infoCircle,
+                  package: "grab_go_shared",
+                  height: 10.h,
+                  width: 10.w,
+                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                ),
+              )
+            : const SizedBox.shrink(),
         const Spacer(),
         Text(
           "${AppStrings.currencySymbol} ${amount.toStringAsFixed(2)}",
-          style: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontSize: 13.sp,
+            fontWeight: isTotal ? FontWeight.w600 : FontWeight.w400,
+          ),
         ),
       ],
     );

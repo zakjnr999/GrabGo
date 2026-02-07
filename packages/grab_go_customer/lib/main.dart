@@ -54,8 +54,19 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => ThemeProvider()),
-        ChangeNotifierProvider(create: (context) => CartProvider()),
         ChangeNotifierProvider(create: (context) => NativeLocationProvider()),
+        ChangeNotifierProxyProvider<NativeLocationProvider, CartProvider>(
+          create: (context) => CartProvider(),
+          update: (context, locationProvider, cartProvider) {
+            final provider = cartProvider ?? CartProvider();
+            final confirmed = locationProvider.confirmedAddress;
+            provider.updateDeliveryLocation(
+              latitude: confirmed?.latitude ?? locationProvider.latitude,
+              longitude: confirmed?.longitude ?? locationProvider.longitude,
+            );
+            return provider;
+          },
+        ),
         ChangeNotifierProvider(create: (context) => FoodCategoryProvider()),
         ChangeNotifierProvider(create: (context) => FoodBannerProvider()),
         ChangeNotifierProvider(create: (context) => FoodDealsProvider()),

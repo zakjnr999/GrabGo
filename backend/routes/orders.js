@@ -7,6 +7,7 @@ const cache = require("../utils/cache");
 const { sendOrderNotification, sendToUser } = require("../services/fcm_service");
 const { createNotification } = require("../services/notification_service");
 const ReferralService = require("../services/referral_service");
+const { calculateOrderPricing } = require("../services/pricing_service");
 const { getIO } = require("../utils/socket");
 const dispatchService = require("../services/dispatch_service");
 
@@ -196,9 +197,22 @@ router.post(
         });
       }
 
-      const deliveryFee = restaurantDoc.deliveryFee || 0;
-      const tax = subtotal * 0.05;
-      let totalAmount = subtotal + deliveryFee + tax;
+      const baseDeliveryFee = restaurantDoc.deliveryFee || 0;
+      const pricing = await calculateOrderPricing({
+        subtotal,
+        baseDeliveryFee,
+        userId: req.user.id,
+        deliveryLocation: {
+          latitude: deliveryAddress.latitude,
+          longitude: deliveryAddress.longitude
+        },
+        vendorLocation: {
+          latitude: restaurantDoc.latitude,
+          longitude: restaurantDoc.longitude
+        }
+      });
+      const tax = pricing.tax;
+      let totalAmount = pricing.total;
 
       // Apply referral credits if available
       const creditResult = await ReferralService.applyCreditsToOrder(req.user.id, totalAmount);
@@ -214,8 +228,8 @@ router.post(
           orderType: 'food',
           customerId: req.user.id,
           restaurantId: restaurant,
-          subtotal,
-          deliveryFee,
+          subtotal: pricing.subtotal,
+          deliveryFee: pricing.deliveryFee,
           tax,
           totalAmount,
           deliveryStreet: deliveryAddress.street || deliveryAddress,
@@ -268,7 +282,7 @@ router.post(
         const referralResult = await ReferralService.completeReferral(
           req.user.id,
           order.id,
-          subtotal + deliveryFee + tax, // Use original amount before credits
+          pricing.total, // Use original amount before credits
           io
         );
 

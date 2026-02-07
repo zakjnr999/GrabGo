@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
+import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart';
 import 'package:grab_go_customer/features/home/model/filter_model.dart';
@@ -12,8 +13,10 @@ import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/features/pharmacy/viewmodel/pharmacy_provider.dart';
 import 'package:grab_go_customer/features/grabmart/viewmodel/grabmart_provider.dart';
 import 'package:grab_go_customer/shared/widgets/browse_grid_skeleton.dart';
+import 'package:grab_go_customer/shared/widgets/deal_card.dart';
 import 'package:grab_go_customer/shared/widgets/home_search.dart';
-import 'package:grab_go_customer/shared/widgets/popular_item_card.dart';
+import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
+import 'package:grab_go_customer/shared/widgets/section_header.dart';
 import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -23,7 +26,7 @@ class CategoryItemsPage extends StatefulWidget {
   final String categoryId;
   final String categoryName;
   final String categoryEmoji;
-  final String serviceType; // 'food', 'grocery', 'pharmacy', 'convenience'
+  final String serviceType;
 
   const CategoryItemsPage({
     super.key,
@@ -45,7 +48,7 @@ class CategoryItemsPage extends StatefulWidget {
 class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProviderStateMixin {
   final Set<String> _selectedQuickFilters = {};
   String _sortBy = 'Recommended';
-  final bool _isGridView = true;
+  final bool _isGridView = false;
   String? _selectedPriceRange;
   String? _selectedRating;
   String? _selectedDeliveryTime;
@@ -114,7 +117,6 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
 
     _fabAnimationController.forward();
 
-    // Fetch items for specific service if not already loaded
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.isPharmacy) {
         final provider = Provider.of<PharmacyProvider>(context, listen: false);
@@ -207,7 +209,7 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: systemUiOverlayStyle,
       child: Scaffold(
-        backgroundColor: colors.backgroundSecondary,
+        backgroundColor: colors.backgroundPrimary,
         body: SafeArea(
           top: false,
           child: ClipRect(
@@ -217,138 +219,24 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
                   controller: _scrollController,
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
-                    SliverToBoxAdapter(child: SizedBox(height: size.height * 0.20)),
-                    SliverPersistentHeader(
-                      pinned: true,
-                      delegate: _StickyHeaderDelegate(
-                        minHeight: _calculateStickyHeaderHeight(),
-                        maxHeight: _calculateStickyHeaderHeight(),
-                        child: Container(
-                          color: colors.backgroundSecondary,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (widget.isFood)
-                                Consumer<FoodProvider>(
-                                  builder: (context, foodProvider, _) {
-                                    final categoryList = foodProvider.categories
-                                        .where((cat) => cat.id == widget.categoryId)
-                                        .toList();
-                                    return HomeSearch(
-                                      categories: categoryList,
-                                      activeFilter: _comprehensiveFilter,
-                                      hintText: "Find your food item...",
-                                      onFilterApplied: (FilterModel filter) {
-                                        setState(() {
-                                          _comprehensiveFilter = filter.copyWith();
-                                        });
-                                      },
-                                      isFood: true,
-                                    );
-                                  },
-                                )
-                              else if (widget.isGrocery)
-                                Consumer<GroceryProvider>(
-                                  builder: (context, groceryProvider, _) {
-                                    final groceryCategories = groceryProvider.categories
-                                        .where((cat) => cat.id == widget.categoryId)
-                                        .map(
-                                          (cat) => FoodCategoryModel(
-                                            id: cat.id,
-                                            name: cat.name,
-                                            emoji: cat.emoji,
-                                            description: cat.description,
-                                            isActive: cat.isActive,
-                                            items: groceryProvider.items
-                                                .where((item) => item.categoryId == cat.id)
-                                                .map((item) => item.toFoodItem())
-                                                .toList(),
-                                          ),
-                                        )
-                                        .toList();
-                                    return HomeSearch(
-                                      categories: groceryCategories,
-                                      activeFilter: _comprehensiveFilter,
-                                      hintText: "Find your grocery item...",
-                                      onFilterApplied: (FilterModel filter) {
-                                        setState(() {
-                                          _comprehensiveFilter = filter.copyWith();
-                                        });
-                                      },
-                                      isFood: false,
-                                    );
-                                  },
-                                )
-                              else if (widget.isPharmacy)
-                                Consumer<PharmacyProvider>(
-                                  builder: (context, pharmacyProvider, _) {
-                                    final pharmacyCategories = pharmacyProvider.categories
-                                        .where((cat) => cat.id == widget.categoryId)
-                                        .map(
-                                          (cat) => FoodCategoryModel(
-                                            id: cat.id,
-                                            name: cat.name,
-                                            emoji: cat.emoji,
-                                            description: '',
-                                            isActive: true,
-                                            items: pharmacyProvider.items
-                                                .where((item) => item.categoryId == cat.id)
-                                                .map((item) => item.toFoodItem())
-                                                .toList(),
-                                          ),
-                                        )
-                                        .toList();
-                                    return HomeSearch(
-                                      categories: pharmacyCategories,
-                                      activeFilter: _comprehensiveFilter,
-                                      hintText: "Search medications...",
-                                      onFilterApplied: (FilterModel filter) {
-                                        setState(() {
-                                          _comprehensiveFilter = filter.copyWith();
-                                        });
-                                      },
-                                      isFood: false,
-                                    );
-                                  },
-                                )
-                              else if (widget.isGrabMart)
-                                Consumer<GrabMartProvider>(
-                                  builder: (context, grabMartProvider, _) {
-                                    final grabMartCategories = grabMartProvider.categories
-                                        .where((cat) => cat.id == widget.categoryId)
-                                        .map(
-                                          (cat) => FoodCategoryModel(
-                                            id: cat.id,
-                                            name: cat.name,
-                                            emoji: cat.emoji,
-                                            description: '',
-                                            isActive: true,
-                                            items: grabMartProvider.items
-                                                .where((item) => item.categoryId == cat.id)
-                                                .map((item) => item.toFoodItem())
-                                                .toList(),
-                                          ),
-                                        )
-                                        .toList();
-                                    return HomeSearch(
-                                      categories: grabMartCategories,
-                                      activeFilter: _comprehensiveFilter,
-                                      hintText: "Search essentials...",
-                                      onFilterApplied: (FilterModel filter) {
-                                        setState(() {
-                                          _comprehensiveFilter = filter.copyWith();
-                                        });
-                                      },
-                                      isFood: false,
-                                    );
-                                  },
-                                ),
-                              _buildQuickFilters(colors),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
+                    SliverToBoxAdapter(child: SizedBox(height: size.height * 0.24)),
+                    if (widget.isFood)
+                      _buildFoodDealsSliver(colors)
+                    else if (widget.isGrocery)
+                      _buildGroceryDealsSliver(colors)
+                    else if (widget.isPharmacy)
+                      _buildPharmacyDealsSliver(colors)
+                    else if (widget.isGrabMart)
+                      _buildGrabMartDealsSliver(colors),
+
+                    if (widget.isFood)
+                      _buildFoodItemsHeaderSliver(colors)
+                    else if (widget.isGrocery)
+                      _buildGroceryItemsHeaderSliver(colors)
+                    else if (widget.isPharmacy)
+                      _buildPharmacyItemsHeaderSliver(colors)
+                    else if (widget.isGrabMart)
+                      _buildGrabMartItemsHeaderSliver(colors),
 
                     if (widget.isFood)
                       _buildFoodItemsSliver(colors, isDark)
@@ -424,13 +312,16 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
                             ),
                             icon: Container(
                               padding: EdgeInsets.all(8.r),
-                              decoration: BoxDecoration(color: colors.backgroundPrimary, shape: BoxShape.circle),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                shape: BoxShape.circle,
+                              ),
                               child: SvgPicture.asset(
                                 Assets.icons.cart,
                                 height: 20.h,
                                 width: 20.w,
                                 package: 'grab_go_shared',
-                                colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                               ),
                             ),
                           ),
@@ -446,119 +337,200 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
     );
   }
 
-  Widget _buildQuickFilters(AppColorsExtension colors) {
-    // Filter out Dietary chip for Groceries service
-    final visibleFilters = _quickFilters.where((filter) {
-      if (filter['label'] == 'Dietary' && !widget.isFood) {
-        return false;
-      }
-      return true;
-    }).toList();
+  SliverToBoxAdapter _buildFoodDealsSliver(AppColorsExtension colors) {
+    return SliverToBoxAdapter(
+      child: Consumer<FoodProvider>(
+        builder: (context, provider, _) {
+          final items = _getFilteredFoodItems(provider);
+          final dealItems = items.where((item) => item.discountPercentage > 0).take(10).toList();
+          if (dealItems.isEmpty) return const SizedBox.shrink();
 
-    return Container(
-      height: 40.h,
-      margin: EdgeInsets.only(top: 18.h, bottom: 4.h),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.only(left: 20.w),
-        physics: const BouncingScrollPhysics(),
-        itemCount: visibleFilters.length,
-        itemBuilder: (context, index) {
-          final filter = visibleFilters[index];
-          final isSelected = _selectedQuickFilters.contains(filter['label']);
+          return _buildDealsSection(
+            colors: colors,
+            title: '${widget.categoryName} Deals',
+            dealItems: dealItems,
+            onItemTap: (item) => context.push('/foodDetails', extra: item),
+          );
+        },
+      ),
+    );
+  }
 
-          return GestureDetector(
-            onTap: () {
-              if (filter['hasOptions'] == true) {
-                _showFilterOptions(filter['label']!, colors);
-              } else {
-                setState(() {
-                  if (isSelected) {
-                    _selectedQuickFilters.remove(filter['label']!);
-                  } else {
-                    _selectedQuickFilters.add(filter['label']!);
-                  }
-                });
-              }
+  SliverToBoxAdapter _buildGroceryDealsSliver(AppColorsExtension colors) {
+    return SliverToBoxAdapter(
+      child: Consumer<GroceryProvider>(
+        builder: (context, provider, _) {
+          final items = _getFilteredGroceryItems(provider);
+          final deals = items.where((item) => item.discountPercentage > 0).take(10).toList();
+          if (deals.isEmpty) return const SizedBox.shrink();
+
+          final dealItems = deals.map((item) => item.toFoodItem()).toList();
+          return _buildDealsSection(
+            colors: colors,
+            title: '${widget.categoryName} Deals',
+            dealItems: dealItems,
+            onItemTap: (item) {
+              GroceryItem? originalItem;
+              try {
+                originalItem = deals.firstWhere((d) => d.id == item.id);
+              } catch (_) {}
+              context.push('/foodDetails', extra: originalItem ?? item);
             },
-            child: Padding(
-              padding: EdgeInsets.only(right: 20.w),
-              child: AnimatedContainer(
-                key: ValueKey('filter_${filter['label']}'),
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeInOut,
-                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isSelected
-                        ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
-                        : [colors.backgroundPrimary, colors.backgroundPrimary],
-                  ),
-                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha(10),
-                      spreadRadius: 1,
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withAlpha(5),
-                      spreadRadius: -1,
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+          );
+        },
+      ),
+    );
+  }
+
+  SliverToBoxAdapter _buildPharmacyDealsSliver(AppColorsExtension colors) {
+    return SliverToBoxAdapter(
+      child: Consumer<PharmacyProvider>(
+        builder: (context, provider, _) {
+          final items = provider.items.where((item) => item.categoryId == widget.categoryId).toList();
+          final deals = items.where((item) => item.discountPercentage > 0).take(10).toList();
+          if (deals.isEmpty) return const SizedBox.shrink();
+
+          final dealItems = deals.map((item) => item.toFoodItem()).toList();
+          return _buildDealsSection(
+            colors: colors,
+            title: '${widget.categoryName} Deals',
+            dealItems: dealItems,
+            onItemTap: (item) {
+              final originalItem = deals.firstWhere((d) => d.id == item.id);
+              context.push('/foodDetails', extra: originalItem);
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  SliverToBoxAdapter _buildGrabMartDealsSliver(AppColorsExtension colors) {
+    return SliverToBoxAdapter(
+      child: Consumer<GrabMartProvider>(
+        builder: (context, provider, _) {
+          final items = provider.items.where((item) => item.categoryId == widget.categoryId).toList();
+          final deals = items.where((item) => item.discountPercentage > 0).take(10).toList();
+          if (deals.isEmpty) return const SizedBox.shrink();
+
+          final dealItems = deals.map((item) => item.toFoodItem()).toList();
+          return _buildDealsSection(
+            colors: colors,
+            title: '${widget.categoryName} Deals',
+            dealItems: dealItems,
+            onItemTap: (item) {
+              dynamic originalItem;
+              try {
+                originalItem = deals.firstWhere((d) => d.id == item.id);
+              } catch (_) {}
+              context.push('/foodDetails', extra: originalItem ?? item);
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildDealsSection({
+    required AppColorsExtension colors,
+    required String title,
+    required List<FoodItem> dealItems,
+    required void Function(FoodItem) onItemTap,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: 16.h),
+        SectionHeader(title: title, accentColor: colors.accentOrange, sectionTotal: dealItems.length, onSeeAll: () {}),
+        SizedBox(height: 10.h),
+        SizedBox(
+          height: 220.h,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.only(left: 20.w),
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemCount: dealItems.length,
+            itemBuilder: (context, index) {
+              final item = dealItems[index];
+              return Padding(
+                padding: EdgeInsets.only(right: 15.w),
+                child: DealCard(
+                  item: item,
+                  discountPercent: item.discountPercentage.toInt(),
+                  deliveryTime: item.estimatedDeliveryTime,
+                  onTap: () => onItemTap(item),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SvgPicture.asset(
-                      filter['icon']!,
-                      package: 'grab_go_shared',
-                      height: 16.h,
-                      width: 16.w,
-                      colorFilter: ColorFilter.mode(
-                        isSelected ? colors.backgroundPrimary : colors.textPrimary,
-                        BlendMode.srcIn,
-                      ),
-                    ),
-                    SizedBox(width: 6.w),
-                    AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeInOut,
-                      style: TextStyle(
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w500,
-                        color: isSelected ? colors.backgroundPrimary : colors.textPrimary,
-                      ),
-                      child: Text(
-                        filter['label']!,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontFamily: "Lato",
-                          package: 'grab_go_shared',
-                        ),
-                      ),
-                    ),
-                    if (filter['hasOptions'] == true) ...[
-                      SizedBox(width: 4.w),
-                      SvgPicture.asset(
-                        Assets.icons.navArrowDown,
-                        package: 'grab_go_shared',
-                        colorFilter: ColorFilter.mode(
-                          isSelected ? Colors.white : colors.textSecondary,
-                          BlendMode.srcIn,
-                        ),
-                        width: 16.w,
-                        height: 16.h,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
+              );
+            },
+          ),
+        ),
+        SizedBox(height: 20.h),
+      ],
+    );
+  }
+
+  SliverToBoxAdapter _buildFoodItemsHeaderSliver(AppColorsExtension colors) {
+    return SliverToBoxAdapter(
+      child: Consumer<FoodProvider>(
+        builder: (context, provider, _) {
+          final items = _getFilteredFoodItems(provider).where((item) => item.discountPercentage <= 0).toList();
+          return SectionHeader(
+            title: '${widget.categoryName} Items',
+            accentColor: colors.accentOrange,
+            sectionTotal: items.length,
+            onSeeAll: () {},
+          );
+        },
+      ),
+    );
+  }
+
+  SliverToBoxAdapter _buildGroceryItemsHeaderSliver(AppColorsExtension colors) {
+    return SliverToBoxAdapter(
+      child: Consumer<GroceryProvider>(
+        builder: (context, provider, _) {
+          final items = _getFilteredGroceryItems(provider).where((item) => item.discountPercentage <= 0).toList();
+          return SectionHeader(
+            title: '${widget.categoryName} Groceries Items',
+            accentColor: colors.accentOrange,
+            sectionTotal: items.length,
+            onSeeAll: () {},
+          );
+        },
+      ),
+    );
+  }
+
+  SliverToBoxAdapter _buildPharmacyItemsHeaderSliver(AppColorsExtension colors) {
+    return SliverToBoxAdapter(
+      child: Consumer<PharmacyProvider>(
+        builder: (context, provider, _) {
+          final items = provider.items
+              .where((item) => item.categoryId == widget.categoryId && item.discountPercentage <= 0)
+              .toList();
+          return SectionHeader(
+            title: '${widget.categoryName} Pharmacy Items',
+            accentColor: colors.accentOrange,
+            sectionTotal: items.length,
+            onSeeAll: () {},
+          );
+        },
+      ),
+    );
+  }
+
+  SliverToBoxAdapter _buildGrabMartItemsHeaderSliver(AppColorsExtension colors) {
+    return SliverToBoxAdapter(
+      child: Consumer<GrabMartProvider>(
+        builder: (context, provider, _) {
+          final items = provider.items
+              .where((item) => item.categoryId == widget.categoryId && item.discountPercentage <= 0)
+              .toList();
+          return SectionHeader(
+            title: '${widget.categoryName} GrabMart Items',
+            accentColor: colors.accentOrange,
+            sectionTotal: items.length,
+            onSeeAll: () {},
           );
         },
       ),
@@ -575,7 +547,7 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
           );
         }
 
-        final items = _getFilteredFoodItems(provider);
+        final items = _getFilteredFoodItems(provider).where((item) => item.discountPercentage <= 0).toList();
 
         if (items.isEmpty) {
           return SliverFillRemaining(
@@ -601,19 +573,16 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
 
         return SliverPadding(
           padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 8.h, bottom: padding.bottom + 16.h),
-          sliver: SliverGrid(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: _isGridView ? 2 : 1,
-              childAspectRatio: _isGridView ? 0.7 : 1.8,
-              crossAxisSpacing: 12.w,
-              mainAxisSpacing: 16.h,
-            ),
+          sliver: SliverList(
             delegate: SliverChildBuilderDelegate((context, index) {
               final item = items[index];
-              return PopularItemCard(
-                item: item,
-                orderCount: item.orderCount,
-                onTap: () => context.push('/foodDetails', extra: item),
+              return Padding(
+                padding: EdgeInsets.only(bottom: 16.h),
+                child: FoodItemCard(
+                  item: item,
+                  margin: EdgeInsets.zero,
+                  onTap: () => context.push('/foodDetails', extra: item),
+                ),
               );
             }, childCount: items.length),
           ),
@@ -632,7 +601,7 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
           );
         }
 
-        final items = _getFilteredGroceryItems(provider);
+        final items = _getFilteredGroceryItems(provider).where((item) => item.discountPercentage <= 0).toList();
 
         if (items.isEmpty) {
           return _buildEmptyState(colors);
@@ -640,19 +609,16 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
 
         return SliverPadding(
           padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 8.h, bottom: padding.bottom + 16.h),
-          sliver: SliverGrid(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: _isGridView ? 2 : 1,
-              childAspectRatio: _isGridView ? 0.7 : 1.8,
-              crossAxisSpacing: 12.w,
-              mainAxisSpacing: 16.h,
-            ),
+          sliver: SliverList(
             delegate: SliverChildBuilderDelegate((context, index) {
               final item = items[index];
-              return PopularItemCard(
-                item: item.toFoodItem(),
-                orderCount: item.orderCount,
-                onTap: () => context.push('/foodDetails', extra: item),
+              return Padding(
+                padding: EdgeInsets.only(bottom: 16.h),
+                child: FoodItemCard(
+                  item: item.toFoodItem(),
+                  margin: EdgeInsets.zero,
+                  onTap: () => context.push('/foodDetails', extra: item),
+                ),
               );
             }, childCount: items.length),
           ),
@@ -671,7 +637,9 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
           );
         }
 
-        final items = provider.items.where((item) => item.categoryId == widget.categoryId).toList();
+        final items = provider.items
+            .where((item) => item.categoryId == widget.categoryId && item.discountPercentage <= 0)
+            .toList();
 
         if (items.isEmpty) {
           return _buildEmptyState(colors);
@@ -679,19 +647,16 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
 
         return SliverPadding(
           padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 8.h, bottom: padding.bottom + 16.h),
-          sliver: SliverGrid(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: _isGridView ? 2 : 1,
-              childAspectRatio: _isGridView ? 0.7 : 1.8,
-              crossAxisSpacing: 12.w,
-              mainAxisSpacing: 16.h,
-            ),
+          sliver: SliverList(
             delegate: SliverChildBuilderDelegate((context, index) {
               final item = items[index];
-              return PopularItemCard(
-                item: item.toFoodItem(),
-                orderCount: item.orderCount,
-                onTap: () => context.push('/foodDetails', extra: item),
+              return Padding(
+                padding: EdgeInsets.only(bottom: 16.h),
+                child: FoodItemCard(
+                  item: item.toFoodItem(),
+                  margin: EdgeInsets.zero,
+                  onTap: () => context.push('/foodDetails', extra: item),
+                ),
               );
             }, childCount: items.length),
           ),
@@ -710,7 +675,9 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
           );
         }
 
-        final items = provider.items.where((item) => item.categoryId == widget.categoryId).toList();
+        final items = provider.items
+            .where((item) => item.categoryId == widget.categoryId && item.discountPercentage <= 0)
+            .toList();
 
         if (items.isEmpty) {
           return _buildEmptyState(colors);
@@ -718,19 +685,16 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
 
         return SliverPadding(
           padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 8.h, bottom: padding.bottom + 16.h),
-          sliver: SliverGrid(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: _isGridView ? 2 : 1,
-              childAspectRatio: _isGridView ? 0.7 : 1.8,
-              crossAxisSpacing: 12.w,
-              mainAxisSpacing: 16.h,
-            ),
+          sliver: SliverList(
             delegate: SliverChildBuilderDelegate((context, index) {
               final item = items[index];
-              return PopularItemCard(
-                item: item.toFoodItem(),
-                orderCount: item.orderCount,
-                onTap: () => context.push('/foodDetails', extra: item),
+              return Padding(
+                padding: EdgeInsets.only(bottom: 16.h),
+                child: FoodItemCard(
+                  item: item.toFoodItem(),
+                  margin: EdgeInsets.zero,
+                  onTap: () => context.push('/foodDetails', extra: item),
+                ),
               );
             }, childCount: items.length),
           ),
@@ -1182,18 +1146,12 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
     );
   }
 
-  double _calculateStickyHeaderHeight() {
-    double height = 54.h;
-    height += 40.h + 16.h;
-    return height;
-  }
-
   Widget _buildCollapsibleCategoryHeader(AppColorsExtension colors, Size size, bool isDark) {
     return ValueListenableBuilder<double>(
       valueListenable: _scrollOffsetNotifier,
       builder: (context, scrollOffset, _) {
         final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
-        final expandedHeight = size.height * 0.18;
+        final expandedHeight = size.height * 0.24;
         final currentHeight = expandedHeight - ((expandedHeight - _collapsedHeight) * collapseProgress);
         final contentOpacity = (1.0 - collapseProgress).clamp(0.0, 1.0);
 
@@ -1217,134 +1175,233 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
   Widget _buildCategoryHeader(AppColorsExtension colors, bool isDark) {
     return SizedBox.expand(
       child: Padding(
-        padding: EdgeInsets.fromLTRB(20.w, MediaQuery.of(context).padding.top.h, 20.w, 16.h),
-        child: Row(
+        padding: EdgeInsets.fromLTRB(0.w, MediaQuery.of(context).padding.top.h + 6.h, 0.w, 20.h),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              height: 40.h,
-              width: 40.w,
-              decoration: BoxDecoration(color: colors.backgroundPrimary.withValues(alpha: 0.2), shape: BoxShape.circle),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => context.pop(),
-                  customBorder: const CircleBorder(),
-                  child: Center(
-                    child: SvgPicture.asset(
-                      Assets.icons.navArrowLeft,
-                      package: 'grab_go_shared',
-                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                      width: 24.w,
-                      height: 24.h,
+            Row(
+              children: [
+                SizedBox(width: 10.w),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      context.pop();
+                    },
+                    customBorder: const CircleBorder(),
+                    child: Padding(
+                      padding: EdgeInsets.all(10.r),
+                      child: SvgPicture.asset(
+                        Assets.icons.navArrowLeft,
+                        package: 'grab_go_shared',
+                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
-            SizedBox(width: 16.w),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.categoryName,
-                    style: TextStyle(
-                      fontFamily: "Lato",
-                      package: 'grab_go_shared',
-                      fontSize: 20.sp,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.categoryName,
+                        style: TextStyle(
+                          fontFamily: "Lato",
+                          package: 'grab_go_shared',
+                          fontSize: 20.sp,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: 2.h),
+                      if (widget.isFood)
+                        Consumer<FoodProvider>(
+                          builder: (context, provider, _) {
+                            final items = _getFilteredFoodItems(provider);
+                            return Text(
+                              '${items.length} options available',
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withValues(alpha: 0.8),
+                              ),
+                            );
+                          },
+                        )
+                      else if (widget.isGrocery)
+                        Consumer<GroceryProvider>(
+                          builder: (context, provider, _) {
+                            final items = _getFilteredGroceryItems(provider);
+                            return Text(
+                              '${items.length} options available',
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withValues(alpha: 0.8),
+                              ),
+                            );
+                          },
+                        )
+                      else if (widget.isPharmacy)
+                        Consumer<PharmacyProvider>(
+                          builder: (context, provider, _) {
+                            final items = provider.items
+                                .where((item) => item.categoryId == widget.categoryId && item.discountPercentage <= 0)
+                                .toList();
+                            return Text(
+                              '${items.length} options available',
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withValues(alpha: 0.8),
+                              ),
+                            );
+                          },
+                        )
+                      else if (widget.isGrabMart)
+                        Consumer<GrabMartProvider>(
+                          builder: (context, provider, _) {
+                            final items = provider.items.where((item) => item.categoryId == widget.categoryId).toList();
+                            return Text(
+                              '${items.length} options available',
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withValues(alpha: 0.8),
+                              ),
+                            );
+                          },
+                        ),
+                    ],
                   ),
-                  SizedBox(height: 2.h),
-                  if (widget.isFood)
-                    Consumer<FoodProvider>(
-                      builder: (context, provider, _) {
-                        final items = _getFilteredFoodItems(provider);
-                        return Text(
-                          '${items.length} options available',
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white.withValues(alpha: 0.8),
-                          ),
-                        );
-                      },
-                    )
-                  else if (widget.isGrocery)
-                    Consumer<GroceryProvider>(
-                      builder: (context, provider, _) {
-                        final items = _getFilteredGroceryItems(provider);
-                        return Text(
-                          '${items.length} options available',
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white.withValues(alpha: 0.8),
-                          ),
-                        );
-                      },
-                    )
-                  else if (widget.isPharmacy)
-                    Consumer<PharmacyProvider>(
-                      builder: (context, provider, _) {
-                        final items = provider.items.where((item) => item.categoryId == widget.categoryId).toList();
-                        return Text(
-                          '${items.length} options available',
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white.withValues(alpha: 0.8),
-                          ),
-                        );
-                      },
-                    )
-                  else if (widget.isGrabMart)
-                    Consumer<GrabMartProvider>(
-                      builder: (context, provider, _) {
-                        final items = provider.items.where((item) => item.categoryId == widget.categoryId).toList();
-                        return Text(
-                          '${items.length} options available',
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white.withValues(alpha: 0.8),
-                          ),
-                        );
-                      },
-                    ),
-                ],
-              ),
+                ),
+              ],
             ),
+            SizedBox(height: 8.h),
+            _buildCategorySearch(colors),
           ],
         ),
       ),
     );
   }
-}
 
-class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final double minHeight;
-  final double maxHeight;
-  final Widget child;
-
-  _StickyHeaderDelegate({required this.minHeight, required this.maxHeight, required this.child});
-
-  @override
-  double get minExtent => minHeight;
-
-  @override
-  double get maxExtent => maxHeight;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return SizedBox.expand(child: child);
-  }
-
-  @override
-  bool shouldRebuild(_StickyHeaderDelegate oldDelegate) {
-    return maxHeight != oldDelegate.maxHeight || minHeight != oldDelegate.minHeight || child != oldDelegate.child;
+  Widget _buildCategorySearch(AppColorsExtension colors) {
+    if (widget.isFood) {
+      return Consumer<FoodProvider>(
+        builder: (context, foodProvider, _) {
+          final categoryList = foodProvider.categories.where((cat) => cat.id == widget.categoryId).toList();
+          return HomeSearch(
+            categories: categoryList,
+            activeFilter: _comprehensiveFilter,
+            hintText: "Find your food item...",
+            onFilterApplied: (FilterModel filter) {
+              setState(() {
+                _comprehensiveFilter = filter.copyWith();
+              });
+            },
+            isFood: true,
+          );
+        },
+      );
+    } else if (widget.isGrocery) {
+      return Consumer<GroceryProvider>(
+        builder: (context, groceryProvider, _) {
+          final groceryCategories = groceryProvider.categories
+              .where((cat) => cat.id == widget.categoryId)
+              .map(
+                (cat) => FoodCategoryModel(
+                  id: cat.id,
+                  name: cat.name,
+                  emoji: cat.emoji,
+                  description: cat.description,
+                  isActive: cat.isActive,
+                  items: groceryProvider.items
+                      .where((item) => item.categoryId == cat.id)
+                      .map((item) => item.toFoodItem())
+                      .toList(),
+                ),
+              )
+              .toList();
+          return HomeSearch(
+            categories: groceryCategories,
+            activeFilter: _comprehensiveFilter,
+            hintText: "Find your grocery item...",
+            onFilterApplied: (FilterModel filter) {
+              setState(() {
+                _comprehensiveFilter = filter.copyWith();
+              });
+            },
+            isFood: false,
+          );
+        },
+      );
+    } else if (widget.isPharmacy) {
+      return Consumer<PharmacyProvider>(
+        builder: (context, pharmacyProvider, _) {
+          final pharmacyCategories = pharmacyProvider.categories
+              .where((cat) => cat.id == widget.categoryId)
+              .map(
+                (cat) => FoodCategoryModel(
+                  id: cat.id,
+                  name: cat.name,
+                  emoji: cat.emoji,
+                  description: '',
+                  isActive: true,
+                  items: pharmacyProvider.items
+                      .where((item) => item.categoryId == cat.id)
+                      .map((item) => item.toFoodItem())
+                      .toList(),
+                ),
+              )
+              .toList();
+          return HomeSearch(
+            categories: pharmacyCategories,
+            activeFilter: _comprehensiveFilter,
+            hintText: "Search medications...",
+            onFilterApplied: (FilterModel filter) {
+              setState(() {
+                _comprehensiveFilter = filter.copyWith();
+              });
+            },
+            isFood: false,
+          );
+        },
+      );
+    } else if (widget.isGrabMart) {
+      return Consumer<GrabMartProvider>(
+        builder: (context, grabMartProvider, _) {
+          final grabMartCategories = grabMartProvider.categories
+              .where((cat) => cat.id == widget.categoryId)
+              .map(
+                (cat) => FoodCategoryModel(
+                  id: cat.id,
+                  name: cat.name,
+                  emoji: cat.emoji,
+                  description: '',
+                  isActive: true,
+                  items: grabMartProvider.items
+                      .where((item) => item.categoryId == cat.id)
+                      .map((item) => item.toFoodItem())
+                      .toList(),
+                ),
+              )
+              .toList();
+          return HomeSearch(
+            categories: grabMartCategories,
+            activeFilter: _comprehensiveFilter,
+            hintText: "Search essentials...",
+            onFilterApplied: (FilterModel filter) {
+              setState(() {
+                _comprehensiveFilter = filter.copyWith();
+              });
+            },
+            isFood: false,
+          );
+        },
+      );
+    }
+    return const SizedBox.shrink();
   }
 }

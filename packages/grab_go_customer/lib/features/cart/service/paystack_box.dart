@@ -18,6 +18,9 @@ class PaystackService {
     required double total,
     required double subTotal,
     required double deliveryFee,
+    double serviceFee = 0.0,
+    double tax = 0.0,
+    double tip = 0.0,
   }) async {
     final String reference = _paystack.generateUuidV4();
 
@@ -33,7 +36,15 @@ class PaystackService {
         debugPrint("✅ Transaction completed: $paymentData");
         context.go(
           "/paymentComplete",
-          extra: {"method": method, "total": total, "subTotal": subTotal, "deliveryFee": deliveryFee},
+          extra: {
+            "method": method,
+            "total": total,
+            "subTotal": subTotal,
+            "deliveryFee": deliveryFee,
+            "serviceFee": serviceFee,
+            "tax": tax,
+            "tip": tip
+          },
         );
       },
       transactionNotCompleted: (reason) {

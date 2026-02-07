@@ -44,7 +44,6 @@ class DealCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image with discount badge
             Stack(
               children: [
                 ClipRRect(

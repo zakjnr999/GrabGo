@@ -191,9 +191,11 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
   void _handlePaymentSuccess(BuildContext context) {
     // Get cart details before clearing
     final cart = context.read<CartProvider>();
-    final cartSubtotal = cart.totalPrice;
-    const double deliveryFeeAmount = 2.0;
-    final double totalAmount = cartSubtotal + deliveryFeeAmount;
+    final cartSubtotal = cart.subtotal;
+    final deliveryFeeAmount = cart.deliveryFee;
+    final serviceFeeAmount = cart.serviceFee;
+    final taxAmount = cart.tax;
+    final double totalAmount = cart.total + widget.tipAmount;
 
     // Clear cart
     cart.clearCart();
@@ -206,6 +208,9 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
         'total': totalAmount,
         'subTotal': cartSubtotal,
         'deliveryFee': deliveryFeeAmount,
+        'serviceFee': serviceFeeAmount,
+        'tax': taxAmount,
+        'tip': widget.tipAmount,
         'orderNumber': _generateOrderNumber(),
         'timestamp': DateTime.now().toIso8601String(),
       },
@@ -273,9 +278,11 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
         backgroundColor: colors.backgroundSecondary,
         body: Consumer<CartProvider>(
           builder: (context, provider, child) {
-            const double deliveryFee = 2.0;
-            final double subtotal = provider.totalPrice;
-            final double total = subtotal + deliveryFee + widget.tipAmount;
+            final double subtotal = provider.subtotal;
+            final double deliveryFee = provider.deliveryFee;
+            final double serviceFee = provider.serviceFee;
+            final double tax = provider.tax;
+            final double total = provider.total + widget.tipAmount;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -727,6 +734,12 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
                                 _buildPriceRow("Subtotal", subtotal, colors, Assets.icons.cash, false),
                                 SizedBox(height: 10.h),
                                 _buildPriceRow("Delivery Fee", deliveryFee, colors, Assets.icons.deliveryTruck, false),
+                                SizedBox(height: 10.h),
+                                _buildPriceRow("Service Fee", serviceFee, colors, Assets.icons.deliveryTruck, false),
+                                if (tax > 0) ...[
+                                  SizedBox(height: 10.h),
+                                  _buildPriceRow("Tax", tax, colors, Assets.icons.cash, false),
+                                ],
                                 if (widget.tipAmount > 0) ...[
                                   SizedBox(height: 10.h),
                                   _buildPriceRow("Driver Tip", widget.tipAmount, colors, Assets.icons.handCash, false),

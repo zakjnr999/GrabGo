@@ -19,11 +19,9 @@ class OrderSkeleton extends StatelessWidget {
       separatorBuilder: (context, index) => SizedBox(height: 16.h),
       itemBuilder: (context, index) {
         return Container(
-          padding: EdgeInsets.all(16.r),
           decoration: BoxDecoration(
             color: colors.backgroundPrimary,
             borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-            border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -123,16 +121,6 @@ class OrderSkeleton extends StatelessWidget {
                   padding: EdgeInsets.only(bottom: 8.h),
                   child: Row(
                     children: [
-                      Shimmer.fromColors(
-                        baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-                        highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
-                        child: Container(
-                          width: 6.w,
-                          height: 6.h,
-                          decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                        ),
-                      ),
-                      SizedBox(width: 8.w),
                       Expanded(
                         child: Shimmer.fromColors(
                           baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
@@ -164,16 +152,6 @@ class OrderSkeleton extends StatelessWidget {
                 decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(12.r)),
                 child: Row(
                   children: [
-                    Shimmer.fromColors(
-                      baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-                      highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
-                      child: Container(
-                        width: 32.w,
-                        height: 32.h,
-                        decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                      ),
-                    ),
-                    SizedBox(width: 12.w),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -210,6 +188,20 @@ class OrderSkeleton extends StatelessWidget {
                       ),
                     ),
                   ],
+                ),
+              ),
+              // button
+              SizedBox(height: 16.h),
+              Shimmer.fromColors(
+                baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
+                child: Container(
+                  width: double.infinity,
+                  height: 56.h,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                  ),
                 ),
               ),
             ],

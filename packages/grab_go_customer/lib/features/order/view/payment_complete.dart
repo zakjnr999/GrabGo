@@ -16,6 +16,9 @@ class PaymentComplete extends StatefulWidget {
   final double total;
   final double subTotal;
   final double deliveryFee;
+  final double serviceFee;
+  final double tax;
+  final double tip;
   final String? orderNumber;
   final String? timestamp;
 
@@ -25,6 +28,9 @@ class PaymentComplete extends StatefulWidget {
     required this.total,
     required this.subTotal,
     required this.deliveryFee,
+    this.serviceFee = 0.0,
+    this.tax = 0.0,
+    this.tip = 0.0,
     this.orderNumber,
     this.timestamp,
   });
@@ -259,6 +265,18 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
           _buildEnhancedDetailRow("Subtotal", "\GHC ${widget.subTotal.toStringAsFixed(2)}", colors, false),
           SizedBox(height: 16.h),
           _buildEnhancedDetailRow("Delivery Fee", "\GHC ${widget.deliveryFee.toStringAsFixed(2)}", colors, false),
+          if (widget.serviceFee > 0) ...[
+            SizedBox(height: 16.h),
+            _buildEnhancedDetailRow("Service Fee", "\GHC ${widget.serviceFee.toStringAsFixed(2)}", colors, false),
+          ],
+          if (widget.tax > 0) ...[
+            SizedBox(height: 16.h),
+            _buildEnhancedDetailRow("Tax", "\GHC ${widget.tax.toStringAsFixed(2)}", colors, false),
+          ],
+          if (widget.tip > 0) ...[
+            SizedBox(height: 16.h),
+            _buildEnhancedDetailRow("Driver Tip", "\GHC ${widget.tip.toStringAsFixed(2)}", colors, false),
+          ],
           SizedBox(height: 20.h),
 
           Container(

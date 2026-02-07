@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
+const { calculateCartPricing } = require('../services/pricing_service');
 const {
     addToCart,
     updateCartItem,
@@ -18,6 +19,10 @@ router.get('/', protect, async (req, res) => {
     try {
         const cartType = req.query.type || null; // 'food' or 'grocery'
         const cart = await getUserCart(req.user.id, cartType);
+        const lat = Number(req.query.lat);
+        const lng = Number(req.query.lng);
+        const deliveryLocation =
+            Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : null;
 
         if (!cart) {
             return res.json({
@@ -25,14 +30,24 @@ router.get('/', protect, async (req, res) => {
                 cart: {
                     items: [],
                     totalAmount: 0,
-                    itemCount: 0
+                    itemCount: 0,
+                    pricing: {
+                        subtotal: 0,
+                        deliveryFee: 0,
+                        serviceFee: 0,
+                        tax: 0,
+                        total: 0,
+                        itemCount: 0
+                    }
                 }
             });
         }
 
+        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation });
+
         res.json({
             success: true,
-            cart
+            cart: { ...cart, pricing }
         });
     } catch (error) {
         console.error('Error fetching cart:', error);
@@ -75,10 +90,12 @@ router.post('/add', protect, async (req, res) => {
             groceryStoreId
         });
 
+        const pricing = await calculateCartPricing(cart, { userId: req.user.id });
+
         res.json({
             success: true,
             message: 'Item added to cart',
-            cart
+            cart: { ...cart, pricing }
         });
     } catch (error) {
         console.error('Error adding to cart:', error);
@@ -121,11 +138,12 @@ router.patch('/update/:itemId', protect, async (req, res) => {
         }
 
         const cart = await updateCartItem(req.user.id, itemId, quantity);
+        const pricing = await calculateCartPricing(cart, { userId: req.user.id });
 
         res.json({
             success: true,
             message: quantity === 0 ? 'Item removed from cart' : 'Cart updated',
-            cart
+            cart: { ...cart, pricing }
         });
     } catch (error) {
         console.error('Error updating cart:', error);
@@ -154,11 +172,12 @@ router.delete('/remove/:itemId', protect, async (req, res) => {
     try {
         const { itemId } = req.params;
         const cart = await removeFromCart(req.user.id, itemId);
+        const pricing = await calculateCartPricing(cart, { userId: req.user.id });
 
         res.json({
             success: true,
             message: 'Item removed from cart',
-            cart
+            cart: { ...cart, pricing }
         });
     } catch (error) {
         console.error('Error removing from cart:', error);
@@ -186,11 +205,12 @@ router.delete('/remove/:itemId', protect, async (req, res) => {
 router.delete('/clear', protect, async (req, res) => {
     try {
         const cart = await clearCart(req.user.id);
+        const pricing = await calculateCartPricing(cart, { userId: req.user.id });
 
         res.json({
             success: true,
             message: 'Cart cleared',
-            cart
+            cart: { ...cart, pricing }
         });
     } catch (error) {
         console.error('Error clearing cart:', error);
