@@ -185,7 +185,7 @@ class DealCard extends StatelessWidget {
                             ),
                             SizedBox(width: 4.w),
                             Text(
-                              '25-30 min',
+                              item.estimatedDeliveryTime,
                               style: TextStyle(
                                 fontSize: 11.sp,
                                 fontWeight: FontWeight.w500,

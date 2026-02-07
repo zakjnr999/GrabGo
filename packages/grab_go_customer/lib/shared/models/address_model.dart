@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 enum AddressLabel { home, work, other }
 
 enum BuildingType { apartment, house, office, villa, hostel, other }
@@ -13,6 +11,7 @@ class AddressModel {
   final String? city;
   final String? area;
   final AddressLabel label;
+  final String? customLabel;
   final BuildingType buildingType;
   final String? unitNumber;
   final String? floor;
@@ -32,6 +31,7 @@ class AddressModel {
     this.city,
     this.area,
     this.label = AddressLabel.home,
+    this.customLabel,
     this.buildingType = BuildingType.apartment,
     this.unitNumber,
     this.floor,
@@ -52,6 +52,7 @@ class AddressModel {
     String? city,
     String? area,
     AddressLabel? label,
+    String? customLabel,
     BuildingType? buildingType,
     String? unitNumber,
     String? floor,
@@ -71,6 +72,7 @@ class AddressModel {
       city: city ?? this.city,
       area: area ?? this.area,
       label: label ?? this.label,
+      customLabel: customLabel ?? this.customLabel,
       buildingType: buildingType ?? this.buildingType,
       unitNumber: unitNumber ?? this.unitNumber,
       floor: floor ?? this.floor,
@@ -89,17 +91,18 @@ class AddressModel {
       'userId': userId,
       'latitude': latitude,
       'longitude': longitude,
-      'formattedAddress': formattedAddress,
+      'formatted_address': formattedAddress,
       'city': city,
       'area': area,
       'label': label.name,
-      'buildingType': buildingType.name,
-      'unitNumber': unitNumber,
+      'custom_label': customLabel,
+      'building_type': buildingType.name,
+      'unit_number': unitNumber,
       'floor': floor,
       'instructions': instructions,
-      'isComplete': isComplete,
-      'isTemporary': isTemporary,
-      'isDefault': isDefault,
+      'is_complete': isComplete,
+      'is_temporary': isTemporary,
+      'is_default': isDefault,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
     };
@@ -114,10 +117,8 @@ class AddressModel {
       formattedAddress: json['formattedAddress'] ?? json['formatted_address'] ?? '',
       city: json['city'],
       area: json['area'],
-      label: AddressLabel.values.firstWhere(
-        (e) => e.name == json['label'],
-        orElse: () => AddressLabel.home,
-      ),
+      label: AddressLabel.values.firstWhere((e) => e.name == json['label'], orElse: () => AddressLabel.home),
+      customLabel: json['customLabel'] ?? json['custom_label'],
       buildingType: BuildingType.values.firstWhere(
         (e) => e.name == (json['buildingType'] ?? json['building_type']),
         orElse: () => BuildingType.apartment,
@@ -128,13 +129,21 @@ class AddressModel {
       isComplete: json['isComplete'] ?? json['is_complete'] ?? false,
       isTemporary: json['isTemporary'] ?? json['is_temporary'] ?? false,
       isDefault: json['isDefault'] ?? json['is_default'] ?? false,
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+          : json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : null,
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'])
+          : json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
+          : null,
     );
   }
 
   @override
   String toString() {
-    return 'AddressModel(label: $label, address: $formattedAddress)';
+    return 'AddressModel(label: $label, customLabel: $customLabel, address: $formattedAddress)';
   }
 }

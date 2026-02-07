@@ -34,6 +34,7 @@ class AppTextInput extends StatelessWidget {
   final TextCapitalization textCapitalization;
   final List<TextInputFormatter>? inputFormatters;
   final ValueChanged<String>? onChanged;
+  final FocusNode? focusNode;
 
   const AppTextInput({
     super.key,
@@ -60,6 +61,7 @@ class AppTextInput extends StatelessWidget {
     this.textCapitalization = TextCapitalization.none,
     this.inputFormatters,
     this.onChanged,
+    this.focusNode,
   });
 
   Future<void> _handleTap(BuildContext context) async {
@@ -163,6 +165,7 @@ class AppTextInput extends StatelessWidget {
           ),
           child: TextField(
             controller: controller,
+            focusNode: focusNode,
             cursorOpacityAnimates: true,
             keyboardType: keyboardType,
             obscureText: obscureText,

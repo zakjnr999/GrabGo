@@ -43,6 +43,8 @@ class _PickupMapState extends State<PickupMap> {
   Set<Polyline> _polylines = {};
   final Map<String, BitmapDescriptor> _markerCache = {};
   Timer? _debounceTimer;
+  Timer? _cameraMoveDebounce;
+  CameraPosition? _lastCameraPosition;
   LatLngBounds? _lastLoadedBounds;
   double _currentZoom = 14;
   static const LatLng _defaultPosition = LatLng(5.6037, -0.1870);
@@ -105,6 +107,7 @@ class _PickupMapState extends State<PickupMap> {
     _positionSubscription?.cancel();
     _mapController?.dispose();
     _debounceTimer?.cancel();
+    _cameraMoveDebounce?.cancel();
     super.dispose();
   }
 
@@ -242,6 +245,17 @@ class _PickupMapState extends State<PickupMap> {
     });
   }
 
+  void _onCameraMoveDebounced(CameraPosition position) {
+    _lastCameraPosition = position;
+    _cameraMoveDebounce?.cancel();
+    _cameraMoveDebounce = Timer(const Duration(milliseconds: 120), () {
+      final last = _lastCameraPosition;
+      if (last != null) {
+        _onCameraMove(last);
+      }
+    });
+  }
+
   Future<void> _loadVendorsInBounds(CameraPosition position) async {
     if (_mapController == null) return;
     try {
@@ -329,6 +343,8 @@ class _PickupMapState extends State<PickupMap> {
             await _addVendorMarker(markers, cluster.vendors.first, colors, showLabel: false);
           }
         }
+      } else {
+        // Individual markers for zoom >= 14
         for (final vendor in _vendors) {
           await _addVendorMarker(markers, vendor, colors, showLabel: _currentZoom >= 14.5);
         }
@@ -720,87 +736,61 @@ class _PickupMapState extends State<PickupMap> {
       child: Scaffold(
         extendBodyBehindAppBar: true,
         extendBody: true,
-        backgroundColor: Colors.transparent,
+        backgroundColor: colors.backgroundPrimary,
         appBar: null,
         body: Stack(
           children: [
             Positioned.fill(
-              child: GoogleMap(
-                initialCameraPosition: CameraPosition(
-                  target: _currentPosition != null
-                      ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
-                      : _defaultPosition,
-                  zoom: 14,
+              child: RepaintBoundary(
+                child: GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: _currentPosition != null
+                        ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
+                        : _defaultPosition,
+                    zoom: 14,
+                  ),
+                  markers: _markers,
+                  polylines: _polylines,
+                  myLocationEnabled: false,
+                  myLocationButtonEnabled: false,
+                  zoomControlsEnabled: false,
+                  mapToolbarEnabled: false,
+                  compassEnabled: false,
+                  rotateGesturesEnabled: true,
+                  scrollGesturesEnabled: true,
+                  zoomGesturesEnabled: true,
+                  tiltGesturesEnabled: false,
+                  indoorViewEnabled: false,
+                  trafficEnabled: false,
+                  buildingsEnabled: false,
+                  liteModeEnabled: false,
+                  style: GrabGoMapStyles.forBrightness(Theme.of(context).brightness),
+                  padding: EdgeInsets.only(bottom: 100.h),
+                  onMapCreated: (controller) {
+                    _mapController = controller;
+                    Future.delayed(const Duration(milliseconds: 500), _fitCameraToMarkers);
+                  },
+                  onCameraMove: _onCameraMoveDebounced,
+                  onTap: (_) {
+                    if (_sheetController != null) {
+                      _sheetController?.close();
+                      _sheetController = null;
+                    }
+                    if (_selectedVendorId != null) {
+                      setState(() {
+                        _selectedVendorId = null;
+                      });
+                      _updateMarkers();
+                    }
+                  },
                 ),
-                markers: _markers,
-                polylines: _polylines,
-                myLocationEnabled: false,
-                myLocationButtonEnabled: false,
-                zoomControlsEnabled: false,
-                mapToolbarEnabled: false,
-                compassEnabled: false,
-                rotateGesturesEnabled: true,
-                scrollGesturesEnabled: true,
-                zoomGesturesEnabled: true,
-                tiltGesturesEnabled: false,
-                indoorViewEnabled: false,
-                trafficEnabled: false,
-                buildingsEnabled: false,
-                liteModeEnabled: false,
-                style: GrabGoMapStyles.forBrightness(Theme.of(context).brightness),
-                padding: EdgeInsets.only(bottom: 100.h),
-                onMapCreated: (controller) {
-                  _mapController = controller;
-                  Future.delayed(const Duration(milliseconds: 500), _fitCameraToMarkers);
-                },
-                onCameraMove: _onCameraMove,
-                onTap: (_) {
-                  if (_sheetController != null) {
-                    _sheetController?.close();
-                    _sheetController = null;
-                  }
-                  if (_selectedVendorId != null) {
-                    setState(() {
-                      _selectedVendorId = null;
-                    });
-                    _updateMarkers();
-                  }
-                },
               ),
             ),
 
-            if (_isLoading) const Positioned.fill(child: PickupMapSkeleton()),
+            // Removed PickupMapSkeleton to ensure the map and UI are immediately visible while markers load in the background.
 
-            if (_errorMessage != null && !_isLoading)
-              Positioned(
-                left: 16.w,
-                right: 16.w,
-                top: 100.h,
-                child: Container(
-                  padding: EdgeInsets.all(16.w),
-                  decoration: BoxDecoration(
-                    color: colors.error.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12.r),
-                    border: Border.all(color: colors.error.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.error_outline, color: colors.error),
-                      SizedBox(width: 12.w),
-                      Expanded(
-                        child: Text(
-                          _errorMessage!,
-                          style: TextStyle(color: colors.textPrimary, fontSize: 13.sp),
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.refresh, color: colors.accentGreen),
-                        onPressed: _loadVendors,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            // Errors and offline states are now handled by the bottom status card for a consistent premium feel.
+
 
             Positioned(
               top: MediaQuery.of(context).padding.top + 10.h,
@@ -876,8 +866,32 @@ class _PickupMapState extends State<PickupMap> {
             Consumer<FoodProvider>(
               builder: (context, foodProvider, child) {
                 final bool isFoodUnavailable = foodProvider.categories.isEmpty && foodProvider.hasAttemptedFetch;
+                final bool isOffline = _errorMessage != null && (_errorMessage!.toLowerCase().contains('connection') || _errorMessage!.toLowerCase().contains('internet'));
+                final bool hasError = _errorMessage != null && !isOffline;
 
-                if (!isFoodUnavailable || _isLoading) return const SizedBox.shrink();
+                // Only show this overlay if we're not loading (to let skeletons work)
+                // and if there's a problem (unavailable area, offline, or general error)
+                if ((!isFoodUnavailable && !isOffline && !hasError) || _isLoading) return const SizedBox.shrink();
+
+                String title = "GrabGo is Not Here Yet";
+                String description = "We haven't launched in this area yet.";
+                IconData icon = Icons.map_outlined;
+                String buttonText = "Change Location";
+                VoidCallback onButtonPressed = () => context.push('/confirm-address');
+
+                if (isOffline) {
+                  title = "No Internet Connection";
+                  description = "Please check your network settings and try again.";
+                  icon = Icons.wifi_off_rounded;
+                  buttonText = "Try Again";
+                  onButtonPressed = _loadVendors;
+                } else if (hasError) {
+                  title = "Unable to Load Area";
+                  description = "Something went wrong while fetching stores.";
+                  icon = Icons.error_outline_rounded;
+                  buttonText = "Try Again";
+                  onButtonPressed = _loadVendors;
+                }
 
                 return Positioned(
                   bottom: 120.h,
@@ -907,7 +921,7 @@ class _PickupMapState extends State<PickupMap> {
                                 color: colors.accentOrange.withValues(alpha: 0.1),
                                 shape: BoxShape.circle,
                               ),
-                              child: Icon(Icons.map_outlined, color: colors.accentOrange, size: 24.r),
+                              child: Icon(icon, color: colors.accentOrange, size: 24.r),
                             ),
                             SizedBox(width: 16.w),
                             Expanded(
@@ -915,7 +929,7 @@ class _PickupMapState extends State<PickupMap> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    "GrabGo is Not Here Yet",
+                                    title,
                                     style: TextStyle(
                                       fontSize: 16.sp,
                                       fontWeight: FontWeight.w700,
@@ -924,7 +938,7 @@ class _PickupMapState extends State<PickupMap> {
                                   ),
                                   SizedBox(height: 4.h),
                                   Text(
-                                    "We haven't launched in this area yet.",
+                                    description,
                                     style: TextStyle(fontSize: 13.sp, color: colors.textSecondary),
                                   ),
                                 ],
@@ -935,10 +949,10 @@ class _PickupMapState extends State<PickupMap> {
                         SizedBox(height: 16.h),
                         AppButton(
                           width: double.infinity,
-                          onPressed: () => context.push('/address_picker'),
+                          onPressed: onButtonPressed,
                           backgroundColor: colors.accentOrange,
                           borderRadius: KBorderSize.borderMedium,
-                          buttonText: "Change Location",
+                          buttonText: buttonText,
                           textStyle: TextStyle(fontSize: 15.sp, color: Colors.white, fontWeight: FontWeight.w600),
                         ),
                       ],

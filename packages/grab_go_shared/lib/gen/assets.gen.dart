@@ -121,6 +121,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/box-iso.svg
   String get boxIso => 'lib/assets/icons/box-iso.svg';
 
+  /// File path: lib/assets/icons/briefcase-business.svg
+  String get briefcaseBusiness => 'lib/assets/icons/briefcase-business.svg';
+
   /// File path: lib/assets/icons/brush-cleaning.svg
   String get brushCleaning => 'lib/assets/icons/brush-cleaning.svg';
 
@@ -315,6 +318,9 @@ class $LibAssetsIconsGen {
 
   /// File path: lib/assets/icons/mail.svg
   String get mail => 'lib/assets/icons/mail.svg';
+
+  /// File path: lib/assets/icons/map-pin-simple-fill.svg
+  String get mapPinSimpleFill => 'lib/assets/icons/map-pin-simple-fill.svg';
 
   /// File path: lib/assets/icons/map-pin.svg
   String get mapPin => 'lib/assets/icons/map-pin.svg';
@@ -572,6 +578,7 @@ class $LibAssetsIconsGen {
     binMinusIn,
     bin,
     boxIso,
+    briefcaseBusiness,
     brushCleaning,
     calendar,
     camera,
@@ -635,6 +642,7 @@ class $LibAssetsIconsGen {
     logIn,
     logOut,
     mail,
+    mapPinSimpleFill,
     mapPin,
     map,
     mediaImagePlus,

@@ -475,10 +475,13 @@ model UserAddress {
   city             String?
   area             String?
   label            AddressLabel @default(home)
+  customLabel      String?
   buildingType     BuildingType @default(house)
   unitNumber       String?
   floor            String?
   instructions     String?
+  isComplete       Boolean      @default(false)
+  isTemporary      Boolean      @default(false)
   isDefault        Boolean      @default(false)
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt

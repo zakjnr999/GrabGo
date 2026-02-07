@@ -44,35 +44,31 @@ class FoodRepository {
       return [];
     }
 
-    final List<FoodCategoryModel> categoriesWithFoods = [];
-    for (final category in categories) {
+    // Parallelize categorical food fetching for production performance
+    final categoryFutures = categories.map((category) async {
       try {
         final categoryFoods = await fetchFoods(categoryId: category.id);
-        categoriesWithFoods.add(
-          FoodCategoryModel(
-            id: category.id,
-            name: category.name,
-            description: category.description,
-            emoji: category.emoji,
-            isActive: category.isActive,
-            items: categoryFoods,
-          ),
+        return FoodCategoryModel(
+          id: category.id,
+          name: category.name,
+          description: category.description,
+          emoji: category.emoji,
+          isActive: category.isActive,
+          items: categoryFoods,
         );
       } catch (e) {
-        categoriesWithFoods.add(
-          FoodCategoryModel(
-            id: category.id,
-            name: category.name,
-            description: category.description,
-            emoji: category.emoji,
-            isActive: category.isActive,
-            items: [],
-          ),
+        return FoodCategoryModel(
+          id: category.id,
+          name: category.name,
+          description: category.description,
+          emoji: category.emoji,
+          isActive: category.isActive,
+          items: [],
         );
       }
-    }
+    }).toList();
 
-    return categoriesWithFoods;
+    return await Future.wait(categoryFutures);
   }
 
   /// Fetch user's recent order items for "Order Again" section

@@ -53,7 +53,7 @@ class AreaUnavailableScreen extends StatelessWidget {
           SizedBox(height: 32.h),
           AppButton(
             width: double.infinity,
-            onPressed: () => context.push('/address_picker'),
+            onPressed: () => context.push('/confirm-address'),
             backgroundColor: colors.accentOrange,
             borderRadius: KBorderSize.borderMedium,
             buttonText: "Change Location",

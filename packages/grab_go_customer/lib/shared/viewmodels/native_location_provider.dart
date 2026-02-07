@@ -8,6 +8,7 @@ import 'package:grab_go_customer/core/native/native_location_service.dart';
 import 'package:grab_go_customer/shared/models/address_model.dart';
 import 'package:grab_go_customer/shared/services/location_service.dart';
 import 'package:grab_go_shared/shared/services/cache_service.dart';
+import 'package:grab_go_customer/core/api/api_client.dart';
 
 /// Enhanced Location Provider with Native Code Integration
 ///
@@ -634,7 +635,7 @@ class NativeLocationProvider with ChangeNotifier {
     _longitude = address.longitude;
     _address = address.formattedAddress;
 
-    // Save to cache
+    // 1. Save to local cache for immediate offline availability
     await CacheService.saveUserLocation(
       latitude: address.latitude,
       longitude: address.longitude,
@@ -643,6 +644,23 @@ class NativeLocationProvider with ChangeNotifier {
 
     final addressJson = jsonEncode(address.toJson());
     await CacheService.saveData('confirmed_address_details', addressJson);
+
+    // 2. Sync with backend database
+    try {
+      final response = await addressApiService.addUserAddress(address.toJson());
+      if (response.isSuccessful && response.body != null) {
+        final savedAddress = AddressModel.fromJson(response.body!);
+        _confirmedAddress = savedAddress;
+        // Update cache with the backend-provided ID
+        await CacheService.saveData('confirmed_address_details', jsonEncode(savedAddress.toJson()));
+        debugPrint('✅ NativeLocationProvider: Address synced to backend');
+      } else {
+        debugPrint('⚠️ NativeLocationProvider: Backend sync failed with status ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('❌ NativeLocationProvider: Error syncing address to backend: $e');
+      // We don't throw here to ensure the user can still proceed with local state
+    }
 
     notifyListeners();
   }

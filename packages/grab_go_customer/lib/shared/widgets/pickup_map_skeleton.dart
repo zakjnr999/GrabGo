@@ -14,8 +14,7 @@ class PickupMapSkeleton extends StatelessWidget {
 
     return Stack(
       children: [
-        // Map Placeholder
-        Container(color: isDark ? colors.backgroundPrimary : const Color(0xFFF2F2F2)),
+        // Map Placeholder removed to keep real map visible during loading
 
         // Add a subtle loading indicator in the center to show it's active
         Center(

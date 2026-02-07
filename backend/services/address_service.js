@@ -1,9 +1,26 @@
 const prisma = require('../config/prisma');
 
 /**
- * Address Service
- * Handles user address management (CRUD)
+ * Maps incoming address data (potentially snake_case) to Prisma model fields (camelCase)
  */
+const _mapAddressData = (data) => {
+    return {
+        latitude: data.latitude,
+        longitude: data.longitude,
+        formattedAddress: data.formatted_address || data.formattedAddress,
+        city: data.city,
+        area: data.area,
+        label: data.label,
+        customLabel: data.custom_label || data.customLabel,
+        buildingType: data.building_type || data.buildingType,
+        unitNumber: data.unit_number || data.unitNumber,
+        floor: data.floor,
+        instructions: data.instructions,
+        isComplete: data.is_complete !== undefined ? data.is_complete : data.isComplete,
+        isTemporary: data.is_temporary !== undefined ? data.is_temporary : data.isTemporary,
+        isDefault: data.is_default !== undefined ? data.is_default : data.isDefault,
+    };
+};
 
 /**
  * Get all addresses for a user
@@ -27,10 +44,12 @@ const getUserAddresses = async (userId) => {
  * @param {Object} addressData
  */
 const addUserAddress = async (userId, addressData) => {
+    const mappedData = _mapAddressData(addressData);
+
     try {
         return await prisma.$transaction(async (tx) => {
             // If this is set as default, unset others
-            if (addressData.isDefault) {
+            if (mappedData.isDefault) {
                 await tx.userAddress.updateMany({
                     where: { userId, isDefault: true },
                     data: { isDefault: false },
@@ -39,7 +58,7 @@ const addUserAddress = async (userId, addressData) => {
 
             return await tx.userAddress.create({
                 data: {
-                    ...addressData,
+                    ...mappedData,
                     userId,
                 },
             });
@@ -57,10 +76,12 @@ const addUserAddress = async (userId, addressData) => {
  * @param {Object} addressData
  */
 const updateUserAddress = async (userId, addressId, addressData) => {
+    const mappedData = _mapAddressData(addressData);
+
     try {
         return await prisma.$transaction(async (tx) => {
             // If this is set as default, unset others
-            if (addressData.isDefault) {
+            if (mappedData.isDefault) {
                 await tx.userAddress.updateMany({
                     where: { userId, isDefault: true },
                     data: { isDefault: false },
@@ -69,7 +90,7 @@ const updateUserAddress = async (userId, addressId, addressData) => {
 
             return await tx.userAddress.update({
                 where: { id: addressId, userId },
-                data: addressData,
+                data: mappedData,
             });
         });
     } catch (error) {

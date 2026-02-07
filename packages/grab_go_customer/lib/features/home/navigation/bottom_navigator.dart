@@ -6,6 +6,8 @@ import 'package:grab_go_customer/features/browse/view/browse_page.dart';
 import 'package:grab_go_customer/features/home/view/home_page.dart';
 import 'package:grab_go_customer/features/profile/view/account.dart';
 import 'package:grab_go_customer/features/order/view/orders.dart';
+import 'package:grab_go_customer/shared/services/connectivity_service.dart';
+import 'package:grab_go_customer/shared/widgets/no_internet_screen.dart';
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -19,6 +21,9 @@ class BottomNavigator extends StatefulWidget {
 }
 
 class _BottomNavigatorState extends State<BottomNavigator> {
+  bool _hasNoInternet = false;
+  int? _lastCheckedIndex;
+
   void _onItemSelected(int index) {
     Provider.of<NavigationProvider>(context, listen: false).setIndex(index);
   }
@@ -32,12 +37,34 @@ class _BottomNavigatorState extends State<BottomNavigator> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _checkConnectivity();
+  }
+
+  Future<void> _checkConnectivity() async {
+    final hasInternet = await ConnectivityService.hasInternetConnection();
+    if (!mounted) return;
+    setState(() {
+      _hasNoInternet = !hasInternet;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final navigationProvider = Provider.of<NavigationProvider>(context);
     final selectedIndex = navigationProvider.selectedIndex;
+    final bool shouldShowNoInternet = _hasNoInternet && selectedIndex != 4;
     Size size = MediaQuery.sizeOf(context);
+
+    if (_lastCheckedIndex != selectedIndex) {
+      _lastCheckedIndex = selectedIndex;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _checkConnectivity();
+      });
+    }
 
     return Scaffold(
       backgroundColor: colors.backgroundPrimary,
@@ -49,7 +76,17 @@ class _BottomNavigatorState extends State<BottomNavigator> {
           systemNavigationBarDividerColor: Colors.transparent,
           systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         ),
-        child: IndexedStack(index: selectedIndex, children: _screens),
+        child: Stack(
+          children: [
+            IndexedStack(index: selectedIndex, children: _screens),
+            if (shouldShowNoInternet)
+              Positioned.fill(
+                child: NoInternetScreen(
+                  onRetry: _checkConnectivity,
+                ),
+              ),
+          ],
+        ),
       ),
       bottomNavigationBar: Container(
         height: size.height * 0.16,

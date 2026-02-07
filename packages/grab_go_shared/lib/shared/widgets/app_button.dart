@@ -14,6 +14,7 @@ class AppButton extends StatelessWidget {
   final double? borderRadius;
   final Color? borderColor;
   final Color? textColor;
+  final bool isLoading;
 
   const AppButton({
     super.key,
@@ -27,6 +28,7 @@ class AppButton extends StatelessWidget {
     this.borderRadius = 8.0,
     this.borderColor,
     this.textColor,
+    this.isLoading = false,
   });
 
   String get buttonTextValue => buttonText;
@@ -42,9 +44,10 @@ class AppButton extends StatelessWidget {
       width: width,
       height: height,
       child: TextButton(
-        onPressed: onPressed,
+        onPressed: isLoading ? null : onPressed,
         style: TextButton.styleFrom(
           backgroundColor: backgroundColor ?? colors.accentOrange,
+          disabledBackgroundColor: (backgroundColor ?? colors.accentOrange).withOpacity(0.6),
           foregroundColor: Colors.white,
           padding: padding ?? EdgeInsets.all(KSpacing.md15.r),
           shape: RoundedRectangleBorder(
@@ -52,7 +55,16 @@ class AppButton extends StatelessWidget {
             side: BorderSide(color: borderColor ?? Colors.transparent, width: borderColor != null ? 1 : 0),
           ),
         ),
-        child: Text(buttonTextValue, style: getButtonTextStyle(context)),
+        child: isLoading
+            ? SizedBox(
+                width: 20.r,
+                height: 20.r,
+                child: const CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Text(buttonTextValue, style: getButtonTextStyle(context)),
       ),
     );
   }

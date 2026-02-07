@@ -76,6 +76,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool _hasNoInternet = false;
   bool _isRefreshingLocation = false;
   bool _isSwipeRefreshing = false;
+  bool _isRetrying = false;
+  double? _lastLat;
+  double? _lastLng;
 
   late final ValueNotifier<double> _scrollOffsetNotifier;
   static const double _collapsedHeight = 70.0;
@@ -112,6 +115,44 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     _fabAnimationController.forward();
     _initializeData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locationProvider = Provider.of<NativeLocationProvider>(context);
+
+    // Detect significant location change and refresh if needed
+    if (locationProvider.latitude != null && locationProvider.longitude != null) {
+      bool shouldRefresh = false;
+
+      if (_lastLat == null || _lastLng == null) {
+        // Initial coordinates acquisition
+        _lastLat = locationProvider.latitude;
+        _lastLng = locationProvider.longitude;
+        // No refresh here because _initializeData handles it
+      } else {
+        // Simple coordinate delta as a fast, synchronous proxy for distance
+        // 0.005 degrees is roughly 550 meters
+        final latDelta = (locationProvider.latitude! - _lastLat!).abs();
+        final lngDelta = (locationProvider.longitude! - _lastLng!).abs();
+
+        if (latDelta > 0.005 || lngDelta > 0.005) {
+          shouldRefresh = true;
+          _lastLat = locationProvider.latitude;
+          _lastLng = locationProvider.longitude;
+        }
+      }
+
+      if (shouldRefresh) {
+        if (kDebugMode) {
+          print('📍 [HOME] Significant location change detected, triggering refresh...');
+        }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _refreshData(refreshAllServices: true);
+        });
+      }
+    }
   }
 
   @override
@@ -192,14 +233,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       if (!hasInternet && !hasCachedData) {
         setState(() {
           _hasNoInternet = true;
+          _isRetrying = false;
         });
         return;
       }
 
-      // Clear no-internet state if we have connectivity or cache
-      if (_hasNoInternet) {
+      // Clear states if we have connectivity or cache
+      if (_hasNoInternet || _isRetrying) {
         setState(() {
           _hasNoInternet = false;
+          _isRetrying = false;
         });
       }
 
@@ -218,7 +261,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     });
   }
 
-  Future<void> _refreshData() async {
+  void _onRetry() {
+    setState(() {
+      _hasNoInternet = false;
+      _isRetrying = true;
+    });
+    _initializeData();
+  }
+
+  Future<void> _refreshData({bool refreshAllServices = false}) async {
     // Only set swipe refresh if we're not already refreshing from location change
     if (!_isRefreshingLocation && mounted) {
       setState(() {
@@ -229,29 +280,46 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
 
     if (kDebugMode) {
-      print('🔄 [HOME] Refreshing data...');
+      print('🔄 [HOME] Refreshing data (all services: $refreshAllServices)...');
       final locationData = CacheService.getUserLocation();
       print('📍 [HOME] Current location: ${locationData?['latitude']}, ${locationData?['longitude']}');
       print('🏪 [HOME] Active service: ${serviceProvider.currentService}');
     }
 
     try {
-      if (serviceProvider.isFoodService) {
-        // Refresh all food data
+      if (refreshAllServices) {
+        // Refresh EVERYTHING when location changes
+        final foodProvider = Provider.of<FoodProvider>(context, listen: false);
+        final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
+        final pharmacyProvider = Provider.of<PharmacyProvider>(context, listen: false);
+        final grabMartProvider = Provider.of<GrabMartProvider>(context, listen: false);
+
+        await Future.wait([
+          foodProvider.refreshAll(forceRefresh: true),
+          groceryProvider.refreshAll(forceRefresh: true),
+          pharmacyProvider.refreshAll(forceRefresh: true),
+          grabMartProvider.refreshAll(forceRefresh: true),
+        ]);
+      } else if (serviceProvider.isFoodService) {
+        // Refresh only active service
         final provider = Provider.of<FoodProvider>(context, listen: false);
         await provider.refreshAll(forceRefresh: true);
       } else if (serviceProvider.isGroceryService) {
-        // Refresh grocery data
+        // Refresh only active service
         final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
         await groceryProvider.refreshAll(forceRefresh: true);
       } else if (serviceProvider.isPharmacyService) {
-        // Refresh pharmacy data
+        // Refresh only active service
         final pharmacyProvider = Provider.of<PharmacyProvider>(context, listen: false);
         await pharmacyProvider.refreshAll(forceRefresh: true);
       } else if (serviceProvider.isStoresService) {
-        // Refresh GrabMart data
+        // Refresh only active service
         final grabMartProvider = Provider.of<GrabMartProvider>(context, listen: false);
         await grabMartProvider.refreshAll(forceRefresh: true);
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ [HOME] Error refreshing data: $e');
       }
     } finally {
       if (mounted) {
@@ -319,8 +387,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       }
     }
 
-    // Force skeleton if refreshing location or swipe refresh
-    if (_isRefreshingLocation || _isSwipeRefreshing) {
+    // Force skeleton if refreshing location, swipe refresh, or retrying
+    if (_isRefreshingLocation || _isSwipeRefreshing || _isRetrying) {
       shouldShowSkeleton = true;
       shouldShowEmptyState = false;
     }
@@ -347,7 +415,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       child: Scaffold(
         backgroundColor: colors.backgroundPrimary,
         body: _hasNoInternet
-            ? SafeArea(child: NoInternetScreen(onRetry: _initializeData))
+            ? SafeArea(child: NoInternetScreen(onRetry: _onRetry))
             : SafeArea(
                 top: false,
                 child: ClipRect(
@@ -373,10 +441,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                       serviceName: serviceProvider.isFoodService
                                           ? "Foods"
                                           : serviceProvider.isGroceryService
-                                              ? "Groceries"
-                                              : serviceProvider.isPharmacyService
-                                                  ? "Pharmacy"
-                                                  : "GrabMart",
+                                          ? "Groceries"
+                                          : serviceProvider.isPharmacyService
+                                          ? "Pharmacy"
+                                          : "GrabMart",
                                       isAreaUnavailable: isFoodUnavailable,
                                     ),
                                   ),
@@ -425,51 +493,48 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                   );
                                                 },
                                                 child: Column(
-                                                      key: ValueKey<bool>(serviceProvider.isFoodService),
-                                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                                      children: [
-                                                        _buildCategories(
-                                                          serviceProvider,
-                                                          foodProvider,
-                                                          groceryProvider,
-                                                          isDark,
-                                                          size,
-                                                          colors,
-                                                        ),
-                                                        SizedBox(height: KSpacing.md.h),
-                                                        // Service-specific sections
-                                                        if (serviceProvider.isFoodService ||
-                                                            serviceProvider.isGroceryService) ...[
-                                                          _buildDealsSection(serviceProvider, groceryProvider),
-                                                          _buildFreshArrivalsSection(serviceProvider, groceryProvider),
-                                                          _buildOrderAgainSection(serviceProvider),
-                                                          _buildPopularSection(serviceProvider, foodProvider),
-                                                          _buildBuyAgainSection(serviceProvider, groceryProvider),
-                                                          _buildPromoBanners(serviceProvider),
-                                                          _buildTopRatedSection(serviceProvider, foodProvider),
-                                                          _buildBrowseAllGroceriesSection(
-                                                            serviceProvider,
-                                                            groceryProvider,
-                                                          ),
-                                                        ] else if (serviceProvider.isPharmacyService) ...[
-                                                          _buildPharmacyOnSaleSection(),
-                                                          _buildPharmacyPopularSection(),
-                                                          _buildPharmacyTopRatedSection(),
-                                                          _buildPharmacyItemsGrid(),
-                                                        ] else if (serviceProvider.isStoresService) ...[
-                                                          _buildGrabMartSpecialOffersSection(),
-                                                          _buildGrabMartQuickPicksSection(),
-                                                          _buildGrabMartTopRatedSection(),
-                                                          _buildGrabMartItemsGrid(),
-                                                        ],
-                                                      ],
+                                                  key: ValueKey<bool>(serviceProvider.isFoodService),
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    _buildCategories(
+                                                      serviceProvider,
+                                                      foodProvider,
+                                                      groceryProvider,
+                                                      isDark,
+                                                      size,
+                                                      colors,
                                                     ),
-                                            ),
-                                          ],
-                                        ),
+                                                    SizedBox(height: KSpacing.md.h),
+                                                    // Service-specific sections
+                                                    if (serviceProvider.isFoodService ||
+                                                        serviceProvider.isGroceryService) ...[
+                                                      _buildDealsSection(serviceProvider, groceryProvider),
+                                                      _buildFreshArrivalsSection(serviceProvider, groceryProvider),
+                                                      _buildOrderAgainSection(serviceProvider),
+                                                      _buildPopularSection(serviceProvider, foodProvider),
+                                                      _buildBuyAgainSection(serviceProvider, groceryProvider),
+                                                      _buildPromoBanners(serviceProvider),
+                                                      _buildTopRatedSection(serviceProvider, foodProvider),
+                                                      _buildBrowseAllGroceriesSection(serviceProvider, groceryProvider),
+                                                    ] else if (serviceProvider.isPharmacyService) ...[
+                                                      _buildPharmacyOnSaleSection(),
+                                                      _buildPharmacyPopularSection(),
+                                                      _buildPharmacyTopRatedSection(),
+                                                      _buildPharmacyItemsGrid(),
+                                                    ] else if (serviceProvider.isStoresService) ...[
+                                                      _buildGrabMartSpecialOffersSection(),
+                                                      _buildGrabMartQuickPicksSection(),
+                                                      _buildGrabMartTopRatedSection(),
+                                                      _buildGrabMartItemsGrid(),
+                                                    ],
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                  ),
                                 ),
                               ),
-                            ),
                             if (!shouldShowSkeleton)
                               ..._buildRecommendedSectionSlivers(serviceProvider, foodProvider, colors, size, isDark),
 
@@ -522,8 +587,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           );
                         },
                       ),
-
-
                     ],
                   ),
                 ),
@@ -825,7 +888,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 Expanded(
                   child: GestureDetector(
                     onTap: () async {
-                      final locationChanged = await context.push("/location-picker");
+                      final locationChanged = await context.push("/confirm-address");
 
                       if (locationChanged == true && mounted) {
                         setState(() {
