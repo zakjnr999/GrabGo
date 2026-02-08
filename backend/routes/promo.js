@@ -13,6 +13,96 @@ const {
 const router = express.Router();
 
 /**
+ * @route   POST /api/promo/validate-public
+ * @desc    Validate a promo code without auth (for signup)
+ * @access  Public
+ */
+router.post('/validate-public', [
+    body('code').notEmpty().withMessage('Promo code is required')
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                success: false,
+                errors: errors.array()
+            });
+        }
+
+        const { code } = req.body;
+        const promo = await prisma.promoCode.findUnique({
+            where: { code: code.toUpperCase() },
+            include: { targetedUsers: { select: { id: true } } }
+        });
+
+        if (!promo || !promo.isActive) {
+            return res.status(400).json({
+                success: false,
+                valid: false,
+                error: 'Invalid or inactive promo code'
+            });
+        }
+
+        const now = new Date();
+        if (promo.startDate && now < promo.startDate) {
+            return res.status(400).json({
+                success: false,
+                valid: false,
+                error: 'This promo code is not yet active'
+            });
+        }
+        if (promo.endDate && now > promo.endDate) {
+            return res.status(400).json({
+                success: false,
+                valid: false,
+                error: 'This promo code has expired'
+            });
+        }
+
+        if (promo.maxUses !== null && promo.currentUses >= promo.maxUses) {
+            return res.status(400).json({
+                success: false,
+                valid: false,
+                error: 'This promo code has reached its usage limit'
+            });
+        }
+
+        if (promo.targetedUsers.length > 0) {
+            return res.status(400).json({
+                success: false,
+                valid: false,
+                error: 'This promo code is only available to selected users'
+            });
+        }
+
+        const creditMessage = promo.type === 'fixed'
+            ? `Promo code applied. You'll receive GHS ${promo.value} credits after signup.`
+            : 'Promo code applied. Use it at checkout.';
+
+        return res.json({
+            success: true,
+            valid: true,
+            promo: {
+                code: promo.code,
+                type: promo.type,
+                value: promo.value,
+                minOrderAmount: promo.minOrderAmount,
+                maxDiscountAmount: promo.maxDiscountAmount,
+                applicableOrderTypes: promo.applicableOrderTypes,
+                firstOrderOnly: promo.firstOrderOnly
+            },
+            message: promo.firstOrderOnly ? creditMessage : creditMessage
+        });
+    } catch (error) {
+        console.error('Error validating promo code (public):', error.message);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to validate promo code'
+        });
+    }
+});
+
+/**
  * @route   POST /api/promo/validate
  * @desc    Validate a promo code
  * @access  Protected

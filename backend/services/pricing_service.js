@@ -367,12 +367,19 @@ const calculateCartPricing = async (cart, options = {}) => {
     });
     let creditsApplied = 0;
     let totalAfterCredits = totalBeforeCredits;
+    let creditBalance = 0;
+    let availableBalance = 0;
     const shouldUseCredits = useCredits !== false;
 
     if (userId) {
         const creditResult = await creditService.calculateCreditApplication(userId, totalBeforeCredits, shouldUseCredits);
         creditsApplied = toNumber(creditResult?.creditsApplied, 0);
         totalAfterCredits = toNumber(creditResult?.remainingPayment, totalBeforeCredits);
+        creditBalance = toNumber(creditResult?.creditBalance, 0);
+        availableBalance = toNumber(
+            creditResult?.availableBalance,
+            Number.isFinite(creditBalance) ? creditBalance : 0
+        );
     }
 
     return {
@@ -387,7 +394,9 @@ const calculateCartPricing = async (cart, options = {}) => {
         estimatedDeliveryMin: estimatedDelivery.minMinutes,
         estimatedDeliveryMax: estimatedDelivery.maxMinutes,
         creditsApplied,
-        totalAfterCredits
+        totalAfterCredits,
+        creditBalance,
+        availableBalance
     };
 };
 

@@ -73,9 +73,10 @@ class _PaymentFailedState extends State<PaymentFailed> with TickerProviderStateM
       ),
     );
 
-    _bounceAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _bounceController, curve: Curves.elasticOut),
-    );
+    _bounceAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _bounceController, curve: Curves.elasticOut));
 
     _animationController.forward();
     HapticFeedback.mediumImpact();
@@ -119,12 +120,7 @@ class _PaymentFailedState extends State<PaymentFailed> with TickerProviderStateM
                               width: 120.w,
                               height: 120.h,
                               margin: EdgeInsets.only(bottom: 32.h),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: RadialGradient(
-                                  colors: [colors.error, colors.error.withValues(alpha: 0.8)],
-                                ),
-                              ),
+                              decoration: BoxDecoration(shape: BoxShape.circle, color: colors.error),
                               child: AnimatedBuilder(
                                 animation: _bounceController,
                                 builder: (context, child) {

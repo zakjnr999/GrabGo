@@ -107,10 +107,7 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
   }
 
   OrderModel _convertAPIOrderToOrderModel(Map<String, dynamic> apiOrder) {
-    // Convert API order to OrderModel
     final items = (apiOrder['items'] as List? ?? []).map((item) {
-      // Items have name, quantity, price, and image stored directly
-      // Also may have food populated with name, price, image
       final itemName = item['name'] ?? item['food']?['name'] ?? 'Unknown Item';
       final itemPrice = (item['price'] ?? item['food']?['price'] ?? 0.0).toDouble();
       final itemImage = item['image'] ?? item['food']?['image'];
@@ -118,7 +115,6 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
       return OrderItem(name: itemName, quantity: item['quantity'] ?? 1, price: itemPrice, image: itemImage);
     }).toList();
 
-    // Determine order status
     OrderStatus status;
     final orderStatus = (apiOrder['status'] as String? ?? '').toLowerCase();
     switch (orderStatus) {
@@ -142,7 +138,6 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
         status = OrderStatus.pending;
     }
 
-    // Extract restaurant name and logo - handle both populated object and ID
     String restaurantName = 'Unknown Restaurant';
     String? restaurantLogo;
     if (apiOrder['restaurant'] != null && apiOrder['restaurant'] is Map) {
@@ -158,7 +153,6 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
       restaurantName = 'Restaurant ${apiOrder['restaurant'].substring(0, 8)}...';
     }
 
-    // Parse dates - handle both ISO strings and Date objects
     DateTime? parseDate(dynamic dateValue) {
       if (dateValue == null) return null;
       if (dateValue is String) {

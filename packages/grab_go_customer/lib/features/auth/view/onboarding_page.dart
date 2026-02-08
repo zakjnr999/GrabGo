@@ -6,7 +6,6 @@ import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/shared/services/storage_service.dart';
 
-/// Reusable onboarding page widget to eliminate code duplication
 class OnboardingPage extends StatefulWidget {
   final AssetGenImage image;
   final String title;
@@ -189,16 +188,8 @@ class _OnboardingPageState extends State<OnboardingPage> with SingleTickerProvid
         child: Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]),
+            color: colors.accentOrange,
             borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-            boxShadow: [
-              BoxShadow(
-                color: colors.accentOrange.withValues(alpha: 0.5),
-                blurRadius: 12,
-                spreadRadius: 0,
-                offset: const Offset(0, 8),
-              ),
-            ],
           ),
           child: AppButton(
             onPressed: _handleGetStarted,
@@ -227,26 +218,12 @@ class _OnboardingPageState extends State<OnboardingPage> with SingleTickerProvid
         SizedBox(width: 12.w),
         Expanded(
           flex: 2,
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]),
-              borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-              boxShadow: [
-                BoxShadow(
-                  color: colors.accentOrange.withValues(alpha: 0.4),
-                  blurRadius: 12,
-                  spreadRadius: 0,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: AppButton(
-              onPressed: _handleContinue,
-              backgroundColor: Colors.transparent,
-              borderRadius: KBorderSize.borderRadius15,
-              buttonText: AppStrings.cont,
-              textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15.sp),
-            ),
+          child: AppButton(
+            onPressed: _handleContinue,
+            backgroundColor: colors.accentOrange,
+            borderRadius: KBorderSize.borderRadius15,
+            buttonText: AppStrings.cont,
+            textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15.sp),
           ),
         ),
       ],

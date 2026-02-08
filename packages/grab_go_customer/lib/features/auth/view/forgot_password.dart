@@ -126,7 +126,7 @@ class _VerifyPhoneState extends State<ForgotPassword> with SingleTickerProviderS
           ),
           child: SafeArea(
             child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w, vertical: KSpacing.xl40.h),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -142,21 +142,7 @@ class _VerifyPhoneState extends State<ForgotPassword> with SingleTickerProviderS
                         width: 100.h,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [
-                              colors.accentViolet.withValues(alpha: 0.2),
-                              colors.accentOrange.withValues(alpha: 0.2),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: colors.accentViolet.withValues(alpha: 0.2),
-                              blurRadius: 30,
-                              spreadRadius: 5,
-                            ),
-                          ],
+                          color: colors.accentViolet.withValues(alpha: 0.2),
                         ),
                         child: Center(
                           child: SvgPicture.asset(
@@ -260,32 +246,21 @@ class _VerifyPhoneState extends State<ForgotPassword> with SingleTickerProviderS
                               LoadingDialog.instance().hide();
                             },
                             child: Container(
-                              height: 56.h,
                               decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [colors.accentViolet, colors.accentViolet.withValues(alpha: 0.8)],
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                ),
-                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
                                 boxShadow: [
                                   BoxShadow(
                                     color: colors.accentViolet.withValues(alpha: 0.4),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 8),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
                                   ),
                                 ],
                               ),
-                              child: Center(
-                                child: Text(
-                                  "Send Reset Link",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
+                              child: AppButton(
+                                onPressed: () {},
+                                backgroundColor: colors.accentViolet,
+                                borderRadius: KBorderSize.borderRadius15,
+                                buttonText: AppStrings.loginForgotPassword,
+                                textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15.sp),
                               ),
                             ),
                           ),

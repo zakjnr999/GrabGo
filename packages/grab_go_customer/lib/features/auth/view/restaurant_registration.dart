@@ -390,7 +390,7 @@ class _RestaurantRegistrationState extends State<RestaurantRegistration> with Si
             value: ThemeHelper.getSystemUiOverlayStyle(context),
             child: SafeArea(
               child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w, vertical: KSpacing.xl40.h),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -404,21 +404,7 @@ class _RestaurantRegistrationState extends State<RestaurantRegistration> with Si
                           width: 100.h,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              colors: [
-                                colors.accentOrange.withValues(alpha: 0.2),
-                                colors.accentViolet.withValues(alpha: 0.2),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: colors.accentOrange.withValues(alpha: 0.2),
-                                blurRadius: 30,
-                                spreadRadius: 5,
-                              ),
-                            ],
+                            color: colors.accentOrange.withValues(alpha: 0.2),
                           ),
                           child: Center(
                             child: SvgPicture.asset(
@@ -815,7 +801,6 @@ class _RestaurantRegistrationState extends State<RestaurantRegistration> with Si
                       decoration: BoxDecoration(
                         color: colors.accentOrange.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8.r),
-                        border: Border.all(color: colors.accentOrange.withValues(alpha: 0.3), width: 1),
                       ),
                       child: Row(
                         children: [

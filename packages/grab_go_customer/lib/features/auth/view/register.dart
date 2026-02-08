@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -196,7 +197,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
   }
 
   Future<void> _navigateAfterRegistration(BuildContext context) async {
-    // New flow: Move directly to confirm-address
     if (context.mounted) {
       context.go("/confirm-address");
     }
@@ -391,15 +391,19 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       return;
     }
 
-    // Set loading state
     setState(() {
       referralCodeError = null;
       isValidatingReferralCode = true;
     });
 
     try {
+      final baseUri = Uri.parse(AppConfig.apiBaseUrl);
+      final basePath = baseUri.path;
+      final hasApiPrefix = basePath == '/api' || basePath.endsWith('/api') || basePath.endsWith('/api/');
+      final endpoint = hasApiPrefix ? '/promo/validate-public' : '/api/promo/validate-public';
+
       final response = await chopperClient
-          .post(Uri.parse('${AppConfig.apiBaseUrl}/api/referral/validate'), body: {'code': code})
+          .post(endpoint as Uri, body: {'code': code})
           .timeout(
             const Duration(seconds: 10),
             onTimeout: () {
@@ -407,13 +411,21 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
             },
           );
 
-      if (response.body == null) {
+      Map<String, dynamic>? data;
+      if (response.body is Map) {
+        data = Map<String, dynamic>.from(response.body as Map);
+      } else if ((response.bodyString ?? '').isNotEmpty) {
+        final decoded = jsonDecode(response.bodyString!);
+        if (decoded is Map) {
+          data = Map<String, dynamic>.from(decoded);
+        }
+      }
+
+      if (data == null) {
         throw Exception('Empty response from server');
       }
 
-      final data = response.body as Map<String, dynamic>;
-
-      if (data['valid'] == true) {
+      if (response.isSuccessful && data['valid'] == true) {
         setState(() {
           isReferralCodeValid = true;
           referralCodeError = null;
@@ -423,14 +435,15 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         if (mounted) {
           AppToastMessage.show(
             context: context,
-            message: "Referral code applied! You'll get GHS ${data['discount']} off your first order.",
+            message: data['message']?.toString() ?? "Promo code applied. It will be used at checkout.",
             backgroundColor: Colors.green,
           );
         }
       } else {
+        final message = data['error']?.toString() ?? data['message']?.toString();
         setState(() {
           isReferralCodeValid = false;
-          referralCodeError = "Invalid referral code";
+          referralCodeError = message?.isNotEmpty == true ? message : "Invalid promo code";
           isValidatingReferralCode = false;
         });
       }
@@ -649,7 +662,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
           value: ThemeHelper.getSystemUiOverlayStyle(context),
           child: SafeArea(
             child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w, vertical: KSpacing.xl40.h),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -663,21 +676,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                         width: 100.h,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [
-                              colors.accentGreen.withValues(alpha: 0.2),
-                              colors.accentOrange.withValues(alpha: 0.2),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: colors.accentGreen.withValues(alpha: 0.2),
-                              blurRadius: 30,
-                              spreadRadius: 5,
-                            ),
-                          ],
+                          color: colors.accentGreen.withValues(alpha: 0.2),
                         ),
                         child: Center(
                           child: SvgPicture.asset(
@@ -932,7 +931,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                                 package: 'grab_go_shared',
                                 width: KIconSize.md,
                                 height: KIconSize.md,
-                                color: colors.iconSecondary,
+                                colorFilter: ColorFilter.mode(colors.iconSecondary, BlendMode.srcIn),
                               ),
                             ),
                             suffixIcon: referralCodeController.text.isEmpty
@@ -965,19 +964,8 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                                     child: Container(
                                       constraints: BoxConstraints(maxWidth: 80.w),
                                       decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [colors.accentGreen, colors.accentGreen.withOpacity(0.8)],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ),
+                                        color: colors.accentGreen,
                                         borderRadius: BorderRadius.circular(12.r),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: colors.accentGreen.withOpacity(0.3),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ],
                                       ),
                                       child: Material(
                                         color: Colors.transparent,
@@ -1015,11 +1003,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                               child: Container(
                                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                                 decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [colors.accentGreen.withOpacity(0.2), colors.accentGreen.withOpacity(0.12)],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
+                                  color: colors.accentGreen.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(12.r),
                                 ),
                                 child: Row(
@@ -1027,7 +1011,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                                     Container(
                                       padding: EdgeInsets.all(6.r),
                                       decoration: BoxDecoration(
-                                        color: colors.accentGreen.withOpacity(0.2),
+                                        color: colors.accentGreen.withValues(alpha: 0.2),
                                         borderRadius: BorderRadius.circular(8.r),
                                       ),
                                       child: SvgPicture.asset(
@@ -1166,36 +1150,23 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
 
                           SizedBox(height: KSpacing.lg25.h),
 
-                          GestureDetector(
-                            onTap: handleRegister,
-                            child: Container(
-                              height: 56.h,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [colors.accentGreen, colors.accentGreen.withValues(alpha: 0.8)],
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
+                          Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              boxShadow: [
+                                BoxShadow(
+                                  color: colors.accentGreen.withValues(alpha: 0.4),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
                                 ),
-                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: colors.accentGreen.withValues(alpha: 0.4),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
-                              ),
-                              child: Center(
-                                child: Text(
-                                  AppStrings.register,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ),
+                              ],
+                            ),
+                            child: AppButton(
+                              onPressed: handleRegister,
+                              backgroundColor: colors.accentGreen,
+                              borderRadius: KBorderSize.borderRadius15,
+                              buttonText: AppStrings.register,
+                              textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15.sp),
                             ),
                           ),
                         ],
@@ -1267,14 +1238,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                               decoration: BoxDecoration(
                                 color: colors.backgroundSecondary,
                                 borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                                border: Border.all(color: colors.border, width: 1.5),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: colors.shadow.withValues(alpha: 0.05),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1313,14 +1276,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                               decoration: BoxDecoration(
                                 color: colors.backgroundSecondary,
                                 borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                                border: Border.all(color: colors.border, width: 1.5),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: colors.shadow.withValues(alpha: 0.05),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,

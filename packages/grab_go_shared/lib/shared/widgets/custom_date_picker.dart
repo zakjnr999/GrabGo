@@ -195,14 +195,14 @@ class _CustomDatePickerState extends State<CustomDatePicker> with SingleTickerPr
                   onTap: () => _selectYear(year),
                   child: Container(
                     padding: EdgeInsets.symmetric(vertical: KSpacing.md.h, horizontal: KSpacing.md.w),
-                    color: isSelected ? colors.accentOrange.withValues(alpha: 0.1) : Colors.transparent,
+                    color: isSelected ? colors.accentGreen.withValues(alpha: 0.1) : Colors.transparent,
                     child: Center(
                       child: Text(
                         '$year',
                         style: TextStyle(
                           fontSize: KTextSize.medium.sp,
                           fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                          color: isSelected ? colors.accentOrange : colors.textPrimary,
+                          color: isSelected ? colors.accentGreen : colors.textPrimary,
                         ),
                       ),
                     ),
@@ -240,7 +240,7 @@ class _CustomDatePickerState extends State<CustomDatePicker> with SingleTickerPr
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            margin: EdgeInsets.only(top: KSpacing.sm.h),
+            margin: EdgeInsets.only(top: 16.h),
             width: 40.w,
             height: 4.h,
             decoration: BoxDecoration(
@@ -291,8 +291,8 @@ class _CustomDatePickerState extends State<CustomDatePicker> with SingleTickerPr
                         style: TextStyle(
                           fontSize: KTextSize.large.sp,
                           fontWeight: FontWeight.w600,
-                          color: colors.accentOrange,
-                          decorationColor: colors.accentOrange,
+                          color: colors.accentGreen,
+                          decorationColor: colors.accentGreen,
                         ),
                       ),
                       SvgPicture.asset(
@@ -300,7 +300,7 @@ class _CustomDatePickerState extends State<CustomDatePicker> with SingleTickerPr
                         package: 'grab_go_shared',
                         height: 20.h,
                         width: 20.w,
-                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                        colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
                       ),
                     ],
                   ),
@@ -385,13 +385,13 @@ class _CustomDatePickerState extends State<CustomDatePicker> with SingleTickerPr
                         duration: const Duration(milliseconds: 200),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? colors.accentOrange
+                              ? colors.accentGreen
                               : isToday && isInMonth
-                              ? colors.accentOrange.withValues(alpha: 0.1)
+                              ? colors.accentGreen.withValues(alpha: 0.1)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(KBorderSize.borderRadius8),
                           border: isToday && !isSelected && isInMonth
-                              ? Border.all(color: colors.accentOrange.withValues(alpha: 0.3), width: 1)
+                              ? Border.all(color: colors.accentGreen.withValues(alpha: 0.3), width: 1)
                               : null,
                         ),
                         child: Center(
@@ -424,24 +424,13 @@ class _CustomDatePickerState extends State<CustomDatePicker> with SingleTickerPr
             padding: EdgeInsets.symmetric(horizontal: KSpacing.md.w),
             child: Container(
               width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]),
-                borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                boxShadow: [
-                  BoxShadow(
-                    color: colors.accentOrange.withValues(alpha: 0.5),
-                    blurRadius: 12,
-                    spreadRadius: 0,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(KBorderSize.borderRadius15)),
               child: AppButton(
                 onPressed: () {
                   widget.onDateSelected(_selectedDate);
                   Navigator.of(context).pop();
                 },
-                backgroundColor: Colors.transparent,
+                backgroundColor: colors.accentGreen,
                 borderRadius: KBorderSize.borderRadius15,
                 buttonText: "Done",
                 textStyle: TextStyle(

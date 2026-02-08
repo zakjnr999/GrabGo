@@ -45,6 +45,8 @@ class Cart extends StatelessWidget {
             final double creditsApplied = provider.creditsApplied;
             final double total = provider.total;
             final bool isPricingLoading = provider.isPricingLoading;
+            final bool hasCredits = provider.availableCredits > 0;
+            final bool useCredits = hasCredits && provider.useCredits;
 
             return Column(
               children: [
@@ -197,7 +199,9 @@ class Cart extends StatelessWidget {
                                           ),
                                           SizedBox(height: 2.h),
                                           Text(
-                                            "Apply your GrabGo credits to this order",
+                                            hasCredits
+                                                ? "Apply your GrabGo credits to this order"
+                                                : "No GrabGo credits available yet. Earn credits from \nreferrals.",
                                             style: TextStyle(
                                               color: colors.textSecondary,
                                               fontWeight: FontWeight.w500,
@@ -208,10 +212,13 @@ class Cart extends StatelessWidget {
                                       ),
                                       const Spacer(),
                                       CustomSwitch(
-                                        value: provider.useCredits,
-                                        onChanged: (value) => provider.setUseCredits(value),
+                                        value: useCredits,
+                                        onChanged: (value) {
+                                          if (!hasCredits) return;
+                                          provider.setUseCredits(value);
+                                        },
                                         activeColor: colors.accentOrange,
-                                        inactiveColor: colors.backgroundSecondary,
+                                        inactiveColor: colors.inputBackground,
                                       ),
                                     ],
                                   ),
@@ -456,11 +463,7 @@ class Cart extends StatelessWidget {
         children: [
           Text(
             "Total Amount",
-            style: TextStyle(
-              color: colors.textSecondary,
-              fontSize: 13.sp,
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w600),
           ),
           const Spacer(),
           Text(

@@ -14,6 +14,7 @@ class CartProvider extends ChangeNotifier {
   double _tax = 0.0;
   double _rainFee = 0.0;
   double _creditsApplied = 0.0;
+  double _availableCredits = 0.0;
   double? _total;
   int? _estimatedDeliveryMin;
   int? _estimatedDeliveryMax;
@@ -33,6 +34,7 @@ class CartProvider extends ChangeNotifier {
   double get tax => _tax;
   double get rainFee => _rainFee;
   double get creditsApplied => _creditsApplied;
+  double get availableCredits => _availableCredits;
   double get total => _total ?? (subtotal + deliveryFee + serviceFee + tax + rainFee);
   int? get estimatedDeliveryMin => _estimatedDeliveryMin;
   int? get estimatedDeliveryMax => _estimatedDeliveryMax;
@@ -162,6 +164,7 @@ class CartProvider extends ChangeNotifier {
       _tax = 0.0;
       _rainFee = 0.0;
       _creditsApplied = 0.0;
+      _availableCredits = 0.0;
       _total = null;
       _estimatedDeliveryMin = null;
       _estimatedDeliveryMax = null;
@@ -175,10 +178,18 @@ class CartProvider extends ChangeNotifier {
     _tax = (pricing['tax'] as num?)?.toDouble() ?? 0.0;
     _rainFee = (pricing['rainFee'] as num?)?.toDouble() ?? 0.0;
     _creditsApplied = (pricing['creditsApplied'] as num?)?.toDouble() ?? 0.0;
+    _availableCredits =
+        (pricing['availableBalance'] as num?)?.toDouble() ??
+        (pricing['creditBalance'] as num?)?.toDouble() ??
+        0.0;
     _total = (pricing['total'] as num?)?.toDouble();
     _estimatedDeliveryMin = (pricing['estimatedDeliveryMin'] as num?)?.toInt();
     _estimatedDeliveryMax = (pricing['estimatedDeliveryMax'] as num?)?.toInt();
     _hasPricingFromBackend = true;
+
+    if (_availableCredits <= 0 && _useCredits) {
+      _useCredits = false;
+    }
   }
 
   void _recalculateLocalPricing() {

@@ -39,6 +39,42 @@ const formatUser = (user) => {
   };
 };
 
+const applySignupPromoCredits = async (userId, promoCode) => {
+  if (!promoCode) return { applied: false, reason: "no_code" };
+
+  const code = promoCode.toUpperCase();
+
+  const promo = await prisma.promoCode.findUnique({
+    where: { code },
+    include: { targetedUsers: true },
+  });
+
+  if (!promo || !promo.isActive) return { applied: false, reason: "invalid" };
+
+  const now = new Date();
+  if (promo.startDate && now < promo.startDate) return { applied: false, reason: "not_active" };
+  if (promo.endDate && now > promo.endDate) return { applied: false, reason: "expired" };
+  if (promo.maxUses !== null && promo.currentUses >= promo.maxUses) return { applied: false, reason: "max_used" };
+  if (promo.targetedUsers.length > 0) return { applied: false, reason: "targeted_only" };
+  if (promo.type !== "fixed") return { applied: false, reason: "unsupported_type" };
+
+  const amount = Number(promo.value);
+  if (!Number.isFinite(amount) || amount <= 0) return { applied: false, reason: "invalid_amount" };
+
+  await prisma.promoCode.update({
+    where: { id: promo.id },
+    data: { currentUses: { increment: 1 } },
+  });
+
+  await creditService.grantPromoCredits({
+    userId,
+    amount,
+    promoName: `Promo ${promo.code}`,
+  });
+
+  return { applied: true, amount };
+};
+
 // @route   POST /api/users
 // @desc    Register a new user (regular or Google)
 // @access  Public
@@ -56,6 +92,8 @@ router.post("/", async (req, res) => {
       phone,
       profilePicture,
       role,
+      promoCode,
+      referralCode,
     } = req.body;
 
     // Check if it's a Google sign-up
@@ -102,6 +140,19 @@ router.post("/", async (req, res) => {
         console.log(`🎁 Welcome credits granted to new user ${user.id}`);
       } catch (creditError) {
         console.error("Failed to grant welcome credits:", creditError.message);
+      }
+
+      // Apply signup promo credits if provided
+      const signupPromoCode = promoCode || referralCode;
+      if (signupPromoCode) {
+        try {
+          const result = await applySignupPromoCredits(user.id, signupPromoCode);
+          if (result.applied) {
+            console.log(`🎁 Promo credits granted to user ${user.id}: GHS ${result.amount}`);
+          }
+        } catch (promoError) {
+          console.error("Failed to apply signup promo credits:", promoError.message);
+        }
       }
 
       return res.status(201).json({
@@ -169,6 +220,19 @@ router.post("/", async (req, res) => {
       console.log(`🎁 Welcome credits granted to new user ${user.id}`);
     } catch (creditError) {
       console.error("Failed to grant welcome credits:", creditError.message);
+    }
+
+    // Apply signup promo credits if provided
+    const signupPromoCode = promoCode || referralCode;
+    if (signupPromoCode) {
+      try {
+        const result = await applySignupPromoCredits(user.id, signupPromoCode);
+        if (result.applied) {
+          console.log(`🎁 Promo credits granted to user ${user.id}: GHS ${result.amount}`);
+        }
+      } catch (promoError) {
+        console.error("Failed to apply signup promo credits:", promoError.message);
+      }
     }
 
     res.status(201).json({
