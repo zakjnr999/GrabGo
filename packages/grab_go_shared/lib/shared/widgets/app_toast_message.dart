@@ -29,7 +29,7 @@ class AppToastMessage {
       constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85, minWidth: 200.w),
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
       decoration: BoxDecoration(
-        borderRadius: radius != null ? BorderRadius.circular(radius) : BorderRadius.circular(KBorderSize.border),
+        borderRadius: radius != null ? BorderRadius.circular(radius) : BorderRadius.circular(KBorderSize.borderMedium),
         color: backgroundColor ?? colors.accentViolet,
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 2))],
       ),

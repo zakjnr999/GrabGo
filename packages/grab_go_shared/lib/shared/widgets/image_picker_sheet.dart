@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
+import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
 import 'package:grab_go_shared/shared/widgets/shimmer_loading.dart';
 import 'package:image_picker/image_picker.dart';
@@ -17,7 +18,6 @@ class ImagePickerSheet extends StatefulWidget {
 
   const ImagePickerSheet({super.key, this.maxImages = 10, required this.onImagesSelected, required this.sc});
 
-  /// Show the image picker bottom sheet
   static Future<void> show(
     BuildContext context, {
     int maxImages = 10,
@@ -83,7 +83,6 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
     setState(() {
       _hasPermission = true;
     });
-    // Get all albums from gallery
     final albums = await PhotoManager.getAssetPathList(
       type: RequestType.image,
       filterOption: FilterOptionGroup(
@@ -98,7 +97,6 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
       });
       return;
     }
-    // Store all albums and select first one (filter out empty ones)
     final albumsWithCounts = await Future.wait(
       albums.map((album) async {
         final count = await album.assetCountAsync;
@@ -351,10 +349,7 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
                     child: PopupMenuButton<int>(
                       offset: Offset(0, 50.h),
                       color: colors.backgroundPrimary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.w),
-                        side: BorderSide(color: colors.border),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.w)),
                       itemBuilder: (context) {
                         return _albums.asMap().entries.map((entry) {
                           final index = entry.key;
@@ -365,10 +360,15 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
                             value: index,
                             child: Row(
                               children: [
-                                Icon(
-                                  Icons.photo_library,
-                                  size: 20.w,
-                                  color: isSelected ? colors.accentGreen : colors.textSecondary,
+                                SvgPicture.asset(
+                                  Assets.icons.mediaImage,
+                                  package: "grab_go_shared",
+                                  height: 20.h,
+                                  width: 20.w,
+                                  colorFilter: ColorFilter.mode(
+                                    isSelected ? colors.accentGreen : colors.textSecondary,
+                                    BlendMode.srcIn,
+                                  ),
                                 ),
                                 SizedBox(width: 12.w),
                                 Expanded(
@@ -403,14 +403,12 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
                       },
                       onSelected: (index) => _switchAlbum(index),
                       child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
                         decoration: BoxDecoration(
                           color: colors.backgroundSecondary,
-                          borderRadius: BorderRadius.circular(12.w),
-                          border: Border.all(color: colors.border),
+                          borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                         ),
                         child: Row(
-                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Flexible(
                               child: Column(
@@ -420,8 +418,8 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
                                   Text(
                                     _albums.isNotEmpty ? _albums[_selectedAlbumIndex].name : 'Select Photos',
                                     style: TextStyle(
-                                      fontSize: 16.sp,
-                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14.sp,
+                                      fontWeight: FontWeight.w500,
                                       color: colors.textPrimary,
                                     ),
                                     overflow: TextOverflow.ellipsis,
@@ -439,20 +437,28 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
                               ),
                             ),
                             SizedBox(width: 8.w),
-                            Icon(Icons.keyboard_arrow_down, size: 20.w, color: colors.textPrimary),
+                            SvgPicture.asset(
+                              Assets.icons.navArrowDown,
+                              package: "grab_go_shared",
+                              height: 20.h,
+                              width: 20.w,
+                              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                            ),
                           ],
                         ),
                       ),
                     ),
                   ),
-                  SizedBox(width: 12.w),
                   // Send button
                   if (_selectedImages.isNotEmpty)
                     GestureDetector(
                       onTap: _confirmSelection,
                       child: Container(
                         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                        decoration: BoxDecoration(color: colors.accentGreen, borderRadius: BorderRadius.circular(20.w)),
+                        decoration: BoxDecoration(
+                          color: colors.accentGreen,
+                          borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                        ),
                         child: _isProcessing
                             ? SizedBox(
                                 width: 20.w,
@@ -533,8 +539,7 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
         decoration: BoxDecoration(
           color: colors.backgroundSecondary,
-          borderRadius: BorderRadius.circular(12.w),
-          border: Border.all(color: colors.border),
+          borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,

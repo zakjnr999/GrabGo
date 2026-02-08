@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -217,15 +218,30 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
       if (!mounted) return;
       LoadingDialog.instance().hide();
 
-      if (response.isSuccessful && response.body != null) {
-        final token = response.body!.token;
-        User? user = response.body!.userData;
+      UserResponse? parsedResponse;
+      if (response.body == null && response.bodyString.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(response.bodyString);
+          if (decoded is Map<String, dynamic>) {
+            parsedResponse = UserResponse.fromJson(decoded);
+            // ignore: dead_code
+          } else if (decoded is Map) {
+            parsedResponse = UserResponse.fromJson(Map<String, dynamic>.from(decoded));
+          }
+        } catch (_) {}
+      }
+
+      final responseData = response.body ?? parsedResponse;
+
+      if (response.isSuccessful && responseData != null) {
+        final token = responseData.token;
+        User? user = responseData.userData;
 
         if (user == null) {
-          if (response.body!.user != null) {
-            user = response.body!.user;
-          } else if (response.body!.data != null) {
-            user = response.body!.data;
+          if (responseData.user != null) {
+            user = responseData.user;
+          } else if (responseData.data != null) {
+            user = responseData.data;
           }
         }
 
@@ -261,7 +277,17 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
           await _navigateAfterLogin(context);
         }
       } else {
-        String errorMessage = "Login failed. Please try again.";
+        String? errorMessage = response.body?.message;
+        if (errorMessage == null || errorMessage.isEmpty) {
+          final error = response.error;
+          if (error is Map && error['message'] != null) {
+            errorMessage = error['message']?.toString();
+          } else if (error != null) {
+            errorMessage = error.toString();
+          }
+        }
+
+        errorMessage ??= "Login failed. Please try again.";
 
         if (response.statusCode == 400) {
           errorMessage = "Invalid email or password.";

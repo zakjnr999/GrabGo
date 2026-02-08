@@ -314,10 +314,24 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       if (!mounted) return;
       LoadingDialog.instance().hide();
 
-      if (response.isSuccessful && response.body != null) {
-        final message = response.body!.message;
-        final token = response.body!.token;
-        User? user = response.body!.userData ?? response.body!.user;
+      UserResponse? parsedResponse;
+      if (response.body == null && response.bodyString != null && response.bodyString!.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(response.bodyString!);
+          if (decoded is Map<String, dynamic>) {
+            parsedResponse = UserResponse.fromJson(decoded);
+          } else if (decoded is Map) {
+            parsedResponse = UserResponse.fromJson(Map<String, dynamic>.from(decoded));
+          }
+        } catch (_) {}
+      }
+
+      final responseData = response.body ?? parsedResponse;
+
+      if (response.isSuccessful && responseData != null) {
+        final message = responseData.message;
+        final token = responseData.token;
+        User? user = responseData.userData ?? responseData.user;
 
         if (token != null && token.isNotEmpty) {
           await CacheService.saveAuthToken(token);
@@ -336,14 +350,33 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         if (mounted) {
           AppToastMessage.show(context: context, message: message, backgroundColor: Colors.green);
 
-          await _navigateAfterRegistration(context);
+          if (token == null || token.isEmpty || user == null) {
+            AppToastMessage.show(
+              context: context,
+              message: "Account created. Please log in to continue.",
+              backgroundColor: context.appColors.warning,
+            );
+            context.go("/login");
+          } else {
+            await _navigateAfterRegistration(context);
+          }
         }
       } else {
-        String errorMessage = response.body?.message ?? response.error?.toString() ?? "Registration failed.";
+        String? errorMessage = response.body?.message;
+        if (errorMessage == null || errorMessage.isEmpty) {
+          final error = response.error;
+          if (error is Map && error['message'] != null) {
+            errorMessage = error['message']?.toString();
+          } else if (error != null) {
+            errorMessage = error.toString();
+          }
+        }
 
-        if (response.statusCode == 409) {
+        errorMessage ??= "Registration failed.";
+
+        if (response.statusCode == 409 && errorMessage == "Registration failed.") {
           errorMessage = "Username or email already exists.";
-        } else if (response.statusCode == 500) {
+        } else if (response.statusCode == 500 && errorMessage == "Registration failed.") {
           errorMessage = "Server error. Please try again later.";
         }
 
@@ -507,20 +540,23 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                     scale: _scaleAnimation,
                     child: FadeTransition(
                       opacity: _fadeAnimation,
-                      child: Container(
-                        height: 100.h,
-                        width: 100.h,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: colors.accentOrange.withValues(alpha: 0.2),
-                        ),
-                        child: Center(
-                          child: SvgPicture.asset(
-                            Assets.icons.user,
-                            package: 'grab_go_shared',
-                            height: 50.h,
-                            width: 50.h,
-                            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                      child: GestureDetector(
+                        onTap: () => context.go("/profileUpload"),
+                        child: Container(
+                          height: 100.h,
+                          width: 100.h,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: colors.accentOrange.withValues(alpha: 0.2),
+                          ),
+                          child: Center(
+                            child: SvgPicture.asset(
+                              Assets.icons.user,
+                              package: 'grab_go_shared',
+                              height: 50.h,
+                              width: 50.h,
+                              colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                            ),
                           ),
                         ),
                       ),
@@ -839,7 +875,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                               child: Container(
                                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                                 decoration: BoxDecoration(
-                                  color: colors.accentOrange.withValues(alpha: 0.2),
+                                  color: colors.accentOrange.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(12.r),
                                 ),
                                 child: Row(
@@ -954,7 +990,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                                   padding: EdgeInsets.only(top: 12.h),
                                   child: RichText(
                                     text: TextSpan(
-                                      text: "I agree to the ",
+                                      text: "By Signing in, I agree to the ",
                                       style: TextStyle(
                                         fontFamily: "Lato",
                                         package: 'grab_go_shared',

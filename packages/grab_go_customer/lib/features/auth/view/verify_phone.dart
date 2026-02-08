@@ -195,7 +195,7 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
                       ),
                       child: Center(
                         child: SvgPicture.asset(
-                          Assets.icons.phone,
+                          Assets.icons.lock,
                           package: 'grab_go_shared',
                           height: 50.h,
                           width: 50.h,

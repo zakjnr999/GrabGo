@@ -294,17 +294,7 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
                       width: 100.h,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [
-                            colors.accentOrange.withValues(alpha: 0.2),
-                            colors.accentOrange.withValues(alpha: 0.2),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        boxShadow: [
-                          BoxShadow(color: colors.accentOrange.withValues(alpha: 0.2), blurRadius: 30, spreadRadius: 5),
-                        ],
+                        color: colors.accentOrange.withValues(alpha: 0.1),
                       ),
                       child: Center(
                         child: SvgPicture.asset(

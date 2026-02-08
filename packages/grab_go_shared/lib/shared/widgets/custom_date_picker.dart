@@ -195,14 +195,14 @@ class _CustomDatePickerState extends State<CustomDatePicker> with SingleTickerPr
                   onTap: () => _selectYear(year),
                   child: Container(
                     padding: EdgeInsets.symmetric(vertical: KSpacing.md.h, horizontal: KSpacing.md.w),
-                    color: isSelected ? colors.accentGreen.withValues(alpha: 0.1) : Colors.transparent,
+                    color: isSelected ? colors.accentOrange.withValues(alpha: 0.1) : Colors.transparent,
                     child: Center(
                       child: Text(
                         '$year',
                         style: TextStyle(
                           fontSize: KTextSize.medium.sp,
                           fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                          color: isSelected ? colors.accentGreen : colors.textPrimary,
+                          color: isSelected ? colors.accentOrange : colors.textPrimary,
                         ),
                       ),
                     ),
@@ -221,7 +221,7 @@ class _CustomDatePickerState extends State<CustomDatePicker> with SingleTickerPr
     final colors = context.appColors;
 
     if (_showYearPicker) {
-      return SafeArea(bottom: false, child: _buildYearPicker(colors));
+      return SafeArea(child: _buildYearPicker(colors));
     }
 
     final days = _getDaysInMonth();
@@ -291,8 +291,8 @@ class _CustomDatePickerState extends State<CustomDatePicker> with SingleTickerPr
                         style: TextStyle(
                           fontSize: KTextSize.large.sp,
                           fontWeight: FontWeight.w600,
-                          color: colors.accentGreen,
-                          decorationColor: colors.accentGreen,
+                          color: colors.accentOrange,
+                          decorationColor: colors.accentOrange,
                         ),
                       ),
                       SvgPicture.asset(
@@ -300,7 +300,7 @@ class _CustomDatePickerState extends State<CustomDatePicker> with SingleTickerPr
                         package: 'grab_go_shared',
                         height: 20.h,
                         width: 20.w,
-                        colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                       ),
                     ],
                   ),
@@ -385,13 +385,13 @@ class _CustomDatePickerState extends State<CustomDatePicker> with SingleTickerPr
                         duration: const Duration(milliseconds: 200),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? colors.accentGreen
+                              ? colors.accentOrange
                               : isToday && isInMonth
-                              ? colors.accentGreen.withValues(alpha: 0.1)
+                              ? colors.accentOrange.withValues(alpha: 0.1)
                               : Colors.transparent,
-                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius8),
+                          borderRadius: BorderRadius.circular(KBorderSize.border),
                           border: isToday && !isSelected && isInMonth
-                              ? Border.all(color: colors.accentGreen.withValues(alpha: 0.3), width: 1)
+                              ? Border.all(color: colors.accentOrange.withValues(alpha: 0.3), width: 1)
                               : null,
                         ),
                         child: Center(
@@ -430,7 +430,7 @@ class _CustomDatePickerState extends State<CustomDatePicker> with SingleTickerPr
                   widget.onDateSelected(_selectedDate);
                   Navigator.of(context).pop();
                 },
-                backgroundColor: colors.accentGreen,
+                backgroundColor: colors.accentOrange,
                 borderRadius: KBorderSize.borderRadius15,
                 buttonText: "Done",
                 textStyle: TextStyle(

@@ -95,6 +95,33 @@ const requestPhoneOtp = async ({ phoneNumber, userId, channel = 'sms' }) => {
     return { success: false, message: 'Please wait before requesting another OTP.' };
   }
 
+  const isBypassEnabled = process.env.OTP_BYPASS_SMS === 'true';
+  const debugCode = process.env.OTP_DEBUG_CODE;
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  if (isBypassEnabled && debugCode && !isProduction) {
+    const otpKey = getKey('code', normalized.digits);
+    const otpPayload = {
+      hash: hashOtp(debugCode, normalized.e164),
+      userId: userId || null,
+      phone: normalized.e164,
+      channel: resolvedChannel,
+      createdAt: Date.now(),
+    };
+
+    await cache.set(otpKey, otpPayload, OTP_CONFIG.ttlSeconds);
+    await cache.set(cooldownKey, { sentAt: Date.now() }, OTP_CONFIG.resendCooldownSeconds);
+    await incrementCounter(sendCountKey, OTP_CONFIG.sendWindowSeconds);
+
+    return {
+      success: true,
+      message: 'OTP generated in debug mode.',
+      channel: resolvedChannel,
+      otp: debugCode,
+      debugBypass: true,
+    };
+  }
+
   const otp = generateOTP();
   const otpKey = getKey('code', normalized.digits);
   const otpPayload = {

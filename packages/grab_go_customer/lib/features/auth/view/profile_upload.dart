@@ -4,6 +4,7 @@ import 'package:chopper/chopper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
@@ -66,7 +67,6 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
   }
 
   Future<void> _navigateAfterProfileUpload(BuildContext context) async {
-    // New flow: Move directly to confirm-address
     if (context.mounted) {
       context.go("/confirm-address");
     }
@@ -214,11 +214,32 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final size = MediaQuery.sizeOf(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: colors.backgroundPrimary,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+          systemNavigationBarColor: colors.backgroundPrimary,
+          systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        ),
+        actionsPadding: EdgeInsets.only(right: KSpacing.md.w),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await _navigateAfterProfileUpload(context);
+            },
+            child: Text(
+              "Skip",
+              style: TextStyle(color: colors.textPrimary, fontSize: 15.sp, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
       body: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
@@ -282,41 +303,23 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
                     child: Stack(
                       children: [
                         Container(
-                          height: 150.h,
-                          width: 150.h,
+                          height: 120.h,
+                          width: 120.h,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              colors: [
-                                colors.accentOrange.withValues(alpha: 0.2),
-                                colors.accentOrange.withValues(alpha: 0.2),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: colors.accentOrange.withValues(alpha: 0.2),
-                                blurRadius: 30,
-                                spreadRadius: 5,
-                              ),
-                            ],
+                            color: colors.accentOrange.withValues(alpha: 0.2),
                           ),
                           child: Center(
-                            child: Container(
-                              height: size.width * 0.35,
-                              width: size.width * 0.35,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: colors.backgroundSecondary,
-                                border: Border.all(color: colors.inputBorder, width: size.width * 0.01),
-                              ),
-                              child: _selectedImage != null
-                                  ? ClipOval(child: Image.file(_selectedImage!, fit: BoxFit.cover))
-                                  : ClipOval(
-                                      child: Assets.icons.noProfile.image(fit: BoxFit.cover, package: 'grab_go_shared'),
-                                    ),
-                            ),
+                            child: _selectedImage != null
+                                ? ClipOval(child: Image.file(_selectedImage!, fit: BoxFit.cover))
+                                : SvgPicture.asset(
+                                    Assets.icons.user,
+                                    package: "grab_go_shared",
+                                    height: 60.h,
+                                    width: 60.w,
+                                    fit: BoxFit.cover,
+                                    colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                  ),
                           ),
                         ),
                         Positioned(
@@ -326,22 +329,19 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
                             onTap: () =>
                                 ImagePickerSheet.show(context, maxImages: 1, onImagesSelected: _handleImageSelection),
                             child: Container(
-                              height: 45.h,
-                              width: 45.h,
+                              height: 35.h,
+                              width: 35.h,
+                              padding: EdgeInsets.all(8.h),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                gradient: LinearGradient(
-                                  colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: colors.accentOrange.withValues(alpha: 0.4),
-                                    blurRadius: 15,
-                                    offset: const Offset(0, 5),
-                                  ),
-                                ],
+                                color: colors.accentOrange,
+                                border: Border.all(color: colors.backgroundPrimary, width: 2),
                               ),
-                              child: Icon(Icons.camera_alt, color: Colors.white, size: 22.h),
+                              child: SvgPicture.asset(
+                                Assets.icons.camera,
+                                package: "grab_go_shared",
+                                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                              ),
                             ),
                           ),
                         ),
@@ -350,7 +350,7 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
                   ),
                 ),
 
-                SizedBox(height: KSpacing.xl40.h),
+                SizedBox(height: KSpacing.xl50.h),
 
                 FadeTransition(
                   opacity: _fadeAnimation,
@@ -359,67 +359,23 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        GestureDetector(
-                          onTap: _isUploading ? null : () => _uploadProfileImage(),
-                          child: Container(
-                            height: 56.h,
-                            decoration: BoxDecoration(
-                              gradient: _isUploading
-                                  ? null
-                                  : LinearGradient(
-                                      colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
-                                      begin: Alignment.centerLeft,
-                                      end: Alignment.centerRight,
-                                    ),
-                              color: _isUploading ? colors.inputBorder : null,
-                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                              boxShadow: !_isUploading
-                                  ? [
-                                      BoxShadow(
-                                        color: colors.accentOrange.withValues(alpha: 0.4),
-                                        blurRadius: 20,
-                                        offset: const Offset(0, 8),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: Center(
-                              child: Text(
-                                _isUploading ? "Uploading..." : "Upload Photo",
-                                style: TextStyle(
-                                  color: _isUploading ? colors.textSecondary : Colors.white,
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.5,
-                                ),
+                        Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            boxShadow: [
+                              BoxShadow(
+                                color: colors.accentOrange.withValues(alpha: 0.4),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
                               ),
-                            ),
+                            ],
                           ),
-                        ),
-                        SizedBox(height: KSpacing.lg.h),
-
-                        GestureDetector(
-                          onTap: () async {
-                            await _navigateAfterProfileUpload(context);
-                          },
-                          child: Container(
-                            height: 56.h,
-                            decoration: BoxDecoration(
-                              color: colors.backgroundSecondary,
-                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                              border: Border.all(color: colors.inputBorder, width: 1.5),
-                            ),
-                            child: Center(
-                              child: Text(
-                                "Skip for Now",
-                                style: TextStyle(
-                                  color: colors.textPrimary,
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ),
+                          child: AppButton(
+                            onPressed: () => _isUploading ? null : () => _uploadProfileImage(),
+                            backgroundColor: colors.accentOrange,
+                            borderRadius: KBorderSize.borderRadius15,
+                            buttonText: _isUploading ? "Uploading..." : "Upload Photo",
+                            textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15.sp),
                           ),
                         ),
                       ],
