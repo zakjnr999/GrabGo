@@ -7,6 +7,7 @@ const cache = require("../utils/cache");
 const { sendOrderNotification, sendToUser } = require("../services/fcm_service");
 const { createNotification } = require("../services/notification_service");
 const ReferralService = require("../services/referral_service");
+const creditService = require("../services/credit_service");
 const { calculateOrderPricing } = require("../services/pricing_service");
 const { getIO } = require("../utils/socket");
 const dispatchService = require("../services/dispatch_service");
@@ -220,11 +221,11 @@ router.post(
       const tax = pricing.tax;
       let totalAmount = pricing.total;
 
-      // Apply referral credits if available
-      const creditResult = await ReferralService.applyCreditsToOrder(req.user.id, totalAmount);
-      const creditApplied = creditResult.appliedAmount;
+      // Apply credits if available
+      const creditResult = await creditService.calculateCreditApplication(req.user.id, totalAmount, true);
+      const creditApplied = creditResult?.creditsApplied || 0;
       if (creditApplied > 0) {
-        totalAmount = creditResult.newTotal;
+        totalAmount = creditResult.remainingPayment;
       }
 
       // Create order with Prisma transaction to handle nested items
@@ -274,9 +275,9 @@ router.post(
         }
       });
 
-      // Mark credits as used and update cached balance (after order creation)
-      if (creditApplied > 0 && creditResult.creditsUsed.length > 0) {
-        await ReferralService.markCreditsAsUsed(creditResult.creditsUsed, order.id, req.user.id);
+      // Deduct credits after order creation
+      if (creditApplied > 0) {
+        await creditService.applyCreditsToOrder(req.user.id, order.id, creditApplied);
       }
 
       // Check if this is user's first order and complete referral

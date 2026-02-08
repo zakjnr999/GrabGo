@@ -610,26 +610,6 @@ class Cart extends StatelessWidget {
     );
   }
 
-  void _showClearAllDialog(BuildContext context, colors) async {
-    final shouldClear = await AppDialog.show(
-      context: context,
-      title: AppStrings.cartClearCart,
-      message: AppStrings.cartClearCartMessage,
-      type: AppDialogType.warning,
-      icon: Assets.icons.cart,
-      primaryButtonText: AppStrings.cartClearCart,
-      secondaryButtonText: AppStrings.cartCancel,
-      primaryButtonColor: Colors.red,
-      onPrimaryPressed: () => Navigator.of(context).pop(true),
-      onSecondaryPressed: () => Navigator.of(context).pop(false),
-    );
-
-    if (shouldClear == true) {
-      Provider.of<CartProvider>(context, listen: false).clearCart();
-      context.go("/homepage");
-    }
-  }
-
   String _formatEstimatedDelivery(Map<CartItem, int> cartItems, {int? minMinutes, int? maxMinutes}) {
     if (minMinutes != null && maxMinutes != null && minMinutes > 0 && maxMinutes > 0) {
       if (minMinutes == maxMinutes) {

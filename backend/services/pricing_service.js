@@ -1,6 +1,6 @@
 const axios = require('axios');
 const prisma = require('../config/prisma');
-const ReferralService = require('./referral_service');
+const creditService = require('./credit_service');
 const { calculateDistance, estimateDeliveryTime } = require('../utils/distance');
 
 const toNumber = (value, fallback = 0) => {
@@ -369,10 +369,10 @@ const calculateCartPricing = async (cart, options = {}) => {
     let totalAfterCredits = totalBeforeCredits;
     const shouldUseCredits = useCredits !== false;
 
-    if (userId && shouldUseCredits) {
-        const creditResult = await ReferralService.applyCreditsToOrder(userId, totalBeforeCredits);
-        creditsApplied = toNumber(creditResult?.appliedAmount, 0);
-        totalAfterCredits = toNumber(creditResult?.newTotal, totalBeforeCredits);
+    if (userId) {
+        const creditResult = await creditService.calculateCreditApplication(userId, totalBeforeCredits, shouldUseCredits);
+        creditsApplied = toNumber(creditResult?.creditsApplied, 0);
+        totalAfterCredits = toNumber(creditResult?.remainingPayment, totalBeforeCredits);
     }
 
     return {
