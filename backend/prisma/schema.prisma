@@ -335,6 +335,7 @@ model User {
   favoriteGrabMartItems  UserFavoriteGrabMartItem[]
   orders                 Order[]                    @relation("CustomerOrders")
   riderOrders            Order[]                    @relation("RiderOrders")
+  creditHolds            UserCreditHold[]
   carts                  Cart[]
   payments               Payment[]
   rider                  Rider?
@@ -1072,6 +1073,7 @@ model Order {
   pharmacyStore PharmacyStore? @relation("PharmacyStoreOrders", fields: [pharmacyStoreId], references: [id])
   items         OrderItem[]
   payments      Payment[]
+  creditHold    UserCreditHold?
 
   @@index([customerId])
   @@index([restaurantId])
