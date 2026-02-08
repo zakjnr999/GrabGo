@@ -31,7 +31,6 @@ import 'package:grab_go_customer/features/cart/view/checkout.dart';
 import 'package:grab_go_customer/features/home/view/food_details.dart';
 import 'package:grab_go_customer/features/home/view/search_page.dart';
 import 'package:grab_go_customer/features/home/view/notification.dart' as notification_page;
-import 'package:grab_go_customer/features/order/view/order_summary.dart';
 import 'package:grab_go_customer/features/order/view/order_tracking.dart';
 import 'package:grab_go_customer/features/profile/view/view_profile.dart';
 import 'package:grab_go_customer/features/restaurant/view/restaurant_account_creation_tracking.dart';
@@ -756,49 +755,6 @@ final GoRouter appRouter = GoRouter(
               animation: animation,
               secondaryAnimation: secondaryAnimation,
               transitionType: SharedAxisTransitionType.horizontal,
-              child: child,
-            );
-          },
-        );
-      },
-    ),
-    GoRoute(
-      path: "/orderSummary",
-      pageBuilder: (context, state) {
-        final extra = state.extra as Map<String, dynamic>?;
-
-        final selectedAddress = extra?['address'] as String? ?? 'N/A';
-        final selectedAddressDetails = extra?['addressDetails'] as String? ?? '';
-        final selectedPayment = extra?['payment'] as String? ?? 'N/A';
-        final selectedInstructions = extra?['selectedInstructions'] as List<String>? ?? [];
-        final customRestaurantInstruction = extra?['customRestaurantInstruction'] as String? ?? '';
-        final selectedDeliveryInstructions = extra?['selectedDeliveryInstructions'] as List<String>? ?? [];
-        final customDeliveryInstruction = extra?['customDeliveryInstruction'] as String? ?? '';
-        final tipAmount = extra?['tipAmount'] as double? ?? 0.0;
-        final deliveryLatitude = extra?['latitude'] as double?;
-        final deliveryLongitude = extra?['longitude'] as double?;
-
-        return CustomTransitionPage(
-          key: state.pageKey,
-          child: OrderSummaryPage(
-            selectedAddress: selectedAddress,
-            selectedAddressDetails: selectedAddressDetails,
-            selectedPaymentMethod: selectedPayment,
-            selectedInstructions: selectedInstructions,
-            customRestaurantInstruction: customRestaurantInstruction,
-            selectedDeliveryInstructions: selectedDeliveryInstructions,
-            customDeliveryInstruction: customDeliveryInstruction,
-            tipAmount: tipAmount,
-            deliveryLatitude: deliveryLatitude,
-            deliveryLongitude: deliveryLongitude,
-          ),
-          transitionDuration: const Duration(milliseconds: 400),
-          reverseTransitionDuration: const Duration(milliseconds: 400),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return SharedAxisTransition(
-              animation: animation,
-              secondaryAnimation: secondaryAnimation,
-              transitionType: SharedAxisTransitionType.scaled,
               child: child,
             );
           },

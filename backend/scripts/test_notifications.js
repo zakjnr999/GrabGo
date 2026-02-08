@@ -35,7 +35,7 @@ async function testAllNotifications(userId) {
 
         // 3. Payment Confirmation
         console.log('3️⃣ Testing Payment Confirmation...');
-        await sendPaymentConfirmation(userId, 'order123', 25.50, 'momo');
+        await sendPaymentConfirmation(userId, 'order123', 25.50, 'paystack');
         await sleep(2000);
 
         // 4. Delivery Arriving

@@ -134,7 +134,7 @@ router.post(
       .notEmpty()
       .withMessage("Delivery address is required"),
     body("paymentMethod")
-      .isIn(["cash", "card", "mobile_money", "mtn_momo", "online"])
+      .isIn(["card"])
       .withMessage("Invalid payment method"),
   ],
   async (req, res) => {

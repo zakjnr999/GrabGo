@@ -137,8 +137,8 @@ async function createDummyGroceryOrders() {
                     latitude: 5.6037,
                     longitude: -0.1870
                 },
-                paymentMethod: 'mobile_money',
-                paymentProvider: 'mtn_momo',
+                paymentMethod: 'card',
+                paymentProvider: 'paystack',
                 paymentStatus: 'paid',
                 status: 'delivered',
                 orderDate,

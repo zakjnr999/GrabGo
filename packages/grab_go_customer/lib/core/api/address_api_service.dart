@@ -5,7 +5,7 @@ part 'address_api_service.chopper.dart';
 @ChopperApi(baseUrl: '/addresses')
 abstract class AddressApiService extends ChopperService {
   @GET()
-  Future<Response<List<Map<String, dynamic>>>> getUserAddresses();
+  Future<Response<Map<String, dynamic>>> getUserAddresses();
 
   @POST()
   Future<Response<Map<String, dynamic>>> addUserAddress(@Body() Map<String, dynamic> body);

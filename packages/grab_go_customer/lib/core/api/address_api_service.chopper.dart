@@ -19,12 +19,10 @@ final class _$AddressApiService extends AddressApiService {
   final Type definitionType = AddressApiService;
 
   @override
-  Future<Response<List<Map<String, dynamic>>>> getUserAddresses() {
+  Future<Response<Map<String, dynamic>>> getUserAddresses() {
     final Uri $url = Uri.parse('/addresses');
     final Request $request = Request('GET', $url, client.baseUrl);
-    return client.send<List<Map<String, dynamic>>, Map<String, dynamic>>(
-      $request,
-    );
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
   }
 
   @override

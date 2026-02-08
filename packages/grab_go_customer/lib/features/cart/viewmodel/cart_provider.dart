@@ -18,6 +18,7 @@ class CartProvider extends ChangeNotifier {
   int? _estimatedDeliveryMin;
   int? _estimatedDeliveryMax;
   bool _useCredits = true;
+  bool _hasPricingFromBackend = false;
   double? _deliveryLatitude;
   double? _deliveryLongitude;
   String? _cartType;
@@ -36,6 +37,7 @@ class CartProvider extends ChangeNotifier {
   int? get estimatedDeliveryMin => _estimatedDeliveryMin;
   int? get estimatedDeliveryMax => _estimatedDeliveryMax;
   bool get useCredits => _useCredits;
+  bool get isPricingLoading => _isSyncing && !_hasPricingFromBackend;
 
   CartProvider() {
     // Load cart data asynchronously without blocking
@@ -161,6 +163,7 @@ class CartProvider extends ChangeNotifier {
       _total = null;
       _estimatedDeliveryMin = null;
       _estimatedDeliveryMax = null;
+      _hasPricingFromBackend = false;
       return;
     }
 
@@ -173,11 +176,13 @@ class CartProvider extends ChangeNotifier {
     _total = (pricing['total'] as num?)?.toDouble();
     _estimatedDeliveryMin = (pricing['estimatedDeliveryMin'] as num?)?.toInt();
     _estimatedDeliveryMax = (pricing['estimatedDeliveryMax'] as num?)?.toInt();
+    _hasPricingFromBackend = true;
   }
 
   void _recalculateLocalPricing() {
     _subtotal = totalPrice;
     _total = _subtotal! + _deliveryFee + _serviceFee + _tax + _rainFee;
+    _hasPricingFromBackend = false;
   }
 
   String _itemKey(CartItem item) {

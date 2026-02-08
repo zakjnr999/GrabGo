@@ -103,7 +103,6 @@ GrabGo/
 │   │   ├── tracking_service.js  # Real-time order tracking & ETA
 │   │   ├── analytic_service.js  # Delivery analytics & metrics
 │   │   ├── fcm_service.js       # Firebase Cloud Messaging
-│   │   ├── mtn_momo_service.js  # MTN Mobile Money integration
 │   │   ├── socket_service.js    # Real-time Socket.IO communication
 │   │   ├── chat_service.js      # Chat & messaging logic
 │   │   ├── referral_service.js  # Referral program logic

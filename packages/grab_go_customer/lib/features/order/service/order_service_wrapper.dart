@@ -59,7 +59,7 @@ class OrderServiceWrapper {
           latitude: deliveryLatitude,
           longitude: deliveryLongitude,
         ),
-        paymentMethod: paymentMethod.toLowerCase().replaceAll(' ', '_'), // Convert "MTN MOMO" to "mtn_momo"
+        paymentMethod: paymentMethod.toLowerCase().replaceAll(' ', '_'),
         notes: notes,
         pricing: OrderPricing(subtotal: subtotal, deliveryFee: deliveryFee, total: total),
       );

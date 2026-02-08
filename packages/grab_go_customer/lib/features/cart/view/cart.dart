@@ -44,6 +44,7 @@ class Cart extends StatelessWidget {
             final double rainFee = provider.rainFee;
             final double creditsApplied = provider.creditsApplied;
             final double total = provider.total;
+            final bool isPricingLoading = provider.isPricingLoading;
 
             return Column(
               children: [
@@ -238,6 +239,7 @@ class Cart extends StatelessWidget {
                                       false,
                                       true,
                                       infoType: _FeeInfoType.delivery,
+                                      isLoading: isPricingLoading,
                                     ),
                                     SizedBox(height: 6.h),
                                     _buildPriceRow(
@@ -249,6 +251,7 @@ class Cart extends StatelessWidget {
                                       false,
                                       true,
                                       infoType: _FeeInfoType.service,
+                                      isLoading: isPricingLoading,
                                     ),
                                     if (rainFee > 0) ...[
                                       SizedBox(height: 6.h),
@@ -276,7 +279,7 @@ class Cart extends StatelessWidget {
                                       ),
                                     ],
                                     SizedBox(height: 6.h),
-                                    _buildTotalRow(context, total, creditsApplied, colors),
+                                    _buildTotalRow(context, total, creditsApplied, colors, isLoading: isPricingLoading),
                                   ],
                                 ),
                                 SizedBox(height: 12.h),
@@ -388,6 +391,7 @@ class Cart extends StatelessWidget {
     bool isTotal,
     bool info, {
     _FeeInfoType? infoType,
+    bool isLoading = false,
   }) {
     return Row(
       children: [
@@ -419,19 +423,54 @@ class Cart extends StatelessWidget {
               )
             : const SizedBox.shrink(),
         const Spacer(),
-        Text(
-          "${AppStrings.currencySymbol} ${amount.toStringAsFixed(2)}",
-          style: TextStyle(
-            color: colors.textPrimary,
-            fontSize: 13.sp,
-            fontWeight: isTotal ? FontWeight.w600 : FontWeight.w400,
-          ),
-        ),
+        isLoading
+            ? Text(
+                "...",
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 13.sp,
+                  fontWeight: isTotal ? FontWeight.w600 : FontWeight.w400,
+                ),
+              )
+            : Text(
+                "${AppStrings.currencySymbol} ${amount.toStringAsFixed(2)}",
+                style: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 13.sp,
+                  fontWeight: isTotal ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
       ],
     );
   }
 
-  Widget _buildTotalRow(BuildContext context, double total, double creditsApplied, AppColorsExtension colors) {
+  Widget _buildTotalRow(
+    BuildContext context,
+    double total,
+    double creditsApplied,
+    AppColorsExtension colors, {
+    bool isLoading = false,
+  }) {
+    if (isLoading) {
+      return Row(
+        children: [
+          Text(
+            "Total Amount",
+            style: TextStyle(
+              color: colors.textSecondary,
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            "...",
+            style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w600),
+          ),
+        ],
+      );
+    }
+
     final double? originalTotal = creditsApplied > 0 ? total + creditsApplied : null;
 
     return Row(
