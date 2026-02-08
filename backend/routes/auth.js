@@ -891,7 +891,10 @@ router.post("/send-phone-otp", async (req, res) => {
       return res.status(400).json({
         success: false,
         message: otpResult.message || "Failed to send OTP.",
-        error: process.env.NODE_ENV === 'development' ? otpResult.error : undefined,
+        error:
+          process.env.NODE_ENV === 'development' || process.env.OTP_DEBUG_ERRORS === 'true'
+            ? otpResult.error
+            : undefined,
       });
     }
 
@@ -1029,7 +1032,10 @@ router.post("/resend-phone-otp", async (req, res) => {
       return res.status(400).json({
         success: false,
         message: otpResult.message || "Failed to resend OTP.",
-        error: process.env.NODE_ENV === 'development' ? otpResult.error : undefined,
+        error:
+          process.env.NODE_ENV === 'development' || process.env.OTP_DEBUG_ERRORS === 'true'
+            ? otpResult.error
+            : undefined,
       });
     }
 

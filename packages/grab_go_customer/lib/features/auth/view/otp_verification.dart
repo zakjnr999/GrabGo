@@ -210,11 +210,7 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
         if (mounted) {
           LoadingDialog.instance().hide();
           _startCountdown();
-          AppToastMessage.show(
-            context: context,
-            message: "OTP resent successfully!",
-            backgroundColor: Colors.green,
-          );
+          AppToastMessage.show(context: context, message: "OTP resent successfully!", backgroundColor: Colors.green);
         }
       },
       onError: (error) {
@@ -379,7 +375,7 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
                           fillColor: colors.backgroundSecondary,
                           filled: true,
                           showFieldAsBox: true,
-                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                          borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                           contentPadding: EdgeInsets.symmetric(vertical: 16.h),
                           cursorColor: colors.accentOrange,
                           focusedBorderColor: colors.accentOrange,

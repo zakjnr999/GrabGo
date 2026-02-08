@@ -129,9 +129,14 @@ const requestPhoneOtp = async ({ phoneNumber, userId, channel = 'sms' }) => {
     });
     await cache.del(otpKey);
     await cache.del(cooldownKey);
+    const fallbackMessage =
+      sendResult.message ||
+      (typeof sendResult.error === 'string' ? sendResult.error : undefined) ||
+      (typeof sendResult.data === 'string' ? sendResult.data : undefined) ||
+      'Failed to send OTP. Please try again.';
     return {
       success: false,
-      message: sendResult.message || 'Failed to send OTP. Please try again.',
+      message: fallbackMessage,
       error: sendResult.error || sendResult.data,
     };
   }

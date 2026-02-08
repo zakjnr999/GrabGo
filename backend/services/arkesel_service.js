@@ -49,9 +49,12 @@ const interpretArkeselResponse = (data) => {
 
 const buildArkeselRequest = async ({ url, apiKey, sender, to, message, mode }) => {
   if (!url || !apiKey || !sender) {
+    const message =
+      'Arkesel not configured. Set ARKESEL_*_URL, ARKESEL_*_API_KEY, and ARKESEL_*_SENDER.';
     return {
       success: false,
-      error: 'Arkesel not configured. Set ARKESEL_*_URL, ARKESEL_*_API_KEY, and ARKESEL_*_SENDER.',
+      error: message,
+      message,
     };
   }
 
@@ -94,10 +97,16 @@ const buildArkeselRequest = async ({ url, apiKey, sender, to, message, mode }) =
       message: interpreted.message,
     };
   } catch (error) {
+    const responseMessage =
+      error.response?.data?.message ||
+      error.response?.data?.msg ||
+      error.response?.data?.error ||
+      error.message;
     return {
       success: false,
       provider: 'arkesel',
       error: error.response?.data || error.message,
+      message: responseMessage,
       status: error.response?.status,
     };
   }
