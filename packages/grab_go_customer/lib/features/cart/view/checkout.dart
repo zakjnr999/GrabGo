@@ -1,4 +1,3 @@
-import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -408,75 +407,51 @@ class _CheckoutState extends State<Checkout> {
                           ),
                         ),
 
-                        // Pricing breakdown
+                        // Pricing breakdown (matches cart page)
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 20.w),
                           child: Column(
                             children: [
-                              _buildPriceRowWithIcon("Subtotal", subtotal, colors, Assets.icons.cash, false),
-                              SizedBox(height: 10.h),
-                              _buildPriceRowWithIcon(
+                              _buildPriceRow(context, "Subtotal", subtotal, colors, false, false),
+                              SizedBox(height: 6.h),
+                              _buildPriceRow(
+                                context,
                                 "Delivery Fee",
                                 deliveryFee,
                                 colors,
-                                Assets.icons.deliveryTruck,
                                 false,
+                                true,
+                                infoType: _FeeInfoType.delivery,
                               ),
-                              SizedBox(height: 10.h),
-                              _buildPriceRowWithIcon(
+                              SizedBox(height: 6.h),
+                              _buildPriceRow(
+                                context,
                                 "Service Fee",
                                 serviceFee,
                                 colors,
-                                Assets.icons.deliveryTruck,
                                 false,
+                                true,
+                                infoType: _FeeInfoType.service,
                               ),
                               if (rainFee > 0) ...[
-                                SizedBox(height: 10.h),
-                                _buildPriceRowWithIcon("Rain Fee", rainFee, colors, Assets.icons.warningCircle, false),
+                                SizedBox(height: 6.h),
+                                _buildPriceRow(
+                                  context,
+                                  "Rain Fee",
+                                  rainFee,
+                                  colors,
+                                  false,
+                                  true,
+                                  infoType: _FeeInfoType.rain,
+                                ),
                               ],
                               // Tax removed (kept in pricing for backend compatibility)
                               if (_tipAmount > 0) ...[
-                                SizedBox(height: 10.h),
-                                _buildPriceRowWithIcon("Tip", _tipAmount, colors, Assets.icons.handCash, false),
+                                SizedBox(height: 6.h),
+                                _buildPriceRow(context, "Tip", _tipAmount, colors, false, false),
                               ],
-                              SizedBox(height: 12.h),
-                              DottedLine(
-                                direction: Axis.horizontal,
-                                lineLength: double.infinity,
-                                lineThickness: 1.5,
-                                dashLength: 6,
-                                dashColor: colors.inputBorder.withValues(alpha: 0.5),
-                                dashGapLength: 4,
-                              ),
-                              SizedBox(height: 12.h),
-                              Container(
-                                padding: EdgeInsets.all(12.r),
-                                decoration: BoxDecoration(
-                                  color: colors.accentOrange.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(8.r),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      "Total Amount",
-                                      style: TextStyle(
-                                        color: colors.textPrimary,
-                                        fontSize: 14.sp,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    Text(
-                                      "GHS ${total.toStringAsFixed(2)}",
-                                      style: TextStyle(
-                                        color: colors.accentOrange,
-                                        fontSize: 18.sp,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                              SizedBox(height: 6.h),
+                              _buildPriceRow(context, "Total Amount", total, colors, true, false),
                             ],
                           ),
                         ),
@@ -549,31 +524,186 @@ class _CheckoutState extends State<Checkout> {
     );
   }
 
-  Widget _buildPriceRowWithIcon(String label, double amount, AppColorsExtension colors, String icon, bool isTotal) {
+  Widget _buildPriceRow(
+    BuildContext context,
+    String label,
+    double amount,
+    AppColorsExtension colors,
+    bool isTotal,
+    bool info, {
+    _FeeInfoType? infoType,
+  }) {
     return Row(
       children: [
-        Container(
-          padding: EdgeInsets.all(8.r),
-          decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(10.r)),
-          child: SvgPicture.asset(
-            icon,
-            package: 'grab_go_shared',
-            height: 18.h,
-            width: 18.w,
-            colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-          ),
-        ),
-        SizedBox(width: 8.w),
         Text(
           label,
-          style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w500),
+          style: TextStyle(
+            color: colors.textSecondary,
+            fontSize: 13.sp,
+            fontWeight: isTotal ? FontWeight.w600 : FontWeight.w400,
+          ),
         ),
+        info
+            ? Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: infoType == null ? null : () => _showFeeInfoSheet(context, colors, infoType),
+                  borderRadius: BorderRadius.circular(999),
+                  child: Padding(
+                    padding: EdgeInsets.all(8.0.r),
+                    child: SvgPicture.asset(
+                      Assets.icons.infoCircle,
+                      package: "grab_go_shared",
+                      height: 10.h,
+                      width: 10.w,
+                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                    ),
+                  ),
+                ),
+              )
+            : const SizedBox.shrink(),
         const Spacer(),
         Text(
           "GHS ${amount.toStringAsFixed(2)}",
-          style: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontSize: 13.sp,
+            fontWeight: isTotal ? FontWeight.w600 : FontWeight.w400,
+          ),
         ),
       ],
+    );
+  }
+
+  void _showFeeInfoSheet(BuildContext context, AppColorsExtension colors, _FeeInfoType type) {
+    final title = type == _FeeInfoType.delivery
+        ? "Delivery Fee"
+        : type == _FeeInfoType.service
+        ? "Service Fee"
+        : "Rain Fee";
+    final description = type == _FeeInfoType.delivery
+        ? "This helps cover the cost of getting your order from the vendor to your door."
+        : type == _FeeInfoType.service
+        ? "This supports platform operations and keeps the service running smoothly."
+        : "This is applied when it's raining to support safe and reliable deliveries.";
+
+    final details = type == _FeeInfoType.delivery
+        ? const [
+            _FeeInfoDetail(
+              title: "Distance-based",
+              body: "Calculated using the distance from the vendor to your delivery address.",
+            ),
+            _FeeInfoDetail(
+              title: "Fair limits",
+              body: "A minimum and maximum are applied to keep pricing predictable.",
+            ),
+            _FeeInfoDetail(title: "Courier coverage", body: "Helps cover rider time, fuel, and delivery handling."),
+          ]
+        : type == _FeeInfoType.service
+        ? const [
+            _FeeInfoDetail(
+              title: "Platform support",
+              body: "Keeps the app running, including customer support and order processing.",
+            ),
+            _FeeInfoDetail(
+              title: "Order value based",
+              body: "Scales with your subtotal so larger orders contribute slightly more.",
+            ),
+            _FeeInfoDetail(
+              title: "Lower delivery fees",
+              body: "Helps reduce delivery charges by spreading costs across orders.",
+            ),
+          ]
+        : const [
+            _FeeInfoDetail(
+              title: "Weather-based",
+              body: "Applied only when active rain is detected for your delivery area.",
+            ),
+            _FeeInfoDetail(
+              title: "Rider safety",
+              body: "Helps cover extra time and protective handling in wet conditions.",
+            ),
+            _FeeInfoDetail(title: "Transparent pricing", body: "The fee is fixed and visible before checkout."),
+          ];
+
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
+          decoration: BoxDecoration(
+            color: colors.backgroundPrimary,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36.w,
+                  height: 4.h,
+                  decoration: BoxDecoration(color: colors.divider, borderRadius: BorderRadius.circular(999)),
+                ),
+              ),
+              SizedBox(height: 14.h),
+              Text(
+                title,
+                style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
+              ),
+              SizedBox(height: 8.h),
+              Text(
+                description,
+                style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
+              ),
+              SizedBox(height: 12.h),
+              ...details.map((detail) => _buildInfoDetail(detail, colors)),
+              SizedBox(height: 6.h),
+              Text(
+                "Fees can vary by location, vendor, and promotions.",
+                style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildInfoDetail(_FeeInfoDetail detail, AppColorsExtension colors) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 10.h),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 6.w,
+            height: 6.w,
+            margin: EdgeInsets.only(top: 6.h),
+            decoration: BoxDecoration(color: colors.accentOrange, shape: BoxShape.circle),
+          ),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  detail.title,
+                  style: TextStyle(color: colors.textPrimary, fontSize: 12.sp, fontWeight: FontWeight.w700),
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  detail.body,
+                  style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1117,4 +1247,13 @@ class _CheckoutState extends State<Checkout> {
       ),
     );
   }
+}
+
+enum _FeeInfoType { delivery, service, rain }
+
+class _FeeInfoDetail {
+  final String title;
+  final String body;
+
+  const _FeeInfoDetail({required this.title, required this.body});
 }

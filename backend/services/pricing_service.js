@@ -37,6 +37,7 @@ const RAIN_SURGE_MIN_INTENSITY = toNumber(process.env.RAIN_SURGE_MIN_INTENSITY, 
 const RAIN_SURGE_MIN_PROBABILITY = toNumber(process.env.RAIN_SURGE_MIN_PROBABILITY, 0);
 const RAIN_SURGE_CACHE_TTL_MS = toNumber(process.env.RAIN_SURGE_CACHE_TTL_MS, 300000);
 const RAIN_SURGE_REQUEST_TIMEOUT_MS = toNumber(process.env.RAIN_SURGE_REQUEST_TIMEOUT_MS, 3500);
+const RAIN_SURGE_DEBUG = toBoolean(process.env.RAIN_SURGE_DEBUG, false);
 
 const weatherCache = new Map();
 
@@ -127,19 +128,41 @@ const shouldApplyRainFee = (rainIntensity, precipitationProbability) => {
 
 const getRainFee = async ({ deliveryLocation, vendorLocation }) => {
     if (!RAIN_SURGE_ENABLED || !TOMORROW_IO_API_KEY || RAIN_SURGE_FEE <= 0) {
+        if (RAIN_SURGE_DEBUG) {
+            console.log('☔ [RAIN_FEE] Skipped (disabled or missing config)', {
+                enabled: RAIN_SURGE_ENABLED,
+                hasKey: Boolean(TOMORROW_IO_API_KEY),
+                fee: RAIN_SURGE_FEE
+            });
+        }
         return 0;
     }
 
     const resolvedLocation = normalizeLocation(deliveryLocation) || normalizeLocation(vendorLocation);
-    if (!resolvedLocation) return 0;
+    if (!resolvedLocation) {
+        if (RAIN_SURGE_DEBUG) {
+            console.log('☔ [RAIN_FEE] Skipped (no valid location)');
+        }
+        return 0;
+    }
 
     const cacheKey = `${resolvedLocation.latitude.toFixed(3)},${resolvedLocation.longitude.toFixed(3)}`;
     const cached = weatherCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
+        if (RAIN_SURGE_DEBUG) {
+            console.log('☔ [RAIN_FEE] Cache hit', { cacheKey, value: cached.value });
+        }
         return cached.value;
     }
 
     try {
+        if (RAIN_SURGE_DEBUG) {
+            console.log('☔ [RAIN_FEE] Fetching Tomorrow.io', {
+                location: cacheKey,
+                intensityThreshold: RAIN_SURGE_MIN_INTENSITY,
+                probabilityThreshold: RAIN_SURGE_MIN_PROBABILITY
+            });
+        }
         const response = await axios.get('https://api.tomorrow.io/v4/weather/realtime', {
             params: {
                 location: `${resolvedLocation.latitude},${resolvedLocation.longitude}`,
@@ -155,6 +178,15 @@ const getRainFee = async ({ deliveryLocation, vendorLocation }) => {
         const shouldCharge = shouldApplyRainFee(rainIntensity, precipitationProbability);
         const rainFee = shouldCharge ? roundCurrency(RAIN_SURGE_FEE) : 0;
 
+        if (RAIN_SURGE_DEBUG) {
+            console.log('☔ [RAIN_FEE] Result', {
+                rainIntensity,
+                precipitationProbability,
+                shouldCharge,
+                rainFee
+            });
+        }
+
         weatherCache.set(cacheKey, {
             value: rainFee,
             expiresAt: Date.now() + RAIN_SURGE_CACHE_TTL_MS
@@ -162,6 +194,9 @@ const getRainFee = async ({ deliveryLocation, vendorLocation }) => {
 
         return rainFee;
     } catch (error) {
+        if (RAIN_SURGE_DEBUG) {
+            console.log('☔ [RAIN_FEE] Error', { message: error?.message });
+        }
         return 0;
     }
 };
