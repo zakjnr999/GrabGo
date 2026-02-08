@@ -207,6 +207,20 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       return;
     }
 
+    final verifiedToken = PhoneAuthService().verificationToken;
+    final verifiedPhone = PhoneAuthService().phoneNumber;
+    if (verifiedToken == null || verifiedToken.isEmpty || verifiedPhone == null || verifiedPhone.isEmpty) {
+      if (mounted) {
+        AppToastMessage.show(
+          context: context,
+          message: "Please verify your phone number to continue.",
+          backgroundColor: context.appColors.error,
+        );
+        context.go("/verifyPhone");
+      }
+      return;
+    }
+
     if (!agreedToTerms) {
       if (mounted) {
         AppToastMessage.show(
@@ -271,12 +285,15 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
     LoadingDialog.instance().show(context: context, text: "Creating your account...\nThis may take up to a minute.");
 
     try {
+      final phoneDigits = verifiedPhone.replaceAll(RegExp(r'\D'), '');
       final request = RegisterRequest(
         username: usernameController.text.trim(),
         email: emailController.text.trim(),
         password: passwordController.text,
         dateOfBirth: bdayController.text.trim(),
         promoCode: promoCodeController.text.trim().isNotEmpty ? promoCodeController.text.trim() : null,
+        phone: phoneDigits.isNotEmpty ? int.tryParse(phoneDigits) : null,
+        phoneVerificationToken: verifiedToken,
       );
       final response = await authService
           .registerUser(request)
@@ -319,7 +336,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         if (mounted) {
           AppToastMessage.show(context: context, message: message, backgroundColor: Colors.green);
 
-          context.go("/verifyPhone");
+          await _navigateAfterRegistration(context);
         }
       } else {
         String errorMessage = "Username already taken.";

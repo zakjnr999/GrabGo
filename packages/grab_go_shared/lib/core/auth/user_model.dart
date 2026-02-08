@@ -13,6 +13,7 @@ class RegisterRequest {
   final String? profilePicture;
   final String? promoCode;
   final String? referralCode;
+  final String? phoneVerificationToken;
   final String? role;
 
   RegisterRequest({
@@ -24,6 +25,7 @@ class RegisterRequest {
     this.profilePicture,
     this.promoCode,
     this.referralCode,
+    this.phoneVerificationToken,
     this.role,
   });
 

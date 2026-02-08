@@ -757,7 +757,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                             TextSpan(
                               recognizer: TapGestureRecognizer()
                                 ..onTap = () {
-                                  context.push("/register");
+                                  context.push("/verifyPhone");
                                 },
                               text: " Create Now",
                               style: TextStyle(

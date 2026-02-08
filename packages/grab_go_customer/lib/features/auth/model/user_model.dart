@@ -13,6 +13,7 @@ class RegisterRequest {
   final String? profilePicture;
   final String? promoCode;
   final String? referralCode;
+  final String? phoneVerificationToken;
 
   RegisterRequest({
     required this.username,
@@ -23,6 +24,7 @@ class RegisterRequest {
     this.profilePicture,
     this.promoCode,
     this.referralCode,
+    this.phoneVerificationToken,
   });
 
   factory RegisterRequest.fromJson(Map<String, dynamic> json) => _$RegisterRequestFromJson(json);

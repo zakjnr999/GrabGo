@@ -16,6 +16,7 @@ RegisterRequest _$RegisterRequestFromJson(Map<String, dynamic> json) =>
       profilePicture: json['profilePicture'] as String?,
       promoCode: json['promoCode'] as String?,
       referralCode: json['referralCode'] as String?,
+      phoneVerificationToken: json['phoneVerificationToken'] as String?,
       role: json['role'] as String?,
     );
 
@@ -29,6 +30,7 @@ Map<String, dynamic> _$RegisterRequestToJson(RegisterRequest instance) =>
       'profilePicture': instance.profilePicture,
       'promoCode': instance.promoCode,
       'referralCode': instance.referralCode,
+      'phoneVerificationToken': instance.phoneVerificationToken,
       'role': instance.role,
     };
 

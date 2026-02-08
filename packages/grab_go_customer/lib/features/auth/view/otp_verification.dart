@@ -124,6 +124,22 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
     );
 
     if (result != null && mounted) {
+      final verificationToken = result['verificationToken'] as String?;
+      if (verificationToken != null && verificationToken.isNotEmpty) {
+        PhoneAuthService().setVerificationToken(verificationToken);
+        LoadingDialog.instance().hide();
+        AppToastMessage.show(
+          context: context,
+          message: "Phone verified successfully! Complete your registration.",
+          backgroundColor: Colors.green,
+        );
+        await Future.delayed(const Duration(milliseconds: 300));
+        if (mounted) {
+          context.go("/register");
+        }
+        return;
+      }
+
       final userData = result['user'];
 
       if (userData != null) {

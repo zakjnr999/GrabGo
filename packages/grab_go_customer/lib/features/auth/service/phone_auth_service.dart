@@ -9,11 +9,12 @@ class PhoneAuthService {
   String? _phoneNumber;
   String? _userId; // Store user ID from registration
   String? _channel;
+  String? _verificationToken;
 
   /// Send OTP to phone number
   Future<bool> sendOTP({
     required String phoneNumber,
-    required String userId,
+    String? userId,
     String channel = 'sms',
     required Function() onCodeSent,
     required Function(String error) onError,
@@ -23,8 +24,12 @@ class PhoneAuthService {
       _userId = userId;
       _channel = channel;
 
-      final response =
-          await authService.sendPhoneOTP({'phoneNumber': phoneNumber, 'userId': userId, 'channel': channel});
+      final body = {'phoneNumber': phoneNumber, 'channel': channel};
+      if (userId != null && userId.isNotEmpty) {
+        body['userId'] = userId;
+      }
+
+      final response = await authService.sendPhoneOTP(body);
 
       if (response.isSuccessful && response.body != null) {
         final success = response.body!['success'] as bool? ?? false;
@@ -50,7 +55,7 @@ class PhoneAuthService {
   /// Resend OTP
   Future<bool> resendOTP({
     required String phoneNumber,
-    required String userId,
+    String? userId,
     String? channel,
     required Function() onCodeSent,
     required Function(String error) onError,
@@ -61,9 +66,12 @@ class PhoneAuthService {
       final resolvedChannel = channel ?? _channel ?? 'sms';
       _channel = resolvedChannel;
 
-      final response = await authService.resendPhoneOTP(
-        {'phoneNumber': phoneNumber, 'userId': userId, 'channel': resolvedChannel},
-      );
+      final body = {'phoneNumber': phoneNumber, 'channel': resolvedChannel};
+      if (userId != null && userId.isNotEmpty) {
+        body['userId'] = userId;
+      }
+
+      final response = await authService.resendPhoneOTP(body);
 
       if (response.isSuccessful && response.body != null) {
         final success = response.body!['success'] as bool? ?? false;
@@ -89,20 +97,33 @@ class PhoneAuthService {
   /// Verify OTP code
   Future<Map<String, dynamic>?> verifyOTP({required String otpCode, required Function(String error) onError}) async {
     try {
-      if (_phoneNumber == null || _userId == null) {
-        onError('Phone number or user ID not found. Please request OTP again.');
+      if (_phoneNumber == null) {
+        onError('Phone number not found. Please request OTP again.');
         return null;
       }
 
-      final response = await authService.verifyPhoneOTP({
+      final body = {
         'phoneNumber': _phoneNumber,
         'otp': otpCode,
-        'userId': _userId,
-      });
+      };
+      if (_userId != null && _userId!.isNotEmpty) {
+        body['userId'] = _userId;
+      }
+
+      final response = await authService.verifyPhoneOTP(body);
 
       if (response.isSuccessful && response.body != null) {
         final success = response.body!['success'] as bool? ?? false;
         if (success) {
+          final verificationToken = response.body!['verificationToken'] as String?;
+          if (verificationToken != null && verificationToken.isNotEmpty) {
+            _verificationToken = verificationToken;
+            return {
+              'verificationToken': verificationToken,
+              'phoneNumber': response.body!['phoneNumber'],
+            };
+          }
+
           // Update token if provided
           final token = response.body!['token'] as String?;
           if (token != null && token.isNotEmpty) {
@@ -133,6 +154,14 @@ class PhoneAuthService {
   /// Get last used channel
   String? get channel => _channel;
 
+  /// Get phone verification token (pre-registration)
+  String? get verificationToken => _verificationToken;
+
+  /// Store phone verification token (pre-registration)
+  void setVerificationToken(String token) {
+    _verificationToken = token;
+  }
+
   /// Store user ID from registration
   void setUserId(String userId) {
     _userId = userId;
@@ -146,5 +175,6 @@ class PhoneAuthService {
     _phoneNumber = null;
     _userId = null;
     _channel = null;
+    _verificationToken = null;
   }
 }

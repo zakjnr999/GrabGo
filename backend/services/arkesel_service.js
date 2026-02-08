@@ -1,5 +1,52 @@
 const axios = require('axios');
 
+const normalizePayload = (data) => {
+  if (data === null || data === undefined) return { payload: null, raw: data };
+  if (typeof data === 'string') {
+    try {
+      return { payload: JSON.parse(data), raw: data };
+    } catch (_) {
+      return { payload: { message: data }, raw: data };
+    }
+  }
+  return { payload: data, raw: data };
+};
+
+const interpretArkeselResponse = (data) => {
+  const { payload } = normalizePayload(data);
+  if (!payload || typeof payload !== 'object') {
+    return { success: true, message: undefined, payload };
+  }
+
+  const message = payload.message || payload.msg;
+  const code = payload.code ?? payload.statusCode;
+  const status = payload.status ?? payload.success;
+
+  if (typeof status === 'boolean') {
+    return { success: status, message, payload };
+  }
+
+  if (typeof status === 'string') {
+    const normalized = status.toLowerCase();
+    if (['success', 'ok', 'sent'].includes(normalized)) {
+      return { success: true, message, payload };
+    }
+    if (['error', 'failed', 'fail'].includes(normalized)) {
+      return { success: false, message: message || status, payload };
+    }
+  }
+
+  if (code !== undefined && code !== null) {
+    const codeValue = String(code).toLowerCase();
+    if (codeValue === '1000' || codeValue === '200' || codeValue === 'ok') {
+      return { success: true, message, payload };
+    }
+    return { success: false, message: message || `Provider error code ${code}`, payload };
+  }
+
+  return { success: true, message, payload };
+};
+
 const buildArkeselRequest = async ({ url, apiKey, sender, to, message, mode }) => {
   if (!url || !apiKey || !sender) {
     return {
@@ -18,7 +65,13 @@ const buildArkeselRequest = async ({ url, apiKey, sender, to, message, mode }) =
         sms: message,
       };
       const response = await axios.get(url, { params, timeout: 15000 });
-      return { success: true, provider: 'arkesel', data: response.data };
+      const interpreted = interpretArkeselResponse(response.data);
+      return {
+        success: interpreted.success,
+        provider: 'arkesel',
+        data: response.data,
+        message: interpreted.message,
+      };
     }
 
     const response = await axios.post(
@@ -33,7 +86,13 @@ const buildArkeselRequest = async ({ url, apiKey, sender, to, message, mode }) =
       }
     );
 
-    return { success: true, provider: 'arkesel', data: response.data };
+    const interpreted = interpretArkeselResponse(response.data);
+    return {
+      success: interpreted.success,
+      provider: 'arkesel',
+      data: response.data,
+      message: interpreted.message,
+    };
   } catch (error) {
     return {
       success: false,

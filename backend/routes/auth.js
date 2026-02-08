@@ -14,7 +14,12 @@ const {
   generateOTP,
   sendVerificationEmail,
 } = require("../utils/emailService");
-const { requestPhoneOtp, verifyPhoneOtp } = require("../services/otp_service");
+const {
+  requestPhoneOtp,
+  verifyPhoneOtp,
+  consumePhoneVerificationToken,
+  normalizeGhanaPhone,
+} = require("../services/otp_service");
 const { registerToken, removeToken } = require("../services/fcm_service");
 const creditService = require("../services/credit_service");
 
@@ -198,14 +203,38 @@ router.post("/", async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    const { phoneVerificationToken } = req.body;
+    let verifiedPhone = null;
+    if (phoneVerificationToken) {
+      const consumedPhone = await consumePhoneVerificationToken(phoneVerificationToken);
+      if (!consumedPhone) {
+        return res.status(400).json({
+          success: false,
+          message: "Phone verification expired. Please verify your phone again.",
+        });
+      }
+      const phoneDigits = consumedPhone.replace('+', '');
+      const existingPhoneUser = await prisma.user.findFirst({
+        where: { phone: phoneDigits },
+      });
+      if (existingPhoneUser) {
+        return res.status(400).json({
+          success: false,
+          message: "Phone number is already in use.",
+        });
+      }
+      verifiedPhone = phoneDigits;
+    }
+
     const userData = {
       username,
       email,
       password: hashedPassword,
       dateOfBirth: DateOfBirth, // Map to camelCase for Prisma
-      phone: phone ? String(phone) : null,
+      phone: verifiedPhone || (phone ? String(phone) : null),
       profilePicture,
       role: userRole,
+      isPhoneVerified: verifiedPhone ? true : false,
     };
 
     const user = await prisma.user.create({
@@ -818,31 +847,38 @@ router.post("/send-phone-otp", async (req, res) => {
       });
     }
 
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        message: "User ID is required",
+    let user = null;
+    if (userId) {
+      user = await prisma.user.findUnique({
+        where: { id: userId },
       });
-    }
 
-    // Find user by ID
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    });
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
 
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    // Check if phone is already verified
-    if (user.isPhoneVerified) {
-      return res.status(400).json({
-        success: false,
-        message: "Phone is already verified",
-      });
+      if (user.isPhoneVerified) {
+        return res.status(400).json({
+          success: false,
+          message: "Phone is already verified",
+        });
+      }
+    } else {
+      const normalized = normalizeGhanaPhone(phoneNumber);
+      if (normalized) {
+        const existingPhoneUser = await prisma.user.findFirst({
+          where: { phone: normalized.e164.replace('+', '') },
+        });
+        if (existingPhoneUser) {
+          return res.status(400).json({
+            success: false,
+            message: "Phone number is already in use.",
+          });
+        }
+      }
     }
 
     const otpResult = await requestPhoneOtp({
@@ -882,23 +918,25 @@ router.post("/verify-phone-otp", async (req, res) => {
   try {
     const { phoneNumber, otp, userId } = req.body;
 
-    if (!phoneNumber || !otp || !userId) {
+    if (!phoneNumber || !otp) {
       return res.status(400).json({
         success: false,
-        message: "Phone number, OTP, and user ID are required",
+        message: "Phone number and OTP are required",
       });
     }
 
-    // Find user by ID
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
+    let user = null;
+    if (userId) {
+      user = await prisma.user.findUnique({
+        where: { id: userId }
       });
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
     }
 
     const verifyResult = await verifyPhoneOtp({ phoneNumber, userId, otp });
@@ -909,25 +947,32 @@ router.post("/verify-phone-otp", async (req, res) => {
       });
     }
 
-    // Verify phone
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: {
-        isPhoneVerified: true,
-        phone: verifyResult.phoneE164,
-        phoneVerificationOTP: null,
-        phoneVerificationOTPExpires: null,
-      }
-    });
+    if (user) {
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          isPhoneVerified: true,
+          phone: verifyResult.phoneE164.replace('+', ''),
+          phoneVerificationOTP: null,
+          phoneVerificationOTPExpires: null,
+        }
+      });
 
-    // Generate token for the verified user
-    const token = generateToken(updatedUser.id);
+      const token = generateToken(updatedUser.id);
+
+      return res.json({
+        success: true,
+        message: "Phone verified successfully",
+        user: formatUser(updatedUser),
+        token,
+      });
+    }
 
     res.json({
       success: true,
       message: "Phone verified successfully",
-      user: formatUser(updatedUser),
-      token,
+      phoneNumber: verifyResult.phoneE164,
+      verificationToken: verifyResult.verificationToken,
     });
   } catch (error) {
     console.error("Verify phone OTP error:", error);
@@ -946,31 +991,32 @@ router.post("/resend-phone-otp", async (req, res) => {
   try {
     const { phoneNumber, userId, channel } = req.body;
 
-    if (!phoneNumber || !userId) {
+    if (!phoneNumber) {
       return res.status(400).json({
         success: false,
-        message: "Phone number and user ID are required",
+        message: "Phone number is required",
       });
     }
 
-    // Find user by ID
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
+    let user = null;
+    if (userId) {
+      user = await prisma.user.findUnique({
+        where: { id: userId }
       });
-    }
 
-    // Check if phone is already verified
-    if (user.isPhoneVerified) {
-      return res.status(400).json({
-        success: false,
-        message: "Phone is already verified",
-      });
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      if (user.isPhoneVerified) {
+        return res.status(400).json({
+          success: false,
+          message: "Phone is already verified",
+        });
+      }
     }
 
     const otpResult = await requestPhoneOtp({

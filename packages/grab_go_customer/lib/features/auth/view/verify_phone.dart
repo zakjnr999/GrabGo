@@ -104,20 +104,6 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
     final phoneNumber = '+233$digits';
 
     final userId = UserService().currentUser?.id;
-    if (userId == null) {
-      if (mounted) {
-        LoadingDialog.instance().hide();
-        AppToastMessage.show(
-          context: context,
-          message: "User ID not found. Please register again.",
-          backgroundColor: context.appColors.error,
-        );
-      }
-      setState(() {
-        isLoading = false;
-      });
-      return;
-    }
 
     await PhoneAuthService().sendOTP(
       phoneNumber: phoneNumber,
@@ -192,12 +178,10 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
         child: SafeArea(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
-            padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w, vertical: KSpacing.xl40.h),
+            padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w, vertical: 20.h),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SizedBox(height: KSpacing.xl40.h),
-
                 ScaleTransition(
                   scale: _scaleAnimation,
                   child: FadeTransition(
@@ -207,7 +191,7 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
                       width: 100.h,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: colors.accentGreen.withValues(alpha: 0.2),
+                        color: colors.accentOrange.withValues(alpha: 0.2),
                       ),
                       child: Center(
                         child: SvgPicture.asset(
@@ -215,7 +199,7 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
                           package: 'grab_go_shared',
                           height: 50.h,
                           width: 50.h,
-                          colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                          colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                         ),
                       ),
                     ),
@@ -228,7 +212,7 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
                   child: SlideTransition(
                     position: _slideAnimation,
                     child: Text(
-                      AppStrings.verifyPhoneMain,
+                      AppStrings.registerMain,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 32.sp,
@@ -249,7 +233,7 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w),
                       child: Text(
-                        AppStrings.verifyPhoneSub,
+                        AppStrings.registerSub,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 15.sp,
@@ -381,7 +365,7 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
                           decoration: BoxDecoration(
                             boxShadow: [
                               BoxShadow(
-                                color: colors.accentGreen.withValues(alpha: 0.4),
+                                color: colors.accentOrange.withValues(alpha: 0.4),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
                               ),
@@ -389,7 +373,7 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
                           ),
                           child: AppButton(
                             onPressed: _sendOTP,
-                            backgroundColor: colors.accentGreen,
+                            backgroundColor: colors.accentOrange,
                             borderRadius: KBorderSize.borderRadius15,
                             buttonText: AppStrings.register,
                             textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15.sp),
@@ -411,7 +395,7 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
                                   fontFamily: "Lato",
                                   fontSize: 12.sp,
                                   fontWeight: FontWeight.w600,
-                                  color: colors.accentGreen,
+                                  color: colors.accentOrange,
                                 ),
                               ),
                               TextSpan(
@@ -424,7 +408,7 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
                                   fontFamily: "Lato",
                                   fontSize: 12.sp,
                                   fontWeight: FontWeight.w600,
-                                  color: colors.accentGreen,
+                                  color: colors.accentOrange,
                                 ),
                               ),
                               TextSpan(

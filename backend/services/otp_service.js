@@ -9,6 +9,7 @@ const OTP_CONFIG = {
   maxSendPerHour: Number(process.env.OTP_MAX_SEND_PER_HOUR || 5),
   maxVerifyAttempts: Number(process.env.OTP_MAX_VERIFY_ATTEMPTS || 5),
   lockoutSeconds: Number(process.env.OTP_LOCKOUT_SECONDS || 900),
+  verifiedTokenTtlSeconds: Number(process.env.OTP_VERIFIED_TTL_SECONDS || 1800),
   sendWindowSeconds: 3600,
 };
 
@@ -98,7 +99,7 @@ const requestPhoneOtp = async ({ phoneNumber, userId, channel = 'sms' }) => {
   const otpKey = getKey('code', normalized.digits);
   const otpPayload = {
     hash: hashOtp(otp, normalized.e164),
-    userId,
+    userId: userId || null,
     phone: normalized.e164,
     channel: resolvedChannel,
     createdAt: Date.now(),
@@ -138,6 +139,31 @@ const requestPhoneOtp = async ({ phoneNumber, userId, channel = 'sms' }) => {
   };
 };
 
+const issuePhoneVerificationToken = async (phoneE164) => {
+  const token = crypto.randomBytes(24).toString('hex');
+  const key = getKey('verified', token);
+  await cache.set(
+    key,
+    {
+      phone: phoneE164,
+      createdAt: Date.now(),
+    },
+    OTP_CONFIG.verifiedTokenTtlSeconds
+  );
+  return token;
+};
+
+const consumePhoneVerificationToken = async (token) => {
+  if (!token) return null;
+  const key = getKey('verified', token);
+  const payload = await cache.get(key);
+  if (!payload || !payload.phone) {
+    return null;
+  }
+  await cache.del(key);
+  return payload.phone;
+};
+
 const verifyPhoneOtp = async ({ phoneNumber, userId, otp }) => {
   const normalized = normalizeGhanaPhone(phoneNumber);
   if (!normalized) {
@@ -150,8 +176,13 @@ const verifyPhoneOtp = async ({ phoneNumber, userId, otp }) => {
     return { success: false, message: 'OTP has expired or is invalid.' };
   }
 
-  if (otpPayload.userId !== userId) {
-    return { success: false, message: 'OTP does not match this user.' };
+  if (otpPayload.userId) {
+    if (!userId) {
+      return { success: false, message: 'OTP does not match this user.' };
+    }
+    if (otpPayload.userId !== userId) {
+      return { success: false, message: 'OTP does not match this user.' };
+    }
   }
 
   const attemptKey = getKey('verify', normalized.digits);
@@ -176,11 +207,17 @@ const verifyPhoneOtp = async ({ phoneNumber, userId, otp }) => {
   await cache.del(otpKey);
   await cache.del(attemptKey);
 
-  return { success: true, phoneE164: normalized.e164 };
+  let verificationToken;
+  if (!otpPayload.userId) {
+    verificationToken = await issuePhoneVerificationToken(normalized.e164);
+  }
+
+  return { success: true, phoneE164: normalized.e164, verificationToken };
 };
 
 module.exports = {
   normalizeGhanaPhone,
   requestPhoneOtp,
   verifyPhoneOtp,
+  consumePhoneVerificationToken,
 };

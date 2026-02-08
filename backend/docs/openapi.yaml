@@ -959,7 +959,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [phoneNumber, userId]
+              required: [phoneNumber]
               properties:
                 phoneNumber:
                   type: string
@@ -986,7 +986,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [phoneNumber, otp, userId]
+              required: [phoneNumber, otp]
               properties:
                 phoneNumber:
                   type: string
