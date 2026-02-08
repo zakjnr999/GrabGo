@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/Pickup/view/pickup_map.dart';
 import 'package:grab_go_customer/features/browse/view/browse_page.dart';
+import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/home/view/home_page.dart';
 import 'package:grab_go_customer/features/profile/view/account.dart';
 import 'package:grab_go_customer/features/order/view/orders.dart';
@@ -81,17 +84,11 @@ class _BottomNavigatorState extends State<BottomNavigator> {
         child: Stack(
           children: [
             IndexedStack(index: selectedIndex, children: _screens),
-            if (shouldShowNoInternet)
-              Positioned.fill(
-                child: NoInternetScreen(
-                  onRetry: _checkConnectivity,
-                ),
-              ),
+            if (shouldShowNoInternet) Positioned.fill(child: NoInternetScreen(onRetry: _checkConnectivity)),
           ],
         ),
       ),
       bottomNavigationBar: Container(
-        height: size.height * 0.16,
         decoration: BoxDecoration(
           color: colors.backgroundTertiary,
           borderRadius: const BorderRadius.only(
@@ -102,20 +99,91 @@ class _BottomNavigatorState extends State<BottomNavigator> {
             BoxShadow(color: Colors.black.withAlpha(25), spreadRadius: 1, blurRadius: 20, offset: const Offset(0, -3)),
           ],
         ),
-        child: BottomAppBar(
-          color: Colors.transparent,
-          elevation: 0,
-          child: Row(
-            children: [
-              Expanded(child: _buildNavItem(Assets.icons.home, "Home", 0, context)),
-              Expanded(child: _buildNavItem(Assets.icons.running, "Pickup", 1, context)),
-              Expanded(child: _buildNavItem(Assets.icons.search, "Browse", 2, context)),
-              Expanded(child: _buildNavItem(Assets.icons.squareMenu, "Orders", 3, context)),
-              Expanded(child: _buildNavItem(Assets.icons.user, "Account", 4, context)),
-            ],
-          ),
+        clipBehavior: Clip.hardEdge,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildCartBar(colors),
+            SizedBox(
+              height: size.height * 0.16,
+              child: BottomAppBar(
+                color: Colors.transparent,
+                elevation: 0,
+                child: Row(
+                  children: [
+                    Expanded(child: _buildNavItem(Assets.icons.home, "Home", 0, context)),
+                    Expanded(child: _buildNavItem(Assets.icons.running, "Pickup", 1, context)),
+                    Expanded(child: _buildNavItem(Assets.icons.search, "Browse", 2, context)),
+                    Expanded(child: _buildNavItem(Assets.icons.squareMenu, "Orders", 3, context)),
+                    Expanded(child: _buildNavItem(Assets.icons.user, "Account", 4, context)),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildCartBar(AppColorsExtension colors) {
+    return Consumer<CartProvider>(
+      builder: (context, cartProvider, _) {
+        if (cartProvider.cartItems.isEmpty) return const SizedBox.shrink();
+
+        final itemCount = cartProvider.totalQuantity;
+        final totalAmount = cartProvider.total;
+
+        return GestureDetector(
+          onTap: () => context.push("/cart"),
+          child: Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+            decoration: BoxDecoration(color: colors.accentOrange),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8.r),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+                  child: SvgPicture.asset(
+                    Assets.icons.cart,
+                    height: 18.h,
+                    width: 18.w,
+                    package: 'grab_go_shared',
+                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "View cart",
+                        style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                      ),
+                      SizedBox(height: 2.h),
+                      Text(
+                        "$itemCount ${itemCount == 1 ? "item" : "items"} in cart",
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  "${AppStrings.currencySymbol} ${totalAmount.toStringAsFixed(2)}",
+                  style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w800),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

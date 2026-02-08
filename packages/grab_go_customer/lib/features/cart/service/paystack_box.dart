@@ -19,6 +19,7 @@ class PaystackService {
     required double subTotal,
     required double deliveryFee,
     double serviceFee = 0.0,
+    double rainFee = 0.0,
     double tax = 0.0,
     double tip = 0.0,
   }) async {
@@ -42,6 +43,7 @@ class PaystackService {
             "subTotal": subTotal,
             "deliveryFee": deliveryFee,
             "serviceFee": serviceFee,
+            "rainFee": rainFee,
             "tax": tax,
             "tip": tip
           },

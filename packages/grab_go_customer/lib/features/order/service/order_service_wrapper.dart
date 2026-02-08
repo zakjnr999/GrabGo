@@ -14,6 +14,8 @@ class OrderServiceWrapper {
   Future<String> createOrder({
     required Map<CartItem, int> cartItems,
     required String deliveryAddress,
+    double? deliveryLatitude,
+    double? deliveryLongitude,
     required String paymentMethod,
     required double subtotal,
     required double deliveryFee,
@@ -52,7 +54,11 @@ class OrderServiceWrapper {
         orderNumber: _generateOrderNumber(),
         restaurant: restaurantId,
         items: items,
-        deliveryAddress: _resolveDeliveryAddress(deliveryAddress),
+        deliveryAddress: _resolveDeliveryAddress(
+          deliveryAddress,
+          latitude: deliveryLatitude,
+          longitude: deliveryLongitude,
+        ),
         paymentMethod: paymentMethod.toLowerCase().replaceAll(' ', '_'), // Convert "MTN MOMO" to "mtn_momo"
         notes: notes,
         pricing: OrderPricing(subtotal: subtotal, deliveryFee: deliveryFee, total: total),
@@ -135,7 +141,11 @@ class OrderServiceWrapper {
     return 'ORD-${DateTime.now().millisecondsSinceEpoch}-$suffix';
   }
 
-  DeliveryAddress _resolveDeliveryAddress(String selectedAddress) {
+  DeliveryAddress _resolveDeliveryAddress(
+    String selectedAddress, {
+    double? latitude,
+    double? longitude,
+  }) {
     final normalized = selectedAddress.trim().toLowerCase();
 
     switch (normalized) {
@@ -145,8 +155,8 @@ class OrderServiceWrapper {
           city: 'Madina - Adenta',
           state: 'Greater Accra',
           zipCode: null,
-          latitude: null,
-          longitude: null,
+          latitude: latitude,
+          longitude: longitude,
         );
       case 'office':
         return DeliveryAddress(
@@ -154,8 +164,8 @@ class OrderServiceWrapper {
           city: 'Kasoa',
           state: 'Central Region',
           zipCode: null,
-          latitude: null,
-          longitude: null,
+          latitude: latitude,
+          longitude: longitude,
         );
       default:
         return DeliveryAddress(
@@ -163,8 +173,8 @@ class OrderServiceWrapper {
           city: 'Accra',
           state: 'Greater Accra',
           zipCode: null,
-          latitude: null,
-          longitude: null,
+          latitude: latitude,
+          longitude: longitude,
         );
     }
   }

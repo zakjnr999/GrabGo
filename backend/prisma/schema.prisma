@@ -989,6 +989,7 @@ model Order {
   riderId            String?
   subtotal           Float
   deliveryFee        Float            @default(0)
+  rainFee            Float            @default(0)
   tax                Float            @default(0)
   totalAmount        Float
   paymentMethod      PaymentMethod

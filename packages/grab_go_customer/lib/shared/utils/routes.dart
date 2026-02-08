@@ -685,6 +685,7 @@ final GoRouter appRouter = GoRouter(
             subTotal: extra["subTotal"] as double? ?? 0.0,
             deliveryFee: extra["deliveryFee"] as double? ?? 0.0,
             serviceFee: extra["serviceFee"] as double? ?? 0.0,
+            rainFee: extra["rainFee"] as double? ?? 0.0,
             tax: extra["tax"] as double? ?? 0.0,
             tip: extra["tip"] as double? ?? 0.0,
             orderNumber: extra["orderNumber"] as String?,
@@ -774,6 +775,8 @@ final GoRouter appRouter = GoRouter(
         final selectedDeliveryInstructions = extra?['selectedDeliveryInstructions'] as List<String>? ?? [];
         final customDeliveryInstruction = extra?['customDeliveryInstruction'] as String? ?? '';
         final tipAmount = extra?['tipAmount'] as double? ?? 0.0;
+        final deliveryLatitude = extra?['latitude'] as double?;
+        final deliveryLongitude = extra?['longitude'] as double?;
 
         return CustomTransitionPage(
           key: state.pageKey,
@@ -786,6 +789,8 @@ final GoRouter appRouter = GoRouter(
             selectedDeliveryInstructions: selectedDeliveryInstructions,
             customDeliveryInstruction: customDeliveryInstruction,
             tipAmount: tipAmount,
+            deliveryLatitude: deliveryLatitude,
+            deliveryLongitude: deliveryLongitude,
           ),
           transitionDuration: const Duration(milliseconds: 400),
           reverseTransitionDuration: const Duration(milliseconds: 400),

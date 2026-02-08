@@ -17,6 +17,7 @@ class PaymentComplete extends StatefulWidget {
   final double subTotal;
   final double deliveryFee;
   final double serviceFee;
+  final double rainFee;
   final double tax;
   final double tip;
   final String? orderNumber;
@@ -29,6 +30,7 @@ class PaymentComplete extends StatefulWidget {
     required this.subTotal,
     required this.deliveryFee,
     this.serviceFee = 0.0,
+    this.rainFee = 0.0,
     this.tax = 0.0,
     this.tip = 0.0,
     this.orderNumber,
@@ -268,6 +270,10 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
           if (widget.serviceFee > 0) ...[
             SizedBox(height: 16.h),
             _buildEnhancedDetailRow("Service Fee", "\GHC ${widget.serviceFee.toStringAsFixed(2)}", colors, false),
+          ],
+          if (widget.rainFee > 0) ...[
+            SizedBox(height: 16.h),
+            _buildEnhancedDetailRow("Rain Fee", "\GHC ${widget.rainFee.toStringAsFixed(2)}", colors, false),
           ],
           // Tax removed (kept in pricing for backend compatibility)
           if (widget.tip > 0) ...[

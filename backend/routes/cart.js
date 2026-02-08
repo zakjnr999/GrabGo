@@ -36,6 +36,7 @@ router.get('/', protect, async (req, res) => {
                         deliveryFee: 0,
                         serviceFee: 0,
                         tax: 0,
+                        rainFee: 0,
                         total: 0,
                         itemCount: 0
                     }

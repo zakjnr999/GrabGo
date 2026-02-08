@@ -1,9 +1,21 @@
+const axios = require('axios');
 const prisma = require('../config/prisma');
 const { calculateDistance } = require('../utils/distance');
 
 const toNumber = (value, fallback = 0) => {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const toBoolean = (value, fallback = false) => {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value !== 0;
+    if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        if (['true', '1', 'yes', 'y', 'on'].includes(normalized)) return true;
+        if (['false', '0', 'no', 'n', 'off'].includes(normalized)) return false;
+    }
+    return fallback;
 };
 
 const roundCurrency = (value) => {
@@ -18,6 +30,15 @@ const DELIVERY_FEE_PER_KM = toNumber(process.env.DELIVERY_FEE_PER_KM, 0);
 const DELIVERY_FEE_MIN = toNumber(process.env.DELIVERY_FEE_MIN, 0);
 const DELIVERY_FEE_MAX = toNumber(process.env.DELIVERY_FEE_MAX, 0);
 const DELIVERY_DISTANCE_MAX_KM = toNumber(process.env.DELIVERY_DISTANCE_MAX_KM, 50);
+const TOMORROW_IO_API_KEY = process.env.TOMORROW_IO_API_KEY || process.env.TOMORROW_API_KEY;
+const RAIN_SURGE_ENABLED = toBoolean(process.env.RAIN_SURGE_ENABLED, false);
+const RAIN_SURGE_FEE = toNumber(process.env.RAIN_SURGE_FEE, 0);
+const RAIN_SURGE_MIN_INTENSITY = toNumber(process.env.RAIN_SURGE_MIN_INTENSITY, 0);
+const RAIN_SURGE_MIN_PROBABILITY = toNumber(process.env.RAIN_SURGE_MIN_PROBABILITY, 0);
+const RAIN_SURGE_CACHE_TTL_MS = toNumber(process.env.RAIN_SURGE_CACHE_TTL_MS, 300000);
+const RAIN_SURGE_REQUEST_TIMEOUT_MS = toNumber(process.env.RAIN_SURGE_REQUEST_TIMEOUT_MS, 3500);
+
+const weatherCache = new Map();
 
 const calculateSubtotal = (items = []) => {
     const subtotal = items.reduce((sum, item) => {
@@ -49,8 +70,8 @@ const calculateTax = (subtotal) => {
     return roundCurrency(subtotal * TAX_RATE);
 };
 
-const calculateTotal = ({ subtotal, deliveryFee, serviceFee, tax }) => {
-    return roundCurrency(subtotal + deliveryFee + serviceFee + tax);
+const calculateTotal = ({ subtotal, deliveryFee, serviceFee, tax, rainFee = 0 }) => {
+    return roundCurrency(subtotal + deliveryFee + serviceFee + tax + rainFee);
 };
 
 const normalizeLocation = (location) => {
@@ -86,6 +107,63 @@ const calculateDeliveryFee = ({ baseFee, distanceKm }) => {
     }
 
     return roundCurrency(fee);
+};
+
+const normalizeProbability = (value) => {
+    const normalized = toNumber(value, 0);
+    if (normalized > 1) return normalized / 100;
+    return normalized;
+};
+
+const shouldApplyRainFee = (rainIntensity, precipitationProbability) => {
+    const intensityThreshold = Math.max(0, RAIN_SURGE_MIN_INTENSITY);
+    const probabilityThreshold = Math.max(0, normalizeProbability(RAIN_SURGE_MIN_PROBABILITY));
+
+    const intensityHit = intensityThreshold > 0 ? rainIntensity >= intensityThreshold : rainIntensity > 0;
+    const probabilityHit = probabilityThreshold > 0 ? precipitationProbability >= probabilityThreshold : false;
+
+    return intensityHit || probabilityHit;
+};
+
+const getRainFee = async ({ deliveryLocation, vendorLocation }) => {
+    if (!RAIN_SURGE_ENABLED || !TOMORROW_IO_API_KEY || RAIN_SURGE_FEE <= 0) {
+        return 0;
+    }
+
+    const resolvedLocation = normalizeLocation(deliveryLocation) || normalizeLocation(vendorLocation);
+    if (!resolvedLocation) return 0;
+
+    const cacheKey = `${resolvedLocation.latitude.toFixed(3)},${resolvedLocation.longitude.toFixed(3)}`;
+    const cached = weatherCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+        return cached.value;
+    }
+
+    try {
+        const response = await axios.get('https://api.tomorrow.io/v4/weather/realtime', {
+            params: {
+                location: `${resolvedLocation.latitude},${resolvedLocation.longitude}`,
+                apikey: TOMORROW_IO_API_KEY,
+                units: 'metric'
+            },
+            timeout: RAIN_SURGE_REQUEST_TIMEOUT_MS
+        });
+
+        const values = response?.data?.data?.values || {};
+        const rainIntensity = toNumber(values.rainIntensity ?? values.precipitationIntensity, 0);
+        const precipitationProbability = normalizeProbability(values.precipitationProbability);
+        const shouldCharge = shouldApplyRainFee(rainIntensity, precipitationProbability);
+        const rainFee = shouldCharge ? roundCurrency(RAIN_SURGE_FEE) : 0;
+
+        weatherCache.set(cacheKey, {
+            value: rainFee,
+            expiresAt: Date.now() + RAIN_SURGE_CACHE_TTL_MS
+        });
+
+        return rainFee;
+    } catch (error) {
+        return 0;
+    }
 };
 
 const resolveVendorId = (cart) => {
@@ -177,6 +255,7 @@ const calculateCartPricing = async (cart, options = {}) => {
             deliveryFee: 0,
             serviceFee: 0,
             tax: 0,
+            rainFee: 0,
             total: 0,
             itemCount: 0,
             deliveryDistanceKm: 0
@@ -191,7 +270,8 @@ const calculateCartPricing = async (cart, options = {}) => {
     const deliveryFee = calculateDeliveryFee({ baseFee, distanceKm });
     const serviceFee = calculateServiceFee(subtotal);
     const tax = calculateTax(subtotal);
-    const total = calculateTotal({ subtotal, deliveryFee, serviceFee, tax });
+    const rainFee = await getRainFee({ deliveryLocation: resolvedDeliveryLocation, vendorLocation });
+    const total = calculateTotal({ subtotal, deliveryFee, serviceFee, tax, rainFee });
     const itemCount = cart.items.reduce((sum, item) => sum + toNumber(item.quantity, 0), 0);
 
     return {
@@ -199,6 +279,7 @@ const calculateCartPricing = async (cart, options = {}) => {
         deliveryFee,
         serviceFee,
         tax,
+        rainFee,
         total,
         itemCount,
         deliveryDistanceKm: distanceKm ?? 0
@@ -216,11 +297,13 @@ const calculateOrderPricing = async ({ subtotal, baseDeliveryFee, userId, delive
     });
     const serviceFee = calculateServiceFee(normalizedSubtotal);
     const tax = calculateTax(normalizedSubtotal);
+    const rainFee = await getRainFee({ deliveryLocation: resolvedDeliveryLocation, vendorLocation: normalizedVendorLocation });
     const total = calculateTotal({
         subtotal: normalizedSubtotal,
         deliveryFee: normalizedDeliveryFee,
         serviceFee,
-        tax
+        tax,
+        rainFee
     });
 
     return {
@@ -228,6 +311,7 @@ const calculateOrderPricing = async ({ subtotal, baseDeliveryFee, userId, delive
         deliveryFee: normalizedDeliveryFee,
         serviceFee,
         tax,
+        rainFee,
         total,
         deliveryDistanceKm: distanceKm ?? 0
     };

@@ -6,6 +6,8 @@ import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
+import 'package:grab_go_customer/shared/models/address_model.dart';
+import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
@@ -20,6 +22,8 @@ class _CheckoutState extends State<Checkout> {
   String _selectedAddress = "Home";
   String _selectedAddressDetails = "Madina, Adenta";
   String _selectedPaymentMethod = "Credit Card";
+  double? _selectedLatitude;
+  double? _selectedLongitude;
   final List<String> _selectedInstructions = [];
   bool _showCustomInstruction = false;
   final List<String> _selectedDeliveryInstructions = [];
@@ -42,6 +46,23 @@ class _CheckoutState extends State<Checkout> {
     final colors = context.appColors;
     final padding = MediaQuery.of(context).padding;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final locationProvider = context.watch<NativeLocationProvider>();
+    final cartProvider = context.read<CartProvider>();
+    final confirmedAddress = locationProvider.confirmedAddress;
+
+    final bool hasInitialCoords = _selectedLatitude != null && _selectedLongitude != null;
+    final double? fallbackLat = confirmedAddress?.latitude ?? locationProvider.latitude;
+    final double? fallbackLng = confirmedAddress?.longitude ?? locationProvider.longitude;
+    if (!hasInitialCoords && fallbackLat != null && fallbackLng != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _selectedLatitude = fallbackLat;
+          _selectedLongitude = fallbackLng;
+        });
+        cartProvider.updateDeliveryLocation(latitude: fallbackLat, longitude: fallbackLng);
+      });
+    }
 
     final systemUiOverlayStyle = SystemUiOverlayStyle(
       statusBarColor: colors.backgroundSecondary,
@@ -61,6 +82,7 @@ class _CheckoutState extends State<Checkout> {
             final double subtotal = provider.subtotal;
             final double deliveryFee = provider.deliveryFee;
             final double serviceFee = provider.serviceFee;
+            final double rainFee = provider.rainFee;
             final double tax = provider.tax;
             final double total = provider.total + _tipAmount;
 
@@ -121,27 +143,15 @@ class _CheckoutState extends State<Checkout> {
                         // Shipping Address Section
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                          child: Row(
-                            children: [
-                              SvgPicture.asset(
-                                Assets.icons.mapPin,
-                                package: 'grab_go_shared',
-                                height: 18.h,
-                                width: 18.w,
-                                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                              ),
-                              SizedBox(width: 12.w),
-                              Text(
-                                "Delivery Address",
-                                style: TextStyle(
-                                  fontFamily: "Lato",
-                                  package: 'grab_go_shared',
-                                  color: colors.textPrimary,
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
+                          child: Text(
+                            "Delivery Address",
+                            style: TextStyle(
+                              fontFamily: "Lato",
+                              package: 'grab_go_shared',
+                              color: colors.textPrimary,
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                         SizedBox(height: 10.h),
@@ -150,100 +160,40 @@ class _CheckoutState extends State<Checkout> {
                           id: "Home",
                           title: "Home",
                           phone: "(233) 55 250 1805",
-                          address: "Madina, Adenta",
+                          address: confirmedAddress?.label == AddressLabel.home
+                              ? confirmedAddress!.formattedAddress
+                              : "Madina, Adenta",
+                          latitude: confirmedAddress?.label == AddressLabel.home ? confirmedAddress!.latitude : null,
+                          longitude: confirmedAddress?.label == AddressLabel.home ? confirmedAddress!.longitude : null,
                           context: context,
                         ),
                         _buildAddressTile(
                           id: "Office",
                           title: "Office",
                           phone: "(233) 55 250 1805",
-                          address: "Kasoa, Millennium City",
+                          address: confirmedAddress?.label == AddressLabel.work
+                              ? confirmedAddress!.formattedAddress
+                              : "Kasoa, Millennium City",
+                          latitude: confirmedAddress?.label == AddressLabel.work ? confirmedAddress!.latitude : null,
+                          longitude: confirmedAddress?.label == AddressLabel.work ? confirmedAddress!.longitude : null,
                           context: context,
                         ),
                         _buildCurrentLocationTile(context),
 
                         SizedBox(height: 8.h),
 
-                        // Payment Method Section
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
-                          child: Row(
-                            children: [
-                              SvgPicture.asset(
-                                Assets.icons.cash,
-                                package: 'grab_go_shared',
-                                height: 18.h,
-                                width: 18.w,
-                                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                              ),
-                              SizedBox(width: 12.w),
-                              Text(
-                                "Payment Method",
-                                style: TextStyle(
-                                  fontFamily: "Lato",
-                                  package: 'grab_go_shared',
-                                  color: colors.textPrimary,
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        _buildPaymentOption(
-                          title: "MTN MOMO",
-                          methodValue: "MTN MOMO",
-                          assetPath: Assets.icons.mom.path,
-                          context: context,
-                        ),
-                        _buildPaymentOption(
-                          title: "Vodafone Cash",
-                          methodValue: "Vodafone Cash",
-                          assetPath: Assets.icons.vodafoneCash.path,
-                          context: context,
-                        ),
-
-                        _buildPaymentOption(
-                          title: "Credit Card",
-                          methodValue: "Credit Card",
-                          assetPath: Assets.icons.cc.path,
-                          context: context,
-                        ),
-
-                        _buildPaymentOption(
-                          title: "Payment on Delivery",
-                          methodValue: "Payment on Delivery",
-                          icon: Assets.icons.deliveryTruck,
-                          context: context,
-                        ),
-
-                        SizedBox(height: 8.h),
-
                         // Special Instructions Section
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                          child: Row(
-                            children: [
-                              SvgPicture.asset(
-                                Assets.icons.squareMenu,
-                                package: 'grab_go_shared',
-                                height: 18.h,
-                                width: 18.w,
-                                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                              ),
-                              SizedBox(width: 12.w),
-                              Text(
-                                "Special Instructions",
-                                style: TextStyle(
-                                  fontFamily: "Lato",
-                                  package: 'grab_go_shared',
-                                  color: colors.textPrimary,
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
+                          child: Text(
+                            "Special Instructions",
+                            style: TextStyle(
+                              fontFamily: "Lato",
+                              package: 'grab_go_shared',
+                              color: colors.textPrimary,
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
 
@@ -305,27 +255,15 @@ class _CheckoutState extends State<Checkout> {
                         // Delivery Instructions Section
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                          child: Row(
-                            children: [
-                              SvgPicture.asset(
-                                Assets.icons.deliveryTruck,
-                                package: 'grab_go_shared',
-                                height: 18.h,
-                                width: 18.w,
-                                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                              ),
-                              SizedBox(width: 12.w),
-                              Text(
-                                "Delivery Instructions",
-                                style: TextStyle(
-                                  fontFamily: "Lato",
-                                  package: 'grab_go_shared',
-                                  color: colors.textPrimary,
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
+                          child: Text(
+                            "Delivery Instructions",
+                            style: TextStyle(
+                              fontFamily: "Lato",
+                              package: 'grab_go_shared',
+                              color: colors.textPrimary,
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
 
@@ -383,27 +321,15 @@ class _CheckoutState extends State<Checkout> {
                         SizedBox(height: 16.h),
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                          child: Row(
-                            children: [
-                              SvgPicture.asset(
-                                Assets.icons.handCash,
-                                package: 'grab_go_shared',
-                                height: 18.h,
-                                width: 18.w,
-                                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                              ),
-                              SizedBox(width: 12.w),
-                              Text(
-                                "Tip Delivery Driver",
-                                style: TextStyle(
-                                  fontFamily: "Lato",
-                                  package: 'grab_go_shared',
-                                  color: colors.textPrimary,
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
+                          child: Text(
+                            "Tip Delivery Driver",
+                            style: TextStyle(
+                              fontFamily: "Lato",
+                              package: 'grab_go_shared',
+                              color: colors.textPrimary,
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
 
@@ -470,104 +396,88 @@ class _CheckoutState extends State<Checkout> {
                         // Order Summary Section
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                          child: Row(
-                            children: [
-                              SvgPicture.asset(
-                                Assets.icons.squareMenu,
-                                package: 'grab_go_shared',
-                                height: 18.h,
-                                width: 18.w,
-                                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                              ),
-                              SizedBox(width: 12.w),
-                              Text(
-                                "Order Summary",
-                                style: TextStyle(
-                                  fontFamily: "Lato",
-                                  package: 'grab_go_shared',
-                                  color: colors.textPrimary,
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
+                          child: Text(
+                            "Order Summary",
+                            style: TextStyle(
+                              fontFamily: "Lato",
+                              package: 'grab_go_shared',
+                              color: colors.textPrimary,
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
 
                         // Pricing breakdown
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 20.w),
-                          child: Container(
-                            padding: EdgeInsets.all(14.r),
-                            decoration: BoxDecoration(
-                              color: colors.backgroundPrimary,
-                              borderRadius: BorderRadius.circular(12.r),
-                              border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-                            ),
-                            child: Column(
-                              children: [
-                                _buildPriceRowWithIcon("Subtotal", subtotal, colors, Assets.icons.cash, false),
+                          child: Column(
+                            children: [
+                              _buildPriceRowWithIcon("Subtotal", subtotal, colors, Assets.icons.cash, false),
+                              SizedBox(height: 10.h),
+                              _buildPriceRowWithIcon(
+                                "Delivery Fee",
+                                deliveryFee,
+                                colors,
+                                Assets.icons.deliveryTruck,
+                                false,
+                              ),
+                              SizedBox(height: 10.h),
+                              _buildPriceRowWithIcon(
+                                "Service Fee",
+                                serviceFee,
+                                colors,
+                                Assets.icons.deliveryTruck,
+                                false,
+                              ),
+                              if (rainFee > 0) ...[
                                 SizedBox(height: 10.h),
-                                _buildPriceRowWithIcon(
-                                  "Delivery Fee",
-                                  deliveryFee,
-                                  colors,
-                                  Assets.icons.deliveryTruck,
-                                  false,
-                                ),
-                                SizedBox(height: 10.h),
-                                _buildPriceRowWithIcon(
-                                  "Service Fee",
-                                  serviceFee,
-                                  colors,
-                                  Assets.icons.deliveryTruck,
-                                  false,
-                                ),
-                                // Tax removed (kept in pricing for backend compatibility)
-                                if (_tipAmount > 0) ...[
-                                  SizedBox(height: 10.h),
-                                  _buildPriceRowWithIcon("Tip", _tipAmount, colors, Assets.icons.handCash, false),
-                                ],
-                                SizedBox(height: 12.h),
-                                DottedLine(
-                                  direction: Axis.horizontal,
-                                  lineLength: double.infinity,
-                                  lineThickness: 1.5,
-                                  dashLength: 6,
-                                  dashColor: colors.inputBorder.withValues(alpha: 0.5),
-                                  dashGapLength: 4,
-                                ),
-                                SizedBox(height: 12.h),
-                                Container(
-                                  padding: EdgeInsets.all(12.r),
-                                  decoration: BoxDecoration(
-                                    color: colors.accentOrange.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(8.r),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Text(
-                                        "Total Amount",
-                                        style: TextStyle(
-                                          color: colors.textPrimary,
-                                          fontSize: 14.sp,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      Text(
-                                        "GHS ${total.toStringAsFixed(2)}",
-                                        style: TextStyle(
-                                          color: colors.accentOrange,
-                                          fontSize: 18.sp,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                                _buildPriceRowWithIcon("Rain Fee", rainFee, colors, Assets.icons.warningCircle, false),
                               ],
-                            ),
+                              // Tax removed (kept in pricing for backend compatibility)
+                              if (_tipAmount > 0) ...[
+                                SizedBox(height: 10.h),
+                                _buildPriceRowWithIcon("Tip", _tipAmount, colors, Assets.icons.handCash, false),
+                              ],
+                              SizedBox(height: 12.h),
+                              DottedLine(
+                                direction: Axis.horizontal,
+                                lineLength: double.infinity,
+                                lineThickness: 1.5,
+                                dashLength: 6,
+                                dashColor: colors.inputBorder.withValues(alpha: 0.5),
+                                dashGapLength: 4,
+                              ),
+                              SizedBox(height: 12.h),
+                              Container(
+                                padding: EdgeInsets.all(12.r),
+                                decoration: BoxDecoration(
+                                  color: colors.accentOrange.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8.r),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      "Total Amount",
+                                      style: TextStyle(
+                                        color: colors.textPrimary,
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      "GHS ${total.toStringAsFixed(2)}",
+                                      style: TextStyle(
+                                        color: colors.accentOrange,
+                                        fontSize: 18.sp,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         Padding(
@@ -590,11 +500,16 @@ class _CheckoutState extends State<Checkout> {
                   ),
                   child: GestureDetector(
                     onTap: () {
+                      if (_selectedLatitude != null && _selectedLongitude != null) {
+                        cartProvider.updateDeliveryLocation(latitude: _selectedLatitude, longitude: _selectedLongitude);
+                      }
                       context.push(
                         "/orderSummary",
                         extra: {
                           'address': _selectedAddress,
                           'addressDetails': _selectedAddressDetails,
+                          'latitude': _selectedLatitude,
+                          'longitude': _selectedLongitude,
                           'payment': _selectedPaymentMethod,
                           'selectedInstructions': _selectedInstructions,
                           'customRestaurantInstruction': _restaurantInstructionController.text,
@@ -886,17 +801,25 @@ class _CheckoutState extends State<Checkout> {
     required String title,
     required String phone,
     required String address,
+    double? latitude,
+    double? longitude,
     required BuildContext context,
   }) {
     final colors = context.appColors;
     final bool isSelected = _selectedAddress == id;
+    final cartProvider = context.read<CartProvider>();
 
     return GestureDetector(
       onTap: () {
         setState(() {
           _selectedAddress = id;
           _selectedAddressDetails = address;
+          _selectedLatitude = latitude;
+          _selectedLongitude = longitude;
         });
+        if (latitude != null && longitude != null) {
+          cartProvider.updateDeliveryLocation(latitude: latitude, longitude: longitude);
+        }
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
@@ -1010,13 +933,22 @@ class _CheckoutState extends State<Checkout> {
   Widget _buildCurrentLocationTile(BuildContext context) {
     final colors = context.appColors;
     final bool isSelected = _selectedAddress == "Current Location";
+    final locationProvider = context.read<NativeLocationProvider>();
+    final cartProvider = context.read<CartProvider>();
+    final double? latitude = locationProvider.latitude;
+    final double? longitude = locationProvider.longitude;
 
     return GestureDetector(
       onTap: () {
         setState(() {
           _selectedAddress = "Current Location";
           _selectedAddressDetails = "Tap to use your current GPS location";
+          _selectedLatitude = latitude;
+          _selectedLongitude = longitude;
         });
+        if (latitude != null && longitude != null) {
+          cartProvider.updateDeliveryLocation(latitude: latitude, longitude: longitude);
+        }
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),

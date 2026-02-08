@@ -68,9 +68,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late ScrollController _scrollController;
   late AnimationController _fabAnimationController;
   late AnimationController _badgePulseController;
-  late Animation<Offset> _fabSlideAnimation;
-  late Animation<double> _fabScaleAnimation;
-  late Animation<double> _badgePulseAnimation;
   bool _isFabVisible = true;
   double _lastScrollOffset = 0.0;
   FilterModel _activeFilter = FilterModel();
@@ -86,6 +83,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late final ValueNotifier<double> _scrollOffsetNotifier;
   static const double _collapsedHeight = 70.0;
   static const double _scrollThreshold = 150.0;
+  static const double _bottomNavHeightFactor = 0.16;
 
   @override
   void initState() {
@@ -95,26 +93,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _scrollOffsetNotifier = ValueNotifier<double>(0.0);
 
     _fabAnimationController = AnimationController(duration: const Duration(milliseconds: 300), vsync: this);
-
-    _fabSlideAnimation = Tween<Offset>(
-      begin: const Offset(0, 2),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _fabAnimationController, curve: Curves.easeInOut));
-
-    _fabScaleAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _fabAnimationController, curve: Curves.easeOut));
-
     _badgePulseController = AnimationController(duration: const Duration(milliseconds: 400), vsync: this);
-
-    _badgePulseAnimation = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 1.3).chain(CurveTween(curve: Curves.easeOut)),
-        weight: 50,
-      ),
-      TweenSequenceItem(tween: Tween<double>(begin: 1.3, end: 1.0).chain(CurveTween(curve: Curves.easeIn)), weight: 50),
-    ]).animate(_badgePulseController);
 
     _fabAnimationController.forward();
     _initializeData();
@@ -364,6 +343,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     Size size = MediaQuery.sizeOf(context);
+    final bottomNavHeight = size.height * _bottomNavHeightFactor;
+    final bottomContentPadding = bottomNavHeight + 16.h;
 
     final locationProvider = Provider.of<NativeLocationProvider>(context);
     final foodProvider = Provider.of<FoodProvider>(context);
@@ -569,7 +550,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             if (!shouldShowSkeleton)
                               ..._buildRecommendedSectionSlivers(serviceProvider, foodProvider, colors, size, isDark),
 
-                            SliverToBoxAdapter(child: SizedBox(height: KSpacing.lg.h)),
+                            SliverToBoxAdapter(child: SizedBox(height: bottomContentPadding)),
                           ],
                         ),
                       ),
@@ -622,85 +603,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   ),
                 ),
               ),
-        floatingActionButton: Provider.of<CartProvider>(context, listen: true).cartItems.isNotEmpty
-            ? SlideTransition(
-                position: _fabSlideAnimation,
-                child: ScaleTransition(
-                  scale: _fabScaleAnimation,
-                  child: Consumer<CartProvider>(
-                    builder: (context, cartProvider, child) {
-                      final currentCount = cartProvider.cartItems.length;
-
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (!mounted) return;
-
-                        if (currentCount != _previousCartCount && _previousCartCount > 0) {
-                          _badgePulseController.forward(from: 0);
-                        }
-
-                        if (currentCount > _previousCartCount) {
-                          if (!_isFabVisible || _previousCartCount == 0) {
-                            setState(() {
-                              _isFabVisible = true;
-                            });
-                            _fabAnimationController.forward();
-                          }
-                        }
-
-                        _previousCartCount = currentCount;
-                      });
-
-                      return ScaleTransition(
-                        scale: _badgePulseAnimation,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(KBorderSize.border),
-                            boxShadow: [
-                              BoxShadow(
-                                color: colors.accentOrange.withValues(alpha: 0.4),
-                                blurRadius: 16,
-                                spreadRadius: 0,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: FloatingActionButton.extended(
-                            onPressed: () => context.push("/cart"),
-                            extendedPadding: EdgeInsets.all(10.r),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.border)),
-                            backgroundColor: colors.accentOrange,
-                            elevation: 0,
-                            label: Text(
-                              "${cartProvider.cartItems.length} ${cartProvider.cartItems.length > 1 ? "items in cart" : "item in cart"}",
-                              style: TextStyle(
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w600,
-                                color: colors.backgroundPrimary,
-                              ),
-                            ),
-                            icon: Container(
-                              padding: EdgeInsets.all(8.r),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                shape: BoxShape.circle,
-                              ),
-                              child: SvgPicture.asset(
-                                Assets.icons.cart,
-                                height: 20.h,
-                                width: 20.w,
-                                package: 'grab_go_shared',
-                                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              )
-            : const SizedBox.shrink(),
-        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       ),
     );
   }

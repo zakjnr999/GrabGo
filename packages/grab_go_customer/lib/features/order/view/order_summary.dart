@@ -23,6 +23,8 @@ class OrderSummaryPage extends StatefulWidget {
   final List<String> selectedDeliveryInstructions;
   final String customDeliveryInstruction;
   final double tipAmount;
+  final double? deliveryLatitude;
+  final double? deliveryLongitude;
 
   const OrderSummaryPage({
     super.key,
@@ -34,6 +36,8 @@ class OrderSummaryPage extends StatefulWidget {
     this.selectedDeliveryInstructions = const [],
     this.customDeliveryInstruction = "",
     this.tipAmount = 0.0,
+    this.deliveryLatitude,
+    this.deliveryLongitude,
   });
 
   @override
@@ -174,6 +178,8 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
       final orderId = await orderService.createOrder(
         cartItems: cart.cartItems,
         deliveryAddress: widget.selectedAddress,
+        deliveryLatitude: widget.deliveryLatitude,
+        deliveryLongitude: widget.deliveryLongitude,
         paymentMethod: backendPaymentMethod,
         subtotal: subtotal,
         deliveryFee: deliveryFee,
@@ -194,6 +200,7 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
     final cartSubtotal = cart.subtotal;
     final deliveryFeeAmount = cart.deliveryFee;
     final serviceFeeAmount = cart.serviceFee;
+    final rainFeeAmount = cart.rainFee;
     final taxAmount = cart.tax;
     final double totalAmount = cart.total + widget.tipAmount;
 
@@ -209,6 +216,7 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
         'subTotal': cartSubtotal,
         'deliveryFee': deliveryFeeAmount,
         'serviceFee': serviceFeeAmount,
+        'rainFee': rainFeeAmount,
         'tax': taxAmount,
         'tip': widget.tipAmount,
         'orderNumber': _generateOrderNumber(),
@@ -281,6 +289,7 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
             final double subtotal = provider.subtotal;
             final double deliveryFee = provider.deliveryFee;
             final double serviceFee = provider.serviceFee;
+            final double rainFee = provider.rainFee;
             final double tax = provider.tax;
             final double total = provider.total + widget.tipAmount;
 
@@ -736,6 +745,10 @@ class _OrderSummaryPageState extends State<OrderSummaryPage> {
                                 _buildPriceRow("Delivery Fee", deliveryFee, colors, Assets.icons.deliveryTruck, false),
                                 SizedBox(height: 10.h),
                                 _buildPriceRow("Service Fee", serviceFee, colors, Assets.icons.deliveryTruck, false),
+                                if (rainFee > 0) ...[
+                                  SizedBox(height: 10.h),
+                                  _buildPriceRow("Rain Fee", rainFee, colors, Assets.icons.warningCircle, false),
+                                ],
                                 // Tax removed (kept in pricing for backend compatibility)
                                 if (widget.tipAmount > 0) ...[
                                   SizedBox(height: 10.h),

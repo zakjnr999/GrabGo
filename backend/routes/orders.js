@@ -230,6 +230,7 @@ router.post(
           restaurantId: restaurant,
           subtotal: pricing.subtotal,
           deliveryFee: pricing.deliveryFee,
+          rainFee: pricing.rainFee,
           tax,
           totalAmount,
           deliveryStreet: deliveryAddress.street || deliveryAddress,
