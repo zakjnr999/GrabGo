@@ -136,6 +136,7 @@ router.post(
     body("paymentMethod")
       .isIn(["card"])
       .withMessage("Invalid payment method"),
+    body("useCredits").optional({ nullable: true }).isBoolean().withMessage("useCredits must be a boolean"),
   ],
   async (req, res) => {
     try {
@@ -153,6 +154,7 @@ router.post(
         items,
         deliveryAddress,
         paymentMethod,
+        useCredits,
         notes,
         orderNumber: bodyOrderNumber
       } = req.body;
@@ -221,38 +223,47 @@ router.post(
       const tax = pricing.tax;
       let totalAmount = pricing.total;
 
+      const shouldUseCredits = useCredits !== false;
       // Apply credits if available
-      const creditResult = await creditService.calculateCreditApplication(req.user.id, totalAmount, true);
+      const creditResult = await creditService.calculateCreditApplication(req.user.id, totalAmount, shouldUseCredits);
       const creditApplied = creditResult?.creditsApplied || 0;
       if (creditApplied > 0) {
         totalAmount = creditResult.remainingPayment;
       }
+      const isCreditOnly = creditApplied > 0 && totalAmount <= 0;
+
+      const orderData = {
+        orderNumber,
+        orderType: 'food',
+        customerId: req.user.id,
+        restaurantId: restaurant,
+        subtotal: pricing.subtotal,
+        deliveryFee: pricing.deliveryFee,
+        rainFee: pricing.rainFee,
+        tax,
+        totalAmount,
+        creditsApplied: creditApplied,
+        deliveryStreet: deliveryAddress.street || deliveryAddress,
+        deliveryCity: deliveryAddress.city || 'Unknown',
+        deliveryState: deliveryAddress.state,
+        deliveryZipCode: deliveryAddress.zipCode,
+        deliveryLatitude: deliveryAddress.latitude,
+        deliveryLongitude: deliveryAddress.longitude,
+        paymentMethod,
+        notes,
+        status: "pending",
+        items: {
+          create: orderItemsData
+        }
+      };
+
+      if (isCreditOnly) {
+        orderData.paymentStatus = "paid";
+      }
 
       // Create order with Prisma transaction to handle nested items
       const order = await prisma.order.create({
-        data: {
-          orderNumber,
-          orderType: 'food',
-          customerId: req.user.id,
-          restaurantId: restaurant,
-          subtotal: pricing.subtotal,
-          deliveryFee: pricing.deliveryFee,
-          rainFee: pricing.rainFee,
-          tax,
-          totalAmount,
-          deliveryStreet: deliveryAddress.street || deliveryAddress,
-          deliveryCity: deliveryAddress.city || 'Unknown',
-          deliveryState: deliveryAddress.state,
-          deliveryZipCode: deliveryAddress.zipCode,
-          deliveryLatitude: deliveryAddress.latitude,
-          deliveryLongitude: deliveryAddress.longitude,
-          paymentMethod,
-          notes,
-          status: "pending",
-          items: {
-            create: orderItemsData
-          }
-        },
+        data: orderData,
         include: {
           items: {
             include: { food: true }
@@ -279,9 +290,18 @@ router.post(
         }
       });
 
-      // Deduct credits after order creation
-      if (creditApplied > 0) {
+      // Deduct credits only for credit-only orders (no external payment)
+      if (isCreditOnly && creditApplied > 0) {
         await creditService.applyCreditsToOrder(req.user.id, order.id, creditApplied);
+      }
+
+      // Hold credits for pending card payments
+      if (!isCreditOnly && shouldUseCredits && creditApplied > 0) {
+        await creditService.createHold({
+          userId: req.user.id,
+          orderId: order.id,
+          amount: creditApplied
+        });
       }
 
       // Check if this is user's first order and complete referral
@@ -557,6 +577,143 @@ router.get("/:orderId", protect, async (req, res) => {
   }
 });
 
+router.post(
+  "/:orderId/confirm-payment",
+  protect,
+  [
+    body("reference").optional().isString().withMessage("reference must be a string"),
+    body("provider").optional().isString().withMessage("provider must be a string"),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: errors.array(),
+        });
+      }
+
+      const { orderId } = req.params;
+      const { reference, provider } = req.body;
+
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: { id: true, customerId: true, paymentStatus: true, creditsApplied: true },
+      });
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+
+      if (order.customerId !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          message: "Not authorized to update this order",
+        });
+      }
+
+      if (["paid", "successful"].includes(order.paymentStatus)) {
+        return res.json({
+          success: true,
+          message: "Payment already confirmed",
+          data: { orderId: order.id },
+        });
+      }
+
+      if (order.creditsApplied > 0) {
+        const activeHold = await creditService.getActiveHoldForOrder(req.user.id, order.id);
+
+        if (activeHold) {
+          await creditService.applyCreditsToOrder(req.user.id, order.id, order.creditsApplied);
+          await creditService.captureHold(req.user.id, order.id);
+        } else {
+          const existingCredit = await prisma.userCredit.findFirst({
+            where: {
+              userId: req.user.id,
+              orderId: order.id,
+              type: "order_payment",
+              isActive: true,
+            },
+          });
+
+          if (!existingCredit) {
+            await creditService.applyCreditsToOrder(req.user.id, order.id, order.creditsApplied);
+          }
+        }
+      }
+
+      await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          paymentStatus: "paid",
+          paymentProvider: provider || "paystack",
+          paymentReferenceId: reference || undefined,
+        },
+      });
+
+      return res.json({
+        success: true,
+        message: "Payment confirmed",
+        data: { orderId: order.id },
+      });
+    } catch (error) {
+      console.error("Confirm payment error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message,
+      });
+    }
+  }
+);
+
+router.post("/:orderId/release-credit-hold", protect, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { id: true, customerId: true, creditsApplied: true },
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    if (order.customerId !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to update this order",
+      });
+    }
+
+    if (order.creditsApplied > 0) {
+      await creditService.releaseHold(req.user.id, order.id);
+    }
+
+    return res.json({
+      success: true,
+      message: "Credit hold released",
+      data: { orderId: order.id },
+    });
+  } catch (error) {
+    console.error("Release credit hold error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
 router.put(
   "/:orderId/status",
   protect,
@@ -682,6 +839,10 @@ router.put(
           }
         });
       });
+
+      if (status === "cancelled" && order.creditsApplied > 0) {
+        await creditService.releaseHold(order.customerId, order.id);
+      }
 
       // Send push notification to customer about order status change
       const io = getIO();

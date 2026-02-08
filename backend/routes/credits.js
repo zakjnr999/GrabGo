@@ -107,6 +107,7 @@ router.post(
           formattedCreditsApplied: `₵${result.creditsApplied.toFixed(2)}`,
           formattedRemainingPayment: `₵${result.remainingPayment.toFixed(2)}`,
           formattedCreditBalance: `₵${result.creditBalance.toFixed(2)}`,
+          formattedAvailableBalance: `₵${(result.availableBalance ?? result.creditBalance).toFixed(2)}`,
         },
       });
     } catch (error) {

@@ -20,6 +20,7 @@ class OrderServiceWrapper {
     required double subtotal,
     required double deliveryFee,
     required double total,
+    bool? useCredits,
     String? notes,
   }) async {
     try {
@@ -60,6 +61,7 @@ class OrderServiceWrapper {
           longitude: deliveryLongitude,
         ),
         paymentMethod: paymentMethod.toLowerCase().replaceAll(' ', '_'),
+        useCredits: useCredits,
         notes: notes,
         pricing: OrderPricing(subtotal: subtotal, deliveryFee: deliveryFee, total: total),
       );
@@ -72,7 +74,12 @@ class OrderServiceWrapper {
       if (response.isSuccessful && response.body != null) {
         final responseData = response.body!;
         if (responseData['success'] == true) {
-          return responseData['data']['_id']; // Return the order ID
+          final orderData = responseData['data'] as Map<String, dynamic>?;
+          final orderId = orderData?['id'] ?? orderData?['_id'];
+          if (orderId == null) {
+            throw Exception('Order created but no id returned');
+          }
+          return orderId.toString();
         } else {
           throw Exception(responseData['message'] ?? 'Order creation failed');
         }
@@ -89,6 +96,36 @@ class OrderServiceWrapper {
       }
 
       throw Exception('Failed to create order: $e');
+    }
+  }
+
+  Future<void> confirmPayment({
+    required String orderId,
+    required String reference,
+    String provider = 'paystack',
+  }) async {
+    try {
+      final response = await _orderService.confirmPayment(orderId, {
+        'reference': reference,
+        'provider': provider,
+      });
+
+      if (!response.isSuccessful || response.body == null || response.body!['success'] != true) {
+        throw Exception(response.body?['message'] ?? 'Payment confirmation failed');
+      }
+    } catch (e) {
+      throw Exception('Payment confirmation failed: $e');
+    }
+  }
+
+  Future<void> releaseCreditHold({required String orderId}) async {
+    try {
+      final response = await _orderService.releaseCreditHold(orderId);
+      if (!response.isSuccessful || response.body == null || response.body!['success'] != true) {
+        throw Exception(response.body?['message'] ?? 'Release credit hold failed');
+      }
+    } catch (e) {
+      throw Exception('Release credit hold failed: $e');
     }
   }
 

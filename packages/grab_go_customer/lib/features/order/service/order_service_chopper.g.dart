@@ -17,6 +17,7 @@ CreateOrderRequest _$CreateOrderRequestFromJson(Map<String, dynamic> json) =>
         json['deliveryAddress'] as Map<String, dynamic>,
       ),
       paymentMethod: json['paymentMethod'] as String,
+      useCredits: json['useCredits'] as bool?,
       notes: json['notes'] as String?,
       pricing: OrderPricing.fromJson(json['pricing'] as Map<String, dynamic>),
     );
@@ -28,6 +29,7 @@ Map<String, dynamic> _$CreateOrderRequestToJson(CreateOrderRequest instance) =>
       'items': instance.items.map((e) => e.toJson()).toList(),
       'deliveryAddress': instance.deliveryAddress.toJson(),
       'paymentMethod': instance.paymentMethod,
+      'useCredits': instance.useCredits,
       'notes': instance.notes,
       'pricing': instance.pricing.toJson(),
     };

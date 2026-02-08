@@ -639,56 +639,42 @@ class _CheckoutState extends State<Checkout> {
                     color: colors.backgroundPrimary,
                     border: Border(top: BorderSide(color: colors.backgroundSecondary, width: 1)),
                   ),
-                  child: AppButton(
-                    width: double.infinity,
-                    onPressed: () {
-                      _isProcessingPayment ? null : () => _onProceedToPayment(context, provider, colors);
-                    },
-                    buttonText: _isProcessingPayment
-                        ? "Processing..."
-                        : "Procced to Payment ${total > 0 ? " (GHS ${total.toStringAsFixed(2)})" : ""}",
-                    textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: Colors.white),
-                    backgroundColor: _isProcessingPayment
-                        ? colors.accentOrange.withValues(alpha: 0.5)
-                        : colors.accentOrange,
-                    padding: EdgeInsets.symmetric(vertical: 16.h),
-                    borderRadius: KBorderSize.borderMedium,
+
+                  child: GestureDetector(
+                    onTap: _isProcessingPayment ? null : () => _onProceedToPayment(context, provider, colors),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        splashColor: Colors.white.withValues(alpha: 0.2),
+                        child: Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(vertical: 16.h),
+                          decoration: BoxDecoration(
+                            color: _isProcessingPayment
+                                ? colors.accentOrange.withValues(alpha: 0.5)
+                                : colors.accentOrange,
+                            borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                          ),
+                          child: Center(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _isProcessingPayment ? "Processing..." : "Proceed to Payment",
+                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15.sp),
+                                ),
+                                if (!_isProcessingPayment)
+                                  Text(
+                                    total > 0 ? " (GHS ${total.toStringAsFixed(2)})" : "",
+                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15.sp),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                  // child: GestureDetector(
-                  //   onTap: _isProcessingPayment ? null : () => _onProceedToPayment(context, provider, colors),
-                  //   child: Material(
-                  //     color: Colors.transparent,
-                  //     child: InkWell(
-                  //       splashColor: Colors.white.withValues(alpha: 0.2),
-                  //       child: Container(
-                  //         width: double.infinity,
-                  //         padding: EdgeInsets.symmetric(vertical: 16.h),
-                  //         decoration: BoxDecoration(
-                  //           color: _isProcessingPayment
-                  //               ? colors.accentOrange.withValues(alpha: 0.5)
-                  //               : colors.accentOrange,
-                  //           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                  //         ),
-                  //         child: Center(
-                  //           child: Row(
-                  //             mainAxisSize: MainAxisSize.min,
-                  //             children: [
-                  //               Text(
-                  //                 _isProcessingPayment ? "Processing..." : "Proceed to Payment",
-                  //                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15.sp),
-                  //               ),
-                  //               if (!_isProcessingPayment)
-                  //                 Text(
-                  //                   total > 0 ? " (GHS ${total.toStringAsFixed(2)})" : "",
-                  //                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15.sp),
-                  //                 ),
-                  //             ],
-                  //           ),
-                  //         ),
-                  //       ),
-                  //     ),
-                  //   ),
-                  // ),
                 ),
               ],
             );
@@ -1120,11 +1106,22 @@ class _CheckoutState extends State<Checkout> {
     final double subtotal = provider.subtotal;
     final double deliveryFee = provider.deliveryFee;
     final double total = provider.total + _tipAmount;
+    String? orderId;
+    bool paymentSucceeded = false;
 
     try {
-      final orderId = await _createOrder(context, subtotal, deliveryFee, total);
+      orderId = await _createOrder(context, subtotal, deliveryFee, total);
       if (orderId == null) {
         throw Exception('Failed to create order');
+      }
+
+      if (total <= 0) {
+        setState(() {
+          _isProcessingPayment = false;
+        });
+        await _confirmOrderPayment(orderId: orderId, reference: 'credits-only');
+        _handlePaymentSuccess(context);
+        return;
       }
 
       final user = await UserService().getCurrentUser();
@@ -1145,11 +1142,19 @@ class _CheckoutState extends State<Checkout> {
       );
 
       if (result.success) {
+        paymentSucceeded = true;
+        await _confirmOrderPayment(orderId: orderId, reference: result.reference ?? reference);
         _handlePaymentSuccess(context);
       } else {
+        if (orderId != null) {
+          await _releaseOrderCreditHold(orderId: orderId);
+        }
         _handlePaymentFailure(context);
       }
     } catch (e) {
+      if (orderId != null && !paymentSucceeded) {
+        await _releaseOrderCreditHold(orderId: orderId);
+      }
       setState(() {
         _isProcessingPayment = false;
       });
@@ -1181,6 +1186,7 @@ class _CheckoutState extends State<Checkout> {
         subtotal: subtotal,
         deliveryFee: deliveryFee,
         total: total,
+        useCredits: cart.useCredits,
         notes: _getConcatenatedNotes(),
       );
 
@@ -1188,6 +1194,23 @@ class _CheckoutState extends State<Checkout> {
     } catch (e) {
       debugPrint("Order creation error: $e");
       throw Exception("Failed to create order: ${e.toString()}");
+    }
+  }
+
+  Future<void> _confirmOrderPayment({
+    required String orderId,
+    required String reference,
+  }) async {
+    final orderService = OrderServiceWrapper();
+    await orderService.confirmPayment(orderId: orderId, reference: reference);
+  }
+
+  Future<void> _releaseOrderCreditHold({required String orderId}) async {
+    try {
+      final orderService = OrderServiceWrapper();
+      await orderService.releaseCreditHold(orderId: orderId);
+    } catch (e) {
+      debugPrint('⚠️ Failed to release credit hold: $e');
     }
   }
 
@@ -1248,13 +1271,16 @@ class _CheckoutState extends State<Checkout> {
   }
 
   void _showErrorDialog(BuildContext context, String message) {
-    showDialog(
+    AppDialog.show(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Payment Error'),
-        content: Text(message),
-        actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK'))],
-      ),
+      title: 'Payment Error',
+      message: message,
+      type: AppDialogType.error,
+      primaryButtonText: 'OK',
+      secondaryButtonText: 'Cancel',
+      primaryButtonColor: Colors.red,
+      onPrimaryPressed: () => Navigator.of(context).pop(true),
+      onSecondaryPressed: () => Navigator.of(context).pop(false),
     );
   }
 

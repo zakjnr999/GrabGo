@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:grab_go_customer/shared/services/paystack_service.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -27,31 +28,54 @@ class _PaystackWebViewScreenState extends State<PaystackWebViewScreen> {
 
   bool _isPaymentCompleteUrl(String url) {
     final lowerUrl = url.toLowerCase();
+    final callbackUrl = widget.callbackUrl.toLowerCase();
     return lowerUrl.contains('paystack.co/close') ||
-        lowerUrl.contains('trxref=') ||
-        lowerUrl.contains('reference=') ||
+        (callbackUrl.isNotEmpty && lowerUrl.startsWith(callbackUrl)) ||
         lowerUrl.contains('/success') ||
         lowerUrl.contains('status=success') ||
-        lowerUrl.contains('status=abandoned');
+        lowerUrl.contains('status=abandoned') ||
+        lowerUrl.contains('status=failed');
   }
 
   void _checkPaymentCompletion(String url) {
     if (_hasHandledCompletion) return;
     if (_isPaymentCompleteUrl(url)) {
-      _handlePaymentSuccess(url);
+      _handlePaymentResultFromUrl(url);
     }
   }
 
-  void _handlePaymentSuccess(String url) {
+  void _handlePaymentResultFromUrl(String url) {
     if (_hasHandledCompletion) return;
     _hasHandledCompletion = true;
 
     final uri = Uri.tryParse(url);
     String? ref = uri?.queryParameters['trxref'] ?? uri?.queryParameters['reference'] ?? widget.reference;
+    final status = (uri?.queryParameters['status'] ?? '').toLowerCase();
+    final isSuccess = status == 'success' || url.toLowerCase().contains('/success');
 
-    debugPrint('Payment completed, closing WebView. Reference: $ref');
+    debugPrint('Payment completed, closing WebView. Reference: $ref, status: ${status.isEmpty ? 'unknown' : status}');
 
-    Navigator.of(context).pop(PaystackPaymentResult(success: true, reference: ref, message: 'Payment completed'));
+    Navigator.of(context).pop(
+      PaystackPaymentResult(
+        success: isSuccess,
+        reference: ref,
+        message: isSuccess ? 'Payment completed' : 'Payment failed or cancelled',
+      ),
+    );
+  }
+
+  void _handlePaymentResultFromMessage(String message) {
+    if (_hasHandledCompletion) return;
+    _hasHandledCompletion = true;
+    final lower = message.toLowerCase();
+    final isSuccess = lower.contains('success');
+    Navigator.of(context).pop(
+      PaystackPaymentResult(
+        success: isSuccess,
+        reference: widget.reference,
+        message: isSuccess ? 'Payment completed' : 'Payment failed or cancelled',
+      ),
+    );
   }
 
   @override
@@ -64,7 +88,7 @@ class _PaystackWebViewScreenState extends State<PaystackWebViewScreen> {
         onMessageReceived: (JavaScriptMessage message) {
           debugPrint('PaystackComplete message: ${message.message}');
           if (!_hasHandledCompletion) {
-            _handlePaymentSuccess(widget.authorizationUrl);
+            _handlePaymentResultFromMessage(message.message);
           }
         },
       )
@@ -72,12 +96,14 @@ class _PaystackWebViewScreenState extends State<PaystackWebViewScreen> {
         NavigationDelegate(
           onPageStarted: (String url) {
             debugPrint('WebView onPageStarted: $url');
+            if (!mounted) return;
             setState(() {
               _isLoading = true;
             });
           },
           onPageFinished: (String url) {
             debugPrint('WebView onPageFinished: $url');
+            if (!mounted) return;
             setState(() {
               _isLoading = false;
             });
@@ -89,7 +115,7 @@ class _PaystackWebViewScreenState extends State<PaystackWebViewScreen> {
             final url = request.url.toLowerCase();
 
             if (_isPaymentCompleteUrl(url)) {
-              _handlePaymentSuccess(request.url);
+              _handlePaymentResultFromUrl(request.url);
               return NavigationDecision.prevent;
             }
 
@@ -180,12 +206,7 @@ class _PaystackWebViewScreenState extends State<PaystackWebViewScreen> {
       body: Stack(
         children: [
           WebViewWidget(controller: _controller),
-          if (_isLoading)
-            Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(context.appColors.accentOrange),
-              ),
-            ),
+          if (_isLoading) Center(child: SpinKitCubeGrid(color: colors.accentOrange, size: 35)),
         ],
       ),
     );

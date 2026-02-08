@@ -3,6 +3,8 @@ const { sendToUser } = require("./fcm_service");
 const { createNotification } = require("./notification_service");
 const { getIO } = require("../utils/socket");
 
+const CREDIT_HOLD_EXPIRY_MINUTES = 30;
+
 /**
  * GrabGo Credit Service
  * Manages in-app store credits for customers
@@ -20,6 +22,124 @@ class CreditService {
       select: { creditBalance: true },
     });
     return user?.creditBalance || 0;
+  }
+
+  /**
+   * Get total active credit holds for a user
+   * @param {string} userId - User ID
+   * @returns {Promise<number>} Total held credits
+   */
+  async getActiveHoldTotal(userId) {
+    const now = new Date();
+
+    await prisma.userCreditHold.updateMany({
+      where: {
+        userId,
+        isActive: true,
+        expiresAt: { lt: now }
+      },
+      data: {
+        isActive: false,
+        releasedAt: now
+      }
+    });
+
+    const result = await prisma.userCreditHold.aggregate({
+      where: {
+        userId,
+        isActive: true,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }]
+      },
+      _sum: { amount: true }
+    });
+
+    return result._sum.amount || 0;
+  }
+
+  /**
+   * Get user's available credit balance (after holds)
+   * @param {string} userId - User ID
+   * @returns {Promise<number>} Available credits
+   */
+  async getAvailableBalance(userId) {
+    const [balance, holds] = await Promise.all([
+      this.getBalance(userId),
+      this.getActiveHoldTotal(userId)
+    ]);
+
+    return Math.max(0, balance - holds);
+  }
+
+  /**
+   * Create a credit hold for an order
+   * @param {object} params - Hold parameters
+   * @returns {Promise<object|null>} Hold record
+   */
+  async createHold({ userId, orderId, amount, expiresAt = null }) {
+    if (amount <= 0) return null;
+
+    const existing = await prisma.userCreditHold.findUnique({
+      where: { orderId }
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    const expiry = expiresAt || new Date(Date.now() + CREDIT_HOLD_EXPIRY_MINUTES * 60 * 1000);
+
+    return await prisma.userCreditHold.create({
+      data: {
+        userId,
+        orderId,
+        amount,
+        expiresAt: expiry,
+      }
+    });
+  }
+
+  /**
+   * Release a credit hold
+   * @param {string} userId - User ID
+   * @param {string} orderId - Order ID
+   * @returns {Promise<object>} Update result
+   */
+  async releaseHold(userId, orderId) {
+    return await prisma.userCreditHold.updateMany({
+      where: { userId, orderId, isActive: true },
+      data: {
+        isActive: false,
+        releasedAt: new Date()
+      }
+    });
+  }
+
+  /**
+   * Capture a credit hold (after payment success)
+   * @param {string} userId - User ID
+   * @param {string} orderId - Order ID
+   * @returns {Promise<object>} Update result
+   */
+  async captureHold(userId, orderId) {
+    return await prisma.userCreditHold.updateMany({
+      where: { userId, orderId, isActive: true },
+      data: {
+        isActive: false,
+        capturedAt: new Date()
+      }
+    });
+  }
+
+  /**
+   * Get active credit hold for an order
+   * @param {string} userId - User ID
+   * @param {string} orderId - Order ID
+   * @returns {Promise<object|null>} Hold record
+   */
+  async getActiveHoldForOrder(userId, orderId) {
+    return await prisma.userCreditHold.findFirst({
+      where: { userId, orderId, isActive: true }
+    });
   }
 
   /**
@@ -247,17 +367,22 @@ class CreditService {
         creditsApplied: 0,
         remainingPayment: orderTotal,
         creditBalance: await this.getBalance(userId),
+        availableBalance: await this.getAvailableBalance(userId),
       };
     }
 
     const creditBalance = await this.getBalance(userId);
-    const creditsToApply = Math.min(creditBalance, orderTotal);
+    const activeHolds = await this.getActiveHoldTotal(userId);
+    const availableBalance = Math.max(0, creditBalance - activeHolds);
+    const creditsToApply = Math.min(availableBalance, orderTotal);
     const remainingPayment = orderTotal - creditsToApply;
 
     return {
       creditsApplied: creditsToApply,
       remainingPayment: Math.max(0, remainingPayment),
       creditBalance,
+      availableBalance,
+      activeHolds,
     };
   }
 

@@ -159,7 +159,9 @@ class AppDialog extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(dialogBorderRadius),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 10))],
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 10)),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -168,11 +170,7 @@ class AppDialog extends StatelessWidget {
               width: double.infinity,
               padding: EdgeInsets.all(KSpacing.lg25.r),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [typeColor.withOpacity(0.15), typeColor.withOpacity(0.05)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: typeColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(dialogBorderRadius),
                   topRight: Radius.circular(dialogBorderRadius),
@@ -182,10 +180,7 @@ class AppDialog extends StatelessWidget {
                 child: Container(
                   height: 70.h,
                   width: 70.h,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(colors: [typeColor.withOpacity(0.2), typeColor.withOpacity(0.1)]),
-                  ),
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: typeColor.withValues(alpha: 0.15)),
                   child: Center(
                     child: icon != null
                         ? SvgPicture.asset(

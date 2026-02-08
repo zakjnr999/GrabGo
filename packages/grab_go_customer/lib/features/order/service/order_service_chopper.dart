@@ -9,6 +9,15 @@ abstract class OrderServiceChopper extends ChopperService {
   @POST(path: '/orders')
   Future<Response<Map<String, dynamic>>> createOrder(@Body() CreateOrderRequest request);
 
+  @POST(path: '/orders/{orderId}/confirm-payment')
+  Future<Response<Map<String, dynamic>>> confirmPayment(
+    @Path() String orderId,
+    @Body() Map<String, dynamic> body,
+  );
+
+  @POST(path: '/orders/{orderId}/release-credit-hold')
+  Future<Response<Map<String, dynamic>>> releaseCreditHold(@Path() String orderId);
+
   @GET(path: '/orders/{orderId}')
   Future<Response<Map<String, dynamic>>> getOrder(@Path() String orderId);
 
@@ -25,6 +34,7 @@ class CreateOrderRequest {
   final List<OrderItem> items;
   final DeliveryAddress deliveryAddress;
   final String paymentMethod;
+  final bool? useCredits;
   final String? notes;
   final OrderPricing pricing;
 
@@ -34,6 +44,7 @@ class CreateOrderRequest {
     required this.items,
     required this.deliveryAddress,
     required this.paymentMethod,
+    this.useCredits,
     this.notes,
     required this.pricing,
   });
