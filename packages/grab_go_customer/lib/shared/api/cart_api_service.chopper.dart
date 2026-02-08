@@ -40,40 +40,84 @@ final class _$CartApiService extends CartApiService {
   }
 
   @override
-  Future<Response<Map<String, dynamic>>> addToCart(Map<String, dynamic> body) {
+  Future<Response<Map<String, dynamic>>> addToCart(
+    Map<String, dynamic> body, {
+    double? lat,
+    double? lng,
+  }) {
     final Uri $url = Uri.parse('/cart/add');
+    final Map<String, dynamic> $params = <String, dynamic>{
+      'lat': lat,
+      'lng': lng,
+    };
     final $body = body;
-    final Request $request = Request('POST', $url, client.baseUrl, body: $body);
+    final Request $request = Request(
+      'POST',
+      $url,
+      client.baseUrl,
+      body: $body,
+      parameters: $params,
+    );
     return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
   }
 
   @override
   Future<Response<Map<String, dynamic>>> updateCartItem(
     String itemId,
-    Map<String, dynamic> body,
+    Map<String, dynamic> body, {
+    double? lat,
+    double? lng,
+  }
   ) {
     final Uri $url = Uri.parse('/cart/update/${itemId}');
+    final Map<String, dynamic> $params = <String, dynamic>{
+      'lat': lat,
+      'lng': lng,
+    };
     final $body = body;
     final Request $request = Request(
       'PATCH',
       $url,
       client.baseUrl,
       body: $body,
+      parameters: $params,
     );
     return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
   }
 
   @override
-  Future<Response<Map<String, dynamic>>> removeFromCart(String itemId) {
+  Future<Response<Map<String, dynamic>>> removeFromCart(
+    String itemId, {
+    double? lat,
+    double? lng,
+  }) {
     final Uri $url = Uri.parse('/cart/remove/${itemId}');
-    final Request $request = Request('DELETE', $url, client.baseUrl);
+    final Map<String, dynamic> $params = <String, dynamic>{
+      'lat': lat,
+      'lng': lng,
+    };
+    final Request $request = Request(
+      'DELETE',
+      $url,
+      client.baseUrl,
+      parameters: $params,
+    );
     return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
   }
 
   @override
-  Future<Response<Map<String, dynamic>>> clearCart() {
+  Future<Response<Map<String, dynamic>>> clearCart({double? lat, double? lng}) {
     final Uri $url = Uri.parse('/cart/clear');
-    final Request $request = Request('DELETE', $url, client.baseUrl);
+    final Map<String, dynamic> $params = <String, dynamic>{
+      'lat': lat,
+      'lng': lng,
+    };
+    final Request $request = Request(
+      'DELETE',
+      $url,
+      client.baseUrl,
+      parameters: $params,
+    );
     return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
   }
 }

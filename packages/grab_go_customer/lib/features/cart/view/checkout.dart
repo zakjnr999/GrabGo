@@ -82,7 +82,6 @@ class _CheckoutState extends State<Checkout> {
             final double deliveryFee = provider.deliveryFee;
             final double serviceFee = provider.serviceFee;
             final double rainFee = provider.rainFee;
-            final double tax = provider.tax;
             final double total = provider.total + _tipAmount;
 
             return Column(
@@ -1142,87 +1141,6 @@ class _CheckoutState extends State<Checkout> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
-              ),
-            ),
-            Container(
-              height: 24.h,
-              width: 24.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isSelected ? colors.accentOrange.withValues(alpha: 0.1) : Colors.transparent,
-              ),
-              child: isSelected
-                  ? Center(
-                      child: Container(
-                        height: 10.h,
-                        width: 10.w,
-                        decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
-                      ),
-                    )
-                  : null,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPaymentOption({
-    required String title,
-    String? assetPath,
-    String? icon,
-    required String methodValue,
-    required BuildContext context,
-  }) {
-    final colors = context.appColors;
-    final bool isSelected = _selectedPaymentMethod == methodValue;
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedPaymentMethod = methodValue;
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
-        padding: EdgeInsets.all(16.r),
-        decoration: BoxDecoration(
-          color: colors.backgroundPrimary,
-          borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.5), width: 1),
-        ),
-        child: Row(
-          children: [
-            // Payment Logo or Icon
-            Container(
-              height: 50.h,
-              width: 60.w,
-              decoration: BoxDecoration(
-                color: icon != null ? colors.accentOrange.withValues(alpha: 0.1) : colors.backgroundSecondary,
-                borderRadius: BorderRadius.circular(10.r),
-                border: icon == null ? Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5) : null,
-              ),
-              child: icon != null
-                  ? Center(
-                      child: SvgPicture.asset(
-                        icon,
-                        package: 'grab_go_shared',
-                        height: 28.h,
-                        width: 28.w,
-                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                      ),
-                    )
-                  : ClipRRect(
-                      borderRadius: BorderRadius.circular(10.r),
-                      child: Image.asset(assetPath!, package: 'grab_go_shared', fit: BoxFit.cover),
-                    ),
-            ),
-            SizedBox(width: 14.w),
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(fontSize: 14.sp, color: colors.textPrimary, fontWeight: FontWeight.w700),
               ),
             ),
             Container(

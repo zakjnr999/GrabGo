@@ -68,6 +68,10 @@ router.get('/', protect, async (req, res) => {
 router.post('/add', protect, async (req, res) => {
     try {
         const { itemId, itemType, quantity, restaurantId, groceryStoreId } = req.body;
+        const lat = Number(req.query.lat ?? req.body.lat);
+        const lng = Number(req.query.lng ?? req.body.lng);
+        const deliveryLocation =
+            Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : null;
 
         if (!itemId || !itemType) {
             return res.status(400).json({
@@ -91,7 +95,7 @@ router.post('/add', protect, async (req, res) => {
             groceryStoreId
         });
 
-        const pricing = await calculateCartPricing(cart, { userId: req.user.id });
+        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation });
 
         res.json({
             success: true,
@@ -130,6 +134,10 @@ router.patch('/update/:itemId', protect, async (req, res) => {
     try {
         const { itemId } = req.params;
         const { quantity } = req.body;
+        const lat = Number(req.query.lat ?? req.body.lat);
+        const lng = Number(req.query.lng ?? req.body.lng);
+        const deliveryLocation =
+            Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : null;
 
         if (quantity === undefined || quantity < 0) {
             return res.status(400).json({
@@ -139,7 +147,7 @@ router.patch('/update/:itemId', protect, async (req, res) => {
         }
 
         const cart = await updateCartItem(req.user.id, itemId, quantity);
-        const pricing = await calculateCartPricing(cart, { userId: req.user.id });
+        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation });
 
         res.json({
             success: true,
@@ -172,8 +180,12 @@ router.patch('/update/:itemId', protect, async (req, res) => {
 router.delete('/remove/:itemId', protect, async (req, res) => {
     try {
         const { itemId } = req.params;
+        const lat = Number(req.query.lat ?? req.body?.lat);
+        const lng = Number(req.query.lng ?? req.body?.lng);
+        const deliveryLocation =
+            Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : null;
         const cart = await removeFromCart(req.user.id, itemId);
-        const pricing = await calculateCartPricing(cart, { userId: req.user.id });
+        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation });
 
         res.json({
             success: true,
@@ -205,8 +217,12 @@ router.delete('/remove/:itemId', protect, async (req, res) => {
  */
 router.delete('/clear', protect, async (req, res) => {
     try {
+        const lat = Number(req.query.lat ?? req.body?.lat);
+        const lng = Number(req.query.lng ?? req.body?.lng);
+        const deliveryLocation =
+            Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : null;
         const cart = await clearCart(req.user.id);
-        const pricing = await calculateCartPricing(cart, { userId: req.user.id });
+        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation });
 
         res.json({
             success: true,

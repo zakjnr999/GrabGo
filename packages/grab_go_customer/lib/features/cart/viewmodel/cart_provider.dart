@@ -344,7 +344,11 @@ class CartProvider extends ChangeNotifier {
       }
 
       debugPrint('  Request body: $body');
-      await cartApiService.addToCart(body);
+      await cartApiService.addToCart(
+        body,
+        lat: _deliveryLatitude,
+        lng: _deliveryLongitude,
+      );
       debugPrint('✅ Successfully added to backend');
     } catch (e) {
       debugPrint('❌ Error adding to backend cart: $e');
@@ -354,7 +358,12 @@ class CartProvider extends ChangeNotifier {
   /// Update quantity on backend
   Future<void> _updateQuantityOnBackend(String itemId, int quantity) async {
     try {
-      await cartApiService.updateCartItem(itemId, {'quantity': quantity});
+      await cartApiService.updateCartItem(
+        itemId,
+        {'quantity': quantity},
+        lat: _deliveryLatitude,
+        lng: _deliveryLongitude,
+      );
     } catch (e) {
       debugPrint('Error updating backend cart: $e');
     }
@@ -364,7 +373,11 @@ class CartProvider extends ChangeNotifier {
   Future<void> _removeFromBackend(String itemId) async {
     try {
       debugPrint('🔄 Calling backend remove API for item: $itemId');
-      await cartApiService.removeFromCart(itemId);
+      await cartApiService.removeFromCart(
+        itemId,
+        lat: _deliveryLatitude,
+        lng: _deliveryLongitude,
+      );
       debugPrint('✅ Successfully removed from backend');
     } catch (e) {
       debugPrint('❌ Error removing from backend cart: $e');
@@ -538,7 +551,10 @@ class CartProvider extends ChangeNotifier {
 
     // Clear backend cart async
     try {
-      await cartApiService.clearCart();
+      await cartApiService.clearCart(
+        lat: _deliveryLatitude,
+        lng: _deliveryLongitude,
+      );
       await syncFromBackend();
     } catch (e) {
       debugPrint('Error clearing backend cart: $e');

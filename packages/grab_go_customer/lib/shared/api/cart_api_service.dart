@@ -14,22 +14,36 @@ abstract class CartApiService extends ChopperService {
 
   /// Add item to cart
   @POST(path: '/add')
-  Future<Response<Map<String, dynamic>>> addToCart(@Body() Map<String, dynamic> body);
+  Future<Response<Map<String, dynamic>>> addToCart(
+    @Body() Map<String, dynamic> body, {
+    @Query('lat') double? lat,
+    @Query('lng') double? lng,
+  });
 
   /// Update cart item quantity
   @PATCH(path: '/update/{itemId}')
   Future<Response<Map<String, dynamic>>> updateCartItem(
     @Path('itemId') String itemId,
-    @Body() Map<String, dynamic> body,
+    @Body() Map<String, dynamic> body, {
+    @Query('lat') double? lat,
+    @Query('lng') double? lng,
+  });
   );
 
   /// Remove item from cart
   @DELETE(path: '/remove/{itemId}')
-  Future<Response<Map<String, dynamic>>> removeFromCart(@Path('itemId') String itemId);
+  Future<Response<Map<String, dynamic>>> removeFromCart(
+    @Path('itemId') String itemId, {
+    @Query('lat') double? lat,
+    @Query('lng') double? lng,
+  });
 
   /// Clear entire cart
   @DELETE(path: '/clear')
-  Future<Response<Map<String, dynamic>>> clearCart();
+  Future<Response<Map<String, dynamic>>> clearCart({
+    @Query('lat') double? lat,
+    @Query('lng') double? lng,
+  });
 
   static CartApiService create([ChopperClient? client]) {
     return _$CartApiService(client);
