@@ -284,7 +284,6 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 SizedBox(height: KSpacing.xl40.h),
-
                 ScaleTransition(
                   scale: _scaleAnimation,
                   child: FadeTransition(
@@ -370,6 +369,7 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
                           cursorColor: colors.accentOrange,
                           focusedBorderColor: colors.accentOrange,
                           borderWidth: 1.5,
+                          fieldWidth: 45.w,
                           keyboardType: TextInputType.number,
                           textStyle: TextStyle(color: colors.textPrimary, fontSize: 20.sp, fontWeight: FontWeight.w600),
                           onCodeChanged: (String code) {

@@ -99,7 +99,8 @@ const requestPhoneOtp = async ({ phoneNumber, userId, channel = 'sms' }) => {
   const debugCode = process.env.OTP_DEBUG_CODE;
   const isProduction = process.env.NODE_ENV === 'production';
 
-  if (isBypassEnabled && debugCode && !isProduction) {
+  const allowProdBypass = process.env.OTP_BYPASS_ALLOW_PROD === 'true';
+  if (isBypassEnabled && debugCode && (!isProduction || allowProdBypass)) {
     const otpKey = getKey('code', normalized.digits);
     const otpPayload = {
       hash: hashOtp(debugCode, normalized.e164),
