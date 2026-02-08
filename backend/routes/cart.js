@@ -10,6 +10,17 @@ const {
     getUserCart
 } = require('../services/cart_service');
 
+const parseBoolean = (value) => {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value !== 0;
+    if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        if (['true', '1', 'yes', 'y', 'on'].includes(normalized)) return true;
+        if (['false', '0', 'no', 'n', 'off'].includes(normalized)) return false;
+    }
+    return undefined;
+};
+
 /**
  * @route   GET /api/cart
  * @desc    Get user's active cart
@@ -23,6 +34,7 @@ router.get('/', protect, async (req, res) => {
         const lng = Number(req.query.lng);
         const deliveryLocation =
             Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : null;
+        const useCredits = parseBoolean(req.query.useCredits);
 
         if (!cart) {
             return res.json({
@@ -38,13 +50,15 @@ router.get('/', protect, async (req, res) => {
                         tax: 0,
                         rainFee: 0,
                         total: 0,
-                        itemCount: 0
+                        itemCount: 0,
+                        creditsApplied: 0,
+                        totalAfterCredits: 0
                     }
                 }
             });
         }
 
-        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation });
+        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation, useCredits });
 
         res.json({
             success: true,
@@ -72,6 +86,7 @@ router.post('/add', protect, async (req, res) => {
         const lng = Number(req.query.lng ?? req.body.lng);
         const deliveryLocation =
             Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : null;
+        const useCredits = parseBoolean(req.query.useCredits ?? req.body.useCredits);
 
         if (!itemId || !itemType) {
             return res.status(400).json({
@@ -95,7 +110,7 @@ router.post('/add', protect, async (req, res) => {
             groceryStoreId
         });
 
-        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation });
+        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation, useCredits });
 
         res.json({
             success: true,
@@ -138,6 +153,7 @@ router.patch('/update/:itemId', protect, async (req, res) => {
         const lng = Number(req.query.lng ?? req.body.lng);
         const deliveryLocation =
             Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : null;
+        const useCredits = parseBoolean(req.query.useCredits ?? req.body.useCredits);
 
         if (quantity === undefined || quantity < 0) {
             return res.status(400).json({
@@ -147,7 +163,7 @@ router.patch('/update/:itemId', protect, async (req, res) => {
         }
 
         const cart = await updateCartItem(req.user.id, itemId, quantity);
-        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation });
+        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation, useCredits });
 
         res.json({
             success: true,
@@ -184,8 +200,9 @@ router.delete('/remove/:itemId', protect, async (req, res) => {
         const lng = Number(req.query.lng ?? req.body?.lng);
         const deliveryLocation =
             Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : null;
+        const useCredits = parseBoolean(req.query.useCredits ?? req.body?.useCredits);
         const cart = await removeFromCart(req.user.id, itemId);
-        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation });
+        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation, useCredits });
 
         res.json({
             success: true,
@@ -221,8 +238,9 @@ router.delete('/clear', protect, async (req, res) => {
         const lng = Number(req.query.lng ?? req.body?.lng);
         const deliveryLocation =
             Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : null;
+        const useCredits = parseBoolean(req.query.useCredits ?? req.body?.useCredits);
         const cart = await clearCart(req.user.id);
-        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation });
+        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation, useCredits });
 
         res.json({
             success: true,

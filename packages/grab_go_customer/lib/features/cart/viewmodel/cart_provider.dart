@@ -13,9 +13,11 @@ class CartProvider extends ChangeNotifier {
   double _serviceFee = 0.0;
   double _tax = 0.0;
   double _rainFee = 0.0;
+  double _creditsApplied = 0.0;
   double? _total;
   int? _estimatedDeliveryMin;
   int? _estimatedDeliveryMax;
+  bool _useCredits = true;
   double? _deliveryLatitude;
   double? _deliveryLongitude;
   String? _cartType;
@@ -29,9 +31,11 @@ class CartProvider extends ChangeNotifier {
   double get serviceFee => _serviceFee;
   double get tax => _tax;
   double get rainFee => _rainFee;
+  double get creditsApplied => _creditsApplied;
   double get total => _total ?? (subtotal + deliveryFee + serviceFee + tax + rainFee);
   int? get estimatedDeliveryMin => _estimatedDeliveryMin;
   int? get estimatedDeliveryMax => _estimatedDeliveryMax;
+  bool get useCredits => _useCredits;
 
   CartProvider() {
     // Load cart data asynchronously without blocking
@@ -86,6 +90,7 @@ class CartProvider extends ChangeNotifier {
         type: _cartType ?? _inferCartType(),
         lat: _deliveryLatitude,
         lng: _deliveryLongitude,
+        useCredits: _useCredits,
       );
 
       if (response.isSuccessful && response.body != null) {
@@ -152,6 +157,7 @@ class CartProvider extends ChangeNotifier {
       _serviceFee = 0.0;
       _tax = 0.0;
       _rainFee = 0.0;
+      _creditsApplied = 0.0;
       _total = null;
       _estimatedDeliveryMin = null;
       _estimatedDeliveryMax = null;
@@ -163,6 +169,7 @@ class CartProvider extends ChangeNotifier {
     _serviceFee = (pricing['serviceFee'] as num?)?.toDouble() ?? 0.0;
     _tax = (pricing['tax'] as num?)?.toDouble() ?? 0.0;
     _rainFee = (pricing['rainFee'] as num?)?.toDouble() ?? 0.0;
+    _creditsApplied = (pricing['creditsApplied'] as num?)?.toDouble() ?? 0.0;
     _total = (pricing['total'] as num?)?.toDouble();
     _estimatedDeliveryMin = (pricing['estimatedDeliveryMin'] as num?)?.toInt();
     _estimatedDeliveryMax = (pricing['estimatedDeliveryMax'] as num?)?.toInt();
@@ -223,6 +230,13 @@ class CartProvider extends ChangeNotifier {
     if (_cartItems.isNotEmpty) {
       syncFromBackend();
     }
+  }
+
+  Future<void> setUseCredits(bool value) async {
+    if (_useCredits == value) return;
+    _useCredits = value;
+    notifyListeners();
+    await syncFromBackend();
   }
 
   /// Create FoodItem from backend data
@@ -356,6 +370,7 @@ class CartProvider extends ChangeNotifier {
         body,
         lat: _deliveryLatitude,
         lng: _deliveryLongitude,
+        useCredits: _useCredits,
       );
       debugPrint('✅ Successfully added to backend');
     } catch (e) {
@@ -371,6 +386,7 @@ class CartProvider extends ChangeNotifier {
         {'quantity': quantity},
         lat: _deliveryLatitude,
         lng: _deliveryLongitude,
+        useCredits: _useCredits,
       );
     } catch (e) {
       debugPrint('Error updating backend cart: $e');
@@ -385,6 +401,7 @@ class CartProvider extends ChangeNotifier {
         itemId,
         lat: _deliveryLatitude,
         lng: _deliveryLongitude,
+        useCredits: _useCredits,
       );
       debugPrint('✅ Successfully removed from backend');
     } catch (e) {
@@ -562,6 +579,7 @@ class CartProvider extends ChangeNotifier {
       await cartApiService.clearCart(
         lat: _deliveryLatitude,
         lng: _deliveryLongitude,
+        useCredits: _useCredits,
       );
       await syncFromBackend();
     } catch (e) {

@@ -67,7 +67,7 @@ class AppStrings {
   static const String cartTotalAmount = "Total Amount";
   static const String cartPromoCode = "Have a promo code?";
   static const String cartPromoCodeSub = "Tap to enter and save more!";
-  static const String cartDelete = "Delete";
+  static const String cartDelete = "Remove";
   static const String restaurantRegistrationCheckingConnection = "Checking connection...";
   static const String restaurantRegistrationSubmitting =
       "Submitting your application... \nThis may take up to a minute.";

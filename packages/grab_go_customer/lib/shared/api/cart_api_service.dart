@@ -10,6 +10,7 @@ abstract class CartApiService extends ChopperService {
     @Query('type') String? type,
     @Query('lat') double? lat,
     @Query('lng') double? lng,
+    @Query('useCredits') bool? useCredits,
   });
 
   /// Add item to cart
@@ -18,6 +19,7 @@ abstract class CartApiService extends ChopperService {
     @Body() Map<String, dynamic> body, {
     @Query('lat') double? lat,
     @Query('lng') double? lng,
+    @Query('useCredits') bool? useCredits,
   });
 
   /// Update cart item quantity
@@ -27,6 +29,7 @@ abstract class CartApiService extends ChopperService {
     @Body() Map<String, dynamic> body, {
     @Query('lat') double? lat,
     @Query('lng') double? lng,
+    @Query('useCredits') bool? useCredits,
   });
 
   /// Remove item from cart
@@ -35,11 +38,16 @@ abstract class CartApiService extends ChopperService {
     @Path('itemId') String itemId, {
     @Query('lat') double? lat,
     @Query('lng') double? lng,
+    @Query('useCredits') bool? useCredits,
   });
 
   /// Clear entire cart
   @DELETE(path: '/clear')
-  Future<Response<Map<String, dynamic>>> clearCart({@Query('lat') double? lat, @Query('lng') double? lng});
+  Future<Response<Map<String, dynamic>>> clearCart({
+    @Query('lat') double? lat,
+    @Query('lng') double? lng,
+    @Query('useCredits') bool? useCredits,
+  });
 
   static CartApiService create([ChopperClient? client]) {
     return _$CartApiService(client);

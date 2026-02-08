@@ -32,12 +32,6 @@ class _PromoCodeDialogState extends State<PromoCodeDialog> with SingleTickerProv
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
 
-  final List<Map<String, dynamic>> _suggestedPromos = [
-    {'code': 'WELCOME10', 'discount': '10% OFF', 'description': 'First order discount'},
-    {'code': 'SAVE20', 'discount': '20% OFF', 'description': 'On orders above GHC50'},
-    {'code': 'FREESHIP', 'discount': 'FREE DELIVERY', 'description': 'Free delivery today'},
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -96,7 +90,7 @@ class _PromoCodeDialogState extends State<PromoCodeDialog> with SingleTickerProv
             constraints: BoxConstraints(maxHeight: 600.h),
             decoration: BoxDecoration(
               color: colors.backgroundPrimary,
-              borderRadius: BorderRadius.circular(KBorderSize.borderRadius20),
+              borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
               boxShadow: [
                 BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 10)),
               ],
@@ -108,10 +102,10 @@ class _PromoCodeDialogState extends State<PromoCodeDialog> with SingleTickerProv
                   width: double.infinity,
                   padding: EdgeInsets.all(KSpacing.lg25.r),
                   decoration: BoxDecoration(
-                    color: colors.accentViolet.withValues(alpha: 0.15),
+                    color: colors.accentOrange.withValues(alpha: 0.15),
                     borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(KBorderSize.borderRadius20),
-                      topRight: Radius.circular(KBorderSize.borderRadius20),
+                      topLeft: Radius.circular(KBorderSize.borderMedium),
+                      topRight: Radius.circular(KBorderSize.borderMedium),
                     ),
                   ),
                   child: Column(
@@ -121,7 +115,7 @@ class _PromoCodeDialogState extends State<PromoCodeDialog> with SingleTickerProv
                         width: 70.h,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: colors.accentViolet.withValues(alpha: 0.15),
+                          color: colors.accentOrange.withValues(alpha: 0.15),
                         ),
                         child: Center(
                           child: SvgPicture.asset(
@@ -129,7 +123,7 @@ class _PromoCodeDialogState extends State<PromoCodeDialog> with SingleTickerProv
                             package: "grab_go_shared",
                             height: 35.h,
                             width: 35.h,
-                            colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                           ),
                         ),
                       ),
@@ -188,7 +182,7 @@ class _PromoCodeDialogState extends State<PromoCodeDialog> with SingleTickerProv
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                              borderSide: BorderSide(color: colors.accentViolet, width: 1.5),
+                              borderSide: BorderSide(color: colors.accentOrange, width: 1.5),
                             ),
                           ),
                           style: TextStyle(
@@ -202,99 +196,96 @@ class _PromoCodeDialogState extends State<PromoCodeDialog> with SingleTickerProv
 
                         SizedBox(height: KSpacing.lg25.h),
 
-                        Text(
-                          'Available Offers',
-                          style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
-                        ),
-                        SizedBox(height: KSpacing.md.h),
+                        // Text(
+                        //   'Available Offers',
+                        //   style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                        // ),
+                        // SizedBox(height: KSpacing.md.h),
 
-                        ...List.generate(_suggestedPromos.length, (index) {
-                          final promo = _suggestedPromos[index];
-                          return Padding(
-                            padding: EdgeInsets.only(bottom: 12.h),
-                            child: GestureDetector(
-                              onTap: () {
-                                _promoController.text = promo['code'];
-                              },
-                              child: Container(
-                                padding: EdgeInsets.all(14.r),
-                                decoration: BoxDecoration(
-                                  color: colors.backgroundSecondary,
-                                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            colors.accentViolet.withValues(alpha: 0.2),
-                                            colors.accentOrange.withValues(alpha: 0.2),
-                                          ],
-                                        ),
-                                        borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                                      ),
-                                      child: Text(
-                                        promo['discount'],
-                                        style: TextStyle(
-                                          fontSize: 11.sp,
-                                          fontWeight: FontWeight.w700,
-                                          color: colors.accentViolet,
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(width: 12.w),
+                        // ...List.generate(_suggestedPromos.length, (index) {
+                        //   final promo = _suggestedPromos[index];
+                        //   return Padding(
+                        //     padding: EdgeInsets.only(bottom: 12.h),
+                        //     child: GestureDetector(
+                        //       onTap: () {
+                        //         _promoController.text = promo['code'];
+                        //       },
+                        //       child: Container(
+                        //         padding: EdgeInsets.all(14.r),
+                        //         decoration: BoxDecoration(
+                        //           color: colors.backgroundSecondary,
+                        //           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                        //         ),
+                        //         child: Row(
+                        //           children: [
+                        //             Container(
+                        //               padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                        //               decoration: BoxDecoration(
+                        //                 gradient: LinearGradient(
+                        //                   colors: [
+                        //                     colors.accentViolet.withValues(alpha: 0.2),
+                        //                     colors.accentOrange.withValues(alpha: 0.2),
+                        //                   ],
+                        //                 ),
+                        //                 borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                        //               ),
+                        //               child: Text(
+                        //                 promo['discount'],
+                        //                 style: TextStyle(
+                        //                   fontSize: 11.sp,
+                        //                   fontWeight: FontWeight.w700,
+                        //                   color: colors.accentViolet,
+                        //                 ),
+                        //               ),
+                        //             ),
+                        //             SizedBox(width: 12.w),
 
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            promo['code'],
-                                            style: TextStyle(
-                                              fontSize: 14.sp,
-                                              fontWeight: FontWeight.w700,
-                                              color: colors.textPrimary,
-                                              letterSpacing: 1,
-                                            ),
-                                          ),
-                                          SizedBox(height: 2.h),
-                                          Text(
-                                            promo['description'],
-                                            style: TextStyle(
-                                              fontSize: 12.sp,
-                                              fontWeight: FontWeight.w400,
-                                              color: colors.textSecondary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
+                        //             Expanded(
+                        //               child: Column(
+                        //                 crossAxisAlignment: CrossAxisAlignment.start,
+                        //                 children: [
+                        //                   Text(
+                        //                     promo['code'],
+                        //                     style: TextStyle(
+                        //                       fontSize: 14.sp,
+                        //                       fontWeight: FontWeight.w700,
+                        //                       color: colors.textPrimary,
+                        //                       letterSpacing: 1,
+                        //                     ),
+                        //                   ),
+                        //                   SizedBox(height: 2.h),
+                        //                   Text(
+                        //                     promo['description'],
+                        //                     style: TextStyle(
+                        //                       fontSize: 12.sp,
+                        //                       fontWeight: FontWeight.w400,
+                        //                       color: colors.textSecondary,
+                        //                     ),
+                        //                   ),
+                        //                 ],
+                        //               ),
+                        //             ),
 
-                                    SvgPicture.asset(
-                                      _promoController.text == promo['code']
-                                          ? Assets.icons.check
-                                          : Assets.icons.navArrowRight,
-                                      package: "grab_go_shared",
-                                      height: 18.h,
-                                      width: 18.h,
-                                      colorFilter: ColorFilter.mode(
-                                        _promoController.text == promo['code']
-                                            ? colors.accentViolet
-                                            : colors.textSecondary,
-                                        BlendMode.srcIn,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        }),
-
-                        SizedBox(height: KSpacing.md.h),
-
+                        //             SvgPicture.asset(
+                        //               _promoController.text == promo['code']
+                        //                   ? Assets.icons.check
+                        //                   : Assets.icons.navArrowRight,
+                        //               package: "grab_go_shared",
+                        //               height: 18.h,
+                        //               width: 18.h,
+                        //               colorFilter: ColorFilter.mode(
+                        //                 _promoController.text == promo['code']
+                        //                     ? colors.accentViolet
+                        //                     : colors.textSecondary,
+                        //                 BlendMode.srcIn,
+                        //               ),
+                        //             ),
+                        //           ],
+                        //         ),
+                        //       ),
+                        //     ),
+                        //   );
+                        // }),
                         Row(
                           children: [
                             Expanded(
@@ -321,7 +312,7 @@ class _PromoCodeDialogState extends State<PromoCodeDialog> with SingleTickerProv
                                 onPressed: () => _applyPromo(_promoController.text),
                                 buttonText: "Apply Code",
                                 textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: Colors.white),
-                                backgroundColor: colors.accentViolet,
+                                backgroundColor: colors.accentOrange,
                                 padding: EdgeInsets.symmetric(vertical: 16.h),
                                 borderRadius: KBorderSize.borderMedium,
                               ),

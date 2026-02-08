@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -11,7 +9,6 @@ import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:grab_go_shared/shared/utils/image_optimizer.dart';
 
 class CartItem extends StatefulWidget {
   const CartItem({super.key});
@@ -68,14 +65,6 @@ class _CartItemState extends State<CartItem> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                SvgPicture.asset(
-                                  Assets.icons.binMinusIn,
-                                  package: 'grab_go_shared',
-                                  height: 24.h,
-                                  width: 24.w,
-                                  colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                                ),
-                                SizedBox(height: 6.h),
                                 Text(
                                   AppStrings.cartDelete,
                                   style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.w700),
@@ -99,7 +88,7 @@ class _CartItemState extends State<CartItem> {
                         decoration: BoxDecoration(
                           color: colors.backgroundPrimary,
                           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                          border: Border.all(color: colors.inputBorder.withOpacity(0.5), width: 1),
+                          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.5), width: 1),
                         ),
                         child: Row(
                           children: [
@@ -214,7 +203,7 @@ class _CartItemState extends State<CartItem> {
                                         Container(
                                           padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                                           decoration: BoxDecoration(
-                                            color: colors.accentOrange.withOpacity(0.15),
+                                            color: colors.accentOrange.withValues(alpha: 0.15),
                                             borderRadius: BorderRadius.circular(8.r),
                                           ),
                                           child: Text(
@@ -230,7 +219,10 @@ class _CartItemState extends State<CartItem> {
                                           padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
                                           decoration: BoxDecoration(
                                             color: colors.backgroundSecondary,
-                                            border: Border.all(color: colors.inputBorder.withOpacity(0.5), width: 1),
+                                            border: Border.all(
+                                              color: colors.inputBorder.withValues(alpha: 0.5),
+                                              width: 1,
+                                            ),
                                             borderRadius: BorderRadius.circular(10.r),
                                           ),
                                           child: Row(
@@ -287,7 +279,6 @@ class _CartItemState extends State<CartItem> {
                       ),
                     ),
                   ),
-                  // Separator (except for last item)
                   if (index < cartEntries.length - 1)
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 5.h),

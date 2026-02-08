@@ -88,6 +88,7 @@ class _CheckoutState extends State<Checkout> {
             final double deliveryFee = provider.deliveryFee;
             final double serviceFee = provider.serviceFee;
             final double rainFee = provider.rainFee;
+            final double creditsApplied = provider.creditsApplied;
             final double total = provider.total + _tipAmount;
 
             return Column(
@@ -450,13 +451,24 @@ class _CheckoutState extends State<Checkout> {
                                   infoType: _FeeInfoType.rain,
                                 ),
                               ],
+                              if (creditsApplied > 0) ...[
+                                SizedBox(height: 6.h),
+                                _buildPriceRow(
+                                  context,
+                                  "Credits Applied",
+                                  -creditsApplied,
+                                  colors,
+                                  false,
+                                  false,
+                                ),
+                              ],
                               // Tax removed (kept in pricing for backend compatibility)
                               if (_tipAmount > 0) ...[
                                 SizedBox(height: 6.h),
                                 _buildPriceRow(context, "Tip", _tipAmount, colors, false, false),
                               ],
                               SizedBox(height: 6.h),
-                              _buildPriceRow(context, "Total Amount", total, colors, true, false),
+                              _buildTotalRow(context, total, creditsApplied, colors),
                             ],
                           ),
                         ),
@@ -580,6 +592,61 @@ class _CheckoutState extends State<Checkout> {
             fontWeight: isTotal ? FontWeight.w600 : FontWeight.w400,
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildTotalRow(BuildContext context, double total, double creditsApplied, AppColorsExtension colors) {
+    final double? originalTotal = creditsApplied > 0 ? total + creditsApplied : null;
+
+    return Row(
+      children: [
+        Text(
+          "Total Amount",
+          style: TextStyle(
+            color: colors.textSecondary,
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const Spacer(),
+        if (originalTotal != null)
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: "GHS ${originalTotal.toStringAsFixed(2)}",
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w400,
+                    decoration: TextDecoration.lineThrough,
+                  ),
+                ),
+                TextSpan(
+                  text: " / ",
+                  style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w400),
+                ),
+                TextSpan(
+                  text: "GHS ${total.toStringAsFixed(2)}",
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          Text(
+            "GHS ${total.toStringAsFixed(2)}",
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
       ],
     );
   }

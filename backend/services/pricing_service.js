@@ -1,5 +1,6 @@
 const axios = require('axios');
 const prisma = require('../config/prisma');
+const ReferralService = require('./referral_service');
 const { calculateDistance, estimateDeliveryTime } = require('../utils/distance');
 
 const toNumber = (value, fallback = 0) => {
@@ -340,11 +341,13 @@ const calculateCartPricing = async (cart, options = {}) => {
             itemCount: 0,
             deliveryDistanceKm: 0,
             estimatedDeliveryMin: null,
-            estimatedDeliveryMax: null
+            estimatedDeliveryMax: null,
+            creditsApplied: 0,
+            totalAfterCredits: 0
         };
     }
 
-    const { userId, deliveryLocation } = options;
+    const { userId, deliveryLocation, useCredits } = options;
     const subtotal = calculateSubtotal(cart.items);
     const { baseFee, vendorLocation, vendorPrepTime, vendorDeliveryTime } = await getVendorDeliveryContext(cart);
     const maxItemPrepMinutes = getMaxItemPrepMinutes(cart.items);
@@ -355,13 +358,22 @@ const calculateCartPricing = async (cart, options = {}) => {
     const serviceFee = calculateServiceFee(subtotal);
     const tax = calculateTax(subtotal);
     const rainFee = await getRainFee({ deliveryLocation: resolvedDeliveryLocation, vendorLocation });
-    const total = calculateTotal({ subtotal, deliveryFee, serviceFee, tax, rainFee });
+    const totalBeforeCredits = calculateTotal({ subtotal, deliveryFee, serviceFee, tax, rainFee });
     const itemCount = cart.items.reduce((sum, item) => sum + toNumber(item.quantity, 0), 0);
     const estimatedDelivery = calculateEstimatedDeliveryWindow({
         distanceKm,
         vendorPrepTime: effectivePrepMinutes,
         vendorDeliveryTime
     });
+    let creditsApplied = 0;
+    let totalAfterCredits = totalBeforeCredits;
+    const shouldUseCredits = useCredits !== false;
+
+    if (userId && shouldUseCredits) {
+        const creditResult = await ReferralService.applyCreditsToOrder(userId, totalBeforeCredits);
+        creditsApplied = toNumber(creditResult?.appliedAmount, 0);
+        totalAfterCredits = toNumber(creditResult?.newTotal, totalBeforeCredits);
+    }
 
     return {
         subtotal,
@@ -369,11 +381,13 @@ const calculateCartPricing = async (cart, options = {}) => {
         serviceFee,
         tax,
         rainFee,
-        total,
+        total: totalAfterCredits,
         itemCount,
         deliveryDistanceKm: distanceKm ?? 0,
         estimatedDeliveryMin: estimatedDelivery.minMinutes,
-        estimatedDeliveryMax: estimatedDelivery.maxMinutes
+        estimatedDeliveryMax: estimatedDelivery.maxMinutes,
+        creditsApplied,
+        totalAfterCredits
     };
 };
 

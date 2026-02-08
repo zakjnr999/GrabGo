@@ -42,6 +42,7 @@ class Cart extends StatelessWidget {
             final double deliveryFee = provider.deliveryFee;
             final double serviceFee = provider.serviceFee;
             final double rainFee = provider.rainFee;
+            final double creditsApplied = provider.creditsApplied;
             final double total = provider.total;
 
             return Column(
@@ -95,7 +96,7 @@ class Cart extends StatelessWidget {
                 else
                   Expanded(
                     child: SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
+                      physics: const AlwaysScrollableScrollPhysics(),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -127,7 +128,7 @@ class Cart extends StatelessWidget {
                                       Container(
                                         padding: EdgeInsets.all(8.r),
                                         decoration: BoxDecoration(
-                                          color: colors.accentViolet.withValues(alpha: 0.15),
+                                          color: colors.accentOrange.withValues(alpha: 0.15),
                                           borderRadius: BorderRadius.circular(8.r),
                                         ),
                                         child: SvgPicture.asset(
@@ -135,7 +136,7 @@ class Cart extends StatelessWidget {
                                           package: 'grab_go_shared',
                                           height: 20.h,
                                           width: 20.w,
-                                          colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                                          colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                                         ),
                                       ),
                                       SizedBox(width: 12.w),
@@ -168,12 +169,53 @@ class Cart extends StatelessWidget {
                                         package: 'grab_go_shared',
                                         height: 18.h,
                                         width: 18.w,
-                                        colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                                       ),
                                     ],
                                   ),
                                 ),
                                 SizedBox(height: 20.h),
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
+                                  decoration: BoxDecoration(
+                                    color: colors.backgroundSecondary.withValues(alpha: 0.6),
+                                    borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            "Use Credits",
+                                            style: TextStyle(
+                                              color: colors.textPrimary,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 13.sp,
+                                            ),
+                                          ),
+                                          SizedBox(height: 2.h),
+                                          Text(
+                                            "Apply your GrabGo credits to this order",
+                                            style: TextStyle(
+                                              color: colors.textSecondary,
+                                              fontWeight: FontWeight.w500,
+                                              fontSize: 11.sp,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const Spacer(),
+                                      CustomSwitch(
+                                        value: provider.useCredits,
+                                        onChanged: (value) => provider.setUseCredits(value),
+                                        activeColor: colors.accentOrange,
+                                        inactiveColor: colors.backgroundSecondary,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(height: 16.h),
 
                                 Column(
                                   children: [
@@ -221,16 +263,20 @@ class Cart extends StatelessWidget {
                                         infoType: _FeeInfoType.rain,
                                       ),
                                     ],
+                                    if (creditsApplied > 0) ...[
+                                      SizedBox(height: 6.h),
+                                      _buildPriceRow(
+                                        context,
+                                        "Credits Applied",
+                                        -creditsApplied,
+                                        colors,
+                                        Assets.icons.gift,
+                                        false,
+                                        false,
+                                      ),
+                                    ],
                                     SizedBox(height: 6.h),
-                                    _buildPriceRow(
-                                      context,
-                                      "Total Amount",
-                                      total,
-                                      colors,
-                                      Assets.icons.deliveryTruck,
-                                      true,
-                                      false,
-                                    ),
+                                    _buildTotalRow(context, total, creditsApplied, colors),
                                   ],
                                 ),
                                 SizedBox(height: 12.h),
@@ -381,6 +427,49 @@ class Cart extends StatelessWidget {
             fontWeight: isTotal ? FontWeight.w600 : FontWeight.w400,
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildTotalRow(BuildContext context, double total, double creditsApplied, AppColorsExtension colors) {
+    final double? originalTotal = creditsApplied > 0 ? total + creditsApplied : null;
+
+    return Row(
+      children: [
+        Text(
+          "Total Amount",
+          style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w600),
+        ),
+        const Spacer(),
+        if (originalTotal != null)
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: "${AppStrings.currencySymbol} ${originalTotal.toStringAsFixed(2)}",
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w400,
+                    decoration: TextDecoration.lineThrough,
+                  ),
+                ),
+                TextSpan(
+                  text: " / ",
+                  style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w400),
+                ),
+                TextSpan(
+                  text: "${AppStrings.currencySymbol} ${total.toStringAsFixed(2)}",
+                  style: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          )
+        else
+          Text(
+            "${AppStrings.currencySymbol} ${total.toStringAsFixed(2)}",
+            style: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w600),
+          ),
       ],
     );
   }
@@ -541,11 +630,7 @@ class Cart extends StatelessWidget {
     }
   }
 
-  String _formatEstimatedDelivery(
-    Map<CartItem, int> cartItems, {
-    int? minMinutes,
-    int? maxMinutes,
-  }) {
+  String _formatEstimatedDelivery(Map<CartItem, int> cartItems, {int? minMinutes, int? maxMinutes}) {
     if (minMinutes != null && maxMinutes != null && minMinutes > 0 && maxMinutes > 0) {
       if (minMinutes == maxMinutes) {
         const padding = 5;
