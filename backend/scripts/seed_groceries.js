@@ -57,7 +57,7 @@ const stores = [
         tags: ['fresh', 'organic', 'local'],
         featured: true,
         isVerified: true,
-        paymentMethods: ['cash', 'card', 'mobile_money'],
+        paymentMethods: ['cash', 'card', 'card'],
         deliveryRadius: 10,
         averagePreparationTime: 15,
         averageDeliveryTime: 30,
@@ -107,7 +107,7 @@ const stores = [
         tags: ['supermarket', 'groceries'],
         featured: false,
         isVerified: true,
-        paymentMethods: ['cash', 'mobile_money'],
+        paymentMethods: ['cash', 'card'],
         deliveryRadius: 10,
         averagePreparationTime: 20,
         averageDeliveryTime: 40,
@@ -135,7 +135,7 @@ const stores = [
         vendorType: 'grocery', status: 'approved', isOpen: true, isAcceptingOrders: true, ratingSum: 480, totalReviews: 100,
         priorityScore: 12, orderAcceptanceRate: 99, orderCancellationRate: 1,
         features: ['vegan_options', 'parking', 'takeaway'], tags: ['organic', 'gluten-free', 'vegan'], featured: true, isVerified: true,
-        paymentMethods: ['cash', 'card', 'mobile_money'], deliveryRadius: 15, averagePreparationTime: 25, averageDeliveryTime: 45,
+        paymentMethods: ['cash', 'card', 'card'], deliveryRadius: 15, averagePreparationTime: 25, averageDeliveryTime: 45,
         openingHours: { monday: { open: '09:00', close: '19:00', isClosed: false } },
         socials: { instagram: 'https://instagram.com/organichaven' },
         isGrabGoExclusive: true
@@ -150,7 +150,7 @@ const stores = [
         vendorType: 'grocery', status: 'approved', isOpen: true, isAcceptingOrders: true, ratingSum: 420, totalReviews: 100,
         priorityScore: 5, orderAcceptanceRate: 90, orderCancellationRate: 10,
         features: ['takeaway'], tags: ['convenience', 'fast', '24/7'], featured: false, isVerified: true,
-        paymentMethods: ['cash', 'mobile_money'], deliveryRadius: 5, averagePreparationTime: 10, averageDeliveryTime: 20,
+        paymentMethods: ['cash', 'card'], deliveryRadius: 5, averagePreparationTime: 10, averageDeliveryTime: 20,
         openingHours: { monday: { open: '00:00', close: '23:59', isClosed: false } }
     },
     {
@@ -163,7 +163,7 @@ const stores = [
         vendorType: 'grocery', status: 'approved', isOpen: true, isAcceptingOrders: true, ratingSum: 460, totalReviews: 100,
         priorityScore: 9, orderAcceptanceRate: 96, orderCancellationRate: 4,
         features: ['parking', 'takeaway', 'wheelchair_accessible'], tags: ['family', 'bulk', 'quality'], featured: false, isVerified: true,
-        paymentMethods: ['cash', 'mobile_money'], deliveryRadius: 8, averagePreparationTime: 20, averageDeliveryTime: 35,
+        paymentMethods: ['cash', 'card'], deliveryRadius: 8, averagePreparationTime: 20, averageDeliveryTime: 35,
         openingHours: { monday: { open: '08:30', close: '20:30', isClosed: false } }
     },
     {
@@ -176,7 +176,7 @@ const stores = [
         vendorType: 'grocery', status: 'approved', isOpen: true, isAcceptingOrders: true, ratingSum: 470, totalReviews: 100,
         priorityScore: 11, orderAcceptanceRate: 97, orderCancellationRate: 3,
         features: ['takeaway', 'air_conditioned'], tags: ['premium', 'city', 'imported'], featured: true, isVerified: true,
-        paymentMethods: ['cash', 'card', 'mobile_money'], deliveryRadius: 10, averagePreparationTime: 18, averageDeliveryTime: 30,
+        paymentMethods: ['cash', 'card', 'card'], deliveryRadius: 10, averagePreparationTime: 18, averageDeliveryTime: 30,
         openingHours: { monday: { open: '08:00', close: '22:00', isClosed: false } }
     },
     {
@@ -189,7 +189,7 @@ const stores = [
         vendorType: 'grocery', status: 'approved', isOpen: true, isAcceptingOrders: true, ratingSum: 440, totalReviews: 100,
         priorityScore: 6, orderAcceptanceRate: 92, orderCancellationRate: 8,
         features: ['parking'], tags: ['value', 'discount', 'bulk'], featured: false, isVerified: true,
-        paymentMethods: ['cash', 'mobile_money'], deliveryRadius: 8, averagePreparationTime: 15, averageDeliveryTime: 35,
+        paymentMethods: ['cash', 'card'], deliveryRadius: 8, averagePreparationTime: 15, averageDeliveryTime: 35,
         openingHours: { monday: { open: '08:00', close: '20:00', isClosed: false } }
     },
     {
@@ -202,7 +202,7 @@ const stores = [
         vendorType: 'grocery', status: 'approved', isOpen: true, isAcceptingOrders: true, ratingSum: 460, totalReviews: 100,
         priorityScore: 9, orderAcceptanceRate: 96, orderCancellationRate: 4,
         features: ['air_conditioned', 'parking', 'wheelchair_accessible'], tags: ['prime', 'quality', 'variety'], featured: true, isVerified: true,
-        paymentMethods: ['cash', 'card', 'mobile_money'], deliveryRadius: 12, averagePreparationTime: 20, averageDeliveryTime: 40,
+        paymentMethods: ['cash', 'card', 'card'], deliveryRadius: 12, averagePreparationTime: 20, averageDeliveryTime: 40,
         openingHours: { monday: { open: '09:00', close: '21:00', isClosed: false } }
     },
     {
@@ -215,7 +215,7 @@ const stores = [
         vendorType: 'grocery', status: 'approved', isOpen: true, isAcceptingOrders: true, ratingSum: 490, totalReviews: 100,
         priorityScore: 12, orderAcceptanceRate: 100, orderCancellationRate: 0,
         features: ['vegan_options'], tags: ['green', 'organic', 'eco-friendly'], featured: true, isVerified: true,
-        paymentMethods: ['cash', 'card', 'mobile_money'], deliveryRadius: 15, averagePreparationTime: 25, averageDeliveryTime: 45,
+        paymentMethods: ['cash', 'card', 'card'], deliveryRadius: 15, averagePreparationTime: 25, averageDeliveryTime: 45,
         openingHours: { monday: { open: '08:00', close: '18:00', isClosed: false } }
     },
     {
@@ -228,7 +228,7 @@ const stores = [
         vendorType: 'grocery', status: 'approved', isOpen: true, isAcceptingOrders: true, ratingSum: 430, totalReviews: 100,
         priorityScore: 7, orderAcceptanceRate: 94, orderCancellationRate: 6,
         features: ['takeaway'], tags: ['daily', 'fresh', 'local'], featured: false, isVerified: true,
-        paymentMethods: ['cash', 'mobile_money'], deliveryRadius: 7, averagePreparationTime: 15, averageDeliveryTime: 30,
+        paymentMethods: ['cash', 'card'], deliveryRadius: 7, averagePreparationTime: 15, averageDeliveryTime: 30,
         openingHours: { monday: { open: '07:00', close: '21:00', isClosed: false } }
     },
     {
@@ -267,7 +267,7 @@ const stores = [
         vendorType: 'grocery', status: 'approved', isOpen: true, isAcceptingOrders: true, ratingSum: 450, totalReviews: 100,
         priorityScore: 8, orderAcceptanceRate: 96, orderCancellationRate: 4,
         features: ['takeaway'], tags: ['spices', 'herbs'], featured: false, isVerified: true,
-        paymentMethods: ['cash', 'mobile_money'], deliveryRadius: 10, averagePreparationTime: 10, averageDeliveryTime: 30,
+        paymentMethods: ['cash', 'card'], deliveryRadius: 10, averagePreparationTime: 10, averageDeliveryTime: 30,
         openingHours: { monday: { open: '09:00', close: '19:00', isClosed: false } }
     },
     {
@@ -293,7 +293,7 @@ const stores = [
         vendorType: 'grocery', status: 'approved', isOpen: true, isAcceptingOrders: true, ratingSum: 440, totalReviews: 100,
         priorityScore: 7, orderAcceptanceRate: 95, orderCancellationRate: 5,
         features: ['takeaway'], tags: ['snacks', 'candy'], featured: false, isVerified: true,
-        paymentMethods: ['cash', 'mobile_money'], deliveryRadius: 5, averagePreparationTime: 5, averageDeliveryTime: 20,
+        paymentMethods: ['cash', 'card'], deliveryRadius: 5, averagePreparationTime: 5, averageDeliveryTime: 20,
         openingHours: { monday: { open: '10:00', close: '23:00', isClosed: false } }
     },
     {
@@ -306,7 +306,7 @@ const stores = [
         vendorType: 'grocery', status: 'approved', isOpen: true, isAcceptingOrders: true, ratingSum: 430, totalReviews: 100,
         priorityScore: 7, orderAcceptanceRate: 94, orderCancellationRate: 6,
         features: ['takeaway'], tags: ['drinks', 'beverages'], featured: false, isVerified: true,
-        paymentMethods: ['cash', 'mobile_money'], deliveryRadius: 8, averagePreparationTime: 10, averageDeliveryTime: 30,
+        paymentMethods: ['cash', 'card'], deliveryRadius: 8, averagePreparationTime: 10, averageDeliveryTime: 30,
         openingHours: { monday: { open: '09:00', close: '21:00', isClosed: false } }
     },
     {
@@ -319,7 +319,7 @@ const stores = [
         vendorType: 'grocery', status: 'approved', isOpen: true, isAcceptingOrders: true, ratingSum: 480, totalReviews: 100,
         priorityScore: 9, orderAcceptanceRate: 98, orderCancellationRate: 2,
         features: ['takeaway'], tags: ['fruit', 'fresh'], featured: true, isVerified: true,
-        paymentMethods: ['cash', 'card', 'mobile_money'], deliveryRadius: 6, averagePreparationTime: 10, averageDeliveryTime: 25,
+        paymentMethods: ['cash', 'card', 'card'], deliveryRadius: 6, averagePreparationTime: 10, averageDeliveryTime: 25,
         openingHours: { monday: { open: '08:00', close: '20:00', isClosed: false } }
     },
     {
@@ -332,7 +332,7 @@ const stores = [
         vendorType: 'grocery', status: 'approved', isOpen: true, isAcceptingOrders: true, ratingSum: 460, totalReviews: 100,
         priorityScore: 8, orderAcceptanceRate: 97, orderCancellationRate: 3,
         features: ['takeaway'], tags: ['vegetables', 'fresh'], featured: false, isVerified: true,
-        paymentMethods: ['cash', 'mobile_money'], deliveryRadius: 7, averagePreparationTime: 15, averageDeliveryTime: 30,
+        paymentMethods: ['cash', 'card'], deliveryRadius: 7, averagePreparationTime: 15, averageDeliveryTime: 30,
         openingHours: { monday: { open: '08:00', close: '19:00', isClosed: false } }
     },
     {
@@ -345,7 +345,7 @@ const stores = [
         vendorType: 'grocery', status: 'approved', isOpen: true, isAcceptingOrders: true, ratingSum: 440, totalReviews: 100,
         priorityScore: 7, orderAcceptanceRate: 95, orderCancellationRate: 5,
         features: ['takeaway'], tags: ['grains', 'rice', 'beans'], featured: false, isVerified: true,
-        paymentMethods: ['cash', 'mobile_money'], deliveryRadius: 10, averagePreparationTime: 15, averageDeliveryTime: 35,
+        paymentMethods: ['cash', 'card'], deliveryRadius: 10, averagePreparationTime: 15, averageDeliveryTime: 35,
         openingHours: { monday: { open: '09:00', close: '18:00', isClosed: false } }
     },
     {

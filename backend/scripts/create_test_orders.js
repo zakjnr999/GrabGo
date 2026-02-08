@@ -208,7 +208,7 @@ async function createTestOrders(count = 5) {
   const restaurant = await getOrCreateTestRestaurant();
   
   const statuses = ['confirmed', 'preparing', 'ready'];
-  const paymentMethods = ['cash', 'mobile_money', 'card'];
+  const paymentMethods = ['cash', 'card', 'card'];
   const createdOrders = [];
   
   for (let i = 0; i < count; i++) {

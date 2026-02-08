@@ -246,7 +246,6 @@ class Payment extends StatelessWidget {
 
                 SizedBox(height: 12.h),
 
-                _paymentMethodCard(size, Assets.icons.mom.path, "MTN MOMO", context),
 
                 _paymentMethodCard(size, Assets.icons.vodafoneCash.path, "Vodafone Cash", context),
               ],

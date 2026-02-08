@@ -113,7 +113,7 @@ async function createDummyOrders() {
                         state: 'Greater Accra',
                         zipCode: '00233',
                     },
-                    paymentMethod: 'mobile_money',
+                    paymentMethod: 'card',
                     paymentStatus: 'paid',
                     status: 'delivered', // IMPORTANT: Set to delivered
                     orderDate: new Date(deliveredDate.getTime() - 3600000), // 1 hour before delivery

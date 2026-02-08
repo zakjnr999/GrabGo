@@ -1005,7 +1005,7 @@ class _CheckoutState extends State<Checkout> {
               SizedBox(height: 12.h),
               _buildSummaryBlock("Delivery Address", addressText, colors),
               SizedBox(height: 10.h),
-              _buildSummaryBlock("Payment Method", "Paystack (Card)", colors),
+              _buildSummaryBlock("Payment Method", "Paystack (Card & All other providers)", colors),
               SizedBox(height: 14.h),
               _buildSummaryRow("Subtotal", subtotal, colors),
               SizedBox(height: 6.h),
@@ -1023,24 +1023,18 @@ class _CheckoutState extends State<Checkout> {
               SizedBox(height: 10.h),
               _buildSummaryRow("Total", total, colors, isEmphasis: true),
               SizedBox(height: 16.h),
-              GestureDetector(
-                onTap: _isProcessingPayment
-                    ? null
-                    : () {
-                        Navigator.of(sheetContext).pop();
-                        _handlePaystackPayment(parentContext, provider);
-                      },
-                child: Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.symmetric(vertical: 14.h),
-                  decoration: BoxDecoration(color: colors.accentOrange, borderRadius: BorderRadius.circular(12.r)),
-                  child: Center(
-                    child: Text(
-                      "Pay Now (GHS ${total.toStringAsFixed(2)})",
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15.sp),
-                    ),
-                  ),
-                ),
+              AppButton(
+                width: double.infinity,
+                onPressed: () {
+                  _isProcessingPayment
+                      ? null
+                      : {Navigator.of(context).pop(), _handlePaystackPayment(parentContext, provider)};
+                },
+                buttonText: "Pay Now (GHS ${total.toStringAsFixed(2)})",
+                textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800),
+                textColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 16.h),
+                borderRadius: KBorderSize.borderMedium,
               ),
             ],
           ),

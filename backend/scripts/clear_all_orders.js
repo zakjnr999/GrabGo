@@ -85,7 +85,7 @@ async function main() {
         tax: 3.90,
         totalAmount: 86.90,
         deliveryAddress: addresses[i],
-        paymentMethod: 'mobile_money',
+        paymentMethod: 'card',
         paymentStatus: 'paid',
         status: statuses[i],
         notes: `Test order ${i + 1} for rider app testing`,

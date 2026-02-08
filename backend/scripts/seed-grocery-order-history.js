@@ -93,7 +93,7 @@ async function seedGroceryOrderHistory() {
                 totalAmount: orderData.total,
                 deliveryFee: 5.00,
                 status: 'delivered',
-                paymentMethod: 'mobile_money',
+                paymentMethod: 'card',
                 paymentStatus: 'paid',
                 deliveryAddress: {
                     street: '123 Test Street',

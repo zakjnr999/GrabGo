@@ -30,7 +30,7 @@ const pharmacyStores = [
         vendorType: "pharmacy", status: "approved", createdAt: daysAgo(45), ratingSum: 1176, priorityScore: 10,
         orderAcceptanceRate: 98, orderCancellationRate: 2, features: ['takeaway', 'wheelchair_accessible', 'parking'],
         tags: ['pharmacy', 'health', '24/7'], featured: true, isVerified: true, deliveryRadius: 10,
-        paymentMethods: ['cash', 'card', 'mobile_money'],
+        paymentMethods: ['cash', 'card', 'card'],
         openingHours: {
             monday: { open: '00:00', close: '23:59', isClosed: false },
             tuesday: { open: '00:00', close: '23:59', isClosed: false },
@@ -54,7 +54,7 @@ const pharmacyStores = [
         prescriptionRequired: true, emergencyService: false, insuranceAccepted: ["NHIS", "Metropolitan Insurance"],
         vendorType: "pharmacy", status: "approved", createdAt: daysAgo(30), ratingSum: 869, priorityScore: 8,
         orderAcceptanceRate: 95, orderCancellationRate: 5, features: ['parking'], tags: ['pharmacy', 'health'],
-        featured: false, isVerified: true, deliveryRadius: 8, paymentMethods: ['cash', 'mobile_money'],
+        featured: false, isVerified: true, deliveryRadius: 8, paymentMethods: ['cash', 'card'],
         openingHours: {
             monday: { open: '08:00', close: '20:00', isClosed: false },
             tuesday: { open: '08:00', close: '20:00', isClosed: false },
@@ -78,7 +78,7 @@ const pharmacyStores = [
         prescriptionRequired: true, emergencyService: true, insuranceAccepted: ["NHIS", "Glico", "Hollard Insurance"],
         vendorType: "pharmacy", status: "approved", createdAt: daysAgo(60), ratingSum: 1466, priorityScore: 9,
         orderAcceptanceRate: 97, orderCancellationRate: 3, features: ['wheelchair_accessible', 'parking'], tags: ['wellness', 'supplements', 'herbal'],
-        featured: true, isVerified: true, deliveryRadius: 10, paymentMethods: ['cash', 'card', 'mobile_money'],
+        featured: true, isVerified: true, deliveryRadius: 10, paymentMethods: ['cash', 'card', 'card'],
         openingHours: {
             monday: { open: '08:00', close: '22:00', isClosed: false },
             tuesday: { open: '08:00', close: '22:00', isClosed: false },
@@ -102,7 +102,7 @@ const pharmacyStores = [
         prescriptionRequired: true, emergencyService: false, insuranceAccepted: ["NHIS", "Allianz"],
         vendorType: "pharmacy", status: "approved", createdAt: daysAgo(20), ratingSum: 540, priorityScore: 7,
         orderAcceptanceRate: 96, orderCancellationRate: 4, features: ['takeaway'], tags: ['health', 'care'],
-        featured: false, isVerified: true, deliveryRadius: 8, paymentMethods: ['cash', 'mobile_money'],
+        featured: false, isVerified: true, deliveryRadius: 8, paymentMethods: ['cash', 'card'],
         openingHours: {
             monday: { open: '08:00', close: '20:00', isClosed: false },
             tuesday: { open: '08:00', close: '20:00', isClosed: false },
@@ -125,7 +125,7 @@ const pharmacyStores = [
         prescriptionRequired: true, emergencyService: true, insuranceAccepted: ["NHIS", "Prudential", "Acacia"],
         vendorType: "pharmacy", status: "approved", createdAt: daysAgo(10), ratingSum: 1715, priorityScore: 11,
         orderAcceptanceRate: 99, orderCancellationRate: 1, features: ['air_conditioned', 'parking'], tags: ['premium', 'pharmacy'],
-        featured: true, isVerified: true, deliveryRadius: 15, paymentMethods: ['cash', 'card', 'mobile_money'],
+        featured: true, isVerified: true, deliveryRadius: 15, paymentMethods: ['cash', 'card', 'card'],
         openingHours: {
             monday: { open: '08:00', close: '22:00', isClosed: false },
             tuesday: { open: '08:00', close: '22:00', isClosed: false },
@@ -148,7 +148,7 @@ const pharmacyStores = [
         prescriptionRequired: true, emergencyService: false, insuranceAccepted: ["NHIS"],
         vendorType: "pharmacy", status: "approved", createdAt: daysAgo(50), ratingSum: 408, priorityScore: 6,
         orderAcceptanceRate: 94, orderCancellationRate: 6, features: ['takeaway'], tags: ['affordable', 'chemist'],
-        featured: false, isVerified: true, deliveryRadius: 6, paymentMethods: ['cash', 'mobile_money'],
+        featured: false, isVerified: true, deliveryRadius: 6, paymentMethods: ['cash', 'card'],
         openingHours: {
             monday: { open: '08:00', close: '20:00', isClosed: false },
             tuesday: { open: '08:00', close: '20:00', isClosed: false },
@@ -171,7 +171,7 @@ const pharmacyStores = [
         prescriptionRequired: true, emergencyService: true, insuranceAccepted: ["NHIS", "Glico"],
         vendorType: "pharmacy", status: "approved", createdAt: daysAgo(40), ratingSum: 660, priorityScore: 7,
         orderAcceptanceRate: 95, orderCancellationRate: 5, features: ['takeaway', 'wheelchair_accessible'], tags: ['family', 'pharmacy'],
-        featured: false, isVerified: true, deliveryRadius: 8, paymentMethods: ['cash', 'mobile_money'],
+        featured: false, isVerified: true, deliveryRadius: 8, paymentMethods: ['cash', 'card'],
         openingHours: {
             monday: { open: '08:00', close: '21:00', isClosed: false },
             tuesday: { open: '08:00', close: '21:00', isClosed: false },
@@ -194,7 +194,7 @@ const pharmacyStores = [
         prescriptionRequired: true, emergencyService: true, insuranceAccepted: ["NHIS", "Phoenix"],
         vendorType: "pharmacy", status: "approved", createdAt: daysAgo(25), ratingSum: 987, priorityScore: 9,
         orderAcceptanceRate: 97, orderCancellationRate: 3, features: ['parking', 'takeaway'], tags: ['wellness', 'sports'],
-        featured: true, isVerified: true, deliveryRadius: 10, paymentMethods: ['cash', 'mobile_money'],
+        featured: true, isVerified: true, deliveryRadius: 10, paymentMethods: ['cash', 'card'],
         openingHours: {
             monday: { open: '08:00', close: '22:00', isClosed: false },
             tuesday: { open: '08:00', close: '22:00', isClosed: false },
@@ -239,7 +239,7 @@ const pharmacyStores = [
         prescriptionRequired: false, emergencyService: false, insuranceAccepted: [],
         vendorType: "pharmacy", status: "approved", createdAt: daysAgo(5), ratingSum: 387, priorityScore: 6,
         orderAcceptanceRate: 92, orderCancellationRate: 8, features: ['takeaway'], tags: ['quick', 'easy'],
-        featured: false, isVerified: true, deliveryRadius: 5, paymentMethods: ['cash', 'mobile_money'],
+        featured: false, isVerified: true, deliveryRadius: 5, paymentMethods: ['cash', 'card'],
         openingHours: {
             monday: { open: '07:00', close: '22:00', isClosed: false },
             tuesday: { open: '07:00', close: '22:00', isClosed: false },
@@ -283,7 +283,7 @@ const pharmacyStores = [
         prescriptionRequired: true, emergencyService: false, insuranceAccepted: ["NHIS"],
         vendorType: "pharmacy", status: "approved", createdAt: daysAgo(28), ratingSum: 736, priorityScore: 8,
         orderAcceptanceRate: 95, orderCancellationRate: 5, features: ['takeaway'], tags: ['health', 'first'],
-        featured: false, isVerified: true, deliveryRadius: 7, paymentMethods: ['cash', 'mobile_money'],
+        featured: false, isVerified: true, deliveryRadius: 7, paymentMethods: ['cash', 'card'],
         openingHours: {
             monday: { open: '08:00', close: '21:00', isClosed: false },
             tuesday: { open: '08:00', close: '21:00', isClosed: false },
@@ -305,7 +305,7 @@ const pharmacyStores = [
         prescriptionRequired: true, emergencyService: false, insuranceAccepted: ["NHIS"],
         vendorType: "pharmacy", status: "approved", createdAt: daysAgo(18), ratingSum: 484, priorityScore: 7,
         orderAcceptanceRate: 94, orderCancellationRate: 6, features: ['takeaway'], tags: ['medi', 'plus'],
-        featured: false, isVerified: true, deliveryRadius: 6, paymentMethods: ['cash', 'mobile_money'],
+        featured: false, isVerified: true, deliveryRadius: 6, paymentMethods: ['cash', 'card'],
         openingHours: {
             monday: { open: '07:00', close: '22:00', isClosed: false },
             tuesday: { open: '07:00', close: '22:00', isClosed: false },
@@ -349,7 +349,7 @@ const pharmacyStores = [
         prescriptionRequired: true, emergencyService: false, insuranceAccepted: ["NHIS"],
         vendorType: "pharmacy", status: "approved", createdAt: daysAgo(45), ratingSum: 450, priorityScore: 8,
         orderAcceptanceRate: 96, orderCancellationRate: 4, features: ['takeaway'], tags: ['good', 'health'],
-        featured: false, isVerified: true, deliveryRadius: 7, paymentMethods: ['cash', 'mobile_money'],
+        featured: false, isVerified: true, deliveryRadius: 7, paymentMethods: ['cash', 'card'],
         openingHours: {
             monday: { open: '09:00', close: '21:00', isClosed: false },
             tuesday: { open: '09:00', close: '21:00', isClosed: false },
@@ -371,7 +371,7 @@ const pharmacyStores = [
         prescriptionRequired: true, emergencyService: true, insuranceAccepted: ["NHIS", "Prudential"],
         vendorType: "pharmacy", status: "approved", createdAt: daysAgo(38), ratingSum: 874, priorityScore: 9,
         orderAcceptanceRate: 97, orderCancellationRate: 3, features: ['parking'], tags: ['pharma', 'link'],
-        featured: true, isVerified: true, deliveryRadius: 9, paymentMethods: ['cash', 'card', 'mobile_money'],
+        featured: true, isVerified: true, deliveryRadius: 9, paymentMethods: ['cash', 'card', 'card'],
         openingHours: {
             monday: { open: '08:00', close: '22:00', isClosed: false },
             tuesday: { open: '08:00', close: '22:00', isClosed: false },
@@ -393,7 +393,7 @@ const pharmacyStores = [
         prescriptionRequired: true, emergencyService: false, insuranceAccepted: ["NHIS"],
         vendorType: "pharmacy", status: "approved", createdAt: daysAgo(22), ratingSum: 494, priorityScore: 7,
         orderAcceptanceRate: 94, orderCancellationRate: 6, features: ['takeaway'], tags: ['care', 'plus'],
-        featured: false, isVerified: true, deliveryRadius: 6, paymentMethods: ['cash', 'mobile_money'],
+        featured: false, isVerified: true, deliveryRadius: 6, paymentMethods: ['cash', 'card'],
         openingHours: {
             monday: { open: '07:00', close: '21:00', isClosed: false },
             tuesday: { open: '07:00', close: '21:00', isClosed: false },
@@ -415,7 +415,7 @@ const pharmacyStores = [
         prescriptionRequired: true, emergencyService: false, insuranceAccepted: ["NHIS", "Glico"],
         vendorType: "pharmacy", status: "approved", createdAt: daysAgo(33), ratingSum: 562, priorityScore: 8,
         orderAcceptanceRate: 96, orderCancellationRate: 4, features: ['parking'], tags: ['medical', 'mart'],
-        featured: false, isVerified: true, deliveryRadius: 8, paymentMethods: ['cash', 'mobile_money'],
+        featured: false, isVerified: true, deliveryRadius: 8, paymentMethods: ['cash', 'card'],
         openingHours: {
             monday: { open: '08:00', close: '20:00', isClosed: false },
             tuesday: { open: '08:00', close: '20:00', isClosed: false },
@@ -459,7 +459,7 @@ const pharmacyStores = [
         prescriptionRequired: true, emergencyService: false, insuranceAccepted: ["NHIS", "Phoenix"],
         vendorType: "pharmacy", status: "approved", createdAt: daysAgo(29), ratingSum: 805, priorityScore: 8,
         orderAcceptanceRate: 97, orderCancellationRate: 3, features: ['takeaway'], tags: ['pharmacy', 'zone'],
-        featured: false, isVerified: true, deliveryRadius: 8, paymentMethods: ['cash', 'mobile_money'],
+        featured: false, isVerified: true, deliveryRadius: 8, paymentMethods: ['cash', 'card'],
         openingHours: {
             monday: { open: '08:00', close: '21:00', isClosed: false },
             tuesday: { open: '08:00', close: '21:00', isClosed: false },

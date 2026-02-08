@@ -428,10 +428,6 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
 
   String _getPaymentMethodIcon(String method) {
     switch (method.toLowerCase()) {
-      case 'mtn momo':
-      case 'mtn':
-      case 'momo':
-        return Assets.icons.mom.path;
       case "vodafone cash":
         return Assets.icons.vodafoneCash.path;
       case 'visa':
