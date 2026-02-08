@@ -165,6 +165,7 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
   Future<void> _resendOTP() async {
     final storedPhoneNumber = PhoneAuthService().phoneNumber;
     final userId = UserService().currentUser?.id ?? PhoneAuthService().userId;
+    final channel = PhoneAuthService().channel;
 
     if (storedPhoneNumber == null || userId == null) {
       if (mounted) {
@@ -188,6 +189,7 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
     await PhoneAuthService().resendOTP(
       phoneNumber: storedPhoneNumber,
       userId: userId,
+      channel: channel,
       onCodeSent: () {
         if (mounted) {
           LoadingDialog.instance().hide();

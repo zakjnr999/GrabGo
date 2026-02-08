@@ -965,6 +965,9 @@ paths:
                   type: string
                 userId:
                   type: string
+                channel:
+                  type: string
+                  enum: [sms, whatsapp]
       responses:
         '200':
           description: OTP sent successfully

@@ -8,19 +8,23 @@ class PhoneAuthService {
 
   String? _phoneNumber;
   String? _userId; // Store user ID from registration
+  String? _channel;
 
   /// Send OTP to phone number
   Future<bool> sendOTP({
     required String phoneNumber,
     required String userId,
+    String channel = 'sms',
     required Function() onCodeSent,
     required Function(String error) onError,
   }) async {
     try {
       _phoneNumber = phoneNumber;
       _userId = userId;
+      _channel = channel;
 
-      final response = await authService.sendPhoneOTP({'phoneNumber': phoneNumber, 'userId': userId});
+      final response =
+          await authService.sendPhoneOTP({'phoneNumber': phoneNumber, 'userId': userId, 'channel': channel});
 
       if (response.isSuccessful && response.body != null) {
         final success = response.body!['success'] as bool? ?? false;
@@ -47,14 +51,19 @@ class PhoneAuthService {
   Future<bool> resendOTP({
     required String phoneNumber,
     required String userId,
+    String? channel,
     required Function() onCodeSent,
     required Function(String error) onError,
   }) async {
     try {
       _phoneNumber = phoneNumber;
       _userId = userId;
+      final resolvedChannel = channel ?? _channel ?? 'sms';
+      _channel = resolvedChannel;
 
-      final response = await authService.resendPhoneOTP({'phoneNumber': phoneNumber, 'userId': userId});
+      final response = await authService.resendPhoneOTP(
+        {'phoneNumber': phoneNumber, 'userId': userId, 'channel': resolvedChannel},
+      );
 
       if (response.isSuccessful && response.body != null) {
         final success = response.body!['success'] as bool? ?? false;
@@ -121,6 +130,9 @@ class PhoneAuthService {
   /// Get phone number
   String? get phoneNumber => _phoneNumber;
 
+  /// Get last used channel
+  String? get channel => _channel;
+
   /// Store user ID from registration
   void setUserId(String userId) {
     _userId = userId;
@@ -133,5 +145,6 @@ class PhoneAuthService {
   void clear() {
     _phoneNumber = null;
     _userId = null;
+    _channel = null;
   }
 }

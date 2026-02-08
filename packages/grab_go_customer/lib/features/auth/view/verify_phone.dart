@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -21,6 +19,7 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
   final TextEditingController phoneController = TextEditingController();
   String? phoneError;
   bool isLoading = false;
+  bool useWhatsapp = false;
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -70,10 +69,16 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
     setState(() {
       phoneError = null;
 
-      if (phoneController.text.trim().isEmpty) {
+      final digits = phoneController.text.replaceAll(RegExp(r'\D'), '');
+
+      if (digits.isEmpty) {
         phoneError = "Please enter your phone number";
-      } else if (phoneController.text.trim().length < 10) {
-        phoneError = "Please enter a valid phone number";
+      } else if (digits.length == 10 && digits.startsWith('0')) {
+        phoneError = null;
+      } else if (digits.length == 9) {
+        phoneError = null;
+      } else {
+        phoneError = "Please enter a valid Ghana phone number";
       }
     });
 
@@ -92,12 +97,12 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
     FocusManager.instance.primaryFocus?.unfocus();
     LoadingDialog.instance().show(context: context, text: "Sending OTP...\nThis may take a moment.");
 
-    String phoneNumber = phoneController.text.trim();
-    if (!phoneNumber.startsWith('+')) {
-      phoneNumber = '+233$phoneNumber';
+    String digits = phoneController.text.replaceAll(RegExp(r'\D'), '');
+    if (digits.startsWith('0')) {
+      digits = digits.substring(1);
     }
+    final phoneNumber = '+233$digits';
 
-    // Get user ID from current user
     final userId = UserService().currentUser?.id;
     if (userId == null) {
       if (mounted) {
@@ -117,6 +122,7 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
     await PhoneAuthService().sendOTP(
       phoneNumber: phoneNumber,
       userId: userId,
+      channel: useWhatsapp ? 'whatsapp' : 'sms',
       onCodeSent: () {
         if (mounted) {
           LoadingDialog.instance().hide();
@@ -201,17 +207,7 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
                       width: 100.h,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [
-                            colors.accentGreen.withValues(alpha: 0.2),
-                            colors.accentViolet.withValues(alpha: 0.2),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        boxShadow: [
-                          BoxShadow(color: colors.accentGreen.withValues(alpha: 0.2), blurRadius: 30, spreadRadius: 5),
-                        ],
+                        color: colors.accentGreen.withValues(alpha: 0.2),
                       ),
                       child: Center(
                         child: SvgPicture.asset(
@@ -288,7 +284,7 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
                             fillColor: colors.backgroundSecondary,
                             hintText: "23456789",
                             errorText: phoneError,
-                            hintStyle: TextStyle(fontSize: 15.sp, color: colors.textSecondary.withOpacity(0.7)),
+                            hintStyle: TextStyle(fontSize: 15.sp, color: colors.textSecondary.withValues(alpha: 0.7)),
                             contentPadding: EdgeInsets.all(KSpacing.md15.r),
                             prefixIcon: Padding(
                               padding: EdgeInsets.only(left: 12.w, right: 8.w),
@@ -335,38 +331,68 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
                           ),
                         ),
 
+                        SizedBox(height: KSpacing.lg.h),
+
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: KSpacing.md.w, vertical: KSpacing.sm.h),
+                          decoration: BoxDecoration(
+                            color: colors.backgroundSecondary,
+                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                            border: Border.all(color: colors.inputBorder),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    useWhatsapp ? "Send via WhatsApp" : "Send via SMS",
+                                    style: TextStyle(
+                                      fontSize: 14.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: colors.textPrimary,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4.h),
+                                  Text(
+                                    useWhatsapp ? "Preferred for WhatsApp users" : "Standard text message",
+                                    style: TextStyle(fontSize: 12.sp, color: colors.textSecondary),
+                                  ),
+                                ],
+                              ),
+                              CustomSwitch(
+                                value: useWhatsapp,
+                                onChanged: (value) {
+                                  setState(() {
+                                    useWhatsapp = value;
+                                  });
+                                },
+                                activeColor: colors.accentGreen,
+                              ),
+                            ],
+                          ),
+                        ),
+
                         SizedBox(height: KSpacing.lg25.h),
 
-                        GestureDetector(
-                          onTap: isLoading ? null : () => _sendOTP(),
-                          child: Container(
-                            height: 56.h,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [colors.accentGreen, colors.accentGreen.withValues(alpha: 0.8)],
-                                begin: Alignment.centerLeft,
-                                end: Alignment.centerRight,
+                        Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            boxShadow: [
+                              BoxShadow(
+                                color: colors.accentGreen.withValues(alpha: 0.4),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
                               ),
-                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: colors.accentGreen.withValues(alpha: 0.4),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: Center(
-                              child: Text(
-                                "Send Code",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ),
+                            ],
+                          ),
+                          child: AppButton(
+                            onPressed: _sendOTP,
+                            backgroundColor: colors.accentGreen,
+                            borderRadius: KBorderSize.borderRadius15,
+                            buttonText: AppStrings.register,
+                            textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15.sp),
                           ),
                         ),
                         SizedBox(height: KSpacing.lg.h),

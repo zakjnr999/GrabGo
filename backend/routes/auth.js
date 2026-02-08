@@ -13,8 +13,8 @@ const {
   generateVerificationToken,
   generateOTP,
   sendVerificationEmail,
-  sendSMS,
 } = require("../utils/emailService");
+const { requestPhoneOtp, verifyPhoneOtp } = require("../services/otp_service");
 const { registerToken, removeToken } = require("../services/fcm_service");
 const creditService = require("../services/credit_service");
 
@@ -809,7 +809,7 @@ router.post("/send-verification", protect, async (req, res) => {
 // @access  Public
 router.post("/send-phone-otp", async (req, res) => {
   try {
-    const { phoneNumber, userId } = req.body;
+    const { phoneNumber, userId, channel } = req.body;
 
     if (!phoneNumber) {
       return res.status(400).json({
@@ -845,70 +845,25 @@ router.post("/send-phone-otp", async (req, res) => {
       });
     }
 
-    // Generate OTP
-    const phoneVerificationOTP = generateOTP();
-    const phoneVerificationOTPExpires = new Date();
-    phoneVerificationOTPExpires.setMinutes(
-      phoneVerificationOTPExpires.getMinutes() + 10
-    ); // 10 minutes expiry
-
-    // Save OTP to user
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        phoneVerificationOTP,
-        phoneVerificationOTPExpires
-      }
+    const otpResult = await requestPhoneOtp({
+      phoneNumber,
+      userId,
+      channel,
     });
 
-    // Send SMS with OTP (non-blocking)
-    console.log(`📱 Attempting to send OTP to ${phoneNumber}: ${phoneVerificationOTP}`);
-    const smsResult = await sendSMS(phoneNumber, phoneVerificationOTP);
-
-    if (!smsResult.success) {
-      console.error(`❌ Failed to send SMS:`, smsResult.error || smsResult.message);
-
-      const isGhanaNumber = phoneNumber.includes('233') || phoneNumber.includes('+233');
-      const isTwilioNotConfigured = smsResult.error?.includes('Twilio not configured') ||
-        smsResult.error?.includes('TWILIO_ACCOUNT_SID') ||
-        smsResult.error?.includes('TWILIO_PHONE_NUMBER');
-
-      // In development, still return success but log the error (for testing)
-      if (process.env.NODE_ENV === 'development' && !isTwilioNotConfigured) {
-        const message = isGhanaNumber
-          ? `OTP generated successfully. Twilio SMS failed - check server logs. OTP: ${phoneVerificationOTP}`
-          : `OTP generated successfully (SMS sending failed - check server logs for OTP)`;
-
-        console.log(`⚠️  Development mode: OTP is ${phoneVerificationOTP} (SMS sending failed)`);
-
-        return res.json({
-          success: true,
-          message: message,
-          // Only include OTP in development for debugging
-          otp: phoneVerificationOTP,
-        });
-      }
-
-      // If Twilio is not configured for Ghana numbers, return clear error
-      if (isGhanaNumber && isTwilioNotConfigured) {
-        return res.status(500).json({
-          success: false,
-          message: "SMS service not configured for Ghana numbers. Please set up Twilio (see TWILIO_SETUP.md).",
-          error: process.env.NODE_ENV === 'development' ? smsResult.error : undefined,
-        });
-      }
-
-      return res.status(500).json({
+    if (!otpResult.success) {
+      return res.status(400).json({
         success: false,
-        message: "Failed to send OTP. Please try again or contact support.",
-        error: process.env.NODE_ENV === 'development' ? smsResult.error : undefined,
+        message: otpResult.message || "Failed to send OTP.",
+        error: process.env.NODE_ENV === 'development' ? otpResult.error : undefined,
       });
     }
 
-    console.log(`✅ SMS sent successfully to ${phoneNumber}`);
     res.json({
       success: true,
-      message: "OTP sent successfully",
+      message: otpResult.message || "OTP sent successfully",
+      otp: otpResult.otp,
+      channel: otpResult.channel,
     });
   } catch (error) {
     console.error("Send phone OTP error:", error);
@@ -946,19 +901,11 @@ router.post("/verify-phone-otp", async (req, res) => {
       });
     }
 
-    // Check if OTP matches
-    if (user.phoneVerificationOTP !== otp) {
+    const verifyResult = await verifyPhoneOtp({ phoneNumber, userId, otp });
+    if (!verifyResult.success) {
       return res.status(400).json({
         success: false,
-        message: "Invalid OTP",
-      });
-    }
-
-    // Check if OTP has expired
-    if (!user.phoneVerificationOTPExpires || user.phoneVerificationOTPExpires < new Date()) {
-      return res.status(400).json({
-        success: false,
-        message: "OTP has expired",
+        message: verifyResult.message || "Invalid OTP",
       });
     }
 
@@ -967,7 +914,7 @@ router.post("/verify-phone-otp", async (req, res) => {
       where: { id: userId },
       data: {
         isPhoneVerified: true,
-        phone: String(phoneNumber),
+        phone: verifyResult.phoneE164,
         phoneVerificationOTP: null,
         phoneVerificationOTPExpires: null,
       }
@@ -997,7 +944,7 @@ router.post("/verify-phone-otp", async (req, res) => {
 // @access  Public
 router.post("/resend-phone-otp", async (req, res) => {
   try {
-    const { phoneNumber, userId } = req.body;
+    const { phoneNumber, userId, channel } = req.body;
 
     if (!phoneNumber || !userId) {
       return res.status(400).json({
@@ -1026,71 +973,25 @@ router.post("/resend-phone-otp", async (req, res) => {
       });
     }
 
-    // Generate new OTP
-    const phoneVerificationOTP = generateOTP();
-    const phoneVerificationOTPExpires = new Date();
-    phoneVerificationOTPExpires.setMinutes(
-      phoneVerificationOTPExpires.getMinutes() + 10
-    ); // 10 minutes expiry
-
-    // Save OTP to user
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        phoneVerificationOTP,
-        phoneVerificationOTPExpires
-      }
+    const otpResult = await requestPhoneOtp({
+      phoneNumber,
+      userId,
+      channel,
     });
 
-    // Send SMS with OTP (non-blocking)
-    console.log(`📱 Attempting to resend OTP to ${phoneNumber}: ${phoneVerificationOTP}`);
-    const smsResult = await sendSMS(phoneNumber, phoneVerificationOTP);
-
-    if (!smsResult.success) {
-      console.error(`❌ Failed to resend SMS:`, smsResult.error || smsResult.message);
-
-      const isGhanaNumber = phoneNumber.includes('233') || phoneNumber.includes('+233');
-      const isTwilioNotConfigured = smsResult.error?.includes('Twilio not configured') ||
-        smsResult.error?.includes('TWILIO_ACCOUNT_SID') ||
-        smsResult.error?.includes('TWILIO_PHONE_NUMBER');
-
-      // In development, still return success but log the error (for testing)
-      if (process.env.NODE_ENV === 'development' && !isTwilioNotConfigured) {
-        const message = isGhanaNumber
-          ? `OTP generated successfully. Twilio SMS failed - check server logs. OTP: ${phoneVerificationOTP}`
-          : `OTP generated successfully (SMS sending failed - check server logs for OTP)`;
-
-        console.log(`⚠️  Development mode: OTP is ${phoneVerificationOTP} (SMS sending failed)`);
-
-        return res.json({
-          success: true,
-          message: message,
-          // Only include OTP in development for debugging
-          otp: phoneVerificationOTP,
-        });
-      }
-
-      // If Twilio is not configured for Ghana numbers, return clear error
-      if (isGhanaNumber && isTwilioNotConfigured) {
-        return res.status(500).json({
-          success: false,
-          message: "SMS service not configured for Ghana numbers. Please set up Twilio (see TWILIO_SETUP.md).",
-          error: process.env.NODE_ENV === 'development' ? smsResult.error : undefined,
-        });
-      }
-
-      return res.status(500).json({
+    if (!otpResult.success) {
+      return res.status(400).json({
         success: false,
-        message: "Failed to resend OTP. Please try again or contact support.",
-        error: process.env.NODE_ENV === 'development' ? smsResult.error : undefined,
+        message: otpResult.message || "Failed to resend OTP.",
+        error: process.env.NODE_ENV === 'development' ? otpResult.error : undefined,
       });
     }
 
-    console.log(`✅ SMS resent successfully to ${phoneNumber}`);
-
     res.json({
       success: true,
-      message: "OTP resent successfully",
+      message: otpResult.message || "OTP resent successfully",
+      otp: otpResult.otp,
+      channel: otpResult.channel,
     });
   } catch (error) {
     console.error("Resend phone OTP error:", error);

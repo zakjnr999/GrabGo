@@ -26,7 +26,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController = TextEditingController();
-  final TextEditingController referralCodeController = TextEditingController();
+  final TextEditingController promoCodeController = TextEditingController();
   final TextEditingController bdayController = TextEditingController();
   bool isChecked = false;
 
@@ -35,9 +35,9 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
   String? birthdayError;
   String? passwordError;
   String? confirmPasswordError;
-  String? referralCodeError;
-  bool isReferralCodeValid = false;
-  bool isValidatingReferralCode = false;
+  String? promoCodeError;
+  bool isPromoCodeValid = false;
+  bool isValidatingPromoCode = false;
 
   bool isPasswordVisible = false;
   bool isConfirmPasswordVisible = false;
@@ -81,7 +81,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       ),
     );
 
-    referralCodeController.addListener(() {
+    promoCodeController.addListener(() {
       setState(() {});
     });
 
@@ -99,7 +99,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
     passwordController.dispose();
     confirmPasswordController.dispose();
     bdayController.dispose();
-    referralCodeController.dispose();
+    promoCodeController.dispose();
     super.dispose();
   }
 
@@ -276,7 +276,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         email: emailController.text.trim(),
         password: passwordController.text,
         dateOfBirth: bdayController.text.trim(),
-        promoCode: referralCodeController.text.trim().isNotEmpty ? referralCodeController.text.trim() : null,
+        promoCode: promoCodeController.text.trim().isNotEmpty ? promoCodeController.text.trim() : null,
       );
       final response = await authService
           .registerUser(request)
@@ -380,20 +380,20 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
     }
   }
 
-  Future<void> _validateAndApplyReferralCode() async {
-    final code = referralCodeController.text.trim();
+  Future<void> _validateAndApplyPromoCode() async {
+    final code = promoCodeController.text.trim();
 
     if (code.isEmpty) {
       setState(() {
-        referralCodeError = null;
-        isReferralCodeValid = false;
+        promoCodeError = null;
+        isPromoCodeValid = false;
       });
       return;
     }
 
     setState(() {
-      referralCodeError = null;
-      isValidatingReferralCode = true;
+      promoCodeError = null;
+      isValidatingPromoCode = true;
     });
 
     try {
@@ -427,9 +427,9 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
 
       if (response.isSuccessful && data['valid'] == true) {
         setState(() {
-          isReferralCodeValid = true;
-          referralCodeError = null;
-          isValidatingReferralCode = false;
+          isPromoCodeValid = true;
+          promoCodeError = null;
+          isValidatingPromoCode = false;
         });
 
         if (mounted) {
@@ -442,30 +442,30 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       } else {
         final message = data['error']?.toString() ?? data['message']?.toString();
         setState(() {
-          isReferralCodeValid = false;
-          referralCodeError = message?.isNotEmpty == true ? message : "Invalid promo code";
-          isValidatingReferralCode = false;
+          isPromoCodeValid = false;
+          promoCodeError = message?.isNotEmpty == true ? message : "Invalid promo code";
+          isValidatingPromoCode = false;
         });
       }
     } on SocketException {
       setState(() {
-        isReferralCodeValid = false;
-        referralCodeError = "No internet connection. Check your network.";
-        isValidatingReferralCode = false;
+        isPromoCodeValid = false;
+        promoCodeError = "No internet connection. Check your network.";
+        isValidatingPromoCode = false;
       });
     } on TimeoutException {
       setState(() {
-        isReferralCodeValid = false;
-        referralCodeError = "Request timeout. Please try again.";
-        isValidatingReferralCode = false;
+        isPromoCodeValid = false;
+        promoCodeError = "Request timeout. Please try again.";
+        isValidatingPromoCode = false;
       });
     } catch (e) {
-      print('❌ Referral validation error: $e');
+      print('❌ Promo validation error: $e');
       print('Error type: ${e.runtimeType}');
       setState(() {
-        isReferralCodeValid = false;
-        referralCodeError = "Could not validate code. Please try again.";
-        isValidatingReferralCode = false;
+        isPromoCodeValid = false;
+        promoCodeError = "Could not validate code. Please try again.";
+        isValidatingPromoCode = false;
       });
     }
   }
@@ -900,7 +900,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                           SizedBox(height: KSpacing.lg.h),
 
                           AppTextInput(
-                            controller: referralCodeController,
+                            controller: promoCodeController,
                             label: "Have a promo code?",
                             hintText: "Enter promo code (optional)",
                             fillColor: colors.backgroundSecondary,
@@ -909,7 +909,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                             cursorColor: colors.accentGreen,
                             borderRadius: KBorderSize.borderRadius15,
                             contentPadding: EdgeInsets.all(KSpacing.md15.r),
-                            errorText: referralCodeError,
+                            errorText: promoCodeError,
                             textCapitalization: TextCapitalization.characters,
                             inputFormatters: [
                               FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
@@ -917,10 +917,10 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                             ],
                             onChanged: (value) {
                               // Clear validation when user types
-                              if (referralCodeError != null || isReferralCodeValid) {
+                              if (promoCodeError != null || isPromoCodeValid) {
                                 setState(() {
-                                  referralCodeError = null;
-                                  isReferralCodeValid = false;
+                                  promoCodeError = null;
+                                  isPromoCodeValid = false;
                                 });
                               }
                             },
@@ -934,9 +934,9 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                                 colorFilter: ColorFilter.mode(colors.iconSecondary, BlendMode.srcIn),
                               ),
                             ),
-                            suffixIcon: referralCodeController.text.isEmpty
+                            suffixIcon: promoCodeController.text.isEmpty
                                 ? null
-                                : isReferralCodeValid
+                                : isPromoCodeValid
                                 ? Padding(
                                     padding: EdgeInsets.all(KSpacing.md12.r),
                                     child: SvgPicture.asset(
@@ -947,7 +947,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                                       colorFilter: ColorFilter.mode(colors.iconSecondary, BlendMode.srcIn),
                                     ),
                                   )
-                                : isValidatingReferralCode
+                                : isValidatingPromoCode
                                 ? Padding(
                                     padding: EdgeInsets.all(KSpacing.md12.r),
                                     child: SizedBox(
@@ -969,8 +969,8 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                                       ),
                                       child: Material(
                                         color: Colors.transparent,
-                                        child: InkWell(
-                                          onTap: _validateAndApplyReferralCode,
+                                          child: InkWell(
+                                          onTap: _validateAndApplyPromoCode,
                                           borderRadius: BorderRadius.circular(12.r),
                                           child: Padding(
                                             padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
@@ -994,11 +994,11 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
 
                           SizedBox(height: KSpacing.sm.h),
 
-                          if (!isReferralCodeValid || referralCodeController.text.toUpperCase() != 'GRABGO10')
+                          if (!isPromoCodeValid || promoCodeController.text.toUpperCase() != 'GRABGO10')
                             GestureDetector(
                               onTap: () {
-                                referralCodeController.text = 'GRABGO10';
-                                _validateAndApplyReferralCode();
+                                promoCodeController.text = 'GRABGO10';
+                                _validateAndApplyPromoCode();
                               },
                               child: Container(
                                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
