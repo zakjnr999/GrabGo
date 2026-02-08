@@ -639,39 +639,56 @@ class _CheckoutState extends State<Checkout> {
                     color: colors.backgroundPrimary,
                     border: Border(top: BorderSide(color: colors.backgroundSecondary, width: 1)),
                   ),
-                  child: GestureDetector(
-                    onTap: _isProcessingPayment ? null : () => _onProceedToPayment(context, provider, colors),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        splashColor: Colors.white.withValues(alpha: 0.2),
-                        child: Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.symmetric(vertical: 16.h),
-                          decoration: BoxDecoration(
-                            color: _isProcessingPayment ? colors.textSecondary : colors.accentOrange,
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          child: Center(
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  _isProcessingPayment ? "Processing..." : "Proceed to Payment",
-                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15.sp),
-                                ),
-                                if (!_isProcessingPayment)
-                                  Text(
-                                    total > 0 ? " (GHS ${total.toStringAsFixed(2)})" : "",
-                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15.sp),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                  child: AppButton(
+                    width: double.infinity,
+                    onPressed: () {
+                      _isProcessingPayment ? null : () => _onProceedToPayment(context, provider, colors);
+                    },
+                    buttonText: _isProcessingPayment
+                        ? "Processing..."
+                        : "Procced to Payment ${total > 0 ? " (GHS ${total.toStringAsFixed(2)})" : ""}",
+                    textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: Colors.white),
+                    backgroundColor: _isProcessingPayment
+                        ? colors.accentOrange.withValues(alpha: 0.5)
+                        : colors.accentOrange,
+                    padding: EdgeInsets.symmetric(vertical: 16.h),
+                    borderRadius: KBorderSize.borderMedium,
                   ),
+                  // child: GestureDetector(
+                  //   onTap: _isProcessingPayment ? null : () => _onProceedToPayment(context, provider, colors),
+                  //   child: Material(
+                  //     color: Colors.transparent,
+                  //     child: InkWell(
+                  //       splashColor: Colors.white.withValues(alpha: 0.2),
+                  //       child: Container(
+                  //         width: double.infinity,
+                  //         padding: EdgeInsets.symmetric(vertical: 16.h),
+                  //         decoration: BoxDecoration(
+                  //           color: _isProcessingPayment
+                  //               ? colors.accentOrange.withValues(alpha: 0.5)
+                  //               : colors.accentOrange,
+                  //           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                  //         ),
+                  //         child: Center(
+                  //           child: Row(
+                  //             mainAxisSize: MainAxisSize.min,
+                  //             children: [
+                  //               Text(
+                  //                 _isProcessingPayment ? "Processing..." : "Proceed to Payment",
+                  //                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15.sp),
+                  //               ),
+                  //               if (!_isProcessingPayment)
+                  //                 Text(
+                  //                   total > 0 ? " (GHS ${total.toStringAsFixed(2)})" : "",
+                  //                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15.sp),
+                  //                 ),
+                  //             ],
+                  //           ),
+                  //         ),
+                  //       ),
+                  //     ),
+                  //   ),
+                  // ),
                 ),
               ],
             );
@@ -1005,7 +1022,7 @@ class _CheckoutState extends State<Checkout> {
               SizedBox(height: 12.h),
               _buildSummaryBlock("Delivery Address", addressText, colors),
               SizedBox(height: 10.h),
-              _buildSummaryBlock("Payment Method", "Paystack (Card & All other providers)", colors),
+              _buildSummaryBlock("Payment Method", "Paystack (Card, Mobile Money & Bank Transfer)", colors),
               SizedBox(height: 14.h),
               _buildSummaryRow("Subtotal", subtotal, colors),
               SizedBox(height: 6.h),
@@ -1047,7 +1064,10 @@ class _CheckoutState extends State<Checkout> {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(12.r),
-      decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(12.r)),
+      decoration: BoxDecoration(
+        color: colors.backgroundSecondary,
+        borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

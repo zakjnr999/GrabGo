@@ -261,8 +261,12 @@ router.post(
             select: {
               restaurantName: true,
               logo: true,
-              location: true,
-              phone: true
+              phone: true,
+              address: true,
+              city: true,
+              area: true,
+              latitude: true,
+              longitude: true
             }
           },
           customer: {
@@ -513,7 +517,7 @@ router.get("/:orderId", protect, async (req, res) => {
       where: { id: req.params.orderId },
       include: {
         customer: { select: { username: true, email: true, phone: true } },
-        restaurant: { select: { restaurantName: true, logo: true, location: true, phone: true } },
+        restaurant: { select: { restaurantName: true, logo: true, phone: true, address: true, city: true, area: true, latitude: true, longitude: true } },
         rider: { select: { username: true, email: true, phone: true } },
         items: {
           include: { food: true, groceryItem: true, pharmacyItem: true }
@@ -673,7 +677,7 @@ router.put(
           data: updateData,
           include: {
             customer: { select: { username: true, email: true, phone: true } },
-            restaurant: { select: { restaurantName: true, logo: true, location: true } },
+            restaurant: { select: { restaurantName: true, logo: true, address: true, city: true, area: true, latitude: true, longitude: true } },
             rider: { select: { username: true, email: true, phone: true } }
           }
         });
