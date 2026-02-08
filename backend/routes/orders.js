@@ -601,7 +601,7 @@ router.post(
 
       const order = await prisma.order.findUnique({
         where: { id: orderId },
-        select: { id: true, customerId: true, paymentStatus: true, creditsApplied: true },
+        select: { id: true, customerId: true, paymentStatus: true, creditsApplied: true, totalAmount: true },
       });
 
       if (!order) {
@@ -624,6 +624,17 @@ router.post(
           message: "Payment already confirmed",
           data: { orderId: order.id },
         });
+      }
+
+      if (reference && reference !== "credits-only") {
+        const verification = await paystackService.verifyTransaction(reference);
+        if (verification?.status !== "success") {
+          return res.status(400).json({
+            success: false,
+            message: "Payment not verified",
+            data: { status: verification?.status },
+          });
+        }
       }
 
       if (order.creditsApplied > 0) {

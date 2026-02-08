@@ -41,7 +41,21 @@ const initializeTransaction = async ({ email, amount, reference, metadata }) => 
   return data.data;
 };
 
+const verifyTransaction = async (reference) => {
+  ensureConfigured();
+
+  const response = await paystackClient.get(`/transaction/verify/${reference}`);
+  const data = response?.data;
+
+  if (!data?.status) {
+    throw new Error(data?.message || "Paystack verification failed");
+  }
+
+  return data.data;
+};
+
 module.exports = {
   initializeTransaction,
+  verifyTransaction,
   PAYSTACK_CALLBACK_URL,
 };

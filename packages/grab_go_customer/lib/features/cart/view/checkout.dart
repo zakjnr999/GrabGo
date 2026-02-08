@@ -1118,8 +1118,12 @@ class _CheckoutState extends State<Checkout> {
         setState(() {
           _isProcessingPayment = false;
         });
-        await _confirmOrderPayment(orderId: orderId, reference: 'credits-only');
-        _handlePaymentSuccess(context);
+        final confirmed = await _confirmOrderPayment(orderId: orderId, reference: 'credits-only');
+        if (confirmed) {
+          _handlePaymentSuccess(context);
+        } else {
+          _showErrorDialog(context, 'Payment confirmation failed. Please try again.');
+        }
         return;
       }
 
@@ -1137,9 +1141,12 @@ class _CheckoutState extends State<Checkout> {
         reference: reference,
       );
 
-      if (result.success) {
-        paymentSucceeded = true;
-        await _confirmOrderPayment(orderId: orderId, reference: result.reference ?? reference);
+      paymentSucceeded = result.success;
+      final confirmed = await _confirmOrderPayment(orderId: orderId, reference: result.reference ?? reference);
+      if (confirmed) {
+        _handlePaymentSuccess(context);
+      } else if (result.success) {
+        // Paystack says success but backend confirmation failed (e.g. network). Proceed to success.
         _handlePaymentSuccess(context);
       } else {
         await _releaseOrderCreditHold(orderId: orderId);
@@ -1181,9 +1188,9 @@ class _CheckoutState extends State<Checkout> {
     }
   }
 
-  Future<void> _confirmOrderPayment({required String orderId, required String reference}) async {
+  Future<bool> _confirmOrderPayment({required String orderId, required String reference}) async {
     final orderService = OrderServiceWrapper();
-    await orderService.confirmPayment(orderId: orderId, reference: reference);
+    return await orderService.confirmPayment(orderId: orderId, reference: reference);
   }
 
   Future<void> _releaseOrderCreditHold({required String orderId}) async {
@@ -1264,6 +1271,7 @@ class _CheckoutState extends State<Checkout> {
       onSecondaryPressed: () => Navigator.of(context).pop(false),
     );
   }
+
 
   Widget _buildAddressShimmerTile(AppColorsExtension colors, bool isDark) {
     return Container(

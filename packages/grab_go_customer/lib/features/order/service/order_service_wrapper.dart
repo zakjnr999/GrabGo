@@ -99,7 +99,7 @@ class OrderServiceWrapper {
     }
   }
 
-  Future<void> confirmPayment({
+  Future<bool> confirmPayment({
     required String orderId,
     required String reference,
     String provider = 'paystack',
@@ -110,11 +110,12 @@ class OrderServiceWrapper {
         'provider': provider,
       });
 
-      if (!response.isSuccessful || response.body == null || response.body!['success'] != true) {
-        throw Exception(response.body?['message'] ?? 'Payment confirmation failed');
+      if (!response.isSuccessful || response.body == null) {
+        return false;
       }
+      return response.body?['success'] == true;
     } catch (e) {
-      throw Exception('Payment confirmation failed: $e');
+      return false;
     }
   }
 
