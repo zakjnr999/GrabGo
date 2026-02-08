@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
@@ -108,7 +107,7 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
     final colors = context.appColors;
 
     return Scaffold(
-      backgroundColor: colors.backgroundSecondary,
+      backgroundColor: colors.backgroundPrimary,
       body: AnimatedBuilder(
         animation: _animationController,
         builder: (context, child) {
@@ -133,16 +132,8 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 gradient: RadialGradient(
-                                  colors: [colors.accentGreen, colors.accentGreen.withOpacity(0.8)],
+                                  colors: [colors.accentGreen, colors.accentGreen.withValues(alpha: 0.8)],
                                 ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: colors.accentGreen.withOpacity(0.3),
-                                    blurRadius: 25,
-                                    spreadRadius: 5,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
                               ),
                               child: AnimatedBuilder(
                                 animation: _bounceController,
@@ -176,7 +167,7 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
                           ),
                           SizedBox(height: 8.h),
                           Text(
-                            "Your order has been placed successfully.\nYou'll receive a confirmation shortly.",
+                            "Your order has been placed successfully.\nYou'll receive a confirmation once the vendor accepts it.",
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 14.sp,
@@ -207,52 +198,26 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
   Widget _buildPaymentDetailsCard(AppColorsExtension colors) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(24.r),
-      decoration: BoxDecoration(
-        color: colors.backgroundPrimary,
-        borderRadius: BorderRadius.circular(20.r),
-        border: Border.all(color: colors.inputBorder.withOpacity(0.15), width: 1),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 4), spreadRadius: 0),
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 40, offset: const Offset(0, 8), spreadRadius: 0),
-        ],
-      ),
+      decoration: BoxDecoration(color: colors.backgroundPrimary, borderRadius: BorderRadius.circular(20.r)),
       child: Column(
         children: [
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(KBorderSize.borderRadius8),
-                child: Image.asset(
-                  _getPaymentMethodIcon(widget.method),
-                  package: "grab_go_shared",
-                  width: 64.w,
-                  height: 45.h,
-                  fit: BoxFit.cover,
-                ),
+              Text(
+                widget.method,
+                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
               ),
-              SizedBox(width: 16.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.method,
-                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
-                    ),
-                    SizedBox(height: 4.h),
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                      decoration: BoxDecoration(
-                        color: colors.accentGreen.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                      child: Text(
-                        "Payment Complete",
-                        style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.accentGreen),
-                      ),
-                    ),
-                  ],
+              SizedBox(height: 4.h),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                decoration: BoxDecoration(
+                  color: colors.accentGreen.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: Text(
+                  "Your order has been placed",
+                  style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.accentGreen),
                 ),
               ),
             ],
@@ -264,33 +229,24 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
 
           SizedBox(height: 24.h),
 
-          _buildEnhancedDetailRow("Subtotal", "\GHC ${widget.subTotal.toStringAsFixed(2)}", colors, false),
-          SizedBox(height: 16.h),
-          _buildEnhancedDetailRow("Delivery Fee", "\GHC ${widget.deliveryFee.toStringAsFixed(2)}", colors, false),
+          _buildEnhancedDetailRow("Subtotal", "GHC ${widget.subTotal.toStringAsFixed(2)}", colors, false),
+          SizedBox(height: 8.h),
+          _buildEnhancedDetailRow("Delivery Fee", "GHC ${widget.deliveryFee.toStringAsFixed(2)}", colors, false),
           if (widget.serviceFee > 0) ...[
-            SizedBox(height: 16.h),
-            _buildEnhancedDetailRow("Service Fee", "\GHC ${widget.serviceFee.toStringAsFixed(2)}", colors, false),
+            SizedBox(height: 8.h),
+            _buildEnhancedDetailRow("Service Fee", " GHC ${widget.serviceFee.toStringAsFixed(2)}", colors, false),
           ],
           if (widget.rainFee > 0) ...[
-            SizedBox(height: 16.h),
-            _buildEnhancedDetailRow("Rain Fee", "\GHC ${widget.rainFee.toStringAsFixed(2)}", colors, false),
+            SizedBox(height: 8.h),
+            _buildEnhancedDetailRow("Rain Fee", "GHC ${widget.rainFee.toStringAsFixed(2)}", colors, false),
           ],
-          // Tax removed (kept in pricing for backend compatibility)
           if (widget.tip > 0) ...[
-            SizedBox(height: 16.h),
-            _buildEnhancedDetailRow("Driver Tip", "\GHC ${widget.tip.toStringAsFixed(2)}", colors, false),
+            SizedBox(height: 8.h),
+            _buildEnhancedDetailRow("Driver Tip", "GHC ${widget.tip.toStringAsFixed(2)}", colors, false),
           ],
-          SizedBox(height: 20.h),
+          SizedBox(height: 8.h),
 
-          Container(
-            padding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 20.w),
-            decoration: BoxDecoration(
-              color: colors.accentGreen.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(color: colors.accentGreen.withOpacity(0.2), width: 1),
-            ),
-            child: _buildEnhancedDetailRow("Total Paid", "\GHC ${widget.total.toStringAsFixed(2)}", colors, true),
-          ),
+          _buildEnhancedDetailRow("Total Paid", "GHC ${widget.total.toStringAsFixed(2)}", colors, true),
         ],
       ),
     );
@@ -301,97 +257,33 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.only(topLeft: Radius.circular(24.r), topRight: Radius.circular(24.r)),
-        border: Border(top: BorderSide(color: colors.inputBorder.withOpacity(0.1), width: 1)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 20,
-            offset: const Offset(0, -2),
-            spreadRadius: 0,
-          ),
-        ],
+        border: Border(top: BorderSide(color: colors.backgroundSecondary, width: 1)),
       ),
       child: Padding(
         padding: EdgeInsets.only(
           left: 20.w,
           right: 20.w,
-          top: 30.h,
+          top: 12.h,
           bottom: MediaQuery.of(context).padding.bottom + 20.h,
         ),
         child: Column(
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    height: 56.h,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16.r),
-                      border: Border.all(color: colors.inputBorder, width: 1.5),
-                      gradient: LinearGradient(
-                        colors: [
-                          colors.backgroundSecondary.withOpacity(0.08),
-                          colors.backgroundSecondary.withOpacity(0.03),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    child: ElevatedButton(
-                      onPressed: () {
-                        HapticFeedback.lightImpact();
-                        context.go('/orders');
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colors.backgroundSecondary,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-                      ),
-                      child: Text(
-                        "Track Order",
-                        style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 16.w),
-                Expanded(
-                  child: Container(
-                    height: 56.h,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16.r),
-                      gradient: LinearGradient(
-                        colors: [colors.accentGreen, colors.accentGreen.withOpacity(0.8)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: colors.accentGreen.withOpacity(0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                          spreadRadius: 0,
-                        ),
-                      ],
-                    ),
-                    child: ElevatedButton(
-                      onPressed: () {
-                        HapticFeedback.lightImpact();
-                        context.go('/homepage');
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-                      ),
-                      child: Text(
-                        "Order More",
-                        style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+            AppButton(
+              width: double.infinity,
+              onPressed: () async {
+                final status = await Permission.notification.status;
+                if (!mounted) return;
+                if (status.isGranted) {
+                  context.go('/homepage');
+                  return;
+                }
+                context.go('/notificationPermission', extra: {'nextRoute': '/homepage'});
+              },
+              buttonText: "Continue",
+              textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: Colors.white),
+              backgroundColor: colors.accentGreen,
+              padding: EdgeInsets.symmetric(vertical: 16.h),
+              borderRadius: KBorderSize.borderMedium,
             ),
           ],
         ),
@@ -408,35 +300,21 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
           label,
           style: TextStyle(
             fontSize: isTotal ? 16.sp : 14.sp,
-            color: isTotal ? colors.textPrimary : colors.textSecondary,
-            fontWeight: isTotal ? FontWeight.w700 : FontWeight.w500,
+            color: colors.textSecondary,
+            fontWeight: FontWeight.w500,
             letterSpacing: 0.2,
           ),
         ),
         Text(
           value,
           style: TextStyle(
-            fontSize: isTotal ? 20.sp : 16.sp,
+            fontSize: isTotal ? 16.sp : 14.sp,
             color: isTotal ? colors.accentGreen : colors.textPrimary,
-            fontWeight: FontWeight.w800,
+            fontWeight: isTotal ? FontWeight.w800 : FontWeight.w500,
             letterSpacing: 0.5,
           ),
         ),
       ],
     );
-  }
-
-  String _getPaymentMethodIcon(String method) {
-    switch (method.toLowerCase()) {
-      case "vodafone cash":
-        return Assets.icons.vodafoneCash.path;
-      case 'visa':
-      case 'mastercard':
-      case 'credit card':
-      case 'debit card':
-        return Assets.icons.cc.path;
-      default:
-        return Assets.icons.cc.path;
-    }
   }
 }

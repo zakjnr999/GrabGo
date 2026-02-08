@@ -1107,12 +1107,15 @@ class _CheckoutState extends State<Checkout> {
     final double total = provider.total + _tipAmount;
     String? orderId;
     bool paymentSucceeded = false;
+    Map<String, dynamic>? paymentData;
 
     try {
       orderId = await _createOrder(context, subtotal, deliveryFee, total);
       if (orderId == null) {
         throw Exception('Failed to create order');
       }
+
+      paymentData = _buildPaymentCompletePayload();
 
       if (total <= 0) {
         setState(() {
@@ -1141,17 +1144,23 @@ class _CheckoutState extends State<Checkout> {
         reference: reference,
       );
 
-      paymentSucceeded = result.success;
-      final confirmed = await _confirmOrderPayment(orderId: orderId, reference: result.reference ?? reference);
-      if (confirmed) {
-        _handlePaymentSuccess(context);
-      } else if (result.success) {
-        // Paystack says success but backend confirmation failed (e.g. network). Proceed to success.
-        _handlePaymentSuccess(context);
-      } else {
-        await _releaseOrderCreditHold(orderId: orderId);
-        _handlePaymentFailure(context);
+      paymentSucceeded = result.status == paystack.PaystackPaymentStatus.success;
+      if (result.status == paystack.PaystackPaymentStatus.success ||
+          result.status == paystack.PaystackPaymentStatus.unknown) {
+        if (!mounted) return;
+        context.go(
+          '/paymentConfirming',
+          extra: {
+            'orderId': orderId,
+            'reference': result.reference ?? reference,
+            'paymentData': paymentData,
+          },
+        );
+        return;
       }
+
+      await _releaseOrderCreditHold(orderId: orderId);
+      _handlePaymentFailure(context, paymentData: paymentData);
     } catch (e) {
       if (orderId != null && !paymentSucceeded) {
         await _releaseOrderCreditHold(orderId: orderId);
@@ -1159,7 +1168,11 @@ class _CheckoutState extends State<Checkout> {
       setState(() {
         _isProcessingPayment = false;
       });
-      _showErrorDialog(context, 'Payment failed: ${e.toString()}');
+      if (orderId != null && paymentData != null) {
+        _handlePaymentFailure(context, paymentData: paymentData);
+      } else {
+        _showErrorDialog(context, 'Payment failed: ${e.toString()}');
+      }
     }
   }
 
@@ -1202,6 +1215,29 @@ class _CheckoutState extends State<Checkout> {
     }
   }
 
+  Map<String, dynamic> _buildPaymentCompletePayload() {
+    final cart = context.read<CartProvider>();
+    final cartSubtotal = cart.subtotal;
+    final deliveryFeeAmount = cart.deliveryFee;
+    final serviceFeeAmount = cart.serviceFee;
+    final rainFeeAmount = cart.rainFee;
+    final taxAmount = cart.tax;
+    final double totalAmount = cart.total + _tipAmount;
+
+    return {
+      'method': 'Paystack',
+      'total': totalAmount,
+      'subTotal': cartSubtotal,
+      'deliveryFee': deliveryFeeAmount,
+      'serviceFee': serviceFeeAmount,
+      'rainFee': rainFeeAmount,
+      'tax': taxAmount,
+      'tip': _tipAmount,
+      'orderNumber': _generateOrderNumber(),
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+  }
+
   void _handlePaymentSuccess(BuildContext context) {
     final cart = context.read<CartProvider>();
     final cartSubtotal = cart.subtotal;
@@ -1230,8 +1266,13 @@ class _CheckoutState extends State<Checkout> {
     );
   }
 
-  void _handlePaymentFailure(BuildContext context) {
-    _showErrorDialog(context, "Payment failed. Please try again.");
+  void _handlePaymentFailure(BuildContext context, {Map<String, dynamic>? paymentData}) {
+    if (paymentData == null) {
+      _showErrorDialog(context, "Payment failed. Please try again.");
+      return;
+    }
+
+    context.go('/paymentFailed', extra: paymentData);
   }
 
   String _generateOrderNumber() {
@@ -1271,7 +1312,6 @@ class _CheckoutState extends State<Checkout> {
       onSecondaryPressed: () => Navigator.of(context).pop(false),
     );
   }
-
 
   Widget _buildAddressShimmerTile(AppColorsExtension colors, bool isDark) {
     return Container(

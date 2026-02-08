@@ -13,7 +13,10 @@ import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_customer/shared/services/notification_handler.dart';
 
 class NotificationPermission extends StatefulWidget {
-  const NotificationPermission({super.key});
+  final String? nextRoute;
+  final Object? nextExtra;
+
+  const NotificationPermission({super.key, this.nextRoute, this.nextExtra});
 
   @override
   State<NotificationPermission> createState() => _NotificationPermissionState();
@@ -88,56 +91,38 @@ class _NotificationPermissionState extends State<NotificationPermission> with Si
 
       if (!mounted) return;
       await StorageService.setNotificationPermissionScreenShown();
-      context.go("/location-picker", extra: {"goHomeOnComplete": true});
+      _navigateNext();
     } catch (e) {
-      debugPrint('❌ Error initializing push notifications: $e');
       if (mounted) {
         await StorageService.setNotificationPermissionScreenShown();
-        context.go("/location-picker", extra: {"goHomeOnComplete": true});
+        _navigateNext();
       }
     }
   }
 
   Future<void> _requestPermission() async {
     try {
-      // First check current permission status
       final currentStatus = await Permission.notification.status;
-
-      debugPrint('🔔 Current notification permission status: $currentStatus');
-
       if (currentStatus.isGranted) {
-        // Permission already granted, proceed with initialization
-        debugPrint('✅ Permission already granted, initializing push notifications');
         await _initializePushNotifications();
         return;
       } else if (currentStatus.isPermanentlyDenied) {
-        // Permission permanently denied, open app settings
-        debugPrint('🚫 Permission permanently denied, opening app settings');
         if (!mounted) return;
         await openAppSettings();
         return;
       } else {
-        // Permission is not granted and not permanently denied, so request it
-        // This should show the native dialog on first request
-        debugPrint('📱 Requesting notification permission (should show dialog)');
-        debugPrint('📱 Current status: $currentStatus - requesting permission now...');
         final permissionStatus = await Permission.notification.request();
-        debugPrint('📱 Permission request result: $permissionStatus');
-
         if (permissionStatus.isGranted) {
-          debugPrint('✅ Permission granted, initializing push notifications');
           await _initializePushNotifications();
           return;
         } else if (permissionStatus.isPermanentlyDenied) {
-          debugPrint('🚫 Permission permanently denied, opening app settings');
           if (!mounted) return;
           await openAppSettings();
           return;
         } else {
-          debugPrint('❌ Permission denied, proceeding to homepage');
           if (!mounted) return;
           await StorageService.setNotificationPermissionScreenShown();
-          context.go("/location-picker", extra: {"goHomeOnComplete": true});
+          _navigateNext();
           return;
         }
       }
@@ -156,8 +141,17 @@ class _NotificationPermissionState extends State<NotificationPermission> with Si
   void _skip() async {
     await StorageService.setNotificationPermissionScreenShown();
     if (mounted) {
-      context.go("/location-picker", extra: {"goHomeOnComplete": true});
+      _navigateNext();
     }
+  }
+
+  void _navigateNext() {
+    if (!mounted) return;
+    if (widget.nextRoute != null) {
+      context.go(widget.nextRoute!, extra: widget.nextExtra);
+      return;
+    }
+    context.go("/location-picker", extra: {"goHomeOnComplete": true});
   }
 
   @override
@@ -204,28 +198,16 @@ class _NotificationPermissionState extends State<NotificationPermission> with Si
                                 width: 100.h,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      colors.accentGreen.withValues(alpha: 0.2),
-                                      colors.accentViolet.withValues(alpha: 0.2),
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
+                                  gradient: RadialGradient(
+                                    colors: [colors.accentGreen, colors.accentGreen.withValues(alpha: 0.8)],
                                   ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: colors.accentGreen.withValues(alpha: 0.2),
-                                      blurRadius: 30,
-                                      spreadRadius: 5,
-                                    ),
-                                  ],
                                 ),
                                 child: Center(
                                   child: SvgPicture.asset(
                                     Assets.icons.bell,
-                                    height: 60.h,
-                                    width: 60.h,
-                                    colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                                    height: 40.h,
+                                    width: 40.h,
+                                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                                     package: 'grab_go_shared',
                                   ),
                                 ),
@@ -275,37 +257,19 @@ class _NotificationPermissionState extends State<NotificationPermission> with Si
                             opacity: _fadeAnimation,
                             child: SlideTransition(
                               position: _slideAnimation,
-                              child: GestureDetector(
-                                onTap: _requestPermission,
-                                child: Container(
-                                  height: 56.h,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [colors.accentGreen, colors.accentGreen.withValues(alpha: 0.8)],
-                                      begin: Alignment.centerLeft,
-                                      end: Alignment.centerRight,
-                                    ),
-                                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: colors.accentGreen.withValues(alpha: 0.4),
-                                        blurRadius: 20,
-                                        offset: const Offset(0, 8),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      AppStrings.notificationPermissionAllow,
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16.sp,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                  ),
+                              child: AppButton(
+                                width: double.infinity,
+                                onPressed: () => _requestPermission(),
+                                buttonText: "Allow Notifications",
+                                textStyle: TextStyle(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  letterSpacing: 0.5,
                                 ),
+                                backgroundColor: colors.accentGreen,
+                                padding: EdgeInsets.symmetric(vertical: 16.h),
+                                borderRadius: KBorderSize.borderMedium,
                               ),
                             ),
                           ),
@@ -316,27 +280,19 @@ class _NotificationPermissionState extends State<NotificationPermission> with Si
                             opacity: _fadeAnimation,
                             child: SlideTransition(
                               position: _slideAnimation,
-                              child: GestureDetector(
-                                onTap: _skip,
-                                child: Container(
-                                  height: 56.h,
-                                  decoration: BoxDecoration(
-                                    color: colors.backgroundSecondary,
-                                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                                    border: Border.all(color: colors.inputBorder, width: 1.5),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      AppStrings.notificationPermissionSkip,
-                                      style: TextStyle(
-                                        color: colors.textPrimary,
-                                        fontSize: 16.sp,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                  ),
+                              child: AppButton(
+                                width: double.infinity,
+                                onPressed: () => _skip(),
+                                buttonText: "Skip",
+                                textStyle: TextStyle(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w800,
+                                  color: colors.textPrimary,
+                                  letterSpacing: 0.5,
                                 ),
+                                backgroundColor: colors.backgroundSecondary,
+                                padding: EdgeInsets.symmetric(vertical: 16.h),
+                                borderRadius: KBorderSize.borderMedium,
                               ),
                             ),
                           ),

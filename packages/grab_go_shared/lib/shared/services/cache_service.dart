@@ -1177,6 +1177,26 @@ class CacheService {
     }
   }
 
+  /// Save notification permission screen shown status
+  static Future<bool> setNotificationPermissionScreenShown() async {
+    try {
+      return await _instance.setBool('notification_permission_screen_shown', true);
+    } catch (e) {
+      debugPrint('Error setting notification permission screen shown: $e');
+      return false;
+    }
+  }
+
+  /// Check if notification permission screen has been shown
+  static bool hasNotificationPermissionScreenShown() {
+    try {
+      return _instance.getBool('notification_permission_screen_shown') ?? false;
+    } catch (e) {
+      debugPrint('Error checking notification permission screen shown: $e');
+      return false;
+    }
+  }
+
   /// Save last app version
   static Future<bool> saveLastAppVersion(String version) async {
     try {

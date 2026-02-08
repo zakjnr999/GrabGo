@@ -150,7 +150,6 @@ class AppDialog extends StatelessWidget {
     final colors = context.appColors;
     final typeColor = _getTypeColor(context);
     final dialogBorderRadius = borderRadius ?? KBorderSize.borderRadius20;
-    final btnBorderRadius = buttonBorderRadius ?? KBorderSize.borderRadius15;
 
     return Dialog(
       backgroundColor: Colors.transparent,

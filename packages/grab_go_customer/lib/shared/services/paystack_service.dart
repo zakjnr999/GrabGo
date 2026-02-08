@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:grab_go_customer/shared/services/paystack_webview_screen.dart';
 
+enum PaystackPaymentStatus { success, failed, cancelled, unknown }
+
 class PaystackPaymentResult {
-  final bool success;
+  final PaystackPaymentStatus status;
   final String? reference;
   final String? message;
 
-  PaystackPaymentResult({required this.success, this.reference, this.message});
+  bool get success => status == PaystackPaymentStatus.success;
+
+  PaystackPaymentResult({required this.status, this.reference, this.message});
 }
 
 class PaystackService {
@@ -29,6 +33,11 @@ class PaystackService {
       ),
     );
 
-    return result ?? PaystackPaymentResult(success: false, message: 'Payment was cancelled');
+    return result ??
+        PaystackPaymentResult(
+          status: PaystackPaymentStatus.cancelled,
+          message: 'Payment was cancelled',
+          reference: reference,
+        );
   }
 }

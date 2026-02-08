@@ -1,3 +1,4 @@
+import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -10,6 +11,7 @@ import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:intl/intl.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/features/order/viewmodel/order_provider.dart';
+import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:provider/provider.dart';
 
 class OrderModel {
@@ -24,6 +26,8 @@ class OrderModel {
   final DateTime? deliveredDate;
   final DateTime? cancelledDate;
   final OrderStatus status;
+  final String? paymentStatus;
+  final Map<String, dynamic> rawOrder;
 
   OrderModel({
     required this.id,
@@ -37,6 +41,8 @@ class OrderModel {
     this.deliveredDate,
     this.cancelledDate,
     required this.status,
+    this.paymentStatus,
+    required this.rawOrder,
   });
 
   int get itemCount => items.fold(0, (sum, item) => sum + item.quantity);
@@ -169,8 +175,10 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
     final deliveredDate = parseDate(apiOrder['deliveredDate']);
     final cancelledDate = parseDate(apiOrder['cancelledDate']);
 
+    final paymentStatus = (apiOrder['paymentStatus'] as String?)?.toLowerCase();
+
     return OrderModel(
-      id: apiOrder['_id']?.toString() ?? '',
+      id: apiOrder['id']?.toString() ?? apiOrder['_id']?.toString() ?? '',
       orderNumber: apiOrder['orderNumber']?.toString() ?? '',
       restaurantName: restaurantName,
       restaurantLogo: restaurantLogo,
@@ -181,6 +189,8 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
       status: status,
       deliveredDate: deliveredDate,
       cancelledDate: cancelledDate,
+      paymentStatus: paymentStatus,
+      rawOrder: apiOrder,
     );
   }
 
@@ -222,6 +232,84 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
 
   String _formatTime(DateTime dateTime) {
     return DateFormat('h:mm a').format(dateTime);
+  }
+
+  bool _isVendorOpen(OrderModel order) {
+    final raw = order.rawOrder;
+    final orderType = raw['orderType']?.toString().toLowerCase();
+
+    Map<String, dynamic>? vendor;
+    if (orderType == 'food' || raw['restaurant'] is Map) {
+      vendor = (raw['restaurant'] as Map?)?.cast<String, dynamic>();
+    } else if (orderType == 'grocery' || raw['groceryStore'] is Map) {
+      vendor = (raw['groceryStore'] as Map?)?.cast<String, dynamic>();
+    } else if (orderType == 'pharmacy' || raw['pharmacyStore'] is Map) {
+      vendor = (raw['pharmacyStore'] as Map?)?.cast<String, dynamic>();
+    }
+
+    if (vendor == null) return true;
+
+    final isOpen = vendor['isOpen'];
+    if (isOpen is bool && !isOpen) return false;
+
+    final isAcceptingOrders = vendor['isAcceptingOrders'];
+    if (isAcceptingOrders is bool && !isAcceptingOrders) return false;
+
+    final status = vendor['status']?.toString().toLowerCase();
+    if (status != null && status.isNotEmpty && status != 'approved') return false;
+
+    return true;
+  }
+
+  String _vendorClosedTitle(OrderModel order) {
+    final orderType = order.rawOrder['orderType']?.toString().toLowerCase();
+    if (orderType == 'grocery') return 'Store Closed';
+    if (orderType == 'pharmacy') return 'Pharmacy Closed';
+    return 'Restaurant Closed';
+  }
+
+  String _vendorClosedMessage(OrderModel order) {
+    final orderType = order.rawOrder['orderType']?.toString().toLowerCase();
+    if (orderType == 'grocery') {
+      return 'This store is currently closed or not accepting orders. Please try again later.';
+    }
+    if (orderType == 'pharmacy') {
+      return 'This pharmacy is currently closed or not accepting orders. Please try again later.';
+    }
+    return 'This restaurant is currently closed or not accepting orders. Please try again later.';
+  }
+
+  Future<void> _retryPayment(BuildContext context, OrderModel order) async {
+    LoadingDialog.instance().show(context: context, text: 'Preparing checkout...');
+    final cartProvider = context.read<CartProvider>();
+
+    try {
+      final success = await cartProvider.replaceCartWithOrder(order.rawOrder);
+      LoadingDialog.instance().hide();
+
+      if (!success) {
+        AppDialog.show(
+          context: context,
+          type: AppDialogType.error,
+          title: 'Unable to retry payment',
+          message: 'We could not rebuild your cart for this order. Please contact support.',
+          primaryButtonText: 'OK',
+        );
+        return;
+      }
+
+      if (!context.mounted) return;
+      context.push('/checkout');
+    } catch (e) {
+      LoadingDialog.instance().hide();
+      AppDialog.show(
+        context: context,
+        type: AppDialogType.error,
+        title: 'Retry failed',
+        message: 'Something went wrong while preparing your order. Please try again.',
+        primaryButtonText: 'OK',
+      );
+    }
   }
 
   @override
@@ -281,7 +369,12 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
                                 return Column(
                                   children: [
                                     SizedBox(height: 16.h),
-                                    Divider(color: colors.inputBorder.withValues(alpha: 0.5), thickness: 0.5),
+                                    DottedLine(
+                                      dashLength: 6,
+                                      dashGapLength: 4,
+                                      lineThickness: 1,
+                                      dashColor: colors.textSecondary.withAlpha(50),
+                                    ),
                                     SizedBox(height: 16.h),
                                   ],
                                 );
@@ -515,6 +608,8 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
     final isCancelled = order.status == OrderStatus.cancelled;
     final isOngoing = order.status == OrderStatus.ongoing;
     final isPending = order.status == OrderStatus.pending;
+    final isPaymentPending = order.paymentStatus == 'pending' || order.paymentStatus == 'processing';
+    final isVendorOpen = _isVendorOpen(order);
 
     return Container(
       color: colors.backgroundPrimary,
@@ -545,7 +640,6 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
                         ),
                       ],
                     ),
-                    SizedBox(height: 4.h),
                     Text(
                       _getTimeAgo(order.orderDate),
                       style: TextStyle(
@@ -558,12 +652,12 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
                 ),
               ),
               Container(
-                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                 decoration: BoxDecoration(
                   color: isCancelled
                       ? colors.error.withValues(alpha: 0.15)
                       : isPending
-                      ? colors.accentViolet.withValues(alpha: 0.15)
+                      ? colors.accentOrange.withValues(alpha: 0.15)
                       : isOngoing
                       ? colors.accentOrange.withValues(alpha: 0.15)
                       : colors.accentGreen.withValues(alpha: 0.15),
@@ -571,19 +665,19 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
                 ),
                 child: Text(
                   order.status == OrderStatus.pending
-                      ? "Pending Payment"
+                      ? (isPaymentPending ? "Pending Payment" : "Awaiting Confirmation")
                       : order.status == OrderStatus.ongoing
                       ? AppStrings.ordersOngoing
                       : order.status == OrderStatus.completed
                       ? AppStrings.ordersCompleted
                       : AppStrings.ordersCancelled,
                   style: TextStyle(
-                    fontSize: 12.sp,
+                    fontSize: 10.sp,
                     fontWeight: FontWeight.w700,
                     color: isCancelled
                         ? colors.error
                         : isPending
-                        ? colors.accentViolet
+                        ? colors.accentOrange
                         : isOngoing
                         ? colors.accentOrange
                         : colors.accentGreen,
@@ -710,7 +804,7 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
                         isCancelled
                             ? AppStrings.ordersCancelledOn
                             : isPending
-                            ? "Awaiting Payment"
+                            ? (isPaymentPending ? "Awaiting Payment" : "Awaiting Confirmation")
                             : isOngoing
                             ? AppStrings.ordersExpectedDelivery
                             : AppStrings.ordersDeliveredOn,
@@ -723,7 +817,7 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
                                   ? '${_getTimeAgo(order.cancelledDate!)} at ${_formatTime(order.cancelledDate!)}'
                                   : 'N/A')
                             : isPending
-                            ? "Complete payment to proceed"
+                            ? (isPaymentPending ? "Complete payment to proceed" : "Waiting for the vendor to accept")
                             : isOngoing
                             ? (order.expectedDelivery != null ? _formatTime(order.expectedDelivery!) : 'N/A')
                             : (order.deliveredDate != null
@@ -734,23 +828,66 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
                     ],
                   ),
                 ),
-                Text(
-                  '${AppStrings.currencySymbol} ${order.totalAmount.toStringAsFixed(2)}',
-                  style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.accentOrange),
+
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Total Amount",
+                      style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                    ),
+                    Text(
+                      '${AppStrings.currencySymbol} ${order.totalAmount.toStringAsFixed(2)}',
+                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.accentOrange),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
           SizedBox(height: 16.h),
-          if (isPending)
-            AppButton(
-              onPressed: () => context.push("/checkout", extra: order),
-              buttonText: "Complete Payment",
-              backgroundColor: colors.accentOrange,
-              width: double.infinity,
-              height: KWidgetSize.buttonHeight.h,
-              borderRadius: KBorderSize.borderMedium,
-              textStyle: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+          if (isPending && isPaymentPending)
+            Row(
+              children: [
+                Expanded(
+                  child: AppButton(
+                    onPressed: () => context.push("/checkout", extra: order),
+                    buttonText: "Cancel Order",
+                    backgroundColor: colors.backgroundSecondary,
+                    height: KWidgetSize.buttonHeight.h,
+                    borderRadius: KBorderSize.borderMedium,
+                    textStyle: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: AppButton(
+                    onPressed: () {
+                      if (isVendorOpen) {
+                        _retryPayment(context, order);
+                        return;
+                      }
+                      AppDialog.show(
+                        context: context,
+                        type: AppDialogType.warning,
+                        title: _vendorClosedTitle(order),
+                        message: _vendorClosedMessage(order),
+                        primaryButtonText: 'OK',
+                      );
+                    },
+                    buttonText: isVendorOpen ? "Complete Payment" : "Vendor Closed",
+                    backgroundColor: isVendorOpen ? colors.accentOrange : colors.backgroundSecondary,
+                    height: KWidgetSize.buttonHeight.h,
+                    borderRadius: KBorderSize.borderMedium,
+                    borderColor: isVendorOpen ? null : colors.border,
+                    textStyle: TextStyle(
+                      color: isVendorOpen ? Colors.white : colors.textSecondary,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
             )
           else if (isOngoing)
             AppButton(

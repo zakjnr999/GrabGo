@@ -88,6 +88,7 @@ class CartProvider extends ChangeNotifier {
 
     try {
       _isSyncing = true;
+      notifyListeners();
       final response = await cartApiService.getCart(
         type: _cartType ?? _inferCartType(),
         lat: _deliveryLatitude,
@@ -149,6 +150,7 @@ class CartProvider extends ChangeNotifier {
       // Continue with local cache on error
     } finally {
       _isSyncing = false;
+      notifyListeners();
     }
   }
 
@@ -242,6 +244,91 @@ class CartProvider extends ChangeNotifier {
     _useCredits = value;
     notifyListeners();
     await syncFromBackend();
+  }
+
+  Future<bool> replaceCartWithOrder(Map<String, dynamic> order) async {
+    final rawItems = order['items'];
+    if (rawItems is! List || rawItems.isEmpty) return false;
+
+    final orderType = order['orderType']?.toString().toLowerCase();
+    if (orderType == 'pharmacy') {
+      debugPrint('⚠️ Pharmacy orders are not supported in cart retry yet.');
+      return false;
+    }
+
+    _cartItems.clear();
+    _cartItemIdsByKey.clear();
+    _cartType = null;
+    _applyPricing(null);
+    notifyListeners();
+
+    try {
+      await cartApiService.clearCart(
+        lat: _deliveryLatitude,
+        lng: _deliveryLongitude,
+        useCredits: _useCredits,
+      );
+    } catch (e) {
+      debugPrint('⚠️ Failed to clear backend cart: $e');
+    }
+
+    final restaurant = order['restaurant'];
+    final groceryStore = order['groceryStore'];
+
+    for (final rawItem in rawItems) {
+      if (rawItem is! Map) continue;
+      final item = Map<String, dynamic>.from(rawItem);
+      final itemType = item['itemType']?.toString();
+
+      CartItem? cartItem;
+      if (itemType == 'Food' || item['food'] != null) {
+        final itemData = Map<String, dynamic>.from(item['food'] ?? {});
+        itemData['name'] ??= item['name'];
+        itemData['price'] ??= item['price'];
+        itemData['image'] ??= item['image'];
+        if (restaurant is Map && itemData['restaurant'] == null) {
+          itemData['restaurant'] = restaurant;
+        }
+        itemData['restaurantId'] ??= order['restaurantId'];
+        itemData['_id'] ??= item['foodId'];
+        itemData['id'] ??= item['foodId'];
+        cartItem = _createFoodItemFromBackend(itemData, item);
+      } else if (itemType == 'GroceryItem' || item['groceryItem'] != null) {
+        final itemData = Map<String, dynamic>.from(item['groceryItem'] ?? {});
+        itemData['name'] ??= item['name'];
+        itemData['price'] ??= item['price'];
+        itemData['image'] ??= item['image'];
+        if (groceryStore is Map && itemData['store'] == null) {
+          final storeMap = Map<String, dynamic>.from(groceryStore);
+          storeMap['_id'] ??= order['groceryStoreId'];
+          storeMap['store_name'] ??= storeMap['storeName'];
+          itemData['store'] = storeMap;
+        }
+        itemData['store'] ??= order['groceryStoreId'];
+        itemData['_id'] ??= item['groceryItemId'];
+        cartItem = _createGroceryItemFromBackend(itemData, item);
+      } else if (itemType == 'PharmacyItem' || item['pharmacyItem'] != null) {
+        debugPrint('⚠️ Pharmacy orders are not supported in cart retry yet.');
+        return false;
+      }
+
+      if (cartItem == null) continue;
+
+      final quantity = (item['quantity'] as num?)?.toInt() ?? 1;
+      if (quantity <= 0) continue;
+
+      _cartItems[cartItem] = quantity;
+      _cartType = cartItem.itemType == 'Food' ? 'food' : 'grocery';
+
+      await _addToBackend(cartItem, quantity);
+    }
+
+    _recalculateLocalPricing();
+    await _saveCart();
+    notifyListeners();
+    await syncFromBackend();
+
+    return _cartItems.isNotEmpty;
   }
 
   /// Create FoodItem from backend data

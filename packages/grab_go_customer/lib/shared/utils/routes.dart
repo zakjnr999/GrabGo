@@ -44,6 +44,8 @@ import 'package:grab_go_customer/features/profile/view/payment.dart';
 import 'package:grab_go_customer/features/profile/view/referral_page.dart';
 import 'package:grab_go_customer/features/profile/view/credits_screen.dart';
 import 'package:grab_go_customer/features/order/view/payment_complete.dart';
+import 'package:grab_go_customer/features/order/view/payment_confirming.dart';
+import 'package:grab_go_customer/features/order/view/payment_failed.dart';
 import 'package:grab_go_customer/features/restaurant/view/restaurants.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/splash_screen.dart';
@@ -424,9 +426,16 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: "/notificationPermission",
       pageBuilder: (context, state) {
+        String? nextRoute;
+        Object? nextExtra;
+        if (state.extra is Map) {
+          final extraMap = state.extra as Map;
+          nextRoute = extraMap['nextRoute'] as String?;
+          nextExtra = extraMap['nextExtra'];
+        }
         return CustomTransitionPage(
           key: state.pageKey,
-          child: const NotificationPermission(),
+          child: NotificationPermission(nextRoute: nextRoute, nextExtra: nextExtra),
           transitionDuration: const Duration(milliseconds: 800),
           reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -679,6 +688,61 @@ final GoRouter appRouter = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: PaymentComplete(
+            method: extra["method"] as String? ?? "",
+            total: extra["total"] as double? ?? 0.0,
+            subTotal: extra["subTotal"] as double? ?? 0.0,
+            deliveryFee: extra["deliveryFee"] as double? ?? 0.0,
+            serviceFee: extra["serviceFee"] as double? ?? 0.0,
+            rainFee: extra["rainFee"] as double? ?? 0.0,
+            tax: extra["tax"] as double? ?? 0.0,
+            tip: extra["tip"] as double? ?? 0.0,
+            orderNumber: extra["orderNumber"] as String?,
+            timestamp: extra["timestamp"] as String?,
+          ),
+          transitionDuration: const Duration(milliseconds: 400),
+          reverseTransitionDuration: const Duration(milliseconds: 400),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.scaled,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/paymentConfirming",
+      pageBuilder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: PaymentConfirming(
+            orderId: extra['orderId']?.toString() ?? '',
+            reference: extra['reference']?.toString() ?? '',
+            paymentData: (extra['paymentData'] as Map<String, dynamic>?) ?? {},
+          ),
+          transitionDuration: const Duration(milliseconds: 500),
+          reverseTransitionDuration: const Duration(milliseconds: 500),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeThroughTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/paymentFailed",
+      pageBuilder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: PaymentFailed(
             method: extra["method"] as String? ?? "",
             total: extra["total"] as double? ?? 0.0,
             subTotal: extra["subTotal"] as double? ?? 0.0,

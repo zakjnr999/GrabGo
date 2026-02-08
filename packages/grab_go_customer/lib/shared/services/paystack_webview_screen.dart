@@ -51,15 +51,24 @@ class _PaystackWebViewScreenState extends State<PaystackWebViewScreen> {
     final uri = Uri.tryParse(url);
     String? ref = uri?.queryParameters['trxref'] ?? uri?.queryParameters['reference'] ?? widget.reference;
     final status = (uri?.queryParameters['status'] ?? '').toLowerCase();
-    final isSuccess = status == 'success' || url.toLowerCase().contains('/success');
+    PaystackPaymentStatus paymentStatus = PaystackPaymentStatus.unknown;
+    if (status == 'success' || url.toLowerCase().contains('/success')) {
+      paymentStatus = PaystackPaymentStatus.success;
+    } else if (status == 'failed' || status == 'abandoned') {
+      paymentStatus = PaystackPaymentStatus.failed;
+    }
 
     debugPrint('Payment completed, closing WebView. Reference: $ref, status: ${status.isEmpty ? 'unknown' : status}');
 
     Navigator.of(context).pop(
       PaystackPaymentResult(
-        success: isSuccess,
+        status: paymentStatus,
         reference: ref,
-        message: isSuccess ? 'Payment completed' : 'Payment failed or cancelled',
+        message: paymentStatus == PaystackPaymentStatus.success
+            ? 'Payment completed'
+            : paymentStatus == PaystackPaymentStatus.failed
+            ? 'Payment failed'
+            : 'Payment status unknown',
       ),
     );
   }
@@ -71,9 +80,9 @@ class _PaystackWebViewScreenState extends State<PaystackWebViewScreen> {
     final isSuccess = lower.contains('success');
     Navigator.of(context).pop(
       PaystackPaymentResult(
-        success: isSuccess,
+        status: isSuccess ? PaystackPaymentStatus.success : PaystackPaymentStatus.failed,
         reference: widget.reference,
-        message: isSuccess ? 'Payment completed' : 'Payment failed or cancelled',
+        message: isSuccess ? 'Payment completed' : 'Payment failed',
       ),
     );
   }
@@ -169,7 +178,13 @@ class _PaystackWebViewScreenState extends State<PaystackWebViewScreen> {
         leading: IconButton(
           icon: const Icon(Icons.close, color: Colors.white),
           onPressed: () {
-            Navigator.of(context).pop(PaystackPaymentResult(success: false, message: 'Payment was cancelled'));
+            Navigator.of(context).pop(
+              PaystackPaymentResult(
+                status: PaystackPaymentStatus.cancelled,
+                message: 'Payment was cancelled',
+                reference: widget.reference,
+              ),
+            );
           },
         ),
         title: Text(
@@ -183,25 +198,6 @@ class _PaystackWebViewScreenState extends State<PaystackWebViewScreen> {
           ),
         ),
         centerTitle: true,
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(
-                context,
-              ).pop(PaystackPaymentResult(success: true, reference: widget.reference, message: 'Payment completed'));
-            },
-            child: Text(
-              'Done',
-              style: TextStyle(
-                fontFamily: 'Lato',
-                package: 'grab_go_shared',
-                color: Colors.white,
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
       ),
       body: Stack(
         children: [

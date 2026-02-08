@@ -61,10 +61,14 @@ class StorageService {
   }
 
   static Future<void> setNotificationPermissionScreenShown() async {
-    await CacheService.setLocationPermissionScreenShown();
+    await CacheService.setNotificationPermissionScreenShown();
   }
 
   static bool hasLocationPermissionScreenShown() {
     return CacheService.hasLocationPermissionScreenShown();
+  }
+
+  static bool hasNotificationPermissionScreenShown() {
+    return CacheService.hasNotificationPermissionScreenShown();
   }
 }
