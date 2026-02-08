@@ -11,6 +11,7 @@ class RegisterRequest {
   final String? dateOfBirth;
   final int? phone;
   final String? profilePicture;
+  final String? promoCode;
   final String? referralCode;
 
   RegisterRequest({
@@ -20,6 +21,7 @@ class RegisterRequest {
     this.dateOfBirth,
     this.phone,
     this.profilePicture,
+    this.promoCode,
     this.referralCode,
   });
 

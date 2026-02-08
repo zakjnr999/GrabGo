@@ -276,7 +276,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         email: emailController.text.trim(),
         password: passwordController.text,
         dateOfBirth: bdayController.text.trim(),
-        referralCode: referralCodeController.text.trim().isNotEmpty ? referralCodeController.text.trim() : null,
+        promoCode: referralCodeController.text.trim().isNotEmpty ? referralCodeController.text.trim() : null,
       );
       final response = await authService
           .registerUser(request)
@@ -403,7 +403,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       final endpoint = hasApiPrefix ? '/promo/validate-public' : '/api/promo/validate-public';
 
       final response = await chopperClient
-          .post(endpoint as Uri, body: {'code': code})
+          .post(Uri.parse(endpoint), body: {'code': code})
           .timeout(
             const Duration(seconds: 10),
             onTimeout: () {
@@ -414,8 +414,8 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       Map<String, dynamic>? data;
       if (response.body is Map) {
         data = Map<String, dynamic>.from(response.body as Map);
-      } else if ((response.bodyString ?? '').isNotEmpty) {
-        final decoded = jsonDecode(response.bodyString!);
+      } else if ((response.bodyString).isNotEmpty) {
+        final decoded = jsonDecode(response.bodyString);
         if (decoded is Map) {
           data = Map<String, dynamic>.from(decoded);
         }
@@ -901,8 +901,8 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
 
                           AppTextInput(
                             controller: referralCodeController,
-                            label: "Have a referral code?",
-                            hintText: "Enter referral code (optional)",
+                            label: "Have a promo code?",
+                            hintText: "Enter promo code (optional)",
                             fillColor: colors.backgroundSecondary,
                             borderColor: colors.inputBorder,
                             borderActiveColor: colors.accentGreen,
@@ -1063,11 +1063,11 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                                               ),
                                             ),
                                             TextSpan(
-                                              text: "GHS 10 off",
+                                              text: "GHS 10 credits",
                                               style: TextStyle(fontWeight: FontWeight.w700, color: colors.accentGreen),
                                             ),
                                             TextSpan(
-                                              text: "  your first order!",
+                                              text: "  after signup!",
                                               style: TextStyle(
                                                 fontFamily: "Lato",
                                                 package: "grab_go_shared",

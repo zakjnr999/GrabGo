@@ -1,6 +1,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { protect, authorize } = require('../middleware/auth');
+const prisma = require('../config/prisma');
 const {
     validatePromoCode,
     applyPromoCode,
