@@ -9,6 +9,7 @@ const { createNotification } = require("../services/notification_service");
 const ReferralService = require("../services/referral_service");
 const creditService = require("../services/credit_service");
 const { calculateOrderPricing } = require("../services/pricing_service");
+const paystackService = require("../services/paystack_service");
 const { getIO } = require("../utils/socket");
 const dispatchService = require("../services/dispatch_service");
 
@@ -671,6 +672,94 @@ router.post(
     }
   }
 );
+
+router.post("/:orderId/paystack/initialize", protect, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { id: true, customerId: true, totalAmount: true, paymentStatus: true, orderNumber: true },
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    if (order.customerId !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to initialize payment for this order",
+      });
+    }
+
+    if (["paid", "successful"].includes(order.paymentStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: "Order already paid",
+      });
+    }
+
+    if (order.totalAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Order does not require external payment",
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { email: true },
+    });
+
+    const email = user?.email || req.user.email;
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "User email is required for Paystack",
+      });
+    }
+
+    const reference = `ORD-${order.orderNumber}-${Date.now()}`;
+    const amount = Math.round(order.totalAmount * 100);
+
+    const init = await paystackService.initializeTransaction({
+      email,
+      amount,
+      reference,
+      metadata: { orderId: order.id },
+    });
+
+    await prisma.order.update({
+      where: { id: order.id },
+      data: {
+        paymentProvider: "paystack",
+        paymentReferenceId: init.reference || reference,
+        paymentStatus: "processing",
+      },
+    });
+
+    return res.json({
+      success: true,
+      message: "Payment initialized",
+      data: {
+        authorizationUrl: init.authorization_url,
+        reference: init.reference || reference,
+        accessCode: init.access_code,
+      },
+    });
+  } catch (error) {
+    console.error("Paystack initialize error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
 
 router.post("/:orderId/release-credit-hold", protect, async (req, res) => {
   try {

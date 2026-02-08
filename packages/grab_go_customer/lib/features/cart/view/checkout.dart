@@ -17,7 +17,6 @@ import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
 import 'package:grab_go_customer/features/order/service/order_service_wrapper.dart';
 import 'package:grab_go_customer/shared/services/paystack_service.dart' as paystack;
-import 'package:pay_with_paystack/pay_with_paystack.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:shimmer/shimmer.dart';
@@ -1124,12 +1123,9 @@ class _CheckoutState extends State<Checkout> {
         return;
       }
 
-      final user = await UserService().getCurrentUser();
-      final email = user?.email ?? 'customer@grabgo.com';
-
-      final paystackHelper = PayWithPayStack();
-      final reference = paystackHelper.generateUuidV4();
-      final authUrl = await _generatePaystackUrl(amount: total, email: email, reference: reference);
+      final init = await OrderServiceWrapper().initializePaystackPayment(orderId: orderId);
+      final authUrl = init['authorizationUrl']!;
+      final reference = init['reference']!;
 
       setState(() {
         _isProcessingPayment = false;
@@ -1146,9 +1142,7 @@ class _CheckoutState extends State<Checkout> {
         await _confirmOrderPayment(orderId: orderId, reference: result.reference ?? reference);
         _handlePaymentSuccess(context);
       } else {
-        if (orderId != null) {
-          await _releaseOrderCreditHold(orderId: orderId);
-        }
+        await _releaseOrderCreditHold(orderId: orderId);
         _handlePaymentFailure(context);
       }
     } catch (e) {
@@ -1160,16 +1154,6 @@ class _CheckoutState extends State<Checkout> {
       });
       _showErrorDialog(context, 'Payment failed: ${e.toString()}');
     }
-  }
-
-  Future<String> _generatePaystackUrl({
-    required double amount,
-    required String email,
-    required String reference,
-  }) async {
-    final amountInKobo = (amount * 100).toInt();
-    final publicKey = AppConfig.paystackPublicKey;
-    return 'https://checkout.paystack.com/$publicKey?amount=$amountInKobo&email=$email&reference=$reference&currency=${AppConfig.currency}';
   }
 
   Future<String?> _createOrder(BuildContext context, double subtotal, double deliveryFee, double total) async {
@@ -1197,10 +1181,7 @@ class _CheckoutState extends State<Checkout> {
     }
   }
 
-  Future<void> _confirmOrderPayment({
-    required String orderId,
-    required String reference,
-  }) async {
+  Future<void> _confirmOrderPayment({required String orderId, required String reference}) async {
     final orderService = OrderServiceWrapper();
     await orderService.confirmPayment(orderId: orderId, reference: reference);
   }

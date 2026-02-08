@@ -47,6 +47,13 @@ final class _$OrderServiceChopper extends OrderServiceChopper {
   }
 
   @override
+  Future<Response<Map<String, dynamic>>> initializePaystack(String orderId) {
+    final Uri $url = Uri.parse('/orders/${orderId}/paystack/initialize');
+    final Request $request = Request('POST', $url, client.baseUrl);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
+
+  @override
   Future<Response<Map<String, dynamic>>> getOrder(String orderId) {
     final Uri $url = Uri.parse('/orders/${orderId}');
     final Request $request = Request('GET', $url, client.baseUrl);

@@ -172,8 +172,8 @@ class AppDialog extends StatelessWidget {
               decoration: BoxDecoration(
                 color: typeColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(dialogBorderRadius),
-                  topRight: Radius.circular(dialogBorderRadius),
+                  topLeft: Radius.circular(KBorderSize.borderMedium),
+                  topRight: Radius.circular(KBorderSize.borderMedium),
                 ),
               ),
               child: Center(
@@ -225,73 +225,107 @@ class AppDialog extends StatelessWidget {
 
                   Row(
                     children: [
-                      if (secondaryButtonText != null)
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              if (onSecondaryPressed != null) {
-                                onSecondaryPressed!();
-                              } else {
-                                Navigator.of(context).pop(false);
-                              }
-                            },
-                            child: Container(
-                              height: 50.h,
-                              decoration: BoxDecoration(
-                                color: secondaryButtonColor?.withOpacity(0.1) ?? colors.backgroundSecondary,
-                                borderRadius: BorderRadius.circular(btnBorderRadius),
-                                border: Border.all(color: secondaryButtonColor ?? colors.inputBorder, width: 1.5),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  secondaryButtonText!,
-                                  style: TextStyle(
-                                    fontSize: 15.sp,
-                                    fontWeight: FontWeight.w600,
-                                    color: secondaryButtonColor ?? colors.textPrimary,
-                                  ),
-                                ),
-                              ),
-                            ),
+                      Expanded(
+                        child: AppButton(
+                          width: double.infinity,
+                          onPressed: () => Navigator.of(context).pop(),
+                          buttonText: "Cancel",
+                          textStyle: TextStyle(
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w800,
+                            color: secondaryButtonColor ?? colors.textPrimary,
                           ),
+                          backgroundColor: secondaryButtonColor?.withValues(alpha: 0.1) ?? colors.backgroundSecondary,
+                          padding: EdgeInsets.symmetric(vertical: 16.h),
+                          borderRadius: KBorderSize.borderMedium,
                         ),
+                      ),
 
-                      if (secondaryButtonText != null && primaryButtonText != null) SizedBox(width: KSpacing.md.w),
+                      SizedBox(width: KSpacing.md.w),
 
-                      if (primaryButtonText != null)
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              if (onPrimaryPressed != null) {
-                                onPrimaryPressed!();
-                              } else {
-                                Navigator.of(context).pop(true);
-                              }
-                            },
-                            child: Container(
-                              height: 50.h,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(colors: [typeColor, typeColor.withOpacity(0.8)]),
-                                borderRadius: BorderRadius.circular(btnBorderRadius),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: typeColor.withOpacity(0.3),
-                                    blurRadius: 15,
-                                    offset: const Offset(0, 5),
-                                  ),
-                                ],
-                              ),
-                              child: Center(
-                                child: Text(
-                                  primaryButtonText!,
-                                  style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: Colors.white),
-                                ),
-                              ),
-                            ),
-                          ),
+                      Expanded(
+                        child: AppButton(
+                          width: double.infinity,
+                          onPressed: () => Navigator.of(context).pop(true),
+                          buttonText: "OK",
+                          textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: Colors.white),
+                          backgroundColor: typeColor,
+                          padding: EdgeInsets.symmetric(vertical: 16.h),
+                          borderRadius: KBorderSize.borderMedium,
                         ),
+                      ),
                     ],
                   ),
+
+                  // Row(
+                  //   children: [
+                  //     if (secondaryButtonText != null)
+                  //       Expanded(
+                  //         child: GestureDetector(
+                  //           onTap: () {
+                  //             if (onSecondaryPressed != null) {
+                  //               onSecondaryPressed!();
+                  //             } else {
+                  //               Navigator.of(context).pop(false);
+                  //             }
+                  //           },
+                  //           child: Container(
+                  //             height: 50.h,
+                  //             decoration: BoxDecoration(
+                  //               color: secondaryButtonColor?.withValues(alpha: 0.1) ?? colors.backgroundSecondary,
+                  //               borderRadius: BorderRadius.circular(btnBorderRadius),
+                  //               border: Border.all(color: secondaryButtonColor ?? colors.inputBorder, width: 1.5),
+                  //             ),
+                  //             child: Center(
+                  //               child: Text(
+                  //                 secondaryButtonText!,
+                  //                 style: TextStyle(
+                  //                   fontSize: 15.sp,
+                  //                   fontWeight: FontWeight.w600,
+                  //                   color: secondaryButtonColor ?? colors.textPrimary,
+                  //                 ),
+                  //               ),
+                  //             ),
+                  //           ),
+                  //         ),
+                  //       ),
+
+                  //     if (secondaryButtonText != null && primaryButtonText != null) SizedBox(width: KSpacing.md.w),
+
+                  //     if (primaryButtonText != null)
+                  //       Expanded(
+                  //         child: GestureDetector(
+                  //           onTap: () {
+                  //             if (onPrimaryPressed != null) {
+                  //               onPrimaryPressed!();
+                  //             } else {
+                  //               Navigator.of(context).pop(true);
+                  //             }
+                  //           },
+                  //           child: Container(
+                  //             height: 50.h,
+                  //             decoration: BoxDecoration(
+                  //               gradient: LinearGradient(colors: [typeColor, typeColor.withValues(alpha: 0.8)]),
+                  //               borderRadius: BorderRadius.circular(btnBorderRadius),
+                  //               boxShadow: [
+                  //                 BoxShadow(
+                  //                   color: typeColor.withValues(alpha: 0.3),
+                  //                   blurRadius: 15,
+                  //                   offset: const Offset(0, 5),
+                  //                 ),
+                  //               ],
+                  //             ),
+                  //             child: Center(
+                  //               child: Text(
+                  //                 primaryButtonText!,
+                  //                 style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: Colors.white),
+                  //               ),
+                  //             ),
+                  //           ),
+                  //         ),
+                  //       ),
+                  //   ],
+                  // ),
                 ],
               ),
             ),

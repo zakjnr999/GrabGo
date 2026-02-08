@@ -129,6 +129,30 @@ class OrderServiceWrapper {
     }
   }
 
+  Future<Map<String, String>> initializePaystackPayment({required String orderId}) async {
+    try {
+      final response = await _orderService.initializePaystack(orderId);
+      if (!response.isSuccessful || response.body == null || response.body!['success'] != true) {
+        throw Exception(response.body?['message'] ?? 'Payment initialization failed');
+      }
+
+      final data = response.body?['data'] as Map<String, dynamic>? ?? {};
+      final authorizationUrl = data['authorizationUrl']?.toString();
+      final reference = data['reference']?.toString();
+
+      if (authorizationUrl == null || reference == null) {
+        throw Exception('Payment initialization missing authorization URL');
+      }
+
+      return {
+        'authorizationUrl': authorizationUrl,
+        'reference': reference,
+      };
+    } catch (e) {
+      throw Exception('Payment initialization failed: $e');
+    }
+  }
+
   // Get order details
   Future<Map<String, dynamic>> getOrder(String orderId) async {
     try {

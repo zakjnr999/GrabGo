@@ -28,7 +28,6 @@ class AppConfig {
     final missingVars = <String>[];
 
     if (paystackPublicKey.isEmpty) missingVars.add('PAYSTACK_PUBLIC_KEY');
-    if (paystackSecretKey.isEmpty) missingVars.add('PAYSTACK_SECRET_KEY');
     if (apiBaseUrl.isEmpty) missingVars.add('API_BASE_URL');
     if (apiKey.isEmpty) missingVars.add('API_KEY');
 

@@ -18,6 +18,9 @@ abstract class OrderServiceChopper extends ChopperService {
   @POST(path: '/orders/{orderId}/release-credit-hold')
   Future<Response<Map<String, dynamic>>> releaseCreditHold(@Path() String orderId);
 
+  @POST(path: '/orders/{orderId}/paystack/initialize')
+  Future<Response<Map<String, dynamic>>> initializePaystack(@Path() String orderId);
+
   @GET(path: '/orders/{orderId}')
   Future<Response<Map<String, dynamic>>> getOrder(@Path() String orderId);
 
