@@ -1,9 +1,14 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:grab_go_customer/features/cart/model/cart_item.dart';
+import 'package:grab_go_customer/features/cart/model/cart_item.dart' as cart_widgets;
+import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
+import 'package:grab_go_customer/features/home/model/food_category.dart';
+import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
+import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:provider/provider.dart';
@@ -94,7 +99,7 @@ class Cart extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const CartItem(),
+                          const cart_widgets.CartItem(),
                           Padding(
                             padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
                             child: Column(
@@ -216,7 +221,6 @@ class Cart extends StatelessWidget {
                                         infoType: _FeeInfoType.rain,
                                       ),
                                     ],
-                                    // Tax removed (kept in pricing for backend compatibility)
                                     SizedBox(height: 6.h),
                                     _buildPriceRow(
                                       context,
@@ -230,11 +234,14 @@ class Cart extends StatelessWidget {
                                   ],
                                 ),
                                 SizedBox(height: 12.h),
-                                // Estimated delivery time
                                 Padding(
                                   padding: EdgeInsets.only(bottom: 8.h),
                                   child: Text(
-                                    "Est. Delivery: 30-45 mins",
+                                    _formatEstimatedDelivery(
+                                      provider.cartItems,
+                                      minMinutes: provider.estimatedDeliveryMin,
+                                      maxMinutes: provider.estimatedDeliveryMax,
+                                    ),
                                     style: TextStyle(
                                       color: colors.textSecondary,
                                       fontSize: 12.sp,
@@ -310,37 +317,14 @@ class Cart extends StatelessWidget {
 
             Container(
               padding: EdgeInsets.symmetric(horizontal: 20.w),
-              decoration: BoxDecoration(color: colors.backgroundSecondary),
-              child: GestureDetector(
-                onTap: context.pop,
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    splashColor: Colors.white.withOpacity(0.2),
-                    child: Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.symmetric(vertical: 16.h),
-                      decoration: BoxDecoration(
-                        color: colors.accentOrange,
-                        borderRadius: BorderRadius.circular(12.r),
-                        boxShadow: [
-                          BoxShadow(
-                            color: colors.accentOrange.withValues(alpha: 0.3),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                            spreadRadius: 0,
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          "Browse offers",
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15.sp),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+              child: AppButton(
+                width: double.infinity,
+                onPressed: () => context.pop(),
+                buttonText: "Browse",
+                textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800),
+                textColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 16.h),
+                borderRadius: KBorderSize.borderMedium,
               ),
             ),
           ],
@@ -449,10 +433,7 @@ class Cart extends StatelessWidget {
               title: "Rider safety",
               body: "Helps cover extra time and protective handling in wet conditions.",
             ),
-            _FeeInfoDetail(
-              title: "Transparent pricing",
-              body: "The fee is fixed and visible before checkout.",
-            ),
+            _FeeInfoDetail(title: "Transparent pricing", body: "The fee is fixed and visible before checkout."),
           ];
 
     showModalBottomSheet<void>(
@@ -558,6 +539,58 @@ class Cart extends StatelessWidget {
       Provider.of<CartProvider>(context, listen: false).clearCart();
       context.go("/homepage");
     }
+  }
+
+  String _formatEstimatedDelivery(
+    Map<CartItem, int> cartItems, {
+    int? minMinutes,
+    int? maxMinutes,
+  }) {
+    if (minMinutes != null && maxMinutes != null && minMinutes > 0 && maxMinutes > 0) {
+      if (minMinutes == maxMinutes) {
+        const padding = 5;
+        minMinutes = math.max(5, minMinutes - padding);
+        maxMinutes = maxMinutes + padding;
+      }
+      return "Est. Delivery: $minMinutes-$maxMinutes mins";
+    }
+
+    if (cartItems.isEmpty) {
+      return "Est. Delivery: --";
+    }
+
+    final times = cartItems.keys
+        .map(_deliveryMinutesForItem)
+        .where((minutes) => minutes != null && minutes > 0)
+        .cast<int>()
+        .toList();
+
+    if (times.isEmpty) {
+      return "Est. Delivery: --";
+    }
+
+    var minTime = times.reduce((a, b) => a < b ? a : b);
+    var maxTime = times.reduce((a, b) => a > b ? a : b);
+
+    if (minTime == maxTime) {
+      const padding = 5;
+      minTime = math.max(5, minTime - padding);
+      maxTime = maxTime + padding;
+    }
+    return "Est. Delivery: $minTime-$maxTime mins";
+  }
+
+  int? _deliveryMinutesForItem(CartItem item) {
+    if (item is FoodItem) {
+      return item.deliveryTimeMinutes;
+    }
+    if (item is GroceryItem) {
+      return 45;
+    }
+    if (item is PharmacyItem) {
+      return 30;
+    }
+    return 30;
   }
 }
 

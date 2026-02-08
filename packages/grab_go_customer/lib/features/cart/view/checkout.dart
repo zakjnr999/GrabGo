@@ -1,12 +1,18 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/shared/models/address_model.dart';
 import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart';
+import 'package:grab_go_customer/features/home/model/food_category.dart';
+import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
+import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
@@ -457,7 +463,11 @@ class _CheckoutState extends State<Checkout> {
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
                           child: Text(
-                            "Est. Delivery: 30-45 mins",
+                            _formatEstimatedDelivery(
+                              provider.cartItems,
+                              minMinutes: provider.estimatedDeliveryMin,
+                              maxMinutes: provider.estimatedDeliveryMax,
+                            ),
                             style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
                           ),
                         ),
@@ -1107,7 +1117,6 @@ class _CheckoutState extends State<Checkout> {
                   colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                 ),
               ),
-              // child: Center(child: Icon(Icons.my_location, color: colors.accentOrange, size: 24)),
             ),
             SizedBox(width: 14.w),
             Expanded(
@@ -1164,6 +1173,58 @@ class _CheckoutState extends State<Checkout> {
         ),
       ),
     );
+  }
+
+  String _formatEstimatedDelivery(
+    Map<CartItem, int> cartItems, {
+    int? minMinutes,
+    int? maxMinutes,
+  }) {
+    if (minMinutes != null && maxMinutes != null && minMinutes > 0 && maxMinutes > 0) {
+      if (minMinutes == maxMinutes) {
+        const padding = 5;
+        minMinutes = math.max(5, minMinutes - padding);
+        maxMinutes = maxMinutes + padding;
+      }
+      return "Est. Delivery: $minMinutes-$maxMinutes mins";
+    }
+
+    if (cartItems.isEmpty) {
+      return "Est. Delivery: --";
+    }
+
+    final times = cartItems.keys
+        .map(_deliveryMinutesForItem)
+        .where((minutes) => minutes != null && minutes > 0)
+        .cast<int>()
+        .toList();
+
+    if (times.isEmpty) {
+      return "Est. Delivery: --";
+    }
+
+    var minTime = times.reduce((a, b) => a < b ? a : b);
+    var maxTime = times.reduce((a, b) => a > b ? a : b);
+
+    if (minTime == maxTime) {
+      const padding = 5;
+      minTime = math.max(5, minTime - padding);
+      maxTime = maxTime + padding;
+    }
+    return "Est. Delivery: $minTime-$maxTime mins";
+  }
+
+  int? _deliveryMinutesForItem(CartItem item) {
+    if (item is FoodItem) {
+      return item.deliveryTimeMinutes;
+    }
+    if (item is GroceryItem) {
+      return 45;
+    }
+    if (item is PharmacyItem) {
+      return 30;
+    }
+    return 30;
   }
 }
 

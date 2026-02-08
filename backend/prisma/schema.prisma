@@ -632,6 +632,7 @@ model Food {
   categoryId         String
   restaurantId       String
   isAvailable        Boolean   @default(true)
+  prepTimeMinutes    Int       @default(0)
   ingredients        String[]  @default([])
   rating             Float     @default(0)
   totalReviews       Int       @default(0)
@@ -669,6 +670,8 @@ model GroceryStore {
   ratingCount Int          @default(0)
   isOpen      Boolean      @default(true)
   deliveryFee Float        @default(0)
+  averageDeliveryTime    Int          @default(30)
+  averagePreparationTime Int          @default(15)
   minOrder    Float        @default(0)
 
   // Location
@@ -788,6 +791,7 @@ model GroceryItem {
   brand              String?
   stock              Int       @default(0)
   isAvailable        Boolean   @default(true)
+  prepTimeMinutes    Int       @default(0)
   discountPercentage Int       @default(0)
   discountEndDate    DateTime?
   tags               String[]  @default([])
@@ -831,6 +835,8 @@ model PharmacyStore {
   ratingCount    Int          @default(0)
   isOpen         Boolean      @default(true)
   deliveryFee    Float        @default(0)
+  averageDeliveryTime    Int          @default(30)
+  averagePreparationTime Int          @default(15)
   minOrder       Float        @default(0)
   licenseNumber  String?      @unique
   pharmacistName String?
@@ -954,6 +960,7 @@ model PharmacyItem {
   brand                String?
   stock                Int       @default(0)
   isAvailable          Boolean   @default(true)
+  prepTimeMinutes      Int       @default(0)
   requiresPrescription Boolean   @default(false)
   discountPercentage   Int       @default(0)
   discountEndDate      DateTime?

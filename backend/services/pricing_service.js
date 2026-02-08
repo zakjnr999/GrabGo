@@ -1,6 +1,6 @@
 const axios = require('axios');
 const prisma = require('../config/prisma');
-const { calculateDistance } = require('../utils/distance');
+const { calculateDistance, estimateDeliveryTime } = require('../utils/distance');
 
 const toNumber = (value, fallback = 0) => {
     const parsed = Number(value);
@@ -241,46 +241,91 @@ const getUserDeliveryLocation = async (userId) => {
 
 const getVendorDeliveryContext = async (cart) => {
     if (!cart || !cart.items || cart.items.length === 0) {
-        return { baseFee: 0, vendorLocation: null };
+        return { baseFee: 0, vendorLocation: null, vendorPrepTime: null, vendorDeliveryTime: null };
     }
 
     const vendorId = resolveVendorId(cart);
-    if (!vendorId) return { baseFee: 0, vendorLocation: null };
+    if (!vendorId) return { baseFee: 0, vendorLocation: null, vendorPrepTime: null, vendorDeliveryTime: null };
 
     if (cart.cartType === 'food') {
         const restaurant = await prisma.restaurant.findUnique({
             where: { id: vendorId },
-            select: { deliveryFee: true, latitude: true, longitude: true }
+            select: { deliveryFee: true, latitude: true, longitude: true, averagePreparationTime: true, averageDeliveryTime: true }
         });
         return {
             baseFee: roundCurrency(toNumber(restaurant?.deliveryFee, 0)),
-            vendorLocation: normalizeLocation(restaurant)
+            vendorLocation: normalizeLocation(restaurant),
+            vendorPrepTime: toNumber(restaurant?.averagePreparationTime, 15),
+            vendorDeliveryTime: toNumber(restaurant?.averageDeliveryTime, 30)
         };
     }
 
     if (cart.cartType === 'grocery') {
         const store = await prisma.groceryStore.findUnique({
             where: { id: vendorId },
-            select: { deliveryFee: true, latitude: true, longitude: true }
+            select: { deliveryFee: true, latitude: true, longitude: true, averagePreparationTime: true, averageDeliveryTime: true }
         });
         return {
             baseFee: roundCurrency(toNumber(store?.deliveryFee, 0)),
-            vendorLocation: normalizeLocation(store)
+            vendorLocation: normalizeLocation(store),
+            vendorPrepTime: toNumber(store?.averagePreparationTime, 15),
+            vendorDeliveryTime: toNumber(store?.averageDeliveryTime, 30)
         };
     }
 
     if (cart.cartType === 'pharmacy') {
         const store = await prisma.pharmacyStore.findUnique({
             where: { id: vendorId },
-            select: { deliveryFee: true, latitude: true, longitude: true }
+            select: { deliveryFee: true, latitude: true, longitude: true, averagePreparationTime: true, averageDeliveryTime: true }
         });
         return {
             baseFee: roundCurrency(toNumber(store?.deliveryFee, 0)),
-            vendorLocation: normalizeLocation(store)
+            vendorLocation: normalizeLocation(store),
+            vendorPrepTime: toNumber(store?.averagePreparationTime, 15),
+            vendorDeliveryTime: toNumber(store?.averageDeliveryTime, 30)
         };
     }
 
-    return { baseFee: 0, vendorLocation: null };
+    return { baseFee: 0, vendorLocation: null, vendorPrepTime: null, vendorDeliveryTime: null };
+};
+
+const calculateEstimatedDeliveryWindow = ({ distanceKm, vendorPrepTime, vendorDeliveryTime }) => {
+    const prepMinutes = toNumber(vendorPrepTime, 15);
+
+    if (Number.isFinite(distanceKm) && distanceKm > 0) {
+        const travelMinutes = estimateDeliveryTime(distanceKm);
+        if (!Number.isFinite(travelMinutes) || travelMinutes <= 0) {
+            return { minMinutes: null, maxMinutes: null };
+        }
+        const minMinutes = Math.max(5, Math.ceil(prepMinutes + travelMinutes));
+        const maxMinutes = minMinutes + 10;
+        return { minMinutes, maxMinutes };
+    }
+
+    // vendorDeliveryTime represents full ETA (order placed → delivered)
+    if (Number.isFinite(vendorDeliveryTime) && vendorDeliveryTime > 0) {
+        const minMinutes = Math.max(5, Math.ceil(vendorDeliveryTime));
+        const maxMinutes = minMinutes + 10;
+        return { minMinutes, maxMinutes };
+    }
+
+    return { minMinutes: null, maxMinutes: null };
+};
+
+const getMaxItemPrepMinutes = (items = []) => {
+    if (!Array.isArray(items) || items.length === 0) return null;
+
+    const prepTimes = items
+        .map(item => {
+            if (item?.itemType === 'Food') return toNumber(item?.food?.prepTimeMinutes, 0);
+            if (item?.itemType === 'GroceryItem') return toNumber(item?.groceryItem?.prepTimeMinutes, 0);
+            if (item?.itemType === 'PharmacyItem') return toNumber(item?.pharmacyItem?.prepTimeMinutes, 0);
+            return 0;
+        })
+        .filter(minutes => Number.isFinite(minutes) && minutes > 0);
+
+    if (prepTimes.length === 0) return null;
+    return Math.max(...prepTimes);
 };
 
 const calculateCartPricing = async (cart, options = {}) => {
@@ -293,13 +338,17 @@ const calculateCartPricing = async (cart, options = {}) => {
             rainFee: 0,
             total: 0,
             itemCount: 0,
-            deliveryDistanceKm: 0
+            deliveryDistanceKm: 0,
+            estimatedDeliveryMin: null,
+            estimatedDeliveryMax: null
         };
     }
 
     const { userId, deliveryLocation } = options;
     const subtotal = calculateSubtotal(cart.items);
-    const { baseFee, vendorLocation } = await getVendorDeliveryContext(cart);
+    const { baseFee, vendorLocation, vendorPrepTime, vendorDeliveryTime } = await getVendorDeliveryContext(cart);
+    const maxItemPrepMinutes = getMaxItemPrepMinutes(cart.items);
+    const effectivePrepMinutes = maxItemPrepMinutes ?? vendorPrepTime;
     const resolvedDeliveryLocation = normalizeLocation(deliveryLocation) || await getUserDeliveryLocation(userId);
     const distanceKm = calculateDistanceKm(vendorLocation, resolvedDeliveryLocation);
     const deliveryFee = calculateDeliveryFee({ baseFee, distanceKm });
@@ -308,6 +357,11 @@ const calculateCartPricing = async (cart, options = {}) => {
     const rainFee = await getRainFee({ deliveryLocation: resolvedDeliveryLocation, vendorLocation });
     const total = calculateTotal({ subtotal, deliveryFee, serviceFee, tax, rainFee });
     const itemCount = cart.items.reduce((sum, item) => sum + toNumber(item.quantity, 0), 0);
+    const estimatedDelivery = calculateEstimatedDeliveryWindow({
+        distanceKm,
+        vendorPrepTime: effectivePrepMinutes,
+        vendorDeliveryTime
+    });
 
     return {
         subtotal,
@@ -317,11 +371,13 @@ const calculateCartPricing = async (cart, options = {}) => {
         rainFee,
         total,
         itemCount,
-        deliveryDistanceKm: distanceKm ?? 0
+        deliveryDistanceKm: distanceKm ?? 0,
+        estimatedDeliveryMin: estimatedDelivery.minMinutes,
+        estimatedDeliveryMax: estimatedDelivery.maxMinutes
     };
 };
 
-const calculateOrderPricing = async ({ subtotal, baseDeliveryFee, userId, deliveryLocation, vendorLocation }) => {
+const calculateOrderPricing = async ({ subtotal, baseDeliveryFee, userId, deliveryLocation, vendorLocation, vendorPrepTime, vendorDeliveryTime }) => {
     const normalizedSubtotal = roundCurrency(toNumber(subtotal, 0));
     const normalizedVendorLocation = normalizeLocation(vendorLocation);
     const resolvedDeliveryLocation = normalizeLocation(deliveryLocation) || await getUserDeliveryLocation(userId);
@@ -333,6 +389,11 @@ const calculateOrderPricing = async ({ subtotal, baseDeliveryFee, userId, delive
     const serviceFee = calculateServiceFee(normalizedSubtotal);
     const tax = calculateTax(normalizedSubtotal);
     const rainFee = await getRainFee({ deliveryLocation: resolvedDeliveryLocation, vendorLocation: normalizedVendorLocation });
+    const estimatedDelivery = calculateEstimatedDeliveryWindow({
+        distanceKm,
+        vendorPrepTime,
+        vendorDeliveryTime
+    });
     const total = calculateTotal({
         subtotal: normalizedSubtotal,
         deliveryFee: normalizedDeliveryFee,
@@ -348,7 +409,9 @@ const calculateOrderPricing = async ({ subtotal, baseDeliveryFee, userId, delive
         tax,
         rainFee,
         total,
-        deliveryDistanceKm: distanceKm ?? 0
+        deliveryDistanceKm: distanceKm ?? 0,
+        estimatedDeliveryMin: estimatedDelivery.minMinutes,
+        estimatedDeliveryMax: estimatedDelivery.maxMinutes
     };
 };
 

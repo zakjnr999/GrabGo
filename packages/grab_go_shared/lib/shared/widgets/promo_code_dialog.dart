@@ -1,10 +1,9 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
+import 'package:grab_go_shared/shared/widgets/app_button.dart';
 import '../utils/constants.dart';
 import '../utils/app_colors_extension.dart';
 
@@ -98,7 +97,9 @@ class _PromoCodeDialogState extends State<PromoCodeDialog> with SingleTickerProv
             decoration: BoxDecoration(
               color: colors.backgroundPrimary,
               borderRadius: BorderRadius.circular(KBorderSize.borderRadius20),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 10))],
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 10)),
+              ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -107,11 +108,7 @@ class _PromoCodeDialogState extends State<PromoCodeDialog> with SingleTickerProv
                   width: double.infinity,
                   padding: EdgeInsets.all(KSpacing.lg25.r),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [colors.accentViolet.withOpacity(0.15), colors.accentOrange.withOpacity(0.15)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    color: colors.accentViolet.withValues(alpha: 0.15),
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(KBorderSize.borderRadius20),
                       topRight: Radius.circular(KBorderSize.borderRadius20),
@@ -124,9 +121,7 @@ class _PromoCodeDialogState extends State<PromoCodeDialog> with SingleTickerProv
                         width: 70.h,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [colors.accentViolet.withOpacity(0.2), colors.accentViolet.withOpacity(0.1)],
-                          ),
+                          color: colors.accentViolet.withValues(alpha: 0.15),
                         ),
                         child: Center(
                           child: SvgPicture.asset(
@@ -134,7 +129,7 @@ class _PromoCodeDialogState extends State<PromoCodeDialog> with SingleTickerProv
                             package: "grab_go_shared",
                             height: 35.h,
                             width: 35.h,
-                            color: colors.accentViolet,
+                            colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
                           ),
                         ),
                       ),
@@ -179,21 +174,21 @@ class _PromoCodeDialogState extends State<PromoCodeDialog> with SingleTickerProv
                           inputFormatters: [UpperCaseTextFormatter()],
                           decoration: InputDecoration(
                             hintText: 'Enter promo code',
-                            hintStyle: TextStyle(color: colors.textSecondary.withOpacity(0.5), fontSize: 14.sp),
+                            hintStyle: TextStyle(color: colors.textSecondary.withValues(alpha: 0.5), fontSize: 14.sp),
                             filled: true,
                             fillColor: colors.backgroundSecondary,
                             contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                              borderSide: BorderSide(color: colors.inputBorder, width: 1.5),
+                              borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                              borderSide: BorderSide(color: colors.inputBorder, width: 1),
                             ),
                             enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                              borderSide: BorderSide(color: colors.inputBorder, width: 1.5),
+                              borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                              borderSide: BorderSide(color: colors.inputBorder, width: 1),
                             ),
                             focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                              borderSide: BorderSide(color: colors.accentViolet, width: 2),
+                              borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                              borderSide: BorderSide(color: colors.accentViolet, width: 1.5),
                             ),
                           ),
                           style: TextStyle(
@@ -225,13 +220,7 @@ class _PromoCodeDialogState extends State<PromoCodeDialog> with SingleTickerProv
                                 padding: EdgeInsets.all(14.r),
                                 decoration: BoxDecoration(
                                   color: colors.backgroundSecondary,
-                                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius12),
-                                  border: Border.all(
-                                    color: _promoController.text == promo['code']
-                                        ? colors.accentViolet
-                                        : colors.inputBorder,
-                                    width: _promoController.text == promo['code'] ? 2 : 1,
-                                  ),
+                                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                                 ),
                                 child: Row(
                                   children: [
@@ -240,11 +229,11 @@ class _PromoCodeDialogState extends State<PromoCodeDialog> with SingleTickerProv
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
                                           colors: [
-                                            colors.accentViolet.withOpacity(0.2),
-                                            colors.accentOrange.withOpacity(0.2),
+                                            colors.accentViolet.withValues(alpha: 0.2),
+                                            colors.accentOrange.withValues(alpha: 0.2),
                                           ],
                                         ),
-                                        borderRadius: BorderRadius.circular(8.r),
+                                        borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                                       ),
                                       child: Text(
                                         promo['discount'],
@@ -283,14 +272,19 @@ class _PromoCodeDialogState extends State<PromoCodeDialog> with SingleTickerProv
                                       ),
                                     ),
 
-                                    Icon(
+                                    SvgPicture.asset(
                                       _promoController.text == promo['code']
-                                          ? Icons.check_circle
-                                          : Icons.arrow_forward_ios,
-                                      size: 18.h,
-                                      color: _promoController.text == promo['code']
-                                          ? colors.accentViolet
-                                          : colors.textSecondary,
+                                          ? Assets.icons.check
+                                          : Assets.icons.navArrowRight,
+                                      package: "grab_go_shared",
+                                      height: 18.h,
+                                      width: 18.h,
+                                      colorFilter: ColorFilter.mode(
+                                        _promoController.text == promo['code']
+                                            ? colors.accentViolet
+                                            : colors.textSecondary,
+                                        BlendMode.srcIn,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -304,60 +298,32 @@ class _PromoCodeDialogState extends State<PromoCodeDialog> with SingleTickerProv
                         Row(
                           children: [
                             Expanded(
-                              child: GestureDetector(
-                                onTap: () => Navigator.of(context).pop(),
-                                child: Container(
-                                  height: 50.h,
-                                  decoration: BoxDecoration(
-                                    color: colors.backgroundSecondary,
-                                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                                    border: Border.all(color: colors.inputBorder, width: 1.5),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      'Cancel',
-                                      style: TextStyle(
-                                        fontSize: 15.sp,
-                                        fontWeight: FontWeight.w600,
-                                        color: colors.textPrimary,
-                                      ),
-                                    ),
-                                  ),
+                              child: AppButton(
+                                width: double.infinity,
+                                onPressed: () => Navigator.of(context).pop(),
+                                buttonText: "Cancel",
+                                textStyle: TextStyle(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w800,
+                                  color: colors.textSecondary,
                                 ),
+                                backgroundColor: colors.backgroundSecondary,
+                                padding: EdgeInsets.symmetric(vertical: 16.h),
+                                borderRadius: KBorderSize.borderMedium,
                               ),
                             ),
 
                             SizedBox(width: KSpacing.md.w),
 
                             Expanded(
-                              child: GestureDetector(
-                                onTap: () => _applyPromo(_promoController.text),
-                                child: Container(
-                                  height: 50.h,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [colors.accentViolet, colors.accentViolet.withOpacity(0.8)],
-                                    ),
-                                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: colors.accentViolet.withOpacity(0.3),
-                                        blurRadius: 15,
-                                        offset: const Offset(0, 5),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      'Apply Code',
-                                      style: TextStyle(
-                                        fontSize: 15.sp,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                              child: AppButton(
+                                width: double.infinity,
+                                onPressed: () => _applyPromo(_promoController.text),
+                                buttonText: "Apply Code",
+                                textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: Colors.white),
+                                backgroundColor: colors.accentViolet,
+                                padding: EdgeInsets.symmetric(vertical: 16.h),
+                                borderRadius: KBorderSize.borderMedium,
                               ),
                             ),
                           ],

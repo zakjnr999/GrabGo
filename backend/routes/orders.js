@@ -170,6 +170,7 @@ router.post(
       const orderNumber = bodyOrderNumber || await generateOrderNumber();
 
       let subtotal = 0;
+      let maxItemPrepMinutes = 0;
       const orderItemsData = [];
 
       for (const item of items) {
@@ -186,6 +187,9 @@ router.post(
 
         const itemTotal = food.price * item.quantity;
         subtotal += itemTotal;
+        if (Number.isFinite(food.prepTimeMinutes) && food.prepTimeMinutes > maxItemPrepMinutes) {
+          maxItemPrepMinutes = food.prepTimeMinutes;
+        }
 
         orderItemsData.push({
           itemType: 'Food',
@@ -209,7 +213,9 @@ router.post(
         vendorLocation: {
           latitude: restaurantDoc.latitude,
           longitude: restaurantDoc.longitude
-        }
+        },
+        vendorPrepTime: maxItemPrepMinutes > 0 ? maxItemPrepMinutes : restaurantDoc.averagePreparationTime,
+        vendorDeliveryTime: restaurantDoc.averageDeliveryTime
       });
       const tax = pricing.tax;
       let totalAmount = pricing.total;

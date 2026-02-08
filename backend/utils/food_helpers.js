@@ -48,8 +48,9 @@ const formatFoodResponse = (foods, userLat, userLng) => {
         if (!food) return null;
 
         // 1. Calculate Delivery Time
-        const prepTime = food.restaurant?.averagePreparationTime || 15;
-        let deliveryTime = 25; // default fallback
+        const prepTime = food.prepTimeMinutes > 0 ? food.prepTimeMinutes : (food.restaurant?.averagePreparationTime || 15);
+        let minTime = null;
+        let maxTime = null;
 
         if (validUserLocation && food.restaurant?.latitude && food.restaurant?.longitude) {
             const distanceKm = calculateDistance(
@@ -58,11 +59,18 @@ const formatFoodResponse = (foods, userLat, userLng) => {
                 userLatitude,
                 userLongitude
             );
-            deliveryTime = estimateDeliveryTime(distanceKm);
+            const travelMinutes = estimateDeliveryTime(distanceKm);
+            minTime = prepTime + travelMinutes;
+            maxTime = minTime + 10;
+        } else if (food.restaurant?.averageDeliveryTime) {
+            // averageDeliveryTime is full ETA (order placed → delivered)
+            minTime = food.restaurant.averageDeliveryTime;
+            maxTime = minTime + 10;
+        } else {
+            const fallbackTravelMinutes = 25;
+            minTime = prepTime + fallbackTravelMinutes;
+            maxTime = minTime + 10;
         }
-
-        const minTime = prepTime + deliveryTime;
-        const maxTime = minTime + 10;
 
         // 2. Format Response
         return {

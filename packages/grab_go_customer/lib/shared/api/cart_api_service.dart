@@ -28,7 +28,6 @@ abstract class CartApiService extends ChopperService {
     @Query('lat') double? lat,
     @Query('lng') double? lng,
   });
-  );
 
   /// Remove item from cart
   @DELETE(path: '/remove/{itemId}')
@@ -40,10 +39,7 @@ abstract class CartApiService extends ChopperService {
 
   /// Clear entire cart
   @DELETE(path: '/clear')
-  Future<Response<Map<String, dynamic>>> clearCart({
-    @Query('lat') double? lat,
-    @Query('lng') double? lng,
-  });
+  Future<Response<Map<String, dynamic>>> clearCart({@Query('lat') double? lat, @Query('lng') double? lng});
 
   static CartApiService create([ChopperClient? client]) {
     return _$CartApiService(client);

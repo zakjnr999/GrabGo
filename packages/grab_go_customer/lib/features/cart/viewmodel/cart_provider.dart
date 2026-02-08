@@ -14,6 +14,8 @@ class CartProvider extends ChangeNotifier {
   double _tax = 0.0;
   double _rainFee = 0.0;
   double? _total;
+  int? _estimatedDeliveryMin;
+  int? _estimatedDeliveryMax;
   double? _deliveryLatitude;
   double? _deliveryLongitude;
   String? _cartType;
@@ -28,6 +30,8 @@ class CartProvider extends ChangeNotifier {
   double get tax => _tax;
   double get rainFee => _rainFee;
   double get total => _total ?? (subtotal + deliveryFee + serviceFee + tax + rainFee);
+  int? get estimatedDeliveryMin => _estimatedDeliveryMin;
+  int? get estimatedDeliveryMax => _estimatedDeliveryMax;
 
   CartProvider() {
     // Load cart data asynchronously without blocking
@@ -149,6 +153,8 @@ class CartProvider extends ChangeNotifier {
       _tax = 0.0;
       _rainFee = 0.0;
       _total = null;
+      _estimatedDeliveryMin = null;
+      _estimatedDeliveryMax = null;
       return;
     }
 
@@ -158,6 +164,8 @@ class CartProvider extends ChangeNotifier {
     _tax = (pricing['tax'] as num?)?.toDouble() ?? 0.0;
     _rainFee = (pricing['rainFee'] as num?)?.toDouble() ?? 0.0;
     _total = (pricing['total'] as num?)?.toDouble();
+    _estimatedDeliveryMin = (pricing['estimatedDeliveryMin'] as num?)?.toInt();
+    _estimatedDeliveryMax = (pricing['estimatedDeliveryMax'] as num?)?.toInt();
   }
 
   void _recalculateLocalPricing() {
