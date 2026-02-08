@@ -38,12 +38,14 @@ class PhoneAuthService {
           return true;
         } else {
           final message = response.body!['message'] as String? ?? 'Failed to send OTP';
-          onError(message);
+          final error = response.body!['error']?.toString();
+          onError(error != null && error.isNotEmpty ? error : message);
           return false;
         }
       } else {
         final errorMessage = response.body?['message'] as String? ?? 'Failed to send OTP';
-        onError(errorMessage);
+        final error = response.body?['error']?.toString();
+        onError(error != null && error.isNotEmpty ? error : errorMessage);
         return false;
       }
     } catch (e) {
@@ -80,12 +82,14 @@ class PhoneAuthService {
           return true;
         } else {
           final message = response.body!['message'] as String? ?? 'Failed to resend OTP';
-          onError(message);
+          final error = response.body!['error']?.toString();
+          onError(error != null && error.isNotEmpty ? error : message);
           return false;
         }
       } else {
         final errorMessage = response.body?['message'] as String? ?? 'Failed to resend OTP';
-        onError(errorMessage);
+        final error = response.body?['error']?.toString();
+        onError(error != null && error.isNotEmpty ? error : errorMessage);
         return false;
       }
     } catch (e) {

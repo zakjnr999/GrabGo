@@ -212,7 +212,7 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
                   child: SlideTransition(
                     position: _slideAnimation,
                     child: Text(
-                      AppStrings.registerMain,
+                      AppStrings.verifyPhoneMain,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 32.sp,
@@ -233,7 +233,7 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w),
                       child: Text(
-                        AppStrings.registerSub,
+                        AppStrings.verifyPhoneSub,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 15.sp,
@@ -300,7 +300,7 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
                               borderSide: BorderSide(
-                                color: phoneError != null ? colors.error : colors.accentGreen,
+                                color: phoneError != null ? colors.error : colors.accentOrange,
                                 width: 2,
                               ),
                             ),
@@ -352,7 +352,7 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
                                     useWhatsapp = value;
                                   });
                                 },
-                                activeColor: colors.accentGreen,
+                                activeColor: colors.accentOrange,
                               ),
                             ],
                           ),

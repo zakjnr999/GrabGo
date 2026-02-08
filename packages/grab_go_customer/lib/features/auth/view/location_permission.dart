@@ -164,15 +164,15 @@ class _LocationPermissionState extends State<LocationPermission> with SingleTick
                                   shape: BoxShape.circle,
                                   gradient: LinearGradient(
                                     colors: [
-                                      colors.accentGreen.withValues(alpha: 0.2),
-                                      colors.accentViolet.withValues(alpha: 0.2),
+                                      colors.accentOrange.withValues(alpha: 0.2),
+                                      colors.accentOrange.withValues(alpha: 0.2),
                                     ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: colors.accentGreen.withValues(alpha: 0.2),
+                                      color: colors.accentOrange.withValues(alpha: 0.2),
                                       blurRadius: 30,
                                       spreadRadius: 5,
                                     ),
@@ -183,7 +183,7 @@ class _LocationPermissionState extends State<LocationPermission> with SingleTick
                                     Assets.icons.mapPin,
                                     height: 60.h,
                                     width: 60.h,
-                                    colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                                    colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                                     package: 'grab_go_shared',
                                   ),
                                 ),
@@ -239,14 +239,14 @@ class _LocationPermissionState extends State<LocationPermission> with SingleTick
                                   height: 56.h,
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
-                                      colors: [colors.accentGreen, colors.accentGreen.withValues(alpha: 0.8)],
+                                      colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
                                       begin: Alignment.centerLeft,
                                       end: Alignment.centerRight,
                                     ),
                                     borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: colors.accentGreen.withValues(alpha: 0.4),
+                                        color: colors.accentOrange.withValues(alpha: 0.4),
                                         blurRadius: 20,
                                         offset: const Offset(0, 8),
                                       ),

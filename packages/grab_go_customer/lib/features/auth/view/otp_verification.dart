@@ -300,14 +300,14 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
                         shape: BoxShape.circle,
                         gradient: LinearGradient(
                           colors: [
-                            colors.accentViolet.withValues(alpha: 0.2),
-                            colors.accentGreen.withValues(alpha: 0.2),
+                            colors.accentOrange.withValues(alpha: 0.2),
+                            colors.accentOrange.withValues(alpha: 0.2),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                         boxShadow: [
-                          BoxShadow(color: colors.accentViolet.withValues(alpha: 0.2), blurRadius: 30, spreadRadius: 5),
+                          BoxShadow(color: colors.accentOrange.withValues(alpha: 0.2), blurRadius: 30, spreadRadius: 5),
                         ],
                       ),
                       child: Center(
@@ -316,7 +316,7 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
                           package: 'grab_go_shared',
                           height: 50.h,
                           width: 50.h,
-                          colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                          colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                         ),
                       ),
                     ),
@@ -381,8 +381,8 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
                           showFieldAsBox: true,
                           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
                           contentPadding: EdgeInsets.symmetric(vertical: 16.h),
-                          cursorColor: colors.accentViolet,
-                          focusedBorderColor: colors.accentViolet,
+                          cursorColor: colors.accentOrange,
+                          focusedBorderColor: colors.accentOrange,
                           borderWidth: 1.5,
                           keyboardType: TextInputType.number,
                           textStyle: TextStyle(color: colors.textPrimary, fontSize: 20.sp, fontWeight: FontWeight.w600),
@@ -416,7 +416,7 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
                             decoration: BoxDecoration(
                               gradient: verificationCode != null && verificationCode!.length == 6 && !isLoading
                                   ? LinearGradient(
-                                      colors: [colors.accentViolet, colors.accentViolet.withValues(alpha: 0.8)],
+                                      colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
                                       begin: Alignment.centerLeft,
                                       end: Alignment.centerRight,
                                     )
@@ -428,7 +428,7 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
                               boxShadow: verificationCode != null && verificationCode!.length == 6 && !isLoading
                                   ? [
                                       BoxShadow(
-                                        color: colors.accentViolet.withValues(alpha: 0.4),
+                                        color: colors.accentOrange.withValues(alpha: 0.4),
                                         blurRadius: 20,
                                         offset: const Offset(0, 8),
                                       ),
@@ -472,7 +472,7 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
                                     "  Resend",
                                     style: TextStyle(
                                       fontWeight: FontWeight.w700,
-                                      color: isLoading ? colors.textSecondary : colors.accentViolet,
+                                      color: isLoading ? colors.textSecondary : colors.accentOrange,
                                       fontSize: 14.sp,
                                     ),
                                   ),

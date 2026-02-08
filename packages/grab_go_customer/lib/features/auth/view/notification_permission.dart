@@ -199,7 +199,7 @@ class _NotificationPermissionState extends State<NotificationPermission> with Si
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   gradient: RadialGradient(
-                                    colors: [colors.accentGreen, colors.accentGreen.withValues(alpha: 0.8)],
+                                    colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
                                   ),
                                 ),
                                 child: Center(
@@ -267,7 +267,7 @@ class _NotificationPermissionState extends State<NotificationPermission> with Si
                                   color: Colors.white,
                                   letterSpacing: 0.5,
                                 ),
-                                backgroundColor: colors.accentGreen,
+                                backgroundColor: colors.accentOrange,
                                 padding: EdgeInsets.symmetric(vertical: 16.h),
                                 borderRadius: KBorderSize.borderMedium,
                               ),

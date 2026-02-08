@@ -169,14 +169,14 @@ class _AccountCreatedState extends State<AccountCreated> with SingleTickerProvid
                             height: 56.h,
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [colors.accentGreen, colors.accentGreen.withValues(alpha: 0.8)],
+                                colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
                                 begin: Alignment.centerLeft,
                                 end: Alignment.centerRight,
                               ),
                               borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
                               boxShadow: [
                                 BoxShadow(
-                                  color: colors.accentGreen.withValues(alpha: 0.4),
+                                  color: colors.accentOrange.withValues(alpha: 0.4),
                                   blurRadius: 20,
                                   offset: const Offset(0, 8),
                                 ),
@@ -216,12 +216,12 @@ class _AccountCreatedState extends State<AccountCreated> with SingleTickerProvid
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
-                colors: [colors.accentGreen.withValues(alpha: 0.2), colors.accentGreen.withValues(alpha: 0.1)],
+                colors: [colors.accentOrange.withValues(alpha: 0.2), colors.accentOrange.withValues(alpha: 0.1)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               boxShadow: [
-                BoxShadow(color: colors.accentGreen.withValues(alpha: 0.3), blurRadius: 40, spreadRadius: 10),
+                BoxShadow(color: colors.accentOrange.withValues(alpha: 0.3), blurRadius: 40, spreadRadius: 10),
               ],
             ),
             child: Center(
@@ -230,14 +230,14 @@ class _AccountCreatedState extends State<AccountCreated> with SingleTickerProvid
                 width: 120.h,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [colors.accentGreen, colors.accentGreen.withValues(alpha: 0.8)],
+                    colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: colors.accentGreen.withValues(alpha: 0.5),
+                      color: colors.accentOrange.withValues(alpha: 0.5),
                       blurRadius: 30,
                       offset: const Offset(0, 10),
                     ),

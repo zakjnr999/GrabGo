@@ -289,7 +289,7 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
                             gradient: LinearGradient(
                               colors: [
                                 colors.accentOrange.withValues(alpha: 0.2),
-                                colors.accentViolet.withValues(alpha: 0.2),
+                                colors.accentOrange.withValues(alpha: 0.2),
                               ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,

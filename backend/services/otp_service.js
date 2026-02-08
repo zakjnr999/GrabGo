@@ -120,12 +120,19 @@ const requestPhoneOtp = async ({ phoneNumber, userId, channel = 'sms' }) => {
   });
 
   if (!sendResult.success) {
+    console.error('[OTP] Gateway send failed', {
+      provider: sendResult.provider,
+      message: sendResult.message,
+      error: sendResult.error,
+      data: sendResult.data,
+      status: sendResult.status,
+    });
     await cache.del(otpKey);
     await cache.del(cooldownKey);
     return {
       success: false,
-      message: 'Failed to send OTP. Please try again.',
-      error: sendResult.error,
+      message: sendResult.message || 'Failed to send OTP. Please try again.',
+      error: sendResult.error || sendResult.data,
     };
   }
 

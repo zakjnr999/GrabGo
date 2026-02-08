@@ -142,7 +142,7 @@ class _VerifyPhoneState extends State<ForgotPassword> with SingleTickerProviderS
                         width: 100.h,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: colors.accentViolet.withValues(alpha: 0.2),
+                          color: colors.accentOrange.withValues(alpha: 0.2),
                         ),
                         child: Center(
                           child: SvgPicture.asset(
@@ -150,7 +150,7 @@ class _VerifyPhoneState extends State<ForgotPassword> with SingleTickerProviderS
                             package: 'grab_go_shared',
                             height: 50.h,
                             width: 50.h,
-                            colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                           ),
                         ),
                       ),
@@ -211,7 +211,7 @@ class _VerifyPhoneState extends State<ForgotPassword> with SingleTickerProviderS
                             hintText: AppStrings.loginEmailHint,
                             borderColor: colors.inputBorder,
                             fillColor: colors.backgroundSecondary,
-                            borderActiveColor: colors.accentViolet,
+                            borderActiveColor: colors.accentOrange,
                             borderRadius: KBorderSize.borderRadius15,
                             contentPadding: EdgeInsets.all(KSpacing.md15.r),
                             keyboardType: TextInputType.emailAddress,
@@ -249,7 +249,7 @@ class _VerifyPhoneState extends State<ForgotPassword> with SingleTickerProviderS
                               decoration: BoxDecoration(
                                 boxShadow: [
                                   BoxShadow(
-                                    color: colors.accentViolet.withValues(alpha: 0.4),
+                                    color: colors.accentOrange.withValues(alpha: 0.4),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
                                   ),
@@ -257,7 +257,7 @@ class _VerifyPhoneState extends State<ForgotPassword> with SingleTickerProviderS
                               ),
                               child: AppButton(
                                 onPressed: () {},
-                                backgroundColor: colors.accentViolet,
+                                backgroundColor: colors.accentOrange,
                                 borderRadius: KBorderSize.borderRadius15,
                                 buttonText: AppStrings.loginForgotPassword,
                                 textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15.sp),

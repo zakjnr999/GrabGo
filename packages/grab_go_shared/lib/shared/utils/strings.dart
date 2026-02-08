@@ -22,12 +22,11 @@ class AppStrings {
   static const String loginPasswordLabel = "Your Password";
   static const String loginCheckboxLabel = "Remember me";
   static const String loginForgotPassword = "Forgot Password?";
-  static const String registerMain = "Let’s get you started!";
-  static const String registerSub =
-      "Join GrabGo today and discover tasty meals, quick delivery, and exclusive deals from your favorite restaurants.";
-  static const String verifyPhoneMain = "Enter Your Phone Number";
+  static const String registerMain = "Complete your account";
+  static const String registerSub = "Your phone is verified. Add your details to finish setting up GrabGo.";
+  static const String verifyPhoneMain = "Let’s get you started!";
   static const String verifyPhoneSub =
-      "Add your phone number. We'll send you a verification code to help you verify it.";
+      "Join GrabGo today and discover tasty meals, quick delivery, and exclusive deals from your favorite restaurants.";
   static const String forgotPasswordMain = "Forgot Password?";
   static const String forgotPasswordSub =
       "Enter your email address below and we’ll send you a link to reset your password.";
@@ -45,7 +44,7 @@ class AppStrings {
   static const String registerBdayHint = "Oct 06, 1995";
   static const String registerBdayLabel = "Date Of Birth";
   static const String registerUsernameHint = "zak jnr";
-  static const String registerUsernameLabel = "Full Name";
+  static const String registerUsernameLabel = "Username";
   static const String registerPasswordHint = "Minimum 8 characters";
   static const String registerPasswordLabel = "Set Password";
   static const String registerConfirmPasswordHint = "Enter Password Again";

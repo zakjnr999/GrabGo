@@ -122,15 +122,15 @@ class _EmailVerificationState extends State<EmailVerification> with SingleTicker
                           shape: BoxShape.circle,
                           gradient: LinearGradient(
                             colors: [
-                              colors.accentViolet.withValues(alpha: 0.2),
-                              colors.accentViolet.withValues(alpha: 0.2),
+                              colors.accentOrange.withValues(alpha: 0.2),
+                              colors.accentOrange.withValues(alpha: 0.2),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: colors.accentViolet.withValues(alpha: 0.2),
+                              color: colors.accentOrange.withValues(alpha: 0.2),
                               blurRadius: 30,
                               spreadRadius: 5,
                             ),
@@ -142,7 +142,7 @@ class _EmailVerificationState extends State<EmailVerification> with SingleTicker
                             package: 'grab_go_shared',
                             height: 50.h,
                             width: 50.h,
-                            colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                           ),
                         ),
                       ),
@@ -201,7 +201,7 @@ class _EmailVerificationState extends State<EmailVerification> with SingleTicker
                         hintText: AppStrings.loginEmailHint,
                         borderColor: colors.inputBorder,
                         fillColor: colors.backgroundSecondary,
-                        borderActiveColor: colors.accentViolet,
+                        borderActiveColor: colors.accentOrange,
                         borderRadius: KBorderSize.borderRadius15,
                         contentPadding: EdgeInsets.all(KSpacing.md15.r),
                         keyboardType: TextInputType.emailAddress,
@@ -232,14 +232,14 @@ class _EmailVerificationState extends State<EmailVerification> with SingleTicker
                           width: double.infinity,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [colors.accentViolet, colors.accentViolet.withValues(alpha: 0.8)],
+                              colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
                               begin: Alignment.centerLeft,
                               end: Alignment.centerRight,
                             ),
                             borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
                             boxShadow: [
                               BoxShadow(
-                                color: colors.accentViolet.withValues(alpha: 0.4),
+                                color: colors.accentOrange.withValues(alpha: 0.4),
                                 blurRadius: 20,
                                 offset: const Offset(0, 8),
                               ),

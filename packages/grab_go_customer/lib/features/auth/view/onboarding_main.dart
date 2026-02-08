@@ -107,7 +107,6 @@ class _OnboardingMain extends State<OnboardingMain> {
                   decoration: BoxDecoration(
                     color: colors.backgroundSecondary,
                     borderRadius: BorderRadius.circular(20.r),
-                    border: Border.all(color: colors.inputBorder, width: 1),
                   ),
                   child: ValueListenableBuilder<int>(
                     valueListenable: _currentPage,
