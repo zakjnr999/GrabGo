@@ -152,23 +152,7 @@ const sendReorderSuggestion = async (user, io = null) => {
             io
         );
 
-        // 2. Push notification
-        await sendToUser(
-            user.id,
-            {
-                title: template.title,
-                body: template.message
-            },
-            {
-                type: 'reorder_suggestion',
-                itemId: item.foodId || item.groceryItemId,
-                itemType: String(item.itemType),
-                promoCode: 'REORDER10',
-                click_action: 'FLUTTER_NOTIFICATION_CLICK'
-            }
-        );
-
-        // 3. Update tracking
+        // 2. Update tracking
         const now = new Date();
         let weekStartDate = user.weekStartDate || now;
 

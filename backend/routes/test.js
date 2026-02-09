@@ -11,6 +11,12 @@ const router = express.Router();
  * @access  Public
  */
 router.post('/notification-public/:userId', async (req, res) => {
+    if (process.env.NODE_ENV === 'production') {
+        return res.status(404).json({
+            success: false,
+            message: 'Route not found'
+        });
+    }
     try {
         const { userId } = req.params;
         const { status = 'confirmed' } = req.body;

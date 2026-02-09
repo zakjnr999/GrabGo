@@ -188,6 +188,68 @@ const flushAll = async () => {
 const isRedisConnected = () => useRedis && redisClient?.status === 'ready';
 
 /**
+ * Acquire a distributed lock (Redis) with memory fallback
+ * @param {string} key - Lock key (without prefix)
+ * @param {number} ttlSeconds - Lock TTL in seconds
+ * @returns {Promise<{key:string,value:string,isRedis:boolean} | null>}
+ */
+const acquireLock = async (key, ttlSeconds = 60) => {
+    const lockKey = key.startsWith('grabgo:lock:') ? key : `grabgo:lock:${key}`;
+    const lockValue = `${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+    try {
+        if (useRedis && redisClient) {
+            const result = await redisClient.set(lockKey, lockValue, 'EX', ttlSeconds, 'NX');
+            if (result === 'OK') {
+                return { key: lockKey, value: lockValue, isRedis: true };
+            }
+            return null;
+        }
+
+        // Memory fallback
+        if (memoryCache.get(lockKey)) {
+            return null;
+        }
+        memoryCache.set(lockKey, lockValue, ttlSeconds);
+        return { key: lockKey, value: lockValue, isRedis: false };
+    } catch (error) {
+        console.error('[Cache] Acquire lock error:', error.message);
+        return null;
+    }
+};
+
+/**
+ * Release a distributed lock safely
+ * @param {{key:string,value:string,isRedis:boolean}} lock
+ * @returns {Promise<boolean>}
+ */
+const releaseLock = async (lock) => {
+    if (!lock) return false;
+    const { key, value, isRedis } = lock;
+
+    try {
+        if (useRedis && redisClient && isRedis) {
+            const lua = `
+                if redis.call("get", KEYS[1]) == ARGV[1] then
+                    return redis.call("del", KEYS[1])
+                else
+                    return 0
+                end
+            `;
+            const result = await redisClient.eval(lua, 1, key, value);
+            return result === 1;
+        }
+
+        // Memory fallback
+        memoryCache.del(key);
+        return true;
+    } catch (error) {
+        console.error('[Cache] Release lock error:', error.message);
+        return false;
+    }
+};
+
+/**
  * Get cache stats
  * @returns {object}
  */
@@ -258,6 +320,8 @@ module.exports = {
     delByPattern,
     flushAll,
     isRedisConnected,
+    acquireLock,
+    releaseLock,
     getStats,
     close,
     CACHE_KEYS,

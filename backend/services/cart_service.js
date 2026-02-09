@@ -552,6 +552,11 @@ const findAbandonedCarts = async () => {
             ]
         },
         include: {
+            items: {
+                select: {
+                    name: true
+                }
+            },
             user: {
                 select: {
                     id: true,

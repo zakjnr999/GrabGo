@@ -1450,6 +1450,7 @@ class CacheService {
       await _clearFavoriteRestaurants();
       await clearFavoriteFoods();
       await clearAllVendorsCache();
+      await _instance.remove('cached_notifications');
       return true;
     } catch (e) {
       debugPrint('Error clearing user data: $e');

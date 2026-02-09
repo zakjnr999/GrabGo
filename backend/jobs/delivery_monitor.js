@@ -3,6 +3,7 @@ const prisma = require('../config/prisma');
 const { sendToUser } = require('../services/fcm_service');
 const socketService = require('../services/socket_service');
 const trackingService = require('../services/tracking_service');
+const cache = require('../utils/cache');
 
 /**
  * Delivery Monitor Job
@@ -25,7 +26,16 @@ const initializeDeliveryMonitor = () => {
     // Run every minute
     cron.schedule('* * * * *', async () => {
         try {
-            await checkDeliveryWindows();
+            const lock = await cache.acquireLock('job:delivery_monitor', 50);
+            if (!lock) {
+                console.log('⏭️ Delivery monitor skipped (lock held)');
+                return;
+            }
+            try {
+                await checkDeliveryWindows();
+            } finally {
+                await cache.releaseLock(lock);
+            }
         } catch (error) {
             console.error('❌ Delivery monitor error:', error.message);
         }

@@ -1120,32 +1120,57 @@ router.delete("/fcm-token", protect, async (req, res) => {
 // @access  Private
 router.put("/notification-settings", protect, async (req, res) => {
   try {
-    const { chatMessages, orderUpdates, promotions } = req.body;
+    const { settings, chatMessages, orderUpdates, promotions, promoNotifications } = req.body;
 
-    const data = {};
-    if (typeof chatMessages === 'boolean') {
-      data.chatMessages = chatMessages;
-    }
-    if (typeof orderUpdates === 'boolean') {
-      data.orderUpdates = orderUpdates;
-    }
-    if (typeof promotions === 'boolean') {
-      data.promoNotifications = promotions;
+    const updateData = {};
+    const payload = (settings && typeof settings === 'object') ? settings : {
+      chatMessages,
+      orderUpdates,
+      promoNotifications: promoNotifications ?? promotions,
+    };
+
+    const validKeys = [
+      'chatMessages',
+      'orderUpdates',
+      'promoNotifications',
+      'commentReplies',
+      'commentReactions',
+      'referralUpdates',
+      'paymentUpdates',
+      'deliveryUpdates',
+      'systemUpdates',
+      'cartReminders',
+      'favoritesReminders',
+      'reorderSuggestions',
+      'reengagementReminders'
+    ];
+
+    for (const [key, value] of Object.entries(payload)) {
+      if (validKeys.includes(key) && typeof value === 'boolean') {
+        updateData[key] = value;
+      }
     }
 
-    const settings = await prisma.userNotificationSettings.upsert({
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No valid notification settings provided",
+      });
+    }
+
+    const settingsRecord = await prisma.userNotificationSettings.upsert({
       where: { userId: req.user.id },
-      update: data,
+      update: updateData,
       create: {
         userId: req.user.id,
-        ...data
+        ...updateData
       }
     });
 
     res.json({
       success: true,
       message: "Notification settings updated",
-      data: settings,
+      data: settingsRecord,
     });
   } catch (error) {
     console.error("Update notification settings error:", error);

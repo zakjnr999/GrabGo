@@ -125,10 +125,9 @@ const registerToken = async (userId, token, deviceId = null, platform = 'android
 
         // Use a transaction for atomic cleanup and registration
         await prisma.$transaction(async (tx) => {
-            // 1. Remove existing token entry for this token or this device (if deviceId provided)
+            // 1. Ensure token/deviceId is unique across ALL users
             await tx.userFcmToken.deleteMany({
                 where: {
-                    userId,
                     OR: [
                         { token: token },
                         ...(deviceId ? [{ deviceId: deviceId }] : [])

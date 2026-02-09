@@ -1,5 +1,6 @@
 const cron = require('node-cron');
 const { processScheduledNotifications } = require('../services/scheduled_notification_service');
+const cache = require('../utils/cache');
 
 /**
  * Initialize the notification scheduler
@@ -13,10 +14,18 @@ const initializeScheduler = (io) => {
     // Format: minute hour day month day-of-week
     cron.schedule('* * * * *', async () => {
         try {
-            const result = await processScheduledNotifications(io);
-
-            if (result.processed > 0) {
-                console.log(`📊 Scheduler run: ${result.sent} sent, ${result.failed} failed`);
+            const lock = await cache.acquireLock('job:notification_scheduler', 50);
+            if (!lock) {
+                console.log('⏭️ Scheduler skipped (lock held)');
+                return;
+            }
+            try {
+                const result = await processScheduledNotifications(io);
+                if (result.processed > 0) {
+                    console.log(`📊 Scheduler run: ${result.sent} sent, ${result.failed} failed`);
+                }
+            } finally {
+                await cache.releaseLock(lock);
             }
         } catch (error) {
             console.error('❌ Scheduler error:', error.message);
@@ -33,7 +42,16 @@ const initializeScheduler = (io) => {
 const triggerScheduler = async (io) => {
     console.log('🔧 Manually triggering scheduler...');
     try {
-        const result = await processScheduledNotifications(io);
+        const lock = await cache.acquireLock('job:notification_scheduler', 50);
+        if (!lock) {
+            return { processed: 0, sent: 0, failed: 0, skipped: true };
+        }
+        let result;
+        try {
+            result = await processScheduledNotifications(io);
+        } finally {
+            await cache.releaseLock(lock);
+        }
         console.log(`📊 Manual run: ${result.sent} sent, ${result.failed} failed`);
         return result;
     } catch (error) {

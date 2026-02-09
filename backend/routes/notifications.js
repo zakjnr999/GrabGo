@@ -3,6 +3,7 @@ const router = express.Router();
 const { protect } = require('../middleware/auth');
 const NotificationService = require('../services/notification_service');
 const mongoose = require('mongoose');
+const cache = require('../utils/cache');
 
 // @route   GET /api/notifications
 // @desc    Get user notifications with pagination (MongoDB)
@@ -93,6 +94,9 @@ router.get('/health', async (req, res) => {
         database: 'unknown',
         firebase: 'unknown',
         socketio: 'unknown',
+        cache: 'unknown',
+        redis: 'unknown',
+        lock: 'unknown',
         timestamp: new Date().toISOString()
     };
 
@@ -114,6 +118,27 @@ router.get('/health', async (req, res) => {
 
     const io = req.app.get('io');
     health.socketio = io ? 'healthy' : 'not_initialized';
+
+    try {
+        const cacheStats = cache.getStats();
+        health.cache = cacheStats.type;
+        health.redis = cacheStats.type === 'redis'
+            ? (cacheStats.connected ? 'connected' : 'not_connected')
+            : 'not_configured';
+
+        const lock = await cache.acquireLock('healthcheck', 5);
+        if (lock) {
+            await cache.releaseLock(lock);
+            health.lock = 'ok';
+        } else {
+            health.lock = 'unavailable';
+        }
+    } catch (e) {
+        health.cache = 'error';
+        health.redis = 'error';
+        health.lock = 'error';
+        health.cacheError = e.message;
+    }
 
     const isHealthy = health.database === 'healthy' && health.firebase === 'healthy' && health.socketio === 'healthy';
     res.status(isHealthy ? 200 : 503).json(health);

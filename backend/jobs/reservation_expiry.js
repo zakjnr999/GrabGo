@@ -11,6 +11,7 @@
 const dispatchService = require('../services/dispatch_service');
 const socketService = require('../services/socket_service');
 const OrderReservation = require('../models/OrderReservation');
+const cache = require('../utils/cache');
 
 let isRunning = false;
 let intervalId = null;
@@ -24,7 +25,12 @@ let consecutiveErrors = 0;
  * Process expired reservations
  */
 async function processExpiredReservations() {
+    const lock = await cache.acquireLock('job:reservation_expiry', 3);
+    if (!lock) {
+        return;
+    }
     if (isRunning) {
+        await cache.releaseLock(lock);
         return; // Prevent overlapping runs
     }
 
@@ -102,6 +108,7 @@ async function processExpiredReservations() {
         }
     } finally {
         isRunning = false;
+        await cache.releaseLock(lock);
     }
 }
 

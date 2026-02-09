@@ -1,6 +1,7 @@
 const cron = require('node-cron');
 const { findAbandonedCarts } = require('../services/cart_service');
 const { createNotification } = require('../services/notification_service');
+const cache = require('../utils/cache');
 
 /**
  * Cart Abandonment Notification Job
@@ -104,7 +105,16 @@ const initializeCartAbandonmentJob = (io) => {
 
     // Run every 30 minutes
     cron.schedule('*/30 * * * *', async () => {
-        await processAbandonedCarts(io);
+        const lock = await cache.acquireLock('job:cart_abandonment', 25 * 60);
+        if (!lock) {
+            console.log('⏭️ Cart abandonment skipped (lock held)');
+            return;
+        }
+        try {
+            await processAbandonedCarts(io);
+        } finally {
+            await cache.releaseLock(lock);
+        }
     });
 
     console.log('✅ Cart abandonment job scheduled (runs every 30 minutes)');

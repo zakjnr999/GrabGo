@@ -192,83 +192,41 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                   child: Row(
                     children: [
                       Expanded(
-                        child: Container(
-                          height: 56.h,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16.r),
-                            border: Border.all(color: colors.inputBorder, width: 1.5),
-                            gradient: LinearGradient(
-                              colors: [
-                                colors.backgroundSecondary.withValues(alpha: 0.08),
-                                colors.backgroundSecondary.withValues(alpha: 0.03),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                          ),
-                          child: ElevatedButton(
-                            onPressed: () {
-                              setState(() {
-                                _filter.reset();
-                              });
-                              _animationController.reverse().then((_) {
-                                if (mounted) {
-                                  widget.onApply(_filter.copyWith());
-                                  Navigator.pop(context);
-                                }
-                              });
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: colors.backgroundSecondary,
-                              shadowColor: Colors.transparent,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-                            ),
-                            child: Text(
-                              "Clear All",
-                              style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
-                            ),
-                          ),
+                        child: AppButton(
+                          onPressed: () {
+                            setState(() {
+                              _filter.reset();
+                            });
+                            _animationController.reverse().then((_) {
+                              if (mounted) {
+                                widget.onApply(_filter.copyWith());
+                                Navigator.pop(context);
+                              }
+                            });
+                          },
+
+                          backgroundColor: colors.backgroundSecondary,
+                          borderRadius: KBorderSize.borderRadius15,
+                          buttonText: "Clear All",
+                          textStyle: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w700, fontSize: 15.sp),
                         ),
                       ),
                       SizedBox(width: 12.w),
                       Expanded(
-                        child: Container(
-                          height: 56.h,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16.r),
-                            gradient: LinearGradient(
-                              colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: colors.accentOrange.withValues(alpha: 0.3),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                                spreadRadius: 0,
-                              ),
-                            ],
-                          ),
-                          child: ElevatedButton(
-                            onPressed: () {
-                              _animationController.reverse().then((_) {
-                                if (mounted) {
-                                  widget.onApply(_filter.copyWith());
-                                  Navigator.pop(context);
-                                }
-                              });
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-                            ),
-                            child: Text(
-                              "Apply Filter",
-                              style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: Colors.white),
-                            ),
-                          ),
+                        child: AppButton(
+                          onPressed: () {
+                            _animationController.reverse().then((_) {
+                              if (mounted) {
+                                widget.onApply(_filter.copyWith());
+                                Navigator.pop(context);
+                              }
+                            });
+                          },
+
+                          backgroundColor: colors.accentOrange,
+                          borderRadius: KBorderSize.borderRadius15,
+                          buttonText: "Apply Filter",
+                          textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15.sp),
                         ),
                       ),
                     ],
@@ -321,13 +279,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isSelected
-                        ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
-                        : [colors.backgroundPrimary, colors.backgroundPrimary],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  color: isSelected ? colors.accentOrange : Colors.transparent,
                   border: Border.all(color: isSelected ? colors.accentOrange : colors.inputBorder, width: 1.5),
                   borderRadius: BorderRadius.circular(8.r),
                 ),
@@ -392,11 +344,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isSelected
-                        ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
-                        : [colors.backgroundPrimary, colors.backgroundPrimary],
-                  ),
+                  color: isSelected ? colors.accentOrange : Colors.transparent,
                   border: Border.all(color: isSelected ? colors.accentOrange : colors.inputBorder, width: 1.5),
                   borderRadius: BorderRadius.circular(8.r),
                 ),
@@ -461,11 +409,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isSelected
-                        ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
-                        : [colors.backgroundPrimary, colors.backgroundPrimary],
-                  ),
+                  color: isSelected ? colors.accentOrange : Colors.transparent,
                   border: Border.all(color: isSelected ? colors.accentOrange : colors.inputBorder, width: 1.5),
                   borderRadius: BorderRadius.circular(8.r),
                 ),
@@ -530,11 +474,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isSelected
-                        ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
-                        : [colors.backgroundPrimary, colors.backgroundPrimary],
-                  ),
+                  color: isSelected ? colors.accentOrange : Colors.transparent,
                   border: Border.all(color: isSelected ? colors.accentOrange : colors.inputBorder, width: 1.5),
                   borderRadius: BorderRadius.circular(8.r),
                 ),
@@ -628,13 +568,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                 decoration: BoxDecoration(
                   color: currentPriceFilter == filter['key'] ? colors.accentOrange : Colors.transparent,
-                  gradient: LinearGradient(
-                    colors: currentPriceFilter == filter['key']
-                        ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
-                        : [colors.backgroundPrimary, colors.backgroundPrimary],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
                   border: Border.all(
                     color: currentPriceFilter == filter['key'] ? colors.accentOrange : colors.inputBorder,
                     width: 1.5,
@@ -700,13 +633,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                 decoration: BoxDecoration(
                   color: _filter.minRating == rating ? colors.accentOrange : Colors.transparent,
-                  gradient: LinearGradient(
-                    colors: _filter.minRating == rating
-                        ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
-                        : [colors.backgroundPrimary, colors.backgroundPrimary],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
                   border: Border.all(
                     color: _filter.minRating == rating ? colors.accentOrange : colors.inputBorder,
                     width: 1.5,
@@ -797,13 +723,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: _filter.selectedCategories.contains(category.id)
-                        ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
-                        : [colors.backgroundPrimary, colors.backgroundPrimary],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
                   color: _filter.selectedCategories.contains(category.id) ? colors.accentOrange : Colors.transparent,
                   border: Border.all(
                     color: _filter.selectedCategories.contains(category.id) ? colors.accentOrange : colors.inputBorder,
@@ -893,7 +812,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: _filter.selectedRestaurants.contains(restaurant)
-                          ? [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)]
+                          ? [colors.accentOrange, colors.accentOrange]
                           : [colors.backgroundPrimary, colors.backgroundPrimary],
                     ),
                     border: Border.all(
