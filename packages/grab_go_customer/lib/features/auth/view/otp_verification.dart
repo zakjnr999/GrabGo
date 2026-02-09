@@ -141,13 +141,13 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
         final user = User.fromJson(userData);
         await UserService().setCurrentUser(user);
 
-        if (mounted) {
-          LoadingDialog.instance().hide();
-          await Future.delayed(const Duration(milliseconds: 500));
           if (mounted) {
-            context.go("/profileUpload");
+            LoadingDialog.instance().hide();
+            await Future.delayed(const Duration(milliseconds: 500));
+            if (mounted) {
+              context.go("/homepage");
+            }
           }
-        }
       } else {
         if (mounted) {
           LoadingDialog.instance().hide();

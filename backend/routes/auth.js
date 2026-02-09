@@ -801,6 +801,10 @@ router.post("/send-verification", protect, async (req, res) => {
     if (!emailResult.success) {
       return res.status(500).json({
         success: false,
+        message:
+          emailResult.error ||
+          emailResult.message ||
+          "Failed to send verification email",
       });
     }
 

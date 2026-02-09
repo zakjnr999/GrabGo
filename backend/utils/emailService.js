@@ -1,8 +1,9 @@
 const sgMail = require('@sendgrid/mail');
+const axios = require('axios');
 const crypto = require('crypto');
 const twilio = require('twilio');
 
-// Initialize SendGrid
+// Initialize SendGrid (used for legacy email-to-SMS only)
 const initializeSendGrid = () => {
   if (!process.env.EMAIL_PASS) {
     return false;
@@ -10,6 +11,85 @@ const initializeSendGrid = () => {
 
   sgMail.setApiKey(process.env.EMAIL_PASS);
   return true;
+};
+
+// Initialize Resend (email)
+const initializeResend = () => {
+  if (!process.env.RESEND_API_KEY) {
+    return false;
+  }
+  return true;
+};
+
+const getResendFrom = () => {
+  const fromEmail =
+    process.env.RESEND_FROM_EMAIL ||
+    process.env.EMAIL_FROM_EMAIL ||
+    'noreply@grabgo.com';
+  const fromName =
+    process.env.RESEND_FROM_NAME || process.env.EMAIL_FROM_NAME || 'GrabGo';
+  return `${fromName} <${fromEmail}>`;
+};
+
+const sendEmailViaResend = async ({ to, subject, html, text }) => {
+  try {
+    if (!initializeResend()) {
+      return { success: false, message: 'Email service not configured' };
+    }
+
+    const from = getResendFrom();
+    const maxRetries = 3;
+    let lastError;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await axios.post(
+          'https://api.resend.com/emails',
+          { from, to, subject, html, text },
+          {
+            headers: {
+              Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            timeout: 30000,
+          }
+        );
+
+        const messageId =
+          response?.data?.id ||
+          response?.data?.data?.id ||
+          response?.headers?.['x-message-id'] ||
+          'sent';
+        return { success: true, messageId };
+      } catch (sendError) {
+        lastError = sendError;
+        const status = sendError.response?.status;
+        const isRetryable =
+          sendError.code === 'ETIMEDOUT' ||
+          sendError.message?.toLowerCase().includes('timeout') ||
+          status === 429 ||
+          (status && status >= 500);
+
+        if (isRetryable && attempt < maxRetries) {
+          const waitTime = attempt * 2000;
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+
+        throw sendError;
+      }
+    }
+
+    throw lastError;
+  } catch (error) {
+    const errorMessage =
+      error?.response?.data?.message ||
+      error?.response?.data?.error ||
+      error.message ||
+      'Failed to send email';
+    console.error('Error sending email via Resend:', errorMessage);
+    return { success: false, error: errorMessage };
+  }
 };
 
 // Initialize Twilio client
@@ -34,24 +114,11 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Send email verification email with OTP using SendGrid API
+// Send email verification email with OTP using Resend API
 const sendVerificationEmail = async (email, username, otp) => {
   try {
-    if (!initializeSendGrid()) {
-      return { success: false, message: 'Email service not configured' };
-    }
-
-    const fromEmail = process.env.EMAIL_FROM_EMAIL || 'noreply@grabgo.com';
-    const fromName = process.env.EMAIL_FROM_NAME || 'GrabGo';
-
-    const msg = {
-      to: email,
-      from: {
-        email: fromEmail,
-        name: fromName,
-      },
-      subject: 'Verify Your Email Address - GrabGo',
-      html: `
+    const subject = 'Verify Your Email Address - GrabGo';
+    const html = `
         <!DOCTYPE html>
         <html>
         <head>
@@ -93,8 +160,8 @@ const sendVerificationEmail = async (email, username, otp) => {
           </div>
         </body>
         </html>
-      `,
-      text: `
+      `;
+    const text = `
         Hello ${username}!
         
         Thank you for signing up with GrabGo. Please verify your email address to complete your registration.
@@ -106,69 +173,25 @@ const sendVerificationEmail = async (email, username, otp) => {
         If you didn't create an account with GrabGo, please ignore this email.
         
         © ${new Date().getFullYear()} GrabGo. All rights reserved.
-      `,
-    };
-
-    // Retry logic for connection timeouts
-    const maxRetries = 3;
-    let lastError;
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        const sendPromise = sgMail.send(msg);
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Email sending timeout after 30 seconds')), 30000);
-        });
-        
-        const [response] = await Promise.race([sendPromise, timeoutPromise]);
-        return { success: true, messageId: response.headers['x-message-id'] || 'sent' };
-      } catch (sendError) {
-        lastError = sendError;
-        
-        // If it's a connection timeout or rate limit and we have retries left, wait and retry
-        if (
-          (sendError.code === 'ETIMEDOUT' || 
-           sendError.message.includes('timeout') ||
-           sendError.code === 429) && 
-          attempt < maxRetries
-        ) {
-          const waitTime = attempt * 2000; // 2s, 4s, 6s
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-          continue;
-        }
-        
-        // If it's not a retryable error or we're out of retries, break and throw
-        throw sendError;
-      }
-    }
-    
-    // If we get here, all retries failed
-    throw lastError;
+      `;
+    return await sendEmailViaResend({
+      to: email,
+      subject,
+      html,
+      text,
+    });
   } catch (error) {
     console.error('Error sending verification email:', error.message);
     return { success: false, error: error.message };
   }
 };
 
-// Send password reset email using SendGrid API
+// Send password reset email using Resend API
 const sendPasswordResetEmail = async (email, username, token) => {
   try {
-    if (!initializeSendGrid()) {
-      return { success: false, message: 'Email service not configured' };
-    }
-
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
-    const fromEmail = process.env.EMAIL_FROM_EMAIL || 'noreply@grabgo.com';
-    const fromName = process.env.EMAIL_FROM_NAME || 'GrabGo';
-
-    const msg = {
-      to: email,
-      from: {
-        email: fromEmail,
-        name: fromName,
-      },
-      subject: 'Reset Your Password - GrabGo',
-      html: `
+    const subject = 'Reset Your Password - GrabGo';
+    const html = `
         <!DOCTYPE html>
         <html>
         <head>
@@ -208,8 +231,8 @@ const sendPasswordResetEmail = async (email, username, token) => {
           </div>
         </body>
         </html>
-      `,
-      text: `
+      `;
+    const text = `
         Hello ${username}!
         
         You requested to reset your password for your GrabGo account.
@@ -220,11 +243,13 @@ const sendPasswordResetEmail = async (email, username, token) => {
         This link will expire in 1 hour. If you didn't request a password reset, please ignore this email.
         
         © ${new Date().getFullYear()} GrabGo. All rights reserved.
-      `,
-    };
-
-    const [response] = await sgMail.send(msg);
-    return { success: true, messageId: response.headers['x-message-id'] || 'sent' };
+      `;
+    return await sendEmailViaResend({
+      to: email,
+      subject,
+      html,
+      text,
+    });
   } catch (error) {
     console.error('Error sending password reset email:', error.message);
     return { success: false, error: error.message };

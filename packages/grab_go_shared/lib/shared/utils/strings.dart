@@ -35,7 +35,7 @@ class AppStrings {
       "A verification code has been sent to your phone number. Please enter it below to continue.";
   static const String uploadProfileMain = "Add a Profile Picture";
   static const String uploadProfileSub =
-      "Let’s make your Grab Go experience more personal. Upload your photo so our riders and restaurants know it’s you!";
+      "Add your photo to personalize your Grab Go profile. It helps riders and restaurants recognize you faster.";
   static const String accountCreatedMain = "Account created successfully!";
   static const String accountCreatedSub = "You can now log in and start exploring delicious meals around you.";
   static const String register = "CREATE ACCOUNT";

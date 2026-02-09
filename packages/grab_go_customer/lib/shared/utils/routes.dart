@@ -32,7 +32,6 @@ import 'package:grab_go_customer/features/home/view/food_details.dart';
 import 'package:grab_go_customer/features/home/view/search_page.dart';
 import 'package:grab_go_customer/features/home/view/notification.dart' as notification_page;
 import 'package:grab_go_customer/features/order/view/order_tracking.dart';
-import 'package:grab_go_customer/features/profile/view/view_profile.dart';
 import 'package:grab_go_customer/features/restaurant/view/restaurant_account_creation_tracking.dart';
 import 'package:grab_go_customer/features/restaurant/view/restaurant_details.dart';
 import 'package:grab_go_customer/features/restaurant/view/restaurant_registration_success.dart';
@@ -199,26 +198,6 @@ final GoRouter appRouter = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: const EmailVerification(),
-          transitionDuration: const Duration(milliseconds: 800),
-          reverseTransitionDuration: const Duration(milliseconds: 800),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return SharedAxisTransition(
-              animation: animation,
-              secondaryAnimation: secondaryAnimation,
-              transitionType: SharedAxisTransitionType.vertical,
-              child: child,
-            );
-          },
-        );
-      },
-    ),
-    GoRoute(
-      path: "/viewProfile",
-      pageBuilder: (context, state) {
-        final user = state.extra as User;
-        return CustomTransitionPage(
-          key: state.pageKey,
-          child: ViewProfile(user: user),
           transitionDuration: const Duration(milliseconds: 800),
           reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -726,11 +705,7 @@ final GoRouter appRouter = GoRouter(
           transitionDuration: const Duration(milliseconds: 500),
           reverseTransitionDuration: const Duration(milliseconds: 500),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeThroughTransition(
-              animation: animation,
-              secondaryAnimation: secondaryAnimation,
-              child: child,
-            );
+            return FadeThroughTransition(animation: animation, secondaryAnimation: secondaryAnimation, child: child);
           },
         );
       },

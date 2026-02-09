@@ -29,6 +29,7 @@ class Account extends StatefulWidget {
 class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
   User? _user;
   bool _isLoading = true;
+  bool _isEmailHidden = true;
   late AnimationController _animationController;
 
   final CreditService _creditService = CreditService();
@@ -136,6 +137,35 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
     }
   }
 
+  bool _ensureEmailVerified() {
+    final hasUser = _user != null;
+    final isVerified = _user?.isEmailVerified == true;
+    if (!hasUser || isVerified) return true;
+    context.push("/emailVerification");
+    return false;
+  }
+
+  String _maskEmail(String email) {
+    final trimmed = email.trim();
+    if (trimmed.isEmpty) return '';
+    final parts = trimmed.split('@');
+    if (parts.length != 2) {
+      if (trimmed.length <= 2) return '...';
+      return '${trimmed.substring(0, 2)}...';
+    }
+
+    final name = parts[0];
+    final domain = parts[1];
+
+    final maskedName = name.length <= 2 ? '${name.substring(0, 1)}...' : '${name.substring(0, 2)}...';
+    final domainParts = domain.split('.');
+    final domainName = domainParts.first;
+    final domainExt = domainParts.length > 1 ? domainParts.sublist(1).join('.') : '';
+    final maskedDomain = domainName.isEmpty ? '...' : '${domainName.substring(0, domainName.length >= 2 ? 2 : 1)}...';
+
+    return '$maskedName@$maskedDomain${domainExt.isNotEmpty ? '.$domainExt' : ''}';
+  }
+
   Future<void> _clearSessionState() async {
     try {
       context.read<OrderProvider>().clearOrders();
@@ -206,47 +236,36 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                 padding: EdgeInsets.symmetric(horizontal: 20.w),
                                 child: Row(
                                   children: [
-                                    Container(
-                                      padding: EdgeInsets.all(2.r),
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: colors.textPrimary.withValues(alpha: 0.1),
-                                      ),
-                                      child: ClipOval(
-                                        child: GestureDetector(
-                                          onTap: () => context.push("/viewProfile", extra: _user),
-                                          child: Hero(
-                                            tag: _user?.profilePicture ?? "",
-                                            child: CachedNetworkImage(
-                                              height: size.width * 0.15,
-                                              width: size.width * 0.15,
-                                              fit: BoxFit.cover,
-                                              imageUrl: ImageOptimizer.getPreviewUrl(
-                                                _user?.profilePicture ?? "",
-                                                width: 200,
-                                              ),
-                                              memCacheWidth: 200,
-                                              maxHeightDiskCache: 200,
-                                              placeholder: (context, url) => Container(
-                                                height: size.width * 0.15,
-                                                width: size.width * 0.15,
-                                                padding: EdgeInsets.all(12.r),
-                                                child: SvgPicture.asset(
-                                                  Assets.icons.user,
-                                                  package: "grab_go_shared",
-                                                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                                                ),
-                                              ),
-                                              errorWidget: (context, url, error) => Container(
-                                                height: size.width * 0.15,
-                                                width: size.width * 0.15,
-                                                padding: EdgeInsets.all(12.r),
-                                                child: SvgPicture.asset(
-                                                  Assets.icons.user,
-                                                  package: "grab_go_shared",
-                                                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                                                ),
-                                              ),
+                                    ClipOval(
+                                      child: GestureDetector(
+                                        child: CachedNetworkImage(
+                                          height: size.width * 0.15,
+                                          width: size.width * 0.15,
+                                          fit: BoxFit.cover,
+                                          imageUrl: ImageOptimizer.getPreviewUrl(
+                                            _user?.profilePicture ?? "",
+                                            width: 200,
+                                          ),
+                                          memCacheWidth: 200,
+                                          maxHeightDiskCache: 200,
+                                          placeholder: (context, url) => Container(
+                                            height: size.width * 0.15,
+                                            width: size.width * 0.15,
+                                            padding: EdgeInsets.all(12.r),
+                                            child: SvgPicture.asset(
+                                              Assets.icons.user,
+                                              package: "grab_go_shared",
+                                              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                                            ),
+                                          ),
+                                          errorWidget: (context, url, error) => Container(
+                                            height: size.width * 0.15,
+                                            width: size.width * 0.15,
+                                            padding: EdgeInsets.all(12.r),
+                                            child: SvgPicture.asset(
+                                              Assets.icons.user,
+                                              package: "grab_go_shared",
+                                              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                                             ),
                                           ),
                                         ),
@@ -272,7 +291,15 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                           Row(
                                             children: [
                                               Text(
-                                                _isLoading ? "..." : (_user?.email ?? "Please log in to continue"),
+                                                _isLoading
+                                                    ? "..."
+                                                    : (_user == null
+                                                          ? "Please log in to continue"
+                                                          : (_user?.email == null || _user!.email!.isEmpty)
+                                                          ? "No email added"
+                                                          : (_isEmailHidden
+                                                                ? _maskEmail(_user!.email!)
+                                                                : _user!.email!)),
                                                 style: TextStyle(
                                                   color: colors.textPrimary.withValues(alpha: 0.9),
                                                   fontSize: 13.sp,
@@ -281,25 +308,30 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                                 overflow: TextOverflow.ellipsis,
                                                 maxLines: 1,
                                               ),
-                                              SizedBox(width: 4.w),
-
-                                              _user?.isEmailVerified == false
-                                                  ? GestureDetector(
-                                                      onTap: () {
-                                                        context.push("/emailVerification");
-                                                      },
-                                                      child: SvgPicture.asset(
-                                                        Assets.icons.infoCircle,
-                                                        package: 'grab_go_shared',
-                                                        height: 16.h,
-                                                        width: 16.w,
-                                                        colorFilter: ColorFilter.mode(
-                                                          colors.textPrimary.withValues(alpha: 0.9),
-                                                          BlendMode.srcIn,
-                                                        ),
-                                                      ),
-                                                    )
-                                                  : const SizedBox.shrink(),
+                                              SizedBox(width: 10.w),
+                                              if (!_isLoading &&
+                                                  _user != null &&
+                                                  _user?.email != null &&
+                                                  _user!.email!.isNotEmpty) ...[
+                                                SizedBox(width: 6.w),
+                                                GestureDetector(
+                                                  onTap: () {
+                                                    setState(() {
+                                                      _isEmailHidden = !_isEmailHidden;
+                                                    });
+                                                  },
+                                                  child: SvgPicture.asset(
+                                                    _isEmailHidden ? Assets.icons.eyeClosed : Assets.icons.eye,
+                                                    package: 'grab_go_shared',
+                                                    height: 18.h,
+                                                    width: 18.w,
+                                                    colorFilter: ColorFilter.mode(
+                                                      colors.textPrimary.withValues(alpha: 0.9),
+                                                      BlendMode.srcIn,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
                                             ],
                                           ),
                                         ],
@@ -309,6 +341,44 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                 ),
                               ),
                             ),
+                            SizedBox(height: 12.h),
+                            if (_user != null &&
+                                ((_user?.email == null || _user!.email!.isEmpty) || _user?.isEmailVerified == false))
+                              GestureDetector(
+                                onTap: () => context.push("/emailVerification"),
+                                child: Container(
+                                  margin: EdgeInsets.symmetric(horizontal: 20.w),
+                                  padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+                                  decoration: BoxDecoration(
+                                    color: colors.accentOrange.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      SvgPicture.asset(
+                                        Assets.icons.infoCircle,
+                                        package: 'grab_go_shared',
+                                        height: 18.h,
+                                        width: 18.w,
+                                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                      ),
+                                      SizedBox(width: 8.w),
+                                      Expanded(
+                                        child: Text(
+                                          (_user?.email == null || _user!.email!.isEmpty)
+                                              ? "Add your email for receipts and recovery."
+                                              : "Verify your email for receipts and account recovery.",
+                                          style: TextStyle(
+                                            color: colors.accentOrange,
+                                            fontSize: 12.sp,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             SizedBox(height: 24.h),
                             _buildCreditBalanceCard(colors),
                             SizedBox(height: 24.h),
@@ -339,7 +409,9 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                   context.push("/referral");
                                 }),
                                 itemTile("Change Password", Assets.icons.lock, context, () {
-                                  context.push("/orderTracking");
+                                  if (_ensureEmailVerified()) {
+                                    context.push("/orderTracking");
+                                  }
                                 }),
                               ],
                             ),
@@ -366,7 +438,9 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                   context.push("/settings");
                                 }),
                                 itemTile("Vender Registration", Assets.icons.store, context, () {
-                                  context.push("/restaurantRegistration");
+                                  if (_ensureEmailVerified()) {
+                                    context.push("/restaurantRegistration");
+                                  }
                                 }),
                                 itemTile("Notifications", Assets.icons.bell, context, () {
                                   context.push("/notification");
@@ -506,7 +580,11 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
 
   Widget _buildCreditBalanceCard(AppColorsExtension colors) {
     return GestureDetector(
-      onTap: () => context.push("/credits"),
+      onTap: () {
+        if (_ensureEmailVerified()) {
+          context.push("/credits");
+        }
+      },
       child: Container(
         margin: EdgeInsets.symmetric(horizontal: 20.w),
         padding: EdgeInsets.all(16.w),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:chopper/chopper.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/features/auth/service/phone_auth_service.dart';
@@ -21,12 +23,25 @@ class ProfileUpload extends StatefulWidget {
 
 class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderStateMixin {
   File? _selectedImage;
+  String? _selectedPresetAsset;
   bool _isUploading = false;
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _scaleAnimation;
+
+  static const List<String> _presetAvatars = [
+    'lib/assets/images/person1.png',
+    'lib/assets/images/person2.png',
+    'lib/assets/images/person3.png',
+    'lib/assets/images/person4.png',
+    'lib/assets/images/person5.png',
+    'lib/assets/images/person6.png',
+    'lib/assets/images/person7.png',
+    'lib/assets/images/person8.png',
+    'lib/assets/images/person9.png',
+  ];
 
   @override
   void initState() {
@@ -74,9 +89,11 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
 
   Future<void> _handleImageSelection(List<String> imagePaths) async {
     if (imagePaths.isEmpty) return;
-
     final file = File(imagePaths.first);
+    await _applySelectedImage(file);
+  }
 
+  Future<void> _applySelectedImage(File file, {String? presetAsset}) async {
     final fileSize = await file.length();
     if (fileSize > 5 * 1024 * 1024) {
       if (mounted) {
@@ -89,7 +106,7 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
       return;
     }
 
-    final extension = imagePaths.first.toLowerCase().split('.').last;
+    final extension = file.path.toLowerCase().split('.').last;
     if (!['jpg', 'jpeg', 'png', 'webp'].contains(extension)) {
       if (mounted) {
         AppToastMessage.show(
@@ -101,9 +118,153 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
       return;
     }
 
+    if (!mounted) return;
     setState(() {
       _selectedImage = file;
+      _selectedPresetAsset = presetAsset;
     });
+  }
+
+  Future<File> _fileFromAsset(String assetPath) async {
+    final bundlePath = assetPath.startsWith('packages/') ? assetPath : 'packages/grab_go_shared/$assetPath';
+    final data = await rootBundle.load(bundlePath);
+    final tempDir = await getTemporaryDirectory();
+    final file = File('${tempDir.path}/${assetPath.split('/').last}');
+    await file.writeAsBytes(data.buffer.asUint8List());
+    return file;
+  }
+
+  Future<void> _selectPresetAvatar(String assetPath) async {
+    try {
+      final file = await _fileFromAsset(assetPath);
+      await _applySelectedImage(file, presetAsset: assetPath);
+    } catch (e) {
+      if (mounted) {
+        AppToastMessage.show(
+          context: context,
+          message: "Failed to select avatar. Please try again.",
+          backgroundColor: context.appColors.error,
+        );
+      }
+    }
+  }
+
+  void _showProfileImageOptions() {
+    final colors = context.appColors;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: EdgeInsets.only(
+            left: KSpacing.lg.w,
+            right: KSpacing.lg.w,
+            top: KSpacing.md.h,
+            bottom: MediaQuery.of(context).viewInsets.bottom + KSpacing.lg.h,
+          ),
+          decoration: BoxDecoration(
+            color: colors.backgroundPrimary,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 42.w,
+                  height: 4.h,
+                  margin: EdgeInsets.only(bottom: KSpacing.md.h),
+                  decoration: BoxDecoration(color: colors.border, borderRadius: BorderRadius.circular(100.r)),
+                ),
+                Text(
+                  "Choose profile photo",
+                  style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                ),
+                SizedBox(height: KSpacing.md.h),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Presets",
+                    style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
+                  ),
+                ),
+                SizedBox(height: KSpacing.md.h),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _presetAvatars.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                  ),
+                  itemBuilder: (context, index) {
+                    final assetPath = _presetAvatars[index];
+                    final isSelected = assetPath == _selectedPresetAsset;
+                    return GestureDetector(
+                      onTap: () async {
+                        await _selectPresetAvatar(assetPath);
+                        if (mounted) {
+                          Navigator.of(context).pop();
+                        }
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isSelected ? colors.accentOrange : colors.border,
+                            width: isSelected ? 2 : 1,
+                          ),
+                        ),
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: ClipOval(
+                                child: Image.asset(assetPath, package: 'grab_go_shared', fit: BoxFit.cover),
+                              ),
+                            ),
+                            if (isSelected)
+                              Positioned(
+                                top: 6,
+                                right: 6,
+                                child: Container(
+                                  height: 18,
+                                  width: 18,
+                                  decoration: BoxDecoration(
+                                    color: colors.accentOrange,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: colors.backgroundPrimary, width: 1),
+                                  ),
+                                  child: const Icon(Icons.check, size: 12, color: Colors.white),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                SizedBox(height: KSpacing.lg.h),
+                AppButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    ImagePickerSheet.show(context, maxImages: 1, onImagesSelected: _handleImageSelection);
+                  },
+                  width: double.infinity,
+                  backgroundColor: colors.accentOrange,
+                  borderRadius: KBorderSize.borderRadius15,
+                  buttonText: "Choose from phone",
+                  textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15.sp),
+                ),
+                SizedBox(height: KSpacing.lg.h),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _uploadProfileImage() async {
@@ -168,13 +329,28 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
         }
       }
 
-      if (response.isSuccessful && response.body != null) {
-        final user = response.body!.userData ?? response.body!.user;
+      UserResponse? parsedResponse;
+      if (response.body == null && response.bodyString.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(response.bodyString);
+          if (decoded is Map<String, dynamic>) {
+            parsedResponse = UserResponse.fromJson(decoded);
+          } else if (decoded is Map) {
+            parsedResponse = UserResponse.fromJson(Map<String, dynamic>.from(decoded));
+          }
+        } catch (_) {}
+      }
+
+      final responseData = response.body ?? parsedResponse;
+
+      if (response.isSuccessful) {
+        final user = responseData?.userData ?? responseData?.user;
         if (user != null) {
           await UserService().setCurrentUser(user);
         }
 
         if (mounted) {
+          LoadingDialog.instance().hide();
           context.go("/confirm-address");
         }
       } else {
@@ -326,8 +502,7 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
                           bottom: 0,
                           right: 0,
                           child: GestureDetector(
-                            onTap: () =>
-                                ImagePickerSheet.show(context, maxImages: 1, onImagesSelected: _handleImageSelection),
+                            onTap: _showProfileImageOptions,
                             child: Container(
                               height: 35.h,
                               width: 35.h,
@@ -371,10 +546,10 @@ class _ProfileUpload extends State<ProfileUpload> with SingleTickerProviderState
                             ],
                           ),
                           child: AppButton(
-                            onPressed: () => _isUploading ? null : () => _uploadProfileImage(),
+                            onPressed: () => _isUploading ? null : _uploadProfileImage(),
                             backgroundColor: colors.accentOrange,
                             borderRadius: KBorderSize.borderRadius15,
-                            buttonText: _isUploading ? "Uploading..." : "Upload Photo",
+                            buttonText: _isUploading ? "Uploading..." : "Choose photo",
                             textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15.sp),
                           ),
                         ),

@@ -198,7 +198,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
 
   Future<void> _navigateAfterRegistration(BuildContext context) async {
     if (context.mounted) {
-      context.go("/confirm-address");
+      context.go("/profileUpload");
     }
   }
 
@@ -385,11 +385,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         }
 
         if (mounted) {
-          AppToastMessage.show(
-            context: context,
-            message: errorMessage,
-            backgroundColor: context.appColors.error,
-          );
+          AppToastMessage.show(context: context, message: errorMessage, backgroundColor: context.appColors.error);
           if (errorMessage.toLowerCase().contains("verify your phone")) {
             context.go("/verifyPhone");
           }
@@ -410,11 +406,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       }
 
       if (mounted) {
-        AppToastMessage.show(
-          context: context,
-          message: message,
-          backgroundColor: context.appColors.error,
-        );
+        AppToastMessage.show(context: context, message: message, backgroundColor: context.appColors.error);
       }
     } on TimeoutException {
       if (mounted) {
@@ -496,13 +488,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
           isValidatingPromoCode = false;
         });
 
-        if (mounted) {
-          AppToastMessage.show(
-            context: context,
-            message: "Promo code applied! You will receive the discount upon registration.",
-            backgroundColor: Colors.green,
-          );
-        }
+        if (mounted) {}
       } else {
         final message = data['error']?.toString() ?? data['message']?.toString();
         setState(() {
@@ -553,23 +539,20 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                     scale: _scaleAnimation,
                     child: FadeTransition(
                       opacity: _fadeAnimation,
-                      child: GestureDetector(
-                        onTap: () => context.go("/profileUpload"),
-                        child: Container(
-                          height: 100.h,
-                          width: 100.h,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: colors.accentOrange.withValues(alpha: 0.2),
-                          ),
-                          child: Center(
-                            child: SvgPicture.asset(
-                              Assets.icons.user,
-                              package: 'grab_go_shared',
-                              height: 50.h,
-                              width: 50.h,
-                              colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                            ),
+                      child: Container(
+                        height: 100.h,
+                        width: 100.h,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: colors.accentOrange.withValues(alpha: 0.2),
+                        ),
+                        child: Center(
+                          child: SvgPicture.asset(
+                            Assets.icons.user,
+                            package: 'grab_go_shared',
+                            height: 50.h,
+                            width: 50.h,
+                            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                           ),
                         ),
                       ),

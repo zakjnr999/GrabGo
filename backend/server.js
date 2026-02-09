@@ -616,8 +616,11 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📡 API available at http://localhost:${PORT}/api`);
+  if (!process.env.RESEND_API_KEY) {
+    console.log("⚠️  Email service (Resend) not configured");
+  }
   if (!process.env.EMAIL_PASS) {
-    console.log("⚠️  Email service not configured");
+    console.log("⚠️  SendGrid not configured (used only for legacy email-to-SMS)");
   }
 });
 
