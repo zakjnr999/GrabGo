@@ -292,7 +292,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         password: passwordController.text,
         dateOfBirth: bdayController.text.trim(),
         promoCode: promoCodeController.text.trim().isNotEmpty ? promoCodeController.text.trim() : null,
-        phone: phoneDigits.isNotEmpty ? int.tryParse(phoneDigits) : null,
+        phone: phoneDigits.isNotEmpty ? phoneDigits : null,
         phoneVerificationToken: verifiedToken,
       );
       final response = await authService
@@ -315,9 +315,9 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       LoadingDialog.instance().hide();
 
       UserResponse? parsedResponse;
-      if (response.body == null && response.bodyString != null && response.bodyString!.isNotEmpty) {
+      if (response.body == null && response.bodyString.isNotEmpty) {
         try {
-          final decoded = jsonDecode(response.bodyString!);
+          final decoded = jsonDecode(response.bodyString);
           if (decoded is Map<String, dynamic>) {
             parsedResponse = UserResponse.fromJson(decoded);
           } else if (decoded is Map) {
@@ -329,7 +329,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       final responseData = response.body ?? parsedResponse;
 
       if (response.isSuccessful && responseData != null) {
-        final message = responseData.message;
         final token = responseData.token;
         User? user = responseData.userData ?? responseData.user;
 
@@ -348,14 +347,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         _lastRegistrationAttempt = null;
 
         if (mounted) {
-          AppToastMessage.show(context: context, message: message, backgroundColor: Colors.green);
-
           if (token == null || token.isEmpty || user == null) {
-            AppToastMessage.show(
-              context: context,
-              message: "Account created. Please log in to continue.",
-              backgroundColor: context.appColors.warning,
-            );
             context.go("/login");
           } else {
             await _navigateAfterRegistration(context);
@@ -367,9 +359,21 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
           final error = response.error;
           if (error is Map && error['message'] != null) {
             errorMessage = error['message']?.toString();
+          } else if (error is Map && error['error'] != null) {
+            errorMessage = error['error']?.toString();
           } else if (error != null) {
             errorMessage = error.toString();
           }
+        }
+
+        if ((errorMessage == null || errorMessage.isEmpty) && response.bodyString.isNotEmpty) {
+          try {
+            final decoded = jsonDecode(response.bodyString);
+            if (decoded is Map) {
+              final map = Map<String, dynamic>.from(decoded);
+              errorMessage = map['message']?.toString() ?? map['error']?.toString();
+            }
+          } catch (_) {}
         }
 
         errorMessage ??= "Registration failed.";
@@ -381,8 +385,11 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         }
 
         if (mounted) {
-          AppToastMessage.show(context: context, message: errorMessage, backgroundColor: context.appColors.error);
-
+          AppToastMessage.show(
+            context: context,
+            message: errorMessage,
+            backgroundColor: context.appColors.error,
+          );
           if (errorMessage.toLowerCase().contains("verify your phone")) {
             context.go("/verifyPhone");
           }
@@ -403,7 +410,11 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       }
 
       if (mounted) {
-        AppToastMessage.show(context: context, message: message, backgroundColor: context.appColors.error);
+        AppToastMessage.show(
+          context: context,
+          message: message,
+          backgroundColor: context.appColors.error,
+        );
       }
     } on TimeoutException {
       if (mounted) {
@@ -422,9 +433,11 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         LoadingDialog.instance().hide();
       }
       if (mounted) {
+        final rawMessage = e.toString();
+        final cleanedMessage = rawMessage.replaceFirst('Exception:', '').trim();
         AppToastMessage.show(
           context: context,
-          message: "An unexpected error occurred. Please try again.",
+          message: cleanedMessage.isNotEmpty ? cleanedMessage : "An unexpected error occurred. Please try again.",
           backgroundColor: context.appColors.error,
         );
       }
@@ -486,7 +499,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
         if (mounted) {
           AppToastMessage.show(
             context: context,
-            message: data['message']?.toString() ?? "Promo code applied. It will be used at checkout.",
+            message: "Promo code applied! You will receive the discount upon registration.",
             backgroundColor: Colors.green,
           );
         }

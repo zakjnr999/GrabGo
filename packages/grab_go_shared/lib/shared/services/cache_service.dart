@@ -747,6 +747,16 @@ class CacheService {
     }
   }
 
+  /// Clear recent order items
+  static Future<bool> clearRecentOrderItems() async {
+    try {
+      return await _instance.remove('recent_order_items');
+    } catch (e) {
+      debugPrint('Error clearing recent order items: $e');
+      return false;
+    }
+  }
+
   /// Save per-chat text draft
   static Future<bool> saveChatDraft(String chatId, String text) async {
     try {
@@ -1435,6 +1445,7 @@ class CacheService {
       await clearCredentials();
       await clearCartItems();
       await clearOrderHistory();
+      await clearRecentOrderItems();
       await clearSearchHistory();
       await _clearFavoriteRestaurants();
       await clearFavoriteFoods();

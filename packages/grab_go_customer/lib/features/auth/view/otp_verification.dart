@@ -116,7 +116,7 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
           });
           AppToastMessage.show(
             context: context,
-            message: "Invalid OTP. Please try again.",
+            message: error.isNotEmpty ? error : "Invalid OTP. Please try again.",
             backgroundColor: context.appColors.error,
           );
         }
@@ -128,11 +128,6 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
       if (verificationToken != null && verificationToken.isNotEmpty) {
         PhoneAuthService().setVerificationToken(verificationToken);
         LoadingDialog.instance().hide();
-        AppToastMessage.show(
-          context: context,
-          message: "Phone verified successfully! Complete your registration.",
-          backgroundColor: Colors.green,
-        );
         await Future.delayed(const Duration(milliseconds: 300));
         if (mounted) {
           context.go("/register");
@@ -148,12 +143,6 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
 
         if (mounted) {
           LoadingDialog.instance().hide();
-          AppToastMessage.show(
-            context: context,
-            message: "Phone verified successfully!",
-            backgroundColor: Colors.green,
-          );
-
           await Future.delayed(const Duration(milliseconds: 500));
           if (mounted) {
             context.go("/profileUpload");
@@ -210,7 +199,6 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
         if (mounted) {
           LoadingDialog.instance().hide();
           _startCountdown();
-          AppToastMessage.show(context: context, message: "OTP resent successfully!", backgroundColor: Colors.green);
         }
       },
       onError: (error) {
@@ -391,49 +379,26 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
                         ),
                         SizedBox(height: KSpacing.lg25.h),
 
-                        GestureDetector(
-                          onTap: verificationCode != null && verificationCode!.length == 6 && !isLoading
-                              ? () {
-                                  _verifyOTP(verificationCode!);
-                                }
-                              : null,
-                          child: Container(
-                            height: 56.h,
-                            decoration: BoxDecoration(
-                              gradient: verificationCode != null && verificationCode!.length == 6 && !isLoading
-                                  ? LinearGradient(
-                                      colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
-                                      begin: Alignment.centerLeft,
-                                      end: Alignment.centerRight,
-                                    )
-                                  : null,
-                              color: verificationCode != null && verificationCode!.length == 6 && !isLoading
-                                  ? null
-                                  : colors.inputBorder,
-                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                              boxShadow: verificationCode != null && verificationCode!.length == 6 && !isLoading
-                                  ? [
-                                      BoxShadow(
-                                        color: colors.accentOrange.withValues(alpha: 0.4),
-                                        blurRadius: 20,
-                                        offset: const Offset(0, 8),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: Center(
-                              child: Text(
-                                isLoading ? "Verifying..." : "Verify Code",
-                                style: TextStyle(
-                                  color: verificationCode != null && verificationCode!.length == 6 && !isLoading
-                                      ? Colors.white
-                                      : colors.textSecondary,
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ),
+                        AppButton(
+                          onPressed: () {
+                            verificationCode != null && verificationCode!.length == 6 && !isLoading
+                                ? () {
+                                    _verifyOTP(verificationCode!);
+                                  }
+                                : null;
+                          },
+                          backgroundColor: verificationCode != null && verificationCode!.length == 6 && !isLoading
+                              ? null
+                              : colors.inputBorder,
+                          borderRadius: KBorderSize.borderRadius15,
+                          buttonText: isLoading ? "Verifying..." : "Verify Code",
+                          textStyle: TextStyle(
+                            color: verificationCode != null && verificationCode!.length == 6 && !isLoading
+                                ? Colors.white
+                                : colors.textSecondary,
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
                           ),
                         ),
                         SizedBox(height: KSpacing.lg.h),

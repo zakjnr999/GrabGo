@@ -75,9 +75,10 @@ class _CheckoutState extends State<Checkout> {
     }
   }
 
-  String? _formatPhone(int? phone) {
+  String? _formatPhone(String? phone) {
     if (phone == null) return null;
-    final digits = phone.toString();
+    final digits = phone.replaceAll(RegExp(r'\\D'), '');
+    if (digits.isEmpty) return null;
     if (digits.startsWith('0') && digits.length == 10) {
       return '+233${digits.substring(1)}';
     }
@@ -87,7 +88,7 @@ class _CheckoutState extends State<Checkout> {
     if (digits.startsWith('233') && digits.length >= 12) {
       return '+$digits';
     }
-    return digits;
+    return phone;
   }
 
   Future<void> _loadSavedAddresses() async {
@@ -298,7 +299,6 @@ class _CheckoutState extends State<Checkout> {
                             ),
                           ),
                         ),
-                        SizedBox(height: 10.h),
                         if (_isLoadingAddresses) ...[
                           _buildAddressShimmerTile(colors, isDark),
                           _buildAddressShimmerTile(colors, isDark),
@@ -1150,11 +1150,7 @@ class _CheckoutState extends State<Checkout> {
         if (!mounted) return;
         context.go(
           '/paymentConfirming',
-          extra: {
-            'orderId': orderId,
-            'reference': result.reference ?? reference,
-            'paymentData': paymentData,
-          },
+          extra: {'orderId': orderId, 'reference': result.reference ?? reference, 'paymentData': paymentData},
         );
         return;
       }
@@ -1315,12 +1311,11 @@ class _CheckoutState extends State<Checkout> {
 
   Widget _buildAddressShimmerTile(AppColorsExtension colors, bool isDark) {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
+      margin: EdgeInsets.symmetric(horizontal: 0.w, vertical: 6.h),
       padding: EdgeInsets.all(16.r),
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-        border: Border.all(color: colors.inputBorder.withValues(alpha: 0.5), width: 1),
       ),
       child: Row(
         children: [
@@ -1635,12 +1630,11 @@ class _CheckoutState extends State<Checkout> {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
+        margin: EdgeInsets.symmetric(horizontal: 0.w, vertical: 6.h),
         padding: EdgeInsets.all(16.r),
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.5), width: 1),
         ),
         child: Row(
           children: [

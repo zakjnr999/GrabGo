@@ -139,14 +139,6 @@ router.post("/", async (req, res) => {
 
       const token = generateToken(user.id);
 
-      // Grant welcome credits to new user
-      try {
-        await creditService.grantWelcomeCredits(user.id, 5.0);
-        console.log(`🎁 Welcome credits granted to new user ${user.id}`);
-      } catch (creditError) {
-        console.error("Failed to grant welcome credits:", creditError.message);
-      }
-
       // Apply signup promo credits if provided
       const signupPromoCode = promoCode || referralCode;
       if (signupPromoCode) {
@@ -242,14 +234,6 @@ router.post("/", async (req, res) => {
     });
 
     const token = generateToken(user.id);
-
-    // Grant welcome credits to new user
-    try {
-      await creditService.grantWelcomeCredits(user.id, 5.0);
-      console.log(`🎁 Welcome credits granted to new user ${user.id}`);
-    } catch (creditError) {
-      console.error("Failed to grant welcome credits:", creditError.message);
-    }
 
     // Apply signup promo credits if provided
     const signupPromoCode = promoCode || referralCode;

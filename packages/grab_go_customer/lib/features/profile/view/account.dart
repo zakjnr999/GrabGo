@@ -9,6 +9,12 @@ import 'package:grab_go_customer/shared/viewmodels/theme_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
+import 'package:grab_go_customer/features/order/viewmodel/order_provider.dart';
+import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
+import 'package:grab_go_customer/features/home/viewmodel/food_discovery_provider.dart';
+import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart';
+import 'package:grab_go_customer/features/pharmacy/viewmodel/pharmacy_provider.dart';
+import 'package:grab_go_customer/features/grabmart/viewmodel/grabmart_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
@@ -121,12 +127,43 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
     );
 
     if (shouldLogout == true) {
+      await _clearSessionState();
       await UserService().logout();
 
       if (mounted) {
         context.go('/login');
       }
     }
+  }
+
+  Future<void> _clearSessionState() async {
+    try {
+      context.read<OrderProvider>().clearOrders();
+    } catch (_) {}
+
+    try {
+      await context.read<CartProvider>().clearCart();
+    } catch (_) {}
+
+    try {
+      await context.read<FavoritesProvider>().clearFavorites();
+    } catch (_) {}
+
+    try {
+      context.read<FoodDiscoveryProvider>().clearUserHistory();
+    } catch (_) {}
+
+    try {
+      context.read<GroceryProvider>().clearAll();
+    } catch (_) {}
+
+    try {
+      context.read<PharmacyProvider>().clearData();
+    } catch (_) {}
+
+    try {
+      context.read<GrabMartProvider>().clearData();
+    } catch (_) {}
   }
 
   @override
@@ -193,9 +230,11 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                               placeholder: (context, url) => Container(
                                                 height: size.width * 0.15,
                                                 width: size.width * 0.15,
-                                                decoration: BoxDecoration(
-                                                  color: colors.backgroundPrimary,
-                                                  shape: BoxShape.circle,
+                                                padding: EdgeInsets.all(12.r),
+                                                child: SvgPicture.asset(
+                                                  Assets.icons.user,
+                                                  package: "grab_go_shared",
+                                                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                                                 ),
                                               ),
                                               errorWidget: (context, url, error) => Container(

@@ -9,7 +9,7 @@ class RegisterRequest {
   final String password;
   @JsonKey(name: 'DateOfBirth')
   final String? dateOfBirth;
-  final int? phone;
+  final String? phone;
   final String? profilePicture;
   final String? promoCode;
   final String? referralCode;
@@ -52,7 +52,7 @@ class User {
   final String? id;
   final String? username;
   final String? email;
-  final int? phone;
+  final String? phone;
   final bool? isPhoneVerified;
   final bool? isEmailVerified;
   @JsonKey(name: 'DateOfBirth')

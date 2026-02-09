@@ -139,7 +139,14 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
   Future<void> _navigateAfterLogin(BuildContext context) async {
     final locationProvider = Provider.of<NativeLocationProvider>(context, listen: false);
 
-    final hasChange = await locationProvider.hasSignificantLocationChange();
+    bool hasChange = false;
+    try {
+      hasChange = await locationProvider
+          .hasSignificantLocationChange()
+          .timeout(const Duration(seconds: 5));
+    } catch (_) {
+      hasChange = false;
+    }
 
     if (context.mounted) {
       if (hasChange) {

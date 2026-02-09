@@ -478,4 +478,17 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
     _state = newState;
     notifyListeners();
   }
+
+  /// Clear user-specific discovery data (order history + recent items)
+  void clearUserHistory() {
+    _updateState(
+      _state.copyWith(
+        recentOrderItems: [],
+        orderHistoryItems: [],
+        isLoadingRecentItems: false,
+        isLoadingOrderHistory: false,
+        recentItemsError: null,
+      ),
+    );
+  }
 }
