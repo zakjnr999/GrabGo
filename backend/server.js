@@ -29,6 +29,7 @@ const io = new Server(server, {
 
 // Initialize Socket.IO singleton for global access
 initIO(io);
+app.set('io', io);
 
 // Initialize WebRTC signaling
 const webrtcSignaling = new WebRTCSignalingService(io);
