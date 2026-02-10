@@ -14,6 +14,10 @@
         <item name="android:windowDisablePreview">true</item>
         <item name="android:windowSoftInputMode">adjustResize</item>
         <item name="android:hardwareAccelerated">true</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
     </style>
     
     <!-- Normal theme -->
@@ -28,5 +32,9 @@
         <item name="android:windowDisablePreview">false</item>
         <item name="android:windowSoftInputMode">adjustResize</item>
         <item name="android:hardwareAccelerated">true</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
     </style>
 </resources>

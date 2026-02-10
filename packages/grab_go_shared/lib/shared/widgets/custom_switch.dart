@@ -79,9 +79,9 @@ class _CustomSwitchState extends State<CustomSwitch> with SingleTickerProviderSt
     final activeColor = widget.activeColor ?? const Color(0xFFFF6B35);
     final inactiveColor = widget.inactiveColor ?? (isDark ? Colors.grey[800]! : Colors.grey[300]!);
     final thumbColor = widget.thumbColor ?? Colors.white;
-    final width = widget.width ?? 52.w;
-    final height = widget.height ?? 28.h;
-    final thumbSize = height - 4.h;
+    final width = widget.width ?? 52;
+    final height = widget.height ?? 28;
+    final thumbSize = height - 4;
 
     return GestureDetector(
       onTap: () => widget.onChanged(!widget.value),
@@ -111,8 +111,8 @@ class _CustomSwitchState extends State<CustomSwitch> with SingleTickerProviderSt
                 AnimatedPositioned(
                   duration: widget.duration ?? const Duration(milliseconds: 200),
                   curve: Curves.easeInOut,
-                  left: widget.value ? width - thumbSize - 2.w : 2.w,
-                  top: 2.h,
+                  left: widget.value ? width - thumbSize - 2 : 2,
+                  top: 2,
                   child: Transform.scale(
                     scale: _scaleAnimation.value,
                     child: Container(

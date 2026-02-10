@@ -214,7 +214,6 @@ class Cart extends StatelessWidget {
                                           provider.setUseCredits(value);
                                         },
                                         activeColor: colors.accentOrange,
-                                        inactiveColor: colors.inputBackground,
                                       ),
                                     ],
                                   ),
