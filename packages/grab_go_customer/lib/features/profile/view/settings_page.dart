@@ -95,331 +95,332 @@ class _SettingsPageState extends State<SettingsPage> {
 
         SystemChrome.setSystemUIOverlayStyle(systemUiOverlayStyle);
 
-        return Scaffold(
-          backgroundColor: colors.backgroundPrimary,
-          body: Column(
-            children: [
-              Padding(
-                padding: EdgeInsets.only(top: padding.top + 10, left: 20.w, right: 20.w, bottom: 16.h),
-                child: Row(
-                  children: [
-                    Container(
-                      height: 44,
-                      width: 44,
-                      decoration: BoxDecoration(
-                        color: colors.backgroundSecondary,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
-                            spreadRadius: 0,
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () => context.pop(),
-                          customBorder: const CircleBorder(),
-                          child: Padding(
-                            padding: EdgeInsets.all(10.r),
-                            child: SvgPicture.asset(
-                              Assets.icons.navArrowLeft,
-                              package: 'grab_go_shared',
-                              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 16.w),
-                    Text(
-                      "Settings",
-                      style: TextStyle(
-                        fontFamily: "Lato",
-                        package: 'grab_go_shared',
-                        color: colors.textPrimary,
-                        fontSize: 20.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Divider(color: colors.backgroundSecondary, height: 1.h, thickness: 1),
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: systemUiOverlayStyle,
+          child: Scaffold(
+            backgroundColor: colors.backgroundPrimary,
+            body: Column(
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(top: padding.top + 10, left: 20.w, right: 20.w, bottom: 16.h),
+                  child: Row(
                     children: [
-                      SizedBox(height: 12.h),
-                      _buildSectionHeader("Appearance", colors),
-                      _buildSection(isDark, colors, [
-                        _buildThemeSelector(themeProvider, colors, isDark),
-                        _buildFontSizeSelector(settingsProvider, colors),
-                      ]),
-                      SizedBox(height: 16.h),
-
-                      _buildSectionHeader("Notifications", colors),
-                      _buildSection(isDark, colors, [
-                        _buildSubsectionHeader("Essential", colors),
-                        _buildToggleTile("Order Updates", Assets.icons.package, settingsProvider.orderUpdatesEnabled, (
-                          value,
-                        ) {
-                          settingsProvider.setOrderUpdates(value);
-                        }, colors),
-                        _buildToggleTile(
-                          "Delivery Alerts",
-                          Assets.icons.deliveryTruck,
-                          settingsProvider.deliveryUpdatesEnabled,
-                          (value) {
-                            settingsProvider.setDeliveryUpdates(value);
-                          },
-                          colors,
-                        ),
-                        _buildToggleTile(
-                          "Payment Confirmations",
-                          Assets.icons.alarm,
-                          settingsProvider.paymentUpdatesEnabled,
-                          (value) {
-                            settingsProvider.setPaymentUpdates(value);
-                          },
-                          colors,
-                        ),
-
-                        _buildCollapsibleSection(
-                          "Social",
-                          Assets.icons.chatBubble,
-                          [
-                            _buildToggleTile(
-                              "Chat Messages",
-                              Assets.icons.chatBubble,
-                              settingsProvider.chatMessagesEnabled,
-                              (value) {
-                                settingsProvider.setChatMessages(value);
-                              },
-                              colors,
-                            ),
-                            _buildToggleTile(
-                              "Comment Replies",
-                              Assets.icons.chatBubble,
-                              settingsProvider.commentRepliesEnabled,
-                              (value) {
-                                settingsProvider.setCommentReplies(value);
-                              },
-                              colors,
-                            ),
-                            _buildToggleTile(
-                              "Comment Reactions",
-                              Assets.icons.heart,
-                              settingsProvider.commentReactionsEnabled,
-                              (value) {
-                                settingsProvider.setCommentReactions(value);
-                              },
-                              colors,
-                            ),
-                          ],
-                          colors,
-                          isDark,
-                          _socialExpanded,
-                          (expanded) => setState(() => _socialExpanded = expanded),
-                        ),
-
-                        // Promotions & Offers (Collapsible)
-                        _buildCollapsibleSection(
-                          "Promotions & Offers",
-                          Assets.icons.gift,
-                          [
-                            _buildToggleTile(
-                              "All Promotions",
-                              Assets.icons.gift,
-                              settingsProvider.promoNotificationsEnabled,
-                              (value) {
-                                settingsProvider.setPromoNotifications(value);
-                              },
-                              colors,
-                            ),
-                            _buildToggleTile(
-                              "Cart Reminders",
-                              Assets.icons.cart,
-                              settingsProvider.cartRemindersEnabled,
-                              (value) {
-                                settingsProvider.setCartReminders(value);
-                              },
-                              colors,
-                            ),
-                            _buildToggleTile(
-                              "Favorites Reminders",
-                              Assets.icons.heart,
-                              settingsProvider.favoritesRemindersEnabled,
-                              (value) {
-                                settingsProvider.setFavoritesReminders(value);
-                              },
-                              colors,
-                            ),
-                            _buildToggleTile(
-                              "Reorder Suggestions",
-                              Assets.icons.refresh,
-                              settingsProvider.reorderSuggestionsEnabled,
-                              (value) {
-                                settingsProvider.setReorderSuggestions(value);
-                              },
-                              colors,
-                            ),
-                            _buildToggleTile(
-                              "Re-engagement Reminders",
-                              Assets.icons.bell,
-                              settingsProvider.reengagementRemindersEnabled,
-                              (value) {
-                                settingsProvider.setReengagementReminders(value);
-                              },
-                              colors,
-                            ),
-                          ],
-                          colors,
-                          isDark,
-                          _promosExpanded,
-                          (expanded) => setState(() => _promosExpanded = expanded),
-                        ),
-
-                        _buildCollapsibleSection(
-                          "Other",
-                          Assets.icons.settings,
-                          [
-                            _buildToggleTile(
-                              "Referral Updates",
-                              Assets.icons.group,
-                              settingsProvider.referralUpdatesEnabled,
-                              (value) {
-                                settingsProvider.setReferralUpdates(value);
-                              },
-                              colors,
-                            ),
-                            _buildToggleTile(
-                              "System Updates",
-                              Assets.icons.bell,
-                              settingsProvider.systemUpdatesEnabled,
-                              (value) {
-                                settingsProvider.setSystemUpdates(value);
-                              },
-                              colors,
-                            ),
-                            _buildToggleTile(
-                              "Notification Sound",
-                              Assets.icons.soundHigh,
-                              settingsProvider.notificationSoundEnabled,
-                              (value) {
-                                settingsProvider.setNotificationSound(value);
-                              },
-                              colors,
-                            ),
-                          ],
-                          colors,
-                          isDark,
-                          _otherExpanded,
-                          (expanded) => setState(() => _otherExpanded = expanded),
-                        ),
-                      ]),
-                      SizedBox(height: 24.h),
-
-                      _buildSectionHeader("Privacy & Security", colors),
-                      _buildSection(isDark, colors, [
-                        _buildSubsectionHeader("Location Services", colors),
-                        _buildActionTile("Permission Status", Assets.icons.lock, "Manage permissions", () async {
-                          final hasPermission = await LocationService.hasPermission();
-                          if (!hasPermission) {
-                            await LocationService.openAppSettings();
-                          }
-                        }, colors),
-                        _buildActionTile(
-                          "Clear Location Cache",
-                          Assets.icons.brushCleaning,
-                          "Remove cached location",
-                          () async {
-                            LocationService.clearCache();
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Location cache cleared'), backgroundColor: Colors.green),
-                              );
-                            }
-                          },
-                          colors,
-                        ),
-
-                        _buildSubsectionHeader("Data & Storage", colors),
-                        _buildActionTile("Clear Cache", Assets.icons.brushCleaning, _cacheSize, _clearCache, colors),
-                        _buildActionTile(
-                          "Clear Search History",
-                          Assets.icons.brushCleaning,
-                          "Remove recent searches",
-                          () {
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Search history cleared'), backgroundColor: Colors.green),
-                              );
-                            }
-                          },
-                          colors,
-                        ),
-                        _buildActionTile("Download My Data", Assets.icons.download, "Export your data", () {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Data export feature coming soon'),
-                                backgroundColor: Colors.blue,
+                      Container(
+                        height: 44,
+                        width: 44,
+                        decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => context.pop(),
+                            customBorder: const CircleBorder(),
+                            child: Padding(
+                              padding: EdgeInsets.all(10.r),
+                              child: SvgPicture.asset(
+                                Assets.icons.navArrowLeft,
+                                package: 'grab_go_shared',
+                                colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                               ),
-                            );
-                          }
-                        }, colors),
-
-                        _buildSubsectionHeader("Account Security", colors),
-                        _buildActionTile("Change Password", Assets.icons.lock, "Update your password", () {
-                          context.push("/orderTracking");
-                        }, colors),
-                        _buildToggleTile(
-                          "Biometric Login",
-                          Assets.icons.fingerprintScan,
-                          settingsProvider.biometricLoginEnabled,
-                          (value) {
-                            settingsProvider.setBiometricLogin(value);
-                          },
-                          colors,
+                            ),
+                          ),
                         ),
-                      ]),
-                      SizedBox(height: 24.h),
+                      ),
+                      SizedBox(width: 16.w),
+                      Text(
+                        "Settings",
+                        style: TextStyle(
+                          fontFamily: "Lato",
+                          package: 'grab_go_shared',
+                          color: colors.textPrimary,
+                          fontSize: 20.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Divider(color: colors.backgroundSecondary, height: 1.h, thickness: 1),
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(height: 12.h),
+                        _buildSectionHeader("Appearance", colors),
+                        _buildSection(isDark, colors, [
+                          _buildThemeSelector(themeProvider, colors, isDark),
+                          _buildFontSizeSelector(settingsProvider, colors),
+                        ]),
+                        SizedBox(height: 16.h),
 
-                      _buildSectionHeader("App Preferences", colors),
-                      _buildSection(isDark, colors, [
-                        _buildLanguageSelector(settingsProvider, colors),
-                        _buildActionTile(
-                          "Default Pickup Location",
-                          Assets.icons.mapPin,
-                          settingsProvider.defaultPickupLocation.isEmpty
-                              ? "Set location"
-                              : settingsProvider.defaultPickupLocation,
-                          () {
+                        _buildSectionHeader("Notifications", colors),
+                        _buildSection(isDark, colors, [
+                          _buildSubsectionHeader("Essential", colors),
+                          _buildToggleTile(
+                            "Order Updates",
+                            Assets.icons.package,
+                            settingsProvider.orderUpdatesEnabled,
+                            (value) {
+                              settingsProvider.setOrderUpdates(value);
+                            },
+                            colors,
+                          ),
+                          _buildToggleTile(
+                            "Delivery Alerts",
+                            Assets.icons.deliveryTruck,
+                            settingsProvider.deliveryUpdatesEnabled,
+                            (value) {
+                              settingsProvider.setDeliveryUpdates(value);
+                            },
+                            colors,
+                          ),
+                          _buildToggleTile(
+                            "Payment Confirmations",
+                            Assets.icons.alarm,
+                            settingsProvider.paymentUpdatesEnabled,
+                            (value) {
+                              settingsProvider.setPaymentUpdates(value);
+                            },
+                            colors,
+                          ),
+
+                          _buildCollapsibleSection(
+                            "Social",
+                            Assets.icons.chatBubble,
+                            [
+                              _buildToggleTile(
+                                "Chat Messages",
+                                Assets.icons.chatBubble,
+                                settingsProvider.chatMessagesEnabled,
+                                (value) {
+                                  settingsProvider.setChatMessages(value);
+                                },
+                                colors,
+                              ),
+                              _buildToggleTile(
+                                "Comment Replies",
+                                Assets.icons.chatBubble,
+                                settingsProvider.commentRepliesEnabled,
+                                (value) {
+                                  settingsProvider.setCommentReplies(value);
+                                },
+                                colors,
+                              ),
+                              _buildToggleTile(
+                                "Comment Reactions",
+                                Assets.icons.heart,
+                                settingsProvider.commentReactionsEnabled,
+                                (value) {
+                                  settingsProvider.setCommentReactions(value);
+                                },
+                                colors,
+                              ),
+                            ],
+                            colors,
+                            isDark,
+                            _socialExpanded,
+                            (expanded) => setState(() => _socialExpanded = expanded),
+                          ),
+
+                          // Promotions & Offers (Collapsible)
+                          _buildCollapsibleSection(
+                            "Promotions & Offers",
+                            Assets.icons.gift,
+                            [
+                              _buildToggleTile(
+                                "All Promotions",
+                                Assets.icons.gift,
+                                settingsProvider.promoNotificationsEnabled,
+                                (value) {
+                                  settingsProvider.setPromoNotifications(value);
+                                },
+                                colors,
+                              ),
+                              _buildToggleTile(
+                                "Cart Reminders",
+                                Assets.icons.cart,
+                                settingsProvider.cartRemindersEnabled,
+                                (value) {
+                                  settingsProvider.setCartReminders(value);
+                                },
+                                colors,
+                              ),
+                              _buildToggleTile(
+                                "Favorites Reminders",
+                                Assets.icons.heart,
+                                settingsProvider.favoritesRemindersEnabled,
+                                (value) {
+                                  settingsProvider.setFavoritesReminders(value);
+                                },
+                                colors,
+                              ),
+                              _buildToggleTile(
+                                "Reorder Suggestions",
+                                Assets.icons.refresh,
+                                settingsProvider.reorderSuggestionsEnabled,
+                                (value) {
+                                  settingsProvider.setReorderSuggestions(value);
+                                },
+                                colors,
+                              ),
+                              _buildToggleTile(
+                                "Re-engagement Reminders",
+                                Assets.icons.bell,
+                                settingsProvider.reengagementRemindersEnabled,
+                                (value) {
+                                  settingsProvider.setReengagementReminders(value);
+                                },
+                                colors,
+                              ),
+                            ],
+                            colors,
+                            isDark,
+                            _promosExpanded,
+                            (expanded) => setState(() => _promosExpanded = expanded),
+                          ),
+
+                          _buildCollapsibleSection(
+                            "Other",
+                            Assets.icons.settings,
+                            [
+                              _buildToggleTile(
+                                "Referral Updates",
+                                Assets.icons.group,
+                                settingsProvider.referralUpdatesEnabled,
+                                (value) {
+                                  settingsProvider.setReferralUpdates(value);
+                                },
+                                colors,
+                              ),
+                              _buildToggleTile(
+                                "System Updates",
+                                Assets.icons.bell,
+                                settingsProvider.systemUpdatesEnabled,
+                                (value) {
+                                  settingsProvider.setSystemUpdates(value);
+                                },
+                                colors,
+                              ),
+                              _buildToggleTile(
+                                "Notification Sound",
+                                Assets.icons.soundHigh,
+                                settingsProvider.notificationSoundEnabled,
+                                (value) {
+                                  settingsProvider.setNotificationSound(value);
+                                },
+                                colors,
+                              ),
+                            ],
+                            colors,
+                            isDark,
+                            _otherExpanded,
+                            (expanded) => setState(() => _otherExpanded = expanded),
+                          ),
+                        ]),
+                        SizedBox(height: 24.h),
+
+                        _buildSectionHeader("Privacy & Security", colors),
+                        _buildSection(isDark, colors, [
+                          _buildSubsectionHeader("Location Services", colors),
+                          _buildActionTile("Permission Status", Assets.icons.lock, "Manage permissions", () async {
+                            final hasPermission = await LocationService.hasPermission();
+                            if (!hasPermission) {
+                              await LocationService.openAppSettings();
+                            }
+                          }, colors),
+                          _buildActionTile(
+                            "Clear Location Cache",
+                            Assets.icons.brushCleaning,
+                            "Remove cached location",
+                            () async {
+                              LocationService.clearCache();
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Location cache cleared'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              }
+                            },
+                            colors,
+                          ),
+
+                          _buildSubsectionHeader("Data & Storage", colors),
+                          _buildActionTile("Clear Cache", Assets.icons.brushCleaning, _cacheSize, _clearCache, colors),
+                          _buildActionTile(
+                            "Clear Search History",
+                            Assets.icons.brushCleaning,
+                            "Remove recent searches",
+                            () {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Search history cleared'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              }
+                            },
+                            colors,
+                          ),
+                          _buildActionTile("Download My Data", Assets.icons.download, "Export your data", () {
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Location picker coming soon'),
+                                  content: Text('Data export feature coming soon'),
                                   backgroundColor: Colors.blue,
                                 ),
                               );
                             }
-                          },
-                          colors,
-                        ),
-                      ]),
-                      SizedBox(height: 24.h),
-                    ],
+                          }, colors),
+
+                          _buildSubsectionHeader("Account Security", colors),
+                          _buildActionTile("Change Password", Assets.icons.lock, "Update your password", () {
+                            context.push("/orderTracking");
+                          }, colors),
+                          _buildToggleTile(
+                            "Biometric Login",
+                            Assets.icons.fingerprintScan,
+                            settingsProvider.biometricLoginEnabled,
+                            (value) {
+                              settingsProvider.setBiometricLogin(value);
+                            },
+                            colors,
+                          ),
+                        ]),
+                        SizedBox(height: 24.h),
+
+                        _buildSectionHeader("App Preferences", colors),
+                        _buildSection(isDark, colors, [
+                          _buildLanguageSelector(settingsProvider, colors),
+                          _buildActionTile(
+                            "Default Pickup Location",
+                            Assets.icons.mapPin,
+                            settingsProvider.defaultPickupLocation.isEmpty
+                                ? "Set location"
+                                : settingsProvider.defaultPickupLocation,
+                            () {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Location picker coming soon'),
+                                    backgroundColor: Colors.blue,
+                                  ),
+                                );
+                              }
+                            },
+                            colors,
+                          ),
+                        ]),
+                        SizedBox(height: 24.h),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

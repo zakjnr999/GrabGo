@@ -634,7 +634,14 @@ router.post(
 
       const order = await prisma.order.findUnique({
         where: { id: orderId },
-        select: { id: true, customerId: true, paymentStatus: true, creditsApplied: true, totalAmount: true },
+        select: {
+          id: true,
+          customerId: true,
+          paymentStatus: true,
+          creditsApplied: true,
+          totalAmount: true,
+          orderNumber: true,
+        },
       });
 
       if (!order) {
@@ -700,6 +707,29 @@ router.post(
           paymentReferenceId: reference || undefined,
         },
       });
+
+      try {
+        const amount = Number(order.totalAmount || 0);
+        const title = "✅ Payment Confirmed";
+        const message = `Payment for order #${order.orderNumber} (GHS ${amount.toFixed(2)}) has been confirmed.`;
+        const io = getIO();
+
+        await createNotification(
+          order.customerId,
+          "payment_confirmed",
+          title,
+          message,
+          {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            amount,
+            route: `/orders/${order.id}`,
+          },
+          io
+        );
+      } catch (notifError) {
+        console.error("Payment notification error:", notifError.message);
+      }
 
       return res.json({
         success: true,

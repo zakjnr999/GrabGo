@@ -168,7 +168,7 @@ class _VendorsPageState extends State<VendorsPage> {
     ServiceProvider serviceProvider,
     NativeLocationProvider locationProvider,
   ) {
-    final expandedContentPadding = size.height * 0.26;
+    final expandedContentPadding = UmbrellaHeaderMetrics.contentPaddingFor(size);
 
     return AppRefreshIndicator(
       onRefresh: () =>

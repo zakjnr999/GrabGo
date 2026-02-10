@@ -6,13 +6,11 @@ import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart';
-import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
 import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:readmore/readmore.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -577,7 +575,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                               child: ListView.builder(
                                                 padding: EdgeInsets.only(left: 20.w),
                                                 scrollDirection: Axis.horizontal,
-                                                physics: const BouncingScrollPhysics(),
+                                                physics: const AlwaysScrollableScrollPhysics(),
                                                 itemCount: youMayLikeItems.length,
                                                 itemBuilder: (context, index) {
                                                   final item = youMayLikeItems[index];

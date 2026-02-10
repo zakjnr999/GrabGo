@@ -76,6 +76,10 @@ class UmbrellaHeaderMetrics {
   static double contentTopPaddingFor(Size size, {double extra = 0}) {
     return (_baseExpandedHeight(size) * 0.58) + extra;
   }
+
+  static double contentPaddingFor(Size size, {double extra = 0, double gap = 12}) {
+    return expandedHeightFor(size, extra: extra) + gap;
+  }
 }
 
 class UmbrellaHeader extends StatelessWidget {

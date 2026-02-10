@@ -428,49 +428,49 @@ class _EmailVerificationState extends State<EmailVerification> with SingleTicker
                     ),
                   ),
                   SizedBox(height: KSpacing.lg25.h),
-                  FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: SlideTransition(
-                      position: _slideAnimation,
-                      child: AppTextInput(
-                        controller: otpController,
-                        label: "Verification Code",
-                        hintText: "Enter 6-digit code",
-                        borderColor: colors.inputBorder,
-                        fillColor: colors.backgroundSecondary,
-                        borderActiveColor: colors.accentOrange,
-                        borderRadius: KBorderSize.borderRadius15,
-                        contentPadding: EdgeInsets.all(KSpacing.md15.r),
-                        keyboardType: TextInputType.number,
-                        errorText: otpError,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: KSpacing.lg25.h),
-                  FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: SlideTransition(
-                      position: _slideAnimation,
-                      child: AppButton(
-                        onPressed: _codeSent
-                            ? _verifyEmail
-                            : () {
-                                AppToastMessage.show(
-                                  context: context,
-                                  message: "Send the verification code first.",
-                                  backgroundColor: context.appColors.warning,
-                                );
-                              },
-                        backgroundColor: colors.backgroundSecondary,
-                        borderColor: colors.border,
-                        borderRadius: KBorderSize.borderRadius15,
-                        buttonText: _isVerifying ? "Verifying..." : "Verify Email",
-                        isLoading: _isVerifying,
-                        textStyle: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w700, fontSize: 15.sp),
-                      ),
-                    ),
-                  ),
+                  // FadeTransition(
+                  //   opacity: _fadeAnimation,
+                  //   child: SlideTransition(
+                  //     position: _slideAnimation,
+                  //     child: AppTextInput(
+                  //       controller: otpController,
+                  //       label: "Verification Code",
+                  //       hintText: "Enter 6-digit code",
+                  //       borderColor: colors.inputBorder,
+                  //       fillColor: colors.backgroundSecondary,
+                  //       borderActiveColor: colors.accentOrange,
+                  //       borderRadius: KBorderSize.borderRadius15,
+                  //       contentPadding: EdgeInsets.all(KSpacing.md15.r),
+                  //       keyboardType: TextInputType.number,
+                  //       errorText: otpError,
+                  //       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  //     ),
+                  //   ),
+                  // ),
+                  // SizedBox(height: KSpacing.lg25.h),
+                  // FadeTransition(
+                  //   opacity: _fadeAnimation,
+                  //   child: SlideTransition(
+                  //     position: _slideAnimation,
+                  //     child: AppButton(
+                  //       onPressed: _codeSent
+                  //           ? _verifyEmail
+                  //           : () {
+                  //               AppToastMessage.show(
+                  //                 context: context,
+                  //                 message: "Send the verification code first.",
+                  //                 backgroundColor: context.appColors.warning,
+                  //               );
+                  //             },
+                  //       backgroundColor: colors.backgroundSecondary,
+                  //       borderColor: colors.border,
+                  //       borderRadius: KBorderSize.borderRadius15,
+                  //       buttonText: _isVerifying ? "Verifying..." : "Verify Email",
+                  //       isLoading: _isVerifying,
+                  //       textStyle: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w700, fontSize: 15.sp),
+                  //     ),
+                  //   ),
+                  // ),
                 ],
               ),
             ),

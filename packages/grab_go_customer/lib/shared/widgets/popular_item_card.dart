@@ -199,11 +199,7 @@ class PopularItemCard extends StatelessWidget {
                               ] else ...[
                                 Text(
                                   "We're closed",
-                                  style: TextStyle(
-                                    fontSize: 11.sp,
-                                    fontWeight: FontWeight.w600,
-                                    color: colors.error,
-                                  ),
+                                  style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.error),
                                 ),
                               ],
                             ],

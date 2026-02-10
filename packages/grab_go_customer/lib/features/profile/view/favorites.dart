@@ -449,7 +449,12 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
       controller: _scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
       child: Padding(
-        padding: EdgeInsets.only(top: size.height * 0.26 + 40.h, left: 40.w, right: 40.w, bottom: 40.h),
+        padding: EdgeInsets.only(
+          top: UmbrellaHeaderMetrics.contentPaddingFor(size) + 40.h,
+          left: 40.w,
+          right: 40.w,
+          bottom: 40.h,
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -480,7 +485,7 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
       padding: EdgeInsets.only(
         left: 16.w,
         right: 16.w,
-        top: size.height * 0.22, // Space for expanded header
+        top: UmbrellaHeaderMetrics.contentPaddingFor(size),
         bottom: 8.h,
       ),
       itemCount: items.length,

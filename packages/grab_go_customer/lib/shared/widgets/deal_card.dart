@@ -163,7 +163,7 @@ class DealCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                         ),
-                        SizedBox(height: 6),
+                        const SizedBox(height: 6),
                         Row(
                           children: [
                             SvgPicture.asset(
@@ -205,16 +205,12 @@ class DealCard extends StatelessWidget {
                             ] else ...[
                               Text(
                                 "We're closed",
-                                style: TextStyle(
-                                  fontSize: 11.sp,
-                                  fontWeight: FontWeight.w600,
-                                  color: colors.error,
-                                ),
+                                style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.error),
                               ),
                             ],
                           ],
                         ),
-                        SizedBox(height: 8),
+                        const SizedBox(height: 8),
                         Row(
                           children: [
                             Container(

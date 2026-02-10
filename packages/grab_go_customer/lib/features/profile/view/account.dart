@@ -233,7 +233,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                     SingleChildScrollView(
                       controller: _scrollController,
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: EdgeInsets.only(top: size.height * 0.22),
+                      padding: EdgeInsets.only(top: UmbrellaHeaderMetrics.contentPaddingFor(size)),
                       child: Padding(
                         padding: EdgeInsets.symmetric(horizontal: 0.w),
                         child: Column(

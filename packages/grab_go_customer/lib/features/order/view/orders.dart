@@ -691,16 +691,16 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
                 memCacheWidth: 200,
                 maxHeightDiskCache: 200,
                 imageBuilder: (context, imageProvider) => Container(
-                  width: 60.w,
-                  height: 60.h,
+                  width: 60,
+                  height: 60,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                     image: DecorationImage(image: imageProvider, fit: BoxFit.cover),
                   ),
                 ),
                 placeholder: (context, url) => Container(
-                  width: 60.w,
-                  height: 60.h,
+                  width: 60,
+                  height: 60,
                   padding: EdgeInsets.all(10.r),
                   decoration: BoxDecoration(
                     color: colors.backgroundSecondary,
@@ -715,8 +715,8 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
                 errorWidget: (context, url, error) => ClipRRect(
                   borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                   child: Assets.images.sampleOne.image(
-                    width: 60.w,
-                    height: 60.h,
+                    width: 60,
+                    height: 60,
                     fit: BoxFit.cover,
                     package: 'grab_go_shared',
                   ),

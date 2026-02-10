@@ -51,7 +51,6 @@ class Cart extends StatelessWidget {
 
             return Column(
               children: [
-                // Header
                 Padding(
                   padding: EdgeInsets.only(top: padding.top + 10, left: 20.w, right: 20.w, bottom: 16.h),
                   child: Row(

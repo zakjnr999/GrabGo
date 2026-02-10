@@ -2,7 +2,6 @@ class AppConfig {
   // Payment Configuration
   static const String paystackPublicKey = String.fromEnvironment('PAYSTACK_PUBLIC_KEY');
 
-  static const String paystackSecretKey = String.fromEnvironment('PAYSTACK_SECRET_KEY');
 
   // API Configuration
   static const String apiBaseUrl = String.fromEnvironment('API_BASE_URL');
@@ -45,7 +44,6 @@ class AppConfig {
       'APP_NAME': appName,
       'API_BASE_URL': apiBaseUrl.isNotEmpty ? apiBaseUrl : 'NOT_SET',
       'PAYSTACK_PUBLIC_KEY': paystackPublicKey.isNotEmpty ? '${paystackPublicKey.substring(0, 7)}***' : 'NOT_SET',
-      'PAYSTACK_SECRET_KEY': paystackSecretKey.isNotEmpty ? 'sk_***' : 'NOT_SET',
       'API_KEY': apiKey.isNotEmpty ? '***${apiKey.substring(apiKey.length - 3)}' : 'NOT_SET',
       'CURRENCY': currency,
       'COUNTRY': defaultCountry,

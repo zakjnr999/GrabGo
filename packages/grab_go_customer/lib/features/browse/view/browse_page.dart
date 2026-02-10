@@ -173,7 +173,7 @@ class _BrowsePageState extends State<BrowsePage> {
     if (isFoodUnavailable) {
       return ListView(
         controller: _scrollController,
-        padding: EdgeInsets.only(top: size.height * 0.22, bottom: 32.h),
+        padding: EdgeInsets.only(top: UmbrellaHeaderMetrics.contentPaddingFor(size), bottom: 32.h),
         children: const [AreaUnavailableScreen(isAreaUnavailable: true)],
       );
     }
@@ -184,7 +184,7 @@ class _BrowsePageState extends State<BrowsePage> {
           if (provider.isLoading) {
             return ListView(
               controller: _scrollController,
-              padding: EdgeInsets.only(top: size.height * 0.22, bottom: 32.h),
+              padding: EdgeInsets.only(top: UmbrellaHeaderMetrics.contentPaddingFor(size), bottom: 32.h),
               children: const [BrowsePageSkeleton()],
             );
           }
@@ -197,7 +197,7 @@ class _BrowsePageState extends State<BrowsePage> {
           if (provider.isLoadingItems || provider.isLoadingCategories) {
             return ListView(
               controller: _scrollController,
-              padding: EdgeInsets.only(top: size.height * 0.22, bottom: 32.h),
+              padding: EdgeInsets.only(top: UmbrellaHeaderMetrics.contentPaddingFor(size), bottom: 32.h),
               children: const [BrowsePageSkeleton()],
             );
           }
@@ -210,7 +210,7 @@ class _BrowsePageState extends State<BrowsePage> {
           if (provider.isLoadingItems || provider.isLoadingCategories) {
             return ListView(
               controller: _scrollController,
-              padding: EdgeInsets.only(top: size.height * 0.22, bottom: 32.h),
+              padding: EdgeInsets.only(top: UmbrellaHeaderMetrics.contentPaddingFor(size), bottom: 32.h),
               children: const [BrowsePageSkeleton()],
             );
           }
@@ -223,7 +223,7 @@ class _BrowsePageState extends State<BrowsePage> {
           if (provider.isLoadingItems || provider.isLoadingCategories) {
             return ListView(
               controller: _scrollController,
-              padding: EdgeInsets.only(top: size.height * 0.22, bottom: 32.h),
+              padding: EdgeInsets.only(top: UmbrellaHeaderMetrics.contentPaddingFor(size), bottom: 32.h),
               children: const [BrowsePageSkeleton()],
             );
           }
@@ -238,7 +238,7 @@ class _BrowsePageState extends State<BrowsePage> {
   Widget _buildLoadedContent(AppColorsExtension colors, bool isDark, ServiceProvider serviceProvider, Size size) {
     return ListView(
       controller: _scrollController,
-      padding: EdgeInsets.only(top: size.height * 0.22, bottom: 32.h),
+      padding: EdgeInsets.only(top: UmbrellaHeaderMetrics.contentPaddingFor(size), bottom: 32.h),
       children: [
         // Trending Section
         _buildSectionHeader(colors, 'Trending Now', 'Most ordered this week'),
