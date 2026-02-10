@@ -59,7 +59,7 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
   final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
   static const double _collapsedHeight = 80.0;
   static const double _scrollThreshold = 100.0;
-  static const double _headerExtraHeight = 32.0;
+  static const double _headerExtraHeight = 24.0;
 
   final List<Map<String, dynamic>> _quickFilters = [
     {'icon': Assets.icons.dollar, 'label': 'Price', 'hasOptions': true},
@@ -1123,7 +1123,7 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
   Widget _buildCategoryHeader(AppColorsExtension colors, bool isDark) {
     return SizedBox.expand(
       child: Padding(
-        padding: EdgeInsets.fromLTRB(0.w, MediaQuery.of(context).padding.top.h + 6.h, 0.w, 20.h),
+        padding: EdgeInsets.fromLTRB(0.w, MediaQuery.of(context).padding.top + 6.h, 0.w, 20.h),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

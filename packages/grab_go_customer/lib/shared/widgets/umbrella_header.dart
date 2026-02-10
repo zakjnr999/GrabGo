@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui' show lerpDouble;
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class UmbrellaClipper extends CustomClipper<Path> {
@@ -61,12 +62,24 @@ class UmbrellaClipper extends CustomClipper<Path> {
 class UmbrellaHeaderMetrics {
   static double _baseExpandedHeight(Size size) {
     final height = size.height;
-    final double factor = height >= 780
-        ? 0.22
+    final width = size.width;
+    final safeWidth = width <= 0 ? 1.0 : width;
+    final aspectRatio = height / safeWidth;
+
+    final heightBased = height >= 900
+        ? height * 0.205
+        : height >= 780
+        ? height * 0.215
         : height >= 700
-        ? 0.215
-        : 0.20;
-    return (height * factor).clamp(130.0, 200.0);
+        ? height * 0.205
+        : height * 0.195;
+
+    // Width-based fallback prevents very tall devices from producing oversized headers.
+    final widthBased = width * 0.46;
+    final tallScreenBlend = ((aspectRatio - 2.0) / 0.45).clamp(0.0, 1.0);
+    final blended = lerpDouble(heightBased, widthBased, tallScreenBlend) ?? heightBased;
+
+    return blended.clamp(138.0, 188.0);
   }
 
   static double expandedHeightFor(Size size, {double extra = 0}) {
@@ -74,11 +87,14 @@ class UmbrellaHeaderMetrics {
   }
 
   static double contentTopPaddingFor(Size size, {double extra = 0}) {
-    return (_baseExpandedHeight(size) * 0.58) + extra;
+    final expandedHeight = expandedHeightFor(size, extra: extra);
+    final overlap = (expandedHeight * 0.18).clamp(22.0, 32.0);
+    return expandedHeight - overlap;
   }
 
   static double contentPaddingFor(Size size, {double extra = 0, double gap = 12}) {
-    return expandedHeightFor(size, extra: extra) + gap;
+    final resolvedGap = gap == 12 ? (size.height * 0.012).clamp(10.0, 16.0) : gap;
+    return expandedHeightFor(size, extra: extra) + resolvedGap;
   }
 }
 
@@ -93,9 +109,10 @@ class UmbrellaHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    final resolvedCurveDepth = curveDepth.clamp(16.0, 24.0).toDouble();
 
     return ClipPath(
-      clipper: UmbrellaClipper(curveDepth: curveDepth, numberOfCurves: numberOfCurves),
+      clipper: UmbrellaClipper(curveDepth: resolvedCurveDepth, numberOfCurves: numberOfCurves),
       child: Container(
         height: height,
         decoration: BoxDecoration(color: colors.accentOrange),
@@ -126,13 +143,14 @@ class UmbrellaHeaderWithShadow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    final resolvedCurveDepth = curveDepth.clamp(16.0, 24.0).toDouble();
 
     return Stack(
       children: [
         if (showShadow)
           Positioned.fill(
             child: ClipPath(
-              clipper: UmbrellaClipper(curveDepth: curveDepth, numberOfCurves: numberOfCurves),
+              clipper: UmbrellaClipper(curveDepth: resolvedCurveDepth, numberOfCurves: numberOfCurves),
               child: Container(
                 decoration: BoxDecoration(
                   boxShadow: [
@@ -147,7 +165,12 @@ class UmbrellaHeaderWithShadow extends StatelessWidget {
               ),
             ),
           ),
-        UmbrellaHeader(curveDepth: curveDepth, numberOfCurves: numberOfCurves, height: height, child: child),
+        UmbrellaHeader(
+          curveDepth: resolvedCurveDepth,
+          numberOfCurves: numberOfCurves,
+          height: height,
+          child: child,
+        ),
       ],
     );
   }

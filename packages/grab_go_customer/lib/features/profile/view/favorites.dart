@@ -213,7 +213,7 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
 
     return SizedBox.expand(
       child: Padding(
-        padding: EdgeInsets.fromLTRB(20.w, statusBarHeight.h, 20.w, 10.h),
+        padding: EdgeInsets.fromLTRB(20.w, statusBarHeight, 20.w, 10.h),
         child: Row(
           children: [
             _buildHeaderButton(icon: Assets.icons.navArrowLeft, onTap: () => context.pop(), colors: colors),
@@ -367,7 +367,11 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
 
   Widget _buildEmptyState(AppColorsExtension colors, Size size) {
     return Padding(
-      padding: EdgeInsets.only(top: size.height * 0.20 + 40.h, left: 40.w, right: 40.w),
+      padding: EdgeInsets.only(
+        top: UmbrellaHeaderMetrics.contentPaddingFor(size) + 24.h,
+        left: 40.w,
+        right: 40.w,
+      ),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -450,7 +454,7 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
       physics: const AlwaysScrollableScrollPhysics(),
       child: Padding(
         padding: EdgeInsets.only(
-          top: UmbrellaHeaderMetrics.contentPaddingFor(size) + 40.h,
+          top: UmbrellaHeaderMetrics.contentPaddingFor(size) + 24.h,
           left: 40.w,
           right: 40.w,
           bottom: 40.h,

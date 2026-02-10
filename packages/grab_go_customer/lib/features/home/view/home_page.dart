@@ -48,6 +48,7 @@ import 'package:grab_go_customer/shared/widgets/home_page_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/location_accuracy_popup.dart';
 import 'package:grab_go_customer/shared/widgets/no_internet_screen.dart';
 import 'package:grab_go_customer/shared/services/connectivity_service.dart';
+import 'package:grab_go_customer/shared/services/notification_service.dart';
 import 'package:grab_go_customer/features/vendors/viewmodel/vendor_provider.dart';
 import 'package:grab_go_customer/features/vendors/model/vendor_type.dart';
 import 'package:grab_go_customer/features/vendors/widgets/vendor_horizontal_section.dart';
@@ -79,13 +80,21 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   double? _lastLat;
   double? _lastLng;
   VendorType? _previousVendorType;
+  int _unreadNotificationCount = 0;
 
   late final ValueNotifier<double> _scrollOffsetNotifier;
   static const double _collapsedHeight = 70.0;
   static const double _scrollThreshold = 150.0;
   static const double _bottomNavHeightFactor = 0.16;
-  static const double _headerExtraHeight = 24.0;
-  static double _headerContentGap(Size size) => (size.height * 0.024).clamp(20.0, 32.0);
+  static const double _headerExtraHeight = 20.0;
+  static double _homeHeaderGap(Size size) => (size.shortestSide * 0.008).clamp(2.0, 5.0);
+  static double _homeFirstSectionGap(Size size) => (size.shortestSide * 0.006).clamp(1.0, 4.0);
+  static double _homeContentTrim(Size size) => (size.shortestSide * 0.018).clamp(8.0, 12.0);
+
+  static double _homeContentTopPadding(Size size) {
+    final base = UmbrellaHeaderMetrics.contentTopPaddingFor(size, extra: _headerExtraHeight);
+    return base - _homeContentTrim(size) + _homeHeaderGap(size);
+  }
 
   @override
   void initState() {
@@ -188,6 +197,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void _initializeData() {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
+
+      _refreshUnreadNotificationCount();
 
       Provider.of<NativeLocationProvider>(context, listen: false).fetchAddress();
 
@@ -319,8 +330,26 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       }
     }
 
+    _refreshUnreadNotificationCount();
+
     if (kDebugMode) {
       print('✅ [HOME] Data refresh complete!');
+    }
+  }
+
+  Future<void> _refreshUnreadNotificationCount() async {
+    try {
+      final count = await NotificationService().getUnreadCount();
+      if (!mounted) return;
+      if (count != _unreadNotificationCount) {
+        setState(() {
+          _unreadNotificationCount = count;
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ [HOME] Failed to fetch unread notification count: $e');
+      }
     }
   }
 
@@ -423,10 +452,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             if (shouldShowEmptyState)
                               SliverPadding(
                                 padding: EdgeInsets.only(
-                                  top: UmbrellaHeaderMetrics.contentTopPaddingFor(
-                                    size,
-                                    extra: _headerExtraHeight + _headerContentGap(size),
-                                  ),
+                                  top: _homeContentTopPadding(size),
                                 ),
                                 sliver: SliverFillRemaining(
                                   hasScrollBody: false,
@@ -447,20 +473,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             else
                               SliverPadding(
                                 padding: EdgeInsets.only(
-                                  top: UmbrellaHeaderMetrics.contentTopPaddingFor(
-                                    size,
-                                    extra: _headerExtraHeight + _headerContentGap(size),
-                                  ),
+                                  top: _homeContentTopPadding(size),
                                 ),
                                 sliver: SliverToBoxAdapter(
                                   child: Container(
                                     color: colors.backgroundPrimary,
                                     child: shouldShowSkeleton
-                                        ? const HomePageSkeleton()
+                                        ? HomePageSkeleton(firstSectionGap: _homeFirstSectionGap(size))
                                         : Column(
                                             children: [
                                               if (!isFoodUnavailable) ...[
-                                                SizedBox(height: KSpacing.lg.h),
+                                                SizedBox(height: _homeFirstSectionGap(size)),
                                                 _buildServiceSelector(),
                                               ],
                                               if (!shouldShowEmptyState) ...[
@@ -957,16 +980,46 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: () {
-                      context.push("/notification");
+                    onTap: () async {
+                      await context.push("/notification");
+                      if (!mounted) return;
+                      _refreshUnreadNotificationCount();
                     },
                     customBorder: const CircleBorder(),
                     child: Padding(
                       padding: EdgeInsets.all(10.r),
-                      child: SvgPicture.asset(
-                        Assets.icons.bellNotification,
-                        package: 'grab_go_shared',
-                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          SvgPicture.asset(
+                            Assets.icons.bell,
+                            package: 'grab_go_shared',
+                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                          ),
+                          if (_unreadNotificationCount > 0)
+                            Positioned(
+                              right: -8.w,
+                              top: -8.h,
+                              child: Container(
+                                constraints: BoxConstraints(minWidth: 16.w, minHeight: 16.h),
+                                padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(color: colors.accentOrange, width: 1.5),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  _unreadNotificationCount > 99 ? '99+' : _unreadNotificationCount.toString(),
+                                  style: TextStyle(
+                                    color: colors.accentOrange,
+                                    fontSize: 9.sp,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),

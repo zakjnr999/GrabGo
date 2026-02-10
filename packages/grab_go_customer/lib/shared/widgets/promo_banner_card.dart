@@ -1,8 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter_svg/svg.dart';
-import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/shared/widgets/curved_side_clipper.dart';
 
@@ -30,6 +30,8 @@ class PromoBannerCard extends StatelessWidget {
     final bool isLightBg = backgroundColor.computeLuminance() > 0.6;
     final Color textColor = isLightBg ? Colors.black : Colors.white;
     final Color subTextColor = textColor.withValues(alpha: 0.75);
+    final double imagePaneWidth = 150.w;
+    final double contentRightInset = (imagePaneWidth + 14.w).clamp(130.0, 185.0).toDouble();
 
     return GestureDetector(
       onTap: onTap,
@@ -40,8 +42,12 @@ class PromoBannerCard extends StatelessWidget {
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+        child: ClipPath(
+          clipper: _PromoOfferCardClipper(
+            cornerRadius: KBorderSize.borderMedium.r,
+            notchDepth: 8.h.clamp(6.0, 10.0).toDouble(),
+            notchCount: 1,
+          ),
           child: Stack(
             children: [
               Positioned.fill(
@@ -80,7 +86,7 @@ class PromoBannerCard extends StatelessWidget {
                 right: 0,
                 top: 0,
                 bottom: 0,
-                width: 150.w,
+                width: imagePaneWidth,
                 child: Stack(
                   children: [
                     Positioned.fill(
@@ -115,7 +121,7 @@ class PromoBannerCard extends StatelessWidget {
               ),
               Positioned.fill(
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(16.w, 0.h, 120.w, 0.h),
+                  padding: EdgeInsets.fromLTRB(16.w, 0.h, contentRightInset, 0.h),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -161,45 +167,139 @@ class PromoBannerCard extends StatelessWidget {
               ),
               if (discount.isNotEmpty)
                 Positioned(
-                  right: 12.w,
-                  top: 12.h,
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [colors.accentOrange, colors.error],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(10.r),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SvgPicture.asset(
-                          Assets.icons.tag,
-                          package: 'grab_go_shared',
-                          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                          width: 14.sp,
-                          height: 14.sp,
-                        ),
-                        SizedBox(width: 4.w),
-                        Text(
-                          discount,
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            height: 1,
-                          ),
-                        ),
-                      ],
-                    ),
+                  right: 8.w,
+                  top: 8.h,
+                  child: _UmbrellaDiscountBadge(
+                    value: discount,
+                    diameter: 46.w.clamp(40.0, 54.0).toDouble(),
+                    fillColor: Colors.white.withValues(alpha: 0.95),
+                    textColor: colors.accentOrange,
                   ),
                 ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _PromoOfferCardClipper extends CustomClipper<Path> {
+  final double cornerRadius;
+  final double notchDepth;
+  final int notchCount;
+
+  const _PromoOfferCardClipper({required this.cornerRadius, required this.notchDepth, required this.notchCount});
+
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    final radius = cornerRadius.clamp(8.0, 22.0).toDouble();
+    final safeNotchCount = notchCount < 1 ? 1 : notchCount;
+    final topStartX = radius;
+    final topEndX = size.width - radius;
+    final usableTopWidth = (topEndX - topStartX).clamp(1.0, size.width).toDouble();
+    final segmentWidth = usableTopWidth / safeNotchCount;
+
+    path.moveTo(0, radius);
+    path.quadraticBezierTo(0, 0, radius, 0);
+
+    var cursorX = topStartX;
+    for (int index = 0; index < safeNotchCount; index++) {
+      final nextX = topStartX + ((index + 1) * segmentWidth);
+      final midX = (cursorX + nextX) / 2;
+      path.lineTo(cursorX, 0);
+      path.quadraticBezierTo(midX, notchDepth, nextX, 0);
+      cursorX = nextX;
+    }
+
+    path.lineTo(size.width - radius, 0);
+    path.quadraticBezierTo(size.width, 0, size.width, radius);
+    path.lineTo(size.width, size.height - radius);
+    path.quadraticBezierTo(size.width, size.height, size.width - radius, size.height);
+
+    var bottomCursorX = size.width - radius;
+    for (int index = 0; index < safeNotchCount; index++) {
+      final nextX = (size.width - radius) - ((index + 1) * segmentWidth);
+      final midX = (bottomCursorX + nextX) / 2;
+      path.lineTo(bottomCursorX, size.height);
+      path.quadraticBezierTo(midX, size.height - notchDepth, nextX, size.height);
+      bottomCursorX = nextX;
+    }
+
+    path.lineTo(radius, size.height);
+    path.quadraticBezierTo(0, size.height, 0, size.height - radius);
+    path.close();
+
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant _PromoOfferCardClipper oldClipper) {
+    return oldClipper.cornerRadius != cornerRadius ||
+        oldClipper.notchDepth != notchDepth ||
+        oldClipper.notchCount != notchCount;
+  }
+}
+
+class _UmbrellaDiscountBadge extends StatelessWidget {
+  final String value;
+  final double diameter;
+  final Color fillColor;
+  final Color textColor;
+
+  const _UmbrellaDiscountBadge({
+    required this.value,
+    required this.diameter,
+    required this.fillColor,
+    required this.textColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scallopRadius = diameter * 0.14;
+    final canvasSize = diameter + (scallopRadius * 2.6);
+    final center = canvasSize / 2;
+    final orbitRadius = (diameter / 2) + (scallopRadius * 0.28);
+
+    return SizedBox(
+      width: canvasSize,
+      height: canvasSize,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          ...List.generate(12, (index) {
+            final angle = (index / 12) * 2 * math.pi;
+            final x = center + (math.cos(angle) * orbitRadius) - scallopRadius;
+            final y = center + (math.sin(angle) * orbitRadius) - scallopRadius;
+
+            return Positioned(
+              left: x,
+              top: y,
+              child: Container(
+                width: scallopRadius * 2,
+                height: scallopRadius * 2,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: fillColor.withValues(alpha: 0.65)),
+              ),
+            );
+          }),
+          Container(
+            width: diameter,
+            height: diameter,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: fillColor),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8.w),
+              child: FittedBox(
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  style: TextStyle(color: textColor, fontSize: 12.sp, fontWeight: FontWeight.w900),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

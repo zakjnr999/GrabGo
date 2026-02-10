@@ -297,7 +297,6 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
 
       if (mounted) {
         setState(() {
-          // Backend returns sorted data, just append
           _notifications.addAll(result['notifications'] as List<NotificationModel>);
           _hasMore = result['hasMore'] as bool;
           _currentPage = nextPage;
@@ -413,7 +412,6 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
                     padding: EdgeInsets.only(top: padding.top + 10, left: 20.w, right: 20.w),
                     child: Row(
                       children: [
-                        // Back button
                         Container(
                           height: 44,
                           width: 44,

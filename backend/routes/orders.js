@@ -710,7 +710,7 @@ router.post(
 
       try {
         const amount = Number(order.totalAmount || 0);
-        const title = "✅ Payment Confirmed";
+        const title = "Payment Confirmed";
         const message = `Payment for order #${order.orderNumber} (GHS ${amount.toFixed(2)}) has been confirmed.`;
         const io = getIO();
 

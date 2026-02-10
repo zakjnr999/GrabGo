@@ -22,7 +22,30 @@ class ServiceSelector extends StatefulWidget {
 }
 
 class _ServiceSelectorState extends State<ServiceSelector> {
+  static const List<String> _emojiFallbackFonts = [
+    'Noto Color Emoji',
+    'Apple Color Emoji',
+    'Segoe UI Emoji',
+  ];
+
   int selectedIndex = 0;
+
+  Widget _buildEmoji(String emoji, double size) {
+    return RepaintBoundary(
+      child: Text(
+        emoji,
+        key: ValueKey<String>('service-emoji-$emoji-${size.toStringAsFixed(1)}'),
+        maxLines: 1,
+        softWrap: false,
+        textScaler: TextScaler.noScaling,
+        style: TextStyle(
+          fontSize: size,
+          height: 1,
+          fontFamilyFallback: _emojiFallbackFonts,
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -162,7 +185,7 @@ class _ServiceSelectorState extends State<ServiceSelector> {
                       bottom: -8,
                       child: Opacity(
                         opacity: isSelected ? 0.2 : 0.08,
-                        child: Text(service.emoji, style: TextStyle(fontSize: 50.sp)),
+                        child: _buildEmoji(service.emoji, 50.sp),
                       ),
                     ),
                     if (isSelected)
@@ -203,7 +226,7 @@ class _ServiceSelectorState extends State<ServiceSelector> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(service.emoji, style: TextStyle(fontSize: 26.sp)),
+                          _buildEmoji(service.emoji, 26.sp),
                           SizedBox(width: 10.w),
                           Flexible(
                             child: Text(

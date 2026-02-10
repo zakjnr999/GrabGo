@@ -5,6 +5,21 @@ const cache = require('../utils/cache');
 
 let isProcessing = false;
 
+const resolveReminderItemName = (cart) => {
+    const firstItem = Array.isArray(cart.items) && cart.items.length > 0 ? cart.items[0] : null;
+    if (!firstItem) return 'your items';
+
+    const candidates = [
+        firstItem.name,
+        firstItem.food?.name,
+        firstItem.groceryItem?.name,
+        firstItem.pharmacyItem?.name
+    ];
+
+    const itemName = candidates.find((value) => typeof value === 'string' && value.trim().length > 0);
+    return itemName || 'your items';
+};
+
 const processAbandonedCarts = async (io = null) => {
     if (isProcessing) {
         console.log('⏭️ Cart abandonment check already in progress, skipping...');
@@ -38,9 +53,7 @@ const processAbandonedCarts = async (io = null) => {
 
                 const itemCount = cart.itemCount;
                 const totalAmount = cart.totalAmount.toFixed(2);
-                const firstItemName = cart.items && cart.items.length > 0 && cart.items[0].name
-                    ? cart.items[0].name
-                    : 'items';
+                const firstItemName = resolveReminderItemName(cart);
 
                 await createNotification(
                     cart.user.id,

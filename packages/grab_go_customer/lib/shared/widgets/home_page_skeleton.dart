@@ -5,7 +5,9 @@ import 'package:shimmer/shimmer.dart';
 import 'package:grab_go_customer/shared/widgets/wavy_banner_clipper.dart';
 
 class HomePageSkeleton extends StatelessWidget {
-  const HomePageSkeleton({super.key});
+  final double firstSectionGap;
+
+  const HomePageSkeleton({super.key, this.firstSectionGap = 0});
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +17,7 @@ class HomePageSkeleton extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(height: KSpacing.lg.h),
+        SizedBox(height: firstSectionGap),
 
         // Service selector skeleton
         _buildServiceSelectorSkeleton(colors, isDark),

@@ -164,7 +164,7 @@ class FoodItemCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
                   // Rating + ETA / Closed status
                   Row(
                     children: [
@@ -203,7 +203,7 @@ class FoodItemCard extends StatelessWidget {
                       ],
                     ],
                   ),
-                  SizedBox(height: 12),
+                  const SizedBox(height: 12),
                   // Price and Action Button
                   Row(
                     children: [

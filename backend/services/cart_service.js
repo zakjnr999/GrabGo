@@ -554,7 +554,23 @@ const findAbandonedCarts = async () => {
         include: {
             items: {
                 select: {
-                    name: true
+                    name: true,
+                    itemType: true,
+                    food: {
+                        select: {
+                            name: true
+                        }
+                    },
+                    groceryItem: {
+                        select: {
+                            name: true
+                        }
+                    },
+                    pharmacyItem: {
+                        select: {
+                            name: true
+                        }
+                    }
                 }
             },
             user: {
