@@ -24,7 +24,7 @@
 - Real-time order tracking with live GPS location updates and ETA
 - In-app chat with riders (text, voice messages, images)
 - Voice/Video calling with riders via WebRTC
-- Multiple payment methods (Cash on Delivery, MTN Mobile Money)
+- Payments via Paystack (card/online) plus Cash on Delivery
 - Restaurant promotional stories (Instagram-style with reactions & comments)
 - Favorites management for restaurants, stores, pharmacies, and items
 - Order history with one-tap reorder
@@ -33,6 +33,7 @@
 - Smart nudges (meal-time reminders, cart abandonment, re-engagement)
 - Referral program with credits and rewards
 - Promo codes and discounts
+- Wallet credits applied at cart/checkout
 
 ### Restaurant/Vendor Panel (Web)
 
@@ -70,6 +71,15 @@
 - System configuration and settings
 - Promotional campaign management
 - Referral program management
+
+## Recent Updates
+
+- Distance-based delivery fees with min/max caps and dynamic service fees
+- Weather-aware rain surge fee via Tomorrow.io (configurable thresholds)
+- Credit hold flow to prevent double-spend while payments are pending
+- Paystack initialize/verify flow with customer payment confirmation screens
+- OTP system via Arkesel (SMS + WhatsApp) with Redis rate limiting/lockouts
+- Redis locks added to scheduled notification jobs to prevent duplicate runs
 
 ## Project Structure
 
@@ -179,9 +189,9 @@ GrabGo/
 - **File Storage**: Cloudinary CDN
 - **Image Processing**: Sharp, Blurhash
 - **Push Notifications**: Firebase Cloud Messaging (FCM)
-- **Email**: SendGrid / Nodemailer
-- **SMS**: Twilio
-- **Payment Gateway**: MTN Mobile Money API
+- **Email**: Resend (primary) / SendGrid (legacy)
+- **SMS/WhatsApp**: Arkesel (OTP)
+- **Payment Gateway**: Paystack
 - **Maps & Geocoding**: Google Maps API, node-geocoder, geolib
 - **Background Jobs**: node-cron
 - **API Documentation**: Swagger / OpenAPI / Redocly

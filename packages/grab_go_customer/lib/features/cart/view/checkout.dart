@@ -154,10 +154,9 @@ class _CheckoutState extends State<Checkout> {
 
   void _applyAddresses(List<AddressModel> addresses) {
     AddressModel? selectedAddress = _findSelectedAddress(addresses);
-    selectedAddress ??=
-        addresses.isNotEmpty
-            ? addresses.firstWhere((address) => address.isDefault, orElse: () => addresses.first)
-            : null;
+    selectedAddress ??= addresses.isNotEmpty
+        ? addresses.firstWhere((address) => address.isDefault, orElse: () => addresses.first)
+        : null;
 
     if (!mounted) return;
     setState(() {

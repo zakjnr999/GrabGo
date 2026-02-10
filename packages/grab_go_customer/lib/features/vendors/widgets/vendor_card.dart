@@ -279,32 +279,6 @@ class VendorCard extends StatelessWidget {
           ),
         ),
 
-        // Closed Overlay
-        if (vendor.isOpen == false)
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.55),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(KBorderSize.borderMedium),
-                  topRight: Radius.circular(KBorderSize.borderMedium),
-                  bottomLeft: Radius.circular(KBorderSize.borderRadius4),
-                  bottomRight: Radius.circular(KBorderSize.borderRadius4),
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  "We're closed",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ),
-            ),
-          ),
         Positioned(
           right: 6.r,
           top: 6.r,

@@ -180,20 +180,6 @@ class VendorModel {
     this.vendorTypeEnum = VendorType.food,
   });
 
-  factory VendorModel.fromJson(Map<String, dynamic> json) {
-    final normalized = Map<String, dynamic>.from(json);
-    if (normalized['isOpen'] == null && normalized['is_open'] != null) {
-      normalized['isOpen'] = normalized['is_open'];
-    }
-    final rawOpen = normalized['isOpen'];
-    if (rawOpen is String) {
-      normalized['isOpen'] = rawOpen.toLowerCase() == 'true';
-    } else if (rawOpen is num) {
-      normalized['isOpen'] = rawOpen != 0;
-    }
-    return _$VendorModelFromJson(normalized);
-  }
-
   VendorModel copyWith({
     String? id,
     String? storeName,
@@ -307,6 +293,19 @@ class VendorModel {
       return null;
     }
 
+    final rawIsOpen = json['isOpen'] ?? json['is_open'];
+    final bool parsedIsOpen = rawIsOpen is bool
+        ? rawIsOpen
+        : rawIsOpen is String
+        ? rawIsOpen.toLowerCase() == 'true'
+        : rawIsOpen is num
+        ? rawIsOpen != 0
+        : true;
+    final totalReviewsValue = json['totalReviews'] ?? json['total_reviews'] ?? 0;
+    final int parsedTotalReviews = totalReviewsValue is num
+        ? totalReviewsValue.toInt()
+        : int.tryParse(totalReviewsValue.toString()) ?? 0;
+
     return VendorModel(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
       storeName: json['storeName']?.toString() ?? json['store_name']?.toString(),
@@ -316,12 +315,12 @@ class VendorModel {
       description: json['description']?.toString(),
       phone: (json['phone'] ?? '').toString(),
       email: (json['email'] ?? '').toString(),
-      isOpen: json['isOpen'] as bool? ?? json['is_open'] as bool? ?? true,
+      isOpen: parsedIsOpen,
       isAcceptingOrders: json['isAcceptingOrders'] as bool? ?? true,
       deliveryFee: (json['deliveryFee'] ?? json['delivery_fee'] ?? 0.0).toDouble(),
       minOrder: (json['minOrder'] ?? json['min_order'] ?? 0.0).toDouble(),
       rating: (json['rating'] ?? 0.0).toDouble(),
-      totalReviews: (json['totalReviews'] ?? json['total_reviews'] ?? 0) as int,
+      totalReviews: parsedTotalReviews,
       categories: parseStringList(json['categories']),
       foodType: json['foodType']?.toString() ?? json['food_type']?.toString(),
       location: json['location'] != null ? VendorLocation.fromJson(json['location'] as Map<String, dynamic>) : null,
@@ -367,7 +366,6 @@ class VendorModel {
 
   Map<String, dynamic> toJson() => _$VendorModelToJson(this);
 
-  // Helper getters for backward compatibility
   bool get isExclusive => isGrabGoExclusive ?? false;
   List<String> get vendorCategories => categories ?? [];
   String get address => location?.address ?? '';
