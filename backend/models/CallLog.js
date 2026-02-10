@@ -3,15 +3,15 @@ const mongoose = require("mongoose");
 const callLogSchema = new mongoose.Schema(
     {
         order: {
-            type: String, // References PostgreSQL Order ID
+            type: String,
             required: true,
         },
         caller: {
-            type: String, // References PostgreSQL User ID
+            type: String, 
             required: true,
         },
         recipient: {
-            type: String, // References PostgreSQL User ID
+            type: String,
             required: true,
         },
         callType: {

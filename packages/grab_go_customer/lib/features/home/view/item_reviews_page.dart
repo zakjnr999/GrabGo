@@ -35,9 +35,10 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final systemUiOverlayStyle = SystemUiOverlayStyle(
-      statusBarColor: colors.backgroundSecondary,
+      statusBarColor: colors.backgroundPrimary,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-      systemNavigationBarColor: colors.backgroundSecondary,
+      systemNavigationBarColor: colors.backgroundPrimary,
+      systemNavigationBarDividerColor: Colors.transparent,
       systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
 
@@ -51,12 +52,12 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
           children: [
             // Header
             Padding(
-              padding: EdgeInsets.only(top: padding.top, left: 20.w, right: 20.w, bottom: 16.h),
+              padding: EdgeInsets.only(top: padding.top + 10, left: 20.w, right: 20.w, bottom: 16.h),
               child: Row(
                 children: [
                   Container(
-                    height: 44.h,
-                    width: 44.w,
+                    height: 44,
+                    width: 44,
                     decoration: BoxDecoration(
                       color: colors.backgroundSecondary,
                       shape: BoxShape.circle,

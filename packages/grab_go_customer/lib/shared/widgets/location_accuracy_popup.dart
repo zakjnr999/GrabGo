@@ -16,14 +16,6 @@ class LocationAccuracyPopup extends StatelessWidget {
     required this.onDismiss,
   });
 
-  // String _getDistanceText() {
-  //   if (distanceInMeters < 1000) {
-  //     return '${distanceInMeters.toStringAsFixed(0)}m';
-  //   } else {
-  //     return '${(distanceInMeters / 1000).toStringAsFixed(1)}km';
-  //   }
-  // }
-
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
@@ -37,7 +29,6 @@ class LocationAccuracyPopup extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Tooltip Arrow
           Padding(
             padding: EdgeInsets.only(left: 12.w),
             child: CustomPaint(
@@ -45,7 +36,6 @@ class LocationAccuracyPopup extends StatelessWidget {
               size: Size(16.w, 8.h),
             ),
           ),
-          // Tooltip Body
           Container(
             decoration: BoxDecoration(
               color: bgColor,
@@ -65,7 +55,6 @@ class LocationAccuracyPopup extends StatelessWidget {
                   colorFilter: ColorFilter.mode(primaryColor, BlendMode.srcIn),
                 ),
                 SizedBox(width: 12.w),
-                // Text content
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -94,27 +83,6 @@ class LocationAccuracyPopup extends StatelessWidget {
                   ),
                 ),
                 SizedBox(width: 8.w),
-                // Update Location Action
-                Material(
-                  color: primaryColor,
-                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                  child: InkWell(
-                    onTap: onUpdateLocation,
-                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                    child: Padding(
-                      padding: EdgeInsets.all(8.r),
-                      child: SvgPicture.asset(
-                        Assets.icons.crosshair,
-                        package: 'grab_go_shared',
-                        height: 18.h,
-                        width: 18.w,
-                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 8.w),
-                // Close button
                 Material(
                   color: Colors.transparent,
                   child: InkWell(

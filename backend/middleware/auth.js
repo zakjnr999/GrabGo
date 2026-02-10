@@ -24,7 +24,6 @@ exports.verifyApiKey = (req, res, next) => {
 exports.protect = async (req, res, next) => {
   let token;
 
-  // Debug auth headers
   console.log('\n🔑 AUTHENTICATION DEBUG:');
   console.log('  Endpoint:', req.method, req.path);
   console.log('  Authorization header:', req.headers.authorization ? 'Present' : 'Missing');
@@ -66,7 +65,6 @@ exports.protect = async (req, res, next) => {
       });
     }
 
-    // Add Mongoose compatibility layer for _id if needed
     req.user._id = req.user.id;
 
     console.log('  ✅ Authentication successful for:', req.user.email || req.user.username);

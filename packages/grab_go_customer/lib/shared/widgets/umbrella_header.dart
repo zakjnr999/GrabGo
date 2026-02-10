@@ -58,6 +58,26 @@ class UmbrellaClipper extends CustomClipper<Path> {
   bool shouldReclip(CustomClipper<Path> oldClipper) => true;
 }
 
+class UmbrellaHeaderMetrics {
+  static double _baseExpandedHeight(Size size) {
+    final height = size.height;
+    final double factor = height >= 780
+        ? 0.22
+        : height >= 700
+        ? 0.215
+        : 0.20;
+    return (height * factor).clamp(130.0, 200.0);
+  }
+
+  static double expandedHeightFor(Size size, {double extra = 0}) {
+    return _baseExpandedHeight(size) + extra;
+  }
+
+  static double contentTopPaddingFor(Size size, {double extra = 0}) {
+    return (_baseExpandedHeight(size) * 0.58) + extra;
+  }
+}
+
 class UmbrellaHeader extends StatelessWidget {
   final Widget child;
   final double curveDepth;

@@ -40,13 +40,12 @@ const audioFileFilter = (req, file, cb) => {
   }
 };
 
-// Legacy alias for backward compatibility
 const fileFilter = imageFileFilter;
 
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: parseInt(process.env.MAX_FILE_SIZE) || 5242880 // 5MB default
+    fileSize: parseInt(process.env.MAX_FILE_SIZE) || 5242880
   },
   fileFilter: fileFilter,
   preservePath: false
@@ -100,7 +99,6 @@ exports.uploadToCloudinary = async (req, res, next) => {
     req.file.cloudinaryUrl = cloudinaryResult.url;
     req.file.cloudinaryPublicId = cloudinaryResult.public_id;
 
-    // Generate BlurHash for images (used for status placeholders)
     if (req.file.mimetype && req.file.mimetype.startsWith('image/') && req.file.buffer) {
       try {
         const { data, info } = await sharp(req.file.buffer)
@@ -113,8 +111,8 @@ exports.uploadToCloudinary = async (req, res, next) => {
           new Uint8ClampedArray(data),
           info.width,
           info.height,
-          4, // componentX
-          3  // componentY
+          4,
+          3 
         );
         req.file.blurHash = blurHash;
       } catch (blurError) {
@@ -178,11 +176,10 @@ exports.uploadMultipleToCloudinary = async (req, res, next) => {
   }
 };
 
-// Audio upload configuration for voice messages
 const audioUpload = multer({
   storage: storage,
   limits: {
-    fileSize: parseInt(process.env.MAX_AUDIO_FILE_SIZE) || 10485760 // 10MB default for audio
+    fileSize: parseInt(process.env.MAX_AUDIO_FILE_SIZE) || 10485760
   },
   fileFilter: audioFileFilter,
   preservePath: false
@@ -218,11 +215,10 @@ exports.uploadAudioToCloudinary = async (req, res, next) => {
   }
 };
 
-// Chat image upload configuration
 const chatImageUpload = multer({
   storage: storage,
   limits: {
-    fileSize: parseInt(process.env.MAX_FILE_SIZE) || 5242880 // 5MB default
+    fileSize: parseInt(process.env.MAX_FILE_SIZE) || 5242880
   },
   fileFilter: imageFileFilter,
   preservePath: false
@@ -242,7 +238,6 @@ exports.uploadChatImagesToCloudinary = async (req, res, next) => {
     const blurHashes = [];
 
     for (const file of req.files) {
-      // Upload to Cloudinary
       const cloudinaryResult = await uploadMulterFile(file, {
         folder: 'grabgo',
         subfolder: 'chat_images',
@@ -252,25 +247,24 @@ exports.uploadChatImagesToCloudinary = async (req, res, next) => {
       file.cloudinaryPublicId = cloudinaryResult.public_id;
       uploadedUrls.push(cloudinaryResult.url);
 
-      // Generate BlurHash from the image buffer
       try {
         const { data, info } = await sharp(file.buffer)
           .raw()
           .ensureAlpha()
-          .resize(32, 32, { fit: 'inside' }) // Small size for fast encoding
+          .resize(32, 32, { fit: 'inside' })
           .toBuffer({ resolveWithObject: true });
 
         const blurHash = encode(
           new Uint8ClampedArray(data),
           info.width,
           info.height,
-          4, // componentX
-          3  // componentY
+          4,
+          3
         );
         blurHashes.push(blurHash);
       } catch (blurError) {
         console.error('BlurHash generation error:', blurError);
-        blurHashes.push(''); // Empty string if BlurHash fails
+        blurHashes.push('');
       }
     }
 

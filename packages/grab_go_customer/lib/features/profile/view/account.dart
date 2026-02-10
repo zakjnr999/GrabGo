@@ -5,6 +5,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_customer/features/auth/service/phone_auth_service.dart';
+import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/theme_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -128,8 +129,13 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
     );
 
     if (shouldLogout == true) {
-      await _clearSessionState();
-      await UserService().logout();
+      LoadingDialog.instance().show(context: context, text: 'Logging out...');
+      try {
+        await _clearSessionState();
+        await UserService().logout();
+      } finally {
+        LoadingDialog.instance().hide();
+      }
 
       if (mounted) {
         context.go('/login');
@@ -194,6 +200,10 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
     try {
       context.read<GrabMartProvider>().clearData();
     } catch (_) {}
+
+    try {
+      context.read<NavigationProvider>().setIndex(0);
+    } catch (_) {}
   }
 
   @override
@@ -210,6 +220,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
             statusBarColor: colors.accentOrange,
             statusBarIconBrightness: Brightness.light,
             systemNavigationBarColor: colors.backgroundPrimary,
+            systemNavigationBarDividerColor: Colors.transparent,
             systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
           ),
           child: Scaffold(
@@ -401,7 +412,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                             Column(
                               children: [
                                 itemTile("Pickup Location", Assets.icons.sendDiagonal, context, () {
-                                  context.push("/mapTracking");
+                                  // context.push("/mapTracking");
                                 }),
                                 _favoritesTile(context),
 
@@ -410,7 +421,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                 }),
                                 itemTile("Change Password", Assets.icons.lock, context, () {
                                   if (_ensureEmailVerified()) {
-                                    context.push("/orderTracking");
+                                    // context.push("/orderTracking");
                                   }
                                 }),
                               ],
@@ -479,7 +490,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
       builder: (context, scrollOffset, _) {
         final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
 
-        final expandedHeight = size.height * 0.20;
+        final expandedHeight = UmbrellaHeaderMetrics.expandedHeightFor(size);
 
         final currentHeight = expandedHeight - ((expandedHeight - _collapsedHeight) * collapseProgress);
 
@@ -647,7 +658,13 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                         style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w600),
                       ),
                       SizedBox(width: 4.w),
-                      Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 12.sp),
+                      SvgPicture.asset(
+                        Assets.icons.navArrowRight,
+                        package: "grab_go_shared",
+                        height: 14.h,
+                        width: 14.w,
+                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                      ),
                     ],
                   ),
                 ),
@@ -719,8 +736,8 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                           final item = favoritesProvider.favoriteItems.toList()[index];
                           return Container(
                             margin: EdgeInsets.only(right: 8.w),
-                            width: 60.w,
-                            height: 60.h,
+                            width: 60,
+                            height: 60,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(KBorderSize.borderRadius12),
                               color: colors.inputBorder.withValues(alpha: 0.5),

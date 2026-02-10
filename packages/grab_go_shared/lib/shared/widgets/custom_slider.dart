@@ -37,7 +37,6 @@ class CustomSliderThumbShape extends SliderComponentShape {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.w;
 
-    // Outer glow/shadow
     canvas.drawCircle(
       center,
       enabledThumbRadius + 4.w,
@@ -49,7 +48,6 @@ class CustomSliderThumbShape extends SliderComponentShape {
     canvas.drawCircle(center, enabledThumbRadius, fillPaint);
     canvas.drawCircle(center, enabledThumbRadius, borderPaint);
 
-    // Inner center point
     canvas.drawCircle(center, enabledThumbRadius * 0.4, Paint()..color = thumbColor);
   }
 }

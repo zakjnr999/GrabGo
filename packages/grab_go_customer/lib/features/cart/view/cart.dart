@@ -24,9 +24,10 @@ class Cart extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final systemUiOverlayStyle = SystemUiOverlayStyle(
-      statusBarColor: colors.backgroundSecondary,
+      statusBarColor: colors.backgroundPrimary,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-      systemNavigationBarColor: colors.backgroundSecondary,
+      systemNavigationBarColor: colors.backgroundPrimary,
+      systemNavigationBarDividerColor: Colors.transparent,
       systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
 
@@ -52,17 +53,13 @@ class Cart extends StatelessWidget {
               children: [
                 // Header
                 Padding(
-                  padding: EdgeInsets.only(top: padding.top, left: 20.w, right: 20.w, bottom: 16.h),
+                  padding: EdgeInsets.only(top: padding.top + 10, left: 20.w, right: 20.w, bottom: 16.h),
                   child: Row(
                     children: [
                       Container(
-                        height: 44.h,
-                        width: 44.w,
-                        decoration: BoxDecoration(
-                          color: colors.backgroundSecondary,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-                        ),
+                        height: 44,
+                        width: 44,
+                        decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
                         child: Material(
                           color: Colors.transparent,
                           child: InkWell(
@@ -573,45 +570,47 @@ class Cart extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
-          decoration: BoxDecoration(
-            color: colors.backgroundPrimary,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 36.w,
-                  height: 4.h,
-                  decoration: BoxDecoration(color: colors.divider, borderRadius: BorderRadius.circular(999)),
-                ),
-              ),
-              SizedBox(height: 14.h),
-              Row(
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
+        return SafeArea(
+          child: Container(
+            padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
+            decoration: BoxDecoration(
+              color: colors.backgroundPrimary,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36.w,
+                    height: 4.h,
+                    decoration: BoxDecoration(color: colors.divider, borderRadius: BorderRadius.circular(999)),
                   ),
-                ],
-              ),
-              SizedBox(height: 8.h),
-              Text(
-                description,
-                style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
-              ),
-              SizedBox(height: 12.h),
-              ...details.map((detail) => _buildInfoDetail(detail, colors)),
-              SizedBox(height: 6.h),
-              Text(
-                "Fees can vary by location, vendor, and promotions.",
-                style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
-              ),
-            ],
+                ),
+                SizedBox(height: 14.h),
+                Row(
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8.h),
+                Text(
+                  description,
+                  style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
+                ),
+                SizedBox(height: 12.h),
+                ...details.map((detail) => _buildInfoDetail(detail, colors)),
+                SizedBox(height: 6.h),
+                Text(
+                  "Fees can vary by location, vendor, and promotions.",
+                  style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
           ),
         );
       },

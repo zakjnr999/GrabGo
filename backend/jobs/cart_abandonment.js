@@ -3,13 +3,6 @@ const { findAbandonedCarts } = require('../services/cart_service');
 const { createNotification } = require('../services/notification_service');
 const cache = require('../utils/cache');
 
-/**
- * Cart Abandonment Notification Job
- * 
- * Runs every 30 minutes to check for abandoned carts
- * and send reminder notifications to users
- */
-
 let isProcessing = false;
 
 const processAbandonedCarts = async (io = null) => {
@@ -38,16 +31,13 @@ const processAbandonedCarts = async (io = null) => {
 
         for (const cart of abandonedCarts) {
             try {
-                // Check if user has cart notification settings enabled
                 if (cart.user.notificationSettings?.cartReminders === false) {
                     console.log(`⏭️ Skipping user ${cart.user.email} - cart reminders disabled`);
                     continue;
                 }
 
-                // Create notification
                 const itemCount = cart.itemCount;
                 const totalAmount = cart.totalAmount.toFixed(2);
-                // Safely get first item name
                 const firstItemName = cart.items && cart.items.length > 0 && cart.items[0].name
                     ? cart.items[0].name
                     : 'items';
@@ -66,7 +56,6 @@ const processAbandonedCarts = async (io = null) => {
                     io
                 );
 
-                // Mark notification as sent
                 const { markAbandonmentNotificationSent } = require('../services/cart_service');
                 await markAbandonmentNotificationSent(cart.id);
 
@@ -96,14 +85,9 @@ const processAbandonedCarts = async (io = null) => {
     }
 };
 
-/**
- * Initialize cart abandonment cron job
- * Runs every 30 minutes
- */
 const initializeCartAbandonmentJob = (io) => {
     console.log('📅 Initializing cart abandonment notification job...');
 
-    // Run every 30 minutes
     cron.schedule('*/30 * * * *', async () => {
         const lock = await cache.acquireLock('job:cart_abandonment', 25 * 60);
         if (!lock) {

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -20,6 +21,7 @@ import 'package:grab_go_customer/shared/services/paystack_service.dart' as payst
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:grab_go_shared/shared/services/cache_service.dart';
 
 class Checkout extends StatefulWidget {
   const Checkout({super.key});
@@ -29,6 +31,7 @@ class Checkout extends StatefulWidget {
 }
 
 class _CheckoutState extends State<Checkout> {
+  static const Duration _addressCacheMaxAge = Duration(minutes: 30);
   String _selectedAddress = "";
   String _selectedAddressDetails = "";
   String? _selectedAddressId;
@@ -91,12 +94,104 @@ class _CheckoutState extends State<Checkout> {
     return phone;
   }
 
+  String _addressCacheKey(String userId) => 'user_addresses_$userId';
+
+  Future<_CachedAddresses?> _readCachedAddresses() async {
+    try {
+      final userId = UserService().getUserId();
+      if (userId == null || userId.isEmpty) return null;
+      final cachedJson = CacheService.getData(_addressCacheKey(userId));
+      if (cachedJson == null || cachedJson.isEmpty) return null;
+
+      final decoded = jsonDecode(cachedJson);
+      if (decoded is! Map<String, dynamic>) return null;
+      final cachedAtRaw = decoded['cachedAt'];
+      final itemsRaw = decoded['items'];
+      if (cachedAtRaw is! String || itemsRaw is! List) return null;
+
+      final cachedAt = DateTime.tryParse(cachedAtRaw);
+      if (cachedAt == null) return null;
+      final isStale = DateTime.now().difference(cachedAt) > _addressCacheMaxAge;
+
+      final addresses = <AddressModel>[];
+      for (final entry in itemsRaw) {
+        if (entry is Map<String, dynamic>) {
+          addresses.add(AddressModel.fromJson(entry));
+        } else if (entry is Map) {
+          addresses.add(AddressModel.fromJson(Map<String, dynamic>.from(entry)));
+        }
+      }
+      return _CachedAddresses(addresses: addresses, isStale: isStale);
+    } catch (e) {
+      debugPrint('❌ Checkout: Failed to read cached addresses: $e');
+      return null;
+    }
+  }
+
+  Future<void> _saveAddressesToCache(List<AddressModel> addresses) async {
+    try {
+      final userId = UserService().getUserId();
+      if (userId == null || userId.isEmpty) return;
+      final payload = {
+        'cachedAt': DateTime.now().toIso8601String(),
+        'items': addresses.map((address) => address.toJson()).toList(),
+      };
+      await CacheService.saveData(_addressCacheKey(userId), jsonEncode(payload));
+    } catch (e) {
+      debugPrint('❌ Checkout: Failed to cache addresses: $e');
+    }
+  }
+
+  AddressModel? _findSelectedAddress(List<AddressModel> addresses) {
+    if (_selectedAddressId == null) return null;
+    for (final address in addresses) {
+      if (_addressSelectionKey(address) == _selectedAddressId) {
+        return address;
+      }
+    }
+    return null;
+  }
+
+  void _applyAddresses(List<AddressModel> addresses) {
+    AddressModel? selectedAddress = _findSelectedAddress(addresses);
+    selectedAddress ??=
+        addresses.isNotEmpty
+            ? addresses.firstWhere((address) => address.isDefault, orElse: () => addresses.first)
+            : null;
+
+    if (!mounted) return;
+    setState(() {
+      _savedAddresses = addresses;
+      _isLoadingAddresses = false;
+
+      if (selectedAddress != null) {
+        _selectedAddressId = _addressSelectionKey(selectedAddress);
+        _selectedAddress = selectedAddress.formattedAddress;
+        _selectedAddressDetails = selectedAddress.formattedAddress;
+        _selectedLatitude = selectedAddress.latitude;
+        _selectedLongitude = selectedAddress.longitude;
+      }
+    });
+
+    if (selectedAddress != null) {
+      _updateDeliveryLocation(selectedAddress.latitude, selectedAddress.longitude);
+    }
+  }
+
   Future<void> _loadSavedAddresses() async {
     if (_isLoadingAddresses) return;
 
     setState(() {
       _isLoadingAddresses = true;
     });
+
+    final cached = await _readCachedAddresses();
+    if (cached != null) {
+      _applyAddresses(cached.addresses);
+      if (!cached.isStale) {
+        return;
+      }
+    }
 
     try {
       final response = await addressApiService.getUserAddresses();
@@ -123,29 +218,8 @@ class _CheckoutState extends State<Checkout> {
         }
       }
 
-      AddressModel? defaultAddress;
-      if (_selectedAddressId == null && addresses.isNotEmpty) {
-        defaultAddress = addresses.firstWhere((address) => address.isDefault, orElse: () => addresses.first);
-      }
-
-      if (!mounted) return;
-
-      setState(() {
-        _savedAddresses = addresses;
-        _isLoadingAddresses = false;
-
-        if (defaultAddress != null) {
-          _selectedAddressId = _addressSelectionKey(defaultAddress);
-          _selectedAddress = defaultAddress.formattedAddress;
-          _selectedAddressDetails = defaultAddress.formattedAddress;
-          _selectedLatitude = defaultAddress.latitude;
-          _selectedLongitude = defaultAddress.longitude;
-        }
-      });
-
-      if (defaultAddress != null) {
-        _updateDeliveryLocation(defaultAddress.latitude, defaultAddress.longitude);
-      }
+      _applyAddresses(addresses);
+      await _saveAddressesToCache(addresses);
     } catch (e) {
       debugPrint('❌ Checkout: Failed to load saved addresses: $e');
       if (mounted) {
@@ -212,9 +286,9 @@ class _CheckoutState extends State<Checkout> {
     }
 
     final systemUiOverlayStyle = SystemUiOverlayStyle(
-      statusBarColor: colors.backgroundSecondary,
+      statusBarColor: colors.backgroundPrimary,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-      systemNavigationBarColor: colors.backgroundSecondary,
+      systemNavigationBarColor: colors.backgroundPrimary,
       systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
 
@@ -238,12 +312,12 @@ class _CheckoutState extends State<Checkout> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: EdgeInsets.only(top: padding.top, left: 20.w, right: 20.w, bottom: 16.h),
+                  padding: EdgeInsets.only(top: padding.top + 10, left: 20.w, right: 20.w, bottom: 16.h),
                   child: Row(
                     children: [
                       Container(
-                        height: 44.h,
-                        width: 44.w,
+                        height: 44,
+                        width: 44,
                         decoration: BoxDecoration(
                           color: colors.backgroundSecondary,
                           shape: BoxShape.circle,
@@ -272,7 +346,7 @@ class _CheckoutState extends State<Checkout> {
                           fontFamily: "Lato",
                           package: 'grab_go_shared',
                           color: colors.textPrimary,
-                          fontSize: 24.sp,
+                          fontSize: 20.sp,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -1903,6 +1977,13 @@ class _CheckoutState extends State<Checkout> {
     }
     return 30;
   }
+}
+
+class _CachedAddresses {
+  final List<AddressModel> addresses;
+  final bool isStale;
+
+  const _CachedAddresses({required this.addresses, required this.isStale});
 }
 
 enum _FeeInfoType { delivery, service, rain }

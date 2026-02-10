@@ -3,7 +3,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:grab_go_shared/shared/utils/image_optimizer.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
@@ -20,7 +19,6 @@ class GroceryItemCard extends StatelessWidget {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Calculate discount display
     final bool hasDiscount = item.hasDiscount;
     final double displayPrice = item.discountedPrice;
     final double originalPrice = item.price;
@@ -28,7 +26,7 @@ class GroceryItemCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: margin ?? EdgeInsets.only(left: 20.w, right: 20.w, bottom: 12.h),
+        margin: margin ?? EdgeInsets.only(left: 20.w, right: 20.w, bottom: 12),
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
@@ -44,7 +42,6 @@ class GroceryItemCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Image Section
             ClipRRect(
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(KBorderSize.borderRadius15),
@@ -54,13 +51,13 @@ class GroceryItemCard extends StatelessWidget {
                 children: [
                   CachedNetworkImage(
                     imageUrl: ImageOptimizer.getPreviewUrl(item.image, width: 300),
-                    height: 110.h,
+                    height: 110,
                     width: 110.w,
                     fit: BoxFit.cover,
                     memCacheWidth: 300,
                     maxHeightDiskCache: 600,
                     placeholder: (context, url) => Container(
-                      height: 110.h,
+                      height: 110,
                       width: 110.w,
                       color: colors.inputBorder,
                       child: Center(
@@ -68,7 +65,7 @@ class GroceryItemCard extends StatelessWidget {
                       ),
                     ),
                     errorWidget: (context, url, error) => Container(
-                      height: 110.h,
+                      height: 110,
                       width: 110.w,
                       color: colors.inputBorder,
                       child: Center(
@@ -78,10 +75,10 @@ class GroceryItemCard extends StatelessWidget {
                   ),
                   if (hasDiscount)
                     Positioned(
-                      top: 8.h,
+                      top: 8,
                       left: 8.w,
                       child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2),
                         decoration: BoxDecoration(color: colors.accentOrange, borderRadius: BorderRadius.circular(4.r)),
                         child: Text(
                           '-${item.discountPercentage.toInt()}%',
@@ -93,7 +90,6 @@ class GroceryItemCard extends StatelessWidget {
               ),
             ),
 
-            // Content Section
             Expanded(
               child: Padding(
                 padding: EdgeInsets.all(12.r),
@@ -115,7 +111,7 @@ class GroceryItemCard extends StatelessWidget {
                               letterSpacing: 0.5,
                             ),
                           ),
-                        SizedBox(height: 2.h),
+                        SizedBox(height: 2),
                         Text(
                           item.name,
                           style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
@@ -123,7 +119,7 @@ class GroceryItemCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
 
-                        SizedBox(height: 6.h),
+                        SizedBox(height: 6),
 
                         // Rating and Unit
                         Row(
@@ -132,7 +128,7 @@ class GroceryItemCard extends StatelessWidget {
                               SvgPicture.asset(
                                 Assets.icons.starSolid,
                                 package: 'grab_go_shared',
-                                height: 12.h,
+                                height: 12,
                                 width: 12.w,
                                 colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                               ),
@@ -148,14 +144,14 @@ class GroceryItemCard extends StatelessWidget {
                               SizedBox(width: 8.w),
                               Container(
                                 width: 3.w,
-                                height: 3.h,
+                                height: 3,
                                 decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
                               ),
                               SizedBox(width: 8.w),
                             ],
                             // Unit display
                             Container(
-                              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2),
                               decoration: BoxDecoration(
                                 color: colors.inputBackground,
                                 borderRadius: BorderRadius.circular(4.r),
@@ -174,7 +170,7 @@ class GroceryItemCard extends StatelessWidget {
                       ],
                     ),
 
-                    SizedBox(height: 8.h),
+                    SizedBox(height: 8),
 
                     // Price Row
                     Row(

@@ -7,6 +7,7 @@ import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
+import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
@@ -91,7 +92,7 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
     final systemUiOverlayStyle = SystemUiOverlayStyle(
       statusBarColor: colors.backgroundPrimary,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-      systemNavigationBarColor: colors.backgroundSecondary,
+      systemNavigationBarColor: colors.backgroundPrimary,
       systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
 
@@ -104,7 +105,6 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
           child: ClipRect(
             child: Stack(
               children: [
-                // Main Content
                 Column(
                   children: [
                     Expanded(
@@ -147,29 +147,26 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
       valueListenable: _scrollOffsetNotifier,
       builder: (context, scrollOffset, _) {
         final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
-        final expandedHeight = size.height * 0.26;
+        final expandedHeight = UmbrellaHeaderMetrics.expandedHeightFor(size);
         final currentHeight = expandedHeight - ((expandedHeight - dynamicCollapsedHeight) * collapseProgress);
         final contentOpacity = (1.0 - collapseProgress).clamp(0.0, 1.0);
 
         return SizedBox(
           height: currentHeight,
-          child: Padding(
-            padding: EdgeInsets.only(bottom: 50.h),
-            child: Column(
-              children: [
-                Expanded(
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 100),
-                    opacity: contentOpacity,
-                    child: _buildFavoritesHeader(colors),
-                  ),
+          child: Column(
+            children: [
+              Expanded(
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 100),
+                  opacity: contentOpacity,
+                  child: _buildFavoritesHeader(colors),
                 ),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  child: _isSearchActive ? _buildSearchBar(colors) : _buildStickyTabs(colors, contentOpacity),
-                ),
-              ],
-            ),
+              ),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: _isSearchActive ? _buildSearchBar(colors) : _buildStickyTabs(colors, contentOpacity),
+              ),
+            ],
           ),
         );
       },
@@ -293,8 +290,8 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
     bool isActive = false,
   }) {
     return Container(
-      height: 44.h,
-      width: 44.w,
+      height: 44,
+      width: 44,
       decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
       child: Material(
         color: Colors.transparent,

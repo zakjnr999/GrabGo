@@ -7,14 +7,20 @@ const {
   getFileUrl,
   uploadMultipleToCloudinary,
 } = require("../middleware/upload");
+const { isRestaurantOpen } = require("../utils/restaurant");
 
 const router = express.Router();
 
 // Helper function to format restaurant for frontend compatibility
 const formatRestaurant = (restaurant) => {
   if (!restaurant) return null;
+  const { openingHours, ...rest } = restaurant;
+  const computedIsOpen = Array.isArray(openingHours)
+    ? isRestaurantOpen({ ...restaurant, openingHours })
+    : restaurant.isOpen;
   return {
-    ...restaurant,
+    ...rest,
+    isOpen: computedIsOpen,
     location: {
       type: 'Point',
       coordinates: [restaurant.longitude, restaurant.latitude],
@@ -26,7 +32,7 @@ const formatRestaurant = (restaurant) => {
     },
     // Map back some fields for legacy support
     restaurant_name: restaurant.restaurantName,
-    is_open: restaurant.isOpen,
+    is_open: computedIsOpen,
     delivery_fee: restaurant.deliveryFee,
     min_order: restaurant.minOrder,
     totalReviews: restaurant.ratingCount || 0,
@@ -91,6 +97,14 @@ router.get("/", async (req, res, next) => {
         address: true,
         city: true,
         area: true,
+        openingHours: {
+          select: {
+            dayOfWeek: true,
+            openTime: true,
+            closeTime: true,
+            isClosed: true,
+          },
+        },
         createdAt: true,
         updatedAt: true,
       },
@@ -291,6 +305,14 @@ router.get("/stores", async (req, res) => {
         address: true,
         city: true,
         area: true,
+        openingHours: {
+          select: {
+            dayOfWeek: true,
+            openTime: true,
+            closeTime: true,
+            isClosed: true,
+          },
+        },
       },
       orderBy: { rating: 'desc' },
       take: 20
@@ -346,6 +368,14 @@ router.get("/stores/:id", async (req, res) => {
         address: true,
         city: true,
         area: true,
+        openingHours: {
+          select: {
+            dayOfWeek: true,
+            openTime: true,
+            closeTime: true,
+            isClosed: true,
+          },
+        },
         createdAt: true,
         updatedAt: true,
       }
@@ -429,6 +459,31 @@ router.get("/search", async (req, res) => {
         ORDER BY distance ASC
         LIMIT 50
       `;
+
+      if (restaurants.length > 0) {
+        const restaurantIds = restaurants.map((restaurant) => restaurant.id);
+        const hours = await prisma.restaurantHours.findMany({
+          where: { restaurantId: { in: restaurantIds } },
+          select: {
+            restaurantId: true,
+            dayOfWeek: true,
+            openTime: true,
+            closeTime: true,
+            isClosed: true,
+          },
+        });
+        const hoursByRestaurant = new Map();
+        for (const hour of hours) {
+          if (!hoursByRestaurant.has(hour.restaurantId)) {
+            hoursByRestaurant.set(hour.restaurantId, []);
+          }
+          hoursByRestaurant.get(hour.restaurantId).push(hour);
+        }
+        restaurants = restaurants.map((restaurant) => ({
+          ...restaurant,
+          openingHours: hoursByRestaurant.get(restaurant.id) || [],
+        }));
+      }
     } else {
       restaurants = await prisma.restaurant.findMany({
         where,
@@ -452,6 +507,14 @@ router.get("/search", async (req, res) => {
           address: true,
           city: true,
           area: true,
+          openingHours: {
+            select: {
+              dayOfWeek: true,
+              openTime: true,
+              closeTime: true,
+              isClosed: true,
+            },
+          },
         },
       });
     }
@@ -489,7 +552,7 @@ router.get("/nearby", async (req, res) => {
     const radiusInMeters = parseFloat(radius) * 1000;
 
     // Use raw SQL for PostGIS geospatial query
-    const restaurants = await prisma.$queryRaw`
+    let restaurants = await prisma.$queryRaw`
       SELECT 
         id, "restaurantName", email, phone, logo, "foodType", description,
         "averageDeliveryTime", "deliveryFee", "minOrder", status, rating,
@@ -507,6 +570,31 @@ router.get("/nearby", async (req, res) => {
       )
       ORDER BY distance ASC
     `;
+
+    if (restaurants.length > 0) {
+      const restaurantIds = restaurants.map((restaurant) => restaurant.id);
+      const hours = await prisma.restaurantHours.findMany({
+        where: { restaurantId: { in: restaurantIds } },
+        select: {
+          restaurantId: true,
+          dayOfWeek: true,
+          openTime: true,
+          closeTime: true,
+          isClosed: true,
+        },
+      });
+      const hoursByRestaurant = new Map();
+      for (const hour of hours) {
+        if (!hoursByRestaurant.has(hour.restaurantId)) {
+          hoursByRestaurant.set(hour.restaurantId, []);
+        }
+        hoursByRestaurant.get(hour.restaurantId).push(hour);
+      }
+      restaurants = restaurants.map((restaurant) => ({
+        ...restaurant,
+        openingHours: hoursByRestaurant.get(restaurant.id) || [],
+      }));
+    }
 
     res.json({
       success: true,

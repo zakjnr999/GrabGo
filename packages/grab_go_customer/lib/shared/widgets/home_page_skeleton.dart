@@ -23,7 +23,7 @@ class HomePageSkeleton extends StatelessWidget {
         SizedBox(height: KSpacing.lg.h),
 
         // Promotional banner skeleton
-        _buildBannerSkeleton(colors, isDark),
+        _buildBannerSkeleton(colors, isDark, context),
 
         SizedBox(height: KSpacing.lg.h),
 
@@ -88,8 +88,8 @@ class HomePageSkeleton extends StatelessWidget {
               children: [
                 // Circular category icon
                 _buildShimmerBox(
-                  width: 56.w,
-                  height: 56.h,
+                  width: 56,
+                  height: 56,
                   colors: colors,
                   isDark: isDark,
                   borderRadius: KBorderSize.border,
@@ -105,12 +105,22 @@ class HomePageSkeleton extends StatelessWidget {
     );
   }
 
-  Widget _buildBannerSkeleton(AppColorsExtension colors, bool isDark) {
+  Widget _buildBannerSkeleton(AppColorsExtension colors, bool isDark, BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final cardWidth = size.width - (40.w);
+    final baseHeight = (cardWidth * 0.48).clamp(145.0, 195.0);
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 20.w),
       child: ClipPath(
         clipper: WavyBannerClipper(waveHeight: 8, waveCount: 12, cornerRadius: 16),
-        child: _buildShimmerBox(width: double.infinity, height: 150.h, colors: colors, isDark: isDark, borderRadius: 0),
+        child: _buildShimmerBox(
+          width: double.infinity,
+          height: baseHeight,
+          colors: colors,
+          isDark: isDark,
+          borderRadius: 0,
+        ),
       ),
     );
   }

@@ -474,7 +474,7 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
 
   double _currentHeaderHeight(Size size, double scrollOffset) {
     final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
-    final expandedHeight = size.height * 0.20;
+    final expandedHeight = UmbrellaHeaderMetrics.expandedHeightFor(size);
     return expandedHeight - ((expandedHeight - _collapsedHeight) * collapseProgress);
   }
 
@@ -526,7 +526,7 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: () {
-                      context.push("/notification");
+                      // context.push("/notification");
                     },
                     customBorder: const CircleBorder(),
                     child: Padding(

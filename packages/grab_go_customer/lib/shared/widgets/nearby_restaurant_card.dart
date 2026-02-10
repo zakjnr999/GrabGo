@@ -39,14 +39,14 @@ class NearbyRestaurantCard extends StatelessWidget {
               ),
               child: CachedNetworkImage(
                 imageUrl: ImageOptimizer.getPreviewUrl(restaurant.imageUrl, width: 300),
-                height: 120.h,
+                height: 120,
                 width: 100.w,
                 fit: BoxFit.cover,
                 memCacheWidth: 300,
                 maxHeightDiskCache: 600,
-                placeholder: (context, url) => Container(height: 120.h, width: 100.w, color: colors.inputBorder),
+                placeholder: (context, url) => Container(height: 120, width: 100.w, color: colors.inputBorder),
                 errorWidget: (context, url, error) => Container(
-                  height: 120.h,
+                  height: 120,
                   width: 100.w,
                   color: colors.inputBorder,
                   child: Icon(Icons.restaurant, color: colors.textSecondary),
@@ -67,13 +67,13 @@ class NearbyRestaurantCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                     ),
-                    SizedBox(height: 8.h),
+                    SizedBox(height: 8),
                     Row(
                       children: [
                         SvgPicture.asset(
                           Assets.icons.starSolid,
                           package: 'grab_go_shared',
-                          height: 14.h,
+                          height: 14,
                           width: 14.w,
                           colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                         ),
@@ -84,7 +84,7 @@ class NearbyRestaurantCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    SizedBox(height: 8.h),
+                    SizedBox(height: 8),
                     Row(
                       children: [
                         Icon(Icons.location_on, size: 14.sp, color: colors.accentGreen),

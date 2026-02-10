@@ -7,11 +7,6 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-/**
- * @param {Buffer|String} file - File buffer or file path
- * @param {Object} options - Upload options
- * @returns {Promise<Object>} Cloudinary upload result
- */
 const uploadToCloudinary = async (file, options = {}) => {
   try {
     const {
@@ -54,11 +49,6 @@ const uploadToCloudinary = async (file, options = {}) => {
   }
 };
 
-/**
- * Delete image from Cloudinary
- * @param {String} publicId - Cloudinary public ID
- * @returns {Promise<Object>} Deletion result
- */
 const deleteFromCloudinary = async (publicId) => {
   try {
     if (!publicId) return null;
@@ -75,12 +65,6 @@ const deleteFromCloudinary = async (publicId) => {
   }
 };
 
-/**
- * Upload image from multer file object
- * @param {Object} file - Multer file object
- * @param {Object} options - Upload options
- * @returns {Promise<Object>} Cloudinary upload result
- */
 const uploadMulterFile = async (file, options = {}) => {
   if (!file) {
     throw new Error('No file provided');
@@ -120,12 +104,6 @@ const uploadMulterFile = async (file, options = {}) => {
   }
 };
 
-/**
- * Upload audio file from multer file object (for voice messages)
- * @param {Object} file - Multer file object
- * @param {Object} options - Upload options
- * @returns {Promise<Object>} Cloudinary upload result with audio URL and duration
- */
 const uploadAudioFile = async (file, options = {}) => {
   if (!file) {
     throw new Error('No file provided');
@@ -144,8 +122,8 @@ const uploadAudioFile = async (file, options = {}) => {
   try {
     const result = await cloudinary.uploader.upload(dataUri, {
       folder: uploadFolder,
-      resource_type: 'video', // Cloudinary uses 'video' for audio files
-      format: 'ogg', // Convert to ogg for consistent playback
+      resource_type: 'video',
+      format: 'ogg',
     });
 
     return {
@@ -153,7 +131,7 @@ const uploadAudioFile = async (file, options = {}) => {
       public_id: result.public_id,
       format: result.format,
       bytes: result.bytes,
-      duration: result.duration || 0, // Duration in seconds
+      duration: result.duration || 0,
     };
   } catch (error) {
     console.error('Cloudinary uploadAudioFile error:', error);

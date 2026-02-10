@@ -66,7 +66,7 @@ class _BrowsePageState extends State<BrowsePage> {
     final systemUiOverlayStyle = SystemUiOverlayStyle(
       statusBarColor: colors.accentOrange,
       statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: colors.backgroundSecondary,
+      systemNavigationBarColor: colors.backgroundPrimary,
       systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
 
@@ -108,7 +108,7 @@ class _BrowsePageState extends State<BrowsePage> {
       valueListenable: _scrollOffsetNotifier,
       builder: (context, scrollOffset, _) {
         final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
-        final expandedHeight = size.height * 0.20;
+        final expandedHeight = UmbrellaHeaderMetrics.expandedHeightFor(size);
         final currentHeight = expandedHeight - ((expandedHeight - _collapsedHeight) * collapseProgress);
         final contentOpacity = (1.0 - collapseProgress).clamp(0.0, 1.0);
 
@@ -167,7 +167,8 @@ class _BrowsePageState extends State<BrowsePage> {
 
   Widget _buildContent(AppColorsExtension colors, bool isDark, ServiceProvider serviceProvider, Size size) {
     final foodProvider = Provider.of<FoodProvider>(context);
-    final bool isFoodUnavailable = !foodProvider.isLoading && foodProvider.categories.isEmpty && foodProvider.hasAttemptedFetch;
+    final bool isFoodUnavailable =
+        !foodProvider.isLoading && foodProvider.categories.isEmpty && foodProvider.hasAttemptedFetch;
 
     if (isFoodUnavailable) {
       return ListView(
@@ -497,7 +498,7 @@ class _BrowsePageState extends State<BrowsePage> {
             getName: (cat) => cat.name,
             getEmoji: (cat) => cat.emoji,
             onTap: (cat) => context.push(
-              '/categoryItems',
+              '/categoryItems/${cat.id}',
               extra: {
                 'categoryId': cat.id,
                 'categoryName': cat.name,
@@ -537,7 +538,7 @@ class _BrowsePageState extends State<BrowsePage> {
             getName: (cat) => cat.name,
             getEmoji: (cat) => cat.emoji,
             onTap: (cat) => context.push(
-              '/categoryItems',
+              '/categoryItems/${cat.id}',
               extra: {
                 'categoryId': cat.id,
                 'categoryName': cat.name,
@@ -577,7 +578,7 @@ class _BrowsePageState extends State<BrowsePage> {
             getName: (cat) => cat.name,
             getEmoji: (cat) => cat.emoji,
             onTap: (cat) => context.push(
-              '/categoryItems',
+              '/categoryItems/${cat.id}',
               extra: {
                 'categoryId': cat.id,
                 'categoryName': cat.name,
@@ -617,7 +618,7 @@ class _BrowsePageState extends State<BrowsePage> {
             getName: (cat) => cat.name,
             getEmoji: (cat) => cat.emoji,
             onTap: (cat) => context.push(
-              '/categoryItems',
+              '/categoryItems/${cat.id}',
               extra: {
                 'categoryId': cat.id,
                 'categoryName': cat.name,
@@ -643,7 +644,7 @@ class _BrowsePageState extends State<BrowsePage> {
     required AppColorsExtension colors,
   }) {
     return SizedBox(
-      height: 110.h,
+      height: 116.h,
       child: ListView.builder(
         padding: EdgeInsets.symmetric(horizontal: 20.w),
         scrollDirection: Axis.horizontal,

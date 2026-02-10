@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:flutter_swipe_action_cell/core/cell.dart';
 import 'package:go_router/go_router.dart';
+import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:provider/provider.dart';
@@ -22,6 +23,7 @@ class _CartItemState extends State<CartItem> {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final size = MediaQuery.sizeOf(context);
+    final double imageSize = (size.width * 0.28).clamp(96.0, 120.0);
 
     return Consumer<CartProvider>(
       builder: (context, provider, child) {
@@ -37,6 +39,7 @@ class _CartItemState extends State<CartItem> {
               final index = entry.key;
               final cartItem = entry.value.key;
               final quantity = entry.value.value;
+              final bool isRestaurantClosed = cartItem is FoodItem ? !(cartItem).isRestaurantOpen : false;
 
               return Column(
                 children: [
@@ -97,41 +100,61 @@ class _CartItemState extends State<CartItem> {
                                 topLeft: Radius.circular(KBorderSize.borderRadius15),
                                 bottomLeft: Radius.circular(KBorderSize.borderRadius15),
                               ),
-                              child: CachedNetworkImage(
-                                imageUrl: ImageOptimizer.getPreviewUrl(cartItem.image, width: 300),
-                                height: size.height * 0.14,
-                                width: size.width * 0.32,
-                                fit: BoxFit.cover,
-                                memCacheWidth: 300,
-                                maxHeightDiskCache: 400,
-                                placeholder: (context, url) => Container(
-                                  height: size.height * 0.14,
-                                  width: size.width * 0.32,
-                                  color: colors.inputBorder,
-                                  child: Center(
-                                    child: SvgPicture.asset(
-                                      Assets.icons.utensilsCrossed,
-                                      package: 'grab_go_shared',
-                                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                                      width: 30.w,
-                                      height: 30.h,
+                              child: Stack(
+                                children: [
+                                  CachedNetworkImage(
+                                    imageUrl: ImageOptimizer.getPreviewUrl(cartItem.image, width: 300),
+                                    height: imageSize,
+                                    width: imageSize,
+                                    fit: BoxFit.cover,
+                                    memCacheWidth: 300,
+                                    maxHeightDiskCache: 400,
+                                    placeholder: (context, url) => Container(
+                                      height: imageSize,
+                                      width: imageSize,
+                                      color: colors.inputBorder,
+                                      child: Center(
+                                        child: SvgPicture.asset(
+                                          Assets.icons.utensilsCrossed,
+                                          package: 'grab_go_shared',
+                                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                          width: 30.w,
+                                          height: 30.h,
+                                        ),
+                                      ),
+                                    ),
+                                    errorWidget: (context, url, error) => Container(
+                                      height: imageSize,
+                                      width: imageSize,
+                                      color: colors.inputBorder,
+                                      child: Center(
+                                        child: SvgPicture.asset(
+                                          Assets.icons.utensilsCrossed,
+                                          package: 'grab_go_shared',
+                                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                          width: 30.w,
+                                          height: 30.h,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
-                                errorWidget: (context, url, error) => Container(
-                                  height: size.height * 0.14,
-                                  width: size.width * 0.32,
-                                  color: colors.inputBorder,
-                                  child: Center(
-                                    child: SvgPicture.asset(
-                                      Assets.icons.utensilsCrossed,
-                                      package: 'grab_go_shared',
-                                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                                      width: 30.w,
-                                      height: 30.h,
+                                  if (isRestaurantClosed)
+                                    Positioned.fill(
+                                      child: Container(
+                                        color: Colors.black.withValues(alpha: 0.5),
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          "We're closed",
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12.sp,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ),
+                                ],
                               ),
                             ),
 

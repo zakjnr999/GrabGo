@@ -2,13 +2,13 @@ const mongoose = require('mongoose');
 
 const chatMessageSchema = new mongoose.Schema({
     chatId: {
-        type: mongoose.Schema.Types.ObjectId, // References MongoDB Chat
+        type: mongoose.Schema.Types.ObjectId,
         ref: 'Chat',
         required: true,
         index: true
     },
     senderId: {
-        type: String, // References PostgreSQL User ID
+        type: String,
         required: true
     },
     text: String,
@@ -17,26 +17,22 @@ const chatMessageSchema = new mongoose.Schema({
         enum: ['text', 'voice', 'image'],
         default: 'text'
     },
-    // Voice message fields
     audioUrl: String,
     audioDuration: {
-        type: Number, // Duration in seconds
+        type: Number,
         default: 0
     },
-    // Image message fields (supports multiple images)
     imageUrls: {
         type: [String],
         default: []
     },
-    // BlurHash for instant image previews (one per image)
     blurHashes: {
         type: [String],
         default: []
     },
     readBy: [{
-        type: String // List of User IDs
+        type: String
     }],
-    // Reply reference
     replyTo: {
         id: String,
         text: String,

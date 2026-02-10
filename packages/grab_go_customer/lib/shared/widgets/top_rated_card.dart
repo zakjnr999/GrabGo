@@ -21,11 +21,14 @@ class TopRatedCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     Size size = MediaQuery.sizeOf(context);
+    final cardWidth = size.width * 0.5;
+    final imageHeight = (cardWidth * 0.62).clamp(96.0, 120.0);
+    final isOpen = item.isRestaurantOpen;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: size.width * 0.5,
+        width: cardWidth,
         padding: EdgeInsets.all(2.r),
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
@@ -47,13 +50,13 @@ class TopRatedCard extends StatelessWidget {
                   ),
                   child: CachedNetworkImage(
                     imageUrl: ImageOptimizer.getPreviewUrl(item.image, width: 400),
-                    height: 120.h,
+                    height: imageHeight,
                     width: double.infinity,
                     fit: BoxFit.cover,
                     memCacheWidth: 400,
                     maxHeightDiskCache: 800,
                     placeholder: (context, url) => Container(
-                      height: 120.h,
+                      height: imageHeight,
                       color: colors.inputBorder,
                       child: Center(
                         child: SvgPicture.asset(
@@ -61,12 +64,12 @@ class TopRatedCard extends StatelessWidget {
                           package: 'grab_go_shared',
                           colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                           width: 30.w,
-                          height: 30.h,
+                          height: 30,
                         ),
                       ),
                     ),
                     errorWidget: (context, url, error) => Container(
-                      height: 120.h,
+                      height: imageHeight,
                       color: colors.inputBorder,
                       child: Center(
                         child: SvgPicture.asset(
@@ -74,7 +77,7 @@ class TopRatedCard extends StatelessWidget {
                           package: 'grab_go_shared',
                           colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                           width: 30.w,
-                          height: 30.h,
+                          height: 30,
                         ),
                       ),
                     ),
@@ -97,7 +100,7 @@ class TopRatedCard extends StatelessWidget {
                         child: SvgPicture.asset(
                           isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
                           package: 'grab_go_shared',
-                          height: 24.h,
+                          height: 24,
                           width: 24.w,
                           colorFilter: ColorFilter.mode(isFavorite ? colors.error : Colors.white, BlendMode.srcIn),
                         ),
@@ -106,10 +109,10 @@ class TopRatedCard extends StatelessWidget {
                   },
                 ),
                 Positioned(
-                  top: 0.h,
+                  top: 0,
                   left: 0.w,
                   child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [colors.error, colors.accentOrange],
@@ -127,7 +130,7 @@ class TopRatedCard extends StatelessWidget {
                         SvgPicture.asset(
                           Assets.icons.star,
                           package: 'grab_go_shared',
-                          height: 13.h,
+                          height: 13,
                           width: 13.w,
                           colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                         ),
@@ -158,15 +161,19 @@ class TopRatedCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                         ),
-                        SizedBox(height: 6.h),
+                        SizedBox(height: 6),
                         Text(
-                          "120+ reviews",
-                          style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                          isOpen ? "120+ reviews" : "We're closed",
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w600,
+                            color: isOpen ? colors.textSecondary : colors.error,
+                          ),
                         ),
 
-                        SizedBox(height: 6.h),
+                        SizedBox(height: 6),
                         Container(
-                          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4),
                           decoration: BoxDecoration(
                             color: colors.accentOrange.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(8.r),
@@ -208,7 +215,7 @@ class TopRatedCard extends StatelessWidget {
                               isInCart ? Assets.icons.check : Assets.icons.cart,
                               key: ValueKey(isInCart),
                               package: 'grab_go_shared',
-                              height: 18.h,
+                              height: 18,
                               width: 18.w,
                               colorFilter: ColorFilter.mode(
                                 isInCart ? Colors.white : colors.textPrimary,

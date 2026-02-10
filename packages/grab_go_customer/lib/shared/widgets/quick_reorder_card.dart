@@ -55,13 +55,13 @@ class QuickReorderCard extends StatelessWidget {
                   ),
                   child: CachedNetworkImage(
                     imageUrl: ImageOptimizer.getPreviewUrl(item.image, width: 400),
-                    height: 120.h,
+                    height: 120,
                     width: double.infinity,
                     fit: BoxFit.cover,
                     memCacheWidth: 400,
                     maxHeightDiskCache: 800,
                     placeholder: (context, url) => Container(
-                      height: 120.h,
+                      height: 120,
                       color: colors.inputBorder,
                       child: Center(
                         child: SvgPicture.asset(
@@ -69,12 +69,12 @@ class QuickReorderCard extends StatelessWidget {
                           package: 'grab_go_shared',
                           colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                           width: 30.w,
-                          height: 30.h,
+                          height: 30,
                         ),
                       ),
                     ),
                     errorWidget: (context, url, error) => Container(
-                      height: 120.h,
+                      height: 120,
                       color: colors.inputBorder,
                       child: Center(
                         child: SvgPicture.asset(
@@ -82,7 +82,7 @@ class QuickReorderCard extends StatelessWidget {
                           package: 'grab_go_shared',
                           colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                           width: 30.w,
-                          height: 30.h,
+                          height: 30,
                         ),
                       ),
                     ),
@@ -105,7 +105,7 @@ class QuickReorderCard extends StatelessWidget {
                         child: SvgPicture.asset(
                           isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
                           package: 'grab_go_shared',
-                          height: 24.h,
+                          height: 24,
                           width: 24.w,
                           colorFilter: ColorFilter.mode(isFavorite ? colors.error : Colors.white, BlendMode.srcIn),
                         ),
@@ -126,19 +126,19 @@ class QuickReorderCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                   ),
-                  SizedBox(height: 3.h),
+                  SizedBox(height: 3),
                   Text(
                     daysAgo == 0 ? "Ordered today" : "Ordered $daysAgo ${daysAgo == 1 ? 'day' : 'days'} ago",
                     style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
                   ),
-                  SizedBox(height: 6.h),
+                  SizedBox(height: 6),
                   // Price and cart button row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4),
                         decoration: BoxDecoration(
                           color: colors.accentOrange.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8.r),
@@ -168,7 +168,7 @@ class QuickReorderCard extends StatelessWidget {
                               isInCart ? Assets.icons.check : Assets.icons.cart,
                               key: ValueKey(isInCart),
                               package: 'grab_go_shared',
-                              height: 18.h,
+                              height: 18,
                               width: 18.w,
                               colorFilter: ColorFilter.mode(
                                 isInCart ? Colors.white : colors.textPrimary,

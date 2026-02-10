@@ -45,13 +45,13 @@ class GroceryStoreCard extends StatelessWidget {
               ),
               child: CachedNetworkImage(
                 imageUrl: ImageOptimizer.getPreviewUrl(store.logo, width: 300),
-                height: 120.h,
+                height: 120,
                 width: 100.w,
                 fit: BoxFit.cover,
                 memCacheWidth: 300,
                 maxHeightDiskCache: 600,
                 placeholder: (context, url) => Container(
-                  height: 120.h,
+                  height: 120,
                   width: 100.w,
                   color: colors.inputBorder,
                   child: Center(
@@ -59,7 +59,7 @@ class GroceryStoreCard extends StatelessWidget {
                   ),
                 ),
                 errorWidget: (context, url, error) => Container(
-                  height: 120.h,
+                  height: 120,
                   width: 100.w,
                   color: colors.inputBorder,
                   child: Center(
@@ -83,7 +83,7 @@ class GroceryStoreCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                     ),
-                    SizedBox(height: 8.h),
+                    SizedBox(height: 8),
 
                     // Rating
                     Row(
@@ -91,7 +91,7 @@ class GroceryStoreCard extends StatelessWidget {
                         SvgPicture.asset(
                           Assets.icons.starSolid,
                           package: 'grab_go_shared',
-                          height: 14.h,
+                          height: 14,
                           width: 14.w,
                           colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                         ),
@@ -103,7 +103,7 @@ class GroceryStoreCard extends StatelessWidget {
                         SizedBox(width: 8.w),
                         Container(
                           width: 3.w,
-                          height: 3.h,
+                          height: 3,
                           decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
                         ),
                         SizedBox(width: 8.w),
@@ -122,7 +122,7 @@ class GroceryStoreCard extends StatelessWidget {
                       ],
                     ),
 
-                    SizedBox(height: 8.h),
+                    SizedBox(height: 8),
 
                     // Delivery Info
                     Row(
@@ -134,7 +134,7 @@ class GroceryStoreCard extends StatelessWidget {
                           style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
                         ),
                         SizedBox(width: 12.w),
-                        Container(width: 1.w, height: 10.h, color: colors.textSecondary.withValues(alpha: 0.5)),
+                        Container(width: 1.w, height: 10, color: colors.textSecondary.withValues(alpha: 0.5)),
                         SizedBox(width: 12.w),
                         Text(
                           "Min GHS ${store.minOrder.toInt()}",

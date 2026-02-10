@@ -18,12 +18,11 @@ class FoodItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    // final size = MediaQuery.sizeOf(context);
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: margin ?? EdgeInsets.only(left: 20.w, right: 20.w, bottom: 16.h),
+        margin: margin ?? EdgeInsets.only(left: 20.w, right: 20.w, bottom: 16),
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
@@ -32,7 +31,6 @@ class FoodItemCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image Section
             Stack(
               children: [
                 ClipRRect(
@@ -44,13 +42,13 @@ class FoodItemCard extends StatelessWidget {
                   ),
                   child: CachedNetworkImage(
                     imageUrl: ImageOptimizer.getPreviewUrl(item.image, width: 600),
-                    height: 120.h,
+                    height: 120,
                     width: double.infinity,
                     fit: BoxFit.cover,
                     memCacheWidth: 600,
                     maxHeightDiskCache: 1200,
                     placeholder: (context, url) => Container(
-                      height: 180.h,
+                      height: 120,
                       width: double.infinity,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -68,12 +66,12 @@ class FoodItemCard extends StatelessWidget {
                           package: 'grab_go_shared',
                           colorFilter: ColorFilter.mode(colors.textSecondary.withValues(alpha: 0.3), BlendMode.srcIn),
                           width: 40.w,
-                          height: 40.h,
+                          height: 40,
                         ),
                       ),
                     ),
                     errorWidget: (context, url, error) => Container(
-                      height: 180.h,
+                      height: 120,
                       width: double.infinity,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -91,7 +89,7 @@ class FoodItemCard extends StatelessWidget {
                           package: 'grab_go_shared',
                           colorFilter: ColorFilter.mode(colors.textSecondary.withValues(alpha: 0.3), BlendMode.srcIn),
                           width: 40.w,
-                          height: 40.h,
+                          height: 40,
                         ),
                       ),
                     ),
@@ -99,10 +97,10 @@ class FoodItemCard extends StatelessWidget {
                 ),
                 if (item.discountPercentage > 0)
                   Positioned(
-                    top: 0.h,
+                    top: 0,
                     left: 0.w,
                     child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [colors.error, colors.accentOrange],
@@ -122,7 +120,6 @@ class FoodItemCard extends StatelessWidget {
                   ),
               ],
             ),
-            // Details Section
             Padding(
               padding: EdgeInsets.all(12.r),
               child: Column(
@@ -140,7 +137,7 @@ class FoodItemCard extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  SizedBox(height: 8.h),
+                  SizedBox(height: 8),
                   // Restaurant Name
                   Row(
                     children: [
@@ -153,7 +150,7 @@ class FoodItemCard extends StatelessWidget {
                       SizedBox(width: 8.w),
                       Container(
                         width: 3.w,
-                        height: 3.h,
+                        height: 3,
                         decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
                       ),
                       SizedBox(width: 8.w),
@@ -167,14 +164,14 @@ class FoodItemCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  SizedBox(height: 10.h),
-                  // Delivery Time
+                  SizedBox(height: 10),
+                  // Rating + ETA / Closed status
                   Row(
                     children: [
                       SvgPicture.asset(
                         Assets.icons.starSolid,
                         package: 'grab_go_shared',
-                        height: 13.h,
+                        height: 13,
                         width: 13.w,
                         colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                       ),
@@ -183,33 +180,35 @@ class FoodItemCard extends StatelessWidget {
                         item.rating.toStringAsFixed(1),
                         style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                       ),
-                      SizedBox(width: 8.w),
-                      Container(
-                        width: 3.w,
-                        height: 3.h,
-                        decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
-                      ),
-                      SizedBox(width: 8.w),
-                      SvgPicture.asset(
-                        Assets.icons.timer,
-                        package: 'grab_go_shared',
-                        height: 12.h,
-                        width: 12.w,
-                        colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                      ),
-                      SizedBox(width: 4.w),
-                      Text(
-                        item.estimatedDeliveryTime,
-                        style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
-                      ),
+                      if (item.isRestaurantOpen) ...[
+                        SizedBox(width: 8.w),
+                        Container(
+                          width: 3.w,
+                          height: 3,
+                          decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
+                        ),
+                        SizedBox(width: 8.w),
+                        SvgPicture.asset(
+                          Assets.icons.timer,
+                          package: 'grab_go_shared',
+                          height: 12,
+                          width: 12.w,
+                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                        ),
+                        SizedBox(width: 4.w),
+                        Text(
+                          deliveryTimeLabel ?? item.estimatedDeliveryTime,
+                          style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                        ),
+                      ],
                     ],
                   ),
-                  SizedBox(height: 12.h),
+                  SizedBox(height: 12),
                   // Price and Action Button
                   Row(
                     children: [
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4),
                         decoration: BoxDecoration(
                           color: colors.accentOrange.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8.r),

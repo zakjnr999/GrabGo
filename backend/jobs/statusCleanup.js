@@ -1,20 +1,9 @@
-/**
- * Cron job for automatic status cleanup
- * Runs every hour to deactivate expired statuses and clean up Cloudinary images
- */
-
 const cron = require('node-cron');
 const cloudinary = require('cloudinary').v2;
 const StatusService = require('../services/status_service');
 
-// Track if cron is already scheduled
 let isScheduled = false;
 
-/**
- * Cleanup expired statuses
- * - Marks expired statuses as inactive
- * - Deletes associated Cloudinary images
- */
 const cleanupExpiredStatuses = async () => {
     console.log('[StatusCleanup] Starting cleanup job...');
 
@@ -30,22 +19,16 @@ const cleanupExpiredStatuses = async () => {
     }
 };
 
-/**
- * Schedule the cleanup cron job
- * Runs every hour at minute 0 (e.g., 1:00, 2:00, 3:00...)
- */
 const scheduleCleanup = () => {
     if (isScheduled) {
         console.log('[StatusCleanup] Cron job already scheduled');
         return;
     }
 
-    // Run every hour at minute 0
     cron.schedule('0 * * * *', async () => {
         try {
             await cleanupExpiredStatuses();
         } catch (error) {
-            // Log error but don't crash the server
             console.error('[StatusCleanup] Cron job failed:', error.message);
         }
     }, {
@@ -57,17 +40,12 @@ const scheduleCleanup = () => {
     console.log('[StatusCleanup] Cron job scheduled to run every hour');
 };
 
-/**
- * Schedule a more frequent cleanup for development/testing
- * Runs every 15 minutes
- */
 const scheduleFrequentCleanup = () => {
     if (isScheduled) {
         console.log('[StatusCleanup] Cron job already scheduled');
         return;
     }
 
-    // Run every 15 minutes
     cron.schedule('*/15 * * * *', async () => {
         try {
             await cleanupExpiredStatuses();

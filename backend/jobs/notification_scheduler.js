@@ -2,16 +2,9 @@ const cron = require('node-cron');
 const { processScheduledNotifications } = require('../services/scheduled_notification_service');
 const cache = require('../utils/cache');
 
-/**
- * Initialize the notification scheduler
- * Runs every minute to check for due notifications
- * @param {Object} io - Socket.IO instance
- */
 const initializeScheduler = (io) => {
     console.log('📅 Initializing notification scheduler...');
 
-    // Run every minute: '* * * * *'
-    // Format: minute hour day month day-of-week
     cron.schedule('* * * * *', async () => {
         try {
             const lock = await cache.acquireLock('job:notification_scheduler', 50);
@@ -35,10 +28,6 @@ const initializeScheduler = (io) => {
     console.log('✅ Notification scheduler started (runs every minute)');
 };
 
-/**
- * Manual trigger for testing
- * @param {Object} io - Socket.IO instance
- */
 const triggerScheduler = async (io) => {
     console.log('🔧 Manually triggering scheduler...');
     try {

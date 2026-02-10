@@ -31,11 +31,14 @@ class PopularItemCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     Size size = MediaQuery.sizeOf(context);
+    final cardWidth = size.width * 0.5;
+    final imageHeight = (cardWidth * 0.62).clamp(96.0, 120.0);
+    final isOpen = item is FoodItem ? (item as FoodItem).isRestaurantOpen : true;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: size.width * 0.5,
+        width: cardWidth,
         padding: EdgeInsets.all(2.r),
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
@@ -58,13 +61,13 @@ class PopularItemCard extends StatelessWidget {
                   ),
                   child: CachedNetworkImage(
                     imageUrl: ImageOptimizer.getPreviewUrl(item.image, width: 400),
-                    height: 120.h,
+                    height: imageHeight,
                     width: double.infinity,
                     fit: BoxFit.cover,
                     memCacheWidth: 400,
                     maxHeightDiskCache: 800,
                     placeholder: (context, url) => Container(
-                      height: 120.h,
+                      height: imageHeight,
                       color: colors.inputBorder,
                       child: Center(
                         child: SvgPicture.asset(
@@ -72,12 +75,12 @@ class PopularItemCard extends StatelessWidget {
                           package: 'grab_go_shared',
                           colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                           width: 30.w,
-                          height: 30.h,
+                          height: 30,
                         ),
                       ),
                     ),
                     errorWidget: (context, url, error) => Container(
-                      height: 120.h,
+                      height: imageHeight,
                       color: colors.inputBorder,
                       child: Center(
                         child: SvgPicture.asset(
@@ -85,17 +88,17 @@ class PopularItemCard extends StatelessWidget {
                           package: 'grab_go_shared',
                           colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                           width: 30.w,
-                          height: 30.h,
+                          height: 30,
                         ),
                       ),
                     ),
                   ),
                 ),
                 Positioned(
-                  top: 0.h,
+                  top: 0,
                   left: 0.w,
                   child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [colors.error, colors.accentOrange],
@@ -113,7 +116,7 @@ class PopularItemCard extends StatelessWidget {
                         SvgPicture.asset(
                           Assets.icons.flame,
                           package: 'grab_go_shared',
-                          height: 16.h,
+                          height: 16,
                           width: 16.w,
                           colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                         ),
@@ -147,7 +150,7 @@ class PopularItemCard extends StatelessWidget {
                         child: SvgPicture.asset(
                           isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
                           package: 'grab_go_shared',
-                          height: 24.h,
+                          height: 24,
                           width: 24.w,
                           colorFilter: ColorFilter.mode(isFavorite ? colors.error : Colors.white, BlendMode.srcIn),
                         ),
@@ -157,7 +160,6 @@ class PopularItemCard extends StatelessWidget {
                 ),
               ],
             ),
-            // Content
             Padding(
               padding: EdgeInsets.fromLTRB(10.r, 10.r, 10.r, 6.r),
               child: Row(
@@ -173,32 +175,43 @@ class PopularItemCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                         ),
-                        SizedBox(height: 8.h),
+                        const SizedBox(height: 8),
                         Row(
                           children: [
                             if (showDeliveryTime) ...[
-                              SvgPicture.asset(
-                                Assets.icons.timer,
-                                package: 'grab_go_shared',
-                                height: 12.h,
-                                width: 12.w,
-                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                              ),
-                              SizedBox(width: 4.w),
-                              Text(
-                                deliveryTime ?? '25-30 min',
-                                style: TextStyle(
-                                  fontSize: 11.sp,
-                                  fontWeight: FontWeight.w500,
-                                  color: colors.textSecondary,
+                              if (isOpen) ...[
+                                SvgPicture.asset(
+                                  Assets.icons.timer,
+                                  package: 'grab_go_shared',
+                                  height: 12,
+                                  width: 12.w,
+                                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                                 ),
-                              ),
+                                SizedBox(width: 4.w),
+                                Text(
+                                  deliveryTime ?? '25-30 min',
+                                  style: TextStyle(
+                                    fontSize: 11.sp,
+                                    fontWeight: FontWeight.w500,
+                                    color: colors.textSecondary,
+                                  ),
+                                ),
+                              ] else ...[
+                                Text(
+                                  "We're closed",
+                                  style: TextStyle(
+                                    fontSize: 11.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: colors.error,
+                                  ),
+                                ),
+                              ],
                             ],
                           ],
                         ),
-                        SizedBox(height: 8.h),
+                        const SizedBox(height: 8),
                         Container(
-                          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4),
                           decoration: BoxDecoration(
                             color: colors.accentOrange.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(8.r),
@@ -239,7 +252,7 @@ class PopularItemCard extends StatelessWidget {
                               isInCart ? Assets.icons.check : Assets.icons.cart,
                               key: ValueKey(isInCart),
                               package: 'grab_go_shared',
-                              height: 18.h,
+                              height: 18,
                               width: 18.w,
                               colorFilter: ColorFilter.mode(
                                 isInCart ? Colors.white : colors.textPrimary,

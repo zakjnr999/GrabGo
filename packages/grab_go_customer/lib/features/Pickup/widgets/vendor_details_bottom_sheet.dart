@@ -100,6 +100,9 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
     final size = MediaQuery.of(context).size;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final vendor = widget.vendor;
+    final sheetCardWidth = size.width * 0.4;
+    final sheetImageHeight = (sheetCardWidth * 0.6).clamp(90.0, 120.0);
+    final sheetCardHeight = (sheetImageHeight + 110.0).clamp(190.0, 230.0);
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
       minChildSize: 0.4,
@@ -368,7 +371,7 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                         ),
                         SizedBox(height: 12.h),
                         SizedBox(
-                          height: 200.h,
+                          height: sheetCardHeight,
                           child: ListView.builder(
                             scrollDirection: Axis.horizontal,
                             itemCount: _popularItems.length,
@@ -395,7 +398,7 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                         ),
                         SizedBox(height: 12.h),
                         SizedBox(
-                          height: 220.h,
+                          height: sheetCardHeight,
                           child: ListView.builder(
                             scrollDirection: Axis.horizontal,
                             itemCount: _quickPickupItems.length,
@@ -450,18 +453,22 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
   }
 
   Widget _buildItemSkeleton(Size size, AppColorsExtension colors) {
+    final cardWidth = size.width * 0.4;
+    final imageHeight = (cardWidth * 0.6).clamp(90.0, 120.0);
+    final cardHeight = (imageHeight + 110.0).clamp(190.0, 230.0);
+
     return Row(
       children: List.generate(
         3,
         (index) => Container(
-          height: 200.h,
-          width: size.width * 0.4,
+          height: cardHeight,
+          width: cardWidth,
           margin: EdgeInsets.only(right: 6.w, left: index == 0 ? 20.w : 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                height: 120.h,
+                height: imageHeight,
                 decoration: BoxDecoration(
                   color: colors.backgroundSecondary,
                   borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
@@ -496,12 +503,15 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
   }
 
   Widget _buildItemCard(FoodItem item, AppColorsExtension colors, Size size, bool isPopular) {
+    final cardWidth = size.width * 0.4;
+    final imageHeight = (cardWidth * 0.6).clamp(90.0, 120.0);
+
     return GestureDetector(
       onTap: () {
         context.push('/foodDetails', extra: item);
       },
       child: Container(
-        width: size.width * 0.4,
+        width: cardWidth,
         padding: EdgeInsets.all(2.r),
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
@@ -523,13 +533,13 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                   ),
                   child: CachedNetworkImage(
                     imageUrl: ImageOptimizer.getPreviewUrl(item.image, width: 400),
-                    height: 120.h,
+                    height: imageHeight,
                     width: double.infinity,
                     fit: BoxFit.cover,
                     memCacheWidth: 400,
                     maxHeightDiskCache: 800,
                     placeholder: (context, url) => Container(
-                      height: 120.h,
+                      height: imageHeight,
                       color: colors.inputBorder,
                       child: Center(
                         child: SvgPicture.asset(
@@ -542,7 +552,7 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                       ),
                     ),
                     errorWidget: (context, url, error) => Container(
-                      height: 120.h,
+                      height: imageHeight,
                       color: colors.inputBorder,
                       child: Center(
                         child: SvgPicture.asset(
@@ -628,7 +638,7 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
               ],
             ),
             Padding(
-              padding: EdgeInsets.fromLTRB(10.r, 10.r, 10.r, 6.r),
+              padding: EdgeInsets.fromLTRB(8.r, 8.r, 8.r, 4.r),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -642,31 +652,30 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                         ),
-                        SizedBox(height: isPopular ? 0.h : 8.h),
-                        if (!isPopular)
-                          Row(
-                            children: [
-                              SvgPicture.asset(
-                                Assets.icons.timer,
-                                package: 'grab_go_shared',
-                                height: 12.h,
-                                width: 12.w,
-                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                        SizedBox(height: 8.h),
+                        Row(
+                          children: [
+                            SvgPicture.asset(
+                              Assets.icons.timer,
+                              package: 'grab_go_shared',
+                              height: 12.h,
+                              width: 12.w,
+                              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                            ),
+                            SizedBox(width: 4.w),
+                            Text(
+                              "Pickup in ${'${item.deliveryTimeMinutes} mins'}",
+                              style: TextStyle(
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w500,
+                                color: colors.textSecondary,
                               ),
-                              SizedBox(width: 4.w),
-                              Text(
-                                "Pickup in ${'${item.deliveryTimeMinutes} mins'}",
-                                style: TextStyle(
-                                  fontSize: 11.sp,
-                                  fontWeight: FontWeight.w500,
-                                  color: colors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
+                        ),
                         SizedBox(height: 8.h),
                         Container(
-                          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                           decoration: BoxDecoration(
                             color: colors.accentOrange.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(8.r),

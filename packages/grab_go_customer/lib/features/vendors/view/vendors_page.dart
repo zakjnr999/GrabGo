@@ -271,7 +271,7 @@ class _VendorsPageState extends State<VendorsPage> {
       builder: (context, scrollOffset, _) {
         final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
         // Match home_page.dart expanded height
-        final expandedHeight = size.height * 0.24;
+        final expandedHeight = UmbrellaHeaderMetrics.expandedHeightFor(size);
         final currentHeight = expandedHeight - ((expandedHeight - _collapsedHeight) * collapseProgress);
         final contentOpacity = (1.0 - collapseProgress).clamp(0.0, 1.0);
 

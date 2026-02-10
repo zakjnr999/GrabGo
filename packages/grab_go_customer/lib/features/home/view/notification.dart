@@ -228,7 +228,6 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
   void _setupSocketListener() {
     final socketService = SocketService();
 
-    // Add the notification listener using the late final field
     socketService.addNotificationListener(_notificationListener);
 
     socketService.addConnectionListener((state) {
@@ -247,7 +246,6 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
         final notification = NotificationModel.fromJson(Map<String, dynamic>.from(data));
 
         setState(() {
-          // Check if notification already exists (prevent duplicates)
           final exists = _notifications.any((n) => n.id == notification.id);
           if (!exists) {
             _notifications.insert(0, notification);
@@ -270,7 +268,6 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
       final result = await NotificationService().getNotifications(limit: _pageSize, page: 1);
       if (mounted) {
         setState(() {
-          // Backend now handles sorting (unread first, newest first)
           _notifications = result['notifications'] as List<NotificationModel>;
           _hasMore = result['hasMore'] as bool;
           _isLoading = false;
@@ -392,9 +389,9 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
     final padding = MediaQuery.paddingOf(context);
 
     final systemUiOverlayStyle = SystemUiOverlayStyle(
-      statusBarColor: colors.backgroundSecondary,
+      statusBarColor: colors.backgroundPrimary,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-      systemNavigationBarColor: colors.backgroundSecondary,
+      systemNavigationBarColor: colors.backgroundPrimary,
       systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
 
@@ -413,13 +410,13 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: EdgeInsets.only(top: padding.top, left: 20.w, right: 20.w),
+                    padding: EdgeInsets.only(top: padding.top + 10, left: 20.w, right: 20.w),
                     child: Row(
                       children: [
                         // Back button
                         Container(
-                          height: 44.h,
-                          width: 44.w,
+                          height: 44,
+                          width: 44,
                           decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
                           child: Material(
                             color: Colors.transparent,

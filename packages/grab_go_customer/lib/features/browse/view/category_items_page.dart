@@ -4,7 +4,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
-import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart';
 import 'package:grab_go_customer/features/home/model/filter_model.dart';
@@ -45,7 +44,7 @@ class CategoryItemsPage extends StatefulWidget {
   State<CategoryItemsPage> createState() => _CategoryItemsPageState();
 }
 
-class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProviderStateMixin {
+class _CategoryItemsPageState extends State<CategoryItemsPage> {
   final Set<String> _selectedQuickFilters = {};
   String _sortBy = 'Recommended';
   final bool _isGridView = false;
@@ -56,18 +55,11 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
   FilterModel _comprehensiveFilter = FilterModel();
 
   late ScrollController _scrollController;
-  late AnimationController _fabAnimationController;
-  late AnimationController _badgePulseController;
-  late Animation<Offset> _fabSlideAnimation;
-  late Animation<double> _fabScaleAnimation;
-  late Animation<double> _badgePulseAnimation;
-  bool _isFabVisible = true;
-  double _lastScrollOffset = 0.0;
-  int _previousCartCount = 0;
 
   final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
   static const double _collapsedHeight = 80.0;
   static const double _scrollThreshold = 100.0;
+  static const double _headerExtraHeight = 32.0;
 
   final List<Map<String, dynamic>> _quickFilters = [
     {'icon': Assets.icons.dollar, 'label': 'Price', 'hasOptions': true},
@@ -92,30 +84,6 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
     super.initState();
     _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
-
-    _fabAnimationController = AnimationController(duration: const Duration(milliseconds: 300), vsync: this);
-
-    _fabSlideAnimation = Tween<Offset>(
-      begin: const Offset(0, 2),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _fabAnimationController, curve: Curves.easeInOut));
-
-    _fabScaleAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _fabAnimationController, curve: Curves.easeOut));
-
-    _badgePulseController = AnimationController(duration: const Duration(milliseconds: 400), vsync: this);
-
-    _badgePulseAnimation = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 1.3).chain(CurveTween(curve: Curves.easeOut)),
-        weight: 50,
-      ),
-      TweenSequenceItem(tween: Tween<double>(begin: 1.3, end: 1.0).chain(CurveTween(curve: Curves.easeIn)), weight: 50),
-    ]).animate(_badgePulseController);
-
-    _fabAnimationController.forward();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.isPharmacy) {
@@ -147,8 +115,6 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _scrollOffsetNotifier.dispose();
-    _fabAnimationController.dispose();
-    _badgePulseController.dispose();
     super.dispose();
   }
 
@@ -158,39 +124,6 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
     final currentOffset = _scrollController.offset;
 
     _scrollOffsetNotifier.value = currentOffset;
-
-    final scrollDelta = currentOffset - _lastScrollOffset;
-
-    if (currentOffset <= 0) {
-      if (!_isFabVisible) {
-        setState(() {
-          _isFabVisible = true;
-        });
-        _fabAnimationController.forward();
-      }
-      _lastScrollOffset = currentOffset;
-      return;
-    }
-
-    if (scrollDelta.abs() > 12 && currentOffset > 50) {
-      if (scrollDelta > 0) {
-        if (_isFabVisible) {
-          setState(() {
-            _isFabVisible = false;
-          });
-          _fabAnimationController.reverse();
-        }
-      } else {
-        if (!_isFabVisible) {
-          setState(() {
-            _isFabVisible = true;
-          });
-          _fabAnimationController.forward();
-        }
-      }
-    }
-
-    _lastScrollOffset = currentOffset;
   }
 
   @override
@@ -198,13 +131,17 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final size = MediaQuery.sizeOf(context);
+    final hasCart = context.watch<CartProvider>().cartItems.isNotEmpty;
 
     final systemUiOverlayStyle = SystemUiOverlayStyle(
       statusBarColor: colors.accentOrange,
       statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: colors.backgroundSecondary,
+      systemNavigationBarColor: hasCart ? colors.accentOrange : colors.backgroundPrimary,
+      systemNavigationBarDividerColor: hasCart ? colors.accentOrange : colors.backgroundPrimary,
       systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
+
+    SystemChrome.setSystemUIOverlayStyle(systemUiOverlayStyle);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: systemUiOverlayStyle,
@@ -219,7 +156,9 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
                   controller: _scrollController,
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
-                    SliverToBoxAdapter(child: SizedBox(height: size.height * 0.24)),
+                    SliverToBoxAdapter(
+                      child: SizedBox(height: UmbrellaHeaderMetrics.expandedHeightFor(size, extra: _headerExtraHeight)),
+                    ),
                     if (widget.isFood)
                       _buildFoodDealsSliver(colors)
                     else if (widget.isGrocery)
@@ -254,86 +193,91 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
             ),
           ),
         ),
-        floatingActionButton: Provider.of<CartProvider>(context, listen: true).cartItems.isNotEmpty
-            ? SlideTransition(
-                position: _fabSlideAnimation,
-                child: ScaleTransition(
-                  scale: _fabScaleAnimation,
-                  child: Consumer<CartProvider>(
-                    builder: (context, cartProvider, child) {
-                      final currentCount = cartProvider.cartItems.length;
+        bottomNavigationBar: _buildCartBar(colors),
+      ),
+    );
+  }
 
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (!mounted) return;
+  Widget _buildCartBar(AppColorsExtension colors) {
+    return Consumer<CartProvider>(
+      builder: (context, cartProvider, _) {
+        if (cartProvider.cartItems.isEmpty) return const SizedBox.shrink();
 
-                        if (currentCount != _previousCartCount && _previousCartCount > 0) {
-                          _badgePulseController.forward(from: 0);
-                        }
+        final itemCount = cartProvider.totalQuantity;
+        final totalAmount = cartProvider.total;
 
-                        if (currentCount > _previousCartCount) {
-                          if (!_isFabVisible || _previousCartCount == 0) {
-                            setState(() {
-                              _isFabVisible = true;
-                            });
-                            _fabAnimationController.forward();
-                          }
-                        }
-
-                        _previousCartCount = currentCount;
-                      });
-
-                      return ScaleTransition(
-                        scale: _badgePulseAnimation,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(KBorderSize.border),
-                            boxShadow: [
-                              BoxShadow(
-                                color: colors.accentOrange.withValues(alpha: 0.4),
-                                blurRadius: 16,
-                                spreadRadius: 0,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: FloatingActionButton.extended(
-                            onPressed: () => context.push("/cart"),
-                            extendedPadding: EdgeInsets.all(10.r),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.border)),
-                            backgroundColor: colors.accentOrange,
-                            elevation: 0,
-                            label: Text(
-                              "${cartProvider.cartItems.length} ${cartProvider.cartItems.length > 1 ? "items in cart" : "item in cart"}",
-                              style: TextStyle(
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w600,
-                                color: colors.backgroundPrimary,
-                              ),
+        final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              color: colors.backgroundPrimary,
+              child: SizedBox(
+                height: 64.h,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(18.r)),
+                  child: GestureDetector(
+                    onTap: () => context.push("/cart"),
+                    child: Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                      decoration: BoxDecoration(
+                        color: colors.accentOrange,
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(18.r)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(8.r),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
                             ),
-                            icon: Container(
-                              padding: EdgeInsets.all(8.r),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                shape: BoxShape.circle,
-                              ),
-                              child: SvgPicture.asset(
-                                Assets.icons.cart,
-                                height: 20.h,
-                                width: 20.w,
-                                package: 'grab_go_shared',
-                                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                              ),
+                            child: SvgPicture.asset(
+                              Assets.icons.cart,
+                              height: 18.h,
+                              width: 18.w,
+                              package: 'grab_go_shared',
+                              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                             ),
                           ),
-                        ),
-                      );
-                    },
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "View cart",
+                                  style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                                ),
+                                SizedBox(height: 2.h),
+                                Text(
+                                  "$itemCount ${itemCount == 1 ? "item" : "items"} in cart",
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            "${AppStrings.currencySymbol} ${totalAmount.toStringAsFixed(2)}",
+                            style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              )
-            : const SizedBox.shrink(),
-        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      ),
+              ),
+            ),
+            if (bottomInset > 0) Container(height: bottomInset, color: colors.accentOrange),
+          ],
+        );
+      },
     );
   }
 
@@ -437,6 +381,10 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
     required List<FoodItem> dealItems,
     required void Function(FoodItem) onItemTap,
   }) {
+    final size = MediaQuery.sizeOf(context);
+    final cardWidth = (size.width * 0.78).clamp(230.0, 320.0);
+    final cardHeight = (cardWidth * 0.72).clamp(180.0, 230.0);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -444,7 +392,7 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
         SectionHeader(title: title, accentColor: colors.accentOrange, sectionTotal: dealItems.length, onSeeAll: () {}),
         SizedBox(height: 10.h),
         SizedBox(
-          height: 220.h,
+          height: cardHeight,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.only(left: 20.w),
@@ -1151,7 +1099,7 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> with TickerProvid
       valueListenable: _scrollOffsetNotifier,
       builder: (context, scrollOffset, _) {
         final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
-        final expandedHeight = size.height * 0.24;
+        final expandedHeight = UmbrellaHeaderMetrics.expandedHeightFor(size, extra: _headerExtraHeight);
         final currentHeight = expandedHeight - ((expandedHeight - _collapsedHeight) * collapseProgress);
         final contentOpacity = (1.0 - collapseProgress).clamp(0.0, 1.0);
 

@@ -16,6 +16,7 @@ class DealCard extends StatelessWidget {
   final CartItem? cartItem;
   final int discountPercent;
   final VoidCallback onTap;
+  final double? cardWidth;
 
   const DealCard({
     super.key,
@@ -24,17 +25,25 @@ class DealCard extends StatelessWidget {
     required this.discountPercent,
     required this.onTap,
     this.deliveryTime,
+    this.cardWidth,
   });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final originalPrice = item.price / (1 - discountPercent / 100);
+    final size = MediaQuery.sizeOf(context);
+    final baseWidth = cardWidth ?? (size.width * 0.78);
+    final resolvedWidth = cardWidth == null ? baseWidth.clamp(230.0, 320.0) : baseWidth.clamp(180.0, 320.0);
+    final imageHeight = (resolvedWidth * 0.45).clamp(90.0, 125.0);
+    final hasDiscount = discountPercent > 0;
+    final originalPrice = discountPercent >= 100 ? item.price : item.price / (1 - discountPercent / 100);
+    final timeText = deliveryTime ?? item.estimatedDeliveryTime;
+    final isOpen = item.isRestaurantOpen;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 280.w,
+        width: resolvedWidth,
         padding: EdgeInsets.all(2.r),
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
@@ -55,13 +64,13 @@ class DealCard extends StatelessWidget {
                   ),
                   child: CachedNetworkImage(
                     imageUrl: ImageOptimizer.getPreviewUrl(item.image, width: 400),
-                    height: 120.h,
+                    height: imageHeight,
                     width: double.infinity,
                     fit: BoxFit.cover,
                     memCacheWidth: 400,
                     maxHeightDiskCache: 800,
                     placeholder: (context, url) => Container(
-                      height: 120.h,
+                      height: imageHeight,
                       color: colors.inputBorder,
                       child: Center(
                         child: SvgPicture.asset(
@@ -69,12 +78,12 @@ class DealCard extends StatelessWidget {
                           package: 'grab_go_shared',
                           colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                           width: 30.w,
-                          height: 30.h,
+                          height: 30,
                         ),
                       ),
                     ),
                     errorWidget: (context, url, error) => Container(
-                      height: 120.h,
+                      height: imageHeight,
                       color: colors.inputBorder,
                       child: Center(
                         child: SvgPicture.asset(
@@ -82,7 +91,7 @@ class DealCard extends StatelessWidget {
                           package: 'grab_go_shared',
                           colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                           width: 30.w,
-                          height: 30.h,
+                          height: 30,
                         ),
                       ),
                     ),
@@ -105,7 +114,7 @@ class DealCard extends StatelessWidget {
                         child: SvgPicture.asset(
                           isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
                           package: 'grab_go_shared',
-                          height: 24.h,
+                          height: 24,
                           width: 24.w,
                           colorFilter: ColorFilter.mode(isFavorite ? colors.error : Colors.white, BlendMode.srcIn),
                         ),
@@ -113,28 +122,29 @@ class DealCard extends StatelessWidget {
                     );
                   },
                 ),
-                Positioned(
-                  top: 0.h,
-                  left: 0.w,
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [colors.error, colors.accentOrange],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                if (hasDiscount)
+                  Positioned(
+                    top: 0,
+                    left: 0.w,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [colors.error, colors.accentOrange],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: const BorderRadius.only(
+                          bottomRight: Radius.circular(KBorderSize.borderMedium),
+                          topLeft: Radius.circular(KBorderSize.borderMedium),
+                        ),
                       ),
-                      borderRadius: const BorderRadius.only(
-                        bottomRight: Radius.circular(KBorderSize.borderMedium),
-                        topLeft: Radius.circular(KBorderSize.borderMedium),
+                      child: Text(
+                        "$discountPercent% OFF",
+                        style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w700),
                       ),
-                    ),
-                    child: Text(
-                      "$discountPercent% OFF",
-                      style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w700),
                     ),
                   ),
-                ),
               ],
             ),
             // Content
@@ -153,13 +163,13 @@ class DealCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                         ),
-                        SizedBox(height: 6.h),
+                        SizedBox(height: 6),
                         Row(
                           children: [
                             SvgPicture.asset(
                               Assets.icons.starSolid,
                               package: 'grab_go_shared',
-                              height: 13.h,
+                              height: 13,
                               width: 13.w,
                               colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                             ),
@@ -171,33 +181,44 @@ class DealCard extends StatelessWidget {
                             SizedBox(width: 8.w),
                             Container(
                               width: 3.w,
-                              height: 3.h,
+                              height: 3,
                               decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
                             ),
                             SizedBox(width: 8.w),
-                            SvgPicture.asset(
-                              Assets.icons.timer,
-                              package: 'grab_go_shared',
-                              height: 12.h,
-                              width: 12.w,
-                              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                            ),
-                            SizedBox(width: 4.w),
-                            Text(
-                              item.estimatedDeliveryTime,
-                              style: TextStyle(
-                                fontSize: 11.sp,
-                                fontWeight: FontWeight.w500,
-                                color: colors.textSecondary,
+                            if (isOpen) ...[
+                              SvgPicture.asset(
+                                Assets.icons.timer,
+                                package: 'grab_go_shared',
+                                height: 12,
+                                width: 12.w,
+                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                               ),
-                            ),
+                              SizedBox(width: 4.w),
+                              Text(
+                                timeText,
+                                style: TextStyle(
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w500,
+                                  color: colors.textSecondary,
+                                ),
+                              ),
+                            ] else ...[
+                              Text(
+                                "We're closed",
+                                style: TextStyle(
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: colors.error,
+                                ),
+                              ),
+                            ],
                           ],
                         ),
-                        SizedBox(height: 8.h),
+                        SizedBox(height: 8),
                         Row(
                           children: [
                             Container(
-                              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4),
                               decoration: BoxDecoration(
                                 color: colors.accentOrange.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(8.r),
@@ -211,16 +232,18 @@ class DealCard extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            SizedBox(width: 8.w),
-                            Text(
-                              "GHS ${originalPrice.toStringAsFixed(2)}",
-                              style: TextStyle(
-                                fontSize: 13.sp,
-                                fontWeight: FontWeight.w500,
-                                color: colors.textSecondary,
-                                decoration: TextDecoration.lineThrough,
+                            if (hasDiscount) ...[
+                              SizedBox(width: 8.w),
+                              Text(
+                                "GHS ${originalPrice.toStringAsFixed(2)}",
+                                style: TextStyle(
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.w500,
+                                  color: colors.textSecondary,
+                                  decoration: TextDecoration.lineThrough,
+                                ),
                               ),
-                            ),
+                            ],
                           ],
                         ),
                       ],
@@ -256,7 +279,7 @@ class DealCard extends StatelessWidget {
                               isInCart ? Assets.icons.check : Assets.icons.cart,
                               key: ValueKey(isInCart),
                               package: 'grab_go_shared',
-                              height: 18.h,
+                              height: 18,
                               width: 18.w,
                               colorFilter: ColorFilter.mode(
                                 isInCart ? Colors.white : colors.textPrimary,

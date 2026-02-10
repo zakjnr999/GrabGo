@@ -84,6 +84,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   static const double _collapsedHeight = 70.0;
   static const double _scrollThreshold = 150.0;
   static const double _bottomNavHeightFactor = 0.16;
+  static const double _headerExtraHeight = 24.0;
+  static double _headerContentGap(Size size) => (size.height * 0.024).clamp(20.0, 32.0);
 
   @override
   void initState() {
@@ -104,18 +106,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     super.didChangeDependencies();
     final locationProvider = Provider.of<NativeLocationProvider>(context);
 
-    // Detect significant location change and refresh if needed
     if (locationProvider.latitude != null && locationProvider.longitude != null) {
       bool shouldRefresh = false;
 
       if (_lastLat == null || _lastLng == null) {
-        // Initial coordinates acquisition
         _lastLat = locationProvider.latitude;
         _lastLng = locationProvider.longitude;
-        // No refresh here because _initializeData handles it
       } else {
-        // Simple coordinate delta as a fast, synchronous proxy for distance
-        // 0.005 degrees is roughly 550 meters
         final latDelta = (locationProvider.latitude! - _lastLat!).abs();
         final lngDelta = (locationProvider.longitude! - _lastLng!).abs();
 
@@ -209,12 +206,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           pharmacyProvider.items.isNotEmpty ||
           grabMartProvider.items.isNotEmpty;
 
-      // Check connectivity
       final hasInternet = await ConnectivityService.hasInternetConnection();
 
       if (!mounted) return;
 
-      // No internet and no cached data → show no internet screen
       if (!hasInternet && !hasCachedData) {
         setState(() {
           _hasNoInternet = true;
@@ -223,7 +218,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         return;
       }
 
-      // Clear states if we have connectivity or cache
       if (_hasNoInternet || _isRetrying) {
         setState(() {
           _hasNoInternet = false;
@@ -231,14 +225,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         });
       }
 
-      // Set initial selected category from existing data
       if (foodProvider.categories.isNotEmpty && _selectedCategory == null) {
         setState(() {
           _selectedCategory = foodProvider.categories.first;
         });
       }
 
-      // Always refresh all providers — they handle cache-first display internally
       foodProvider.refreshAll();
       groceryProvider.refreshAll();
       pharmacyProvider.refreshAll();
@@ -261,7 +253,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Future<void> _refreshData({bool refreshAllServices = false}) async {
-    // Only set swipe refresh if we're not already refreshing from location change
     if (!_isRefreshingLocation && mounted) {
       setState(() {
         _isSwipeRefreshing = true;
@@ -281,7 +272,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     try {
       if (refreshAllServices) {
-        // Refresh EVERYTHING when location changes
         final foodProvider = Provider.of<FoodProvider>(context, listen: false);
         final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
         final pharmacyProvider = Provider.of<PharmacyProvider>(context, listen: false);
@@ -294,19 +284,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           grabMartProvider.refreshAll(forceRefresh: true),
         ]);
       } else if (serviceProvider.isFoodService) {
-        // Refresh only active service
         final provider = Provider.of<FoodProvider>(context, listen: false);
         await provider.refreshAll(forceRefresh: true);
       } else if (serviceProvider.isGroceryService) {
-        // Refresh only active service
         final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
         await groceryProvider.refreshAll(forceRefresh: true);
       } else if (serviceProvider.isPharmacyService) {
-        // Refresh only active service
         final pharmacyProvider = Provider.of<PharmacyProvider>(context, listen: false);
         await pharmacyProvider.refreshAll(forceRefresh: true);
       } else if (serviceProvider.isStoresService) {
-        // Refresh only active service
         final grabMartProvider = Provider.of<GrabMartProvider>(context, listen: false);
         await grabMartProvider.refreshAll(forceRefresh: true);
       }
@@ -356,18 +342,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     bool shouldShowSkeleton = false;
     bool shouldShowEmptyState = false;
 
-    // Check if main service (Food) is available first
     final bool isFoodLoading = foodProvider.isLoading;
     final bool hasNoFood = foodProvider.categories.isEmpty;
     final bool isFoodUnavailable = !isFoodLoading && hasNoFood && foodProvider.hasAttemptedFetch;
 
     if (isFoodLoading) {
-      // Globally show skeleton if we haven't finished determining the status
       shouldShowSkeleton = true;
     } else if (isFoodUnavailable) {
       shouldShowEmptyState = true;
     } else {
-      // Otherwise, show state based on the current service
       if (serviceProvider.isGroceryService) {
         shouldShowSkeleton =
             (groceryProvider.isLoadingItems || !groceryProvider.hasAttemptedFetch) && groceryProvider.items.isEmpty;
@@ -393,7 +376,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       }
     }
 
-    // Force skeleton if refreshing location, swipe refresh, or retrying
     if (_isRefreshingLocation || _isSwipeRefreshing || _isRetrying) {
       shouldShowSkeleton = true;
       shouldShowEmptyState = false;
@@ -402,7 +384,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final systemUiOverlayStyle = SystemUiOverlayStyle(
       statusBarColor: colors.accentOrange,
       statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: colors.backgroundSecondary,
+      systemNavigationBarColor: colors.backgroundPrimary,
+      systemNavigationBarDividerColor: Colors.transparent,
       systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
 
@@ -439,7 +422,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           slivers: [
                             if (shouldShowEmptyState)
                               SliverPadding(
-                                padding: EdgeInsets.only(top: size.height * 0.16),
+                                padding: EdgeInsets.only(
+                                  top: UmbrellaHeaderMetrics.contentTopPaddingFor(
+                                    size,
+                                    extra: _headerExtraHeight + _headerContentGap(size),
+                                  ),
+                                ),
                                 sliver: SliverFillRemaining(
                                   hasScrollBody: false,
                                   child: Center(
@@ -458,7 +446,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               )
                             else
                               SliverPadding(
-                                padding: EdgeInsets.only(top: size.height * 0.16),
+                                padding: EdgeInsets.only(
+                                  top: UmbrellaHeaderMetrics.contentTopPaddingFor(
+                                    size,
+                                    extra: _headerExtraHeight + _headerContentGap(size),
+                                  ),
+                                ),
                                 sliver: SliverToBoxAdapter(
                                   child: Container(
                                     color: colors.backgroundPrimary,
@@ -511,7 +504,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                       colors,
                                                     ),
                                                     SizedBox(height: KSpacing.md.h),
-                                                    // Service-specific sections
                                                     if (serviceProvider.isFoodService ||
                                                         serviceProvider.isGroceryService) ...[
                                                       _buildDealsSection(serviceProvider, groceryProvider),
@@ -555,7 +547,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         ),
                       ),
 
-                      // Positioned umbrella header layer
                       Positioned(
                         top: 0,
                         left: 0,
@@ -570,7 +561,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         ),
                       ),
 
-                      // Location accuracy popup (appears below header when needed)
                       ValueListenableBuilder<double>(
                         valueListenable: _scrollOffsetNotifier,
                         builder: (context, scrollOffset, _) {
@@ -674,10 +664,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               getEmoji: (cat) => cat.emoji,
               getId: (cat) => cat.id,
               initialSelectedCategory: _selectedCategory,
+              autoNotify: false,
               onCategorySelected: (FoodCategoryModel category) {
                 setState(() {
                   _selectedCategory = category;
                 });
+                context.push(
+                  '/categoryItems/${category.id}',
+                  extra: {
+                    'categoryId': category.id,
+                    'categoryName': category.name,
+                    'categoryEmoji': category.emoji,
+                    'serviceType': 'food',
+                  },
+                );
               },
             ),
           ],
@@ -853,7 +853,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       builder: (context, scrollOffset, _) {
         final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
 
-        final expandedHeight = size.height * 0.22;
+        final expandedHeight = UmbrellaHeaderMetrics.expandedHeightFor(size, extra: _headerExtraHeight);
 
         final currentHeight = expandedHeight - ((expandedHeight - _collapsedHeight) * collapseProgress);
 
@@ -1080,7 +1080,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 autoNotify: false,
                 onCategorySelected: (category) {
                   context.push(
-                    '/categoryItems',
+                    '/categoryItems/${category.id}',
                     extra: {
                       'categoryId': category.id,
                       'categoryName': category.name,
@@ -1126,7 +1126,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 autoNotify: false,
                 onCategorySelected: (category) {
                   context.push(
-                    '/categoryItems',
+                    '/categoryItems/${category.id}',
                     extra: {
                       'categoryId': category.id,
                       'categoryName': category.name,
@@ -1457,7 +1457,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           );
         }, childCount: recommendedItems.length),
       ),
-      // Load more indicator
       if (hasMore)
         SliverToBoxAdapter(
           child: Builder(
@@ -1479,16 +1478,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     ];
   }
 
-  // ==================== PHARMACY SECTIONS ====================
-
-  // ==================== PHARMACY SECTIONS ====================
-
   Widget _buildPharmacyOnSaleSection() {
     return Consumer<PharmacyProvider>(
       builder: (context, provider, _) {
         if (provider.onSaleItems.isEmpty) return const SizedBox.shrink();
 
-        // Convert PharmacyItem to FoodItem for DealsSection widget
         final dealItems = provider.onSaleItems.take(10).map((item) {
           return FoodItem(
             id: item.id,

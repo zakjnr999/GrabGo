@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
 import 'package:grab_go_customer/shared/widgets/top_rated_card.dart';
-import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class TopRatedSection extends StatelessWidget {
@@ -29,10 +27,10 @@ class TopRatedSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.appColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     if (topRatedItems.isEmpty) return const SizedBox.shrink();
+    final size = MediaQuery.sizeOf(context);
+    final cardWidth = size.width * 0.5;
+    final cardHeight = (cardWidth * 1.32).clamp(190.0, 230.0);
 
     return Column(
       children: [
@@ -44,24 +42,24 @@ class TopRatedSection extends StatelessWidget {
         ),
         SizedBox(height: 16.h),
         SizedBox(
-            height: 220.h,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.only(left: 20.w),
-              physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: topRatedItems.length,
-              itemBuilder: (context, index) {
-                final item = topRatedItems[index];
-                final originalItem = originalItems != null && index < originalItems!.length
-                    ? originalItems![index]
-                    : null;
-                return Padding(
-                  padding: EdgeInsets.only(right: 15.w),
-                  child: TopRatedCard(item: item, cartItem: originalItem, onTap: () => onItemTap(item)),
-                );
-              },
-            ),
+          height: cardHeight,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.only(left: 20.w),
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemCount: topRatedItems.length,
+            itemBuilder: (context, index) {
+              final item = topRatedItems[index];
+              final originalItem = originalItems != null && index < originalItems!.length
+                  ? originalItems![index]
+                  : null;
+              return Padding(
+                padding: EdgeInsets.only(right: 15.w),
+                child: TopRatedCard(item: item, cartItem: originalItem, onTap: () => onItemTap(item)),
+              );
+            },
           ),
+        ),
       ],
     );
   }

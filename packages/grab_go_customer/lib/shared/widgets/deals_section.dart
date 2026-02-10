@@ -28,6 +28,9 @@ class DealsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    final size = MediaQuery.sizeOf(context);
+    final cardWidth = (size.width * 0.78).clamp(230.0, 320.0);
+    final cardHeight = (cardWidth * 0.72).clamp(180.0, 230.0);
 
     if (dealItems.isEmpty) return const SizedBox.shrink();
 
@@ -41,7 +44,7 @@ class DealsSection extends StatelessWidget {
         ),
         SizedBox(height: 10.h),
         SizedBox(
-          height: 220.h,
+          height: cardHeight,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.only(left: 20.w),

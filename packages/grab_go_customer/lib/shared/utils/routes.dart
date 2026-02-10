@@ -19,7 +19,6 @@ import 'package:grab_go_customer/features/auth/view/onboarding_main.dart';
 import 'package:grab_go_customer/features/profile/view/edit_profile.dart';
 import 'package:grab_go_customer/features/profile/view/favorites.dart';
 import 'package:grab_go_customer/features/cart/view/cart.dart';
-import 'package:grab_go_customer/features/auth/view/account_created.dart';
 import 'package:grab_go_customer/features/order/view/map_tracking.dart';
 import 'package:grab_go_customer/features/auth/view/forgot_password.dart';
 import 'package:grab_go_customer/features/auth/view/otp_verification.dart';
@@ -85,6 +84,17 @@ final GoRouter appRouter = GoRouter(
         if (foodId.isNotEmpty) {
           return '/food/$foodId';
         }
+      }
+    }
+
+    if (uri.path == '/categoryItems') {
+      final extra = state.extra;
+      final hasExtraCategory = extra is Map<String, dynamic> &&
+          (extra['categoryId'] is String && (extra['categoryId'] as String).isNotEmpty);
+      final hasQueryCategory = uri.queryParameters['categoryId']?.isNotEmpty == true;
+
+      if (!hasExtraCategory && !hasQueryCategory) {
+        return '/homepage';
       }
     }
     return null;
@@ -545,25 +555,6 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
-      path: "/accountCreated",
-      pageBuilder: (context, state) {
-        return CustomTransitionPage(
-          key: state.pageKey,
-          child: const AccountCreated(),
-          transitionDuration: const Duration(milliseconds: 800),
-          reverseTransitionDuration: const Duration(milliseconds: 800),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return SharedAxisTransition(
-              animation: animation,
-              secondaryAnimation: secondaryAnimation,
-              transitionType: SharedAxisTransitionType.vertical,
-              child: child,
-            );
-          },
-        );
-      },
-    ),
-    GoRoute(
       path: "/homepage",
       pageBuilder: (context, state) {
         return CustomTransitionPage(
@@ -934,16 +925,20 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
-      path: "/categoryItems",
+      path: "/categoryItems/:categoryId",
       pageBuilder: (context, state) {
-        final extra = state.extra as Map<String, dynamic>;
+        final extra = state.extra is Map<String, dynamic> ? state.extra as Map<String, dynamic> : <String, dynamic>{};
+        final categoryId = state.pathParameters['categoryId'] ?? (extra['categoryId'] as String?) ?? '';
+        final query = state.uri.queryParameters;
+
         return CustomTransitionPage(
           key: state.pageKey,
           child: CategoryItemsPage(
-            categoryId: (extra['categoryId'] as String?) ?? '',
-            categoryName: (extra['categoryName'] as String?) ?? 'Items',
-            categoryEmoji: (extra['categoryEmoji'] as String?) ?? '📦',
-            serviceType: extra['serviceType'] as String? ?? (extra['isFood'] == true ? 'food' : 'grocery'),
+            categoryId: categoryId,
+            categoryName: query['categoryName'] ?? (extra['categoryName'] as String?) ?? 'Items',
+            categoryEmoji: query['categoryEmoji'] ?? (extra['categoryEmoji'] as String?) ?? '📦',
+            serviceType:
+                query['serviceType'] ?? (extra['serviceType'] as String?) ?? (extra['isFood'] == true ? 'food' : 'grocery'),
           ),
           transitionDuration: const Duration(milliseconds: 400),
           reverseTransitionDuration: const Duration(milliseconds: 400),

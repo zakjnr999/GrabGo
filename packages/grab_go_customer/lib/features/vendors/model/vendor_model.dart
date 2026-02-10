@@ -73,7 +73,6 @@ class VendorModel {
   final String? restaurantName;
   final String? name;
 
-  // Computed name
   String get displayName => storeName ?? restaurantName ?? name ?? 'Unknown Vendor';
 
   final String? logo;
@@ -109,14 +108,12 @@ class VendorModel {
   final DateTime? lastOnlineAt;
   final double? distance;
 
-  // Pharmacy specific
   final bool? emergencyService;
   final String? licenseNumber;
   final String? pharmacistName;
   final List<String>? insuranceAccepted;
   final bool? prescriptionRequired;
 
-  // GrabMart specific
   final bool? is24Hours;
   final bool? hasParking;
   final List<String>? services;
@@ -182,6 +179,20 @@ class VendorModel {
     this.updatedAt,
     this.vendorTypeEnum = VendorType.food,
   });
+
+  factory VendorModel.fromJson(Map<String, dynamic> json) {
+    final normalized = Map<String, dynamic>.from(json);
+    if (normalized['isOpen'] == null && normalized['is_open'] != null) {
+      normalized['isOpen'] = normalized['is_open'];
+    }
+    final rawOpen = normalized['isOpen'];
+    if (rawOpen is String) {
+      normalized['isOpen'] = rawOpen.toLowerCase() == 'true';
+    } else if (rawOpen is num) {
+      normalized['isOpen'] = rawOpen != 0;
+    }
+    return _$VendorModelFromJson(normalized);
+  }
 
   VendorModel copyWith({
     String? id,

@@ -51,13 +51,16 @@ class _PromotionalBannerCarouselState extends State<PromotionalBannerCarousel> w
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    final size = MediaQuery.sizeOf(context);
+    final cardWidth = size.width - (40.w);
+    final baseHeight = (cardWidth * 0.48).clamp(145.0, 195.0);
 
     if (widget.banners.isEmpty) {
       return const SizedBox.shrink();
     }
 
     return SizedBox(
-      height: 150.h,
+      height: baseHeight,
       child: PageView.builder(
         controller: _pageController,
         onPageChanged: (index) {
@@ -70,29 +73,28 @@ class _PromotionalBannerCarouselState extends State<PromotionalBannerCarousel> w
           return AnimatedBuilder(
             animation: _pageController,
             builder: (context, child) {
-              double value = 1.0;
+              double scale = 1.0;
               if (_pageController.position.haveDimensions) {
-                value = _pageController.page! - index;
-                value = (1 - (value.abs() * 0.15)).clamp(0.85, 1.0);
+                final pageOffset = _pageController.page! - index;
+                scale = (1 - (pageOffset.abs() * 0.12)).clamp(0.9, 1.0);
               }
               return Center(
-                child: SizedBox(height: Curves.easeOut.transform(value) * 180.h, child: child),
+                child: SizedBox(height: Curves.easeOut.transform(scale) * baseHeight, child: child),
               );
             },
-            child: _buildBannerCard(widget.banners[index], colors),
+            child: _buildBannerCard(widget.banners[index], colors, baseHeight),
           );
         },
       ),
     );
   }
 
-  Widget _buildBannerCard(PromotionalBanner banner, AppColorsExtension colors) {
+  Widget _buildBannerCard(PromotionalBanner banner, AppColorsExtension colors, double baseHeight) {
     return GestureDetector(
       onTap: banner.onTap,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // Main card
           Container(
             width: double.infinity,
             margin: EdgeInsets.symmetric(horizontal: 20.w),
@@ -110,10 +112,10 @@ class _PromotionalBannerCarouselState extends State<PromotionalBannerCarousel> w
                 child: Stack(
                   children: [
                     Padding(
-                      padding: EdgeInsets.fromLTRB(24.w, 32.h, 24.w, 20.h),
+                      padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 18.h),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
                             banner.title,
@@ -163,10 +165,10 @@ class _PromotionalBannerCarouselState extends State<PromotionalBannerCarousel> w
           // Decorative background emoji
           Positioned(
             right: 14.w,
-            bottom: 10.h,
+            bottom: 8.h,
             child: Opacity(
               opacity: 0.65,
-              child: Text(banner.emoji, style: TextStyle(fontSize: 80.sp)),
+              child: Text(banner.emoji, style: TextStyle(fontSize: (baseHeight * 0.55).clamp(56.0, 90.0))),
             ),
           ),
         ],

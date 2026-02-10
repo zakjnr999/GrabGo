@@ -22,6 +22,7 @@ class FoodDetailsAppBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     Size size = MediaQuery.sizeOf(context);
+    final bool isRestaurantClosed = foodItem is FoodItem ? !(foodItem as FoodItem).isRestaurantOpen : false;
 
     return SliverAppBar(
       expandedHeight: size.height * 0.20,
@@ -84,6 +85,22 @@ class FoodDetailsAppBar extends StatelessWidget {
                 ),
               ),
             ),
+            if (isRestaurantClosed)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.45),
+                  alignment: Alignment.center,
+                  child: Text(
+                    "We're closed",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -204,8 +221,8 @@ class FoodDetailsAppBar extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 44.w,
-        height: 44.h,
+        width: 44,
+        height: 44,
         decoration: const BoxDecoration(shape: BoxShape.circle),
         child: ClipOval(
           child: BackdropFilter(

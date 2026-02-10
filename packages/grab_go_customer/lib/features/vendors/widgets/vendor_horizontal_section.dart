@@ -27,6 +27,9 @@ class VendorHorizontalSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!isLoading && vendors.isEmpty) return const SizedBox.shrink();
+    final size = MediaQuery.sizeOf(context);
+    final cardWidth = (size.width * 0.72).clamp(220.0, 300.0);
+    final cardHeight = (cardWidth * 0.75).clamp(180.0, 210.0);
 
     return Column(
       children: [
@@ -34,7 +37,7 @@ class VendorHorizontalSection extends StatelessWidget {
         SizedBox(height: 12.h),
 
         SizedBox(
-          height: 225.h,
+          height: cardHeight,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.only(left: 20.w),
@@ -47,7 +50,7 @@ class VendorHorizontalSection extends StatelessWidget {
                 child: VendorCard(
                   vendor: vendor,
                   onTap: () => onItemTap(vendor),
-                  width: 280.w,
+                  width: cardWidth,
                   margin: EdgeInsets.symmetric(vertical: 4.h),
                 ),
               );

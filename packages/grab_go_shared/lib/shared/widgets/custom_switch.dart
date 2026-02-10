@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-/// Custom animated switch widget with smooth transitions and modern design
 class CustomSwitch extends StatefulWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
@@ -97,26 +96,18 @@ class _CustomSwitchState extends State<CustomSwitch> with SingleTickerProviderSt
               gradient: LinearGradient(
                 colors: [
                   Color.lerp(inactiveColor, activeColor, _slideAnimation.value)!,
-                  Color.lerp(inactiveColor.withOpacity(0.8), activeColor.withOpacity(0.9), _slideAnimation.value)!,
+                  Color.lerp(
+                    inactiveColor.withValues(alpha: 0.8),
+                    activeColor.withValues(alpha: 0.9),
+                    _slideAnimation.value,
+                  )!,
                 ],
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
               ),
-              // boxShadow: [
-              //   BoxShadow(
-              //     color: Color.lerp(
-              //       Colors.black.withOpacity(0.1),
-              //       activeColor.withOpacity(0.3),
-              //       _slideAnimation.value,
-              //     )!,
-              //     blurRadius: 8,
-              //     offset: const Offset(0, 2),
-              //   ),
-              // ],
             ),
             child: Stack(
               children: [
-                // Animated thumb
                 AnimatedPositioned(
                   duration: widget.duration ?? const Duration(milliseconds: 200),
                   curve: Curves.easeInOut,
@@ -127,13 +118,7 @@ class _CustomSwitchState extends State<CustomSwitch> with SingleTickerProviderSt
                     child: Container(
                       width: thumbSize,
                       height: thumbSize,
-                      decoration: BoxDecoration(
-                        color: thumbColor,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2)),
-                        ],
-                      ),
+                      decoration: BoxDecoration(color: thumbColor, shape: BoxShape.circle),
                       child: Center(
                         child: AnimatedOpacity(
                           duration: const Duration(milliseconds: 150),

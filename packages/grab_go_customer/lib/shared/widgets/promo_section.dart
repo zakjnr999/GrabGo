@@ -33,7 +33,6 @@ class _PromoSectionState extends State<PromoSection> {
   void didUpdateWidget(PromoSection oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // Start auto-scroll when banners become available
     if (!_autoScrollStarted && widget.banners.isNotEmpty && !widget.isLoading) {
       _autoScrollStarted = true;
       _startAutoScroll();
@@ -41,10 +40,8 @@ class _PromoSectionState extends State<PromoSection> {
   }
 
   void _startAutoScroll() {
-    // Cancel existing timer if any
     _autoScrollTimer?.cancel();
 
-    // Create new periodic timer
     _autoScrollTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       if (!mounted || widget.banners.isEmpty) {
         timer.cancel();

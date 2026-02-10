@@ -28,6 +28,10 @@ class PopularSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (popularItems.isEmpty) return const SizedBox.shrink();
+    final size = MediaQuery.sizeOf(context);
+    final cardWidth = size.width * 0.5;
+    final imageHeight = (cardWidth * 0.62).clamp(96.0, 120.0);
+    final cardHeight = (imageHeight + 116.0).clamp(210.0, 250.0);
 
     return Column(
       children: [
@@ -39,7 +43,7 @@ class PopularSection extends StatelessWidget {
         ),
         SizedBox(height: 10.h),
         SizedBox(
-          height: 220.h,
+          height: cardHeight,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.only(left: 20.w),

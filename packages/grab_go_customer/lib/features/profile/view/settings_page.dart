@@ -8,6 +8,7 @@ import 'package:grab_go_customer/shared/services/location_service.dart';
 import 'package:grab_go_customer/shared/viewmodels/settings_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/theme_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
+import 'package:grab_go_shared/shared/widgets/custom_slider.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
@@ -20,8 +21,6 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   String _cacheSize = 'Calculating...';
-
-  // Track expansion state for notification sections
   bool _socialExpanded = false;
   bool _promosExpanded = false;
   bool _otherExpanded = false;
@@ -88,7 +87,7 @@ class _SettingsPageState extends State<SettingsPage> {
         final padding = MediaQuery.paddingOf(context);
 
         final systemUiOverlayStyle = SystemUiOverlayStyle(
-          statusBarColor: Theme.of(context).scaffoldBackgroundColor,
+          statusBarColor: colors.backgroundPrimary,
           statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
           systemNavigationBarColor: colors.backgroundPrimary,
           systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
@@ -97,18 +96,18 @@ class _SettingsPageState extends State<SettingsPage> {
         SystemChrome.setSystemUIOverlayStyle(systemUiOverlayStyle);
 
         return Scaffold(
-          backgroundColor: colors.backgroundSecondary,
+          backgroundColor: colors.backgroundPrimary,
           body: Column(
             children: [
               Padding(
-                padding: EdgeInsets.only(top: padding.top, left: 20.w, right: 20.w, bottom: 16.h),
+                padding: EdgeInsets.only(top: padding.top + 10, left: 20.w, right: 20.w, bottom: 16.h),
                 child: Row(
                   children: [
                     Container(
-                      height: 44.h,
-                      width: 44.w,
+                      height: 44,
+                      width: 44,
                       decoration: BoxDecoration(
-                        color: colors.backgroundPrimary,
+                        color: colors.backgroundSecondary,
                         shape: BoxShape.circle,
                         border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
                         boxShadow: [
@@ -143,32 +142,30 @@ class _SettingsPageState extends State<SettingsPage> {
                         fontFamily: "Lato",
                         package: 'grab_go_shared',
                         color: colors.textPrimary,
-                        fontSize: 24.sp,
+                        fontSize: 20.sp,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
                 ),
               ),
+              Divider(color: colors.backgroundSecondary, height: 1.h, thickness: 1),
               Expanded(
                 child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: EdgeInsets.symmetric(horizontal: 20.w),
+                  physics: const AlwaysScrollableScrollPhysics(),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildSectionHeader("Appearance", colors),
                       SizedBox(height: 12.h),
+                      _buildSectionHeader("Appearance", colors),
                       _buildSection(isDark, colors, [
                         _buildThemeSelector(themeProvider, colors, isDark),
                         _buildFontSizeSelector(settingsProvider, colors),
                       ]),
-                      SizedBox(height: 24.h),
+                      SizedBox(height: 16.h),
 
                       _buildSectionHeader("Notifications", colors),
-                      SizedBox(height: 12.h),
                       _buildSection(isDark, colors, [
-                        // Essential Notifications (Always visible)
                         _buildSubsectionHeader("Essential", colors),
                         _buildToggleTile("Order Updates", Assets.icons.package, settingsProvider.orderUpdatesEnabled, (
                           value,
@@ -194,7 +191,6 @@ class _SettingsPageState extends State<SettingsPage> {
                           colors,
                         ),
 
-                        // Social Notifications (Collapsible)
                         _buildCollapsibleSection(
                           "Social",
                           Assets.icons.chatBubble,
@@ -290,7 +286,6 @@ class _SettingsPageState extends State<SettingsPage> {
                           (expanded) => setState(() => _promosExpanded = expanded),
                         ),
 
-                        // Other Notifications (Collapsible)
                         _buildCollapsibleSection(
                           "Other",
                           Assets.icons.settings,
@@ -332,7 +327,6 @@ class _SettingsPageState extends State<SettingsPage> {
                       SizedBox(height: 24.h),
 
                       _buildSectionHeader("Privacy & Security", colors),
-                      SizedBox(height: 12.h),
                       _buildSection(isDark, colors, [
                         _buildSubsectionHeader("Location Services", colors),
                         _buildActionTile("Permission Status", Assets.icons.lock, "Manage permissions", () async {
@@ -399,7 +393,6 @@ class _SettingsPageState extends State<SettingsPage> {
                       SizedBox(height: 24.h),
 
                       _buildSectionHeader("App Preferences", colors),
-                      SizedBox(height: 12.h),
                       _buildSection(isDark, colors, [
                         _buildLanguageSelector(settingsProvider, colors),
                         _buildActionTile(
@@ -420,27 +413,6 @@ class _SettingsPageState extends State<SettingsPage> {
                           },
                           colors,
                         ),
-
-                        _buildSubsectionHeader("Order Preferences", colors),
-                        _buildDefaultTipSelector(settingsProvider, colors),
-                        _buildToggleTile(
-                          "Contactless Delivery",
-                          Assets.icons.shieldCheck,
-                          settingsProvider.contactlessDeliveryDefault,
-                          (value) {
-                            settingsProvider.setContactlessDelivery(value);
-                          },
-                          colors,
-                        ),
-                        _buildToggleTile(
-                          "Include Utensils",
-                          Assets.icons.chefHat,
-                          settingsProvider.includeUtensilsDefault,
-                          (value) {
-                            settingsProvider.setIncludeUtensils(value);
-                          },
-                          colors,
-                        ),
                       ]),
                       SizedBox(height: 24.h),
                     ],
@@ -455,27 +427,23 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildSectionHeader(String title, AppColorsExtension colors) {
-    return Text(
-      title,
-      style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+      color: colors.backgroundSecondary,
+      child: Text(
+        title,
+        style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
+      ),
     );
   }
 
   Widget _buildSection(bool isDark, AppColorsExtension colors, List<Widget> children) {
     return Container(
-      padding: EdgeInsets.symmetric(vertical: 8.r),
+      padding: EdgeInsets.symmetric(vertical: 8.r, horizontal: 0.w),
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-        border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-        boxShadow: [
-          BoxShadow(
-            color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
-            spreadRadius: 0,
-            blurRadius: 12,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Column(children: children),
     );
@@ -488,18 +456,6 @@ class _SettingsPageState extends State<SettingsPage> {
         padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
         child: Row(
           children: [
-            Container(
-              padding: EdgeInsets.all(8.r),
-              decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(10.r)),
-              child: SvgPicture.asset(
-                icon,
-                package: 'grab_go_shared',
-                height: 18.h,
-                width: 18.w,
-                colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-              ),
-            ),
-            SizedBox(width: 14.w),
             Expanded(
               child: Text(
                 title,
@@ -525,24 +481,12 @@ class _SettingsPageState extends State<SettingsPage> {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        splashColor: colors.accentOrange.withValues(alpha: 0.1),
-        highlightColor: colors.accentOrange.withValues(alpha: 0.05),
+        splashColor: colors.backgroundSecondary,
+        highlightColor: colors.backgroundSecondary,
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
           child: Row(
             children: [
-              Container(
-                padding: EdgeInsets.all(8.r),
-                decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(10.r)),
-                child: SvgPicture.asset(
-                  icon,
-                  package: 'grab_go_shared',
-                  height: 18.h,
-                  width: 18.w,
-                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                ),
-              ),
-              SizedBox(width: 14.w),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -559,7 +503,13 @@ class _SettingsPageState extends State<SettingsPage> {
                   ],
                 ),
               ),
-              Icon(Icons.arrow_forward_ios, size: 16.sp, color: colors.textSecondary),
+              SvgPicture.asset(
+                Assets.icons.navArrowRight,
+                package: "grab_go_shared",
+                height: 18.h,
+                width: 18.w,
+                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+              ),
             ],
           ),
         ),
@@ -575,22 +525,6 @@ class _SettingsPageState extends State<SettingsPage> {
         children: [
           Row(
             children: [
-              Container(
-                padding: EdgeInsets.all(8.r),
-                decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(10.r)),
-                child: SvgPicture.asset(
-                  themeProvider.themeMode == ThemeMode.light
-                      ? Assets.icons.sunLight
-                      : themeProvider.themeMode == ThemeMode.dark
-                      ? Assets.icons.halfMoon
-                      : Assets.icons.sunMoon,
-                  package: 'grab_go_shared',
-                  height: 18.h,
-                  width: 18.w,
-                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                ),
-              ),
-              SizedBox(width: 14.w),
               Text(
                 "Theme Mode",
                 style: TextStyle(fontSize: 14.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
@@ -599,7 +533,10 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           SizedBox(height: 12.h),
           Container(
-            decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(12.r)),
+            decoration: BoxDecoration(
+              color: colors.backgroundSecondary,
+              borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+            ),
             child: Row(
               children: [
                 _buildThemeOption("Light", ThemeMode.light, themeProvider, colors),
@@ -622,12 +559,7 @@ class _SettingsPageState extends State<SettingsPage> {
           padding: EdgeInsets.symmetric(vertical: 12.h),
           decoration: BoxDecoration(
             color: isSelected ? colors.accentOrange : Colors.transparent,
-            borderRadius: BorderRadius.circular(12.r),
-            gradient: LinearGradient(
-              colors: isSelected
-                  ? [colors.accentOrange.withValues(alpha: 0.9), colors.accentOrange]
-                  : [Colors.transparent, Colors.transparent],
-            ),
+            borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
           ),
           child: Center(
             child: Text(
@@ -652,18 +584,6 @@ class _SettingsPageState extends State<SettingsPage> {
         children: [
           Row(
             children: [
-              Container(
-                padding: EdgeInsets.all(8.r),
-                decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(10.r)),
-                child: SvgPicture.asset(
-                  Assets.icons.textSize,
-                  package: 'grab_go_shared',
-                  height: 18.h,
-                  width: 18.w,
-                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                ),
-              ),
-              SizedBox(width: 14.w),
               Text(
                 "Font Size",
                 style: TextStyle(fontSize: 14.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
@@ -678,9 +598,11 @@ class _SettingsPageState extends State<SettingsPage> {
           SizedBox(height: 12.h),
           SliderTheme(
             data: SliderThemeData(
+              trackHeight: 5.h,
               activeTrackColor: colors.accentOrange,
               inactiveTrackColor: colors.backgroundSecondary,
               thumbColor: colors.accentOrange,
+              thumbShape: CustomSliderThumbShape(enabledThumbRadius: 16.r, thumbColor: colors.accentOrange),
               overlayColor: colors.accentOrange.withValues(alpha: 0.2),
             ),
             child: Slider(
@@ -706,18 +628,6 @@ class _SettingsPageState extends State<SettingsPage> {
         children: [
           Row(
             children: [
-              Container(
-                padding: EdgeInsets.all(8.r),
-                decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(10.r)),
-                child: SvgPicture.asset(
-                  Assets.icons.language,
-                  package: 'grab_go_shared',
-                  height: 18.h,
-                  width: 18.w,
-                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                ),
-              ),
-              SizedBox(width: 14.w),
               Text(
                 "Language",
                 style: TextStyle(fontSize: 14.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
@@ -726,7 +636,10 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           SizedBox(height: 12.h),
           Container(
-            decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(12.r)),
+            decoration: BoxDecoration(
+              color: colors.backgroundSecondary,
+              borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+            ),
             child: Row(
               children: [
                 _buildLanguageOption("English", "en", settingsProvider, colors),
@@ -751,12 +664,7 @@ class _SettingsPageState extends State<SettingsPage> {
           padding: EdgeInsets.symmetric(vertical: 12.h),
           decoration: BoxDecoration(
             color: isSelected ? colors.accentOrange : Colors.transparent,
-            borderRadius: BorderRadius.circular(12.r),
-            gradient: LinearGradient(
-              colors: isSelected
-                  ? [colors.accentOrange.withValues(alpha: 0.9), colors.accentOrange]
-                  : [Colors.transparent, Colors.transparent],
-            ),
+            borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
           ),
           child: Center(
             child: Text(
@@ -783,78 +691,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildDefaultTipSelector(SettingsProvider settingsProvider, AppColorsExtension colors) {
-    final tipOptions = [10, 15, 20, 25];
-
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(8.r),
-                decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(10.r)),
-                child: SvgPicture.asset(
-                  Assets.icons.percentage,
-                  package: 'grab_go_shared',
-                  height: 18.h,
-                  width: 18.w,
-                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                ),
-              ),
-              SizedBox(width: 14.w),
-              Text(
-                "Default Tip",
-                style: TextStyle(fontSize: 14.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
-          SizedBox(height: 12.h),
-          Container(
-            decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(12.r)),
-            child: Row(
-              children: tipOptions.map((tip) {
-                final isSelected = settingsProvider.defaultTipPercentage == tip;
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      settingsProvider.setDefaultTipPercentage(tip);
-                    },
-                    child: Container(
-                      padding: EdgeInsets.symmetric(vertical: 12.h),
-                      decoration: BoxDecoration(
-                        color: isSelected ? colors.accentOrange : Colors.transparent,
-                        borderRadius: BorderRadius.circular(12.r),
-                        gradient: LinearGradient(
-                          colors: isSelected
-                              ? [colors.accentOrange.withValues(alpha: 0.9), colors.accentOrange]
-                              : [Colors.transparent, Colors.transparent],
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          "$tip%",
-                          style: TextStyle(
-                            fontSize: 13.sp,
-                            color: isSelected ? Colors.white : colors.textSecondary,
-                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildCollapsibleSection(
     String title,
     String icon,
@@ -871,16 +707,12 @@ class _SettingsPageState extends State<SettingsPage> {
         childrenPadding: EdgeInsets.only(left: 12.w),
         initiallyExpanded: isExpanded,
         onExpansionChanged: onExpansionChanged,
-        leading: Container(
-          padding: EdgeInsets.all(8.r),
-          decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(10.r)),
-          child: SvgPicture.asset(
-            icon,
-            package: 'grab_go_shared',
-            height: 18.h,
-            width: 18.w,
-            colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-          ),
+        trailing: SvgPicture.asset(
+          Assets.icons.navArrowDown,
+          package: "grab_go_shared",
+          height: 18.h,
+          width: 18.w,
+          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
         ),
         title: Text(
           title,

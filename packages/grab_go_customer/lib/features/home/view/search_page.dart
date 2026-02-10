@@ -176,7 +176,7 @@ class _SearchPageState extends State<SearchPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: colors.backgroundSecondary,
+      backgroundColor: colors.backgroundPrimary,
       appBar: AppBar(
         backgroundColor: colors.backgroundPrimary,
         elevation: 0,
@@ -200,11 +200,10 @@ class _SearchPageState extends State<SearchPage> {
           ),
         ),
         title: Container(
-          height: 45.h,
+          height: 45,
           decoration: BoxDecoration(
             color: colors.backgroundSecondary,
             borderRadius: BorderRadius.circular(KBorderSize.border),
-            border: Border.all(color: colors.inputBorder, width: 0.5),
           ),
           child: Row(
             children: [
@@ -395,15 +394,6 @@ class _SearchPageState extends State<SearchPage> {
                       decoration: BoxDecoration(
                         color: colors.backgroundPrimary,
                         borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                        border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withAlpha(5),
-                            spreadRadius: 0,
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -429,31 +419,12 @@ class _SearchPageState extends State<SearchPage> {
               SizedBox(height: 32.h),
             ],
 
-            Row(
-              children: [
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16),
-                  child: Container(
-                    padding: EdgeInsets.all(8.r),
-                    decoration: BoxDecoration(
-                      color: colors.accentViolet.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(KBorderSize.border),
-                    ),
-                    child: SvgPicture.asset(
-                      Assets.icons.flame,
-                      package: 'grab_go_shared',
-                      height: 20.h,
-                      width: 20.w,
-                      colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 10.w),
-                Text(
-                  "You Might Like",
-                  style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
-                ),
-              ],
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+              child: Text(
+                "You Might Like",
+                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+              ),
             ),
             _suggestions.isEmpty
                 ? Shimmer.fromColors(

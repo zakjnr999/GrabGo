@@ -91,6 +91,16 @@ class CartProvider extends ChangeNotifier {
     try {
       _isSyncing = true;
       notifyListeners();
+      final previousOpenById = <String, bool>{};
+      final previousOpenByProviderId = <String, bool>{};
+      for (final item in _cartItems.keys) {
+        if (item is FoodItem && item.id.isNotEmpty) {
+          previousOpenById[item.id] = item.isRestaurantOpen;
+        }
+        if (item is FoodItem && item.restaurantId.isNotEmpty) {
+          previousOpenByProviderId[item.restaurantId] = item.isRestaurantOpen;
+        }
+      }
       final response = await cartApiService.getCart(
         type: _cartType ?? _inferCartType(),
         lat: _deliveryLatitude,
@@ -119,7 +129,26 @@ class CartProvider extends ChangeNotifier {
             CartItem? cartItem;
 
             if (itemType == 'Food') {
-              cartItem = _createFoodItemFromBackend(Map<String, dynamic>.from(itemData), item);
+              final restaurantData = itemData['restaurant'];
+              String? providerId;
+              if (restaurantData is Map) {
+                providerId = restaurantData['_id']?.toString() ?? restaurantData['id']?.toString();
+              }
+              providerId ??= itemData['restaurantId']?.toString() ?? itemData['restaurant']?.toString();
+              providerId ??= item['restaurantId']?.toString();
+
+              final fallbackOpen =
+                  previousOpenById[itemData['_id']?.toString() ??
+                      itemData['id']?.toString() ??
+                      item['foodId']?.toString() ??
+                      item['itemId']?.toString() ??
+                      ''] ??
+                  (providerId != null ? previousOpenByProviderId[providerId] : null);
+              cartItem = _createFoodItemFromBackend(
+                Map<String, dynamic>.from(itemData),
+                item,
+                fallbackIsOpen: fallbackOpen,
+              );
             } else if (itemType == 'GroceryItem') {
               cartItem = _createGroceryItemFromBackend(Map<String, dynamic>.from(itemData), item);
             } else {
@@ -179,9 +208,7 @@ class CartProvider extends ChangeNotifier {
     _rainFee = (pricing['rainFee'] as num?)?.toDouble() ?? 0.0;
     _creditsApplied = (pricing['creditsApplied'] as num?)?.toDouble() ?? 0.0;
     _availableCredits =
-        (pricing['availableBalance'] as num?)?.toDouble() ??
-        (pricing['creditBalance'] as num?)?.toDouble() ??
-        0.0;
+        (pricing['availableBalance'] as num?)?.toDouble() ?? (pricing['creditBalance'] as num?)?.toDouble() ?? 0.0;
     _total = (pricing['total'] as num?)?.toDouble();
     _estimatedDeliveryMin = (pricing['estimatedDeliveryMin'] as num?)?.toInt();
     _estimatedDeliveryMax = (pricing['estimatedDeliveryMax'] as num?)?.toInt();
@@ -274,11 +301,7 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await cartApiService.clearCart(
-        lat: _deliveryLatitude,
-        lng: _deliveryLongitude,
-        useCredits: _useCredits,
-      );
+      await cartApiService.clearCart(lat: _deliveryLatitude, lng: _deliveryLongitude, useCredits: _useCredits);
     } catch (e) {
       debugPrint('⚠️ Failed to clear backend cart: $e');
     }
@@ -343,12 +366,22 @@ class CartProvider extends ChangeNotifier {
   }
 
   /// Create FoodItem from backend data
-  FoodItem _createFoodItemFromBackend(Map<String, dynamic> itemData, Map<String, dynamic> cartItem) {
+  FoodItem _createFoodItemFromBackend(
+    Map<String, dynamic> itemData,
+    Map<String, dynamic> cartItem, {
+    bool? fallbackIsOpen,
+  }) {
     // Extract restaurant data if available
     final restaurantData = itemData['restaurant'];
     String restaurantId = '';
     String restaurantName = '';
     String restaurantImage = '';
+    bool parseBool(dynamic value, {bool defaultValue = true}) {
+      if (value is bool) return value;
+      if (value is num) return value != 0;
+      if (value is String) return value.toLowerCase() == 'true';
+      return defaultValue;
+    }
 
     if (restaurantData != null) {
       restaurantId = restaurantData['_id']?.toString() ?? restaurantData['id']?.toString() ?? '';
@@ -375,6 +408,19 @@ class CartProvider extends ChangeNotifier {
       restaurantName = itemData['restaurantName']?.toString() ?? '';
     }
 
+    dynamic rawOpen = () {
+      if (itemData.containsKey('isRestaurantOpen')) return itemData['isRestaurantOpen'];
+      if (restaurantData is Map) {
+        if (restaurantData.containsKey('isRestaurantOpen')) return restaurantData['isRestaurantOpen'];
+        if (restaurantData.containsKey('isOpen')) return restaurantData['isOpen'];
+        if (restaurantData.containsKey('is_open')) return restaurantData['is_open'];
+      }
+      if (itemData.containsKey('isOpen')) return itemData['isOpen'];
+      if (itemData.containsKey('is_open')) return itemData['is_open'];
+      return null;
+    }();
+    rawOpen ??= fallbackIsOpen;
+
     return FoodItem(
       id:
           itemData['_id']?.toString() ??
@@ -399,6 +445,7 @@ class CartProvider extends ChangeNotifier {
       calories: (itemData['calories'] as num?)?.toInt() ?? 300,
       deliveryTimeMinutes: (itemData['deliveryTimeMinutes'] as num?)?.toInt() ?? 30,
       isAvailable: itemData['isAvailable'] ?? true,
+      isRestaurantOpen: parseBool(rawOpen, defaultValue: true),
     );
   }
 
@@ -412,7 +459,8 @@ class CartProvider extends ChangeNotifier {
 
     if (storeData != null) {
       storeId = storeData['_id']?.toString() ?? storeData['id']?.toString() ?? '';
-      storeName = storeData['store_name']?.toString() ?? storeData['storeName']?.toString() ?? storeData['name']?.toString();
+      storeName =
+          storeData['store_name']?.toString() ?? storeData['storeName']?.toString() ?? storeData['name']?.toString();
       storeLogo = storeData['logo']?.toString() ?? storeData['image']?.toString();
     }
 
@@ -469,12 +517,7 @@ class CartProvider extends ChangeNotifier {
       }
 
       debugPrint('  Request body: $body');
-      await cartApiService.addToCart(
-        body,
-        lat: _deliveryLatitude,
-        lng: _deliveryLongitude,
-        useCredits: _useCredits,
-      );
+      await cartApiService.addToCart(body, lat: _deliveryLatitude, lng: _deliveryLongitude, useCredits: _useCredits);
       debugPrint('✅ Successfully added to backend');
     } catch (e) {
       debugPrint('❌ Error adding to backend cart: $e');
@@ -679,11 +722,7 @@ class CartProvider extends ChangeNotifier {
 
     // Clear backend cart async
     try {
-      await cartApiService.clearCart(
-        lat: _deliveryLatitude,
-        lng: _deliveryLongitude,
-        useCredits: _useCredits,
-      );
+      await cartApiService.clearCart(lat: _deliveryLatitude, lng: _deliveryLongitude, useCredits: _useCredits);
       await syncFromBackend();
     } catch (e) {
       debugPrint('Error clearing backend cart: $e');

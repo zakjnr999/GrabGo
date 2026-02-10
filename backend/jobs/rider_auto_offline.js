@@ -1,38 +1,22 @@
-/**
- * Rider Auto-Offline Job
- * 
- * Automatically sets riders offline when:
- * 1. No activity (location updates) for 30+ minutes
- * 2. Battery critically low (< 5%)
- * 3. Multiple consecutive missed reservations
- * 
- * Runs every 5 minutes via cron
- */
-
 const RiderStatus = require('../models/RiderStatus');
 const OrderReservation = require('../models/OrderReservation');
 const socketService = require('../services/socket_service');
 const { sendToUser } = require('../services/fcm_service');
 
-// Configuration
 const CONFIG = {
-  INACTIVITY_THRESHOLD_MS: 30 * 60 * 1000,  // 30 minutes
-  CRITICAL_BATTERY_LEVEL: 5,                 // 5%
-  MAX_CONSECUTIVE_TIMEOUTS: 3,               // 3 missed reservations
-  TIMEOUT_WINDOW_MS: 60 * 60 * 1000,         // Look at last 1 hour
+  INACTIVITY_THRESHOLD_MS: 30 * 60 * 1000,
+  CRITICAL_BATTERY_LEVEL: 5,                 
+  MAX_CONSECUTIVE_TIMEOUTS: 3,               
+  TIMEOUT_WINDOW_MS: 60 * 60 * 1000,         
 };
 
-/**
- * Check and auto-offline inactive riders
- */
 async function autoOfflineInactiveRiders() {
   const cutoffTime = new Date(Date.now() - CONFIG.INACTIVITY_THRESHOLD_MS);
   
   try {
-    // Find riders who are online but inactive
     const inactiveRiders = await RiderStatus.find({
       isOnline: true,
-      isOnDelivery: false, // Don't offline riders mid-delivery
+      isOnDelivery: false,
       lastActiveAt: { $lt: cutoffTime }
     });
     
@@ -50,15 +34,11 @@ async function autoOfflineInactiveRiders() {
   }
 }
 
-/**
- * Check and auto-offline riders with critical battery
- */
 async function autoOfflineLowBatteryRiders() {
   try {
-    // Find riders who are online with critical battery (and not charging)
     const lowBatteryRiders = await RiderStatus.find({
       isOnline: true,
-      isOnDelivery: false, // Don't offline riders mid-delivery
+      isOnDelivery: false,
       batteryLevel: { $lt: CONFIG.CRITICAL_BATTERY_LEVEL },
       isCharging: false
     });
@@ -77,14 +57,10 @@ async function autoOfflineLowBatteryRiders() {
   }
 }
 
-/**
- * Check and auto-offline riders with multiple missed reservations
- */
 async function autoOfflineUnresponsiveRiders() {
   const windowStart = new Date(Date.now() - CONFIG.TIMEOUT_WINDOW_MS);
   
   try {
-    // Find riders with multiple consecutive timeouts in the last hour
     const unresponsiveRiders = await OrderReservation.aggregate([
       {
         $match: {
@@ -109,7 +85,6 @@ async function autoOfflineUnresponsiveRiders() {
     console.log(`⏰ [Auto-Offline] Found ${unresponsiveRiders.length} unresponsive riders`);
     
     for (const result of unresponsiveRiders) {
-      // Check if rider is still online
       const status = await RiderStatus.findOne({ 
         riderId: result._id, 
         isOnline: true,
@@ -129,12 +104,8 @@ async function autoOfflineUnresponsiveRiders() {
   }
 }
 
-/**
- * Set a rider offline and notify them
- */
 async function setRiderOffline(riderId, reason, message) {
   try {
-    // Update status to offline
     await RiderStatus.findOneAndUpdate(
       { riderId },
       { 
@@ -149,7 +120,6 @@ async function setRiderOffline(riderId, reason, message) {
     
     console.log(`🔴 [Auto-Offline] Rider ${riderId} set offline: ${reason}`);
     
-    // Send socket notification using emitToRider (supports multiple devices)
     try {
       socketService.emitToRider(riderId, 'rider:auto_offline', {
         reason,
@@ -157,11 +127,9 @@ async function setRiderOffline(riderId, reason, message) {
         timestamp: new Date().toISOString()
       });
     } catch (e) {
-      // Socket might not be available
       console.log(`⚠️ Could not send socket notification: ${e.message}`);
     }
     
-    // Send FCM notification
     try {
       await sendToUser(riderId, {
         title: "You've been set offline",
@@ -181,9 +149,6 @@ async function setRiderOffline(riderId, reason, message) {
   }
 }
 
-/**
- * Main job function - runs all auto-offline checks
- */
 async function runAutoOfflineJob() {
   console.log('🤖 [Auto-Offline Job] Starting...');
   

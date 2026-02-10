@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const messageSchema = new mongoose.Schema(
     {
         sender: {
-            type: String, // String reference to PostgreSQL User ID
+            type: String,
             required: true,
         },
         messageType: {
@@ -18,7 +18,6 @@ const messageSchema = new mongoose.Schema(
                 return this.messageType === "text";
             },
         },
-        // Voice message fields
         audioUrl: {
             type: String,
             required: function () {
@@ -26,15 +25,13 @@ const messageSchema = new mongoose.Schema(
             },
         },
         audioDuration: {
-            type: Number, // Duration in seconds
+            type: Number,
             default: 0,
         },
-        // Image message fields
         imageUrls: {
             type: [String],
             default: [],
         },
-        // BlurHash for instant image previews (one per image)
         blurHashes: {
             type: [String],
             default: [],
@@ -45,11 +42,11 @@ const messageSchema = new mongoose.Schema(
         },
         readBy: [
             {
-                type: String, // String references to PostgreSQL User IDs
+                type: String,
             },
         ],
         replyTo: {
-            id: { type: String }, // Message ID (likely MongoDB ObjectId if internal, or String)
+            id: { type: String },
             text: { type: String },
             senderId: { type: String },
             messageType: { type: String, enum: ["text", "voice", "image"], default: "text" },
@@ -61,19 +58,18 @@ const messageSchema = new mongoose.Schema(
 const chatSchema = new mongoose.Schema(
     {
         orderId: {
-            type: String, // String reference to PostgreSQL Order ID
+            type: String,
             required: true,
             unique: true
         },
         customerId: {
-            type: String, // String reference to PostgreSQL User ID
+            type: String,
             required: true
         },
         riderId: {
-            type: String, // String reference to PostgreSQL User ID
+            type: String,
             required: true
         },
-        // Note: messages are now stored in separate ChatMessage collection for better scalability
     },
     {
         timestamps: true,

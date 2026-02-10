@@ -73,6 +73,12 @@ class FoodItem implements CartItem {
   factory FoodItem.fromJson(Map<String, dynamic> json) {
     final id = json['_id']?.toString() ?? json['id']?.toString() ?? '';
     final restaurant = json['restaurant'];
+    bool parseBool(dynamic value, {bool defaultValue = true}) {
+      if (value is bool) return value;
+      if (value is num) return value != 0;
+      if (value is String) return value.toLowerCase() == 'true';
+      return defaultValue;
+    }
 
     String restaurantId = '';
     String restaurantName = '';
@@ -131,6 +137,18 @@ class FoodItem implements CartItem {
         : (restaurantName.isEmpty ? 'Unknown Restaurant' : restaurantName);
     final safeRestaurantImage = restaurantImage.isEmpty ? '' : restaurantImage;
 
+    final dynamic rawOpen = () {
+      if (json.containsKey('isRestaurantOpen')) return json['isRestaurantOpen'];
+      if (restaurant is Map) {
+        if (restaurant.containsKey('isRestaurantOpen')) return restaurant['isRestaurantOpen'];
+        if (restaurant.containsKey('isOpen')) return restaurant['isOpen'];
+        if (restaurant.containsKey('is_open')) return restaurant['is_open'];
+      }
+      if (json.containsKey('isOpen')) return json['isOpen'];
+      if (json.containsKey('is_open')) return json['is_open'];
+      return null;
+    }();
+
     return FoodItem(
       id: id,
       name: name,
@@ -186,9 +204,7 @@ class FoodItem implements CartItem {
       discountEndDate: json['discountEndDate'] != null ? DateTime.tryParse(json['discountEndDate'].toString()) : null,
       orderCount: (json['orderCount'] as num?)?.toInt() ?? 0, // Parse from backend
       lastOrderedAt: json['lastOrderedAt'] != null ? DateTime.tryParse(json['lastOrderedAt'].toString()) : null,
-      isRestaurantOpen: json['isRestaurantOpen'] is bool
-          ? json['isRestaurantOpen'] as bool
-          : (json['isRestaurantOpen']?.toString().toLowerCase() == 'true' || json['isRestaurantOpen'] == null),
+      isRestaurantOpen: parseBool(rawOpen, defaultValue: true),
       estimatedDeliveryTime: json['estimatedDeliveryTime']?.toString() ?? '25-30 min',
     );
   }
@@ -211,6 +227,7 @@ class FoodItem implements CartItem {
     'ingredients': ingredients,
     'deliveryTimeMinutes': deliveryTimeMinutes,
     'isAvailable': isAvailable,
+    'isRestaurantOpen': isRestaurantOpen,
     'discountPercentage': discountPercentage,
     'orderCount': orderCount,
     'lastOrderedAt': lastOrderedAt?.toIso8601String(),
