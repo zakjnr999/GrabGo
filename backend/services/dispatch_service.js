@@ -50,6 +50,33 @@ const SCORING = {
     LOW_ON_TIME_PENALTY: -20,          // -20 points for riders with <70% on-time rate (consistently late)
 };
 
+const firstDefined = (...values) =>
+    values.find((value) => value !== null && value !== undefined);
+
+const getPickupLocation = (order) => ({
+    latitude: firstDefined(
+        order?.restaurant?.latitude,
+        order?.groceryStore?.latitude,
+        order?.pharmacyStore?.latitude,
+        order?.grabMartStore?.latitude
+    ),
+    longitude: firstDefined(
+        order?.restaurant?.longitude,
+        order?.groceryStore?.longitude,
+        order?.pharmacyStore?.longitude,
+        order?.grabMartStore?.longitude
+    )
+});
+
+const getStoreName = (order) =>
+    firstDefined(order?.restaurant?.restaurantName, order?.groceryStore?.storeName, order?.pharmacyStore?.storeName, order?.grabMartStore?.storeName) || 'Unknown';
+
+const getStoreLogo = (order) =>
+    firstDefined(order?.restaurant?.logo, order?.groceryStore?.logo, order?.pharmacyStore?.logo, order?.grabMartStore?.logo) || null;
+
+const getPickupAddress = (order) =>
+    firstDefined(order?.restaurant?.address, order?.groceryStore?.address, order?.pharmacyStore?.address, order?.grabMartStore?.address) || 'Unknown';
+
 /**
  * Main dispatch function - Called when a new order needs a rider
  * @param {string} orderId - PostgreSQL Order ID
@@ -67,6 +94,7 @@ async function dispatchOrder(orderId) {
                 restaurant: { select: { restaurantName: true, logo: true, address: true, latitude: true, longitude: true } },
                 groceryStore: { select: { storeName: true, logo: true, address: true, latitude: true, longitude: true } },
                 pharmacyStore: { select: { storeName: true, logo: true, address: true, latitude: true, longitude: true } },
+                grabMartStore: { select: { storeName: true, logo: true, address: true, latitude: true, longitude: true } },
                 items: { select: { id: true, name: true, quantity: true, price: true } }
             }
         });
@@ -163,8 +191,9 @@ async function dispatchOrder(orderId) {
  * Find eligible riders for an order
  */
 async function findEligibleRiders(order, excludedRiderIds = []) {
-    const pickupLat = order.restaurant?.latitude || order.groceryStore?.latitude || order.pharmacyStore?.latitude;
-    const pickupLon = order.restaurant?.longitude || order.groceryStore?.longitude || order.pharmacyStore?.longitude;
+    const pickupLocation = getPickupLocation(order);
+    const pickupLat = pickupLocation.latitude;
+    const pickupLon = pickupLocation.longitude;
 
     if (!pickupLat || !pickupLon) {
         console.log('⚠️ [Dispatch] No pickup coordinates available');
@@ -425,25 +454,12 @@ async function createReservation(order, scoredRider, attemptNumber) {
     const earnings = calculateRiderEarnings(order, 0);
 
     // Build order snapshot
-    const storeName = order.restaurant?.restaurantName || 
-                      order.groceryStore?.storeName || 
-                      order.pharmacyStore?.storeName || 'Unknown';
-    
-    const storeLogo = order.restaurant?.logo || 
-                      order.groceryStore?.logo || 
-                      order.pharmacyStore?.logo || null;
-
-    const pickupAddress = order.restaurant?.address || 
-                          order.groceryStore?.address || 
-                          order.pharmacyStore?.address || 'Unknown';
-
-    const pickupLat = order.restaurant?.latitude || 
-                      order.groceryStore?.latitude || 
-                      order.pharmacyStore?.latitude;
-
-    const pickupLon = order.restaurant?.longitude || 
-                      order.groceryStore?.longitude || 
-                      order.pharmacyStore?.longitude;
+    const storeName = getStoreName(order);
+    const storeLogo = getStoreLogo(order);
+    const pickupAddress = getPickupAddress(order);
+    const pickupLocation = getPickupLocation(order);
+    const pickupLat = pickupLocation.latitude;
+    const pickupLon = pickupLocation.longitude;
 
     const reservation = new OrderReservation({
         orderId: order.id,

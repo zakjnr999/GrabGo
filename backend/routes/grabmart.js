@@ -217,7 +217,19 @@ router.get("/categories", cacheMiddleware(cache.CACHE_KEYS.GRABMART + ':categori
                     distinct: ['categoryId']
                 });
 
-                const activeCategoryIds = categoriesWithItems.map(c => c.categoryId);
+                const activeCategoryIds = categoriesWithItems
+                    .map(c => c.categoryId)
+                    .filter(Boolean);
+
+                if (activeCategoryIds.length === 0) {
+                    console.log('   ⚠️ No valid GrabMart categories nearby - returning 0 categories');
+                    return res.json({
+                        success: true,
+                        message: "No GrabMart categories available in your area",
+                        data: []
+                    });
+                }
+
                 where.id = { in: activeCategoryIds };
                 console.log(`   ✅ Filtered to ${activeCategoryIds.length} active GrabMart categories nearby`);
             } else {

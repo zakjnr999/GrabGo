@@ -127,7 +127,7 @@ router.post(
   "/",
   protect,
   [
-    body("restaurant").notEmpty().withMessage("Restaurant is required"),
+    body("restaurant").optional().isString().withMessage("restaurant must be a string"),
     body("items")
       .isArray({ min: 1 })
       .withMessage("At least one item is required"),
@@ -151,7 +151,7 @@ router.post(
       }
 
       const {
-        restaurant,
+        restaurant: requestedVendorId,
         items,
         deliveryAddress,
         paymentMethod,
@@ -160,52 +160,195 @@ router.post(
         orderNumber: bodyOrderNumber
       } = req.body;
 
-      const restaurantDoc = await prisma.restaurant.findUnique({
-        where: { id: restaurant }
-      });
+      const normalizeItemType = (itemType) => {
+        if (!itemType) return null;
+        const normalized = String(itemType).toLowerCase();
+        if (normalized === "food") return "Food";
+        if (normalized === "groceryitem" || normalized === "grocery") return "GroceryItem";
+        if (normalized === "pharmacyitem" || normalized === "pharmacy") return "PharmacyItem";
+        if (normalized === "grabmartitem" || normalized === "grabmart" || normalized === "convenience") return "GrabMartItem";
+        return null;
+      };
 
-      if (!restaurantDoc) {
-        return res.status(404).json({
-          success: false,
-          message: "Restaurant not found",
-        });
-      }
+      const itemIdFromPayload = (item) => (
+        item.food || item.groceryItem || item.pharmacyItem || item.grabMartItem || item.itemId || item.id
+      );
 
       const orderNumber = bodyOrderNumber || await generateOrderNumber();
 
       let subtotal = 0;
       let maxItemPrepMinutes = 0;
       const orderItemsData = [];
+      let resolvedOrderType = null;
+      let resolvedVendorId = null;
 
       for (const item of items) {
-        const food = await prisma.food.findUnique({
-          where: { id: item.food }
-        });
+        const payloadItemId = itemIdFromPayload(item);
+        const payloadType = normalizeItemType(item.itemType);
+        const quantity = Number(item.quantity) || 1;
 
-        if (!food) {
-          return res.status(404).json({
+        if (!payloadItemId) {
+          return res.status(400).json({
             success: false,
-            message: `Food item ${item.food} not found`,
+            message: "Each order item must include a valid item id",
           });
         }
 
-        const itemTotal = food.price * item.quantity;
-        subtotal += itemTotal;
-        if (Number.isFinite(food.prepTimeMinutes) && food.prepTimeMinutes > maxItemPrepMinutes) {
-          maxItemPrepMinutes = food.prepTimeMinutes;
+        if (quantity < 1) {
+          return res.status(400).json({
+            success: false,
+            message: `Invalid quantity for item ${payloadItemId}`,
+          });
         }
 
-        orderItemsData.push({
-          itemType: 'Food',
-          foodId: food.id,
-          name: food.name,
-          quantity: item.quantity,
-          price: food.price,
-          image: food.image,
+        const lookupOrder = payloadType
+          ? [payloadType]
+          : ["Food", "GroceryItem", "PharmacyItem", "GrabMartItem"];
+
+        let matchedItem = null;
+
+        for (const type of lookupOrder) {
+          if (type === "Food") {
+            const food = await prisma.food.findUnique({ where: { id: payloadItemId } });
+            if (food) {
+              matchedItem = {
+                itemType: "Food",
+                orderType: "food",
+                vendorId: food.restaurantId,
+                price: food.price,
+                name: food.name,
+                image: food.foodImage,
+                prepTimeMinutes: food.prepTimeMinutes,
+                idField: "foodId",
+                idValue: food.id,
+              };
+              break;
+            }
+          } else if (type === "GroceryItem") {
+            const groceryItem = await prisma.groceryItem.findUnique({ where: { id: payloadItemId } });
+            if (groceryItem) {
+              matchedItem = {
+                itemType: "GroceryItem",
+                orderType: "grocery",
+                vendorId: groceryItem.storeId,
+                price: groceryItem.price,
+                name: groceryItem.name,
+                image: groceryItem.image,
+                prepTimeMinutes: groceryItem.prepTimeMinutes,
+                idField: "groceryItemId",
+                idValue: groceryItem.id,
+              };
+              break;
+            }
+          } else if (type === "PharmacyItem") {
+            const pharmacyItem = await prisma.pharmacyItem.findUnique({ where: { id: payloadItemId } });
+            if (pharmacyItem) {
+              matchedItem = {
+                itemType: "PharmacyItem",
+                orderType: "pharmacy",
+                vendorId: pharmacyItem.storeId,
+                price: pharmacyItem.price,
+                name: pharmacyItem.name,
+                image: pharmacyItem.image,
+                prepTimeMinutes: pharmacyItem.prepTimeMinutes,
+                idField: "pharmacyItemId",
+                idValue: pharmacyItem.id,
+              };
+              break;
+            }
+          } else if (type === "GrabMartItem") {
+            const grabMartItem = await prisma.grabMartItem.findUnique({ where: { id: payloadItemId } });
+            if (grabMartItem) {
+              matchedItem = {
+                itemType: "GrabMartItem",
+                orderType: "grabmart",
+                vendorId: grabMartItem.storeId,
+                price: grabMartItem.price,
+                name: grabMartItem.name,
+                image: grabMartItem.image,
+                prepTimeMinutes: 0,
+                idField: "grabMartItemId",
+                idValue: grabMartItem.id,
+              };
+              break;
+            }
+          }
+        }
+
+        if (!matchedItem) {
+          return res.status(404).json({
+            success: false,
+            message: `Item ${payloadItemId} not found`,
+          });
+        }
+
+        if (resolvedOrderType && resolvedOrderType !== matchedItem.orderType) {
+          return res.status(400).json({
+            success: false,
+            message: "Orders can only contain items from one service type",
+          });
+        }
+
+        if (resolvedVendorId && resolvedVendorId !== matchedItem.vendorId) {
+          return res.status(400).json({
+            success: false,
+            message: "Orders can only contain items from one store/restaurant",
+          });
+        }
+
+        resolvedOrderType = matchedItem.orderType;
+        resolvedVendorId = matchedItem.vendorId;
+
+        const itemTotal = matchedItem.price * quantity;
+        subtotal += itemTotal;
+        if (Number.isFinite(matchedItem.prepTimeMinutes) && matchedItem.prepTimeMinutes > maxItemPrepMinutes) {
+          maxItemPrepMinutes = matchedItem.prepTimeMinutes;
+        }
+
+        const orderItemData = {
+          itemType: matchedItem.itemType,
+          name: matchedItem.name,
+          quantity,
+          price: matchedItem.price,
+          image: matchedItem.image,
+        };
+        orderItemData[matchedItem.idField] = matchedItem.idValue;
+        orderItemsData.push(orderItemData);
+      }
+
+      if (!resolvedOrderType || !resolvedVendorId) {
+        return res.status(400).json({
+          success: false,
+          message: "Unable to determine order service/store",
         });
       }
 
-      const baseDeliveryFee = restaurantDoc.deliveryFee || 0;
+      if (requestedVendorId && requestedVendorId !== resolvedVendorId) {
+        return res.status(400).json({
+          success: false,
+          message: "Provided vendor does not match item store/restaurant",
+        });
+      }
+
+      let vendorDoc = null;
+      if (resolvedOrderType === "food") {
+        vendorDoc = await prisma.restaurant.findUnique({ where: { id: resolvedVendorId } });
+      } else if (resolvedOrderType === "grocery") {
+        vendorDoc = await prisma.groceryStore.findUnique({ where: { id: resolvedVendorId } });
+      } else if (resolvedOrderType === "pharmacy") {
+        vendorDoc = await prisma.pharmacyStore.findUnique({ where: { id: resolvedVendorId } });
+      } else if (resolvedOrderType === "grabmart") {
+        vendorDoc = await prisma.grabMartStore.findUnique({ where: { id: resolvedVendorId } });
+      }
+
+      if (!vendorDoc || vendorDoc.status !== "approved") {
+        return res.status(404).json({
+          success: false,
+          message: "Store/restaurant not found or inactive",
+        });
+      }
+
+      const baseDeliveryFee = vendorDoc.deliveryFee || 0;
       const pricing = await calculateOrderPricing({
         subtotal,
         baseDeliveryFee,
@@ -215,11 +358,11 @@ router.post(
           longitude: deliveryAddress.longitude
         },
         vendorLocation: {
-          latitude: restaurantDoc.latitude,
-          longitude: restaurantDoc.longitude
+          latitude: vendorDoc.latitude,
+          longitude: vendorDoc.longitude
         },
-        vendorPrepTime: maxItemPrepMinutes > 0 ? maxItemPrepMinutes : restaurantDoc.averagePreparationTime,
-        vendorDeliveryTime: restaurantDoc.averageDeliveryTime
+        vendorPrepTime: maxItemPrepMinutes > 0 ? maxItemPrepMinutes : (vendorDoc.averagePreparationTime || 15),
+        vendorDeliveryTime: vendorDoc.averageDeliveryTime || 30
       });
       const tax = pricing.tax;
       let totalAmount = pricing.total;
@@ -235,9 +378,8 @@ router.post(
 
       const orderData = {
         orderNumber,
-        orderType: 'food',
+        orderType: resolvedOrderType,
         customerId: req.user.id,
-        restaurantId: restaurant,
         subtotal: pricing.subtotal,
         deliveryFee: pricing.deliveryFee,
         rainFee: pricing.rainFee,
@@ -258,6 +400,11 @@ router.post(
         }
       };
 
+      if (resolvedOrderType === "food") orderData.restaurantId = resolvedVendorId;
+      if (resolvedOrderType === "grocery") orderData.groceryStoreId = resolvedVendorId;
+      if (resolvedOrderType === "pharmacy") orderData.pharmacyStoreId = resolvedVendorId;
+      if (resolvedOrderType === "grabmart") orderData.grabMartStoreId = resolvedVendorId;
+
       if (isCreditOnly) {
         orderData.paymentStatus = "paid";
       }
@@ -267,11 +414,47 @@ router.post(
         data: orderData,
         include: {
           items: {
-            include: { food: true }
+            include: { food: true, groceryItem: true, pharmacyItem: true, grabMartItem: true }
           },
           restaurant: {
             select: {
               restaurantName: true,
+              logo: true,
+              phone: true,
+              address: true,
+              city: true,
+              area: true,
+              latitude: true,
+              longitude: true
+            }
+          },
+          groceryStore: {
+            select: {
+              storeName: true,
+              logo: true,
+              phone: true,
+              address: true,
+              city: true,
+              area: true,
+              latitude: true,
+              longitude: true
+            }
+          },
+          pharmacyStore: {
+            select: {
+              storeName: true,
+              logo: true,
+              phone: true,
+              address: true,
+              city: true,
+              area: true,
+              latitude: true,
+              longitude: true
+            }
+          },
+          grabMartStore: {
+            select: {
+              storeName: true,
               logo: true,
               phone: true,
               address: true,
@@ -409,9 +592,21 @@ router.get("/", protect, async (req, res) => {
             status: true
           }
         },
+        grabMartStore: {
+          select: {
+            storeName: true,
+            logo: true,
+            address: true,
+            latitude: true,
+            longitude: true,
+            isOpen: true,
+            isAcceptingOrders: true,
+            status: true
+          }
+        },
         rider: { select: { username: true, email: true, phone: true } },
         items: {
-          include: { food: true, groceryItem: true, pharmacyItem: true }
+          include: { food: true, groceryItem: true, pharmacyItem: true, grabMartItem: true }
         }
       },
       orderBy: { createdAt: 'desc' }
@@ -468,7 +663,8 @@ router.get("/recent-items", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM 
           include: {
             food: { include: FOOD_INCLUDE_RELATIONS },
             groceryItem: { include: { store: true, category: true } },
-            pharmacyItem: { include: { store: true, category: true } }
+            pharmacyItem: { include: { store: true, category: true } },
+            grabMartItem: { include: { store: true, category: true } }
           }
         }
       },
@@ -514,6 +710,10 @@ router.get("/recent-items", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM 
           itemId = `pharmacy_${item.pharmacyItem.id}`;
           itemData = item.pharmacyItem;
           type = 'PharmacyItem';
+        } else if (item.itemType === 'GrabMartItem' && item.grabMartItem) {
+          itemId = `grabmart_${item.grabMartItem.id}`;
+          itemData = item.grabMartItem;
+          type = 'GrabMartItem';
         }
 
         if (!itemId) return;
@@ -572,9 +772,12 @@ router.get("/:orderId", protect, async (req, res) => {
       include: {
         customer: { select: { username: true, email: true, phone: true } },
         restaurant: { select: { restaurantName: true, logo: true, phone: true, address: true, city: true, area: true, latitude: true, longitude: true } },
+        groceryStore: { select: { storeName: true, logo: true, phone: true, address: true, city: true, area: true, latitude: true, longitude: true } },
+        pharmacyStore: { select: { storeName: true, logo: true, phone: true, address: true, city: true, area: true, latitude: true, longitude: true } },
+        grabMartStore: { select: { storeName: true, logo: true, phone: true, address: true, city: true, area: true, latitude: true, longitude: true } },
         rider: { select: { username: true, email: true, phone: true } },
         items: {
-          include: { food: true, groceryItem: true, pharmacyItem: true }
+          include: { food: true, groceryItem: true, pharmacyItem: true, grabMartItem: true }
         }
       }
     });
@@ -998,6 +1201,9 @@ router.put(
           include: {
             customer: { select: { username: true, email: true, phone: true } },
             restaurant: { select: { restaurantName: true, logo: true, address: true, city: true, area: true, latitude: true, longitude: true } },
+            groceryStore: { select: { storeName: true, logo: true, address: true, city: true, area: true, latitude: true, longitude: true } },
+            pharmacyStore: { select: { storeName: true, logo: true, address: true, city: true, area: true, latitude: true, longitude: true } },
+            grabMartStore: { select: { storeName: true, logo: true, address: true, city: true, area: true, latitude: true, longitude: true } },
             rider: { select: { username: true, email: true, phone: true } }
           }
         });

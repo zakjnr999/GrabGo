@@ -151,14 +151,17 @@ class RecommendationService:
                 elif service_type in {"grabmart", "convenience"}:
                     table = "grabmart_stores"
                     name_col = '"storeName"'
-                    # GrabMart orders are not yet mapped in orders table.
-                    order_join_col = None
+                    order_join_col = '"grabMartStoreId"'
                 else:
                     table = "restaurants"
                     name_col = '"restaurantName"'
                     order_join_col = '"restaurantId"'
 
-                order_count_select = 'COUNT(DISTINCT o.id) as order_count' if order_join_col else '0 as order_count'
+                order_count_select = (
+                    'GREATEST(COUNT(DISTINCT o.id), COALESCE(MAX(r."totalOrders"), 0)) as order_count'
+                    if order_join_col
+                    else 'COALESCE(r."totalOrders", 0) as order_count'
+                )
                 order_join_clause = f'LEFT JOIN orders o ON r.id = o.{order_join_col}' if order_join_col else ''
 
                 # Get popular restaurants
@@ -171,7 +174,7 @@ class RecommendationService:
                     WHERE r.status = 'approved'
                       AND r."isOpen" = true
                     GROUP BY r.id, r.{name_col}, r.rating, r."ratingCount",
-                             r."deliveryFee", r."isOpen", r.featured
+                             r."deliveryFee", r."isOpen", r.featured, r."totalOrders"
                     ORDER BY r.featured DESC, order_count DESC, r.rating DESC
                     LIMIT :limit
                 """)

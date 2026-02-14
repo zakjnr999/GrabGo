@@ -284,4 +284,41 @@ class GroceryRepository {
       return [];
     }
   }
+
+  /// Fetch recommended grocery items (ML-first, backend fallback)
+  Future<List<GroceryItem>> fetchRecommendedItems({
+    int limit = 20,
+    int page = 1,
+    double? userLat,
+    double? userLng,
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'limit': '$limit',
+        'page': '$page',
+        if (userLat != null) 'userLat': '$userLat',
+        if (userLng != null) 'userLng': '$userLng',
+      };
+      final response = await chopper_client_service.chopperClient.get(
+        Uri(path: '/groceries/recommended', queryParameters: queryParams),
+      );
+
+      if (response.isSuccessful && response.body != null) {
+        final data = response.body as Map<String, dynamic>;
+        if (data['success'] == true && data['data'] != null) {
+          return (data['data'] as List).map((json) => GroceryItem.fromJson(json)).toList();
+        }
+      }
+
+      if (kDebugMode) {
+        print('❌ Failed to fetch grocery recommended items: ${response.error}');
+      }
+      return [];
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching grocery recommended items: $e');
+      }
+      return [];
+    }
+  }
 }

@@ -81,7 +81,7 @@ router.get('/', protect, async (req, res) => {
  */
 router.post('/add', protect, async (req, res) => {
     try {
-        const { itemId, itemType, quantity, restaurantId, groceryStoreId } = req.body;
+        const { itemId, itemType, quantity, restaurantId, groceryStoreId, pharmacyStoreId, grabMartStoreId } = req.body;
         const lat = Number(req.query.lat ?? req.body.lat);
         const lng = Number(req.query.lng ?? req.body.lng);
         const deliveryLocation =
@@ -95,10 +95,10 @@ router.post('/add', protect, async (req, res) => {
             });
         }
 
-        if (!['Food', 'GroceryItem'].includes(itemType)) {
+        if (!['Food', 'GroceryItem', 'PharmacyItem', 'GrabMartItem'].includes(itemType)) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid item type. Must be Food or GroceryItem'
+                message: 'Invalid item type. Must be Food, GroceryItem, PharmacyItem, or GrabMartItem'
             });
         }
 
@@ -107,7 +107,9 @@ router.post('/add', protect, async (req, res) => {
             itemType,
             quantity: quantity || 1,
             restaurantId,
-            groceryStoreId
+            groceryStoreId,
+            pharmacyStoreId,
+            grabMartStoreId
         });
 
         const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation, useCredits });

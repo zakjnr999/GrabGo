@@ -49,8 +49,16 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
  */
 function calculateRiderEarnings(order, tip = 0) {
     // Extract coordinates
-    const pickupLat = order.restaurant?.latitude || order.groceryStore?.latitude || order.pharmacyStore?.latitude;
-    const pickupLon = order.restaurant?.longitude || order.groceryStore?.longitude || order.pharmacyStore?.longitude;
+    const pickupLat =
+        order.restaurant?.latitude ??
+        order.groceryStore?.latitude ??
+        order.pharmacyStore?.latitude ??
+        order.grabMartStore?.latitude;
+    const pickupLon =
+        order.restaurant?.longitude ??
+        order.groceryStore?.longitude ??
+        order.pharmacyStore?.longitude ??
+        order.grabMartStore?.longitude;
     const deliveryLat = order.deliveryLatitude;
     const deliveryLon = order.deliveryLongitude;
 

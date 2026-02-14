@@ -25,6 +25,7 @@ import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart
 import 'package:grab_go_customer/shared/widgets/area_unavailable_screen.dart';
 import 'package:grab_go_customer/shared/widgets/browse_page_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/deals_section.dart';
+import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
 import 'package:grab_go_customer/shared/widgets/popular_section.dart';
 import 'package:grab_go_customer/shared/widgets/promotional_banner_carousel.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
@@ -189,19 +190,19 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
     switch (widget.serviceId) {
       case 'groceries':
         final provider = context.read<GroceryProvider>();
-        if (provider.items.isEmpty || provider.categories.isEmpty) {
+        if (provider.items.isEmpty || provider.categories.isEmpty || provider.recommendedItems.isEmpty) {
           await provider.refreshAll();
         }
         break;
       case 'pharmacy':
         final provider = context.read<PharmacyProvider>();
-        if (provider.items.isEmpty || provider.categories.isEmpty) {
+        if (provider.items.isEmpty || provider.categories.isEmpty || provider.recommendedItems.isEmpty) {
           await provider.refreshAll();
         }
         break;
       case 'convenience':
         final provider = context.read<GrabMartProvider>();
-        if (provider.items.isEmpty || provider.categories.isEmpty) {
+        if (provider.items.isEmpty || provider.categories.isEmpty || provider.recommendedItems.isEmpty) {
           await provider.refreshAll();
         }
         break;
@@ -304,8 +305,11 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
     _ensureNearbyVendorsLoaded(locationProvider);
 
     final items = _resolveDisplayItems(groceryProvider, pharmacyProvider, grabMartProvider);
+    final recommendedItems = _resolveRecommendedDisplayItems(groceryProvider, pharmacyProvider, grabMartProvider);
     final categories = _resolveCategoriesCount(groceryProvider, pharmacyProvider, grabMartProvider);
     final isLoading = _isLoading(groceryProvider, pharmacyProvider, grabMartProvider);
+    final isLoadingRecommended = _isLoadingRecommended(groceryProvider, pharmacyProvider, grabMartProvider);
+    final hasMoreRecommended = _hasMoreRecommended(groceryProvider, pharmacyProvider, grabMartProvider);
     final hasData = items.isNotEmpty || categories > 0;
 
     final contentTopPadding = UmbrellaHeaderMetrics.contentPaddingFor(size, extra: _headerExtraHeightFor(size), gap: 8);
@@ -328,8 +332,10 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
         deals.isEmpty &&
         popular.isEmpty &&
         topRated.isEmpty &&
+        recommendedItems.isEmpty &&
         categories == 0 &&
         _nearbyServiceVendors.isEmpty &&
+        !isLoadingRecommended &&
         !_isLoadingNearbyVendors &&
         !showServiceUnavailable;
 
@@ -362,6 +368,13 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
           locationProvider: locationProvider,
           showServiceUnavailable: showServiceUnavailable,
         ),
+        if (recommendedItems.isNotEmpty || isLoadingRecommended)
+          _buildRecommendedItemsSection(
+            items: recommendedItems,
+            accentColor: accentColor,
+            isLoadingMore: isLoadingRecommended,
+            hasMore: hasMoreRecommended,
+          ),
         if (showEmpty) _buildEmptyState(colors),
       ],
     );
@@ -788,6 +801,53 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
     );
   }
 
+  Widget _buildRecommendedItemsSection({
+    required List<ServiceDisplayItem> items,
+    required Color accentColor,
+    required bool isLoadingMore,
+    required bool hasMore,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(
+          title: 'Recommended for You',
+          sectionTotal: items.length,
+          accentColor: accentColor,
+          onSeeAll: () {},
+        ),
+        SizedBox(height: KSpacing.lg.h),
+        for (final item in items)
+          FoodItemCard(
+            item: _toFoodItem(item),
+            useVerticalZigzagTag: true,
+            onTap: () => context.push('/foodDetails', extra: item.sourceItem),
+            margin: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 16.h),
+          ),
+        if (hasMore)
+          Builder(
+            builder: (context) {
+              if (!isLoadingMore) {
+                Future.delayed(const Duration(milliseconds: 300), () {
+                  if (!mounted) return;
+                  _loadMoreRecommendedItems();
+                });
+              }
+              return Padding(
+                padding: EdgeInsets.only(bottom: KSpacing.lg.h),
+                child: LoadingMore(
+                  colors: context.appColors,
+                  spinnerColor: accentColor,
+                  borderColor: accentColor,
+                ),
+              );
+            },
+          ),
+        if (!hasMore) SizedBox(height: KSpacing.lg.h),
+      ],
+    );
+  }
+
   Widget _buildEmptyState(AppColorsExtension colors) {
     return Container(
       margin: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 20.h),
@@ -859,6 +919,73 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
         return grabMartProvider.items.map(ServiceDisplayItem.fromGrabMartItem).toList();
       default:
         return const [];
+    }
+  }
+
+  List<ServiceDisplayItem> _resolveRecommendedDisplayItems(
+    GroceryProvider groceryProvider,
+    PharmacyProvider pharmacyProvider,
+    GrabMartProvider grabMartProvider,
+  ) {
+    switch (widget.serviceId) {
+      case 'groceries':
+        return groceryProvider.recommendedItems.map(ServiceDisplayItem.fromGroceryItem).toList();
+      case 'pharmacy':
+        return pharmacyProvider.recommendedItems.map(ServiceDisplayItem.fromPharmacyItem).toList();
+      case 'convenience':
+        return grabMartProvider.recommendedItems.map(ServiceDisplayItem.fromGrabMartItem).toList();
+      default:
+        return const [];
+    }
+  }
+
+  bool _isLoadingRecommended(
+    GroceryProvider groceryProvider,
+    PharmacyProvider pharmacyProvider,
+    GrabMartProvider grabMartProvider,
+  ) {
+    switch (widget.serviceId) {
+      case 'groceries':
+        return groceryProvider.isLoadingRecommended;
+      case 'pharmacy':
+        return pharmacyProvider.isLoadingRecommended;
+      case 'convenience':
+        return grabMartProvider.isLoadingRecommended;
+      default:
+        return false;
+    }
+  }
+
+  bool _hasMoreRecommended(
+    GroceryProvider groceryProvider,
+    PharmacyProvider pharmacyProvider,
+    GrabMartProvider grabMartProvider,
+  ) {
+    switch (widget.serviceId) {
+      case 'groceries':
+        return groceryProvider.hasMoreRecommended;
+      case 'pharmacy':
+        return pharmacyProvider.hasMoreRecommended;
+      case 'convenience':
+        return grabMartProvider.hasMoreRecommended;
+      default:
+        return false;
+    }
+  }
+
+  Future<void> _loadMoreRecommendedItems() async {
+    switch (widget.serviceId) {
+      case 'groceries':
+        await context.read<GroceryProvider>().loadMoreRecommendedItems();
+        break;
+      case 'pharmacy':
+        await context.read<PharmacyProvider>().loadMoreRecommendedItems();
+        break;
+      case 'convenience':
+        await context.read<GrabMartProvider>().loadMoreRecommendedItems();
+        break;
+      default:
+        break;
     }
   }
 

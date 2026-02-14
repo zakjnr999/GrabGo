@@ -22,6 +22,12 @@ class PharmacyProvider extends ChangeNotifier {
   // Popular items
   List<PharmacyItem> _popularItems = [];
   final bool _isLoadingPopular = false;
+
+  // Recommended items
+  List<PharmacyItem> _recommendedItems = [];
+  bool _isLoadingRecommended = false;
+  int _recommendedPage = 1;
+  bool _hasMoreRecommended = true;
   
   // Final fetch state
   bool _hasAttemptedFetch = false;
@@ -39,6 +45,11 @@ class PharmacyProvider extends ChangeNotifier {
 
   List<PharmacyItem> get popularItems => _popularItems;
   bool get isLoadingPopular => _isLoadingPopular;
+
+  List<PharmacyItem> get recommendedItems => _recommendedItems;
+  bool get isLoadingRecommended => _isLoadingRecommended;
+  int get recommendedPage => _recommendedPage;
+  bool get hasMoreRecommended => _hasMoreRecommended;
 
   // Top Rated items
   List<PharmacyItem> _topRatedItems = [];
@@ -187,6 +198,9 @@ class PharmacyProvider extends ChangeNotifier {
     _onSaleItems = [];
     _popularItems = [];
     _topRatedItems = [];
+    _recommendedItems = [];
+    _recommendedPage = 1;
+    _hasMoreRecommended = true;
     notifyListeners();
   }
 
@@ -209,6 +223,7 @@ class PharmacyProvider extends ChangeNotifier {
     await Future.wait([
       fetchCategories(forceRefresh: forceRefresh || cacheIsStale),
       fetchItems(forceRefresh: forceRefresh || cacheIsStale),
+      fetchRecommendedItems(forceRefresh: forceRefresh || cacheIsStale),
     ]);
   }
 
@@ -219,5 +234,58 @@ class PharmacyProvider extends ChangeNotifier {
       const Duration(minutes: 5),
     );
     return cacheIsStale && _items.isEmpty;
+  }
+
+  /// Fetch recommended pharmacy items (resets pagination)
+  Future<void> fetchRecommendedItems({bool forceRefresh = false}) async {
+    if (_isLoadingRecommended) return;
+    if (!forceRefresh && _recommendedItems.isNotEmpty) return;
+
+    _recommendedPage = 1;
+    _hasMoreRecommended = true;
+    _recommendedItems = [];
+    await _fetchRecommendedPage(page: 1, append: false);
+  }
+
+  /// Load more recommended pharmacy items
+  Future<void> loadMoreRecommendedItems() async {
+    if (_isLoadingRecommended || !_hasMoreRecommended) return;
+    final nextPage = _recommendedPage + 1;
+    await _fetchRecommendedPage(page: nextPage, append: true);
+  }
+
+  Future<void> _fetchRecommendedPage({required int page, required bool append}) async {
+    _isLoadingRecommended = true;
+    notifyListeners();
+
+    try {
+      final locationData = CacheService.getUserLocation();
+      final userLat = locationData?['latitude']?.toDouble();
+      final userLng = locationData?['longitude']?.toDouble();
+
+      final items = await _repository.fetchRecommendedItems(
+        limit: 20,
+        page: page,
+        userLat: userLat,
+        userLng: userLng,
+      );
+
+      final combined = append ? [..._recommendedItems, ...items] : items;
+      final uniqueById = <String, PharmacyItem>{};
+      for (final item in combined) {
+        uniqueById[item.id] = item;
+      }
+
+      _recommendedItems = uniqueById.values.toList();
+      _recommendedPage = page;
+      _hasMoreRecommended = items.length >= 20;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error fetching pharmacy recommended items: $e');
+      }
+    } finally {
+      _isLoadingRecommended = false;
+      notifyListeners();
+    }
   }
 }

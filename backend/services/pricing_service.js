@@ -214,6 +214,9 @@ const resolveVendorId = (cart) => {
     if (cart.cartType === 'pharmacy') {
         return cart.pharmacyStoreId || cart.items?.find(item => item.pharmacyItem?.storeId)?.pharmacyItem?.storeId || null;
     }
+    if (cart.cartType === 'grabmart') {
+        return cart.grabMartStoreId || cart.items?.find(item => item.grabMartItem?.storeId)?.grabMartItem?.storeId || null;
+    }
 
     return null;
 };
@@ -287,6 +290,19 @@ const getVendorDeliveryContext = async (cart) => {
         };
     }
 
+    if (cart.cartType === 'grabmart') {
+        const store = await prisma.grabMartStore.findUnique({
+            where: { id: vendorId },
+            select: { deliveryFee: true, latitude: true, longitude: true }
+        });
+        return {
+            baseFee: roundCurrency(toNumber(store?.deliveryFee, 0)),
+            vendorLocation: normalizeLocation(store),
+            vendorPrepTime: 15,
+            vendorDeliveryTime: 30
+        };
+    }
+
     return { baseFee: 0, vendorLocation: null, vendorPrepTime: null, vendorDeliveryTime: null };
 };
 
@@ -321,6 +337,7 @@ const getMaxItemPrepMinutes = (items = []) => {
             if (item?.itemType === 'Food') return toNumber(item?.food?.prepTimeMinutes, 0);
             if (item?.itemType === 'GroceryItem') return toNumber(item?.groceryItem?.prepTimeMinutes, 0);
             if (item?.itemType === 'PharmacyItem') return toNumber(item?.pharmacyItem?.prepTimeMinutes, 0);
+            if (item?.itemType === 'GrabMartItem') return toNumber(item?.grabMartItem?.prepTimeMinutes, 0);
             return 0;
         })
         .filter(minutes => Number.isFinite(minutes) && minutes > 0);

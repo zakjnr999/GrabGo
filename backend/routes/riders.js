@@ -55,6 +55,34 @@ const updateWalletBalance = async (userId) => {
   });
 };
 
+const firstDefined = (...values) =>
+  values.find((value) => value !== null && value !== undefined);
+
+const getPickupLocation = (order) => ({
+  latitude: firstDefined(
+    order?.restaurant?.latitude,
+    order?.groceryStore?.latitude,
+    order?.pharmacyStore?.latitude,
+    order?.grabMartStore?.latitude
+  ),
+  longitude: firstDefined(
+    order?.restaurant?.longitude,
+    order?.groceryStore?.longitude,
+    order?.pharmacyStore?.longitude,
+    order?.grabMartStore?.longitude
+  )
+});
+
+const getVendorIdFromOrder = (order) =>
+  firstDefined(order?.restaurantId, order?.groceryStoreId, order?.pharmacyStoreId, order?.grabMartStoreId);
+
+const getVendorPrepTime = (order) =>
+  firstDefined(
+    order?.restaurant?.averagePreparationTime,
+    order?.groceryStore?.averagePreparationTime,
+    order?.pharmacyStore?.averagePreparationTime
+  ) || 15;
+
 router.get(
   "/available-orders",
   protect,
@@ -137,6 +165,17 @@ router.get(
               latitude: true
             }
           },
+          // GrabMart store info (for grabmart orders)
+          grabMartStore: {
+            select: {
+              storeName: true,
+              logo: true,
+              address: true,
+              city: true,
+              longitude: true,
+              latitude: true
+            }
+          },
           // Order items
           items: {
             select: {
@@ -185,10 +224,14 @@ router.get(
 
         // Calculate distance from rider to each restaurant/store
         const ordersWithRiderDistance = ordersWithEarnings.map(order => {
-          const pickupLat = order.restaurant?.latitude || order.groceryStore?.latitude || order.pharmacyStore?.latitude;
-          const pickupLon = order.restaurant?.longitude || order.groceryStore?.longitude || order.pharmacyStore?.longitude;
+          const pickupLocation = getPickupLocation(order);
 
-          const distanceToPickup = calculateDistance(riderLat, riderLon, pickupLat, pickupLon);
+          const distanceToPickup = calculateDistance(
+            riderLat,
+            riderLon,
+            pickupLocation.latitude,
+            pickupLocation.longitude
+          );
 
           return {
             ...order,
@@ -362,7 +405,8 @@ router.post(
         include: {
           restaurant: { select: { restaurantName: true, latitude: true, longitude: true } },
           groceryStore: { select: { storeName: true, latitude: true, longitude: true } },
-          pharmacyStore: { select: { storeName: true, latitude: true, longitude: true } }
+          pharmacyStore: { select: { storeName: true, latitude: true, longitude: true } },
+          grabMartStore: { select: { storeName: true, latitude: true, longitude: true } }
         }
       });
 
@@ -385,6 +429,7 @@ router.post(
           restaurant: { select: { restaurantName: true, logo: true, address: true, latitude: true, longitude: true, averagePreparationTime: true } },
           groceryStore: { select: { storeName: true, logo: true, address: true, latitude: true, longitude: true } },
           pharmacyStore: { select: { storeName: true, logo: true, address: true, latitude: true, longitude: true } },
+          grabMartStore: { select: { storeName: true, logo: true, address: true, latitude: true, longitude: true } },
           rider: { select: { username: true, email: true, phone: true } }
         }
       });
@@ -415,8 +460,9 @@ router.post(
 
         await OrderTracking.findOneAndDelete({ orderId: updatedOrder.id });
 
-        const pickupLat = updatedOrder.restaurant?.latitude || updatedOrder.groceryStore?.latitude || updatedOrder.pharmacyStore?.latitude;
-        const pickupLon = updatedOrder.restaurant?.longitude || updatedOrder.groceryStore?.longitude || updatedOrder.pharmacyStore?.longitude;
+        const pickupLocation = getPickupLocation(updatedOrder);
+        const pickupLat = pickupLocation.latitude;
+        const pickupLon = pickupLocation.longitude;
 
         if (pickupLat && pickupLon && updatedOrder.deliveryLatitude && updatedOrder.deliveryLongitude) {
           await trackingService.initializeTracking(
@@ -440,13 +486,12 @@ router.post(
         const riderStatus = await RiderStatus.findOne({ riderId });
 
         if (riderStatus?.location?.coordinates) {
-          const pickupLat = updatedOrder.restaurant?.latitude || updatedOrder.groceryStore?.latitude || updatedOrder.pharmacyStore?.latitude;
-          const pickupLon = updatedOrder.restaurant?.longitude || updatedOrder.groceryStore?.longitude || updatedOrder.pharmacyStore?.longitude;
+          const pickupLocation = getPickupLocation(updatedOrder);
+          const pickupLat = pickupLocation.latitude;
+          const pickupLon = pickupLocation.longitude;
 
           // Get vendor prep time
-          const vendorPrepTime = updatedOrder.restaurant?.averagePreparationTime ||
-            updatedOrder.groceryStore?.averagePreparationTime ||
-            updatedOrder.pharmacyStore?.averagePreparationTime || 15;
+          const vendorPrepTime = getVendorPrepTime(updatedOrder);
 
           if (pickupLat && pickupLon && updatedOrder.deliveryLatitude && updatedOrder.deliveryLongitude) {
             deliveryWindow = await trackingService.calculateInitialDeliveryWindow(
@@ -456,7 +501,7 @@ router.post(
               updatedOrder.status,
               vendorPrepTime,
               riderId,
-              updatedOrder.restaurantId || updatedOrder.groceryStoreId || updatedOrder.pharmacyStoreId,
+              getVendorIdFromOrder(updatedOrder),
               updatedOrder.items.length,
               updatedOrder.id
             );
@@ -1102,6 +1147,13 @@ router.post(
               latitude: true,
               longitude: true
             }
+          },
+          grabMartStore: {
+            select: {
+              storeName: true,
+              latitude: true,
+              longitude: true
+            }
           }
         }
       });
@@ -1169,6 +1221,15 @@ router.post(
               longitude: true
             }
           },
+          grabMartStore: {
+            select: {
+              storeName: true,
+              logo: true,
+              address: true,
+              latitude: true,
+              longitude: true
+            }
+          },
           rider: { select: { username: true, email: true, phone: true } }
         }
       });
@@ -1206,10 +1267,7 @@ router.post(
           updatedOrder.id,
           updatedOrder.riderId,
           updatedOrder.customerId,
-          {
-            latitude: updatedOrder.restaurant?.latitude || updatedOrder.groceryStore?.latitude || updatedOrder.pharmacyStore?.latitude,
-            longitude: updatedOrder.restaurant?.longitude || updatedOrder.groceryStore?.longitude || updatedOrder.pharmacyStore?.longitude
-          },
+          getPickupLocation(updatedOrder),
           {
             latitude: updatedOrder.deliveryLatitude,
             longitude: updatedOrder.deliveryLongitude
@@ -1230,13 +1288,12 @@ router.post(
         const riderStatus = await RiderStatus.findOne({ riderId: req.user.id });
 
         if (riderStatus?.location?.coordinates) {
-          const pickupLat = updatedOrder.restaurant?.latitude || updatedOrder.groceryStore?.latitude || updatedOrder.pharmacyStore?.latitude;
-          const pickupLon = updatedOrder.restaurant?.longitude || updatedOrder.groceryStore?.longitude || updatedOrder.pharmacyStore?.longitude;
+          const pickupLocation = getPickupLocation(updatedOrder);
+          const pickupLat = pickupLocation.latitude;
+          const pickupLon = pickupLocation.longitude;
 
           // Get vendor prep time
-          const vendorPrepTime = updatedOrder.restaurant?.averagePreparationTime ||
-            updatedOrder.groceryStore?.averagePreparationTime ||
-            updatedOrder.pharmacyStore?.averagePreparationTime || 15;
+          const vendorPrepTime = getVendorPrepTime(updatedOrder);
 
           if (pickupLat && pickupLon && updatedOrder.deliveryLatitude && updatedOrder.deliveryLongitude) {
             deliveryWindow = await trackingService.calculateInitialDeliveryWindow(
@@ -1246,7 +1303,7 @@ router.post(
               updatedOrder.status,
               vendorPrepTime,
               riderId,
-              updatedOrder.restaurantId || updatedOrder.groceryStoreId || updatedOrder.pharmacyStoreId,
+              getVendorIdFromOrder(updatedOrder),
               updatedOrder.items.length,
               updatedOrder.id
             );
@@ -1367,7 +1424,10 @@ router.post(
         },
         include: {
           customer: { select: { username: true, email: true, phone: true } },
-          restaurant: { select: { restaurantName: true } }
+          restaurant: { select: { restaurantName: true } },
+          groceryStore: { select: { storeName: true } },
+          pharmacyStore: { select: { storeName: true } },
+          grabMartStore: { select: { storeName: true } }
         }
       });
 

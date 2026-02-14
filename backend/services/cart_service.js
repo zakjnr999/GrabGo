@@ -3,9 +3,27 @@ const prisma = require('../config/prisma');
 /**
  * Get or create cart for user
  * @param {string} userId - User ID
- * @param {string} cartType - 'food', 'grocery', or 'pharmacy'
+ * @param {string} cartType - 'food', 'grocery', 'pharmacy', or 'grabmart'
  * @returns {Promise<Object>} Cart object
  */
+const normalizeItemType = (itemType) => {
+    if (!itemType) return null;
+    const normalized = String(itemType).toLowerCase();
+    if (normalized === 'food') return 'Food';
+    if (normalized === 'groceryitem' || normalized === 'grocery') return 'GroceryItem';
+    if (normalized === 'pharmacyitem' || normalized === 'pharmacy') return 'PharmacyItem';
+    if (normalized === 'grabmartitem' || normalized === 'grabmart' || normalized === 'convenience') return 'GrabMartItem';
+    return null;
+};
+
+const cartTypeFromItemType = (itemTypeEnum) => {
+    if (itemTypeEnum === 'Food') return 'food';
+    if (itemTypeEnum === 'GroceryItem') return 'grocery';
+    if (itemTypeEnum === 'PharmacyItem') return 'pharmacy';
+    if (itemTypeEnum === 'GrabMartItem') return 'grabmart';
+    return 'food';
+};
+
 const getOrCreateCart = async (userId, cartType = 'food') => {
     let cart = await prisma.cart.findFirst({
         where: {
@@ -18,7 +36,8 @@ const getOrCreateCart = async (userId, cartType = 'food') => {
                 include: {
                     food: true,
                     groceryItem: true,
-                    pharmacyItem: true
+                    pharmacyItem: true,
+                    grabMartItem: true
                 }
             }
         }
@@ -49,11 +68,24 @@ const getOrCreateCart = async (userId, cartType = 'food') => {
  * @returns {Promise<Object>} Updated cart
  */
 const addToCart = async (userId, itemData) => {
-    const { itemId, itemType, quantity = 1, restaurantId, groceryStoreId, pharmacyStoreId } = itemData;
+    const {
+        itemId,
+        itemType,
+        quantity = 1,
+        restaurantId,
+        groceryStoreId,
+        pharmacyStoreId,
+        grabMartStoreId
+    } = itemData;
 
     // Validate quantity
     if (quantity < 1 || quantity > 100) {
         throw new Error('Quantity must be between 1 and 100');
+    }
+
+    const itemTypeEnum = normalizeItemType(itemType);
+    if (!itemTypeEnum) {
+        throw new Error('Invalid item type');
     }
 
     // Validate item exists and get item details
@@ -62,29 +94,34 @@ const addToCart = async (userId, itemData) => {
     let itemName;
     let imageUrl;
 
-    if (itemType === 'Food' || itemType === 'food') {
+    if (itemTypeEnum === 'Food') {
         item = await prisma.food.findUnique({ where: { id: itemId } });
         if (!item) throw new Error('Item not found');
         if (!item.isAvailable) throw new Error('Item is currently unavailable');
         price = item.price;
         itemName = item.name;
         imageUrl = item.foodImage;
-    } else if (itemType === 'GroceryItem' || itemType === 'grocery') {
+    } else if (itemTypeEnum === 'GroceryItem') {
         item = await prisma.groceryItem.findUnique({ where: { id: itemId } });
         if (!item) throw new Error('Item not found');
         if (!item.isAvailable) throw new Error('Item is currently unavailable');
         price = item.price;
         itemName = item.name;
         imageUrl = item.image;
-    } else if (itemType === 'PharmacyItem' || itemType === 'pharmacy') {
+    } else if (itemTypeEnum === 'PharmacyItem') {
         item = await prisma.pharmacyItem.findUnique({ where: { id: itemId } });
         if (!item) throw new Error('Item not found');
         if (!item.isAvailable) throw new Error('Item is currently unavailable');
         price = item.price;
         itemName = item.name;
         imageUrl = item.image;
-    } else {
-        throw new Error('Invalid item type');
+    } else if (itemTypeEnum === 'GrabMartItem') {
+        item = await prisma.grabMartItem.findUnique({ where: { id: itemId } });
+        if (!item) throw new Error('Item not found');
+        if (!item.isAvailable) throw new Error('Item is currently unavailable');
+        price = item.price;
+        itemName = item.name;
+        imageUrl = item.image;
     }
 
     // Validate price
@@ -93,9 +130,7 @@ const addToCart = async (userId, itemData) => {
     }
 
     // Determine cart type
-    let cartType = 'food';
-    if (itemType === 'GroceryItem' || itemType === 'grocery') cartType = 'grocery';
-    if (itemType === 'PharmacyItem' || itemType === 'pharmacy') cartType = 'pharmacy';
+    const cartType = cartTypeFromItemType(itemTypeEnum);
 
     // Get or create cart
     let cart = await getOrCreateCart(userId, cartType);
@@ -158,6 +193,25 @@ const addToCart = async (userId, itemData) => {
             where: { id: cart.id },
             data: { pharmacyStoreId }
         });
+    } else if (cartType === 'grabmart' && grabMartStoreId) {
+        const store = await prisma.grabMartStore.findUnique({
+            where: { id: grabMartStoreId }
+        });
+        if (!store || store.status !== 'approved') {
+            throw new Error('GrabMart store not found or inactive');
+        }
+
+        if (cart.grabMartStoreId && cart.grabMartStoreId !== grabMartStoreId) {
+            // Clear cart if switching stores
+            await prisma.cartItem.deleteMany({
+                where: { cartId: cart.id }
+            });
+        }
+
+        await prisma.cart.update({
+            where: { id: cart.id },
+            data: { grabMartStoreId }
+        });
     }
 
     // Reload cart with items
@@ -168,9 +222,10 @@ const addToCart = async (userId, itemData) => {
 
     // Check if item already in cart
     const existingItem = cart.items.find(cartItem => {
-        if (itemType === 'Food' || itemType === 'food') return cartItem.foodId === itemId;
-        if (itemType === 'GroceryItem' || itemType === 'grocery') return cartItem.groceryItemId === itemId;
-        if (itemType === 'PharmacyItem' || itemType === 'pharmacy') return cartItem.pharmacyItemId === itemId;
+        if (itemTypeEnum === 'Food') return cartItem.foodId === itemId;
+        if (itemTypeEnum === 'GroceryItem') return cartItem.groceryItemId === itemId;
+        if (itemTypeEnum === 'PharmacyItem') return cartItem.pharmacyItemId === itemId;
+        if (itemTypeEnum === 'GrabMartItem') return cartItem.grabMartItemId === itemId;
         return false;
     });
 
@@ -187,9 +242,6 @@ const addToCart = async (userId, itemData) => {
         });
     } else {
         // Add new item
-        const itemTypeEnum = itemType === 'Food' || itemType === 'food' ? 'Food' :
-            itemType === 'GroceryItem' || itemType === 'grocery' ? 'GroceryItem' : 'PharmacyItem';
-
         const createData = {
             cartId: cart.id,
             itemType: itemTypeEnum,
@@ -202,6 +254,7 @@ const addToCart = async (userId, itemData) => {
         if (itemTypeEnum === 'Food') createData.foodId = itemId;
         else if (itemTypeEnum === 'GroceryItem') createData.groceryItemId = itemId;
         else if (itemTypeEnum === 'PharmacyItem') createData.pharmacyItemId = itemId;
+        else if (itemTypeEnum === 'GrabMartItem') createData.grabMartItemId = itemId;
 
         await prisma.cartItem.create({ data: createData });
     }
@@ -224,7 +277,8 @@ const addToCart = async (userId, itemData) => {
                 include: {
                     food: true,
                     groceryItem: true,
-                    pharmacyItem: true
+                    pharmacyItem: true,
+                    grabMartItem: true
                 }
             }
         }
@@ -284,7 +338,8 @@ const updateCartItem = async (userId, itemId, quantity) => {
                 include: {
                     food: true,
                     groceryItem: true,
-                    pharmacyItem: true
+                    pharmacyItem: true,
+                    grabMartItem: true
                 }
             }
         }
@@ -360,7 +415,8 @@ const removeFromCart = async (userId, itemId) => {
                 include: {
                     food: true,
                     groceryItem: true,
-                    pharmacyItem: true
+                    pharmacyItem: true,
+                    grabMartItem: true
                 }
             }
         }
@@ -393,6 +449,7 @@ const clearCart = async (userId) => {
             restaurantId: null,
             groceryStoreId: null,
             pharmacyStoreId: null,
+            grabMartStoreId: null,
             abandonmentNotificationSent: false,
             abandonmentNotificationSentAt: null,
             lastUpdatedAt: new Date()
@@ -408,7 +465,7 @@ const clearCart = async (userId) => {
 /**
  * Get user's active cart
  * @param {string} userId - User ID
- * @param {string} cartType - 'food', 'grocery', or 'pharmacy'
+ * @param {string} cartType - 'food', 'grocery', 'pharmacy', or 'grabmart'
  * @returns {Promise<Object>} Cart object
  */
 const getUserCart = async (userId, cartType = null) => {
@@ -454,6 +511,17 @@ const getUserCart = async (userId, cartType = null) => {
                                 }
                             }
                         }
+                    },
+                    grabMartItem: {
+                        include: {
+                            store: {
+                                select: {
+                                    id: true,
+                                    storeName: true,
+                                    logo: true
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -467,6 +535,7 @@ const getUserCart = async (userId, cartType = null) => {
             if (item.itemType === 'Food') return item.food !== null;
             if (item.itemType === 'GroceryItem') return item.groceryItem !== null;
             if (item.itemType === 'PharmacyItem') return item.pharmacyItem !== null;
+            if (item.itemType === 'GrabMartItem') return item.grabMartItem !== null;
             return false;
         });
 
@@ -486,7 +555,8 @@ const getUserCart = async (userId, cartType = null) => {
                     data: {
                         restaurantId: null,
                         groceryStoreId: null,
-                        pharmacyStoreId: null
+                        pharmacyStoreId: null,
+                        grabMartStoreId: null
                     }
                 });
             }
@@ -567,6 +637,11 @@ const findAbandonedCarts = async () => {
                         }
                     },
                     pharmacyItem: {
+                        select: {
+                            name: true
+                        }
+                    },
+                    grabMartItem: {
                         select: {
                             name: true
                         }
