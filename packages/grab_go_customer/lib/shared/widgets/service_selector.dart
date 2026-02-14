@@ -9,12 +9,16 @@ class ServiceSelector extends StatefulWidget {
   final List<ServiceModel> services;
   final ValueChanged<ServiceModel> onServiceSelected;
   final ServiceModel? initialSelectedService;
+  final bool showSelection;
+  final bool triggerInitialSelection;
 
   const ServiceSelector({
     super.key,
     required this.services,
     required this.onServiceSelected,
     this.initialSelectedService,
+    this.showSelection = true,
+    this.triggerInitialSelection = true,
   });
 
   @override
@@ -56,11 +60,13 @@ class _ServiceSelectorState extends State<ServiceSelector> {
     } else {
       selectedIndex = 0;
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && widget.services.isNotEmpty && selectedIndex < widget.services.length) {
-        widget.onServiceSelected(widget.services[selectedIndex]);
-      }
-    });
+    if (widget.triggerInitialSelection) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && widget.services.isNotEmpty && selectedIndex < widget.services.length) {
+          widget.onServiceSelected(widget.services[selectedIndex]);
+        }
+      });
+    }
   }
 
   @override
@@ -97,11 +103,13 @@ class _ServiceSelectorState extends State<ServiceSelector> {
         setState(() {
           selectedIndex = newIndex;
         });
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && selectedIndex < widget.services.length) {
-            widget.onServiceSelected(widget.services[selectedIndex]);
-          }
-        });
+        if (widget.triggerInitialSelection) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && selectedIndex < widget.services.length) {
+              widget.onServiceSelected(widget.services[selectedIndex]);
+            }
+          });
+        }
       }
     } else if (widget.initialSelectedService != null &&
         widget.initialSelectedService!.id != oldWidget.initialSelectedService?.id) {
@@ -111,11 +119,13 @@ class _ServiceSelectorState extends State<ServiceSelector> {
         setState(() {
           selectedIndex = index;
         });
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && selectedIndex < widget.services.length) {
-            widget.onServiceSelected(widget.services[selectedIndex]);
-          }
-        });
+        if (widget.triggerInitialSelection) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && selectedIndex < widget.services.length) {
+              widget.onServiceSelected(widget.services[selectedIndex]);
+            }
+          });
+        }
       }
     }
   }
@@ -146,14 +156,16 @@ class _ServiceSelectorState extends State<ServiceSelector> {
         ),
         itemBuilder: (context, index) {
           final service = widget.services[index];
-          final isSelected = index == selectedIndex;
+          final isSelected = widget.showSelection && index == selectedIndex;
 
           return Material(
             color: Colors.transparent,
             child: InkWell(
               onTap: () {
                 if (index >= 0 && index < widget.services.length) {
-                  setState(() => selectedIndex = index);
+                  if (widget.showSelection) {
+                    setState(() => selectedIndex = index);
+                  }
                   widget.onServiceSelected(service);
                 }
               },

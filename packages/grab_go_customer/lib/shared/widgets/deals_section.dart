@@ -13,6 +13,8 @@ class DealsSection extends StatelessWidget {
   final bool isLoading;
   final String? title;
   final String? icon;
+  final bool useVerticalZigzagTag;
+  final Color? accentColor;
 
   const DealsSection({
     super.key,
@@ -23,6 +25,8 @@ class DealsSection extends StatelessWidget {
     this.isLoading = false,
     this.title,
     this.icon,
+    this.useVerticalZigzagTag = false,
+    this.accentColor,
   });
 
   @override
@@ -38,7 +42,7 @@ class DealsSection extends StatelessWidget {
       children: [
         SectionHeader(
           title: title ?? "Deals & Offers",
-          accentColor: colors.accentOrange,
+          accentColor: accentColor ?? colors.accentOrange,
           sectionTotal: dealItems.length,
           onSeeAll: onSeeAll,
         ),
@@ -64,6 +68,8 @@ class DealsSection extends StatelessWidget {
                   cartItem: originalItem,
                   deliveryTime: item.estimatedDeliveryTime,
                   discountPercent: discountPercent,
+                  useVerticalZigzagTag: useVerticalZigzagTag,
+                  accentColor: accentColor,
                   onTap: () => onItemTap(item),
                 ),
               );

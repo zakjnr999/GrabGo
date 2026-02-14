@@ -4,6 +4,7 @@ const prisma = require('../config/prisma');
 const { protect } = require('../middleware/auth');
 const { cacheMiddleware } = require('../middleware/cache');
 const cache = require('../utils/cache');
+const mlClient = require('../utils/ml_client');
 
 /**
  * Helper to format grocery store for frontend compatibility
@@ -44,6 +45,13 @@ const formatItem = (item) => {
         store: (item.store && typeof item.store === 'object') ? formatStore(item.store) : item.store
     };
     return formatted;
+};
+
+const optionalAuth = (req, res, next) => {
+    if (req.headers.authorization) {
+        return protect(req, res, next);
+    }
+    return next();
 };
 
 // ==================== STORES ====================
@@ -600,6 +608,256 @@ router.get("/deals", async (req, res) => {
         });
     }
 });
+
+/**
+ * @route   GET /api/groceries/recommended
+ * @desc    Get personalized grocery recommendations (ML-first with heuristic fallback)
+ * @access  Public (Optional Auth)
+ */
+router.get(
+    "/recommended",
+    optionalAuth,
+    cacheMiddleware(`${cache.CACHE_KEYS.GROCERY}:recommended`, 180, true),
+    async (req, res) => {
+        try {
+            const userId = req.user?.id || req.headers['x-user-id'];
+            let { limit = 10, page = 1, userLat, userLng, maxDistance = 15 } = req.query;
+
+            limit = parseInt(limit, 10);
+            if (isNaN(limit) || limit < 1) limit = 10;
+            if (limit > 50) limit = 50;
+
+            page = parseInt(page, 10);
+            if (isNaN(page) || page < 1) page = 1;
+
+            const userLatitude = userLat ? parseFloat(userLat) : null;
+            const userLongitude = userLng ? parseFloat(userLng) : null;
+            const maxDistanceKm = parseFloat(maxDistance);
+
+            const getNearbyStoreIds = async () => {
+                if (!userLatitude || !userLongitude || isNaN(userLatitude) || isNaN(userLongitude)) {
+                    return null;
+                }
+
+                const { getBoundingBox, filterVendorsByDistance } = require('../utils/vendor_distance_filter');
+                const bbox = getBoundingBox(userLatitude, userLongitude, maxDistanceKm);
+
+                const nearbyStores = await prisma.groceryStore.findMany({
+                    where: {
+                        latitude: { gte: bbox.minLat, lte: bbox.maxLat },
+                        longitude: { gte: bbox.minLng, lte: bbox.maxLng }
+                    },
+                    select: { id: true, latitude: true, longitude: true }
+                });
+
+                const filteredStores = filterVendorsByDistance(
+                    nearbyStores,
+                    userLatitude,
+                    userLongitude,
+                    maxDistanceKm
+                );
+
+                return filteredStores.map(store => store.id);
+            };
+
+            const nearbyStoreIds = await getNearbyStoreIds();
+            if (nearbyStoreIds && nearbyStoreIds.length === 0) {
+                return res.json({
+                    success: true,
+                    source: 'heuristic',
+                    page,
+                    limit,
+                    hasMore: false,
+                    data: []
+                });
+            }
+
+            if (userId) {
+                try {
+                    const mlRecommendations = await mlClient.getStoreRecommendations(userId, 'grocery', 30);
+                    const recommendedStoreIds = [
+                        ...new Set((mlRecommendations || []).map(rec => rec.id).filter(Boolean))
+                    ];
+
+                    if (recommendedStoreIds.length > 0) {
+                        const nearbySet = nearbyStoreIds ? new Set(nearbyStoreIds) : null;
+                        const eligibleStoreIds = nearbySet
+                            ? recommendedStoreIds.filter(id => nearbySet.has(id))
+                            : recommendedStoreIds;
+
+                        if (eligibleStoreIds.length > 0) {
+                            const storeRank = new Map(eligibleStoreIds.map((id, index) => [id, index]));
+                            const storeScore = new Map(
+                                (mlRecommendations || [])
+                                    .filter(rec => eligibleStoreIds.includes(rec.id))
+                                    .map(rec => [rec.id, Number(rec.score) || 0])
+                            );
+
+                            const candidateItems = await prisma.groceryItem.findMany({
+                                where: {
+                                    isAvailable: true,
+                                    storeId: { in: eligibleStoreIds }
+                                },
+                                include: {
+                                    category: { select: { name: true, emoji: true } },
+                                    store: {
+                                        select: {
+                                            id: true,
+                                            storeName: true,
+                                            logo: true,
+                                            isOpen: true,
+                                            deliveryFee: true,
+                                            minOrder: true
+                                        }
+                                    }
+                                },
+                                take: 200
+                            });
+
+                            if (candidateItems.length > 0) {
+                                const ranked = [...candidateItems].sort((a, b) => {
+                                    const scoreDiff = (storeScore.get(b.storeId) || 0) - (storeScore.get(a.storeId) || 0);
+                                    if (scoreDiff !== 0) return scoreDiff;
+
+                                    const rankDiff = (storeRank.get(a.storeId) ?? Number.MAX_SAFE_INTEGER) -
+                                        (storeRank.get(b.storeId) ?? Number.MAX_SAFE_INTEGER);
+                                    if (rankDiff !== 0) return rankDiff;
+
+                                    const popularityDiff = (b.orderCount || 0) - (a.orderCount || 0);
+                                    if (popularityDiff !== 0) return popularityDiff;
+
+                                    const ratingDiff = (b.rating || 0) - (a.rating || 0);
+                                    if (ratingDiff !== 0) return ratingDiff;
+
+                                    return (b.discountPercentage || 0) - (a.discountPercentage || 0);
+                                });
+
+                                const groupedByStore = new Map();
+                                for (const item of ranked) {
+                                    const storeItems = groupedByStore.get(item.storeId) || [];
+                                    storeItems.push(item);
+                                    groupedByStore.set(item.storeId, storeItems);
+                                }
+
+                                const diversified = [];
+                                let keepLooping = true;
+                                while (keepLooping && diversified.length < ranked.length) {
+                                    keepLooping = false;
+                                    for (const storeId of eligibleStoreIds) {
+                                        const queue = groupedByStore.get(storeId) || [];
+                                        if (queue.length > 0) {
+                                            diversified.push(queue.shift());
+                                            keepLooping = true;
+                                        }
+                                    }
+                                }
+
+                                const startIndex = (page - 1) * limit;
+                                const endIndex = startIndex + limit;
+                                const paginatedItems = diversified.slice(startIndex, endIndex);
+
+                                if (paginatedItems.length > 0) {
+                                    return res.json({
+                                        success: true,
+                                        source: 'ml',
+                                        page,
+                                        limit,
+                                        total: diversified.length,
+                                        hasMore: endIndex < diversified.length,
+                                        data: paginatedItems.map(formatItem)
+                                    });
+                                }
+                            }
+                        }
+                    }
+                } catch (mlError) {
+                    console.error('🤖 Grocery ML recommendation failed, using fallback:', mlError.message);
+                }
+            }
+
+            const popularCount = Math.ceil(limit * 0.4);
+            const ratedCount = Math.ceil(limit * 0.3);
+            const dealsCount = Math.ceil(limit * 0.2);
+            const randomCount = limit - (popularCount + ratedCount + dealsCount);
+            const skip = (page - 1) * limit;
+
+            const locationWhere = nearbyStoreIds ? { storeId: { in: nearbyStoreIds } } : {};
+
+            const include = {
+                category: { select: { name: true, emoji: true } },
+                store: {
+                    select: {
+                        id: true,
+                        storeName: true,
+                        logo: true,
+                        isOpen: true,
+                        deliveryFee: true,
+                        minOrder: true
+                    }
+                }
+            };
+
+            const [popular, topRated, deals, random] = await Promise.all([
+                prisma.groceryItem.findMany({
+                    where: { isAvailable: true, ...locationWhere },
+                    orderBy: [{ orderCount: 'desc' }, { rating: 'desc' }],
+                    take: popularCount,
+                    skip: Math.floor(skip * 0.4),
+                    include
+                }),
+                prisma.groceryItem.findMany({
+                    where: { isAvailable: true, rating: { gte: 4.5 }, ...locationWhere },
+                    orderBy: [{ rating: 'desc' }, { reviewCount: 'desc' }],
+                    take: ratedCount,
+                    skip: Math.floor(skip * 0.3),
+                    include
+                }),
+                prisma.groceryItem.findMany({
+                    where: { isAvailable: true, discountPercentage: { gt: 0 }, ...locationWhere },
+                    orderBy: [{ discountPercentage: 'desc' }, { orderCount: 'desc' }],
+                    take: dealsCount,
+                    skip: Math.floor(skip * 0.2),
+                    include
+                }),
+                prisma.groceryItem.findMany({
+                    where: { isAvailable: true, ...locationWhere },
+                    orderBy: [{ createdAt: 'desc' }],
+                    take: Math.max(randomCount, 0),
+                    skip: Math.floor(skip * 0.1),
+                    include
+                })
+            ]);
+
+            const combined = [...popular, ...topRated, ...deals, ...random];
+            const uniqueMap = new Map();
+            combined.forEach(item => uniqueMap.set(item.id, item));
+            const uniqueItems = Array.from(uniqueMap.values());
+
+            uniqueItems.sort((a, b) => {
+                const aScore = (a.orderCount || 0) * 3 + (a.rating || 0) * 20 + (a.discountPercentage || 0) * 2;
+                const bScore = (b.orderCount || 0) * 3 + (b.rating || 0) * 20 + (b.discountPercentage || 0) * 2;
+                return bScore - aScore;
+            });
+
+            const finalRecommendations = uniqueItems.slice(0, limit);
+            return res.json({
+                success: true,
+                source: 'heuristic',
+                page,
+                limit,
+                hasMore: page < 5 && finalRecommendations.length === limit,
+                data: finalRecommendations.map(formatItem)
+            });
+        } catch (error) {
+            console.error('Get grocery recommended items error:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Server error',
+                error: error.message
+            });
+        }
+    }
+);
 
 /**
  * @route   GET /api/groceries/stores/:id/items

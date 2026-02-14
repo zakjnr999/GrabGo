@@ -13,6 +13,8 @@ class TopRatedSection extends StatelessWidget {
   final bool isLoading;
   final String? title;
   final String? icon;
+  final bool useVerticalZigzagTag;
+  final Color? accentColor;
 
   const TopRatedSection({
     super.key,
@@ -23,6 +25,8 @@ class TopRatedSection extends StatelessWidget {
     this.isLoading = false,
     this.title,
     this.icon,
+    this.useVerticalZigzagTag = false,
+    this.accentColor,
   });
 
   @override
@@ -37,7 +41,7 @@ class TopRatedSection extends StatelessWidget {
         SectionHeader(
           title: title ?? "Top Rated Dishes",
           sectionTotal: topRatedItems.length,
-          accentColor: AppColors.accentOrange,
+          accentColor: accentColor ?? AppColors.accentOrange,
           onSeeAll: onSeeAll,
         ),
         SizedBox(height: 16.h),
@@ -55,7 +59,13 @@ class TopRatedSection extends StatelessWidget {
                   : null;
               return Padding(
                 padding: EdgeInsets.only(right: 15.w),
-                child: TopRatedCard(item: item, cartItem: originalItem, onTap: () => onItemTap(item)),
+                child: TopRatedCard(
+                  item: item,
+                  cartItem: originalItem,
+                  useVerticalZigzagTag: useVerticalZigzagTag,
+                  accentColor: accentColor,
+                  onTap: () => onItemTap(item),
+                ),
               );
             },
           ),

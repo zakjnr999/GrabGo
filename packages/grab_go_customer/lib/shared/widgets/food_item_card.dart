@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
+import 'package:grab_go_customer/shared/widgets/vertical_zigzag_tag.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
@@ -12,8 +13,17 @@ class FoodItemCard extends StatelessWidget {
   final Widget? trailing;
   final EdgeInsetsGeometry? margin;
   final String? deliveryTimeLabel;
+  final bool useVerticalZigzagTag;
 
-  const FoodItemCard({super.key, required this.item, this.onTap, this.trailing, this.margin, this.deliveryTimeLabel});
+  const FoodItemCard({
+    super.key,
+    required this.item,
+    this.onTap,
+    this.trailing,
+    this.margin,
+    this.deliveryTimeLabel,
+    this.useVerticalZigzagTag = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -98,25 +108,31 @@ class FoodItemCard extends StatelessWidget {
                 if (item.discountPercentage > 0)
                   Positioned(
                     top: 0,
-                    left: 0.w,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [colors.error, colors.accentOrange],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: const BorderRadius.only(
-                          bottomRight: Radius.circular(KBorderSize.borderMedium),
-                          topLeft: Radius.circular(KBorderSize.borderMedium),
-                        ),
-                      ),
-                      child: Text(
-                        "${item.discountPercentage.toStringAsFixed(0)}% OFF",
-                        style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w700),
-                      ),
-                    ),
+                    left: useVerticalZigzagTag ? 8.w : 0.w,
+                    child: useVerticalZigzagTag
+                        ? VerticalZigzagTag(
+                            primaryText: "${item.discountPercentage.toStringAsFixed(0)} %",
+                            secondaryText: 'OFF',
+                            color: colors.accentOrange,
+                          )
+                        : Container(
+                            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [colors.error, colors.accentOrange],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: const BorderRadius.only(
+                                bottomRight: Radius.circular(KBorderSize.borderMedium),
+                                topLeft: Radius.circular(KBorderSize.borderMedium),
+                              ),
+                            ),
+                            child: Text(
+                              "${item.discountPercentage.toStringAsFixed(0)}% OFF",
+                              style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w700),
+                            ),
+                          ),
                   ),
               ],
             ),

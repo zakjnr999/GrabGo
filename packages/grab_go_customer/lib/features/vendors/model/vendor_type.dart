@@ -2,7 +2,7 @@
 enum VendorType {
   food('food', 'Restaurant', '🍔', '#FE6132'),
   grocery('grocery', 'Grocery Store', '🛒', '#4CAF50'),
-  pharmacy('pharmacy', 'Pharmacy', '💊', '#2196F3'),
+  pharmacy('pharmacy', 'Pharmacy', '💊', '#009688'),
   grabmart('grabmart', 'GrabMart', '🏪', '#9C27B0');
 
   final String id;

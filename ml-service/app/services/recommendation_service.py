@@ -143,20 +143,31 @@ class RecommendationService:
                 if service_type == "grocery":
                     table = "grocery_stores"
                     name_col = '"storeName"'
+                    order_join_col = '"groceryStoreId"'
                 elif service_type == "pharmacy":
                     table = "pharmacy_stores"
                     name_col = '"storeName"'
+                    order_join_col = '"pharmacyStoreId"'
+                elif service_type in {"grabmart", "convenience"}:
+                    table = "grabmart_stores"
+                    name_col = '"storeName"'
+                    # GrabMart orders are not yet mapped in orders table.
+                    order_join_col = None
                 else:
                     table = "restaurants"
                     name_col = '"restaurantName"'
-                
+                    order_join_col = '"restaurantId"'
+
+                order_count_select = 'COUNT(DISTINCT o.id) as order_count' if order_join_col else '0 as order_count'
+                order_join_clause = f'LEFT JOIN orders o ON r.id = o.{order_join_col}' if order_join_col else ''
+
                 # Get popular restaurants
                 query = text(f"""
                     SELECT r.id, r.{name_col}, r.rating, r."ratingCount",
                            r."deliveryFee", r."isOpen", r.featured,
-                           COUNT(DISTINCT o.id) as order_count
+                           {order_count_select}
                     FROM {table} r
-                    LEFT JOIN orders o ON r.id = o."restaurantId"
+                    {order_join_clause}
                     WHERE r.status = 'approved'
                       AND r."isOpen" = true
                     GROUP BY r.id, r.{name_col}, r.rating, r."ratingCount",

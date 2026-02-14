@@ -11,7 +11,7 @@ class FilterBottomSheet extends StatefulWidget {
   final List<FoodCategoryModel> categories;
   final List<String> restaurants;
   final Function(FilterModel) onApply;
-  final bool isFood; // True for Food service, false for Groceries
+  final bool isFood;
 
   const FilterBottomSheet({
     super.key,
@@ -19,7 +19,7 @@ class FilterBottomSheet extends StatefulWidget {
     required this.categories,
     required this.restaurants,
     required this.onApply,
-    this.isFood = true, // Default to Food service
+    this.isFood = true,
   });
 
   @override

@@ -38,7 +38,7 @@ class RestaurantRecommendationRequest(BaseModel):
     user_id: str = Field(..., description="User ID")
     limit: int = Field(10, ge=1, le=50, description="Number of recommendations")
     context: Optional[RecommendationContext] = None
-    service_type: Optional[str] = Field(None, description="Service: food, grocery, pharmacy")
+    service_type: Optional[str] = Field(None, description="Service: food, grocery, pharmacy, grabmart")
     exclude_ids: Optional[List[str]] = Field(None, description="Restaurant IDs to exclude")
 
 

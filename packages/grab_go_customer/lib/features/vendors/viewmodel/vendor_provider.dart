@@ -251,7 +251,11 @@ class VendorProvider extends ChangeNotifier {
   /// Get nearby vendors
   Future<void> getNearbyVendors(double lat, double lng, {double radius = 5}) async {
     if (_selectedType == null) return;
+    await getNearbyVendorsByType(_selectedType!, lat, lng, radius: radius);
+  }
 
+  Future<void> getNearbyVendorsByType(VendorType type, double lat, double lng, {double radius = 5}) async {
+    _selectedType = type;
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -259,7 +263,7 @@ class VendorProvider extends ChangeNotifier {
     try {
       Response<Map<String, dynamic>> response;
 
-      switch (_selectedType!) {
+      switch (type) {
         case VendorType.food:
           response = await _vendorService.getNearbyRestaurants(latitude: lat, longitude: lng, radius: radius);
           break;
@@ -279,7 +283,7 @@ class VendorProvider extends ChangeNotifier {
         _vendors = data.map((json) {
           final vendor = VendorModel.fromJson(
             Map<String, dynamic>.from(json as Map),
-          ).copyWith(vendorTypeEnum: _selectedType!);
+          ).copyWith(vendorTypeEnum: type);
           final distanceInMeters = Geolocator.distanceBetween(lat, lng, vendor.latitude, vendor.longitude);
           return vendor.copyWith(distance: distanceInMeters / 1000);
         }).toList();

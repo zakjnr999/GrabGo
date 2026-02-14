@@ -36,7 +36,7 @@ class AppServices {
     id: 'pharmacy',
     name: 'Pharmacy',
     emoji: '💊',
-    colorHex: '#2196F3', // Blue
+    colorHex: '#009688', // Teal
   );
 
   static const ServiceModel convenience = ServiceModel(

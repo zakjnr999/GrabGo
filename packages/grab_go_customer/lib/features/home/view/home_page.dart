@@ -81,6 +81,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   double? _lastLng;
   VendorType? _previousVendorType;
   int _unreadNotificationCount = 0;
+  bool _isOpeningServiceHub = false;
 
   late final ValueNotifier<double> _scrollOffsetNotifier;
   static const double _collapsedHeight = 70.0;
@@ -209,6 +210,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
       final pharmacyProvider = Provider.of<PharmacyProvider>(context, listen: false);
       final grabMartProvider = Provider.of<GrabMartProvider>(context, listen: false);
+
+      serviceProvider.resetToDefault();
 
       // Check if we have any cached data at all
       final hasCachedData =
@@ -451,9 +454,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           slivers: [
                             if (shouldShowEmptyState)
                               SliverPadding(
-                                padding: EdgeInsets.only(
-                                  top: _homeContentTopPadding(size),
-                                ),
+                                padding: EdgeInsets.only(top: _homeContentTopPadding(size)),
                                 sliver: SliverFillRemaining(
                                   hasScrollBody: false,
                                   child: Center(
@@ -472,9 +473,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               )
                             else
                               SliverPadding(
-                                padding: EdgeInsets.only(
-                                  top: _homeContentTopPadding(size),
-                                ),
+                                padding: EdgeInsets.only(top: _homeContentTopPadding(size)),
                                 sliver: SliverToBoxAdapter(
                                   child: Container(
                                     color: colors.backgroundPrimary,
@@ -482,11 +481,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                         ? HomePageSkeleton(firstSectionGap: _homeFirstSectionGap(size))
                                         : Column(
                                             children: [
-                                              if (!isFoodUnavailable) ...[
+                                              if (!shouldShowEmptyState) ...[
                                                 SizedBox(height: _homeFirstSectionGap(size)),
                                                 _buildServiceSelector(),
-                                              ],
-                                              if (!shouldShowEmptyState) ...[
                                                 SizedBox(height: KSpacing.lg.h),
                                                 PromotionalBannerCarousel(
                                                   banners: AppPromotionalBanners.getDefaultBanners(
@@ -754,44 +751,35 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildServiceSelector() {
-    final serviceProvider = Provider.of<ServiceProvider>(context);
-    final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
-    final foodProvider = Provider.of<FoodProvider>(context, listen: false);
-    final pharmacyProvider = Provider.of<PharmacyProvider>(context, listen: false);
-    final grabMartProvider = Provider.of<GrabMartProvider>(context, listen: false);
-    final vendorProvider = Provider.of<VendorProvider>(context, listen: false);
-    final locationProvider = Provider.of<NativeLocationProvider>(context, listen: false);
+    const nonFoodServices = [
+      AppServices.groceries,
+      AppServices.pharmacy,
+      AppServices.convenience,
+      ServiceModel(id: 'more', name: 'More', emoji: '✨', colorHex: '#8D6E63'),
+    ];
 
     return ServiceSelector(
-      services: AppServices.all,
-      initialSelectedService: serviceProvider.currentService,
+      services: nonFoodServices,
+      showSelection: false,
+      triggerInitialSelection: false,
       onServiceSelected: (ServiceModel service) {
-        debugPrint("Service Selected: ${service.id}");
-        serviceProvider.selectService(service);
+        if (_isOpeningServiceHub) return;
 
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (service.id == 'groceries') {
-            if (groceryProvider.items.isEmpty) {
-              groceryProvider.refreshAll();
-            }
-          } else if (service.id == 'food') {
-            if (foodProvider.categories.isEmpty) {
-              foodProvider.refreshAll();
-            }
-          } else if (service.id == 'pharmacy') {
-            if (pharmacyProvider.items.isEmpty) {
-              pharmacyProvider.refreshAll();
-            }
-          } else if (service.id == 'convenience') {
-            if (grabMartProvider.items.isEmpty) {
-              grabMartProvider.refreshAll();
-            }
-          }
+        if (service.id == 'more') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('More services coming soon'),
+              duration: Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
 
-          if (locationProvider.latitude != null && locationProvider.longitude != null) {
-            final vendorType = _getVendorTypeFromService(service.id);
-            _previousVendorType = vendorType;
-            vendorProvider.fetchVendors(vendorType, lat: locationProvider.latitude, lng: locationProvider.longitude);
+        _isOpeningServiceHub = true;
+        context.push('/serviceHub/${service.id}').whenComplete(() {
+          if (mounted) {
+            _isOpeningServiceHub = false;
           }
         });
       },
@@ -1034,39 +1022,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  /// Build service selector
-  Widget buildServiceSelector() {
-    final serviceProvider = Provider.of<ServiceProvider>(context);
-    final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
-    final foodProvider = Provider.of<FoodProvider>(context, listen: false);
-
-    return ServiceSelector(
-      services: AppServices.all,
-      initialSelectedService: serviceProvider.currentService,
-      onServiceSelected: (service) {
-        serviceProvider.selectService(service);
-
-        if (service.id == 'groceries') {
-          // Load grocery data
-          if (groceryProvider.categories.isEmpty) {
-            groceryProvider.fetchCategories();
-            groceryProvider.fetchStores();
-            groceryProvider.fetchItems();
-            groceryProvider.fetchDeals();
-          }
-        } else if (service.id == 'food') {
-          // Load food data
-          if (foodProvider.categories.isEmpty) {
-            foodProvider.fetchCategories();
-            foodProvider.fetchRecentOrderItems();
-            foodProvider.fetchPromotionalBanners();
-            foodProvider.fetchDeals();
-          }
-        }
-      },
-    );
-  }
-
   /// Build grocery content
   Widget _buildGroceryCategories(GroceryProvider groceryProvider, bool isDark, Size size, AppColorsExtension colors) {
     // Combine categories
@@ -1231,6 +1186,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   context.push('/foodDetails', extra: item);
                 },
                 isLoading: provider.isLoadingDeals,
+                useVerticalZigzagTag: true,
               );
             },
           )
@@ -1315,6 +1271,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             PopularSection(
               popularItems: popularItems,
               originalItems: originalPopularItems,
+              useVerticalZigzagTag: serviceProvider.isFoodService,
               onSeeAll: () {},
               onItemTap: (item) {
                 if (serviceProvider.isGroceryService) {
@@ -1394,6 +1351,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             TopRatedSection(
               topRatedItems: topRatedItems,
               originalItems: originalTopRatedItems,
+              useVerticalZigzagTag: serviceProvider.isFoodService,
               onSeeAll: () {},
               onItemTap: (item) {
                 if (serviceProvider.isGroceryService) {
@@ -1480,6 +1438,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               final bool isInCart = provider.cartItems.containsKey(item);
               return FoodItemCard(
                 item: item,
+                useVerticalZigzagTag: true,
                 onTap: () => context.push('/foodDetails', extra: item),
                 trailing: GestureDetector(
                   onTap: () {

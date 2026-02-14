@@ -30,6 +30,7 @@ import 'package:grab_go_customer/features/cart/view/checkout.dart';
 import 'package:grab_go_customer/features/home/view/food_details.dart';
 import 'package:grab_go_customer/features/home/view/search_page.dart';
 import 'package:grab_go_customer/features/home/view/notification.dart' as notification_page;
+import 'package:grab_go_customer/features/services/view/service_hub_page.dart';
 import 'package:grab_go_customer/features/order/view/order_tracking.dart';
 import 'package:grab_go_customer/features/restaurant/view/restaurant_account_creation_tracking.dart';
 import 'package:grab_go_customer/features/restaurant/view/restaurant_details.dart';
@@ -898,6 +899,26 @@ final GoRouter appRouter = GoRouter(
               animation: animation,
               secondaryAnimation: secondaryAnimation,
               transitionType: SharedAxisTransitionType.scaled,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/serviceHub/:serviceId",
+      pageBuilder: (context, state) {
+        final serviceId = state.pathParameters['serviceId'] ?? '';
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: ServiceHubPage(serviceId: serviceId),
+          transitionDuration: const Duration(milliseconds: 400),
+          reverseTransitionDuration: const Duration(milliseconds: 400),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.horizontal,
               child: child,
             );
           },

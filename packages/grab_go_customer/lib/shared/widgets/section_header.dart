@@ -52,7 +52,7 @@ class SectionHeader extends StatelessWidget {
                       package: 'grab_go_shared',
                       height: 16.h,
                       width: 16.w,
-                      colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                      colorFilter: ColorFilter.mode(accentColor, BlendMode.srcIn),
                     ),
                   ],
                 ),

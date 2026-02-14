@@ -67,6 +67,35 @@ exports.getFoodRecommendations = async (userId, limit = 10) => {
     }
 };
 
+/**
+ * Get store recommendations for a user (grocery, pharmacy, grabmart, food)
+ */
+exports.getStoreRecommendations = async (userId, serviceType = 'food', limit = 10) => {
+    if (!process.env.ML_API_KEY) {
+        console.warn('🤖 ML Service: ML_API_KEY is missing, skipping store recommendations.');
+        return [];
+    }
+
+    if (!userId) {
+        return [];
+    }
+
+    try {
+        const response = await mlClient.post('/api/v1/recommendations/restaurants', {
+            user_id: userId,
+            service_type: serviceType,
+            limit: Math.min(limit, 50)
+        });
+
+        return response.data.data || [];
+    } catch (error) {
+        const status = error.response?.status;
+        const details = error.response?.data?.detail || error.response?.data || error.message;
+        console.error(`🤖 ML Service Error (Store Recommendations): (Status: ${status})`, details);
+        return [];
+    }
+};
+
 
 
 /**
@@ -87,5 +116,6 @@ exports.analyzeSentiment = async (text) => {
 module.exports = {
     predictDeliveryFactors: exports.predictDeliveryFactors,
     getFoodRecommendations: exports.getFoodRecommendations,
+    getStoreRecommendations: exports.getStoreRecommendations,
     analyzeSentiment: exports.analyzeSentiment
 };

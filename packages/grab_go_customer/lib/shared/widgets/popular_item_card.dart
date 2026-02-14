@@ -6,6 +6,7 @@ import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
+import 'package:grab_go_customer/shared/widgets/vertical_zigzag_tag.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:provider/provider.dart';
@@ -16,6 +17,8 @@ class PopularItemCard extends StatelessWidget {
   final VoidCallback onTap;
   final String? deliveryTime;
   final bool showDeliveryTime;
+  final bool useVerticalZigzagTag;
+  final Color? accentColor;
 
   const PopularItemCard({
     super.key,
@@ -25,11 +28,14 @@ class PopularItemCard extends StatelessWidget {
     required this.onTap,
     this.deliveryTime,
     this.showDeliveryTime = true,
+    this.useVerticalZigzagTag = false,
+    this.accentColor,
   });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    final effectiveAccentColor = accentColor ?? colors.accentOrange;
     Size size = MediaQuery.sizeOf(context);
     final cardWidth = size.width * 0.5;
     final imageHeight = (cardWidth * 0.62).clamp(96.0, 120.0);
@@ -96,38 +102,46 @@ class PopularItemCard extends StatelessWidget {
                 ),
                 Positioned(
                   top: 0,
-                  left: 0.w,
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [colors.error, colors.accentOrange],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: const BorderRadius.only(
-                        bottomRight: Radius.circular(KBorderSize.borderMedium),
-                        topLeft: Radius.circular(KBorderSize.borderMedium),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SvgPicture.asset(
-                          Assets.icons.flame,
-                          package: 'grab_go_shared',
-                          height: 16,
-                          width: 16.w,
-                          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                  left: useVerticalZigzagTag ? 8.w : 0.w,
+                  child: useVerticalZigzagTag
+                      ? VerticalZigzagTag(
+                          primaryText: orderCount.toString(),
+                          secondaryText: 'orders',
+                          color: accentColor ?? const Color(0xFFE65100),
+                        )
+                      : Container(
+                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: accentColor == null
+                                  ? [colors.error, colors.accentOrange]
+                                  : [effectiveAccentColor.withValues(alpha: 0.9), effectiveAccentColor],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: const BorderRadius.only(
+                              bottomRight: Radius.circular(KBorderSize.borderMedium),
+                              topLeft: Radius.circular(KBorderSize.borderMedium),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SvgPicture.asset(
+                                Assets.icons.flame,
+                                package: 'grab_go_shared',
+                                height: 16,
+                                width: 16.w,
+                                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                              ),
+                              SizedBox(width: 4.w),
+                              Text(
+                                "$orderCount orders",
+                                style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w700),
+                              ),
+                            ],
+                          ),
                         ),
-                        SizedBox(width: 4.w),
-                        Text(
-                          "$orderCount orders",
-                          style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w700),
-                        ),
-                      ],
-                    ),
-                  ),
                 ),
                 Consumer<FavoritesProvider>(
                   builder: (context, favoriteProvider, child) {
@@ -209,12 +223,12 @@ class PopularItemCard extends StatelessWidget {
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4),
                           decoration: BoxDecoration(
-                            color: colors.accentOrange.withValues(alpha: 0.15),
+                            color: effectiveAccentColor.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(8.r),
                           ),
                           child: Text(
                             "GHS ${item.price.toStringAsFixed(2)}",
-                            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800, color: colors.accentOrange),
+                            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800, color: effectiveAccentColor),
                           ),
                         ),
                       ],
@@ -237,7 +251,7 @@ class PopularItemCard extends StatelessWidget {
                           padding: EdgeInsets.all(10.r),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: isInCart ? AppColors.accentOrange : colors.backgroundSecondary,
+                            color: isInCart ? effectiveAccentColor : colors.backgroundSecondary,
                           ),
                           child: AnimatedSwitcher(
                             duration: const Duration(milliseconds: 200),

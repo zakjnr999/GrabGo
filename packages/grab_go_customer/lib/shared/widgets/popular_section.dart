@@ -13,6 +13,8 @@ class PopularSection extends StatelessWidget {
   final bool isLoading;
   final String? title;
   final String? icon;
+  final bool useVerticalZigzagTag;
+  final Color? accentColor;
 
   const PopularSection({
     super.key,
@@ -23,6 +25,8 @@ class PopularSection extends StatelessWidget {
     this.isLoading = false,
     this.title,
     this.icon,
+    this.useVerticalZigzagTag = false,
+    this.accentColor,
   });
 
   @override
@@ -38,7 +42,7 @@ class PopularSection extends StatelessWidget {
         SectionHeader(
           title: title ?? "Popular Right Now",
           sectionTotal: popularItems.length,
-          accentColor: AppColors.accentOrange,
+          accentColor: accentColor ?? AppColors.accentOrange,
           onSeeAll: onSeeAll,
         ),
         SizedBox(height: 10.h),
@@ -63,6 +67,8 @@ class PopularSection extends StatelessWidget {
                   cartItem: originalItem,
                   orderCount: orderCount,
                   deliveryTime: item.estimatedDeliveryTime,
+                  useVerticalZigzagTag: useVerticalZigzagTag,
+                  accentColor: accentColor,
                   onTap: () => onItemTap(item),
                 ),
               );

@@ -103,8 +103,16 @@ class UmbrellaHeader extends StatelessWidget {
   final double curveDepth;
   final int numberOfCurves;
   final double? height;
+  final Color? backgroundColor;
 
-  const UmbrellaHeader({super.key, required this.child, this.curveDepth = 20, this.numberOfCurves = 8, this.height});
+  const UmbrellaHeader({
+    super.key,
+    required this.child,
+    this.curveDepth = 20,
+    this.numberOfCurves = 8,
+    this.height,
+    this.backgroundColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -115,7 +123,7 @@ class UmbrellaHeader extends StatelessWidget {
       clipper: UmbrellaClipper(curveDepth: resolvedCurveDepth, numberOfCurves: numberOfCurves),
       child: Container(
         height: height,
-        decoration: BoxDecoration(color: colors.accentOrange),
+        decoration: BoxDecoration(color: backgroundColor ?? colors.accentOrange),
         child: child,
       ),
     );
@@ -129,6 +137,7 @@ class UmbrellaHeaderWithShadow extends StatelessWidget {
   final List<Color>? gradientColors;
   final double? height;
   final bool showShadow;
+  final Color? backgroundColor;
 
   const UmbrellaHeaderWithShadow({
     super.key,
@@ -138,12 +147,14 @@ class UmbrellaHeaderWithShadow extends StatelessWidget {
     this.gradientColors,
     this.height,
     this.showShadow = true,
+    this.backgroundColor,
   });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final resolvedCurveDepth = curveDepth.clamp(16.0, 24.0).toDouble();
+    final effectiveBackgroundColor = backgroundColor ?? colors.accentOrange;
 
     return Stack(
       children: [
@@ -155,7 +166,7 @@ class UmbrellaHeaderWithShadow extends StatelessWidget {
                 decoration: BoxDecoration(
                   boxShadow: [
                     BoxShadow(
-                      color: colors.accentOrange.withAlpha(40),
+                      color: effectiveBackgroundColor.withAlpha(40),
                       blurRadius: 20,
                       spreadRadius: 0,
                       offset: const Offset(0, 10),
@@ -169,6 +180,7 @@ class UmbrellaHeaderWithShadow extends StatelessWidget {
           curveDepth: resolvedCurveDepth,
           numberOfCurves: numberOfCurves,
           height: height,
+          backgroundColor: effectiveBackgroundColor,
           child: child,
         ),
       ],

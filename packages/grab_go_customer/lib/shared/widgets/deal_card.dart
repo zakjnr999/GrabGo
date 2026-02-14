@@ -6,6 +6,7 @@ import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
+import 'package:grab_go_customer/shared/widgets/vertical_zigzag_tag.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:provider/provider.dart';
@@ -17,6 +18,8 @@ class DealCard extends StatelessWidget {
   final int discountPercent;
   final VoidCallback onTap;
   final double? cardWidth;
+  final bool useVerticalZigzagTag;
+  final Color? accentColor;
 
   const DealCard({
     super.key,
@@ -26,11 +29,14 @@ class DealCard extends StatelessWidget {
     required this.onTap,
     this.deliveryTime,
     this.cardWidth,
+    this.useVerticalZigzagTag = false,
+    this.accentColor,
   });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    final effectiveAccentColor = accentColor ?? colors.accentOrange;
     final size = MediaQuery.sizeOf(context);
     final baseWidth = cardWidth ?? (size.width * 0.78);
     final resolvedWidth = cardWidth == null ? baseWidth.clamp(230.0, 320.0) : baseWidth.clamp(180.0, 320.0);
@@ -125,25 +131,33 @@ class DealCard extends StatelessWidget {
                 if (hasDiscount)
                   Positioned(
                     top: 0,
-                    left: 0.w,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [colors.error, colors.accentOrange],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: const BorderRadius.only(
-                          bottomRight: Radius.circular(KBorderSize.borderMedium),
-                          topLeft: Radius.circular(KBorderSize.borderMedium),
-                        ),
-                      ),
-                      child: Text(
-                        "$discountPercent% OFF",
-                        style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w700),
-                      ),
-                    ),
+                    left: useVerticalZigzagTag ? 8.w : 0.w,
+                    child: useVerticalZigzagTag
+                        ? VerticalZigzagTag(
+                            primaryText: '$discountPercent%',
+                            secondaryText: 'OFF',
+                            color: effectiveAccentColor,
+                          )
+                        : Container(
+                            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: accentColor == null
+                                    ? [colors.error, colors.accentOrange]
+                                    : [effectiveAccentColor.withValues(alpha: 0.9), effectiveAccentColor],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: const BorderRadius.only(
+                                bottomRight: Radius.circular(KBorderSize.borderMedium),
+                                topLeft: Radius.circular(KBorderSize.borderMedium),
+                              ),
+                            ),
+                            child: Text(
+                              "$discountPercent% OFF",
+                              style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w700),
+                            ),
+                          ),
                   ),
               ],
             ),
@@ -171,7 +185,7 @@ class DealCard extends StatelessWidget {
                               package: 'grab_go_shared',
                               height: 13,
                               width: 13.w,
-                              colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                              colorFilter: ColorFilter.mode(effectiveAccentColor, BlendMode.srcIn),
                             ),
                             SizedBox(width: 4.w),
                             Text(
@@ -194,6 +208,7 @@ class DealCard extends StatelessWidget {
                                 colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                               ),
                               SizedBox(width: 4.w),
+
                               Text(
                                 timeText,
                                 style: TextStyle(
@@ -216,7 +231,7 @@ class DealCard extends StatelessWidget {
                             Container(
                               padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4),
                               decoration: BoxDecoration(
-                                color: colors.accentOrange.withValues(alpha: 0.15),
+                                color: effectiveAccentColor.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(8.r),
                               ),
                               child: Text(
@@ -224,7 +239,7 @@ class DealCard extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 13.sp,
                                   fontWeight: FontWeight.w700,
-                                  color: colors.accentOrange,
+                                  color: effectiveAccentColor,
                                 ),
                               ),
                             ),
@@ -264,7 +279,7 @@ class DealCard extends StatelessWidget {
                           padding: EdgeInsets.all(10.r),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
+                            color: isInCart ? effectiveAccentColor : colors.backgroundSecondary,
                           ),
                           child: AnimatedSwitcher(
                             duration: const Duration(milliseconds: 200),
