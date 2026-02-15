@@ -5,6 +5,7 @@ import 'package:grab_go_customer/features/auth/view/location_permission.dart';
 import 'package:grab_go_customer/features/auth/view/notification_permission.dart';
 import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
 import 'package:grab_go_customer/features/home/navigation/bottom_navigator.dart';
+import 'package:grab_go_customer/features/order/view/vendor_rating.dart';
 import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
 import 'package:grab_go_customer/features/profile/view/settings_page.dart';
 import 'package:grab_go_customer/features/status/view/status_page.dart';
@@ -90,7 +91,8 @@ final GoRouter appRouter = GoRouter(
 
     if (uri.path == '/categoryItems') {
       final extra = state.extra;
-      final hasExtraCategory = extra is Map<String, dynamic> &&
+      final hasExtraCategory =
+          extra is Map<String, dynamic> &&
           (extra['categoryId'] is String && (extra['categoryId'] as String).isNotEmpty);
       final hasQueryCategory = uri.queryParameters['categoryId']?.isNotEmpty == true;
 
@@ -519,10 +521,9 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: "/vendorRatings",
       pageBuilder: (context, state) {
-        final orderId = state.uri.queryParameters['orderId'] ?? '';
         return CustomTransitionPage(
           key: state.pageKey,
-          child: MapTracking(orderId: orderId),
+          child: const VendorRating(),
           transitionDuration: const Duration(milliseconds: 800),
           reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -959,7 +960,9 @@ final GoRouter appRouter = GoRouter(
             categoryName: query['categoryName'] ?? (extra['categoryName'] as String?) ?? 'Items',
             categoryEmoji: query['categoryEmoji'] ?? (extra['categoryEmoji'] as String?) ?? '📦',
             serviceType:
-                query['serviceType'] ?? (extra['serviceType'] as String?) ?? (extra['isFood'] == true ? 'food' : 'grocery'),
+                query['serviceType'] ??
+                (extra['serviceType'] as String?) ??
+                (extra['isFood'] == true ? 'food' : 'grocery'),
           ),
           transitionDuration: const Duration(milliseconds: 400),
           reverseTransitionDuration: const Duration(milliseconds: 400),

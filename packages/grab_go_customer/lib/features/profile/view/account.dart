@@ -727,7 +727,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                   if (favoritesProvider.hasFavorites) ...[
                     SizedBox(height: 14.h),
                     SizedBox(
-                      height: 60.h,
+                      height: 60,
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
                         itemCount: favoritesProvider.favoriteItems.length,

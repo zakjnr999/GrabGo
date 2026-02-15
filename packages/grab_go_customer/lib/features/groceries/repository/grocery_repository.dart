@@ -294,6 +294,7 @@ class GroceryRepository {
   }) async {
     try {
       final queryParams = <String, String>{
+        'v': '2',
         'limit': '$limit',
         'page': '$page',
         if (userLat != null) 'userLat': '$userLat',

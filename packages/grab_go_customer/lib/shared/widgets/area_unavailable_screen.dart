@@ -6,8 +6,9 @@ import 'package:grab_go_shared/grub_go_shared.dart';
 class AreaUnavailableScreen extends StatelessWidget {
   final String? serviceName;
   final bool isAreaUnavailable;
+  final Color? accentColor;
 
-  const AreaUnavailableScreen({super.key, this.serviceName, this.isAreaUnavailable = true});
+  const AreaUnavailableScreen({super.key, this.serviceName, this.isAreaUnavailable = true, this.accentColor});
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +16,7 @@ class AreaUnavailableScreen extends StatelessWidget {
 
     final textPrimary = colors.textPrimary;
     final textSecondary = colors.textSecondary;
-    final accentOrange = colors.accentOrange;
+    final themedAccentColor = accentColor ?? colors.accentOrange;
 
     final String displayServiceName = serviceName ?? "this service";
     final String title = isAreaUnavailable ? "GrabGo is Not Here Yet" : "Service Unavailable";
@@ -31,11 +32,11 @@ class AreaUnavailableScreen extends StatelessWidget {
         children: [
           Container(
             padding: EdgeInsets.all(24.r),
-            decoration: BoxDecoration(color: accentOrange.withValues(alpha: 0.1), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: themedAccentColor.withValues(alpha: 0.1), shape: BoxShape.circle),
             child: Icon(
               isAreaUnavailable ? Icons.map_outlined : Icons.location_off_rounded,
               size: 64.r,
-              color: accentOrange,
+              color: themedAccentColor,
             ),
           ),
           SizedBox(height: 24.h),
@@ -54,7 +55,7 @@ class AreaUnavailableScreen extends StatelessWidget {
           AppButton(
             width: double.infinity,
             onPressed: () => context.push('/confirm-address'),
-            backgroundColor: colors.accentOrange,
+            backgroundColor: themedAccentColor,
             borderRadius: KBorderSize.borderMedium,
             buttonText: "Change Location",
             textStyle: TextStyle(fontSize: 15.sp, color: Colors.white, fontWeight: FontWeight.w600),

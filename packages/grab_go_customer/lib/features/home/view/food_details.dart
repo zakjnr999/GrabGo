@@ -175,7 +175,6 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
     return '';
   }
 
-  // Check if item has ingredients to display
   bool get hasIngredients {
     try {
       if (widget.isGrocery || isPharmacy || isGrabMart) {
@@ -360,8 +359,8 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                                   (index) => SvgPicture.asset(
                                                     Assets.icons.starSolid,
                                                     package: 'grab_go_shared',
-                                                    height: 18.h,
-                                                    width: 18.w,
+                                                    height: 16,
+                                                    width: 16,
                                                     colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                                                   ),
                                                 ),
@@ -417,7 +416,6 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                                   fontFamily: 'Lato',
                                                   package: 'grab_go_shared',
                                                   color: colors.accentOrange,
-                                                  fontWeight: FontWeight.bold,
                                                   fontSize: 14.sp,
                                                 ),
                                               ),

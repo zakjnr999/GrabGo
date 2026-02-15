@@ -672,6 +672,8 @@ router.get(
                 });
             }
 
+            let mlSeedItems = [];
+
             if (userId) {
                 try {
                     const mlRecommendations = await mlClient.getStoreRecommendations(userId, 'grocery', 30);
@@ -756,7 +758,7 @@ router.get(
                                 const endIndex = startIndex + limit;
                                 const paginatedItems = diversified.slice(startIndex, endIndex);
 
-                                if (paginatedItems.length > 0) {
+                                if (paginatedItems.length > 0 && paginatedItems.length >= limit) {
                                     return res.json({
                                         success: true,
                                         source: 'ml',
@@ -766,6 +768,10 @@ router.get(
                                         hasMore: endIndex < diversified.length,
                                         data: paginatedItems.map(formatItem)
                                     });
+                                }
+
+                                if (paginatedItems.length > 0) {
+                                    mlSeedItems = paginatedItems;
                                 }
                             }
                         }
@@ -828,7 +834,7 @@ router.get(
                 })
             ]);
 
-            const combined = [...popular, ...topRated, ...deals, ...random];
+            const combined = [...mlSeedItems, ...popular, ...topRated, ...deals, ...random];
             const uniqueMap = new Map();
             combined.forEach(item => uniqueMap.set(item.id, item));
             const uniqueItems = Array.from(uniqueMap.values());
@@ -839,7 +845,22 @@ router.get(
                 return bScore - aScore;
             });
 
-            const finalRecommendations = uniqueItems.slice(0, limit);
+            let finalRecommendations = uniqueItems.slice(0, limit);
+
+            if (finalRecommendations.length < limit) {
+                const fillCount = limit - finalRecommendations.length;
+                const fallbackPool = await prisma.groceryItem.findMany({
+                    where: {
+                        isAvailable: true,
+                        id: { notIn: finalRecommendations.map(item => item.id) }
+                    },
+                    include,
+                    orderBy: [{ orderCount: 'desc' }, { rating: 'desc' }, { createdAt: 'desc' }],
+                    take: fillCount
+                });
+
+                finalRecommendations = [...finalRecommendations, ...fallbackPool];
+            }
             return res.json({
                 success: true,
                 source: 'heuristic',

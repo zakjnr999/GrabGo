@@ -23,12 +23,12 @@ import 'package:grab_go_customer/features/vendors/viewmodel/vendor_provider.dart
 import 'package:grab_go_customer/features/vendors/widgets/vendor_horizontal_section.dart';
 import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart';
 import 'package:grab_go_customer/shared/widgets/area_unavailable_screen.dart';
-import 'package:grab_go_customer/shared/widgets/browse_page_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/deals_section.dart';
-import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
 import 'package:grab_go_customer/shared/widgets/popular_section.dart';
+import 'package:grab_go_customer/shared/widgets/popular_item_card.dart';
 import 'package:grab_go_customer/shared/widgets/promotional_banner_carousel.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
+import 'package:grab_go_customer/shared/widgets/service_hub_page_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/service_category_list.dart';
 import 'package:grab_go_customer/shared/widgets/top_rated_section.dart';
 import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
@@ -54,6 +54,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
   final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
   final List<VendorModel> _nearbyServiceVendors = [];
   bool _isLoadingNearbyVendors = false;
+  bool _isInitialHubLoadInProgress = true;
   String? _loadedNearbyKey;
   String? _pendingNearbyKey;
 
@@ -187,30 +188,40 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
 
   Future<void> _ensureInitialData() async {
     if (!mounted) return;
-    switch (widget.serviceId) {
-      case 'groceries':
-        final provider = context.read<GroceryProvider>();
-        if (provider.items.isEmpty || provider.categories.isEmpty || provider.recommendedItems.isEmpty) {
-          await provider.refreshAll();
-        }
-        break;
-      case 'pharmacy':
-        final provider = context.read<PharmacyProvider>();
-        if (provider.items.isEmpty || provider.categories.isEmpty || provider.recommendedItems.isEmpty) {
-          await provider.refreshAll();
-        }
-        break;
-      case 'convenience':
-        final provider = context.read<GrabMartProvider>();
-        if (provider.items.isEmpty || provider.categories.isEmpty || provider.recommendedItems.isEmpty) {
-          await provider.refreshAll();
-        }
-        break;
-      default:
-        break;
-    }
 
-    await _fetchNearbyVendors();
+    try {
+      Future<void> serviceDataFuture = Future.value();
+      switch (widget.serviceId) {
+        case 'groceries':
+          final provider = context.read<GroceryProvider>();
+          if (provider.items.isEmpty || provider.categories.isEmpty || provider.recommendedItems.isEmpty) {
+            serviceDataFuture = provider.refreshAll();
+          }
+          break;
+        case 'pharmacy':
+          final provider = context.read<PharmacyProvider>();
+          if (provider.items.isEmpty || provider.categories.isEmpty || provider.recommendedItems.isEmpty) {
+            serviceDataFuture = provider.refreshAll();
+          }
+          break;
+        case 'convenience':
+          final provider = context.read<GrabMartProvider>();
+          if (provider.items.isEmpty || provider.categories.isEmpty || provider.recommendedItems.isEmpty) {
+            serviceDataFuture = provider.refreshAll();
+          }
+          break;
+        default:
+          break;
+      }
+
+      await Future.wait([serviceDataFuture, _fetchNearbyVendors()]);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isInitialHubLoadInProgress = false;
+        });
+      }
+    }
   }
 
   Future<void> _refreshCurrentService() async {
@@ -305,7 +316,8 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
     _ensureNearbyVendorsLoaded(locationProvider);
 
     final items = _resolveDisplayItems(groceryProvider, pharmacyProvider, grabMartProvider);
-    final recommendedItems = _resolveRecommendedDisplayItems(groceryProvider, pharmacyProvider, grabMartProvider);
+    final rawRecommendedItems = _resolveRecommendedDisplayItems(groceryProvider, pharmacyProvider, grabMartProvider);
+    final recommendedItems = _withRecommendedFallback(rawRecommendedItems, items);
     final categories = _resolveCategoriesCount(groceryProvider, pharmacyProvider, grabMartProvider);
     final isLoading = _isLoading(groceryProvider, pharmacyProvider, grabMartProvider);
     final isLoadingRecommended = _isLoadingRecommended(groceryProvider, pharmacyProvider, grabMartProvider);
@@ -314,12 +326,12 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
 
     final contentTopPadding = UmbrellaHeaderMetrics.contentPaddingFor(size, extra: _headerExtraHeightFor(size), gap: 8);
 
-    if (isLoading && !hasData) {
+    if (_isInitialHubLoadInProgress || (isLoading && !hasData)) {
       return ListView(
         controller: _scrollController,
-        physics: const AlwaysScrollableScrollPhysics(),
+        physics: const NeverScrollableScrollPhysics(),
         padding: EdgeInsets.only(top: contentTopPadding, bottom: 24.h),
-        children: const [BrowsePageSkeleton()],
+        children: const [ServiceHubPageSkeleton()],
       );
     }
 
@@ -327,7 +339,19 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
     final popular = _sortedPopular(items);
     final topRated = _sortedTopRated(items);
     final banners = _bannersForService(widget.serviceId, accentColor);
-    final showServiceUnavailable = _shouldShowServiceUnavailable(locationProvider);
+    final shouldShowServiceUnavailable = _shouldShowServiceUnavailable(locationProvider);
+
+    if (shouldShowServiceUnavailable) {
+      return ListView(
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.only(top: contentTopPadding, bottom: 32.h),
+        children: [
+          AreaUnavailableScreen(serviceName: _config?.title, isAreaUnavailable: false, accentColor: accentColor),
+        ],
+      );
+    }
+
     final showEmpty =
         deals.isEmpty &&
         popular.isEmpty &&
@@ -336,8 +360,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
         categories == 0 &&
         _nearbyServiceVendors.isEmpty &&
         !isLoadingRecommended &&
-        !_isLoadingNearbyVendors &&
-        !showServiceUnavailable;
+        !_isLoadingNearbyVendors;
 
     return ListView(
       controller: _scrollController,
@@ -363,11 +386,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
         if (topRated.isNotEmpty)
           _buildHorizontalItemsSection(items: topRated, sectionType: _SectionType.topRated, accentColor: accentColor),
         if (topRated.isNotEmpty) SizedBox(height: KSpacing.lg.h),
-        _buildNearbyServiceStoresSection(
-          accentColor: accentColor,
-          locationProvider: locationProvider,
-          showServiceUnavailable: showServiceUnavailable,
-        ),
+        _buildNearbyServiceStoresSection(accentColor: accentColor, locationProvider: locationProvider),
         if (recommendedItems.isNotEmpty || isLoadingRecommended)
           _buildRecommendedItemsSection(
             items: recommendedItems,
@@ -777,16 +796,12 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
   Widget _buildNearbyServiceStoresSection({
     required Color accentColor,
     required NativeLocationProvider locationProvider,
-    required bool showServiceUnavailable,
   }) {
     if (!locationProvider.hasLocation) return const SizedBox.shrink();
 
     final vendorType = _vendorTypeForServiceId(widget.serviceId);
     if (vendorType == null) return const SizedBox.shrink();
-    if (showServiceUnavailable) {
-      return AreaUnavailableScreen(serviceName: _config?.title, isAreaUnavailable: false);
-    }
-    if (!_isLoadingNearbyVendors && _nearbyServiceVendors.isEmpty) return const SizedBox.shrink();
+    if (_nearbyServiceVendors.isEmpty) return const SizedBox.shrink();
 
     return Padding(
       padding: EdgeInsets.only(bottom: KSpacing.lg.h),
@@ -817,13 +832,35 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
           onSeeAll: () {},
         ),
         SizedBox(height: KSpacing.lg.h),
-        for (final item in items)
-          FoodItemCard(
-            item: _toFoodItem(item),
-            useVerticalZigzagTag: true,
-            onTap: () => context.push('/foodDetails', extra: item.sourceItem),
-            margin: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 16.h),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.w),
+          child: GridView.builder(
+            padding: EdgeInsets.zero,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 0.70,
+              crossAxisSpacing: 12.w,
+              mainAxisSpacing: 16.h,
+            ),
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              final item = items[index];
+              final displayItem = _toFoodItem(item);
+
+              return PopularItemCard(
+                item: displayItem,
+                orderCount: item.orderCount,
+                deliveryTime: displayItem.estimatedDeliveryTime,
+                useVerticalZigzagTag: true,
+                accentColor: accentColor,
+                onTap: () => context.push('/foodDetails', extra: item.sourceItem),
+              );
+            },
           ),
+        ),
+        SizedBox(height: KSpacing.lg.h),
         if (hasMore)
           Builder(
             builder: (context) {
@@ -835,15 +872,10 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
               }
               return Padding(
                 padding: EdgeInsets.only(bottom: KSpacing.lg.h),
-                child: LoadingMore(
-                  colors: context.appColors,
-                  spinnerColor: accentColor,
-                  borderColor: accentColor,
-                ),
+                child: LoadingMore(colors: context.appColors, spinnerColor: accentColor, borderColor: accentColor),
               );
             },
           ),
-        if (!hasMore) SizedBox(height: KSpacing.lg.h),
       ],
     );
   }
@@ -1005,6 +1037,37 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
     final filtered = items.where((item) => item.rating >= 4.0).toList();
     filtered.sort((a, b) => b.rating.compareTo(a.rating));
     return filtered.take(10).toList();
+  }
+
+  List<ServiceDisplayItem> _withRecommendedFallback(
+    List<ServiceDisplayItem> recommendedItems,
+    List<ServiceDisplayItem> allItems,
+  ) {
+    const minCount = 6;
+    const maxCount = 20;
+
+    final uniqueById = <String, ServiceDisplayItem>{};
+    for (final item in recommendedItems) {
+      uniqueById[item.id] = item;
+    }
+
+    if (uniqueById.length >= minCount) {
+      return uniqueById.values.take(maxCount).toList();
+    }
+
+    final fallbackCandidates = [...allItems];
+    fallbackCandidates.sort((a, b) {
+      final aScore = (a.orderCount * 3) + (a.rating * 20) + (a.discountPercentage * 2);
+      final bScore = (b.orderCount * 3) + (b.rating * 20) + (b.discountPercentage * 2);
+      return bScore.compareTo(aScore);
+    });
+
+    for (final item in fallbackCandidates) {
+      uniqueById.putIfAbsent(item.id, () => item);
+      if (uniqueById.length >= minCount) break;
+    }
+
+    return uniqueById.values.take(maxCount).toList();
   }
 
   FoodItem _toFoodItem(ServiceDisplayItem item) {

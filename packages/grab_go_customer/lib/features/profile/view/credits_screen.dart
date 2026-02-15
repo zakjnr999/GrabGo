@@ -87,17 +87,13 @@ class _CreditsScreenState extends State<CreditsScreen> {
         body: Column(
           children: [
             Padding(
-              padding: EdgeInsets.only(top: padding.top, left: 20.w, right: 20.w),
+              padding: EdgeInsets.only(top: padding.top, left: 20.w, right: 20.w, bottom: 16.h),
               child: Row(
                 children: [
                   Container(
-                    height: 44.h,
-                    width: 44.w,
-                    decoration: BoxDecoration(
-                      color: colors.backgroundSecondary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
-                    ),
+                    height: 44,
+                    width: 44,
+                    decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
@@ -128,6 +124,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
                 ],
               ),
             ),
+            Divider(color: colors.backgroundSecondary, height: 1.h, thickness: 1),
             Expanded(
               child: AppRefreshIndicator(
                 bgColor: colors.accentOrange,
@@ -149,7 +146,6 @@ class _CreditsScreenState extends State<CreditsScreen> {
                       ),
                     ),
 
-                    // Show skeleton loaders when loading
                     if (_isLoading)
                       SliverList(
                         delegate: SliverChildBuilderDelegate(
