@@ -12,6 +12,7 @@ import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_customer/shared/models/address_model.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart';
+import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
@@ -76,7 +77,7 @@ class _CheckoutState extends State<Checkout> {
       setState(() {
         _userPhone = formatted;
         if (_pickupContactPhoneController.text.isEmpty && formatted != null) {
-          _pickupContactPhoneController.text = formatted;
+          _pickupContactPhoneController.text = _pickupPhoneLocalFromAny(formatted);
         }
       });
     } catch (e) {
@@ -86,7 +87,7 @@ class _CheckoutState extends State<Checkout> {
 
   String? _formatPhone(String? phone) {
     if (phone == null) return null;
-    final digits = phone.replaceAll(RegExp(r'\\D'), '');
+    final digits = phone.replaceAll(RegExp(r'\D'), '');
     if (digits.isEmpty) return null;
     if (digits.startsWith('0') && digits.length == 10) {
       return '+233${digits.substring(1)}';
@@ -98,6 +99,35 @@ class _CheckoutState extends State<Checkout> {
       return '+$digits';
     }
     return phone;
+  }
+
+  String? _normalizeGhanaPhone(String? phone) {
+    if (phone == null) return null;
+    var digits = phone.replaceAll(RegExp(r'\D'), '');
+    if (digits.isEmpty) return null;
+
+    if (digits.startsWith('233') && digits.length == 12) {
+      digits = digits.substring(3);
+    }
+    if (digits.startsWith('0') && digits.length == 10) {
+      digits = digits.substring(1);
+    }
+
+    if (digits.length != 9) return null;
+    return '+233$digits';
+  }
+
+  String _pickupPhoneLocalFromAny(String? phone) {
+    final normalized = _normalizeGhanaPhone(phone);
+    if (normalized == null) return '';
+    return normalized.substring(4);
+  }
+
+  String _pickupPhoneDisplay() {
+    final raw = _pickupContactPhoneController.text.trim();
+    if (raw.isEmpty) return '';
+    final normalized = _normalizeGhanaPhone(_pickupContactPhoneController.text);
+    return normalized ?? '+233$raw';
   }
 
   String _addressCacheKey(String userId) => 'user_addresses_$userId';
@@ -305,12 +335,19 @@ class _CheckoutState extends State<Checkout> {
         backgroundColor: colors.backgroundPrimary,
         body: Consumer<CartProvider>(
           builder: (context, provider, child) {
+            final bool isPickupTab = context.watch<NavigationProvider>().selectedIndex == 1;
+            if (isPickupTab && provider.fulfillmentMode != 'pickup') {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                context.read<CartProvider>().setFulfillmentMode('pickup');
+              });
+            }
             final double subtotal = provider.subtotal;
             final double deliveryFee = provider.deliveryFee;
             final double serviceFee = provider.serviceFee;
             final double rainFee = provider.rainFee;
             final double creditsApplied = provider.creditsApplied;
-            final bool isPickupMode = provider.fulfillmentMode == 'pickup';
+            final bool isPickupMode = provider.fulfillmentMode == 'pickup' || isPickupTab;
             final double effectiveTip = isPickupMode ? 0.0 : _tipAmount;
             final double total = provider.total + effectiveTip;
             final bool isPricingLoading = provider.isPricingLoading;
@@ -437,28 +474,28 @@ class _CheckoutState extends State<Checkout> {
                           ),
                           Padding(
                             padding: EdgeInsets.symmetric(horizontal: 20.w),
-                            child: TextField(
+                            child: AppTextInput(
                               controller: _pickupContactNameController,
-                              style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
-                              decoration: InputDecoration(
-                                hintText: "Contact name",
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
-                                isDense: true,
-                              ),
+                              hintText: "Contact name",
+                              keyboardType: TextInputType.name,
+                              borderRadius: 12.r,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
                             ),
                           ),
                           SizedBox(height: 10.h),
                           Padding(
                             padding: EdgeInsets.symmetric(horizontal: 20.w),
-                            child: TextField(
+                            child: AppTextInput(
                               controller: _pickupContactPhoneController,
+                              hintText: "501234567",
                               keyboardType: TextInputType.phone,
-                              style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
-                              decoration: InputDecoration(
-                                hintText: "Contact phone (e.g. +233...)",
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
-                                isDense: true,
-                              ),
+                              prefixIcon: _buildGhanaPhonePrefix(context),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(10),
+                              ],
+                              borderRadius: 12.r,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
                             ),
                           ),
                           SizedBox(height: 12.h),
@@ -780,9 +817,7 @@ class _CheckoutState extends State<Checkout> {
                               provider.cartItems,
                               minMinutes: provider.estimatedDeliveryMin,
                               maxMinutes: provider.estimatedDeliveryMax,
-                            ).replaceFirst(
-                              "Estimated delivery",
-                              isPickupMode ? "Estimated pickup" : "Estimated delivery",
+                              isPickupMode: isPickupMode,
                             ),
                             style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
                           ),
@@ -1101,8 +1136,14 @@ class _CheckoutState extends State<Checkout> {
     );
   }
 
-  void _onProceedToPayment(BuildContext context, CartProvider provider, AppColorsExtension colors) {
+  Future<void> _onProceedToPayment(BuildContext context, CartProvider provider, AppColorsExtension colors) async {
     if (_isProcessingPayment) return;
+
+    final bool isPickupTab = context.read<NavigationProvider>().selectedIndex == 1;
+    if (isPickupTab && provider.fulfillmentMode != 'pickup') {
+      await provider.setFulfillmentMode('pickup');
+      if (!mounted) return;
+    }
 
     if (provider.isPricingLoading) {
       AppToastMessage.show(context: context, message: "Calculating fees, please wait...");
@@ -1119,12 +1160,17 @@ class _CheckoutState extends State<Checkout> {
     }
 
     if (provider.fulfillmentMode == 'pickup') {
+      final normalizedPickupPhone = _normalizeGhanaPhone(_pickupContactPhoneController.text);
       if (_pickupContactNameController.text.trim().isEmpty || _pickupContactPhoneController.text.trim().isEmpty) {
         AppToastMessage.show(context: context, message: "Please provide pickup contact details.");
         return;
       }
+      if (normalizedPickupPhone == null) {
+        AppToastMessage.show(context: context, message: "Please enter a valid Ghana phone number.", maxLines: 2);
+        return;
+      }
       if (!_pickupNoShowAccepted) {
-        AppToastMessage.show(context: context, message: "Please accept the no-show policy to continue.");
+        AppToastMessage.show(context: context, message: "Please accept the no-show policy to continue.", maxLines: 2);
         return;
       }
     } else if (_selectedAddress.isEmpty) {
@@ -1178,9 +1224,7 @@ class _CheckoutState extends State<Checkout> {
               SizedBox(height: 12.h),
               _buildSummaryBlock(
                 isPickupMode ? "Pickup Contact" : "Delivery Address",
-                isPickupMode
-                    ? "${_pickupContactNameController.text.trim()} • ${_pickupContactPhoneController.text.trim()}"
-                    : addressText,
+                isPickupMode ? "${_pickupContactNameController.text.trim()} • ${_pickupPhoneDisplay()}" : addressText,
                 colors,
               ),
               SizedBox(height: 10.h),
@@ -1369,7 +1413,7 @@ class _CheckoutState extends State<Checkout> {
         deliveryLatitude: isPickupMode ? null : _selectedLatitude,
         deliveryLongitude: isPickupMode ? null : _selectedLongitude,
         pickupContactName: isPickupMode ? _pickupContactNameController.text.trim() : null,
-        pickupContactPhone: isPickupMode ? _pickupContactPhoneController.text.trim() : null,
+        pickupContactPhone: isPickupMode ? _normalizeGhanaPhone(_pickupContactPhoneController.text) : null,
         acceptNoShowPolicy: isPickupMode ? _pickupNoShowAccepted : null,
         noShowPolicyVersion: isPickupMode ? "v1" : null,
         paymentMethod: "card",
@@ -1799,6 +1843,29 @@ class _CheckoutState extends State<Checkout> {
     );
   }
 
+  Widget _buildGhanaPhonePrefix(BuildContext context) {
+    final colors = context.appColors;
+    return SizedBox(
+      width: 92.w,
+      child: Container(
+        padding: EdgeInsets.only(left: 12.w, right: 8.w),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(width: 4.w),
+            Text(
+              "+233",
+              style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+            ),
+            SizedBox(width: 8.w),
+            Container(width: 1.2, height: 22.h, color: colors.inputBorder),
+            SizedBox(width: 8.w),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildAddressTile({
     required String id,
     required String title,
@@ -2053,18 +2120,24 @@ class _CheckoutState extends State<Checkout> {
     );
   }
 
-  String _formatEstimatedDelivery(Map<CartItem, int> cartItems, {int? minMinutes, int? maxMinutes}) {
+  String _formatEstimatedDelivery(
+    Map<CartItem, int> cartItems, {
+    int? minMinutes,
+    int? maxMinutes,
+    bool isPickupMode = false,
+  }) {
+    final prefix = isPickupMode ? "Est. Pickup" : "Est. Delivery";
     if (minMinutes != null && maxMinutes != null && minMinutes > 0 && maxMinutes > 0) {
       if (minMinutes == maxMinutes) {
         const padding = 5;
         minMinutes = math.max(5, minMinutes - padding);
         maxMinutes = maxMinutes + padding;
       }
-      return "Est. Delivery: $minMinutes-$maxMinutes mins";
+      return "$prefix: $minMinutes-$maxMinutes mins";
     }
 
     if (cartItems.isEmpty) {
-      return "Est. Delivery: --";
+      return "$prefix: --";
     }
 
     final times = cartItems.keys
@@ -2074,7 +2147,7 @@ class _CheckoutState extends State<Checkout> {
         .toList();
 
     if (times.isEmpty) {
-      return "Est. Delivery: --";
+      return "$prefix: --";
     }
 
     var minTime = times.reduce((a, b) => a < b ? a : b);
@@ -2085,7 +2158,7 @@ class _CheckoutState extends State<Checkout> {
       minTime = math.max(5, minTime - padding);
       maxTime = maxTime + padding;
     }
-    return "Est. Delivery: $minTime-$maxTime mins";
+    return "$prefix: $minTime-$maxTime mins";
   }
 
   int? _deliveryMinutesForItem(CartItem item) {

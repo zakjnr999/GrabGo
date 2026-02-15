@@ -5,6 +5,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/grabmart/repository/grabmart_repository.dart';
 import 'package:grab_go_customer/features/groceries/repository/grocery_repository.dart';
+import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/features/home/repository/food_repository.dart';
 import 'package:grab_go_customer/features/pharmacy/repository/pharmacy_repository.dart';
@@ -95,12 +96,81 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
     }
   }
 
+  DaySchedule? _todaySchedule(OpeningHours? openingHours) {
+    if (openingHours == null) return null;
+    switch (DateTime.now().weekday) {
+      case DateTime.monday:
+        return openingHours.monday;
+      case DateTime.tuesday:
+        return openingHours.tuesday;
+      case DateTime.wednesday:
+        return openingHours.wednesday;
+      case DateTime.thursday:
+        return openingHours.thursday;
+      case DateTime.friday:
+        return openingHours.friday;
+      case DateTime.saturday:
+        return openingHours.saturday;
+      case DateTime.sunday:
+        return openingHours.sunday;
+      default:
+        return null;
+    }
+  }
+
+  String _formatOpeningTime(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return '--';
+    final value = raw.trim();
+    final parsed = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(value);
+    if (parsed == null) return value;
+
+    final hour24 = int.tryParse(parsed.group(1)!);
+    final minute = parsed.group(2)!;
+    if (hour24 == null || hour24 < 0 || hour24 > 23) return value;
+
+    final period = hour24 >= 12 ? 'PM' : 'AM';
+    final hour12 = hour24 % 12 == 0 ? 12 : hour24 % 12;
+    return '$hour12:$minute $period';
+  }
+
+  String _vendorAvailabilityText(VendorModel vendor) {
+    if (vendor.is24Hours == true) return 'Open 24 hours';
+
+    final schedule = _todaySchedule(vendor.openingHours);
+    if (schedule == null) return vendor.isOpen ? 'Open now' : 'Closed for now';
+    if (schedule.isClosed) return 'Closed today';
+
+    if (vendor.isOpen) {
+      return 'Closes at ${_formatOpeningTime(schedule.close)}';
+    }
+    return 'Opens at ${_formatOpeningTime(schedule.open)}';
+  }
+
+  String _pickupEtaText(FoodItem item) {
+    final vendorPrep = widget.vendor.averagePreparationTime ?? 0;
+    final baseMinutes = [
+      item.prepTimeMinutes,
+      vendorPrep,
+      item.deliveryTimeMinutes,
+    ].firstWhere((value) => value > 0, orElse: () => 20);
+
+    final minMinutes = baseMinutes.clamp(8, 55).toInt();
+    final extra = item.prepTimeMinutes > 0 ? 6 : 10;
+    final maxMinutes = (minMinutes + extra).clamp(minMinutes + 3, 70).toInt();
+
+    if (maxMinutes - minMinutes <= 2) {
+      return '$minMinutes mins';
+    }
+    return '$minMinutes-$maxMinutes mins';
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final size = MediaQuery.of(context).size;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final vendor = widget.vendor;
+    final vendorEtaMinutes = vendor.averagePreparationTime ?? vendor.averageDeliveryTime ?? 30;
     final sheetCardWidth = size.width * 0.4;
     final sheetImageHeight = (sheetCardWidth * 0.6).clamp(90.0, 120.0);
     final sheetCardHeight = (sheetImageHeight + 110.0).clamp(190.0, 230.0);
@@ -147,15 +217,15 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(12.r),
                                 child: CachedNetworkImage(
-                                  height: 80.w,
-                                  width: 80.w,
+                                  height: 80,
+                                  width: 80,
                                   fit: BoxFit.cover,
                                   imageUrl: ImageOptimizer.getPreviewUrl(vendor.logo ?? '', width: 200),
                                   memCacheWidth: 200,
                                   maxHeightDiskCache: 200,
                                   placeholder: (context, url) => Container(
-                                    height: 80.w,
-                                    width: 80.w,
+                                    height: 80,
+                                    width: 80,
                                     padding: EdgeInsets.all(20.w),
                                     decoration: BoxDecoration(
                                       color: colors.backgroundSecondary,
@@ -174,8 +244,8 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                                     ),
                                   ),
                                   errorWidget: (context, url, error) => Container(
-                                    height: 80.w,
-                                    width: 80.w,
+                                    height: 80,
+                                    width: 80,
                                     padding: EdgeInsets.all(20.w),
                                     decoration: BoxDecoration(
                                       color: colors.backgroundSecondary,
@@ -198,8 +268,8 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                               ),
                               _popularItems.isEmpty && _quickPickupItems.isEmpty
                                   ? Container(
-                                      height: 80.w,
-                                      width: 80.w,
+                                      height: 80,
+                                      width: 80,
                                       decoration: BoxDecoration(
                                         color: Colors.black.withValues(alpha: 0.6),
                                         borderRadius: BorderRadius.circular(12.r),
@@ -283,7 +353,7 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
 
                                     SizedBox(width: 4.w),
                                     Text(
-                                      '${vendor.averageDeliveryTime} mins',
+                                      '$vendorEtaMinutes mins',
                                       style: TextStyle(color: colors.textSecondary, fontSize: 13.sp),
                                     ),
                                   ],
@@ -304,20 +374,12 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
 
                                     SizedBox(width: 6.w),
                                     Text(
-                                      vendor.isOpen ? 'Open' : 'Closed',
+                                      _vendorAvailabilityText(vendor),
                                       style: TextStyle(
                                         color: vendor.isOpen ? colors.accentGreen : colors.error,
-                                        fontSize: 14.sp,
-                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.w500,
                                       ),
-                                    ),
-                                    Padding(
-                                      padding: EdgeInsets.symmetric(horizontal: 6.w),
-                                      child: Text('•', style: TextStyle(color: colors.textSecondary)),
-                                    ),
-                                    Text(
-                                      vendor.isOpen ? 'Closes at 11:00 PM' : 'Opens at 9:00 AM', // Dummy schedule
-                                      style: TextStyle(color: colors.textSecondary, fontSize: 13.sp),
                                     ),
                                   ],
                                 ),
@@ -506,6 +568,7 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
   Widget _buildItemCard(FoodItem item, AppColorsExtension colors, Size size, bool isPopular) {
     final cardWidth = size.width * 0.4;
     final imageHeight = (cardWidth * 0.6).clamp(90.0, 120.0);
+    final pickupEtaText = _pickupEtaText(item);
 
     return GestureDetector(
       onTap: () {
@@ -593,23 +656,59 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                   },
                 ),
 
-                isPopular
-                    ? Positioned(
-                        top: 0.h,
-                        left: 8.w,
-                        child: item.orderCount > 0
-                            ? Positioned(
-                                top: 0,
-                                left: 8.w,
-                                child: VerticalZigzagTag(
-                                  primaryText: item.orderCount.toString(),
-                                  secondaryText: 'orders',
-                                  color: colors.accentOrange,
-                                ),
-                              )
-                            : const SizedBox.shrink(),
-                      )
-                    : const SizedBox.shrink(),
+                if (isPopular && item.orderCount > 0)
+                  Positioned(
+                    top: 0,
+                    left: 8.w,
+                    child: VerticalZigzagTag(
+                      primaryText: item.orderCount.toString(),
+                      secondaryText: 'orders',
+                      color: colors.accentOrange,
+                    ),
+                  ),
+                Consumer<CartProvider>(
+                  builder: (context, cartProvider, _) {
+                    final isInCart = cartProvider.cartItems.containsKey(item);
+                    return Positioned(
+                      right: 8.w,
+                      bottom: 8.h,
+                      child: GestureDetector(
+                        onTap: () async {
+                          if (cartProvider.fulfillmentMode != 'pickup') {
+                            await cartProvider.setFulfillmentMode('pickup');
+                          }
+                          final isNowInCart = cartProvider.cartItems.containsKey(item);
+                          if (isNowInCart) {
+                            await cartProvider.removeItemCompletely(item);
+                          } else {
+                            await cartProvider.addToCart(item, context: context);
+                          }
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 250),
+                          height: 32,
+                          width: 32,
+                          decoration: BoxDecoration(
+                            color: isInCart ? colors.accentOrange : colors.backgroundPrimary.withValues(alpha: 0.95),
+                            borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                          ),
+                          child: Center(
+                            child: SvgPicture.asset(
+                              isInCart ? Assets.icons.check : Assets.icons.plus,
+                              package: 'grab_go_shared',
+                              height: 17,
+                              width: 17,
+                              colorFilter: ColorFilter.mode(
+                                isInCart ? Colors.white : colors.textPrimary,
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
             Padding(
@@ -627,7 +726,7 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                         ),
-                        SizedBox(height: 8.h),
+                        SizedBox(height: 6.h),
                         Row(
                           children: [
                             SvgPicture.asset(
@@ -639,7 +738,7 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                             ),
                             SizedBox(width: 4.w),
                             Text(
-                              "Pickup in ${'${item.deliveryTimeMinutes} mins'}",
+                              "Pickup in $pickupEtaText",
                               style: TextStyle(
                                 fontSize: 11.sp,
                                 fontWeight: FontWeight.w500,
@@ -648,7 +747,7 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                             ),
                           ],
                         ),
-                        SizedBox(height: 8.h),
+                        SizedBox(height: 6.h),
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                           decoration: BoxDecoration(

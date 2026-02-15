@@ -99,6 +99,8 @@ class _CartItemState extends State<CartItem> {
                               borderRadius: const BorderRadius.only(
                                 topLeft: Radius.circular(KBorderSize.borderRadius15),
                                 bottomLeft: Radius.circular(KBorderSize.borderRadius15),
+                                bottomRight: Radius.circular(KBorderSize.borderRadius4),
+                                topRight: Radius.circular(KBorderSize.borderRadius4),
                               ),
                               child: Stack(
                                 children: [

@@ -9,6 +9,7 @@ import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
+import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:provider/provider.dart';
@@ -39,6 +40,13 @@ class Cart extends StatelessWidget {
         backgroundColor: colors.backgroundPrimary,
         body: Consumer<CartProvider>(
           builder: (context, provider, child) {
+            final bool isPickupTab = context.watch<NavigationProvider>().selectedIndex == 1;
+            if (isPickupTab && provider.fulfillmentMode != 'pickup') {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!context.mounted) return;
+                context.read<CartProvider>().setFulfillmentMode('pickup');
+              });
+            }
             final double subtotal = provider.subtotal;
             final double deliveryFee = provider.deliveryFee;
             final double serviceFee = provider.serviceFee;
@@ -48,7 +56,7 @@ class Cart extends StatelessWidget {
             final bool isPricingLoading = provider.isPricingLoading;
             final bool hasCredits = provider.availableCredits > 0;
             final bool useCredits = hasCredits && provider.useCredits;
-            final bool isPickupMode = provider.fulfillmentMode == 'pickup';
+            final bool isPickupMode = provider.fulfillmentMode == 'pickup' || isPickupTab;
 
             return Column(
               children: [
@@ -294,9 +302,7 @@ class Cart extends StatelessWidget {
                                       provider.cartItems,
                                       minMinutes: provider.estimatedDeliveryMin,
                                       maxMinutes: provider.estimatedDeliveryMax,
-                                    ).replaceFirst(
-                                      "Estimated delivery",
-                                      isPickupMode ? "Estimated pickup" : "Estimated delivery",
+                                      isPickupMode: isPickupMode,
                                     ),
                                     style: TextStyle(
                                       color: colors.textSecondary,
@@ -324,7 +330,7 @@ class Cart extends StatelessWidget {
                     ),
                     child: AppButton(
                       width: double.infinity,
-                      onPressed: () {
+                      onPressed: () async {
                         if (provider.cartItems.isEmpty) {
                           AppToastMessage.show(
                             context: context,
@@ -332,6 +338,14 @@ class Cart extends StatelessWidget {
                             backgroundColor: colors.error,
                           );
                         } else {
+                          final navigationProvider = context.read<NavigationProvider>();
+                          final targetMode = navigationProvider.selectedIndex == 1
+                              ? 'pickup'
+                              : provider.fulfillmentMode;
+                          if (provider.fulfillmentMode != targetMode) {
+                            await provider.setFulfillmentMode(targetMode);
+                          }
+                          if (!context.mounted) return;
                           context.push("/checkout");
                         }
                       },
@@ -654,18 +668,24 @@ class Cart extends StatelessWidget {
     );
   }
 
-  String _formatEstimatedDelivery(Map<CartItem, int> cartItems, {int? minMinutes, int? maxMinutes}) {
+  String _formatEstimatedDelivery(
+    Map<CartItem, int> cartItems, {
+    int? minMinutes,
+    int? maxMinutes,
+    bool isPickupMode = false,
+  }) {
+    final prefix = isPickupMode ? "Est. Pickup" : "Est. Delivery";
     if (minMinutes != null && maxMinutes != null && minMinutes > 0 && maxMinutes > 0) {
       if (minMinutes == maxMinutes) {
         const padding = 5;
         minMinutes = math.max(5, minMinutes - padding);
         maxMinutes = maxMinutes + padding;
       }
-      return "Est. Delivery: $minMinutes-$maxMinutes mins";
+      return "$prefix: $minMinutes-$maxMinutes mins";
     }
 
     if (cartItems.isEmpty) {
-      return "Est. Delivery: --";
+      return "$prefix: --";
     }
 
     final times = cartItems.keys
@@ -675,7 +695,7 @@ class Cart extends StatelessWidget {
         .toList();
 
     if (times.isEmpty) {
-      return "Est. Delivery: --";
+      return "$prefix: --";
     }
 
     var minTime = times.reduce((a, b) => a < b ? a : b);
@@ -686,7 +706,7 @@ class Cart extends StatelessWidget {
       minTime = math.max(5, minTime - padding);
       maxTime = maxTime + padding;
     }
-    return "Est. Delivery: $minTime-$maxTime mins";
+    return "$prefix: $minTime-$maxTime mins";
   }
 
   int? _deliveryMinutesForItem(CartItem item) {

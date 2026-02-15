@@ -1912,6 +1912,14 @@ router.put(
         });
       }
 
+      if (order.fulfillmentMode === "pickup" && status === "picked_up") {
+        return res.status(400).json({
+          success: false,
+          message: "Pickup orders must be marked picked up via OTP verification endpoint",
+          code: "PICKUP_OTP_REQUIRED",
+        });
+      }
+
       let pickupCodeForNotification = null;
 
       // Use transaction to update order and handle rider earnings if delivered

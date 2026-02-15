@@ -27,11 +27,14 @@ class _BottomNavigatorState extends State<BottomNavigator> {
   bool _hasNoInternet = false;
   int? _lastCheckedIndex;
 
-  void _onItemSelected(int index) {
+  Future<void> _onItemSelected(int index) async {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    final navigationProvider = Provider.of<NavigationProvider>(context, listen: false);
     final targetMode = index == 1 ? 'pickup' : 'delivery';
-    cartProvider.setFulfillmentMode(targetMode);
-    Provider.of<NavigationProvider>(context, listen: false).setIndex(index);
+    navigationProvider.setIndex(index);
+    if (cartProvider.fulfillmentMode != targetMode) {
+      await cartProvider.setFulfillmentMode(targetMode);
+    }
   }
 
   final List<Widget> _screens = [
@@ -139,7 +142,13 @@ class _BottomNavigatorState extends State<BottomNavigator> {
         final totalAmount = cartProvider.total;
 
         return GestureDetector(
-          onTap: () => context.push("/cart"),
+          onTap: () async {
+            final navigationProvider = Provider.of<NavigationProvider>(context, listen: false);
+            final targetMode = navigationProvider.selectedIndex == 1 ? 'pickup' : 'delivery';
+            await cartProvider.setFulfillmentMode(targetMode);
+            if (!context.mounted) return;
+            context.push("/cart");
+          },
           child: Container(
             width: double.infinity,
             padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
@@ -247,7 +256,9 @@ class _BottomNavigatorState extends State<BottomNavigator> {
     }
 
     return GestureDetector(
-      onTap: () => _onItemSelected(index),
+      onTap: () {
+        _onItemSelected(index);
+      },
       behavior: HitTestBehavior.opaque,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
