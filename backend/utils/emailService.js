@@ -281,7 +281,7 @@ const sendVerificationEmail = async (email, username, otp) => {
           Thanks for signing up with GrabGo. Use the code below to verify your email address.
         </p>
         <div style="text-align:center;margin:22px 0;">
-          <div style="display:inline-block;background:#fff3ee;border:1px solid #ffd8cc;color:#ff5a2c;padding:14px 24px;border-radius:12px;font-size:32px;line-height:1;font-weight:700;letter-spacing:6px;font-family:'Courier New',monospace;">
+          <div style="display:inline-block;background:#fff3ee;color:#ff5a2c;padding:14px 24px;border-radius:12px;font-size:32px;line-height:1;font-weight:700;letter-spacing:6px;font-family:'Courier New',monospace;">
             ${safeOtp}
           </div>
         </div>
