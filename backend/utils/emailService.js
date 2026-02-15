@@ -371,6 +371,37 @@ If you didn’t request a reset, you can ignore this email.
   }
 };
 
+const sendBrandedPreviewEmail = async (email, username = 'there') => {
+  try {
+    const safeUsername = escapeHtml(username || 'there');
+    const subject = 'GrabGo Email Preview';
+    const html = buildEmailLayout({
+      preheader: 'Preview of GrabGo branded emails',
+      heading: 'Email style preview',
+      subheading: 'Simple and minimal',
+      bodyHtml: `
+        <p style="margin:0 0 14px 0;font-size:15px;line-height:1.6;color:#111827;">Hi ${safeUsername},</p>
+        <p style="margin:0 0 12px 0;font-size:15px;line-height:1.6;color:#374151;">
+          This is a preview of the current GrabGo email design.
+        </p>
+        <p style="margin:0;font-size:14px;line-height:1.6;color:#4b5563;">
+          If this looks good in your inbox, the verification and reset emails will use the same style.
+        </p>
+      `,
+    });
+    const text = `Hi ${username || 'there'},\n\nThis is a preview of the current GrabGo email design.`;
+
+    return await sendEmailViaSmtp({
+      to: email,
+      subject,
+      html,
+      text,
+    });
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
 // Send SMS via SendGrid email-to-SMS gateway
 // Note: SendGrid doesn't have native SMS support, so we use email-to-SMS gateways
 // For production, consider using Twilio or AWS SNS for better reliability
@@ -571,6 +602,7 @@ module.exports = {
   generateVerificationToken,
   generateOTP,
   verifyEmailService,
+  sendBrandedPreviewEmail,
   sendVerificationEmail,
   sendPasswordResetEmail,
   sendSMS,
