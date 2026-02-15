@@ -190,66 +190,120 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+const escapeHtml = (value = '') => {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
+
+const getEmailBranding = () => {
+  const brandName = process.env.EMAIL_BRAND_NAME || 'GrabGo';
+  const logoUrl = (process.env.EMAIL_LOGO_URL || '').trim();
+  return { brandName, logoUrl };
+};
+
+const buildEmailLayout = ({ preheader, heading, subheading, bodyHtml }) => {
+  const year = new Date().getFullYear();
+  const { brandName, logoUrl } = getEmailBranding();
+  const logoBlock = logoUrl
+    ? `<img src="${escapeHtml(
+        logoUrl
+      )}" alt="${escapeHtml(
+        brandName
+      )} logo" width="44" height="44" style="display:block;width:44px;height:44px;border-radius:12px;border:0;outline:none;text-decoration:none;">`
+    : `<div style="width:44px;height:44px;border-radius:12px;background:#ffffff;color:#ff5a2c;font-size:18px;line-height:44px;font-weight:700;text-align:center;">GG</div>`;
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(heading)}</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;color:#1f2937;">
+  <span style="display:none!important;visibility:hidden;opacity:0;height:0;width:0;overflow:hidden;">
+    ${escapeHtml(preheader)}
+  </span>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f6f8;padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;">
+          <tr>
+            <td style="background:#ff5a2c;padding:24px 28px;">
+              ${logoBlock}
+              <div style="margin-top:10px;font-size:24px;line-height:1.2;font-weight:700;color:#ffffff;">${escapeHtml(
+                brandName
+              )}</div>
+              <div style="margin-top:8px;font-size:20px;line-height:1.3;font-weight:700;color:#ffffff;">${escapeHtml(
+                heading
+              )}</div>
+              <div style="margin-top:6px;font-size:14px;line-height:1.5;color:#ffe8de;">${escapeHtml(
+                subheading
+              )}</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 28px;">
+              ${bodyHtml}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 28px 24px 28px;">
+              <div style="border-top:1px solid #e5e7eb;padding-top:16px;font-size:12px;color:#6b7280;text-align:center;">
+                © ${year} GrabGo. All rights reserved.
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+};
+
 // Send email verification email with OTP using SMTP
 const sendVerificationEmail = async (email, username, otp) => {
   try {
-    const subject = 'Verify Your Email Address - GrabGo';
-    const html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Verify Your Email</title>
-        </head>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0;">GrabGo</h1>
+    const subject = 'Verify Your Email Address - GrabGo Delivery';
+    const safeUsername = escapeHtml(username || 'there');
+    const safeOtp = escapeHtml(otp);
+    const html = buildEmailLayout({
+      preheader: 'Your GrabGo verification code',
+      heading: 'Verify your email',
+      subheading: 'Complete your signup securely',
+      bodyHtml: `
+        <p style="margin:0 0 14px 0;font-size:15px;line-height:1.6;color:#111827;">Hi ${safeUsername},</p>
+        <p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#374151;">
+          Thanks for signing up with GrabGo. Use the code below to verify your email address.
+        </p>
+        <div style="text-align:center;margin:22px 0;">
+          <div style="display:inline-block;background:#fff3ee;border:1px solid #ffd8cc;color:#ff5a2c;padding:14px 24px;border-radius:12px;font-size:32px;line-height:1;font-weight:700;letter-spacing:6px;font-family:'Courier New',monospace;">
+            ${safeOtp}
           </div>
-          <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
-            <h2 style="color: #333; margin-top: 0;">Hello ${username}!</h2>
-            <p>Thank you for signing up with GrabGo. Please verify your email address to complete your registration.</p>
-            <p>Your verification code is:</p>
-            <div style="text-align: center; margin: 30px 0;">
-              <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                          color: white; 
-                          padding: 20px 30px; 
-                          border-radius: 10px; 
-                          display: inline-block;
-                          font-size: 32px;
-                          font-weight: bold;
-                          letter-spacing: 8px;
-                          font-family: 'Courier New', monospace;">
-                ${otp}
-              </div>
-            </div>
-            <p style="color: #666; font-size: 14px; margin-top: 30px;">
-              Enter this code in the app to verify your email address. This code will expire in 10 minutes.
-            </p>
-            <p style="color: #999; font-size: 12px; margin-top: 20px;">
-              If you didn't create an account with GrabGo, please ignore this email.
-            </p>
-            <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
-            <p style="color: #999; font-size: 12px; text-align: center;">
-              © ${new Date().getFullYear()} GrabGo. All rights reserved.
-            </p>
-          </div>
-        </body>
-        </html>
-      `;
+        </div>
+        <p style="margin:0 0 10px 0;font-size:14px;line-height:1.6;color:#4b5563;">
+          This code expires in <strong>10 minutes</strong>.
+        </p>
+        <p style="margin:0;font-size:13px;line-height:1.6;color:#6b7280;">
+          If you didn’t create an account, you can safely ignore this email.
+        </p>
+      `,
+    });
     const text = `
-        Hello ${username}!
-        
-        Thank you for signing up with GrabGo. Please verify your email address to complete your registration.
-        
-        Your verification code is: ${otp}
-        
-        Enter this code in the app to verify your email address. This code will expire in 10 minutes.
-        
-        If you didn't create an account with GrabGo, please ignore this email.
-        
-        © ${new Date().getFullYear()} GrabGo. All rights reserved.
-      `;
+Hi ${username || 'there'},
+
+Thanks for signing up with GrabGo. Use the code below to verify your email address.
+
+Verification code: ${otp}
+
+This code expires in 10 minutes.
+
+If you didn’t create an account, you can safely ignore this email.
+`;
     return await sendEmailViaSmtp({
       to: email,
       subject,
@@ -267,59 +321,44 @@ const sendPasswordResetEmail = async (email, username, token) => {
   try {
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
     const subject = 'Reset Your Password - GrabGo';
-    const html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Reset Your Password</title>
-        </head>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0;">GrabGo</h1>
-          </div>
-          <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
-            <h2 style="color: #333; margin-top: 0;">Hello ${username}!</h2>
-            <p>You requested to reset your password for your GrabGo account.</p>
-            <p>Click the button below to reset your password:</p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${resetUrl}" 
-                 style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                        color: white; 
-                        padding: 15px 30px; 
-                        text-decoration: none; 
-                        border-radius: 5px; 
-                        display: inline-block;
-                        font-weight: bold;">
-                Reset Password
-              </a>
-            </div>
-            <p style="color: #666; font-size: 14px;">Or copy and paste this link into your browser:</p>
-            <p style="color: #667eea; word-break: break-all; font-size: 12px;">${resetUrl}</p>
-            <p style="color: #666; font-size: 14px; margin-top: 30px;">
-              This link will expire in 1 hour. If you didn't request a password reset, please ignore this email.
-            </p>
-            <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
-            <p style="color: #999; font-size: 12px; text-align: center;">
-              © ${new Date().getFullYear()} GrabGo. All rights reserved.
-            </p>
-          </div>
-        </body>
-        </html>
-      `;
+    const safeUsername = escapeHtml(username || 'there');
+    const safeResetUrl = escapeHtml(resetUrl);
+    const html = buildEmailLayout({
+      preheader: 'Reset your GrabGo password',
+      heading: 'Password reset request',
+      subheading: 'Secure your account',
+      bodyHtml: `
+        <p style="margin:0 0 14px 0;font-size:15px;line-height:1.6;color:#111827;">Hi ${safeUsername},</p>
+        <p style="margin:0 0 18px 0;font-size:15px;line-height:1.6;color:#374151;">
+          We received a request to reset your GrabGo password.
+        </p>
+        <div style="margin:0 0 20px 0;">
+          <a href="${safeResetUrl}" style="display:inline-block;background:#ff5a2c;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:10px;font-size:14px;font-weight:700;">
+            Reset Password
+          </a>
+        </div>
+        <p style="margin:0 0 8px 0;font-size:14px;line-height:1.6;color:#4b5563;">
+          This link expires in <strong>1 hour</strong>.
+        </p>
+        <p style="margin:0 0 8px 0;font-size:13px;line-height:1.6;color:#6b7280;">
+          If the button doesn’t work, copy and paste this link into your browser:
+        </p>
+        <p style="margin:0;word-break:break-all;font-size:12px;line-height:1.6;color:#ff5a2c;">
+          ${safeResetUrl}
+        </p>
+      `,
+    });
     const text = `
-        Hello ${username}!
-        
-        You requested to reset your password for your GrabGo account.
-        
-        Click this link to reset your password:
-        ${resetUrl}
-        
-        This link will expire in 1 hour. If you didn't request a password reset, please ignore this email.
-        
-        © ${new Date().getFullYear()} GrabGo. All rights reserved.
-      `;
+Hi ${username || 'there'},
+
+We received a request to reset your GrabGo password.
+
+Reset link:
+${resetUrl}
+
+This link expires in 1 hour.
+If you didn’t request a reset, you can ignore this email.
+`;
     return await sendEmailViaSmtp({
       to: email,
       subject,
