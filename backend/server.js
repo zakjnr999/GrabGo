@@ -11,6 +11,7 @@ const prisma = require("./config/prisma");
 const connectMongoDB = require("./config/mongodb");
 const { initIO } = require("./utils/socket");
 const callRoutes = require("./routes/calls");
+const { verifyEmailService } = require("./utils/emailService");
 require("dotenv").config();
 
 // Connect to MongoDB for NoSQL data (Hybrid Architecture)
@@ -548,6 +549,25 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", message: "GrabGo API is running" });
 });
 
+// Email health check
+app.get("/api/health/email", async (req, res) => {
+  const result = await verifyEmailService();
+
+  if (result.success) {
+    return res.status(200).json({
+      status: "ok",
+      service: "smtp",
+      ...result,
+    });
+  }
+
+  return res.status(503).json({
+    status: "error",
+    service: "smtp",
+    ...result,
+  });
+});
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ success: false, message: "Route not found" });
@@ -617,10 +637,10 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📡 API available at http://localhost:${PORT}/api`);
-  if (!process.env.RESEND_API_KEY) {
-    console.log("⚠️  Email service (Resend) not configured");
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.log("⚠️  Email service (SMTP) not fully configured");
   }
-  if (!process.env.EMAIL_PASS) {
+  if (!process.env.SENDGRID_API_KEY && !process.env.EMAIL_PASS) {
     console.log("⚠️  SendGrid not configured (used only for legacy email-to-SMS)");
   }
 });

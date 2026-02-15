@@ -1,74 +1,110 @@
 const sgMail = require('@sendgrid/mail');
-const axios = require('axios');
+const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const twilio = require('twilio');
 
 // Initialize SendGrid (used for legacy email-to-SMS only)
 const initializeSendGrid = () => {
-  if (!process.env.EMAIL_PASS) {
+  const sendgridApiKey = process.env.SENDGRID_API_KEY || process.env.EMAIL_PASS;
+  if (!sendgridApiKey) {
     return false;
   }
 
-  sgMail.setApiKey(process.env.EMAIL_PASS);
+  sgMail.setApiKey(sendgridApiKey);
   return true;
 };
 
-// Initialize Resend (email)
-const initializeResend = () => {
-  if (!process.env.RESEND_API_KEY) {
-    return false;
+// Initialize SMTP transporter (email)
+let smtpTransporter = null;
+
+const initializeSmtpTransporter = () => {
+  if (smtpTransporter) {
+    return smtpTransporter;
   }
-  return true;
+
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const port = Number(process.env.SMTP_PORT || 587);
+
+  if (!host || !user || !pass) {
+    return null;
+  }
+
+  smtpTransporter = nodemailer.createTransport({
+    host,
+    port,
+    secure: process.env.SMTP_SECURE === 'true' || port === 465,
+    auth: { user, pass },
+    connectionTimeout: 30000,
+    greetingTimeout: 30000,
+    socketTimeout: 30000,
+  });
+
+  return smtpTransporter;
 };
 
-const getResendFrom = () => {
+const getSmtpFrom = () => {
   const fromEmail =
-    process.env.RESEND_FROM_EMAIL ||
+    process.env.SMTP_FROM_EMAIL ||
     process.env.EMAIL_FROM_EMAIL ||
+    process.env.SMTP_USER ||
     'noreply@grabgo.com';
   const fromName =
-    process.env.RESEND_FROM_NAME || process.env.EMAIL_FROM_NAME || 'GrabGo';
+    process.env.SMTP_FROM_NAME ||
+    process.env.EMAIL_FROM_NAME ||
+    'GrabGo';
+
   return `${fromName} <${fromEmail}>`;
 };
 
-const sendEmailViaResend = async ({ to, subject, html, text }) => {
+const isSmtpConfigured = () => {
+  return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+};
+
+const sendEmailViaSmtp = async ({ to, subject, html, text }) => {
   try {
-    if (!initializeResend()) {
-      return { success: false, message: 'Email service not configured' };
+    const transporter = initializeSmtpTransporter();
+    if (!transporter) {
+      return {
+        success: false,
+        message: 'SMTP email service not configured',
+      };
     }
 
-    const from = getResendFrom();
+    const from = getSmtpFrom();
     const maxRetries = 3;
     let lastError;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        const response = await axios.post(
-          'https://api.resend.com/emails',
-          { from, to, subject, html, text },
-          {
-            headers: {
-              Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            timeout: 30000,
-          }
-        );
+        const info = await transporter.sendMail({
+          from,
+          to,
+          subject,
+          html,
+          text,
+        });
 
-        const messageId =
-          response?.data?.id ||
-          response?.data?.data?.id ||
-          response?.headers?.['x-message-id'] ||
-          'sent';
-        return { success: true, messageId };
+        return {
+          success: true,
+          messageId: info?.messageId || 'sent',
+          accepted: info?.accepted || [],
+          rejected: info?.rejected || [],
+        };
       } catch (sendError) {
         lastError = sendError;
-        const status = sendError.response?.status;
+        const responseCode = sendError?.responseCode;
+        const message = String(sendError?.message || '').toLowerCase();
         const isRetryable =
-          sendError.code === 'ETIMEDOUT' ||
-          sendError.message?.toLowerCase().includes('timeout') ||
-          status === 429 ||
-          (status && status >= 500);
+          sendError?.code === 'ETIMEDOUT' ||
+          sendError?.code === 'ESOCKET' ||
+          sendError?.code === 'ECONNECTION' ||
+          message.includes('timeout') ||
+          responseCode === 421 ||
+          responseCode === 450 ||
+          responseCode === 451 ||
+          responseCode === 452;
 
         if (isRetryable && attempt < maxRetries) {
           const waitTime = attempt * 2000;
@@ -82,13 +118,53 @@ const sendEmailViaResend = async ({ to, subject, html, text }) => {
 
     throw lastError;
   } catch (error) {
-    const errorMessage =
-      error?.response?.data?.message ||
-      error?.response?.data?.error ||
-      error.message ||
-      'Failed to send email';
-    console.error('Error sending email via Resend:', errorMessage);
+    const errorMessage = error?.message || 'Failed to send email';
+    console.error('Error sending email via SMTP:', errorMessage);
     return { success: false, error: errorMessage };
+  }
+};
+
+const verifyEmailService = async () => {
+  if (!isSmtpConfigured()) {
+    return {
+      success: false,
+      configured: false,
+      message: 'SMTP is not configured',
+    };
+  }
+
+  try {
+    const transporter = initializeSmtpTransporter();
+    if (!transporter) {
+      return {
+        success: false,
+        configured: false,
+        message: 'SMTP is not configured',
+      };
+    }
+
+    await transporter.verify();
+
+    return {
+      success: true,
+      configured: true,
+      message: 'SMTP connection verified',
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT || 587),
+      secure: process.env.SMTP_SECURE === 'true' || Number(process.env.SMTP_PORT || 587) === 465,
+      from: getSmtpFrom(),
+    };
+  } catch (error) {
+    return {
+      success: false,
+      configured: true,
+      message: 'SMTP connection failed',
+      error: error.message,
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT || 587),
+      secure: process.env.SMTP_SECURE === 'true' || Number(process.env.SMTP_PORT || 587) === 465,
+      from: getSmtpFrom(),
+    };
   }
 };
 
@@ -114,7 +190,7 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Send email verification email with OTP using Resend API
+// Send email verification email with OTP using SMTP
 const sendVerificationEmail = async (email, username, otp) => {
   try {
     const subject = 'Verify Your Email Address - GrabGo';
@@ -174,7 +250,7 @@ const sendVerificationEmail = async (email, username, otp) => {
         
         © ${new Date().getFullYear()} GrabGo. All rights reserved.
       `;
-    return await sendEmailViaResend({
+    return await sendEmailViaSmtp({
       to: email,
       subject,
       html,
@@ -186,7 +262,7 @@ const sendVerificationEmail = async (email, username, otp) => {
   }
 };
 
-// Send password reset email using Resend API
+// Send password reset email using SMTP
 const sendPasswordResetEmail = async (email, username, token) => {
   try {
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
@@ -244,7 +320,7 @@ const sendPasswordResetEmail = async (email, username, token) => {
         
         © ${new Date().getFullYear()} GrabGo. All rights reserved.
       `;
-    return await sendEmailViaResend({
+    return await sendEmailViaSmtp({
       to: email,
       subject,
       html,
@@ -262,7 +338,7 @@ const sendPasswordResetEmail = async (email, username, token) => {
 const sendSMS = async (phoneNumber, otp) => {
   try {
     if (!initializeSendGrid()) {
-      console.error('❌ SMS service not configured - EMAIL_PASS environment variable is missing');
+      console.error('❌ SMS service not configured - SENDGRID_API_KEY is missing');
       return { success: false, message: 'SMS service not configured' };
     }
 
@@ -455,6 +531,7 @@ const sendSMS = async (phoneNumber, otp) => {
 module.exports = {
   generateVerificationToken,
   generateOTP,
+  verifyEmailService,
   sendVerificationEmail,
   sendPasswordResetEmail,
   sendSMS,

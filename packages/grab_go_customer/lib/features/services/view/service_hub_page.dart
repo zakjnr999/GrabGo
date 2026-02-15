@@ -23,6 +23,7 @@ import 'package:grab_go_customer/features/vendors/viewmodel/vendor_provider.dart
 import 'package:grab_go_customer/features/vendors/widgets/vendor_horizontal_section.dart';
 import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart';
 import 'package:grab_go_customer/shared/widgets/area_unavailable_screen.dart';
+import 'package:grab_go_customer/shared/widgets/all_categories_sheet.dart';
 import 'package:grab_go_customer/shared/widgets/deals_section.dart';
 import 'package:grab_go_customer/shared/widgets/popular_section.dart';
 import 'package:grab_go_customer/shared/widgets/popular_item_card.dart';
@@ -766,7 +767,36 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
     return Column(
       children: [
         SizedBox(height: 14.h),
-        SectionHeader(title: title, sectionTotal: categories.length, accentColor: accentColor, onSeeAll: () {}),
+        SectionHeader(
+          title: title,
+          sectionTotal: categories.length,
+          accentColor: accentColor,
+          onSeeAll: () {
+            AllCategoriesSheet.show<T>(
+              context: context,
+              title: title,
+              categories: categories,
+              getName: getName,
+              getEmoji: getEmoji,
+              getId: getId,
+              accentColor: accentColor,
+              onCategorySelected: (category) {
+                final categoryId = getId(category);
+                final categoryName = getName(category);
+                final categoryEmoji = getEmoji(category);
+                context.push(
+                  '/categoryItems/$categoryId',
+                  extra: {
+                    'categoryId': categoryId,
+                    'categoryName': categoryName,
+                    'categoryEmoji': categoryEmoji,
+                    'serviceType': serviceType,
+                  },
+                );
+              },
+            );
+          },
+        ),
         SizedBox(height: 10.h),
         ServiceCategoryList<T>(
           categories: categories,

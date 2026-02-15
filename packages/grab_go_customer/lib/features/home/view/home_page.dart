@@ -21,6 +21,7 @@ import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_customer/shared/widgets/area_unavailable_screen.dart';
+import 'package:grab_go_customer/shared/widgets/all_categories_sheet.dart';
 import 'package:grab_go_customer/shared/widgets/category_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
 import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
@@ -135,7 +136,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       if (shouldRefresh) {
         if (kDebugMode) {
-          print('📍 [HOME] Significant location change detected, triggering refresh...');
+          print('[HOME] Significant location change detected, triggering refresh...');
         }
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _refreshData(refreshAllServices: true);
@@ -213,7 +214,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       serviceProvider.resetToDefault();
 
-      // Check if we have any cached data at all
       final hasCachedData =
           foodProvider.categories.isNotEmpty ||
           groceryProvider.items.isNotEmpty ||
@@ -278,10 +278,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final vendorProvider = Provider.of<VendorProvider>(context, listen: false);
 
     if (kDebugMode) {
-      print('🔄 [HOME] Refreshing data (all services: $refreshAllServices)...');
+      print('[HOME] Refreshing data (all services: $refreshAllServices)...');
       final locationData = CacheService.getUserLocation();
-      print('📍 [HOME] Current location: ${locationData?['latitude']}, ${locationData?['longitude']}');
-      print('🏪 [HOME] Active service: ${serviceProvider.currentService}');
+      print('[HOME] Current location: ${locationData?['latitude']}, ${locationData?['longitude']}');
+      print('[HOME] Active service: ${serviceProvider.currentService}');
     }
 
     try {
@@ -323,7 +323,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ [HOME] Error refreshing data: $e');
+        print('[HOME] Error refreshing data: $e');
       }
     } finally {
       if (mounted) {
@@ -336,7 +336,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _refreshUnreadNotificationCount();
 
     if (kDebugMode) {
-      print('✅ [HOME] Data refresh complete!');
+      print('[HOME] Data refresh complete!');
     }
   }
 
@@ -351,7 +351,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ [HOME] Failed to fetch unread notification count: $e');
+        print('[HOME] Failed to fetch unread notification count: $e');
       }
     }
   }
@@ -675,7 +675,32 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               title: "Food Categories",
               accentColor: colors.accentOrange,
               sectionTotal: categoriesToShow.length.toInt(),
-              onSeeAll: () {},
+              onSeeAll: () {
+                AllCategoriesSheet.show<FoodCategoryModel>(
+                  context: context,
+                  title: "All Food Categories",
+                  categories: categoriesToShow,
+                  getName: (cat) => cat.name,
+                  getEmoji: (cat) => cat.emoji,
+                  getId: (cat) => cat.id,
+                  selectedCategoryId: _selectedCategory?.id,
+                  accentColor: colors.accentOrange,
+                  onCategorySelected: (category) {
+                    setState(() {
+                      _selectedCategory = category;
+                    });
+                    context.push(
+                      '/categoryItems/${category.id}',
+                      extra: {
+                        'categoryId': category.id,
+                        'categoryName': category.name,
+                        'categoryEmoji': category.emoji,
+                        'serviceType': 'food',
+                      },
+                    );
+                  },
+                );
+              },
             ),
             SizedBox(height: 10.h),
             ServiceCategoryList<FoodCategoryModel>(
@@ -1022,9 +1047,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  /// Build grocery content
   Widget _buildGroceryCategories(GroceryProvider groceryProvider, bool isDark, Size size, AppColorsExtension colors) {
-    // Combine categories
     final categoriesWithType = [...groceryProvider.categories];
 
     if (groceryProvider.isLoadingCategories) {
@@ -1039,7 +1062,23 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             title: "Categories",
             accentColor: colors.accentOrange,
             sectionTotal: groceryProvider.categories.length.toInt(),
-            onSeeAll: () {},
+            onSeeAll: () {
+              AllCategoriesSheet.show<GroceryCategory>(
+                context: context,
+                title: "All Grocery Categories",
+                categories: categoriesWithType,
+                getName: (cat) => cat.name,
+                getEmoji: (cat) => cat.emoji,
+                getId: (cat) => cat.id,
+                selectedCategoryId: _selectedGroceryCategory?.id,
+                accentColor: colors.accentOrange,
+                onCategorySelected: (category) {
+                  setState(() {
+                    _selectedGroceryCategory = category;
+                  });
+                },
+              );
+            },
           ),
           SizedBox(height: 10.h),
           ServiceCategoryList<GroceryCategory>(
@@ -1076,7 +1115,28 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 title: "Categories",
                 accentColor: colors.accentOrange,
                 sectionTotal: pharmacyProvider.categories.length.toInt(),
-                onSeeAll: () {},
+                onSeeAll: () {
+                  AllCategoriesSheet.show<PharmacyCategory>(
+                    context: context,
+                    title: "All Pharmacy Categories",
+                    categories: pharmacyProvider.categories,
+                    getName: (cat) => cat.name,
+                    getEmoji: (cat) => cat.emoji,
+                    getId: (cat) => cat.id,
+                    accentColor: colors.accentOrange,
+                    onCategorySelected: (category) {
+                      context.push(
+                        '/categoryItems/${category.id}',
+                        extra: {
+                          'categoryId': category.id,
+                          'categoryName': category.name,
+                          'categoryEmoji': category.emoji,
+                          'serviceType': 'pharmacy',
+                        },
+                      );
+                    },
+                  );
+                },
               ),
               SizedBox(height: 10.h),
               ServiceCategoryList<PharmacyCategory>(
@@ -1122,7 +1182,28 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 title: "Categories",
                 accentColor: colors.accentOrange,
                 sectionTotal: grabMartProvider.categories.length.toInt(),
-                onSeeAll: () {},
+                onSeeAll: () {
+                  AllCategoriesSheet.show<GrabMartCategory>(
+                    context: context,
+                    title: "All GrabMart Categories",
+                    categories: grabMartProvider.categories,
+                    getName: (cat) => cat.name,
+                    getEmoji: (cat) => cat.emoji,
+                    getId: (cat) => cat.id,
+                    accentColor: colors.accentOrange,
+                    onCategorySelected: (category) {
+                      context.push(
+                        '/categoryItems/${category.id}',
+                        extra: {
+                          'categoryId': category.id,
+                          'categoryName': category.name,
+                          'categoryEmoji': category.emoji,
+                          'serviceType': 'convenience',
+                        },
+                      );
+                    },
+                  );
+                },
               ),
               SizedBox(height: 10.h),
               ServiceCategoryList<GrabMartCategory>(
@@ -1538,7 +1619,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       builder: (context, provider, _) {
         if (provider.popularItems.isEmpty) return const SizedBox.shrink();
 
-        // Convert PharmacyItem to FoodItem for PopularSection widget
         final popularItems = provider.popularItems.take(10).map((item) {
           return FoodItem(
             id: item.id,
@@ -1648,14 +1728,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  // ==================== GRABMART SECTIONS ====================
-
   Widget _buildGrabMartSpecialOffersSection() {
     return Consumer<GrabMartProvider>(
       builder: (context, provider, _) {
         if (provider.specialOffers.isEmpty) return const SizedBox.shrink();
 
-        // Convert GrabMartItem to FoodItem for DealsSection widget
         final dealItems = provider.specialOffers.take(10).map((item) {
           return FoodItem(
             id: item.id,
@@ -1702,7 +1779,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       builder: (context, provider, _) {
         if (provider.quickPicks.isEmpty) return const SizedBox.shrink();
 
-        // Convert GrabMartItem to FoodItem for PopularSection widget
         final quickPickItems = provider.quickPicks.take(10).map((item) {
           return FoodItem(
             id: item.id,

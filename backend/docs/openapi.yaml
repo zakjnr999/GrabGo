@@ -3280,3 +3280,33 @@ paths:
                   message:
                     type: string
                     example: GrabGo API is running
+
+  /health/email:
+    get:
+      tags: [Health]
+      summary: SMTP email health check
+      responses:
+        '200':
+          description: SMTP configured and reachable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  service:
+                    type: string
+                    example: smtp
+                  success:
+                    type: boolean
+                    example: true
+                  configured:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: SMTP connection verified
+        '503':
+          description: SMTP unavailable or not configured

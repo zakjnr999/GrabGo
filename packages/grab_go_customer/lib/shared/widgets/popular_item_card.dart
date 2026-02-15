@@ -36,6 +36,7 @@ class PopularItemCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final effectiveAccentColor = accentColor ?? colors.accentOrange;
+    final shouldShowOrderTag = !useVerticalZigzagTag || orderCount > 0;
     Size size = MediaQuery.sizeOf(context);
     final cardWidth = size.width * 0.5;
     final imageHeight = (cardWidth * 0.62).clamp(96.0, 120.0);
@@ -100,49 +101,50 @@ class PopularItemCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                Positioned(
-                  top: 0,
-                  left: useVerticalZigzagTag ? 8.w : 0.w,
-                  child: useVerticalZigzagTag
-                      ? VerticalZigzagTag(
-                          primaryText: orderCount.toString(),
-                          secondaryText: 'orders',
-                          color: accentColor ?? const Color(0xFFE65100),
-                        )
-                      : Container(
-                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: accentColor == null
-                                  ? [colors.error, colors.accentOrange]
-                                  : [effectiveAccentColor.withValues(alpha: 0.9), effectiveAccentColor],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
+                if (shouldShowOrderTag)
+                  Positioned(
+                    top: 0,
+                    left: useVerticalZigzagTag ? 8.w : 0.w,
+                    child: useVerticalZigzagTag
+                        ? VerticalZigzagTag(
+                            primaryText: orderCount.toString(),
+                            secondaryText: 'orders',
+                            color: accentColor ?? const Color(0xFFE65100),
+                          )
+                        : Container(
+                            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: accentColor == null
+                                    ? [colors.error, colors.accentOrange]
+                                    : [effectiveAccentColor.withValues(alpha: 0.9), effectiveAccentColor],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: const BorderRadius.only(
+                                bottomRight: Radius.circular(KBorderSize.borderMedium),
+                                topLeft: Radius.circular(KBorderSize.borderMedium),
+                              ),
                             ),
-                            borderRadius: const BorderRadius.only(
-                              bottomRight: Radius.circular(KBorderSize.borderMedium),
-                              topLeft: Radius.circular(KBorderSize.borderMedium),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SvgPicture.asset(
+                                  Assets.icons.flame,
+                                  package: 'grab_go_shared',
+                                  height: 16,
+                                  width: 16.w,
+                                  colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                ),
+                                SizedBox(width: 4.w),
+                                Text(
+                                  "$orderCount orders",
+                                  style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w700),
+                                ),
+                              ],
                             ),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SvgPicture.asset(
-                                Assets.icons.flame,
-                                package: 'grab_go_shared',
-                                height: 16,
-                                width: 16.w,
-                                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                              ),
-                              SizedBox(width: 4.w),
-                              Text(
-                                "$orderCount orders",
-                                style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w700),
-                              ),
-                            ],
-                          ),
-                        ),
-                ),
+                  ),
                 Consumer<FavoritesProvider>(
                   builder: (context, favoriteProvider, child) {
                     final bool isFavorite = item is FoodItem ? favoriteProvider.isFavorite(item as FoodItem) : false;
