@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:grab_go_customer/features/home/view/item_reviews_page.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart';
@@ -251,7 +252,6 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          // Show brand for store items
                                           if (isStoreItem) ...[
                                             Builder(
                                               builder: (context) {
@@ -279,12 +279,11 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                               },
                                             ),
                                           ],
-                                          // Item name
                                           Text(
                                             itemName,
                                             style: TextStyle(
                                               color: colors.textPrimary,
-                                              fontSize: 22.sp,
+                                              fontSize: 20.sp,
                                               fontWeight: FontWeight.w800,
                                               height: 1.2,
                                             ),
@@ -385,7 +384,10 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                               ),
                                               SizedBox(width: 4.w),
                                               GestureDetector(
-                                                onTap: () => context.push("/vendorRatings"),
+                                                onTap: () => Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(builder: (context) => const ItemReviewsPage()),
+                                                ),
                                                 child: SvgPicture.asset(
                                                   Assets.icons.navArrowRight,
                                                   package: 'grab_go_shared',
@@ -509,7 +511,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                         runSpacing: 8.h,
                                         children: widget.foodItem!.ingredients.map((ingredient) {
                                           return Container(
-                                            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                                             decoration: BoxDecoration(
                                               color: colors.accentOrange.withValues(alpha: 0.1),
                                               borderRadius: BorderRadius.circular(20.r),
@@ -833,7 +835,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
   Text _buildSectionHeader(AppColorsExtension colors, String name) {
     return Text(
       name,
-      style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
     );
   }
 

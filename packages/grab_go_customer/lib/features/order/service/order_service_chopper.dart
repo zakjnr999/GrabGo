@@ -35,7 +35,12 @@ class CreateOrderRequest {
   final String orderNumber;
   final String restaurant;
   final List<OrderItem> items;
-  final DeliveryAddress deliveryAddress;
+  final String fulfillmentMode;
+  final DeliveryAddress? deliveryAddress;
+  final String? pickupContactName;
+  final String? pickupContactPhone;
+  final bool? acceptNoShowPolicy;
+  final String? noShowPolicyVersion;
   final String paymentMethod;
   final bool? useCredits;
   final String? notes;
@@ -45,7 +50,12 @@ class CreateOrderRequest {
     required this.orderNumber,
     required this.restaurant,
     required this.items,
-    required this.deliveryAddress,
+    required this.fulfillmentMode,
+    this.deliveryAddress,
+    this.pickupContactName,
+    this.pickupContactPhone,
+    this.acceptNoShowPolicy,
+    this.noShowPolicyVersion,
     required this.paymentMethod,
     this.useCredits,
     this.notes,

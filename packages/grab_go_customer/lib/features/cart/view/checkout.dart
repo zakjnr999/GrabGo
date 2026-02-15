@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -21,7 +20,6 @@ import 'package:grab_go_customer/shared/services/paystack_service.dart' as payst
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:grab_go_shared/shared/services/cache_service.dart';
 
 class Checkout extends StatefulWidget {
   const Checkout({super.key});
@@ -50,6 +48,9 @@ class _CheckoutState extends State<Checkout> {
 
   final TextEditingController _restaurantInstructionController = TextEditingController();
   final TextEditingController _deliveryInstructionController = TextEditingController();
+  final TextEditingController _pickupContactNameController = TextEditingController();
+  final TextEditingController _pickupContactPhoneController = TextEditingController();
+  bool _pickupNoShowAccepted = false;
 
   @override
   void initState() {
@@ -62,6 +63,8 @@ class _CheckoutState extends State<Checkout> {
   void dispose() {
     _restaurantInstructionController.dispose();
     _deliveryInstructionController.dispose();
+    _pickupContactNameController.dispose();
+    _pickupContactPhoneController.dispose();
     super.dispose();
   }
 
@@ -72,9 +75,12 @@ class _CheckoutState extends State<Checkout> {
       if (!mounted) return;
       setState(() {
         _userPhone = formatted;
+        if (_pickupContactPhoneController.text.isEmpty && formatted != null) {
+          _pickupContactPhoneController.text = formatted;
+        }
       });
     } catch (e) {
-      debugPrint('❌ Checkout: Failed to load user phone: $e');
+      debugPrint('Checkout: Failed to load user phone: $e');
     }
   }
 
@@ -304,7 +310,9 @@ class _CheckoutState extends State<Checkout> {
             final double serviceFee = provider.serviceFee;
             final double rainFee = provider.rainFee;
             final double creditsApplied = provider.creditsApplied;
-            final double total = provider.total + _tipAmount;
+            final bool isPickupMode = provider.fulfillmentMode == 'pickup';
+            final double effectiveTip = isPickupMode ? 0.0 : _tipAmount;
+            final double total = provider.total + effectiveTip;
             final bool isPricingLoading = provider.isPricingLoading;
 
             return Column(
@@ -359,60 +367,139 @@ class _CheckoutState extends State<Checkout> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                          child: Text(
-                            "Delivery Address",
-                            style: TextStyle(
-                              fontFamily: "Lato",
-                              package: 'grab_go_shared',
-                              color: colors.textPrimary,
-                              fontSize: 16.sp,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        if (_isLoadingAddresses) ...[
-                          _buildAddressShimmerTile(colors, isDark),
-                          _buildAddressShimmerTile(colors, isDark),
-                        ],
-                        if (!_isLoadingAddresses && _savedAddresses.isNotEmpty)
-                          ..._savedAddresses.map(
-                            (address) => _buildAddressTile(
-                              id: _addressSelectionKey(address),
-                              title: _addressTitle(address),
-                              phone: _userPhone,
-                              address: address.formattedAddress,
-                              latitude: address.latitude,
-                              longitude: address.longitude,
-                              context: context,
-                            ),
-                          ),
-                        if (!_isLoadingAddresses && _savedAddresses.isEmpty && confirmedAddress != null)
-                          _buildAddressTile(
-                            id: _addressSelectionKey(confirmedAddress),
-                            title: _addressTitle(confirmedAddress),
-                            phone: _userPhone,
-                            address: confirmedAddress.formattedAddress,
-                            latitude: confirmedAddress.latitude,
-                            longitude: confirmedAddress.longitude,
-                            context: context,
-                          ),
-                        if (!_isLoadingAddresses && _savedAddresses.isEmpty && confirmedAddress == null)
+                        if (!isPickupMode) ...[
                           Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
+                            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
                             child: Text(
-                              "No saved addresses yet.",
+                              "Delivery Address",
                               style: TextStyle(
-                                color: colors.textSecondary,
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w500,
+                                fontFamily: "Lato",
+                                package: 'grab_go_shared',
+                                color: colors.textPrimary,
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
                           ),
-                        if (!_isLoadingAddresses && _savedAddresses.isEmpty) _buildCurrentLocationTile(context),
-
-                        SizedBox(height: 8.h),
+                          if (_isLoadingAddresses) ...[
+                            _buildAddressShimmerTile(colors, isDark),
+                            _buildAddressShimmerTile(colors, isDark),
+                          ],
+                          if (!_isLoadingAddresses && _savedAddresses.isNotEmpty)
+                            ..._savedAddresses.map(
+                              (address) => _buildAddressTile(
+                                id: _addressSelectionKey(address),
+                                title: _addressTitle(address),
+                                phone: _userPhone,
+                                address: address.formattedAddress,
+                                latitude: address.latitude,
+                                longitude: address.longitude,
+                                context: context,
+                              ),
+                            ),
+                          if (!_isLoadingAddresses && _savedAddresses.isEmpty && confirmedAddress != null)
+                            _buildAddressTile(
+                              id: _addressSelectionKey(confirmedAddress),
+                              title: _addressTitle(confirmedAddress),
+                              phone: _userPhone,
+                              address: confirmedAddress.formattedAddress,
+                              latitude: confirmedAddress.latitude,
+                              longitude: confirmedAddress.longitude,
+                              context: context,
+                            ),
+                          if (!_isLoadingAddresses && _savedAddresses.isEmpty && confirmedAddress == null)
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
+                              child: Text(
+                                "No saved addresses yet.",
+                                style: TextStyle(
+                                  color: colors.textSecondary,
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          if (!_isLoadingAddresses && _savedAddresses.isEmpty) _buildCurrentLocationTile(context),
+                          SizedBox(height: 8.h),
+                        ] else ...[
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                            child: Text(
+                              "Pickup Contact",
+                              style: TextStyle(
+                                fontFamily: "Lato",
+                                package: 'grab_go_shared',
+                                color: colors.textPrimary,
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 20.w),
+                            child: TextField(
+                              controller: _pickupContactNameController,
+                              style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                              decoration: InputDecoration(
+                                hintText: "Contact name",
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                                isDense: true,
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 10.h),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 20.w),
+                            child: TextField(
+                              controller: _pickupContactPhoneController,
+                              keyboardType: TextInputType.phone,
+                              style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                              decoration: InputDecoration(
+                                hintText: "Contact phone (e.g. +233...)",
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                                isDense: true,
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 12.h),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 20.w),
+                            child: Container(
+                              padding: EdgeInsets.all(12.r),
+                              decoration: BoxDecoration(
+                                color: colors.backgroundSecondary,
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Checkbox(
+                                    value: _pickupNoShowAccepted,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _pickupNoShowAccepted = value ?? false;
+                                      });
+                                    },
+                                  ),
+                                  Expanded(
+                                    child: Padding(
+                                      padding: EdgeInsets.only(top: 10.h),
+                                      child: Text(
+                                        "I understand that if I do not pick up within 30 minutes after ready, the order will be cancelled and no refund will be issued.",
+                                        style: TextStyle(
+                                          color: colors.textSecondary,
+                                          fontSize: 11.sp,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 8.h),
+                        ],
 
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
@@ -479,147 +566,142 @@ class _CheckoutState extends State<Checkout> {
                           ),
                         ],
 
-                        SizedBox(height: 16.h),
-
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                          child: Text(
-                            "Delivery Instructions",
-                            style: TextStyle(
-                              fontFamily: "Lato",
-                              package: 'grab_go_shared',
-                              color: colors.textPrimary,
-                              fontSize: 16.sp,
-                              fontWeight: FontWeight.w800,
+                        if (!isPickupMode) ...[
+                          SizedBox(height: 16.h),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                            child: Text(
+                              "Delivery Instructions",
+                              style: TextStyle(
+                                fontFamily: "Lato",
+                                package: 'grab_go_shared',
+                                color: colors.textPrimary,
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           ),
-                        ),
-
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20.w),
-                          child: Wrap(
-                            spacing: 8.w,
-                            runSpacing: 8.h,
-                            children: [
-                              _buildDeliveryInstructionChip("Leave at door", colors),
-                              _buildDeliveryInstructionChip("Ring doorbell", colors),
-                              _buildDeliveryInstructionChip("Text on arrival", colors),
-                              _buildDeliveryInstructionChip("Call on arrival", colors),
-                              _buildCustomDeliveryInstructionChip(colors),
-                            ],
-                          ),
-                        ),
-
-                        if (_showCustomDeliveryInstruction) ...[
-                          SizedBox(height: 12.h),
                           Padding(
                             padding: EdgeInsets.symmetric(horizontal: 20.w),
-                            child: Container(
-                              padding: EdgeInsets.all(16.r),
-                              decoration: BoxDecoration(
-                                color: colors.backgroundPrimary,
-                                borderRadius: BorderRadius.circular(12.r),
-                                border: Border.all(color: colors.inputBorder, width: 0.5),
-                              ),
-                              child: TextField(
-                                controller: _deliveryInstructionController,
-                                maxLines: 2,
-                                style: TextStyle(
-                                  color: colors.textPrimary,
-                                  fontSize: 14.sp,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                decoration: InputDecoration(
-                                  hintText: "Enter custom delivery instructions",
-                                  hintStyle: TextStyle(
-                                    color: colors.textSecondary,
-                                    fontSize: 13.sp,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  border: InputBorder.none,
-                                  contentPadding: EdgeInsets.zero,
-                                ),
-                              ),
+                            child: Wrap(
+                              spacing: 8.w,
+                              runSpacing: 8.h,
+                              children: [
+                                _buildDeliveryInstructionChip("Leave at door", colors),
+                                _buildDeliveryInstructionChip("Ring doorbell", colors),
+                                _buildDeliveryInstructionChip("Text on arrival", colors),
+                                _buildDeliveryInstructionChip("Call on arrival", colors),
+                                _buildCustomDeliveryInstructionChip(colors),
+                              ],
                             ),
                           ),
-                        ],
-
-                        SizedBox(height: 16.h),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                          child: Text(
-                            "Tip Delivery Driver",
-                            style: TextStyle(
-                              fontFamily: "Lato",
-                              package: 'grab_go_shared',
-                              color: colors.textPrimary,
-                              fontSize: 16.sp,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-
-                        // Tip amount chips
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20.w),
-                          child: Wrap(
-                            spacing: 8.w,
-                            runSpacing: 8.h,
-                            children: [
-                              _buildTipChip(0.0, "No tip", colors),
-                              _buildTipChip(2.0, "GHS 2", colors),
-                              _buildTipChip(5.0, "GHS 5", colors),
-                              _buildTipChip(10.0, "GHS 10", colors),
-                              _buildCustomTipChip(colors),
-                            ],
-                          ),
-                        ),
-
-                        if (_showCustomTip) ...[
-                          SizedBox(height: 12.h),
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 20.w),
-                            child: Container(
-                              padding: EdgeInsets.all(16.r),
-                              decoration: BoxDecoration(
-                                color: colors.backgroundPrimary,
-                                borderRadius: BorderRadius.circular(12.r),
-                                border: Border.all(color: colors.inputBorder, width: 0.5),
-                              ),
-                              child: TextField(
-                                keyboardType: TextInputType.number,
-                                onChanged: (value) {
-                                  final amount = double.tryParse(value);
-                                  if (amount != null && amount >= 0) {
-                                    setState(() {
-                                      _tipAmount = amount;
-                                    });
-                                  }
-                                },
-                                style: TextStyle(
-                                  color: colors.textPrimary,
-                                  fontSize: 14.sp,
-                                  fontWeight: FontWeight.w500,
+                          if (_showCustomDeliveryInstruction) ...[
+                            SizedBox(height: 12.h),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 20.w),
+                              child: Container(
+                                padding: EdgeInsets.all(16.r),
+                                decoration: BoxDecoration(
+                                  color: colors.backgroundPrimary,
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  border: Border.all(color: colors.inputBorder, width: 0.5),
                                 ),
-                                decoration: InputDecoration(
-                                  hintText: "Enter custom tip amount (GHS)",
-                                  prefixText: "GHS ",
-                                  prefixStyle: TextStyle(
+                                child: TextField(
+                                  controller: _deliveryInstructionController,
+                                  maxLines: 2,
+                                  style: TextStyle(
                                     color: colors.textPrimary,
                                     fontSize: 14.sp,
                                     fontWeight: FontWeight.w500,
                                   ),
-                                  hintStyle: TextStyle(
-                                    color: colors.textSecondary,
-                                    fontSize: 13.sp,
-                                    fontWeight: FontWeight.w500,
+                                  decoration: InputDecoration(
+                                    hintText: "Enter custom delivery instructions",
+                                    hintStyle: TextStyle(
+                                      color: colors.textSecondary,
+                                      fontSize: 13.sp,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.zero,
                                   ),
-                                  border: InputBorder.none,
-                                  contentPadding: EdgeInsets.zero,
                                 ),
                               ),
                             ),
+                          ],
+                          SizedBox(height: 16.h),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                            child: Text(
+                              "Tip Delivery Driver",
+                              style: TextStyle(
+                                fontFamily: "Lato",
+                                package: 'grab_go_shared',
+                                color: colors.textPrimary,
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
                           ),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 20.w),
+                            child: Wrap(
+                              spacing: 8.w,
+                              runSpacing: 8.h,
+                              children: [
+                                _buildTipChip(0.0, "No tip", colors),
+                                _buildTipChip(2.0, "GHS 2", colors),
+                                _buildTipChip(5.0, "GHS 5", colors),
+                                _buildTipChip(10.0, "GHS 10", colors),
+                                _buildCustomTipChip(colors),
+                              ],
+                            ),
+                          ),
+                          if (_showCustomTip) ...[
+                            SizedBox(height: 12.h),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 20.w),
+                              child: Container(
+                                padding: EdgeInsets.all(16.r),
+                                decoration: BoxDecoration(
+                                  color: colors.backgroundPrimary,
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  border: Border.all(color: colors.inputBorder, width: 0.5),
+                                ),
+                                child: TextField(
+                                  keyboardType: TextInputType.number,
+                                  onChanged: (value) {
+                                    final amount = double.tryParse(value);
+                                    if (amount != null && amount >= 0) {
+                                      setState(() {
+                                        _tipAmount = amount;
+                                      });
+                                    }
+                                  },
+                                  style: TextStyle(
+                                    color: colors.textPrimary,
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText: "Enter custom tip amount (GHS)",
+                                    prefixText: "GHS ",
+                                    prefixStyle: TextStyle(
+                                      color: colors.textPrimary,
+                                      fontSize: 14.sp,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    hintStyle: TextStyle(
+                                      color: colors.textSecondary,
+                                      fontSize: 13.sp,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.zero,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                         SizedBox(height: 16.h),
 
@@ -642,17 +724,19 @@ class _CheckoutState extends State<Checkout> {
                           child: Column(
                             children: [
                               _buildPriceRow(context, "Subtotal", subtotal, colors, false, false),
-                              SizedBox(height: 6.h),
-                              _buildPriceRow(
-                                context,
-                                "Delivery Fee",
-                                deliveryFee,
-                                colors,
-                                false,
-                                true,
-                                infoType: _FeeInfoType.delivery,
-                                isLoading: isPricingLoading,
-                              ),
+                              if (!isPickupMode) ...[
+                                SizedBox(height: 6.h),
+                                _buildPriceRow(
+                                  context,
+                                  "Delivery Fee",
+                                  deliveryFee,
+                                  colors,
+                                  false,
+                                  true,
+                                  infoType: _FeeInfoType.delivery,
+                                  isLoading: isPricingLoading,
+                                ),
+                              ],
                               SizedBox(height: 6.h),
                               _buildPriceRow(
                                 context,
@@ -664,7 +748,7 @@ class _CheckoutState extends State<Checkout> {
                                 infoType: _FeeInfoType.service,
                                 isLoading: isPricingLoading,
                               ),
-                              if (rainFee > 0) ...[
+                              if (!isPickupMode && rainFee > 0) ...[
                                 SizedBox(height: 6.h),
                                 _buildPriceRow(
                                   context,
@@ -680,9 +764,9 @@ class _CheckoutState extends State<Checkout> {
                                 SizedBox(height: 6.h),
                                 _buildPriceRow(context, "Credits Applied", -creditsApplied, colors, false, false),
                               ],
-                              if (_tipAmount > 0) ...[
+                              if (!isPickupMode && effectiveTip > 0) ...[
                                 SizedBox(height: 6.h),
-                                _buildPriceRow(context, "Tip", _tipAmount, colors, false, false),
+                                _buildPriceRow(context, "Tip", effectiveTip, colors, false, false),
                               ],
                               SizedBox(height: 6.h),
                               _buildTotalRow(context, total, creditsApplied, colors, isLoading: isPricingLoading),
@@ -696,6 +780,9 @@ class _CheckoutState extends State<Checkout> {
                               provider.cartItems,
                               minMinutes: provider.estimatedDeliveryMin,
                               maxMinutes: provider.estimatedDeliveryMax,
+                            ).replaceFirst(
+                              "Estimated delivery",
+                              isPickupMode ? "Estimated pickup" : "Estimated delivery",
                             ),
                             style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
                           ),
@@ -1031,7 +1118,16 @@ class _CheckoutState extends State<Checkout> {
       provider.updateDeliveryLocation(latitude: _selectedLatitude, longitude: _selectedLongitude);
     }
 
-    if (_selectedAddress.isEmpty) {
+    if (provider.fulfillmentMode == 'pickup') {
+      if (_pickupContactNameController.text.trim().isEmpty || _pickupContactPhoneController.text.trim().isEmpty) {
+        AppToastMessage.show(context: context, message: "Please provide pickup contact details.");
+        return;
+      }
+      if (!_pickupNoShowAccepted) {
+        AppToastMessage.show(context: context, message: "Please accept the no-show policy to continue.");
+        return;
+      }
+    } else if (_selectedAddress.isEmpty) {
       AppToastMessage.show(context: context, message: "Please select a delivery address.");
       return;
     }
@@ -1042,12 +1138,14 @@ class _CheckoutState extends State<Checkout> {
   void _showPaymentConfirmationSheet(BuildContext context, CartProvider provider, AppColorsExtension colors) {
     final parentContext = context;
     final addressText = _selectedAddressDetails.isNotEmpty ? _selectedAddressDetails : _selectedAddress;
+    final isPickupMode = provider.fulfillmentMode == 'pickup';
     final double subtotal = provider.subtotal;
-    final double deliveryFee = provider.deliveryFee;
+    final double deliveryFee = isPickupMode ? 0 : provider.deliveryFee;
     final double serviceFee = provider.serviceFee;
-    final double rainFee = provider.rainFee;
+    final double rainFee = isPickupMode ? 0 : provider.rainFee;
     final double creditsApplied = provider.creditsApplied;
-    final double total = provider.total + _tipAmount;
+    final double effectiveTip = isPickupMode ? 0.0 : _tipAmount;
+    final double total = provider.total + effectiveTip;
 
     showModalBottomSheet<void>(
       context: context,
@@ -1078,21 +1176,32 @@ class _CheckoutState extends State<Checkout> {
                 style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
               ),
               SizedBox(height: 12.h),
-              _buildSummaryBlock("Delivery Address", addressText, colors),
+              _buildSummaryBlock(
+                isPickupMode ? "Pickup Contact" : "Delivery Address",
+                isPickupMode
+                    ? "${_pickupContactNameController.text.trim()} • ${_pickupContactPhoneController.text.trim()}"
+                    : addressText,
+                colors,
+              ),
               SizedBox(height: 10.h),
               _buildSummaryBlock("Payment Method", "Paystack (Card, Mobile Money & Bank Transfer)", colors),
               SizedBox(height: 14.h),
               _buildSummaryRow("Subtotal", subtotal, colors),
-              SizedBox(height: 6.h),
-              _buildSummaryRow("Delivery Fee", deliveryFee, colors),
+              if (!isPickupMode) ...[SizedBox(height: 6.h), _buildSummaryRow("Delivery Fee", deliveryFee, colors)],
               SizedBox(height: 6.h),
               _buildSummaryRow("Service Fee", serviceFee, colors),
-              if (rainFee > 0) ...[SizedBox(height: 6.h), _buildSummaryRow("Rain Fee", rainFee, colors)],
+              if (!isPickupMode && rainFee > 0) ...[
+                SizedBox(height: 6.h),
+                _buildSummaryRow("Rain Fee", rainFee, colors),
+              ],
               if (creditsApplied > 0) ...[
                 SizedBox(height: 6.h),
                 _buildSummaryRow("Credits Applied", -creditsApplied, colors),
               ],
-              if (_tipAmount > 0) ...[SizedBox(height: 6.h), _buildSummaryRow("Tip", _tipAmount, colors)],
+              if (!isPickupMode && effectiveTip > 0) ...[
+                SizedBox(height: 6.h),
+                _buildSummaryRow("Tip", effectiveTip, colors),
+              ],
               SizedBox(height: 10.h),
               Divider(color: colors.backgroundSecondary, height: 1),
               SizedBox(height: 10.h),
@@ -1100,11 +1209,12 @@ class _CheckoutState extends State<Checkout> {
               SizedBox(height: 16.h),
               AppButton(
                 width: double.infinity,
-                onPressed: () {
-                  _isProcessingPayment
-                      ? null
-                      : {Navigator.of(context).pop(), _handlePaystackPayment(parentContext, provider)};
-                },
+                onPressed: () => _isProcessingPayment
+                    ? null
+                    : () {
+                        Navigator.of(context).pop();
+                        _handlePaystackPayment(parentContext, provider);
+                      },
                 buttonText: "Pay Now (GHS ${total.toStringAsFixed(2)})",
                 textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800),
                 textColor: Colors.white,
@@ -1176,8 +1286,9 @@ class _CheckoutState extends State<Checkout> {
     });
 
     final double subtotal = provider.subtotal;
-    final double deliveryFee = provider.deliveryFee;
-    final double total = provider.total + _tipAmount;
+    final bool isPickupMode = provider.fulfillmentMode == 'pickup';
+    final double deliveryFee = isPickupMode ? 0.0 : provider.deliveryFee;
+    final double total = provider.total + (isPickupMode ? 0.0 : _tipAmount);
     String? orderId;
     bool paymentSucceeded = false;
     Map<String, dynamic>? paymentData;
@@ -1248,13 +1359,19 @@ class _CheckoutState extends State<Checkout> {
   Future<String?> _createOrder(BuildContext context, double subtotal, double deliveryFee, double total) async {
     final cart = context.read<CartProvider>();
     final orderService = OrderServiceWrapper();
+    final isPickupMode = cart.fulfillmentMode == 'pickup';
 
     try {
       final orderId = await orderService.createOrder(
         cartItems: cart.cartItems,
-        deliveryAddress: _selectedAddress,
-        deliveryLatitude: _selectedLatitude,
-        deliveryLongitude: _selectedLongitude,
+        fulfillmentMode: cart.fulfillmentMode,
+        deliveryAddress: isPickupMode ? null : _selectedAddress,
+        deliveryLatitude: isPickupMode ? null : _selectedLatitude,
+        deliveryLongitude: isPickupMode ? null : _selectedLongitude,
+        pickupContactName: isPickupMode ? _pickupContactNameController.text.trim() : null,
+        pickupContactPhone: isPickupMode ? _pickupContactPhoneController.text.trim() : null,
+        acceptNoShowPolicy: isPickupMode ? _pickupNoShowAccepted : null,
+        noShowPolicyVersion: isPickupMode ? "v1" : null,
         paymentMethod: "card",
         subtotal: subtotal,
         deliveryFee: deliveryFee,
@@ -1286,14 +1403,17 @@ class _CheckoutState extends State<Checkout> {
 
   Map<String, dynamic> _buildPaymentCompletePayload() {
     final cart = context.read<CartProvider>();
+    final isPickupMode = cart.fulfillmentMode == 'pickup';
     final cartSubtotal = cart.subtotal;
-    final deliveryFeeAmount = cart.deliveryFee;
+    final deliveryFeeAmount = isPickupMode ? 0.0 : cart.deliveryFee;
     final serviceFeeAmount = cart.serviceFee;
-    final rainFeeAmount = cart.rainFee;
+    final rainFeeAmount = isPickupMode ? 0.0 : cart.rainFee;
     final taxAmount = cart.tax;
-    final double totalAmount = cart.total + _tipAmount;
+    final double effectiveTip = isPickupMode ? 0.0 : _tipAmount;
+    final double totalAmount = cart.total + effectiveTip;
 
     return {
+      'fulfillmentMode': cart.fulfillmentMode,
       'method': 'Paystack',
       'total': totalAmount,
       'subTotal': cartSubtotal,
@@ -1301,7 +1421,7 @@ class _CheckoutState extends State<Checkout> {
       'serviceFee': serviceFeeAmount,
       'rainFee': rainFeeAmount,
       'tax': taxAmount,
-      'tip': _tipAmount,
+      'tip': effectiveTip,
       'orderNumber': _generateOrderNumber(),
       'timestamp': DateTime.now().toIso8601String(),
     };
@@ -1309,18 +1429,21 @@ class _CheckoutState extends State<Checkout> {
 
   void _handlePaymentSuccess(BuildContext context) {
     final cart = context.read<CartProvider>();
+    final isPickupMode = cart.fulfillmentMode == 'pickup';
     final cartSubtotal = cart.subtotal;
-    final deliveryFeeAmount = cart.deliveryFee;
+    final deliveryFeeAmount = isPickupMode ? 0.0 : cart.deliveryFee;
     final serviceFeeAmount = cart.serviceFee;
-    final rainFeeAmount = cart.rainFee;
+    final rainFeeAmount = isPickupMode ? 0.0 : cart.rainFee;
     final taxAmount = cart.tax;
-    final double totalAmount = cart.total + _tipAmount;
+    final double effectiveTip = isPickupMode ? 0.0 : _tipAmount;
+    final double totalAmount = cart.total + effectiveTip;
 
     cart.clearCart();
 
     context.go(
       '/paymentComplete',
       extra: {
+        'fulfillmentMode': cart.fulfillmentMode,
         'method': 'Paystack',
         'total': totalAmount,
         'subTotal': cartSubtotal,
@@ -1328,7 +1451,7 @@ class _CheckoutState extends State<Checkout> {
         'serviceFee': serviceFeeAmount,
         'rainFee': rainFeeAmount,
         'tax': taxAmount,
-        'tip': _tipAmount,
+        'tip': effectiveTip,
         'orderNumber': _generateOrderNumber(),
         'timestamp': DateTime.now().toIso8601String(),
       },
@@ -1359,7 +1482,8 @@ class _CheckoutState extends State<Checkout> {
       );
     }
 
-    if (_selectedDeliveryInstructions.isNotEmpty || _deliveryInstructionController.text.isNotEmpty) {
+    final isPickupMode = context.read<CartProvider>().fulfillmentMode == 'pickup';
+    if (!isPickupMode && (_selectedDeliveryInstructions.isNotEmpty || _deliveryInstructionController.text.isNotEmpty)) {
       notesParts.add(
         "Delivery: ${[..._selectedDeliveryInstructions, if (_deliveryInstructionController.text.isNotEmpty) _deliveryInstructionController.text].join(', ')}",
       );

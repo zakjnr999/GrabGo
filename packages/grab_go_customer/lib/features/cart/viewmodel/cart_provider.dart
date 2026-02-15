@@ -3,6 +3,8 @@ import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
+import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
+import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class CartProvider extends ChangeNotifier {
@@ -23,6 +25,7 @@ class CartProvider extends ChangeNotifier {
   double? _deliveryLatitude;
   double? _deliveryLongitude;
   String? _cartType;
+  String _fulfillmentMode = 'delivery';
   final Map<String, String> _cartItemIdsByKey = {};
   final Set<String> _pendingItemOps = {};
 
@@ -40,6 +43,12 @@ class CartProvider extends ChangeNotifier {
   int? get estimatedDeliveryMax => _estimatedDeliveryMax;
   bool get useCredits => _useCredits;
   bool get isPricingLoading => _isSyncing && !_hasPricingFromBackend;
+  String get fulfillmentMode => _fulfillmentMode;
+
+  String _normalizeFulfillmentMode(String? mode) {
+    if (mode == null) return 'delivery';
+    return mode.toLowerCase() == 'pickup' ? 'pickup' : 'delivery';
+  }
 
   CartProvider() {
     // Load cart data asynchronously without blocking
@@ -53,6 +62,9 @@ class CartProvider extends ChangeNotifier {
       // First load from local cache for immediate UI
       final cartList = CacheService.getCartItems();
       _cartItems.clear();
+      if (cartList.isNotEmpty) {
+        _fulfillmentMode = _normalizeFulfillmentMode(cartList.first['fulfillmentMode'] as String?);
+      }
 
       for (var item in cartList) {
         final itemData = item['item'];
@@ -63,7 +75,13 @@ class CartProvider extends ChangeNotifier {
         CartItem? cartItem;
 
         // Use cached itemType if available, otherwise detect from fields
-        if (cachedItemType == 'GroceryItem' || itemData['unit'] != null || itemData['brand'] != null) {
+        if (cachedItemType == 'GroceryItem') {
+          cartItem = GroceryItem.fromJson(itemData);
+        } else if (cachedItemType == 'PharmacyItem') {
+          cartItem = PharmacyItem.fromJson(itemData);
+        } else if (cachedItemType == 'GrabMartItem') {
+          cartItem = GrabMartItem.fromJson(itemData);
+        } else if (itemData['unit'] != null || itemData['brand'] != null) {
           cartItem = GroceryItem.fromJson(itemData);
         } else {
           // Default to FoodItem
@@ -103,6 +121,7 @@ class CartProvider extends ChangeNotifier {
       }
       final response = await cartApiService.getCart(
         type: _cartType ?? _inferCartType(),
+        fulfillmentMode: _fulfillmentMode,
         lat: _deliveryLatitude,
         lng: _deliveryLongitude,
         useCredits: _useCredits,
@@ -111,12 +130,14 @@ class CartProvider extends ChangeNotifier {
       if (response.isSuccessful && response.body != null) {
         final cartData = response.body!['cart'];
         if (cartData != null && cartData['items'] != null) {
+          _fulfillmentMode = _normalizeFulfillmentMode(cartData['fulfillmentMode']?.toString());
           _cartItems.clear();
           _cartItemIdsByKey.clear();
 
           for (var item in cartData['items']) {
             // Extract the populated item (Food/Grocery/Pharmacy)
-            final itemData = item['itemId'] ?? item['food'] ?? item['groceryItem'] ?? item['pharmacyItem'];
+            final itemData =
+                item['itemId'] ?? item['food'] ?? item['groceryItem'] ?? item['pharmacyItem'] ?? item['grabMartItem'];
             if (itemData == null) continue; // Skip if item was deleted
 
             String? itemType = item['itemType'];
@@ -124,6 +145,7 @@ class CartProvider extends ChangeNotifier {
               if (item['food'] != null) itemType = 'Food';
               if (item['groceryItem'] != null) itemType = 'GroceryItem';
               if (item['pharmacyItem'] != null) itemType = 'PharmacyItem';
+              if (item['grabMartItem'] != null) itemType = 'GrabMartItem';
             }
 
             CartItem? cartItem;
@@ -151,6 +173,10 @@ class CartProvider extends ChangeNotifier {
               );
             } else if (itemType == 'GroceryItem') {
               cartItem = _createGroceryItemFromBackend(Map<String, dynamic>.from(itemData), item);
+            } else if (itemType == 'PharmacyItem') {
+              cartItem = PharmacyItem.fromJson(Map<String, dynamic>.from(itemData));
+            } else if (itemType == 'GrabMartItem') {
+              cartItem = GrabMartItem.fromJson(Map<String, dynamic>.from(itemData));
             } else {
               debugPrint('Unknown item type: $itemType');
               continue; // Skip unknown types
@@ -241,6 +267,7 @@ class CartProvider extends ChangeNotifier {
         cartItem['foodId']?.toString() ??
         cartItem['groceryItemId']?.toString() ??
         cartItem['pharmacyItemId']?.toString() ??
+        cartItem['grabMartItemId']?.toString() ??
         cartItem['itemId']?.toString();
 
     if (id == null || id.isEmpty) return null;
@@ -254,7 +281,21 @@ class CartProvider extends ChangeNotifier {
     if (itemType == 'Food') return 'food';
     if (itemType == 'GroceryItem') return 'grocery';
     if (itemType == 'PharmacyItem') return 'pharmacy';
+    if (itemType == 'GrabMartItem') return 'grabmart';
     return _cartType;
+  }
+
+  Future<void> setFulfillmentMode(String mode) async {
+    final normalizedMode = _normalizeFulfillmentMode(mode);
+    if (_fulfillmentMode == normalizedMode) return;
+
+    _fulfillmentMode = normalizedMode;
+    _cartItems.clear();
+    _cartItemIdsByKey.clear();
+    _cartType = null;
+    _applyPricing(null);
+    notifyListeners();
+    await syncFromBackend();
   }
 
   void updateDeliveryLocation({double? latitude, double? longitude}) {
@@ -287,6 +328,7 @@ class CartProvider extends ChangeNotifier {
   Future<bool> replaceCartWithOrder(Map<String, dynamic> order) async {
     final rawItems = order['items'];
     if (rawItems is! List || rawItems.isEmpty) return false;
+    _fulfillmentMode = _normalizeFulfillmentMode(order['fulfillmentMode']?.toString());
 
     final orderType = order['orderType']?.toString().toLowerCase();
     if (orderType == 'pharmacy') {
@@ -301,7 +343,12 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await cartApiService.clearCart(lat: _deliveryLatitude, lng: _deliveryLongitude, useCredits: _useCredits);
+      await cartApiService.clearCart(
+        fulfillmentMode: _fulfillmentMode,
+        lat: _deliveryLatitude,
+        lng: _deliveryLongitude,
+        useCredits: _useCredits,
+      );
     } catch (e) {
       debugPrint('⚠️ Failed to clear backend cart: $e');
     }
@@ -490,7 +537,12 @@ class CartProvider extends ChangeNotifier {
   Future<void> _saveCart() async {
     try {
       final List<Map<String, dynamic>> cartList = _cartItems.entries.map((entry) {
-        return {'item': entry.key.toJson(), 'quantity': entry.value, 'itemType': entry.key.itemType};
+        return {
+          'item': entry.key.toJson(),
+          'quantity': entry.value,
+          'itemType': entry.key.itemType,
+          'fulfillmentMode': _fulfillmentMode,
+        };
       }).toList();
 
       await CacheService.saveCartItems(cartList);
@@ -509,15 +561,26 @@ class CartProvider extends ChangeNotifier {
       debugPrint('  Provider ID: ${item.providerId}');
 
       final body = {'itemId': item.id, 'itemType': item.itemType, 'quantity': quantity};
+      body['fulfillmentMode'] = _fulfillmentMode;
 
       if (item.itemType == 'Food') {
         body['restaurantId'] = item.providerId;
       } else if (item.itemType == 'GroceryItem') {
         body['groceryStoreId'] = item.providerId;
+      } else if (item.itemType == 'PharmacyItem') {
+        body['pharmacyStoreId'] = item.providerId;
+      } else if (item.itemType == 'GrabMartItem') {
+        body['grabMartStoreId'] = item.providerId;
       }
 
       debugPrint('  Request body: $body');
-      await cartApiService.addToCart(body, lat: _deliveryLatitude, lng: _deliveryLongitude, useCredits: _useCredits);
+      await cartApiService.addToCart(
+        body,
+        fulfillmentMode: _fulfillmentMode,
+        lat: _deliveryLatitude,
+        lng: _deliveryLongitude,
+        useCredits: _useCredits,
+      );
       debugPrint('✅ Successfully added to backend');
     } catch (e) {
       debugPrint('❌ Error adding to backend cart: $e');
@@ -530,6 +593,7 @@ class CartProvider extends ChangeNotifier {
       await cartApiService.updateCartItem(
         itemId,
         {'quantity': quantity},
+        fulfillmentMode: _fulfillmentMode,
         lat: _deliveryLatitude,
         lng: _deliveryLongitude,
         useCredits: _useCredits,
@@ -545,6 +609,7 @@ class CartProvider extends ChangeNotifier {
       debugPrint('🔄 Calling backend remove API for item: $itemId');
       await cartApiService.removeFromCart(
         itemId,
+        fulfillmentMode: _fulfillmentMode,
         lat: _deliveryLatitude,
         lng: _deliveryLongitude,
         useCredits: _useCredits,
@@ -566,6 +631,8 @@ class CartProvider extends ChangeNotifier {
         ? 'grocery'
         : item.itemType == 'PharmacyItem'
         ? 'pharmacy'
+        : item.itemType == 'GrabMartItem'
+        ? 'grabmart'
         : _cartType;
     // Check for store/restaurant mismatch
     if (context != null && _cartItems.isNotEmpty) {
@@ -722,7 +789,12 @@ class CartProvider extends ChangeNotifier {
 
     // Clear backend cart async
     try {
-      await cartApiService.clearCart(lat: _deliveryLatitude, lng: _deliveryLongitude, useCredits: _useCredits);
+      await cartApiService.clearCart(
+        fulfillmentMode: _fulfillmentMode,
+        lat: _deliveryLatitude,
+        lng: _deliveryLongitude,
+        useCredits: _useCredits,
+      );
       await syncFromBackend();
     } catch (e) {
       debugPrint('Error clearing backend cart: $e');

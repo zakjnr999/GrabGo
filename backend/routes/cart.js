@@ -3,6 +3,7 @@ const router = express.Router();
 const { protect } = require('../middleware/auth');
 const { calculateCartPricing } = require('../services/pricing_service');
 const {
+    normalizeFulfillmentMode,
     addToCart,
     updateCartItem,
     removeFromCart,
@@ -29,7 +30,8 @@ const parseBoolean = (value) => {
 router.get('/', protect, async (req, res) => {
     try {
         const cartType = req.query.type || null; // 'food' or 'grocery'
-        const cart = await getUserCart(req.user.id, cartType);
+        const fulfillmentMode = normalizeFulfillmentMode(req.query.fulfillmentMode);
+        const cart = await getUserCart(req.user.id, cartType, fulfillmentMode);
         const lat = Number(req.query.lat);
         const lng = Number(req.query.lng);
         const deliveryLocation =
@@ -82,6 +84,7 @@ router.get('/', protect, async (req, res) => {
 router.post('/add', protect, async (req, res) => {
     try {
         const { itemId, itemType, quantity, restaurantId, groceryStoreId, pharmacyStoreId, grabMartStoreId } = req.body;
+        const fulfillmentMode = normalizeFulfillmentMode(req.query.fulfillmentMode ?? req.body.fulfillmentMode);
         const lat = Number(req.query.lat ?? req.body.lat);
         const lng = Number(req.query.lng ?? req.body.lng);
         const deliveryLocation =
@@ -109,7 +112,8 @@ router.post('/add', protect, async (req, res) => {
             restaurantId,
             groceryStoreId,
             pharmacyStoreId,
-            grabMartStoreId
+            grabMartStoreId,
+            fulfillmentMode
         });
 
         const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation, useCredits });
@@ -151,6 +155,7 @@ router.patch('/update/:itemId', protect, async (req, res) => {
     try {
         const { itemId } = req.params;
         const { quantity } = req.body;
+        const fulfillmentMode = normalizeFulfillmentMode(req.query.fulfillmentMode ?? req.body.fulfillmentMode);
         const lat = Number(req.query.lat ?? req.body.lat);
         const lng = Number(req.query.lng ?? req.body.lng);
         const deliveryLocation =
@@ -164,7 +169,7 @@ router.patch('/update/:itemId', protect, async (req, res) => {
             });
         }
 
-        const cart = await updateCartItem(req.user.id, itemId, quantity);
+        const cart = await updateCartItem(req.user.id, itemId, quantity, fulfillmentMode);
         const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation, useCredits });
 
         res.json({
@@ -198,12 +203,13 @@ router.patch('/update/:itemId', protect, async (req, res) => {
 router.delete('/remove/:itemId', protect, async (req, res) => {
     try {
         const { itemId } = req.params;
+        const fulfillmentMode = normalizeFulfillmentMode(req.query.fulfillmentMode ?? req.body?.fulfillmentMode);
         const lat = Number(req.query.lat ?? req.body?.lat);
         const lng = Number(req.query.lng ?? req.body?.lng);
         const deliveryLocation =
             Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : null;
         const useCredits = parseBoolean(req.query.useCredits ?? req.body?.useCredits);
-        const cart = await removeFromCart(req.user.id, itemId);
+        const cart = await removeFromCart(req.user.id, itemId, fulfillmentMode);
         const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation, useCredits });
 
         res.json({
@@ -236,12 +242,13 @@ router.delete('/remove/:itemId', protect, async (req, res) => {
  */
 router.delete('/clear', protect, async (req, res) => {
     try {
+        const fulfillmentMode = normalizeFulfillmentMode(req.query.fulfillmentMode ?? req.body?.fulfillmentMode);
         const lat = Number(req.query.lat ?? req.body?.lat);
         const lng = Number(req.query.lng ?? req.body?.lng);
         const deliveryLocation =
             Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : null;
         const useCredits = parseBoolean(req.query.useCredits ?? req.body?.useCredits);
-        const cart = await clearCart(req.user.id);
+        const cart = await clearCart(req.user.id, fulfillmentMode);
         const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation, useCredits });
 
         res.json({

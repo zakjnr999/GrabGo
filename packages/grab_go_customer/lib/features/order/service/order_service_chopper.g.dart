@@ -13,9 +13,14 @@ CreateOrderRequest _$CreateOrderRequestFromJson(Map<String, dynamic> json) =>
       items: (json['items'] as List<dynamic>)
           .map((e) => OrderItem.fromJson(e as Map<String, dynamic>))
           .toList(),
-      deliveryAddress: DeliveryAddress.fromJson(
-        json['deliveryAddress'] as Map<String, dynamic>,
-      ),
+      fulfillmentMode: json['fulfillmentMode'] as String,
+      deliveryAddress: json['deliveryAddress'] == null
+          ? null
+          : DeliveryAddress.fromJson(json['deliveryAddress'] as Map<String, dynamic>),
+      pickupContactName: json['pickupContactName'] as String?,
+      pickupContactPhone: json['pickupContactPhone'] as String?,
+      acceptNoShowPolicy: json['acceptNoShowPolicy'] as bool?,
+      noShowPolicyVersion: json['noShowPolicyVersion'] as String?,
       paymentMethod: json['paymentMethod'] as String,
       useCredits: json['useCredits'] as bool?,
       notes: json['notes'] as String?,
@@ -27,7 +32,12 @@ Map<String, dynamic> _$CreateOrderRequestToJson(CreateOrderRequest instance) =>
       'orderNumber': instance.orderNumber,
       'restaurant': instance.restaurant,
       'items': instance.items.map((e) => e.toJson()).toList(),
-      'deliveryAddress': instance.deliveryAddress.toJson(),
+      'fulfillmentMode': instance.fulfillmentMode,
+      'deliveryAddress': instance.deliveryAddress?.toJson(),
+      'pickupContactName': instance.pickupContactName,
+      'pickupContactPhone': instance.pickupContactPhone,
+      'acceptNoShowPolicy': instance.acceptNoShowPolicy,
+      'noShowPolicyVersion': instance.noShowPolicyVersion,
       'paymentMethod': instance.paymentMethod,
       'useCredits': instance.useCredits,
       'notes': instance.notes,

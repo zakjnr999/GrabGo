@@ -102,6 +102,7 @@ router.get(
       const availableOrders = await prisma.order.findMany({
         where: {
           riderId: null,
+          fulfillmentMode: "delivery",
           status: { in: ["confirmed", "preparing", "ready"] },
           // Exclude orders that have active reservations
           id: { notIn: reservedOrderIds }
@@ -1094,6 +1095,13 @@ router.post(
         return res.status(400).json({
           success: false,
           message: "Order is not available for pickup",
+        });
+      }
+
+      if (order.fulfillmentMode === "pickup") {
+        return res.status(400).json({
+          success: false,
+          message: "Pickup orders are not eligible for rider assignment",
         });
       }
 

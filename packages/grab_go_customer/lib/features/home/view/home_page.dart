@@ -1519,7 +1519,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               final bool isInCart = provider.cartItems.containsKey(item);
               return FoodItemCard(
                 item: item,
-                useVerticalZigzagTag: true,
                 onTap: () => context.push('/foodDetails', extra: item),
                 trailing: GestureDetector(
                   onTap: () {

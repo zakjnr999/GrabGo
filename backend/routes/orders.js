@@ -1,5 +1,6 @@
 const express = require("express");
 const { body, validationResult } = require("express-validator");
+const crypto = require("crypto");
 const prisma = require("../config/prisma");
 const { protect, authorize } = require("../middleware/auth");
 const { cacheMiddleware } = require("../middleware/cache");
@@ -12,10 +13,48 @@ const { calculateOrderPricing } = require("../services/pricing_service");
 const paystackService = require("../services/paystack_service");
 const { getIO } = require("../utils/socket");
 const dispatchService = require("../services/dispatch_service");
+const featureFlags = require("../config/feature_flags");
+const {
+  createOrderAudit,
+  reserveInventoryForOrder,
+  releaseInventoryHolds,
+  cancelPickupOrder,
+} = require("../services/pickup_order_service");
 
 const router = express.Router();
 
 const { FOOD_INCLUDE_RELATIONS, formatFoodResponse } = require('../utils/food_helpers');
+
+const normalizeFulfillmentMode = (mode) => {
+  if (!mode) return "delivery";
+  return String(mode).trim().toLowerCase() === "pickup" ? "pickup" : "delivery";
+};
+
+const PICKUP_OTP_SECRET = process.env.PICKUP_OTP_SECRET || process.env.JWT_SECRET || "grabgo-pickup-otp-secret";
+const PICKUP_OTP_MAX_ATTEMPTS = Number(process.env.PICKUP_OTP_MAX_ATTEMPTS || 5);
+const PICKUP_OTP_LOCK_SECONDS = Number(process.env.PICKUP_OTP_LOCK_SECONDS || 300);
+const PICKUP_ACCEPT_TIMEOUT_MINUTES = Number(process.env.PICKUP_ACCEPT_TIMEOUT_MINUTES || 10);
+const PICKUP_READY_EXPIRY_MINUTES = Number(process.env.PICKUP_READY_EXPIRY_MINUTES || 30);
+
+const generatePickupCode = () => {
+  const value = Math.floor(100000 + Math.random() * 900000);
+  return String(value);
+};
+
+const hashPickupCode = (orderId, code) => {
+  return crypto
+    .createHmac("sha256", PICKUP_OTP_SECRET)
+    .update(`${orderId}:${code}`)
+    .digest("hex");
+};
+
+const isPickupOtpLocked = (order) => {
+  if (!order?.pickupOtpLastAttemptAt || !order?.pickupOtpFailedAttempts) return false;
+  if (order.pickupOtpFailedAttempts < PICKUP_OTP_MAX_ATTEMPTS) return false;
+
+  const lockUntil = new Date(order.pickupOtpLastAttemptAt).getTime() + PICKUP_OTP_LOCK_SECONDS * 1000;
+  return Date.now() < lockUntil;
+};
 
 /**
  * Helper to send order status notification to customer
@@ -42,7 +81,7 @@ const notifyOrderStatusChange = async (order, status, customMessage = null, io =
       confirmed: 'Your order has been confirmed!',
       preparing: 'Your order is being prepared.',
       ready: 'Your order is ready for pickup!',
-      picked_up: 'Your order has been picked up by the rider.',
+      picked_up: 'Your order has been picked up.',
       on_the_way: 'Your order is on the way!',
       delivered: 'Your order has been delivered. Enjoy!',
       cancelled: 'Your order has been cancelled.',
@@ -128,12 +167,14 @@ router.post(
   protect,
   [
     body("restaurant").optional().isString().withMessage("restaurant must be a string"),
+    body("fulfillmentMode").optional().isIn(["delivery", "pickup"]).withMessage("Invalid fulfillment mode"),
     body("items")
       .isArray({ min: 1 })
       .withMessage("At least one item is required"),
-    body("deliveryAddress")
-      .notEmpty()
-      .withMessage("Delivery address is required"),
+    body("deliveryAddress").optional(),
+    body("pickupContactName").optional().isString().withMessage("pickupContactName must be a string"),
+    body("pickupContactPhone").optional().isString().withMessage("pickupContactPhone must be a string"),
+    body("acceptNoShowPolicy").optional().isBoolean().withMessage("acceptNoShowPolicy must be a boolean"),
     body("paymentMethod")
       .isIn(["card"])
       .withMessage("Invalid payment method"),
@@ -154,11 +195,49 @@ router.post(
         restaurant: requestedVendorId,
         items,
         deliveryAddress,
+        fulfillmentMode: rawFulfillmentMode,
+        pickupContactName,
+        pickupContactPhone,
+        acceptNoShowPolicy,
         paymentMethod,
         useCredits,
         notes,
+        noShowPolicyVersion,
         orderNumber: bodyOrderNumber
       } = req.body;
+
+      const fulfillmentMode = normalizeFulfillmentMode(rawFulfillmentMode);
+      const isPickupMode = fulfillmentMode === "pickup";
+      const isDeliveryMode = !isPickupMode;
+
+      if (isPickupMode && !featureFlags.isPickupCheckoutEnabled) {
+        return res.status(403).json({
+          success: false,
+          message: "Pickup ordering is temporarily unavailable",
+        });
+      }
+
+      if (isDeliveryMode && !deliveryAddress) {
+        return res.status(400).json({
+          success: false,
+          message: "Delivery address is required for delivery orders",
+        });
+      }
+
+      if (isPickupMode) {
+        if (!pickupContactName || !pickupContactPhone) {
+          return res.status(400).json({
+            success: false,
+            message: "Pickup contact name and phone are required",
+          });
+        }
+        if (acceptNoShowPolicy !== true) {
+          return res.status(400).json({
+            success: false,
+            message: "You must accept the no-show pickup policy",
+          });
+        }
+      }
 
       const normalizeItemType = (itemType) => {
         if (!itemType) return null;
@@ -351,18 +430,19 @@ router.post(
       const baseDeliveryFee = vendorDoc.deliveryFee || 0;
       const pricing = await calculateOrderPricing({
         subtotal,
-        baseDeliveryFee,
+        baseDeliveryFee: isPickupMode ? 0 : baseDeliveryFee,
         userId: req.user.id,
         deliveryLocation: {
-          latitude: deliveryAddress.latitude,
-          longitude: deliveryAddress.longitude
+          latitude: deliveryAddress?.latitude,
+          longitude: deliveryAddress?.longitude
         },
         vendorLocation: {
           latitude: vendorDoc.latitude,
           longitude: vendorDoc.longitude
         },
         vendorPrepTime: maxItemPrepMinutes > 0 ? maxItemPrepMinutes : (vendorDoc.averagePreparationTime || 15),
-        vendorDeliveryTime: vendorDoc.averageDeliveryTime || 30
+        vendorDeliveryTime: vendorDoc.averageDeliveryTime || 30,
+        fulfillmentMode,
       });
       const tax = pricing.tax;
       let totalAmount = pricing.total;
@@ -379,6 +459,7 @@ router.post(
       const orderData = {
         orderNumber,
         orderType: resolvedOrderType,
+        fulfillmentMode,
         customerId: req.user.id,
         subtotal: pricing.subtotal,
         deliveryFee: pricing.deliveryFee,
@@ -386,19 +467,27 @@ router.post(
         tax,
         totalAmount,
         creditsApplied: creditApplied,
-        deliveryStreet: deliveryAddress.street || deliveryAddress,
-        deliveryCity: deliveryAddress.city || 'Unknown',
-        deliveryState: deliveryAddress.state,
-        deliveryZipCode: deliveryAddress.zipCode,
-        deliveryLatitude: deliveryAddress.latitude,
-        deliveryLongitude: deliveryAddress.longitude,
+        deliveryStreet: isDeliveryMode ? (deliveryAddress?.street || deliveryAddress) : null,
+        deliveryCity: isDeliveryMode ? (deliveryAddress?.city || 'Unknown') : null,
+        deliveryState: isDeliveryMode ? deliveryAddress?.state : null,
+        deliveryZipCode: isDeliveryMode ? deliveryAddress?.zipCode : null,
+        deliveryLatitude: isDeliveryMode ? deliveryAddress?.latitude : null,
+        deliveryLongitude: isDeliveryMode ? deliveryAddress?.longitude : null,
+        pickupContactName: isPickupMode ? pickupContactName : null,
+        pickupContactPhone: isPickupMode ? pickupContactPhone : null,
+        noShowPolicyAcceptedAt: isPickupMode && acceptNoShowPolicy ? new Date() : null,
+        noShowPolicyVersion: isPickupMode && acceptNoShowPolicy ? (noShowPolicyVersion || "v1") : null,
         paymentMethod,
         notes,
-        status: "pending",
+        status: isCreditOnly ? "confirmed" : "pending",
         items: {
           create: orderItemsData
         }
       };
+
+      if (isPickupMode && isCreditOnly) {
+        orderData.acceptByAt = new Date(Date.now() + PICKUP_ACCEPT_TIMEOUT_MINUTES * 60 * 1000);
+      }
 
       if (resolvedOrderType === "food") orderData.restaurantId = resolvedVendorId;
       if (resolvedOrderType === "grocery") orderData.groceryStoreId = resolvedVendorId;
@@ -473,6 +562,28 @@ router.post(
           }
         }
       });
+
+      if (isPickupMode && isCreditOnly) {
+        try {
+          await reserveInventoryForOrder({ orderId: order.id });
+        } catch (inventoryError) {
+          await prisma.order.update({
+            where: { id: order.id },
+            data: {
+              status: "cancelled",
+              cancelledDate: new Date(),
+              cancellationReason: inventoryError.message || "Unable to reserve inventory for pickup order",
+              paymentStatus: "refunded",
+              updatedAt: new Date(),
+            },
+          });
+
+          return res.status(400).json({
+            success: false,
+            message: inventoryError.message || "Unable to place pickup order due to stock changes",
+          });
+        }
+      }
 
       // Deduct credits only for credit-only orders (no external payment)
       if (isCreditOnly && creditApplied > 0) {
@@ -841,9 +952,12 @@ router.post(
           id: true,
           customerId: true,
           paymentStatus: true,
+          status: true,
+          fulfillmentMode: true,
           creditsApplied: true,
           totalAmount: true,
           orderNumber: true,
+          paymentReferenceId: true,
         },
       });
 
@@ -869,13 +983,66 @@ router.post(
         });
       }
 
-      if (reference && reference !== "credits-only") {
-        const verification = await paystackService.verifyTransaction(reference);
+      const paymentReference = reference || order.paymentReferenceId || null;
+      const requiresExternalPayment = Number(order.totalAmount || 0) > 0;
+      const persistedReference =
+        paymentReference && paymentReference !== "credits-only" ? paymentReference : undefined;
+
+      if (
+        reference &&
+        reference !== "credits-only" &&
+        order.paymentReferenceId &&
+        order.paymentReferenceId !== reference
+      ) {
+        return res.status(409).json({
+          success: false,
+          message: "Payment reference mismatch for this order",
+        });
+      }
+
+      if (requiresExternalPayment) {
+        if (!paymentReference || paymentReference === "credits-only") {
+          return res.status(400).json({
+            success: false,
+            message: "Payment reference is required for this order",
+          });
+        }
+
+        const verification = await paystackService.verifyTransaction(paymentReference);
         if (verification?.status !== "success") {
           return res.status(400).json({
             success: false,
             message: "Payment not verified",
             data: { status: verification?.status },
+          });
+        }
+
+        const verifiedReference = verification?.reference?.toString();
+        if (verifiedReference && verifiedReference !== paymentReference) {
+          return res.status(409).json({
+            success: false,
+            message: "Verified payment reference does not match request reference",
+          });
+        }
+
+        const expectedAmount = Math.round(Number(order.totalAmount || 0) * 100);
+        const verifiedAmount = Number(verification?.amount ?? verification?.amount_in_kobo ?? Number.NaN);
+        if (expectedAmount > 0 && Number.isFinite(verifiedAmount) && verifiedAmount !== expectedAmount) {
+          return res.status(409).json({
+            success: false,
+            message: "Verified payment amount does not match order total",
+            data: { expectedAmount, verifiedAmount },
+          });
+        }
+
+        const metadataOrderId =
+          verification?.metadata?.orderId?.toString() ||
+          verification?.metadata?.order_id?.toString() ||
+          null;
+        if (metadataOrderId && metadataOrderId !== order.id) {
+          return res.status(409).json({
+            success: false,
+            message: "Verified payment metadata does not match order",
           });
         }
       }
@@ -902,14 +1069,59 @@ router.post(
         }
       }
 
+      if (order.fulfillmentMode === "pickup") {
+        try {
+          await reserveInventoryForOrder({ orderId: order.id });
+        } catch (inventoryError) {
+          await prisma.order.update({
+            where: { id: order.id },
+            data: {
+              status: "cancelled",
+              cancelledDate: new Date(),
+              cancellationReason: inventoryError.message || "Unable to reserve inventory for pickup order",
+              paymentStatus: "refunded",
+              updatedAt: new Date(),
+            },
+          });
+
+          if (order.creditsApplied > 0) {
+            await creditService.releaseHold(req.user.id, order.id).catch(() => null);
+          }
+
+          return res.status(409).json({
+            success: false,
+            message: inventoryError.message || "Unable to reserve inventory. Order cancelled and marked for refund.",
+          });
+        }
+      }
+
+      const shouldConfirmPickup = order.fulfillmentMode === "pickup" && order.status === "pending";
       await prisma.order.update({
         where: { id: order.id },
         data: {
           paymentStatus: "paid",
           paymentProvider: provider || "paystack",
-          paymentReferenceId: reference || undefined,
+          paymentReferenceId: persistedReference,
+          ...(shouldConfirmPickup
+            ? {
+                status: "confirmed",
+                acceptByAt: new Date(Date.now() + PICKUP_ACCEPT_TIMEOUT_MINUTES * 60 * 1000),
+              }
+            : {}),
         },
       });
+
+      await createOrderAudit({
+        orderId: order.id,
+        actorId: req.user.id,
+        actorRole: req.user.role,
+        action: "payment_confirmed",
+        metadata: {
+          reference: persistedReference || null,
+          provider: provider || "paystack",
+          fulfillmentMode: order.fulfillmentMode,
+        },
+      }).catch(() => null);
 
       try {
         const amount = Number(order.totalAmount || 0);
@@ -942,6 +1154,577 @@ router.post(
     } catch (error) {
       console.error("Confirm payment error:", error);
       res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message,
+      });
+    }
+  }
+);
+
+router.post(
+  "/:orderId/pickup/accept",
+  protect,
+  authorize("restaurant", "admin"),
+  async (req, res) => {
+    try {
+      if (!featureFlags.isPickupVendorOpsEnabled) {
+        return res.status(403).json({
+          success: false,
+          message: "Pickup vendor operations are disabled",
+        });
+      }
+
+      const { orderId } = req.params;
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: {
+          id: true,
+          orderNumber: true,
+          customerId: true,
+          status: true,
+          fulfillmentMode: true,
+          acceptedAt: true,
+          paymentStatus: true,
+        },
+      });
+
+      if (!order) {
+        return res.status(404).json({ success: false, message: "Order not found" });
+      }
+
+      if (order.fulfillmentMode !== "pickup") {
+        return res.status(400).json({ success: false, message: "Order is not a pickup order" });
+      }
+
+      if (!["confirmed", "preparing"].includes(order.status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Only confirmed pickup orders can be accepted",
+        });
+      }
+
+      const updatedOrder = await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          status: "preparing",
+          acceptedAt: order.acceptedAt || new Date(),
+          preparingAt: new Date(),
+          rejectReason: null,
+          rejectedAt: null,
+          updatedAt: new Date(),
+        },
+      });
+
+      await prisma.orderActionAudit.create({
+        data: {
+          orderId,
+          actorId: req.user.id,
+          actorRole: req.user.role,
+          action: "pickup_accept",
+          metadata: {
+            previousStatus: order.status,
+            nextStatus: updatedOrder.status,
+          },
+        },
+      });
+
+      notifyOrderStatusChange(updatedOrder, "preparing", "Your pickup order has been accepted and is being prepared.");
+
+      return res.json({
+        success: true,
+        message: "Pickup order accepted",
+        data: updatedOrder,
+      });
+    } catch (error) {
+      console.error("Pickup accept error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message,
+      });
+    }
+  }
+);
+
+router.post(
+  "/:orderId/pickup/reject",
+  protect,
+  authorize("restaurant", "admin"),
+  [body("reason").isString().notEmpty().withMessage("reason is required")],
+  async (req, res) => {
+    try {
+      if (!featureFlags.isPickupVendorOpsEnabled) {
+        return res.status(403).json({
+          success: false,
+          message: "Pickup vendor operations are disabled",
+        });
+      }
+
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: errors.array(),
+        });
+      }
+
+      const { orderId } = req.params;
+      const { reason } = req.body;
+
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: {
+          id: true,
+          orderNumber: true,
+          customerId: true,
+          status: true,
+          fulfillmentMode: true,
+          paymentStatus: true,
+        },
+      });
+
+      if (!order) {
+        return res.status(404).json({ success: false, message: "Order not found" });
+      }
+
+      if (order.fulfillmentMode !== "pickup") {
+        return res.status(400).json({ success: false, message: "Order is not a pickup order" });
+      }
+
+      if (["cancelled", "picked_up", "delivered"].includes(order.status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Order can no longer be rejected",
+        });
+      }
+
+      const updatedOrder = await cancelPickupOrder({
+        orderId,
+        reason,
+        refund: true,
+        actorId: req.user.id,
+        actorRole: req.user.role,
+        action: "pickup_reject",
+        metadata: {
+          previousStatus: order.status,
+          rejectedAt: new Date().toISOString(),
+        },
+      });
+
+      await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          rejectedAt: new Date(),
+          rejectReason: reason,
+        },
+      });
+
+      notifyOrderStatusChange(updatedOrder, "cancelled", `Pickup order was rejected by the store: ${reason}`);
+
+      return res.json({
+        success: true,
+        message: "Pickup order rejected and refunded",
+        data: updatedOrder,
+      });
+    } catch (error) {
+      console.error("Pickup reject error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message,
+      });
+    }
+  }
+);
+
+router.post(
+  "/:orderId/pickup/verify-code",
+  protect,
+  authorize("restaurant", "admin"),
+  [body("code").isString().notEmpty().withMessage("code is required")],
+  async (req, res) => {
+    try {
+      if (!featureFlags.isPickupOtpEnabled) {
+        return res.status(403).json({
+          success: false,
+          message: "Pickup OTP verification is disabled",
+        });
+      }
+
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: errors.array(),
+        });
+      }
+
+      const { orderId } = req.params;
+      const { code } = req.body;
+
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: {
+          id: true,
+          orderNumber: true,
+          customerId: true,
+          status: true,
+          fulfillmentMode: true,
+          readyAt: true,
+          pickupExpiresAt: true,
+          pickupOtpHash: true,
+          pickupOtpFailedAttempts: true,
+          pickupOtpLastAttemptAt: true,
+        },
+      });
+
+      if (!order) {
+        return res.status(404).json({ success: false, message: "Order not found" });
+      }
+
+      if (order.fulfillmentMode !== "pickup") {
+        return res.status(400).json({ success: false, message: "Order is not a pickup order" });
+      }
+
+      if (order.status !== "ready") {
+        return res.status(400).json({
+          success: false,
+          message: "Pickup code verification is only available when order is ready",
+        });
+      }
+
+      if (!order.pickupOtpHash) {
+        return res.status(400).json({
+          success: false,
+          message: "Pickup code is not set for this order",
+        });
+      }
+
+      if (order.pickupExpiresAt && new Date(order.pickupExpiresAt).getTime() <= Date.now()) {
+        return res.status(400).json({
+          success: false,
+          message: "Pickup code has expired",
+        });
+      }
+
+      if (isPickupOtpLocked(order)) {
+        return res.status(429).json({
+          success: false,
+          message: "Pickup code verification is temporarily locked. Try again later.",
+        });
+      }
+
+      const normalizedCode = String(code).trim();
+      const codeHash = hashPickupCode(order.id, normalizedCode);
+
+      if (codeHash !== order.pickupOtpHash) {
+        const failedAttempts = (order.pickupOtpFailedAttempts || 0) + 1;
+        await prisma.order.update({
+          where: { id: order.id },
+          data: {
+            pickupOtpFailedAttempts: failedAttempts,
+            pickupOtpLastAttemptAt: new Date(),
+          },
+        });
+
+        await prisma.orderActionAudit.create({
+          data: {
+            orderId,
+            actorId: req.user.id,
+            actorRole: req.user.role,
+            action: "pickup_otp_failed",
+            metadata: { failedAttempts },
+          },
+        });
+
+        return res.status(400).json({
+          success: false,
+          message:
+            failedAttempts >= PICKUP_OTP_MAX_ATTEMPTS
+              ? "Too many invalid attempts. Verification is temporarily locked."
+              : "Invalid pickup code",
+        });
+      }
+
+      const pickedUpAt = new Date();
+      const pickupDeltaSeconds = order.readyAt
+        ? Math.max(0, Math.floor((pickedUpAt.getTime() - new Date(order.readyAt).getTime()) / 1000))
+        : null;
+
+      const updatedOrder = await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          status: "picked_up",
+          pickedUpAt,
+          pickupReadyToCollectedSeconds: pickupDeltaSeconds,
+          pickupOtpFailedAttempts: 0,
+          pickupOtpLastAttemptAt: null,
+          updatedAt: new Date(),
+        },
+      });
+
+      await prisma.orderActionAudit.create({
+        data: {
+          orderId,
+          actorId: req.user.id,
+          actorRole: req.user.role,
+          action: "pickup_verified",
+          metadata: {
+            pickupReadyToCollectedSeconds: pickupDeltaSeconds,
+          },
+        },
+      });
+
+      notifyOrderStatusChange(updatedOrder, "picked_up", "Order pickup verified successfully.");
+
+      return res.json({
+        success: true,
+        message: "Pickup code verified. Order marked as picked up.",
+        data: updatedOrder,
+      });
+    } catch (error) {
+      console.error("Pickup verify-code error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message,
+      });
+    }
+  }
+);
+
+router.post(
+  "/:orderId/support/cancel",
+  protect,
+  authorize("admin"),
+  [
+    body("reason").isString().notEmpty().withMessage("reason is required"),
+    body("refund").optional().isBoolean().withMessage("refund must be a boolean"),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: errors.array(),
+        });
+      }
+
+      const { orderId } = req.params;
+      const { reason, refund = true } = req.body;
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: {
+          id: true,
+          status: true,
+          fulfillmentMode: true,
+          paymentStatus: true,
+        },
+      });
+
+      if (!order) {
+        return res.status(404).json({ success: false, message: "Order not found" });
+      }
+
+      let updatedOrder = null;
+      if (order.fulfillmentMode === "pickup") {
+        updatedOrder = await cancelPickupOrder({
+          orderId,
+          reason,
+          refund,
+          actorId: req.user.id,
+          actorRole: req.user.role,
+          action: "support_cancel",
+          metadata: { previousStatus: order.status },
+        });
+      } else {
+        updatedOrder = await prisma.order.update({
+          where: { id: orderId },
+          data: {
+            status: "cancelled",
+            cancelledDate: new Date(),
+            cancellationReason: reason,
+            paymentStatus: refund && ["paid", "successful"].includes(order.paymentStatus) ? "refunded" : order.paymentStatus,
+            updatedAt: new Date(),
+          },
+        });
+
+        await createOrderAudit({
+          orderId,
+          actorId: req.user.id,
+          actorRole: req.user.role,
+          action: "support_cancel",
+          reason,
+          metadata: { previousStatus: order.status, refund },
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: "Order cancelled by support",
+        data: updatedOrder,
+      });
+    } catch (error) {
+      console.error("Support cancel error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message,
+      });
+    }
+  }
+);
+
+router.post(
+  "/:orderId/support/refund",
+  protect,
+  authorize("admin"),
+  [body("reason").isString().notEmpty().withMessage("reason is required")],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: errors.array(),
+        });
+      }
+
+      const { orderId } = req.params;
+      const { reason } = req.body;
+
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: { id: true, status: true, paymentStatus: true, fulfillmentMode: true },
+      });
+
+      if (!order) {
+        return res.status(404).json({ success: false, message: "Order not found" });
+      }
+
+      const updatedOrder = await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          paymentStatus: "refunded",
+          updatedAt: new Date(),
+        },
+      });
+
+      if (order.fulfillmentMode === "pickup") {
+        await releaseInventoryHolds({ orderId }).catch(() => null);
+      }
+
+      await createOrderAudit({
+        orderId,
+        actorId: req.user.id,
+        actorRole: req.user.role,
+        action: "support_refund",
+        reason,
+        metadata: {
+          previousPaymentStatus: order.paymentStatus,
+          currentStatus: order.status,
+        },
+      });
+
+      return res.json({
+        success: true,
+        message: "Order refunded by support",
+        data: updatedOrder,
+      });
+    } catch (error) {
+      console.error("Support refund error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message,
+      });
+    }
+  }
+);
+
+router.post(
+  "/:orderId/support/force-complete",
+  protect,
+  authorize("admin"),
+  [body("reason").isString().notEmpty().withMessage("reason is required")],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: errors.array(),
+        });
+      }
+
+      const { orderId } = req.params;
+      const { reason } = req.body;
+
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: {
+          id: true,
+          status: true,
+          fulfillmentMode: true,
+          readyAt: true,
+        },
+      });
+
+      if (!order) {
+        return res.status(404).json({ success: false, message: "Order not found" });
+      }
+
+      const now = new Date();
+      const nextStatus = order.fulfillmentMode === "pickup" ? "picked_up" : "delivered";
+      const updateData = {
+        status: nextStatus,
+        updatedAt: now,
+      };
+
+      if (order.fulfillmentMode === "pickup") {
+        updateData.pickedUpAt = now;
+        if (order.readyAt) {
+          updateData.pickupReadyToCollectedSeconds = Math.max(
+            0,
+            Math.floor((now.getTime() - new Date(order.readyAt).getTime()) / 1000)
+          );
+        }
+      } else {
+        updateData.deliveredDate = now;
+      }
+
+      const updatedOrder = await prisma.order.update({
+        where: { id: orderId },
+        data: updateData,
+      });
+
+      await createOrderAudit({
+        orderId,
+        actorId: req.user.id,
+        actorRole: req.user.role,
+        action: "support_force_complete",
+        reason,
+        metadata: {
+          previousStatus: order.status,
+          nextStatus,
+        },
+      });
+
+      return res.json({
+        success: true,
+        message: "Order force-completed by support",
+        data: updatedOrder,
+      });
+    } catch (error) {
+      console.error("Support force-complete error:", error);
+      return res.status(500).json({
         success: false,
         message: "Server error",
         error: error.message,
@@ -1129,12 +1912,38 @@ router.put(
         });
       }
 
+      let pickupCodeForNotification = null;
+
       // Use transaction to update order and handle rider earnings if delivered
       const updatedOrder = await prisma.$transaction(async (tx) => {
         let updateData = {
           status,
           updatedAt: new Date()
         };
+
+        if (order.fulfillmentMode === "pickup") {
+          if (status === "preparing") {
+            updateData.preparingAt = new Date();
+          } else if (status === "ready") {
+            const readyAt = new Date();
+            const pickupCode = generatePickupCode();
+            pickupCodeForNotification = pickupCode;
+            updateData.readyAt = readyAt;
+            updateData.pickupExpiresAt = new Date(readyAt.getTime() + PICKUP_READY_EXPIRY_MINUTES * 60 * 1000);
+            updateData.pickupOtpHash = hashPickupCode(order.id, pickupCode);
+            updateData.pickupOtpFailedAttempts = 0;
+            updateData.pickupOtpLastAttemptAt = null;
+          } else if (status === "picked_up") {
+            const pickedUpAt = new Date();
+            updateData.pickedUpAt = pickedUpAt;
+            if (order.readyAt) {
+              updateData.pickupReadyToCollectedSeconds = Math.max(
+                0,
+                Math.floor((pickedUpAt.getTime() - new Date(order.readyAt).getTime()) / 1000)
+              );
+            }
+          }
+        }
 
         if (status === "delivered") {
           updateData.deliveredDate = new Date();
@@ -1213,9 +2022,30 @@ router.put(
         await creditService.releaseHold(order.customerId, order.id);
       }
 
+      if (status === "cancelled" && order.fulfillmentMode === "pickup") {
+        await releaseInventoryHolds({ orderId }).catch(() => null);
+      }
+
+      await createOrderAudit({
+        orderId,
+        actorId: req.user.id,
+        actorRole: req.user.role,
+        action: `status_${status}`,
+        reason: status === "cancelled" ? (cancellationReason || null) : null,
+        metadata: {
+          previousStatus: order.status,
+          nextStatus: status,
+          fulfillmentMode: order.fulfillmentMode,
+        },
+      }).catch(() => null);
+
       // Send push notification to customer about order status change
       const io = getIO();
-      notifyOrderStatusChange(updatedOrder, status, null, io);
+      const pickupReadyMessage =
+        status === "ready" && updatedOrder.fulfillmentMode === "pickup" && pickupCodeForNotification
+          ? `Your order is ready for pickup. Show this code at the store: ${pickupCodeForNotification}`
+          : null;
+      notifyOrderStatusChange(updatedOrder, status, pickupReadyMessage, io);
 
       // Reset rider delivery status when order is delivered or cancelled
       if ((status === 'delivered' || status === 'cancelled') && order.riderId) {
@@ -1232,7 +2062,11 @@ router.put(
       }
 
       // Trigger dispatch when order is confirmed and doesn't have a rider yet
-      if (['confirmed', 'preparing', 'ready'].includes(status) && !updatedOrder.riderId) {
+      if (
+        ['confirmed', 'preparing', 'ready'].includes(status) &&
+        !updatedOrder.riderId &&
+        updatedOrder.fulfillmentMode !== 'pickup'
+      ) {
         console.log(`🚀 Triggering dispatch for order ${updatedOrder.orderNumber} (status: ${status})`);
 
         // Run dispatch asynchronously to not block the response

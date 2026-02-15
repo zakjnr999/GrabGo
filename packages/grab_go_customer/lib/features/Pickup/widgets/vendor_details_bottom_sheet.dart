@@ -12,6 +12,7 @@ import 'package:grab_go_customer/features/vendors/model/vendor_model.dart';
 import 'package:grab_go_customer/features/vendors/model/vendor_type.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
+import 'package:grab_go_customer/shared/widgets/vertical_zigzag_tag.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart' hide FoodRepository, FoodService;
 import 'package:provider/provider.dart';
@@ -595,41 +596,15 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                 isPopular
                     ? Positioned(
                         top: 0.h,
-                        left: 0.w,
+                        left: 8.w,
                         child: item.orderCount > 0
-                            ? Container(
-                                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [colors.error, colors.accentOrange],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: const BorderRadius.only(
-                                    bottomRight: Radius.circular(KBorderSize.borderMedium),
-                                    topLeft: Radius.circular(KBorderSize.borderMedium),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    SvgPicture.asset(
-                                      Assets.icons.flame,
-                                      package: 'grab_go_shared',
-                                      height: 13.h,
-                                      width: 13.w,
-                                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                                    ),
-                                    SizedBox(width: 4.w),
-                                    Text(
-                                      item.orderCount.toString(),
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12.sp,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ],
+                            ? Positioned(
+                                top: 0,
+                                left: 8.w,
+                                child: VerticalZigzagTag(
+                                  primaryText: item.orderCount.toString(),
+                                  secondaryText: 'orders',
+                                  color: colors.accentOrange,
                                 ),
                               )
                             : const SizedBox.shrink(),

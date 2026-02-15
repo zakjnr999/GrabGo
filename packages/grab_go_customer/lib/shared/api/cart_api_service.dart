@@ -8,6 +8,7 @@ abstract class CartApiService extends ChopperService {
   @GET()
   Future<Response<Map<String, dynamic>>> getCart({
     @Query('type') String? type,
+    @Query('fulfillmentMode') String? fulfillmentMode,
     @Query('lat') double? lat,
     @Query('lng') double? lng,
     @Query('useCredits') bool? useCredits,
@@ -17,6 +18,7 @@ abstract class CartApiService extends ChopperService {
   @POST(path: '/add')
   Future<Response<Map<String, dynamic>>> addToCart(
     @Body() Map<String, dynamic> body, {
+    @Query('fulfillmentMode') String? fulfillmentMode,
     @Query('lat') double? lat,
     @Query('lng') double? lng,
     @Query('useCredits') bool? useCredits,
@@ -27,6 +29,7 @@ abstract class CartApiService extends ChopperService {
   Future<Response<Map<String, dynamic>>> updateCartItem(
     @Path('itemId') String itemId,
     @Body() Map<String, dynamic> body, {
+    @Query('fulfillmentMode') String? fulfillmentMode,
     @Query('lat') double? lat,
     @Query('lng') double? lng,
     @Query('useCredits') bool? useCredits,
@@ -36,6 +39,7 @@ abstract class CartApiService extends ChopperService {
   @DELETE(path: '/remove/{itemId}')
   Future<Response<Map<String, dynamic>>> removeFromCart(
     @Path('itemId') String itemId, {
+    @Query('fulfillmentMode') String? fulfillmentMode,
     @Query('lat') double? lat,
     @Query('lng') double? lng,
     @Query('useCredits') bool? useCredits,
@@ -44,6 +48,7 @@ abstract class CartApiService extends ChopperService {
   /// Clear entire cart
   @DELETE(path: '/clear')
   Future<Response<Map<String, dynamic>>> clearCart({
+    @Query('fulfillmentMode') String? fulfillmentMode,
     @Query('lat') double? lat,
     @Query('lng') double? lng,
     @Query('useCredits') bool? useCredits,

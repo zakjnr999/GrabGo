@@ -48,6 +48,7 @@ class Cart extends StatelessWidget {
             final bool isPricingLoading = provider.isPricingLoading;
             final bool hasCredits = provider.availableCredits > 0;
             final bool useCredits = hasCredits && provider.useCredits;
+            final bool isPickupMode = provider.fulfillmentMode == 'pickup';
 
             return Column(
               children: [
@@ -232,17 +233,18 @@ class Cart extends StatelessWidget {
                                       false,
                                     ),
                                     SizedBox(height: 6.h),
-                                    _buildPriceRow(
-                                      context,
-                                      AppStrings.cartDeliveryFee,
-                                      deliveryFee,
-                                      colors,
-                                      Assets.icons.deliveryTruck,
-                                      false,
-                                      true,
-                                      infoType: _FeeInfoType.delivery,
-                                      isLoading: isPricingLoading,
-                                    ),
+                                    if (!isPickupMode)
+                                      _buildPriceRow(
+                                        context,
+                                        AppStrings.cartDeliveryFee,
+                                        deliveryFee,
+                                        colors,
+                                        Assets.icons.deliveryTruck,
+                                        false,
+                                        true,
+                                        infoType: _FeeInfoType.delivery,
+                                        isLoading: isPricingLoading,
+                                      ),
                                     SizedBox(height: 6.h),
                                     _buildPriceRow(
                                       context,
@@ -255,7 +257,7 @@ class Cart extends StatelessWidget {
                                       infoType: _FeeInfoType.service,
                                       isLoading: isPricingLoading,
                                     ),
-                                    if (rainFee > 0) ...[
+                                    if (!isPickupMode && rainFee > 0) ...[
                                       SizedBox(height: 6.h),
                                       _buildPriceRow(
                                         context,
@@ -292,6 +294,9 @@ class Cart extends StatelessWidget {
                                       provider.cartItems,
                                       minMinutes: provider.estimatedDeliveryMin,
                                       maxMinutes: provider.estimatedDeliveryMax,
+                                    ).replaceFirst(
+                                      "Estimated delivery",
+                                      isPickupMode ? "Estimated pickup" : "Estimated delivery",
                                     ),
                                     style: TextStyle(
                                       color: colors.textSecondary,
@@ -330,7 +335,7 @@ class Cart extends StatelessWidget {
                           context.push("/checkout");
                         }
                       },
-                      buttonText: "Proceed to Checkout",
+                      buttonText: isPickupMode ? "Proceed to Pickup Checkout" : "Proceed to Checkout",
                       textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800),
                       textColor: provider.cartItems.isEmpty ? colors.textSecondary : Colors.white,
                       padding: EdgeInsets.symmetric(vertical: 16.h),

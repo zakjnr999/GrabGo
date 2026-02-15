@@ -18,7 +18,6 @@ class DealCard extends StatelessWidget {
   final int discountPercent;
   final VoidCallback onTap;
   final double? cardWidth;
-  final bool useVerticalZigzagTag;
   final Color? accentColor;
 
   const DealCard({
@@ -29,7 +28,6 @@ class DealCard extends StatelessWidget {
     required this.onTap,
     this.deliveryTime,
     this.cardWidth,
-    this.useVerticalZigzagTag = false,
     this.accentColor,
   });
 
@@ -131,33 +129,12 @@ class DealCard extends StatelessWidget {
                 if (hasDiscount)
                   Positioned(
                     top: 0,
-                    left: useVerticalZigzagTag ? 8.w : 0.w,
-                    child: useVerticalZigzagTag
-                        ? VerticalZigzagTag(
-                            primaryText: '$discountPercent%',
-                            secondaryText: 'OFF',
-                            color: effectiveAccentColor,
-                          )
-                        : Container(
-                            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: accentColor == null
-                                    ? [colors.error, colors.accentOrange]
-                                    : [effectiveAccentColor.withValues(alpha: 0.9), effectiveAccentColor],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: const BorderRadius.only(
-                                bottomRight: Radius.circular(KBorderSize.borderMedium),
-                                topLeft: Radius.circular(KBorderSize.borderMedium),
-                              ),
-                            ),
-                            child: Text(
-                              "$discountPercent% OFF",
-                              style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w700),
-                            ),
-                          ),
+                    left: 8.w,
+                    child: VerticalZigzagTag(
+                      primaryText: '$discountPercent%',
+                      secondaryText: 'OFF',
+                      color: effectiveAccentColor,
+                    ),
                   ),
               ],
             ),

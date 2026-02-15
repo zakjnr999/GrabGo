@@ -104,6 +104,11 @@ async function dispatchOrder(orderId) {
             return { success: false, error: 'Order not found' };
         }
 
+        if (order.fulfillmentMode === 'pickup') {
+            console.log(`⛔ [Dispatch] Skipping pickup order: ${orderId}`);
+            return { success: false, error: 'Pickup orders are not dispatchable' };
+        }
+
         // Check if order already has a rider
         if (order.riderId) {
             console.log(`⚠️ [Dispatch] Order already has rider: ${order.riderId}`);

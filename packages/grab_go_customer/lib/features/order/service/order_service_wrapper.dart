@@ -13,9 +13,14 @@ class OrderServiceWrapper {
   // Create a new order
   Future<String> createOrder({
     required Map<CartItem, int> cartItems,
-    required String deliveryAddress,
+    required String fulfillmentMode,
+    String? deliveryAddress,
     double? deliveryLatitude,
     double? deliveryLongitude,
+    String? pickupContactName,
+    String? pickupContactPhone,
+    bool? acceptNoShowPolicy,
+    String? noShowPolicyVersion,
     required String paymentMethod,
     required double subtotal,
     required double deliveryFee,
@@ -42,24 +47,37 @@ class OrderServiceWrapper {
 
       // Convert cart items to the format expected by the backend
       final items = cartItems.entries.map((entry) {
-        final foodId = entry.key.id;
+        final itemId = entry.key.id;
+        final itemType = _normalizeOrderItemType(entry.key.itemType);
 
-        if (foodId.isEmpty) {
+        if (itemId.isEmpty) {
           throw Exception('Missing identifier for item ${entry.key.name}. Please refresh your menu data.');
         }
 
-        return OrderItem(food: foodId, quantity: entry.value, price: entry.key.price, itemType: 'food');
+        return OrderItem(
+          food: itemId,
+          quantity: entry.value,
+          price: entry.key.price,
+          itemType: itemType,
+        );
       }).toList();
 
       final request = CreateOrderRequest(
         orderNumber: _generateOrderNumber(),
         restaurant: restaurantId,
         items: items,
-        deliveryAddress: _resolveDeliveryAddress(
-          deliveryAddress,
-          latitude: deliveryLatitude,
-          longitude: deliveryLongitude,
-        ),
+        fulfillmentMode: fulfillmentMode,
+        deliveryAddress: fulfillmentMode == 'pickup'
+            ? null
+            : _resolveDeliveryAddress(
+                deliveryAddress ?? '',
+                latitude: deliveryLatitude,
+                longitude: deliveryLongitude,
+              ),
+        pickupContactName: pickupContactName,
+        pickupContactPhone: pickupContactPhone,
+        acceptNoShowPolicy: acceptNoShowPolicy,
+        noShowPolicyVersion: noShowPolicyVersion,
         paymentMethod: paymentMethod.toLowerCase().replaceAll(' ', '_'),
         useCredits: useCredits,
         notes: notes,
@@ -238,6 +256,21 @@ class OrderServiceWrapper {
           latitude: latitude,
           longitude: longitude,
         );
+    }
+  }
+
+  String _normalizeOrderItemType(String itemType) {
+    switch (itemType) {
+      case 'Food':
+        return 'food';
+      case 'GroceryItem':
+        return 'groceryitem';
+      case 'PharmacyItem':
+        return 'pharmacyitem';
+      case 'GrabMartItem':
+        return 'grabmartitem';
+      default:
+        return itemType.toLowerCase();
     }
   }
 }

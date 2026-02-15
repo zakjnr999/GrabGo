@@ -28,6 +28,9 @@ class _BottomNavigatorState extends State<BottomNavigator> {
   int? _lastCheckedIndex;
 
   void _onItemSelected(int index) {
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    final targetMode = index == 1 ? 'pickup' : 'delivery';
+    cartProvider.setFulfillmentMode(targetMode);
     Provider.of<NavigationProvider>(context, listen: false).setIndex(index);
   }
 

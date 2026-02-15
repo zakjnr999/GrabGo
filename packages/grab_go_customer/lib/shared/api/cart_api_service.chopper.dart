@@ -21,6 +21,7 @@ final class _$CartApiService extends CartApiService {
   @override
   Future<Response<Map<String, dynamic>>> getCart({
     String? type,
+    String? fulfillmentMode,
     double? lat,
     double? lng,
     bool? useCredits,
@@ -28,6 +29,7 @@ final class _$CartApiService extends CartApiService {
     final Uri $url = Uri.parse('/cart');
     final Map<String, dynamic> $params = <String, dynamic>{
       'type': type,
+      'fulfillmentMode': fulfillmentMode,
       'lat': lat,
       'lng': lng,
       'useCredits': useCredits,
@@ -44,12 +46,14 @@ final class _$CartApiService extends CartApiService {
   @override
   Future<Response<Map<String, dynamic>>> addToCart(
     Map<String, dynamic> body, {
+    String? fulfillmentMode,
     double? lat,
     double? lng,
     bool? useCredits,
   }) {
     final Uri $url = Uri.parse('/cart/add');
     final Map<String, dynamic> $params = <String, dynamic>{
+      'fulfillmentMode': fulfillmentMode,
       'lat': lat,
       'lng': lng,
       'useCredits': useCredits,
@@ -69,6 +73,7 @@ final class _$CartApiService extends CartApiService {
   Future<Response<Map<String, dynamic>>> updateCartItem(
     String itemId,
     Map<String, dynamic> body, {
+    String? fulfillmentMode,
     double? lat,
     double? lng,
     bool? useCredits,
@@ -76,6 +81,7 @@ final class _$CartApiService extends CartApiService {
   ) {
     final Uri $url = Uri.parse('/cart/update/${itemId}');
     final Map<String, dynamic> $params = <String, dynamic>{
+      'fulfillmentMode': fulfillmentMode,
       'lat': lat,
       'lng': lng,
       'useCredits': useCredits,
@@ -94,12 +100,14 @@ final class _$CartApiService extends CartApiService {
   @override
   Future<Response<Map<String, dynamic>>> removeFromCart(
     String itemId, {
+    String? fulfillmentMode,
     double? lat,
     double? lng,
     bool? useCredits,
   }) {
     final Uri $url = Uri.parse('/cart/remove/${itemId}');
     final Map<String, dynamic> $params = <String, dynamic>{
+      'fulfillmentMode': fulfillmentMode,
       'lat': lat,
       'lng': lng,
       'useCredits': useCredits,
@@ -115,12 +123,14 @@ final class _$CartApiService extends CartApiService {
 
   @override
   Future<Response<Map<String, dynamic>>> clearCart({
+    String? fulfillmentMode,
     double? lat,
     double? lng,
     bool? useCredits,
   }) {
     final Uri $url = Uri.parse('/cart/clear');
     final Map<String, dynamic> $params = <String, dynamic>{
+      'fulfillmentMode': fulfillmentMode,
       'lat': lat,
       'lng': lng,
       'useCredits': useCredits,

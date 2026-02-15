@@ -19,6 +19,11 @@ const toBoolean = (value, fallback = false) => {
     return fallback;
 };
 
+const normalizeFulfillmentMode = (value) => {
+    if (!value) return 'delivery';
+    return String(value).toLowerCase() === 'pickup' ? 'pickup' : 'delivery';
+};
+
 const roundCurrency = (value) => {
     return Math.round((value + Number.EPSILON) * 100) / 100;
 };
@@ -364,23 +369,30 @@ const calculateCartPricing = async (cart, options = {}) => {
         };
     }
 
-    const { userId, deliveryLocation, useCredits } = options;
+    const { userId, deliveryLocation, useCredits, fulfillmentMode } = options;
+    const resolvedFulfillmentMode = normalizeFulfillmentMode(fulfillmentMode || cart?.fulfillmentMode);
     const subtotal = calculateSubtotal(cart.items);
     const { baseFee, vendorLocation, vendorPrepTime, vendorDeliveryTime } = await getVendorDeliveryContext(cart);
     const maxItemPrepMinutes = getMaxItemPrepMinutes(cart.items);
     const effectivePrepMinutes = maxItemPrepMinutes ?? vendorPrepTime;
     const resolvedDeliveryLocation = normalizeLocation(deliveryLocation) || await getUserDeliveryLocation(userId);
-    const distanceKm = calculateDistanceKm(vendorLocation, resolvedDeliveryLocation);
-    const deliveryFee = calculateDeliveryFee({ baseFee, distanceKm });
+    const distanceKm = resolvedFulfillmentMode === 'pickup'
+        ? null
+        : calculateDistanceKm(vendorLocation, resolvedDeliveryLocation);
+    const deliveryFee = resolvedFulfillmentMode === 'pickup'
+        ? 0
+        : calculateDeliveryFee({ baseFee, distanceKm });
     const serviceFee = calculateServiceFee(subtotal);
     const tax = calculateTax(subtotal);
-    const rainFee = await getRainFee({ deliveryLocation: resolvedDeliveryLocation, vendorLocation });
+    const rainFee = resolvedFulfillmentMode === 'pickup'
+        ? 0
+        : await getRainFee({ deliveryLocation: resolvedDeliveryLocation, vendorLocation });
     const totalBeforeCredits = calculateTotal({ subtotal, deliveryFee, serviceFee, tax, rainFee });
     const itemCount = cart.items.reduce((sum, item) => sum + toNumber(item.quantity, 0), 0);
     const estimatedDelivery = calculateEstimatedDeliveryWindow({
         distanceKm,
         vendorPrepTime: effectivePrepMinutes,
-        vendorDeliveryTime
+        vendorDeliveryTime: resolvedFulfillmentMode === 'pickup' ? null : vendorDeliveryTime
     });
     let creditsApplied = 0;
     let totalAfterCredits = totalBeforeCredits;
@@ -417,22 +429,38 @@ const calculateCartPricing = async (cart, options = {}) => {
     };
 };
 
-const calculateOrderPricing = async ({ subtotal, baseDeliveryFee, userId, deliveryLocation, vendorLocation, vendorPrepTime, vendorDeliveryTime }) => {
+const calculateOrderPricing = async ({
+    subtotal,
+    baseDeliveryFee,
+    userId,
+    deliveryLocation,
+    vendorLocation,
+    vendorPrepTime,
+    vendorDeliveryTime,
+    fulfillmentMode
+}) => {
+    const resolvedFulfillmentMode = normalizeFulfillmentMode(fulfillmentMode);
     const normalizedSubtotal = roundCurrency(toNumber(subtotal, 0));
     const normalizedVendorLocation = normalizeLocation(vendorLocation);
     const resolvedDeliveryLocation = normalizeLocation(deliveryLocation) || await getUserDeliveryLocation(userId);
-    const distanceKm = calculateDistanceKm(normalizedVendorLocation, resolvedDeliveryLocation);
-    const normalizedDeliveryFee = calculateDeliveryFee({
-        baseFee: roundCurrency(toNumber(baseDeliveryFee, 0)),
-        distanceKm
-    });
+    const distanceKm = resolvedFulfillmentMode === 'pickup'
+        ? null
+        : calculateDistanceKm(normalizedVendorLocation, resolvedDeliveryLocation);
+    const normalizedDeliveryFee = resolvedFulfillmentMode === 'pickup'
+        ? 0
+        : calculateDeliveryFee({
+            baseFee: roundCurrency(toNumber(baseDeliveryFee, 0)),
+            distanceKm
+        });
     const serviceFee = calculateServiceFee(normalizedSubtotal);
     const tax = calculateTax(normalizedSubtotal);
-    const rainFee = await getRainFee({ deliveryLocation: resolvedDeliveryLocation, vendorLocation: normalizedVendorLocation });
+    const rainFee = resolvedFulfillmentMode === 'pickup'
+        ? 0
+        : await getRainFee({ deliveryLocation: resolvedDeliveryLocation, vendorLocation: normalizedVendorLocation });
     const estimatedDelivery = calculateEstimatedDeliveryWindow({
         distanceKm,
         vendorPrepTime,
-        vendorDeliveryTime
+        vendorDeliveryTime: resolvedFulfillmentMode === 'pickup' ? null : vendorDeliveryTime
     });
     const total = calculateTotal({
         subtotal: normalizedSubtotal,

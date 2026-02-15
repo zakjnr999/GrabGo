@@ -70,6 +70,11 @@ enum PaymentStatus {
   refunded
 }
 
+enum FulfillmentMode {
+  delivery
+  pickup
+}
+
 enum VehicleType {
   motorcycle
   bicycle
@@ -1011,6 +1016,7 @@ model Order {
   id                 String           @id @default(cuid())
   orderNumber        String           @unique
   orderType          OrderType        @default(food)
+  fulfillmentMode    FulfillmentMode  @default(delivery)
   customerId         String
   restaurantId       String?
   groceryStoreId     String?
@@ -1032,11 +1038,27 @@ model Order {
   expectedDelivery   DateTime?
   deliveredDate      DateTime?
   cancelledDate      DateTime?
+  acceptedAt         DateTime?
+  rejectedAt         DateTime?
+  rejectReason       String?
+  acceptByAt         DateTime?
+  preparingAt        DateTime?
+  readyAt            DateTime?
+  pickupExpiresAt    DateTime?
+  pickedUpAt         DateTime?
   cancellationReason String?
   promoCode          String?
   promoDiscount      Float            @default(0)
   promoType          PromoType?
   notes              String?
+  pickupContactName  String?
+  pickupContactPhone String?
+  pickupOtpHash      String?
+  pickupOtpFailedAttempts Int         @default(0)
+  pickupOtpLastAttemptAt DateTime?
+  pickupReadyToCollectedSeconds Int?
+  noShowPolicyAcceptedAt DateTime?
+  noShowPolicyVersion String?
 
   // Delivery Window (calculated when rider accepts)
   deliveryWindowMin      Int? // Minimum estimated delivery time in minutes
@@ -1059,8 +1081,8 @@ model Order {
   riderEarnings    Float @default(0) // Total rider gets (baseFee + distanceFee + tip - platformFee)
 
   // Delivery Address
-  deliveryStreet    String
-  deliveryCity      String
+  deliveryStreet    String?
+  deliveryCity      String?
   deliveryState     String?
   deliveryZipCode   String?
   deliveryLatitude  Float?
@@ -1077,6 +1099,8 @@ model Order {
   pharmacyStore PharmacyStore? @relation("PharmacyStoreOrders", fields: [pharmacyStoreId], references: [id])
   grabMartStore GrabMartStore? @relation("GrabMartStoreOrders", fields: [grabMartStoreId], references: [id])
   items         OrderItem[]
+  inventoryHolds OrderInventoryHold[]
+  actionAudits  OrderActionAudit[]
   payments      Payment[]
   creditHold    UserCreditHold?
 
@@ -1088,6 +1112,7 @@ model Order {
   @@index([riderId])
   @@index([status])
   @@index([orderDate])
+  @@index([fulfillmentMode])
   @@map("orders")
 }
 
@@ -1110,6 +1135,7 @@ model OrderItem {
   groceryItem  GroceryItem?  @relation(fields: [groceryItemId], references: [id])
   pharmacyItem PharmacyItem? @relation(fields: [pharmacyItemId], references: [id])
   grabMartItem GrabMartItem? @relation(fields: [grabMartItemId], references: [id])
+  inventoryHolds OrderInventoryHold[]
 
   @@index([orderId])
   @@index([foodId])
@@ -1125,6 +1151,7 @@ model Cart {
   id                            String    @id @default(cuid())
   userId                        String
   cartType                      CartType
+  fulfillmentMode               FulfillmentMode @default(delivery)
   restaurantId                  String?
   groceryStoreId                String?
   pharmacyStoreId               String?
@@ -1147,6 +1174,8 @@ model Cart {
 
   @@index([userId])
   @@index([cartType])
+  @@index([fulfillmentMode])
+  @@index([userId, cartType, fulfillmentMode, isActive])
   @@map("carts")
 }
 
@@ -1176,6 +1205,45 @@ model CartItem {
   @@index([pharmacyItemId])
   @@index([grabMartItemId])
   @@map("cart_items")
+}
+
+model OrderInventoryHold {
+  id          String   @id @default(cuid())
+  orderId     String
+  orderItemId String
+  itemType    ItemType
+  itemId      String
+  reservedQty Int
+  releasedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([orderItemId])
+  @@index([itemType, itemId])
+  @@index([releasedAt])
+  @@map("order_inventory_holds")
+}
+
+model OrderActionAudit {
+  id        String   @id @default(cuid())
+  orderId   String
+  actorId   String?
+  actorRole String?
+  action    String
+  reason    String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([actorId])
+  @@index([action])
+  @@map("order_action_audits")
 }
 
 // ==================== CHAT ====================

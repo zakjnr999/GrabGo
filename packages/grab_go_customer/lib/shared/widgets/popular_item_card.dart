@@ -104,46 +104,12 @@ class PopularItemCard extends StatelessWidget {
                 if (shouldShowOrderTag)
                   Positioned(
                     top: 0,
-                    left: useVerticalZigzagTag ? 8.w : 0.w,
-                    child: useVerticalZigzagTag
-                        ? VerticalZigzagTag(
-                            primaryText: orderCount.toString(),
-                            secondaryText: 'orders',
-                            color: accentColor ?? const Color(0xFFE65100),
-                          )
-                        : Container(
-                            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: accentColor == null
-                                    ? [colors.error, colors.accentOrange]
-                                    : [effectiveAccentColor.withValues(alpha: 0.9), effectiveAccentColor],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: const BorderRadius.only(
-                                bottomRight: Radius.circular(KBorderSize.borderMedium),
-                                topLeft: Radius.circular(KBorderSize.borderMedium),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                SvgPicture.asset(
-                                  Assets.icons.flame,
-                                  package: 'grab_go_shared',
-                                  height: 16,
-                                  width: 16.w,
-                                  colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                                ),
-                                SizedBox(width: 4.w),
-                                Text(
-                                  "$orderCount orders",
-                                  style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w700),
-                                ),
-                              ],
-                            ),
-                          ),
+                    left: 8.w,
+                    child: VerticalZigzagTag(
+                      primaryText: orderCount.toString(),
+                      secondaryText: 'orders',
+                      color: accentColor ?? colors.accentOrange,
+                    ),
                   ),
                 Consumer<FavoritesProvider>(
                   builder: (context, favoriteProvider, child) {

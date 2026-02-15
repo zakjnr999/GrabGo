@@ -68,7 +68,6 @@ class DealsSection extends StatelessWidget {
                   cartItem: originalItem,
                   deliveryTime: item.estimatedDeliveryTime,
                   discountPercent: discountPercent,
-                  useVerticalZigzagTag: useVerticalZigzagTag,
                   accentColor: accentColor,
                   onTap: () => onItemTap(item),
                 ),

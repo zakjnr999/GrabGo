@@ -24,12 +24,20 @@ const cartTypeFromItemType = (itemTypeEnum) => {
     return 'food';
 };
 
-const getOrCreateCart = async (userId, cartType = 'food') => {
+const normalizeFulfillmentMode = (mode) => {
+    if (!mode) return 'delivery';
+    const normalized = String(mode).trim().toLowerCase();
+    return normalized === 'pickup' ? 'pickup' : 'delivery';
+};
+
+const getOrCreateCart = async (userId, cartType = 'food', fulfillmentMode = 'delivery') => {
+    const normalizedMode = normalizeFulfillmentMode(fulfillmentMode);
     let cart = await prisma.cart.findFirst({
         where: {
             userId,
             isActive: true,
-            cartType
+            cartType,
+            fulfillmentMode: normalizedMode
         },
         include: {
             items: {
@@ -48,6 +56,7 @@ const getOrCreateCart = async (userId, cartType = 'food') => {
             data: {
                 userId,
                 cartType,
+                fulfillmentMode: normalizedMode,
                 items: {
                     create: []
                 }
@@ -75,7 +84,8 @@ const addToCart = async (userId, itemData) => {
         restaurantId,
         groceryStoreId,
         pharmacyStoreId,
-        grabMartStoreId
+        grabMartStoreId,
+        fulfillmentMode = 'delivery'
     } = itemData;
 
     // Validate quantity
@@ -131,9 +141,10 @@ const addToCart = async (userId, itemData) => {
 
     // Determine cart type
     const cartType = cartTypeFromItemType(itemTypeEnum);
+    const normalizedMode = normalizeFulfillmentMode(fulfillmentMode);
 
     // Get or create cart
-    let cart = await getOrCreateCart(userId, cartType);
+    let cart = await getOrCreateCart(userId, cartType, normalizedMode);
 
     // Validate and check if switching restaurants/stores
     if (cartType === 'food' && restaurantId) {
@@ -292,9 +303,10 @@ const addToCart = async (userId, itemData) => {
  * @param {number} quantity - New quantity
  * @returns {Promise<Object>} Updated cart
  */
-const updateCartItem = async (userId, itemId, quantity) => {
+const updateCartItem = async (userId, itemId, quantity, fulfillmentMode = 'delivery') => {
+    const normalizedMode = normalizeFulfillmentMode(fulfillmentMode);
     const cart = await prisma.cart.findFirst({
-        where: { userId, isActive: true },
+        where: { userId, isActive: true, fulfillmentMode: normalizedMode },
         include: { items: true }
     });
 
@@ -352,12 +364,12 @@ const updateCartItem = async (userId, itemId, quantity) => {
  * @param {string} itemId - Cart Item ID
  * @returns {Promise<Object>} Updated cart
  */
-const removeFromCart = async (userId, itemId) => {
+const removeFromCart = async (userId, itemId, fulfillmentMode = 'delivery') => {
     console.log(`🗑️ Backend: Removing item ${itemId} from cart for user ${userId}`);
 
     // Find ALL active carts
     const carts = await prisma.cart.findMany({
-        where: { userId, isActive: true },
+        where: { userId, isActive: true, fulfillmentMode: normalizeFulfillmentMode(fulfillmentMode) },
         include: { items: true }
     });
 
@@ -428,9 +440,10 @@ const removeFromCart = async (userId, itemId) => {
  * @param {string} userId - User ID
  * @returns {Promise<Object>} Empty cart
  */
-const clearCart = async (userId) => {
+const clearCart = async (userId, fulfillmentMode = 'delivery') => {
+    const normalizedMode = normalizeFulfillmentMode(fulfillmentMode);
     const cart = await prisma.cart.findFirst({
-        where: { userId, isActive: true }
+        where: { userId, isActive: true, fulfillmentMode: normalizedMode }
     });
 
     if (!cart) {
@@ -468,8 +481,8 @@ const clearCart = async (userId) => {
  * @param {string} cartType - 'food', 'grocery', 'pharmacy', or 'grabmart'
  * @returns {Promise<Object>} Cart object
  */
-const getUserCart = async (userId, cartType = null) => {
-    const where = { userId, isActive: true };
+const getUserCart = async (userId, cartType = null, fulfillmentMode = 'delivery') => {
+    const where = { userId, isActive: true, fulfillmentMode: normalizeFulfillmentMode(fulfillmentMode) };
     if (cartType) {
         where.cartType = cartType;
     }
@@ -574,9 +587,9 @@ const getUserCart = async (userId, cartType = null) => {
  * @param {string} orderId - Order ID
  * @returns {Promise<Object>} Updated cart
  */
-const markCartAsConverted = async (userId, orderId) => {
+const markCartAsConverted = async (userId, orderId, fulfillmentMode = 'delivery') => {
     const cart = await prisma.cart.findFirst({
-        where: { userId, isActive: true }
+        where: { userId, isActive: true, fulfillmentMode: normalizeFulfillmentMode(fulfillmentMode) }
     });
 
     if (!cart) {
@@ -681,6 +694,7 @@ const markAbandonmentNotificationSent = async (cartId) => {
 };
 
 module.exports = {
+    normalizeFulfillmentMode,
     getOrCreateCart,
     addToCart,
     updateCartItem,
