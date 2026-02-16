@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/shared/widgets/custom_map_markers.dart';
 import '../models/tracking_models.dart';
 import '../service/tracking_api_service.dart';
@@ -180,7 +181,7 @@ class TrackingProvider extends BaseTrackingProvider {
         _markerIconCache[cacheKey] = await CustomMapMarkers.createRiderMarker(
           imageUrl: _trackingData!.rider?.profileImage,
           name: _trackingData!.rider?.name ?? 'Rider',
-          primaryColor: const Color(0xFFFE6132),
+          primaryColor: AppColors.serviceFood,
         );
       }
 
@@ -199,7 +200,7 @@ class TrackingProvider extends BaseTrackingProvider {
     if (!_markerIconCache.containsKey('destination')) {
       _markerIconCache['destination'] = await CustomMapMarkers.createDestinationMarker(
         name: 'You',
-        primaryColor: const Color(0xFF4CAF50), // Green for delivery destination
+        primaryColor: AppColors.serviceGrocery,
       );
     }
 
@@ -219,7 +220,7 @@ class TrackingProvider extends BaseTrackingProvider {
       if (!_markerIconCache.containsKey('vendor')) {
         _markerIconCache['vendor'] = await CustomMapMarkers.createStoreMarker(
           name: 'Vendor',
-          primaryColor: const Color(0xFFFE6132),
+          primaryColor: AppColors.serviceFood,
         );
       }
 
@@ -256,8 +257,8 @@ class TrackingProvider extends BaseTrackingProvider {
     if (_trackingData == null) return;
 
     final circles = <Circle>{};
-    const pickupColor = Color(0xFFFE6132); // Orange for pickup
-    const deliveryColor = Color(0xFF4CAF50); // Green for delivery
+    const pickupColor = AppColors.serviceFood;
+    const deliveryColor = AppColors.serviceGrocery;
 
     // Pickup geofence circle
     if (_trackingData!.pickupLocation != null) {
@@ -298,7 +299,7 @@ class TrackingProvider extends BaseTrackingProvider {
     final icon = await CustomMapMarkers.createRiderMarker(
       imageUrl: _trackingData?.rider?.profileImage,
       name: _trackingData?.rider?.name ?? 'Rider',
-      primaryColor: const Color(0xFFFE6132), // grab_go accentOrange
+      primaryColor: AppColors.serviceFood,
     );
 
     _markerIconCache[cacheKey] = icon;
@@ -316,7 +317,7 @@ class TrackingProvider extends BaseTrackingProvider {
       final routePolyline = Polyline(
         polylineId: const PolylineId('route'),
         points: polylineCoordinates,
-        color: const Color(0xFFFE6132).withValues(alpha: 0.3),
+        color: AppColors.serviceFood.withValues(alpha: 0.3),
         width: 4,
         patterns: [PatternItem.dash(15), PatternItem.gap(10)],
       );
@@ -485,7 +486,7 @@ class TrackingProvider extends BaseTrackingProvider {
         .toSet();
 
     _polylines.add(
-      Polyline(polylineId: const PolylineId('trail'), points: points, color: const Color(0xFFFE6132), width: 5),
+      Polyline(polylineId: const PolylineId('trail'), points: points, color: AppColors.serviceFood, width: 5),
     );
   }
 

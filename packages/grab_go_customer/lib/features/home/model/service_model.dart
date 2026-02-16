@@ -1,3 +1,5 @@
+import 'package:grab_go_shared/grub_go_shared.dart';
+
 class ServiceModel {
   final String id;
   final String name;
@@ -22,28 +24,28 @@ class AppServices {
     id: 'food',
     name: 'Foods',
     emoji: '🍔',
-    colorHex: '#FE6132', // Orange
+    colorHex: AppColors.serviceFoodHex,
   );
 
   static const ServiceModel groceries = ServiceModel(
     id: 'groceries',
     name: 'Groceries',
     emoji: '🛒',
-    colorHex: '#4CAF50', // Green
+    colorHex: AppColors.serviceGroceryHex,
   );
 
   static const ServiceModel pharmacy = ServiceModel(
     id: 'pharmacy',
     name: 'Pharmacy',
     emoji: '💊',
-    colorHex: '#009688', // Teal
+    colorHex: AppColors.servicePharmacyHex,
   );
 
   static const ServiceModel convenience = ServiceModel(
     id: 'convenience',
     name: 'GrabMart',
     emoji: '🏪',
-    colorHex: '#9C27B0', // Purple
+    colorHex: AppColors.serviceGrabMartHex,
   );
 
   /// List of all available services (main services only)

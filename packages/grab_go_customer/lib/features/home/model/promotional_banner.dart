@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:grab_go_shared/grub_go_shared.dart';
 
 /// Model for promotional banners
 class PromotionalBanner {
@@ -30,7 +31,7 @@ class AppPromotionalBanners {
     title: '50% Off First Order',
     subtitle: 'New here? Get half off your first meal!',
     actionText: 'Claim Offer',
-    gradientColors: [const Color(0xFFFFB800), const Color(0xFFFE6132)],
+    gradientColors: [const Color(0xFFFFB800), AppColors.serviceFood],
     emoji: '🎉',
     onTap: onTap,
   );
@@ -40,7 +41,7 @@ class AppPromotionalBanners {
     title: 'Refer & Earn GH₵20',
     subtitle: 'Share with friends and get rewarded',
     actionText: 'Invite Now',
-    gradientColors: [const Color(0xFF9C27B0), const Color(0xFF673AB7)],
+    gradientColors: [AppColors.serviceGrabMart, const Color(0xFF673AB7)],
     emoji: '🎁',
     onTap: onTap,
   );
@@ -60,7 +61,7 @@ class AppPromotionalBanners {
     title: 'Try GrabMart',
     subtitle: 'Groceries delivered in 20 minutes',
     actionText: 'Shop Now',
-    gradientColors: [const Color(0xFF00BCD4), const Color(0xFF4CAF50)],
+    gradientColors: [const Color(0xFF00BCD4), AppColors.serviceGrocery],
     emoji: '🏪',
     onTap: onTap,
   );

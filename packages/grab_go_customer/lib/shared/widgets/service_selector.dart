@@ -26,28 +26,20 @@ class ServiceSelector extends StatefulWidget {
 }
 
 class _ServiceSelectorState extends State<ServiceSelector> {
-  static const List<String> _emojiFallbackFonts = [
-    'Noto Color Emoji',
-    'Apple Color Emoji',
-    'Segoe UI Emoji',
-  ];
+  static const List<String> _emojiFallbackFonts = ['Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'];
 
   int selectedIndex = 0;
 
-  Widget _buildEmoji(String emoji, double size) {
-    return RepaintBoundary(
-      child: Text(
-        emoji,
-        key: ValueKey<String>('service-emoji-$emoji-${size.toStringAsFixed(1)}'),
-        maxLines: 1,
-        softWrap: false,
-        textScaler: TextScaler.noScaling,
-        style: TextStyle(
-          fontSize: size,
-          height: 1,
-          fontFamilyFallback: _emojiFallbackFonts,
-        ),
-      ),
+  Widget _buildEmoji(BuildContext context, String emoji, double size) {
+    final baseColor = DefaultTextStyle.of(context).style.color ?? context.appColors.textPrimary;
+
+    return Text(
+      emoji,
+      maxLines: 1,
+      softWrap: false,
+      overflow: TextOverflow.visible,
+      textScaler: TextScaler.noScaling,
+      style: TextStyle(inherit: false, color: baseColor, fontSize: size, fontFamilyFallback: _emojiFallbackFonts),
     );
   }
 
@@ -197,7 +189,7 @@ class _ServiceSelectorState extends State<ServiceSelector> {
                       bottom: -8,
                       child: Opacity(
                         opacity: isSelected ? 0.2 : 0.08,
-                        child: _buildEmoji(service.emoji, 50.sp),
+                        child: _buildEmoji(context, service.emoji, 50.sp),
                       ),
                     ),
                     if (isSelected)
@@ -238,7 +230,7 @@ class _ServiceSelectorState extends State<ServiceSelector> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          _buildEmoji(service.emoji, 26.sp),
+                          _buildEmoji(context, service.emoji, 26.sp),
                           SizedBox(width: 10.w),
                           Flexible(
                             child: Text(

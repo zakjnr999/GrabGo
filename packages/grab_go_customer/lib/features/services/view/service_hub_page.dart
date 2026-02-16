@@ -64,13 +64,13 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
   Color _serviceAccentColor(AppColorsExtension colors) {
     switch (widget.serviceId) {
       case 'groceries':
-        return const Color(0xFF4CAF50);
+        return colors.serviceGrocery;
       case 'pharmacy':
-        return const Color(0xFF009688);
+        return colors.servicePharmacy;
       case 'convenience':
-        return const Color(0xFF9C27B0);
+        return colors.serviceGrabMart;
       default:
-        return colors.accentOrange;
+        return colors.serviceFood;
     }
   }
 

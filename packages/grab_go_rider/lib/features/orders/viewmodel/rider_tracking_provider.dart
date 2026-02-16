@@ -7,6 +7,7 @@ import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:grab_go_rider/features/orders/service/rider_foreground_service.dart';
 import 'package:grab_go_rider/features/orders/service/rider_tracking_service.dart';
 import 'package:grab_go_shared/shared/services/cache_service.dart';
+import 'package:grab_go_shared/shared/utils/colors.dart';
 import 'package:grab_go_shared/shared/widgets/custom_map_markers.dart';
 
 /// State for the rider tracking provider
@@ -714,7 +715,7 @@ class RiderTrackingProvider with ChangeNotifier {
   /// Setup markers and polylines on the map
   Future<void> _setupMapElements() async {
     final markers = <Marker>{};
-    const primaryColor = Color(0xFFFE6132); // accentOrange
+    const primaryColor = AppColors.serviceFood;
 
     // 1. Add Rider marker (current location - "You")
     if (_latitude != null && _longitude != null) {
@@ -761,7 +762,7 @@ class RiderTrackingProvider with ChangeNotifier {
       if (!_markerIconCache.containsKey('destination')) {
         _markerIconCache['destination'] = await CustomMapMarkers.createDestinationMarker(
           name: 'Delivery',
-          primaryColor: const Color(0xFF4CAF50), // green for delivery
+          primaryColor: AppColors.serviceGrocery,
         );
       }
 
@@ -796,8 +797,8 @@ class RiderTrackingProvider with ChangeNotifier {
   /// Setup geofence circles around pickup and destination
   void _setupGeofenceCircles() {
     final circles = <Circle>{};
-    const pickupColor = Color(0xFFFE6132); // Orange for pickup
-    const deliveryColor = Color(0xFF4CAF50); // Green for delivery
+    const pickupColor = AppColors.serviceFood;
+    const deliveryColor = AppColors.serviceGrocery;
 
     // Pickup geofence circle
     if (_pickupLatitude != null && _pickupLongitude != null) {
@@ -841,7 +842,7 @@ class RiderTrackingProvider with ChangeNotifier {
       final routePolyline = Polyline(
         polylineId: const PolylineId('route'),
         points: polylineCoordinates,
-        color: const Color(0xFFFE6132).withValues(alpha: 0.7),
+        color: AppColors.serviceFood.withValues(alpha: 0.7),
         width: 4,
         patterns: [PatternItem.dash(15), PatternItem.gap(10)],
       );
@@ -878,7 +879,7 @@ class RiderTrackingProvider with ChangeNotifier {
         Polyline(
           polylineId: const PolylineId('route'),
           points: points,
-          color: const Color(0xFFFE6132).withValues(alpha: 0.5),
+          color: AppColors.serviceFood.withValues(alpha: 0.5),
           width: 4,
           patterns: [PatternItem.dash(15), PatternItem.gap(10)],
         ),
@@ -896,7 +897,7 @@ class RiderTrackingProvider with ChangeNotifier {
     final hasRiderMarker = _markers.any((m) => m.markerId.value == 'rider');
     if (!hasRiderMarker) {
       // Create rider marker if it doesn't exist
-      const primaryColor = Color(0xFFFE6132);
+      const primaryColor = AppColors.serviceFood;
       if (!_markerIconCache.containsKey('rider')) {
         _markerIconCache['rider'] = await CustomMapMarkers.createRiderMarker(name: 'You', primaryColor: primaryColor);
       }

@@ -1,9 +1,11 @@
+import 'package:grab_go_shared/grub_go_shared.dart';
+
 /// Enum representing different types of vendors in the app
 enum VendorType {
-  food('food', 'Restaurant', '🍔', '#FE6132'),
-  grocery('grocery', 'Grocery Store', '🛒', '#4CAF50'),
-  pharmacy('pharmacy', 'Pharmacy', '💊', '#009688'),
-  grabmart('grabmart', 'GrabMart', '🏪', '#9C27B0');
+  food('food', 'Restaurant', '🍔', AppColors.serviceFoodHex),
+  grocery('grocery', 'Grocery Store', '🛒', AppColors.serviceGroceryHex),
+  pharmacy('pharmacy', 'Pharmacy', '💊', AppColors.servicePharmacyHex),
+  grabmart('grabmart', 'GrabMart', '🏪', AppColors.serviceGrabMartHex);
 
   final String id;
   final String displayName;

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'colors.dart';
 
 /// Custom color extension for theme-aware colors
 /// This allows colors to automatically switch between light and dark themes
@@ -22,8 +23,13 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
   final Color accentOrange;
   final Color accentOrangeLight;
   final Color accentBlue;
+  final Color vendorPrimaryBlue;
   final Color accentViolet;
   final Color accentGreen;
+  final Color serviceFood;
+  final Color serviceGrocery;
+  final Color servicePharmacy;
+  final Color serviceGrabMart;
 
   // Semantic colors
   final Color error;
@@ -64,8 +70,13 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     required this.accentOrange,
     required this.accentOrangeLight,
     required this.accentBlue,
+    required this.vendorPrimaryBlue,
     required this.accentViolet,
     required this.accentGreen,
+    required this.serviceFood,
+    required this.serviceGrocery,
+    required this.servicePharmacy,
+    required this.serviceGrabMart,
     required this.error,
     required this.success,
     required this.warning,
@@ -95,8 +106,13 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     accentOrange: Color(0xFFFE6132),
     accentOrangeLight: Color(0xFFFFDFD6),
     accentBlue: Color(0xFF018FFF),
+    vendorPrimaryBlue: AppColors.vendorPrimaryBlue,
     accentViolet: Color(0xFF9E37FF),
     accentGreen: Color(0xFF4CAF50),
+    serviceFood: AppColors.serviceFood,
+    serviceGrocery: AppColors.serviceGrocery,
+    servicePharmacy: AppColors.servicePharmacy,
+    serviceGrabMart: AppColors.serviceGrabMart,
     error: Color(0xFFE53935),
     success: Color(0xFF4CAF50),
     warning: Color(0xFFFFA726),
@@ -126,8 +142,13 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     accentOrange: Color(0xFFFE6132),
     accentOrangeLight: Color(0xFFFFDFD6),
     accentBlue: Color(0xFF018FFF),
+    vendorPrimaryBlue: AppColors.vendorPrimaryBlue,
     accentViolet: Color(0xFF9E37FF),
     accentGreen: Color(0xFF4CAF50),
+    serviceFood: AppColors.serviceFood,
+    serviceGrocery: AppColors.serviceGrocery,
+    servicePharmacy: AppColors.servicePharmacy,
+    serviceGrabMart: AppColors.serviceGrabMart,
     error: Color(0xFFE53935),
     success: Color(0xFF4CAF50),
     warning: Color(0xFFFFA726),
@@ -158,8 +179,13 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     Color? accentOrange,
     Color? accentOrangeLight,
     Color? accentBlue,
+    Color? vendorPrimaryBlue,
     Color? accentViolet,
     Color? accentGreen,
+    Color? serviceFood,
+    Color? serviceGrocery,
+    Color? servicePharmacy,
+    Color? serviceGrabMart,
     Color? error,
     Color? success,
     Color? warning,
@@ -188,8 +214,13 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
       accentOrange: accentOrange ?? this.accentOrange,
       accentOrangeLight: accentOrangeLight ?? this.accentOrangeLight,
       accentBlue: accentBlue ?? this.accentBlue,
+      vendorPrimaryBlue: vendorPrimaryBlue ?? this.vendorPrimaryBlue,
       accentViolet: accentViolet ?? this.accentViolet,
       accentGreen: accentGreen ?? this.accentGreen,
+      serviceFood: serviceFood ?? this.serviceFood,
+      serviceGrocery: serviceGrocery ?? this.serviceGrocery,
+      servicePharmacy: servicePharmacy ?? this.servicePharmacy,
+      serviceGrabMart: serviceGrabMart ?? this.serviceGrabMart,
       error: error ?? this.error,
       success: success ?? this.success,
       warning: warning ?? this.warning,
@@ -224,8 +255,13 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
       accentOrange: Color.lerp(accentOrange, other.accentOrange, t)!,
       accentOrangeLight: Color.lerp(accentOrangeLight, other.accentOrangeLight, t)!,
       accentBlue: Color.lerp(accentBlue, other.accentBlue, t)!,
+      vendorPrimaryBlue: Color.lerp(vendorPrimaryBlue, other.vendorPrimaryBlue, t)!,
       accentViolet: Color.lerp(accentViolet, other.accentViolet, t)!,
       accentGreen: Color.lerp(accentGreen, other.accentGreen, t)!,
+      serviceFood: Color.lerp(serviceFood, other.serviceFood, t)!,
+      serviceGrocery: Color.lerp(serviceGrocery, other.serviceGrocery, t)!,
+      servicePharmacy: Color.lerp(servicePharmacy, other.servicePharmacy, t)!,
+      serviceGrabMart: Color.lerp(serviceGrabMart, other.serviceGrabMart, t)!,
       error: Color.lerp(error, other.error, t)!,
       success: Color.lerp(success, other.success, t)!,
       warning: Color.lerp(warning, other.warning, t)!,

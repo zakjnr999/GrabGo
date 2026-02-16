@@ -32,4 +32,20 @@ class AppColors {
   static const Color secondaryBackground = Color(0xffF5F5F5);
 
   static const Color errorRed = Color(0xFFE53935);
+
+  // Vendor brand colors
+  static const Color vendorPrimaryBlue = blueAccent;
+
+  // Service identity colors (used across customer/rider/vendor experiences)
+  static const Color serviceFood = accentOrange;
+  static const Color serviceGrocery = accentGreen;
+  static const Color servicePharmacy = Color(0xFF009688);
+  static const Color serviceGrabMart = Color(0xFF9C27B0);
+
+  // String hex versions for places still using serialized color values
+  static const String vendorPrimaryBlueHex = '#018FFF';
+  static const String serviceFoodHex = '#FE6132';
+  static const String serviceGroceryHex = '#4CAF50';
+  static const String servicePharmacyHex = '#009688';
+  static const String serviceGrabMartHex = '#9C27B0';
 }

@@ -14,6 +14,7 @@
     "add-statuses": "node scripts/add-sample-statuses.js",
     "setup-restaurants": "node scripts/setup-restaurants-and-foods.js",
     "create-dummy-data": "node scripts/tmp_rovodev_create_dummy_food_data.js",
+    "pickup:flow": "node scripts/pickup_vendor_flow.js",
     "test-mtn-momo": "node scripts/test-mtn-momo.js",
     "test": "jest",
     "test:watch": "jest --watch",

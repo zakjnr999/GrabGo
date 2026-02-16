@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:grab_go_customer/features/home/model/promotional_banner.dart';
+import 'package:grab_go_shared/grub_go_shared.dart';
 
 class ServiceHubConfig {
   final String serviceId;
@@ -56,7 +57,7 @@ class ServiceHubConfig {
               isDismissible: false,
             ),
           ],
-          accentColor: Color(0xFF4CAF50),
+          accentColor: AppColors.serviceGrocery,
           categoryServiceType: 'grocery',
           categoryTitle: 'Grocery Categories',
         );
@@ -95,7 +96,7 @@ class ServiceHubConfig {
               isDismissible: false,
             ),
           ],
-          accentColor: Color(0xFF009688),
+          accentColor: AppColors.servicePharmacy,
           categoryServiceType: 'pharmacy',
           categoryTitle: 'Pharmacy Categories',
         );
@@ -134,7 +135,7 @@ class ServiceHubConfig {
               isDismissible: false,
             ),
           ],
-          accentColor: Color(0xFF9C27B0),
+          accentColor: AppColors.serviceGrabMart,
           categoryServiceType: 'convenience',
           categoryTitle: 'GrabMart Categories',
         );
