@@ -19,6 +19,7 @@ workspace:
   - packages/grab_go_customer
   - packages/grab_go_rider
   - packages/grab_go_shared
+  - packages/grab_go_vendor
 
 melos:
   scripts:

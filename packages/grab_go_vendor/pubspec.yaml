@@ -1,0 +1,27 @@
+name: grab_go_vendor
+description: "GrabGo Vendor App"
+publish_to: "none"
+version: 1.0.0+1
+resolution: workspace
+
+environment:
+  sdk: ^3.10.0-290.4
+  flutter: ">=3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  grab_go_shared:
+    path: ../grab_go_shared
+  provider: ^6.1.5+1
+  go_router: ^16.2.4
+  flutter_screenutil: ^5.9.3
+  flutter_svg: ^2.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

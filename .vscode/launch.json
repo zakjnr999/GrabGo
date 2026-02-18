@@ -62,6 +62,16 @@
       "toolArgs": [
         "--dart-define-from-file=${workspaceFolder}/.dart_defines.json"
       ]
+    },
+    {
+      "name": "Vendor App (Debug)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/packages/grab_go_vendor",
+      "flutterMode": "debug",
+      "toolArgs": [
+        "--dart-define-from-file=${workspaceFolder}/.dart_defines.json"
+      ]
     }
   ]
 }

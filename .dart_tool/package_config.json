@@ -1872,6 +1872,12 @@
       "rootUri": "../packages/grab_go_shared",
       "packageUri": "lib/",
       "languageVersion": "3.10"
+    },
+    {
+      "name": "grab_go_vendor",
+      "rootUri": "../packages/grab_go_vendor",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
     }
   ],
   "generator": "pub",

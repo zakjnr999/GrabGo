@@ -1,0 +1,195 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
+import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_vendor/features/auth/viewmodel/reset_password_viewmodel.dart';
+import 'package:provider/provider.dart';
+
+class ResetPassword extends StatelessWidget {
+  final String email;
+
+  const ResetPassword({
+    super.key,
+    required this.email,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => ResetPasswordViewModel(),
+      child: _ResetPasswordView(email: email),
+    );
+  }
+}
+
+class _ResetPasswordView extends StatelessWidget {
+  final String email;
+
+  const _ResetPasswordView({
+    required this.email,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarDividerColor: Colors.transparent,
+        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: colors.backgroundPrimary,
+        body: SafeArea(
+          child: Consumer<ResetPasswordViewModel>(
+            builder: (context, viewModel, child) {
+              return SingleChildScrollView(
+                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextButton.icon(
+                      onPressed: () => context.go('/forgotPassword'),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        foregroundColor: colors.textSecondary,
+                      ),
+                      icon: Icon(Icons.arrow_back_rounded, size: 18.sp),
+                      label: Text(
+                        'Back',
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 12.h),
+                    Center(
+                      child: Container(
+                        width: 92.w,
+                        height: 92.w,
+                        decoration: BoxDecoration(
+                          color: colors.vendorPrimaryBlue.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(28.r),
+                        ),
+                        child: Icon(
+                          Icons.vpn_key_outlined,
+                          size: 42.sp,
+                          color: colors.vendorPrimaryBlue,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 22.h),
+                    Text(
+                      'Set new password',
+                      style: TextStyle(
+                        fontSize: 30.sp,
+                        fontWeight: FontWeight.w900,
+                        color: colors.textPrimary,
+                        height: 1.15,
+                      ),
+                    ),
+                    SizedBox(height: 8.h),
+                    Text(
+                      'Resetting password for $email',
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w500,
+                        color: colors.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                    SizedBox(height: 24.h),
+                    AppTextInput(
+                      controller: viewModel.passwordController,
+                      label: 'New Password',
+                      hintText: 'Minimum 8 characters',
+                      obscureText: !viewModel.isPasswordVisible,
+                      errorText: viewModel.passwordError,
+                      fillColor: colors.backgroundSecondary,
+                      borderColor: colors.inputBorder,
+                      borderActiveColor: colors.vendorPrimaryBlue,
+                      borderRadius: KBorderSize.borderRadius12,
+                      cursorColor: colors.vendorPrimaryBlue,
+                      prefixIcon: const Icon(Icons.lock_outline_rounded),
+                      suffixIcon: IconButton(
+                        onPressed: viewModel.togglePasswordVisibility,
+                        icon: Icon(
+                          viewModel.isPasswordVisible
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          size: 18.sp,
+                          color: colors.iconSecondary,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 14.h),
+                    AppTextInput(
+                      controller: viewModel.confirmPasswordController,
+                      label: 'Confirm Password',
+                      hintText: 'Re-enter password',
+                      obscureText: !viewModel.isConfirmPasswordVisible,
+                      errorText: viewModel.confirmPasswordError,
+                      fillColor: colors.backgroundSecondary,
+                      borderColor: colors.inputBorder,
+                      borderActiveColor: colors.vendorPrimaryBlue,
+                      borderRadius: KBorderSize.borderRadius12,
+                      cursorColor: colors.vendorPrimaryBlue,
+                      prefixIcon: const Icon(Icons.lock_outline_rounded),
+                      suffixIcon: IconButton(
+                        onPressed: viewModel.toggleConfirmPasswordVisibility,
+                        icon: Icon(
+                          viewModel.isConfirmPasswordVisible
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          size: 18.sp,
+                          color: colors.iconSecondary,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 18.h),
+                    SizedBox(
+                      width: double.infinity,
+                      child: AppButton(
+                        buttonText: 'Update Password',
+                        onPressed: () => _handleSubmit(context, viewModel),
+                        backgroundColor: colors.vendorPrimaryBlue,
+                        borderRadius: KBorderSize.borderRadius12,
+                        textStyle: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15.sp,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _handleSubmit(BuildContext context, ResetPasswordViewModel viewModel) {
+    HapticFeedback.selectionClick();
+    if (!viewModel.validate()) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Password reset saved. You can now login.'),
+      ),
+    );
+    context.go('/login');
+  }
+}
