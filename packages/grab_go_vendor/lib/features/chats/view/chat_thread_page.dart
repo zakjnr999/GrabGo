@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -212,7 +213,7 @@ class _ChatThreadView extends StatelessWidget {
     }
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => OrderDetailPage(order: order)),
+      CupertinoPageRoute(builder: (_) => OrderDetailPage(order: order)),
     );
   }
 
@@ -230,7 +231,7 @@ class _ChatThreadView extends StatelessWidget {
     final fileLabel = message.text.replaceFirst('Attachment:', '').trim();
     Navigator.push(
       context,
-      MaterialPageRoute(
+      CupertinoPageRoute(
         builder: (_) => ChatAttachmentPreviewPage(
           title: 'Attachment Preview',
           fileLabel: fileLabel.isEmpty ? 'Attachment file' : fileLabel,

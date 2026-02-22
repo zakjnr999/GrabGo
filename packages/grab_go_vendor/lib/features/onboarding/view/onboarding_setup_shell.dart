@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
@@ -29,7 +30,8 @@ class _OnboardingSetupShellView extends StatefulWidget {
   const _OnboardingSetupShellView({required this.isReplayMode});
 
   @override
-  State<_OnboardingSetupShellView> createState() => _OnboardingSetupShellViewState();
+  State<_OnboardingSetupShellView> createState() =>
+      _OnboardingSetupShellViewState();
 }
 
 class _OnboardingSetupShellViewState extends State<_OnboardingSetupShellView> {
@@ -89,25 +91,38 @@ class _OnboardingSetupShellViewState extends State<_OnboardingSetupShellView> {
                   SizedBox(height: 14.h),
                   Text(
                     'Setup Steps',
-                    style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w800,
+                      color: colors.textPrimary,
+                    ),
                   ),
                   SizedBox(height: 8.h),
                   ...viewModel.steps.map((step) {
                     return _SetupStepTile(
                       step: step,
                       selected: step.id == selectedStep.id,
-                      onTap: () => _openStepWorkspace(context, viewModel, step.id),
+                      onTap: () =>
+                          _openStepWorkspace(context, viewModel, step.id),
                     );
                   }),
                   SizedBox(height: 14.h),
                   StepDetailCard(
                     step: selectedStep,
-                    onStart: () =>
-                        _openStepWorkspace(context, viewModel, selectedStep.id, intent: _StepWorkspaceIntent.start),
+                    onStart: () => _openStepWorkspace(
+                      context,
+                      viewModel,
+                      selectedStep.id,
+                      intent: _StepWorkspaceIntent.start,
+                    ),
                     onComplete: viewModel.markSelectedComplete,
                     onSkip: viewModel.skipSelectedStep,
-                    onResume: () =>
-                        _openStepWorkspace(context, viewModel, selectedStep.id, intent: _StepWorkspaceIntent.resume),
+                    onResume: () => _openStepWorkspace(
+                      context,
+                      viewModel,
+                      selectedStep.id,
+                      intent: _StepWorkspaceIntent.resume,
+                    ),
                   ),
                   SizedBox(height: 16.h),
                 ],
@@ -133,7 +148,9 @@ class _OnboardingSetupShellViewState extends State<_OnboardingSetupShellView> {
                     style: TextStyle(
                       fontSize: 11.sp,
                       fontWeight: FontWeight.w600,
-                      color: viewModel.allRequiredCompleted ? colors.success : colors.textSecondary,
+                      color: viewModel.allRequiredCompleted
+                          ? colors.success
+                          : colors.textSecondary,
                     ),
                   ),
                   SizedBox(height: 10.h),
@@ -144,7 +161,11 @@ class _OnboardingSetupShellViewState extends State<_OnboardingSetupShellView> {
                       onPressed: () => _finishSetup(context),
                       backgroundColor: colors.vendorPrimaryBlue,
                       borderRadius: KBorderSize.border,
-                      textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14.sp),
+                      textStyle: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14.sp,
+                      ),
                     ),
                   ),
                   if (!viewModel.allRequiredCompleted) ...[
@@ -204,7 +225,7 @@ class _OnboardingSetupShellViewState extends State<_OnboardingSetupShellView> {
     }
 
     await Navigator.of(context).push(
-      MaterialPageRoute(
+      CupertinoPageRoute(
         builder: (_) => ChangeNotifierProvider.value(
           value: viewModel,
           child: OnboardingStepWorkspacePage(stepId: stepId),
@@ -248,12 +269,20 @@ class _SetupSummaryCard extends StatelessWidget {
         children: [
           Text(
             'Required Progress',
-            style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w700, color: colors.vendorPrimaryBlue),
+            style: TextStyle(
+              fontSize: 11.sp,
+              fontWeight: FontWeight.w700,
+              color: colors.vendorPrimaryBlue,
+            ),
           ),
           SizedBox(height: 4.h),
           Text(
             '$requiredCompleted / $requiredTotal completed',
-            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w900, color: colors.textPrimary),
+            style: TextStyle(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w900,
+              color: colors.textPrimary,
+            ),
           ),
           SizedBox(height: 8.h),
           ClipRRect(
@@ -268,7 +297,11 @@ class _SetupSummaryCard extends StatelessWidget {
           SizedBox(height: 8.h),
           Text(
             'Optional: $optionalCompleted / $optionalTotal completed • $optionalSkipped skipped',
-            style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
+            style: TextStyle(
+              fontSize: 11.sp,
+              fontWeight: FontWeight.w600,
+              color: colors.textSecondary,
+            ),
           ),
         ],
       ),
@@ -281,7 +314,11 @@ class _SetupStepTile extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _SetupStepTile({required this.step, required this.selected, required this.onTap});
+  const _SetupStepTile({
+    required this.step,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -298,7 +335,9 @@ class _SetupStepTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: selected ? colors.vendorPrimaryBlue : colors.border),
+          border: Border.all(
+            color: selected ? colors.vendorPrimaryBlue : colors.border,
+          ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -309,12 +348,20 @@ class _SetupStepTile extends StatelessWidget {
                 children: [
                   Text(
                     step.title,
-                    style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w800,
+                      color: colors.textPrimary,
+                    ),
                   ),
                   SizedBox(height: 2.h),
                   Text(
                     step.subtitle,
-                    style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                    style: TextStyle(
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w500,
+                      color: colors.textSecondary,
+                    ),
                   ),
                   SizedBox(height: 6.h),
                   Wrap(
@@ -323,10 +370,18 @@ class _SetupStepTile extends StatelessWidget {
                     children: [
                       DetailChip(
                         label: step.isOptional ? 'Optional' : 'Required',
-                        color: step.isOptional ? colors.serviceGrabMart : colors.vendorPrimaryBlue,
+                        color: step.isOptional
+                            ? colors.serviceGrabMart
+                            : colors.vendorPrimaryBlue,
                       ),
-                      DetailChip(label: onboardingStepStatusLabel(step.status), color: statusColor),
-                      DetailChip(label: step.estimateLabel, color: colors.textSecondary),
+                      DetailChip(
+                        label: onboardingStepStatusLabel(step.status),
+                        color: statusColor,
+                      ),
+                      DetailChip(
+                        label: step.estimateLabel,
+                        color: colors.textSecondary,
+                      ),
                     ],
                   ),
                 ],
@@ -337,7 +392,10 @@ class _SetupStepTile extends StatelessWidget {
               package: 'grab_go_shared',
               height: 18,
               width: 18,
-              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                colors.textSecondary,
+                BlendMode.srcIn,
+              ),
             ),
           ],
         ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
@@ -137,7 +138,7 @@ class _OnboardingMainView extends StatelessWidget {
     if (isReplayMode) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
+        CupertinoPageRoute(
           builder: (_) => const OnboardingSetupShell(isReplayMode: true),
         ),
       );

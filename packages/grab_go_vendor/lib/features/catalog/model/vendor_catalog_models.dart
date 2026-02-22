@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_vendor/features/auth/model/vendor_service_option.dart';
 
 class VendorCatalogCategory {
@@ -6,21 +6,10 @@ class VendorCatalogCategory {
   final String name;
   final VendorServiceType serviceType;
 
-  const VendorCatalogCategory({
-    required this.id,
-    required this.name,
-    required this.serviceType,
-  });
+  const VendorCatalogCategory({required this.id, required this.name, required this.serviceType});
 
-  VendorCatalogCategory copyWith({
-    String? name,
-    VendorServiceType? serviceType,
-  }) {
-    return VendorCatalogCategory(
-      id: id,
-      name: name ?? this.name,
-      serviceType: serviceType ?? this.serviceType,
-    );
+  VendorCatalogCategory copyWith({String? name, VendorServiceType? serviceType}) {
+    return VendorCatalogCategory(id: id, name: name ?? this.name, serviceType: serviceType ?? this.serviceType);
   }
 }
 
@@ -103,12 +92,12 @@ extension VendorServiceTypeCatalogX on VendorServiceType {
     };
   }
 
-  IconData get icon {
+  String get icon {
     return switch (this) {
-      VendorServiceType.food => Icons.restaurant_rounded,
-      VendorServiceType.grocery => Icons.local_grocery_store_rounded,
-      VendorServiceType.pharmacy => Icons.local_pharmacy_outlined,
-      VendorServiceType.grabMart => Icons.shopping_bag_outlined,
+      VendorServiceType.food => Assets.icons.utensilsCrossed,
+      VendorServiceType.grocery => Assets.icons.cart,
+      VendorServiceType.pharmacy => Assets.icons.pharmacyCrossCircle,
+      VendorServiceType.grabMart => Assets.icons.cart,
     };
   }
 }

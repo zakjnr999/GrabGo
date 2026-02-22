@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -22,7 +23,7 @@ class HomeAlertsPage extends StatelessWidget {
       backgroundColor: colors.backgroundPrimary,
       body: SafeArea(
         child: Padding(
-          padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 0),
+          padding: EdgeInsets.fromLTRB(20.w, 6.h, 20.w, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -44,7 +45,7 @@ class HomeAlertsPage extends StatelessWidget {
               SizedBox(height: 6.h),
               Text(
                 'Alerts',
-                style: TextStyle(fontSize: 30.sp, fontWeight: FontWeight.w900, color: colors.textPrimary, height: 1.15),
+                style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.w900, color: colors.textPrimary, height: 1.15),
               ),
               SizedBox(height: 8.h),
               Text(
@@ -165,7 +166,7 @@ class HomeAlertsPage extends StatelessWidget {
       case HomeAlertAction.storeOperations:
         Navigator.push(
           context,
-          MaterialPageRoute(
+          CupertinoPageRoute(
             builder: (_) => ChangeNotifierProvider.value(
               value: context.read<VendorStoreOperationsViewModel>(),
               child: const StoreOperationsPage(),

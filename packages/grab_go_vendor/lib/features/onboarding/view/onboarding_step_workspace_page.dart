@@ -340,7 +340,7 @@ class _OnboardingStepWorkspacePageState
                                         Navigator.of(context).pop(),
                                     backgroundColor: colors.vendorPrimaryBlue
                                         .withValues(alpha: 0.12),
-                                    borderRadius: KBorderSize.borderRadius12,
+                                    borderRadius: KBorderSize.border,
                                     textStyle: TextStyle(
                                       color: colors.vendorPrimaryBlue,
                                       fontSize: 13.sp,
@@ -362,8 +362,7 @@ class _OnboardingStepWorkspacePageState
                                             _completeAndClose(viewModel),
                                         backgroundColor:
                                             colors.vendorPrimaryBlue,
-                                        borderRadius:
-                                            KBorderSize.borderRadius12,
+                                        borderRadius: KBorderSize.border,
                                         textStyle: TextStyle(
                                           color: Colors.white,
                                           fontSize: 13.sp,

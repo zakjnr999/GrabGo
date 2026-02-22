@@ -146,6 +146,13 @@ class CatalogViewModel extends ChangeNotifier {
     return category?.name ?? 'Uncategorized';
   }
 
+  VendorCatalogItem? itemById(String itemId) {
+    return _items.cast<VendorCatalogItem?>().firstWhere(
+      (entry) => entry?.id == itemId,
+      orElse: () => null,
+    );
+  }
+
   void setServiceFilter(VendorServiceType? value) {
     if (_serviceFilter == value) return;
     _serviceFilter = value;
@@ -183,6 +190,17 @@ class CatalogViewModel extends ChangeNotifier {
     } else {
       _selectedItemIds.add(itemId);
     }
+    notifyListeners();
+  }
+
+  void selectItems(Set<String> itemIds) {
+    if (_selectedItemIds.length == itemIds.length &&
+        _selectedItemIds.containsAll(itemIds)) {
+      return;
+    }
+    _selectedItemIds
+      ..clear()
+      ..addAll(itemIds);
     notifyListeners();
   }
 

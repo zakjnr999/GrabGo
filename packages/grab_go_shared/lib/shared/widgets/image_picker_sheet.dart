@@ -5,7 +5,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
 import 'package:grab_go_shared/shared/widgets/shimmer_loading.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -51,18 +50,16 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
   final Set<AssetEntity> _selectedImages = {};
   bool _isLoading = true;
   bool _hasPermission = false;
-  bool _isProcessing = false; // For showing loading when getting file paths
+  bool _isProcessing = false;
 
-  // Pagination state
-  static const int _pageSize = 30; // Load 30 images per page
+  static const int _pageSize = 30;
   int _currentPage = 0;
   bool _hasMoreImages = true;
   bool _isLoadingMore = false;
 
-  // Album selection state
   List<AssetPathEntity> _albums = [];
-  Map<String, int> _albumCounts = {}; // Store album counts
-  AssetPathEntity? _currentAlbum; // Store current album for pagination
+  final Map<String, int> _albumCounts = {};
+  AssetPathEntity? _currentAlbum;
   int _selectedAlbumIndex = 0;
 
   @override
@@ -73,7 +70,7 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
 
   Future<void> _loadRecentImages() async {
     final permission = await PhotoManager.requestPermissionExtend();
-    if (!permission.isAuth) {
+    if (!permission.hasAccess) {
       setState(() {
         _isLoading = false;
         _hasPermission = false;
@@ -109,7 +106,6 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
         .map((item) => item['album'] as AssetPathEntity)
         .toList();
 
-    // Store counts for display
     for (var item in albumsWithCounts) {
       final album = item['album'] as AssetPathEntity;
       final count = item['count'] as int;
@@ -127,7 +123,6 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
     _currentAlbum = _albums.first;
     _selectedAlbumIndex = 0;
 
-    // Load first page of images from selected album
     await _loadImagesFromAlbum(_currentAlbum!);
   }
 
@@ -156,7 +151,7 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
     setState(() {
       _selectedAlbumIndex = index;
       _currentAlbum = _albums[index];
-      _selectedImages.clear(); // Clear selections when switching albums
+      _selectedImages.clear();
     });
 
     await _loadImagesFromAlbum(_currentAlbum!);
@@ -201,7 +196,6 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
   }
 
   void _toggleSelection(AssetEntity image) async {
-    // If maxImages is 1, auto-select and return immediately (profile picture mode)
     if (widget.maxImages == 1) {
       HapticFeedback.selectionClick();
       final file = await image.file;
@@ -212,7 +206,6 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
       return;
     }
 
-    // Multi-selection mode (for chat, etc.)
     if (_selectedImages.contains(image)) {
       HapticFeedback.selectionClick();
       setState(() {
@@ -224,7 +217,6 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
         _selectedImages.add(image);
       });
     } else {
-      // Max limit reached - show feedback
       HapticFeedback.heavyImpact();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -257,7 +249,6 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
   }
 
   Future<void> _openFileBrowser() async {
-    // Close bottom sheet first
     Navigator.pop(context);
 
     try {
@@ -273,7 +264,6 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
         final paths = result.files.where((f) => f.path != null).map((f) => f.path!).toList();
         debugPrint('FilePicker paths: $paths');
         if (paths.isNotEmpty) {
-          // Limit to maxImages
           final limitedPaths = paths.take(widget.maxImages).toList();
           widget.onImagesSelected(limitedPaths);
         }
@@ -292,7 +282,6 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
       _isProcessing = true;
     });
 
-    // Get file paths for selected images
     final paths = <String>[];
     for (final asset in _selectedImages) {
       final file = await asset.file;
@@ -330,7 +319,6 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
         color: colors.accentGreen,
         child: Column(
           children: [
-            // Handle bar
             Container(
               margin: EdgeInsets.symmetric(vertical: 12.h),
               width: 40.w,
@@ -338,13 +326,11 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
               decoration: BoxDecoration(color: colors.border, borderRadius: BorderRadius.circular(2.w)),
             ),
 
-            // Header
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.w),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Album dropdown
                   Expanded(
                     child: PopupMenuButton<int>(
                       offset: Offset(0, 50.h),
@@ -360,17 +346,6 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
                             value: index,
                             child: Row(
                               children: [
-                                SvgPicture.asset(
-                                  Assets.icons.mediaImage,
-                                  package: "grab_go_shared",
-                                  height: 20.h,
-                                  width: 20.w,
-                                  colorFilter: ColorFilter.mode(
-                                    isSelected ? colors.accentGreen : colors.textSecondary,
-                                    BlendMode.srcIn,
-                                  ),
-                                ),
-                                SizedBox(width: 12.w),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -395,7 +370,6 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
                                     ],
                                   ),
                                 ),
-                                if (isSelected) Icon(Icons.check, size: 18.w, color: colors.accentGreen),
                               ],
                             ),
                           );
@@ -449,7 +423,6 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
                       ),
                     ),
                   ),
-                  // Send button
                   if (_selectedImages.isNotEmpty)
                     GestureDetector(
                       onTap: _confirmSelection,
@@ -477,7 +450,6 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
 
             SizedBox(height: 12.h),
 
-            // Quick actions row
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.w),
               child: Row(
@@ -514,10 +486,8 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
 
             SizedBox(height: 16.h),
 
-            // Divider
             Divider(height: 1, color: colors.border),
 
-            // Image grid
             Expanded(child: _buildImageGrid(colors)),
 
             SizedBox(height: bottomPadding),
@@ -600,7 +570,13 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.photo_library_outlined, size: 48.w, color: colors.textSecondary),
+              SvgPicture.asset(
+                Assets.icons.mediaImageXmark,
+                package: "grab_go_shared",
+                height: 48.h,
+                width: 48.w,
+                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+              ),
               SizedBox(height: 16.h),
               Text(
                 'Photo access required',
@@ -613,12 +589,13 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
                 style: TextStyle(fontSize: 14.sp, color: colors.textSecondary),
               ),
               SizedBox(height: 16.h),
-              TextButton(
+              AppButton(
+                width: double.infinity,
                 onPressed: () => PhotoManager.openSetting(),
-                child: Text(
-                  'Open Settings',
-                  style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.accentGreen),
-                ),
+                buttonText: 'Open Settings',
+                backgroundColor: colors.error.withValues(alpha: 0.2),
+                borderRadius: KBorderSize.border,
+                textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.error),
               ),
             ],
           ),
@@ -655,7 +632,10 @@ class _ImagePickerSheetState extends State<ImagePickerSheet> {
           children: [
             Container(
               padding: EdgeInsets.all(24.w),
-              decoration: BoxDecoration(color: colors.backgroundSecondary.withOpacity(0.5), shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: colors.backgroundSecondary.withValues(alpha: 0.5),
+                shape: BoxShape.circle,
+              ),
               child: SvgPicture.asset(
                 Assets.icons.mediaImageXmark,
                 package: "grab_go_shared",

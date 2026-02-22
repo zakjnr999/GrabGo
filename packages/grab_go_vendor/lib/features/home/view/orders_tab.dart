@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -22,7 +23,10 @@ class OrdersTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(create: (_) => OrdersTabViewModel(), child: const _OrdersTabView());
+    return ChangeNotifierProvider(
+      create: (_) => OrdersTabViewModel(),
+      child: const _OrdersTabView(),
+    );
   }
 }
 
@@ -33,21 +37,31 @@ class _OrdersTabView extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.appColors;
 
-    return Consumer3<OrdersTabViewModel, VendorStoreContextViewModel, VendorPreviewSessionViewModel>(
+    return Consumer3<
+      OrdersTabViewModel,
+      VendorStoreContextViewModel,
+      VendorPreviewSessionViewModel
+    >(
       builder: (context, viewModel, storeContext, previewSession, _) {
         final visibleVendorServices = _visibleVendorServices(storeContext);
-        final visibleOrderServices = visibleVendorServices.map(previewSession.mapToOrderService).toSet();
+        final visibleOrderServices = visibleVendorServices
+            .map(previewSession.mapToOrderService)
+            .toSet();
         final serviceFilter = viewModel.selectedServiceFilter;
-        if (serviceFilter != null && !visibleOrderServices.contains(serviceFilter)) {
+        if (serviceFilter != null &&
+            !visibleOrderServices.contains(serviceFilter)) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!context.mounted) return;
             viewModel.setServiceFilter(null);
           });
         }
 
-        final orderedServices = visibleOrderServices.toList()..sort((a, b) => a.index.compareTo(b.index));
+        final orderedServices = visibleOrderServices.toList()
+          ..sort((a, b) => a.index.compareTo(b.index));
         final hasMultipleServices = orderedServices.length > 1;
-        final orders = viewModel.orders.where((order) => visibleOrderServices.contains(order.serviceType)).toList();
+        final orders = viewModel.orders
+            .where((order) => visibleOrderServices.contains(order.serviceType))
+            .toList();
 
         return SafeArea(
           child: SingleChildScrollView(
@@ -59,7 +73,11 @@ class _OrdersTabView extends StatelessWidget {
                   padding: EdgeInsets.symmetric(horizontal: 20.w),
                   child: Text(
                     'Live Orders',
-                    style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.w900, color: colors.textPrimary),
+                    style: TextStyle(
+                      fontSize: 24.sp,
+                      fontWeight: FontWeight.w900,
+                      color: colors.textPrimary,
+                    ),
                   ),
                 ),
                 Padding(
@@ -68,7 +86,11 @@ class _OrdersTabView extends StatelessWidget {
                     visibleVendorServices.isEmpty
                         ? 'No services are active for this profile and store context.'
                         : 'Showing ${previewSession.servicesLabel(visibleVendorServices)} queue.',
-                    style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w500,
+                      color: colors.textSecondary,
+                    ),
                   ),
                 ),
                 SizedBox(height: 14.h),
@@ -77,7 +99,7 @@ class _OrdersTabView extends StatelessWidget {
                   child: VendorOutageBanner(
                     onManageTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(
+                      CupertinoPageRoute(
                         builder: (_) => ChangeNotifierProvider.value(
                           value: context.read<VendorStoreOperationsViewModel>(),
                           child: const StoreOperationsPage(),
@@ -97,7 +119,10 @@ class _OrdersTabView extends StatelessWidget {
                         package: 'grab_go_shared',
                         width: 18.w,
                         height: 18.w,
-                        colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                        colorFilter: ColorFilter.mode(
+                          colors.textSecondary,
+                          BlendMode.srcIn,
+                        ),
                       ),
                     ),
                     hintText: 'Search by order ID or customer',
@@ -122,7 +147,8 @@ class _OrdersTabView extends StatelessWidget {
                         ...orderedServices.map((service) {
                           return AppFilterChip(
                             label: service.label,
-                            selected: viewModel.selectedServiceFilter == service,
+                            selected:
+                                viewModel.selectedServiceFilter == service,
                             onTap: () => viewModel.setServiceFilter(service),
                           );
                         }),
@@ -145,20 +171,31 @@ class _OrdersTabView extends StatelessWidget {
                       SizedBox(width: 8.w),
                       AppFilterChip(
                         label: 'New',
-                        selected: viewModel.selectedStatusFilter == VendorOrderStatus.newOrder,
-                        onTap: () => viewModel.setStatusFilter(VendorOrderStatus.newOrder),
+                        selected:
+                            viewModel.selectedStatusFilter ==
+                            VendorOrderStatus.newOrder,
+                        onTap: () => viewModel.setStatusFilter(
+                          VendorOrderStatus.newOrder,
+                        ),
                       ),
                       SizedBox(width: 8.w),
                       AppFilterChip(
                         label: 'Preparing',
-                        selected: viewModel.selectedStatusFilter == VendorOrderStatus.preparing,
-                        onTap: () => viewModel.setStatusFilter(VendorOrderStatus.preparing),
+                        selected:
+                            viewModel.selectedStatusFilter ==
+                            VendorOrderStatus.preparing,
+                        onTap: () => viewModel.setStatusFilter(
+                          VendorOrderStatus.preparing,
+                        ),
                       ),
                       SizedBox(width: 8.w),
                       AppFilterChip(
                         label: 'Ready',
-                        selected: viewModel.selectedStatusFilter == VendorOrderStatus.ready,
-                        onTap: () => viewModel.setStatusFilter(VendorOrderStatus.ready),
+                        selected:
+                            viewModel.selectedStatusFilter ==
+                            VendorOrderStatus.ready,
+                        onTap: () =>
+                            viewModel.setStatusFilter(VendorOrderStatus.ready),
                       ),
                       SizedBox(width: 8.w),
                       AppFilterChip(
@@ -182,7 +219,11 @@ class _OrdersTabView extends StatelessWidget {
                     child: Text(
                       'No services are active for this vendor profile on the selected branch.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
+                      style: TextStyle(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                        color: colors.textSecondary,
+                      ),
                     ),
                   )
                 else if (orders.isEmpty)
@@ -194,7 +235,11 @@ class _OrdersTabView extends StatelessWidget {
                       child: Text(
                         'No orders match the selected filters.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w600,
+                          color: colors.textSecondary,
+                        ),
                       ),
                     ),
                   )
@@ -219,28 +264,42 @@ class _OrdersTabView extends StatelessWidget {
   }
 
   void _openOrderDetail(BuildContext context, VendorOrderSummary order) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailPage(order: order)));
+    Navigator.push(
+      context,
+      CupertinoPageRoute(builder: (_) => OrderDetailPage(order: order)),
+    );
   }
 
-  Future<void> _showOrderPreviewSheet(BuildContext context, VendorOrderSummary order) async {
+  Future<void> _showOrderPreviewSheet(
+    BuildContext context,
+    VendorOrderSummary order,
+  ) async {
     final colors = context.appColors;
     final statusColor = _orderStatusColor(colors, order.status);
     final customerNote = order.customerNote?.trim();
-    final primaryAction = context.read<OrdersTabViewModel>().primaryActionFor(order);
+    final primaryAction = context.read<OrdersTabViewModel>().primaryActionFor(
+      order,
+    );
     final showProgressAction = primaryAction.isActionable;
-    final showWaitingForRider = primaryAction == VendorOrderPreviewPrimaryAction.waitingForRider;
+    final showWaitingForRider =
+        primaryAction == VendorOrderPreviewPrimaryAction.waitingForRider;
     final showAssignedRider =
-        !order.isPickupOrder && (order.status == VendorOrderStatus.ready || order.status == VendorOrderStatus.pickedUp);
+        !order.isPickupOrder &&
+        (order.status == VendorOrderStatus.ready ||
+            order.status == VendorOrderStatus.pickedUp);
     final showRiderPending =
         !order.isPickupOrder &&
-        (order.status == VendorOrderStatus.accepted || order.status == VendorOrderStatus.preparing);
+        (order.status == VendorOrderStatus.accepted ||
+            order.status == VendorOrderStatus.preparing);
 
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: colors.backgroundPrimary,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(KBorderSize.borderRadius20)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(KBorderSize.borderRadius20),
+        ),
       ),
       builder: (sheetContext) {
         final maxHeight = MediaQuery.sizeOf(sheetContext).height * 0.82;
@@ -249,7 +308,12 @@ class _OrdersTabView extends StatelessWidget {
           child: SizedBox(
             height: maxHeight,
             child: Padding(
-              padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 16.h + MediaQuery.viewInsetsOf(sheetContext).bottom),
+              padding: EdgeInsets.fromLTRB(
+                16.w,
+                12.h,
+                16.w,
+                16.h + MediaQuery.viewInsetsOf(sheetContext).bottom,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -270,17 +334,29 @@ class _OrdersTabView extends StatelessWidget {
                       Expanded(
                         child: Text(
                           'Order Preview',
-                          style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.w800,
+                            color: colors.textPrimary,
+                          ),
                         ),
                       ),
-                      OrderMetaChip(label: order.status.label, color: statusColor),
-                      if (order.isAtRisk) OrderMetaChip(label: 'At Risk', color: colors.warning),
+                      OrderMetaChip(
+                        label: order.status.label,
+                        color: statusColor,
+                      ),
+                      if (order.isAtRisk)
+                        OrderMetaChip(label: 'At Risk', color: colors.warning),
                     ],
                   ),
                   SizedBox(height: 10.h),
                   Text(
                     order.id,
-                    style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w800,
+                      color: colors.textPrimary,
+                    ),
                   ),
                   SizedBox(height: 10.h),
                   Expanded(
@@ -294,7 +370,8 @@ class _OrdersTabView extends StatelessWidget {
                               children: [
                                 _PreviewInfoRow(
                                   label: 'Customer',
-                                  value: '${order.customerName} • ${order.customerPhone}',
+                                  value:
+                                      '${order.customerName} • ${order.customerPhone}',
                                   icon: Assets.icons.user,
                                 ),
                                 if (order.isPickupOrder) ...[
@@ -308,7 +385,8 @@ class _OrdersTabView extends StatelessWidget {
                                   SizedBox(height: 8.h),
                                   _PreviewInfoRow(
                                     label: 'Rider',
-                                    value: '${order.riderName} • ${order.riderEtaLabel}',
+                                    value:
+                                        '${order.riderName} • ${order.riderEtaLabel}',
                                     icon: Assets.icons.deliveryGuyIcon,
                                   ),
                                 ] else if (showRiderPending) ...[
@@ -344,7 +422,8 @@ class _OrdersTabView extends StatelessWidget {
                                 return Padding(
                                   padding: EdgeInsets.only(bottom: 10.h),
                                   child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Container(
                                         width: 24.w,
@@ -367,7 +446,8 @@ class _OrdersTabView extends StatelessWidget {
                                       SizedBox(width: 8.w),
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
                                               item.name,
@@ -377,9 +457,12 @@ class _OrdersTabView extends StatelessWidget {
                                                 color: colors.textPrimary,
                                               ),
                                             ),
-                                            if (item.note != null && item.note!.trim().isNotEmpty)
+                                            if (item.note != null &&
+                                                item.note!.trim().isNotEmpty)
                                               Padding(
-                                                padding: EdgeInsets.only(top: 2.h),
+                                                padding: EdgeInsets.only(
+                                                  top: 2.h,
+                                                ),
                                                 child: Text(
                                                   'Note: ${item.note}',
                                                   style: TextStyle(
@@ -417,23 +500,35 @@ class _OrdersTabView extends StatelessWidget {
                       child: AppButton(
                         buttonText: primaryAction.label,
                         onPressed: () {
-                          if (primaryAction == VendorOrderPreviewPrimaryAction.verifyPickupCode) {
+                          if (primaryAction ==
+                              VendorOrderPreviewPrimaryAction
+                                  .verifyPickupCode) {
                             Navigator.pop(sheetContext);
                             _openOrderDetail(context, order);
                             return;
                           }
 
-                          final changed = context.read<OrdersTabViewModel>().runPrimaryAction(order.id, primaryAction);
+                          final changed = context
+                              .read<OrdersTabViewModel>()
+                              .runPrimaryAction(order.id, primaryAction);
                           Navigator.pop(sheetContext);
                           if (changed) {
-                            ScaffoldMessenger.of(
-                              context,
-                            ).showSnackBar(SnackBar(content: Text('${primaryAction.label} applied for ${order.id}.')));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  '${primaryAction.label} applied for ${order.id}.',
+                                ),
+                              ),
+                            );
                           }
                         },
                         backgroundColor: colors.vendorPrimaryBlue,
                         borderRadius: KBorderSize.border,
-                        textStyle: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.w700),
+                        textStyle: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   if (showWaitingForRider)
@@ -442,10 +537,15 @@ class _OrdersTabView extends StatelessWidget {
                       child: Text(
                         'Order is ready. Waiting for rider pickup.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w700,
+                          color: colors.textPrimary,
+                        ),
                       ),
                     ),
-                  if (showProgressAction || showWaitingForRider) SizedBox(height: 8.h),
+                  if (showProgressAction || showWaitingForRider)
+                    SizedBox(height: 8.h),
                   SizedBox(
                     width: double.infinity,
                     child: AppButton(
@@ -474,7 +574,9 @@ class _OrdersTabView extends StatelessWidget {
   }
 }
 
-Set<VendorServiceType> _visibleVendorServices(VendorStoreContextViewModel storeContext) {
+Set<VendorServiceType> _visibleVendorServices(
+  VendorStoreContextViewModel storeContext,
+) {
   final scope = storeContext.serviceScope;
   if (scope != null) return {scope};
   return storeContext.availableServicesForSelectedBranch.toSet();
@@ -513,7 +615,11 @@ class _PreviewSectionCard extends StatelessWidget {
         children: [
           Text(
             title,
-            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+            style: TextStyle(
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w800,
+              color: colors.textPrimary,
+            ),
           ),
           SizedBox(height: 8.h),
           child,
@@ -528,7 +634,11 @@ class _PreviewInfoRow extends StatelessWidget {
   final String value;
   final String icon;
 
-  const _PreviewInfoRow({required this.label, required this.value, required this.icon});
+  const _PreviewInfoRow({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -550,12 +660,20 @@ class _PreviewInfoRow extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w700, color: colors.textSecondary),
+                style: TextStyle(
+                  fontSize: 10.sp,
+                  fontWeight: FontWeight.w700,
+                  color: colors.textSecondary,
+                ),
               ),
               SizedBox(height: 2.h),
               Text(
                 value,
-                style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                style: TextStyle(
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w700,
+                  color: colors.textPrimary,
+                ),
               ),
             ],
           ),

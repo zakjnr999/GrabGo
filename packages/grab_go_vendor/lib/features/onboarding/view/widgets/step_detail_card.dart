@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
-import 'package:grab_go_shared/shared/widgets/app_button.dart';
+import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_vendor/features/onboarding/model/onboarding_setup_step.dart';
 import 'package:grab_go_vendor/features/onboarding/view/widgets/detail_chip.dart';
 
@@ -116,7 +115,7 @@ class StepDetailCard extends StatelessWidget {
                     backgroundColor: colors.vendorPrimaryBlue.withValues(
                       alpha: 0.12,
                     ),
-                    borderRadius: 10.r,
+                    borderRadius: KBorderSize.border,
                     textStyle: TextStyle(
                       fontSize: 12.sp,
                       fontWeight: FontWeight.w500,
@@ -141,7 +140,7 @@ class StepDetailCard extends StatelessWidget {
                       height: 46,
                       padding: EdgeInsets.all(0),
                       backgroundColor: colors.vendorPrimaryBlue,
-                      borderRadius: 10.r,
+                      borderRadius: KBorderSize.border,
                       textStyle: TextStyle(
                         color: Colors.white,
                         fontSize: 12.sp,

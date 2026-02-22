@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -64,20 +65,24 @@ class HomeTab extends StatelessWidget {
                 ),
               ].where((item) {
                 final serviceType = item.serviceType;
-                return serviceType == null || visibleServices.contains(serviceType);
+                return serviceType == null ||
+                    visibleServices.contains(serviceType);
               }).toList()
               ..sort((a, b) => a.priority.compareTo(b.priority));
 
         final actionItems = visibleAlerts.take(3).toList();
 
-        final hasPendingOptionalChecklist = onboardingSetup.optionalPendingOrSkipped > 0;
+        final hasPendingOptionalChecklist =
+            onboardingSetup.optionalPendingOrSkipped > 0;
         final checklistItems = onboardingSetup.steps
             .where((step) {
-              if (!step.isOptional || step.status == VendorGuidedStepStatus.completed) {
+              if (!step.isOptional ||
+                  step.status == VendorGuidedStepStatus.completed) {
                 return false;
               }
               final serviceType = step.serviceHint;
-              return serviceType == null || visibleServices.contains(serviceType);
+              return serviceType == null ||
+                  visibleServices.contains(serviceType);
             })
             .map((step) {
               return _HomeChecklistItem(
@@ -98,14 +103,23 @@ class HomeTab extends StatelessWidget {
                   children: [
                     Text(
                       'Home',
-                      style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.w900, color: colors.textPrimary),
+                      style: TextStyle(
+                        fontSize: 24.sp,
+                        fontWeight: FontWeight.w900,
+                        color: colors.textPrimary,
+                      ),
                     ),
                     const Spacer(),
                     Material(
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsPage()));
+                          Navigator.push(
+                            context,
+                            CupertinoPageRoute(
+                              builder: (_) => const NotificationsPage(),
+                            ),
+                          );
                         },
                         customBorder: const CircleBorder(),
                         child: Padding(
@@ -116,14 +130,22 @@ class HomeTab extends StatelessWidget {
                               SvgPicture.asset(
                                 Assets.icons.bell,
                                 package: 'grab_go_shared',
-                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                colorFilter: ColorFilter.mode(
+                                  colors.textSecondary,
+                                  BlendMode.srcIn,
+                                ),
                               ),
                               Positioned(
                                 right: -8.w,
                                 top: -8.h,
                                 child: Container(
-                                  constraints: BoxConstraints(minWidth: 16.w, minHeight: 16.h),
-                                  padding: EdgeInsets.symmetric(horizontal: 4.w),
+                                  constraints: BoxConstraints(
+                                    minWidth: 16.w,
+                                    minHeight: 16.h,
+                                  ),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 4.w,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: colors.vendorPrimaryBlue,
                                     borderRadius: BorderRadius.circular(999),
@@ -131,7 +153,11 @@ class HomeTab extends StatelessWidget {
                                   alignment: Alignment.center,
                                   child: Text(
                                     '99+',
-                                    style: TextStyle(color: Colors.white, fontSize: 9.sp, fontWeight: FontWeight.w800),
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9.sp,
+                                      fontWeight: FontWeight.w800,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -146,13 +172,17 @@ class HomeTab extends StatelessWidget {
                   visibleServices.isEmpty
                       ? 'No services are active for this profile and store context.'
                       : '${selectedBranch.name}  •  $serviceScope',
-                  style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
+                  style: TextStyle(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textSecondary,
+                  ),
                 ),
                 SizedBox(height: 14.h),
                 VendorOutageBanner(
                   onManageTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(
+                    CupertinoPageRoute(
                       builder: (_) => ChangeNotifierProvider.value(
                         value: context.read<VendorStoreOperationsViewModel>(),
                         child: const StoreOperationsPage(),
@@ -163,18 +193,26 @@ class HomeTab extends StatelessWidget {
                 Consumer<VendorStoreOperationsViewModel>(
                   builder: (context, operations, _) {
                     final activeServicesCount = visibleServices
-                        .where((service) => operations.isServiceEnabled(service))
+                        .where(
+                          (service) => operations.isServiceEnabled(service),
+                        )
                         .length;
                     final snapshotTiles = <Widget>[
                       _SnapshotMetricTile(
                         label: 'Store',
                         value: operations.isStoreOpen ? 'Open' : 'Closed',
-                        color: operations.isStoreOpen ? colors.success : colors.error,
+                        color: operations.isStoreOpen
+                            ? colors.success
+                            : colors.error,
                       ),
                       _SnapshotMetricTile(
                         label: 'Orders',
-                        value: operations.acceptsOrders ? 'Accepting' : 'Paused',
-                        color: operations.acceptsOrders ? colors.success : colors.warning,
+                        value: operations.acceptsOrders
+                            ? 'Accepting'
+                            : 'Paused',
+                        color: operations.acceptsOrders
+                            ? colors.success
+                            : colors.warning,
                       ),
                       _SnapshotMetricTile(
                         label: 'Prep Time',
@@ -183,7 +221,8 @@ class HomeTab extends StatelessWidget {
                       ),
                       _SnapshotMetricTile(
                         label: 'Services',
-                        value: '$activeServicesCount/${visibleServices.length} active',
+                        value:
+                            '$activeServicesCount/${visibleServices.length} active',
                         color: colors.vendorPrimaryBlue,
                       ),
                     ];
@@ -193,9 +232,10 @@ class HomeTab extends StatelessWidget {
                       trailing: TextButton(
                         onPressed: () => Navigator.push(
                           context,
-                          MaterialPageRoute(
+                          CupertinoPageRoute(
                             builder: (_) => ChangeNotifierProvider.value(
-                              value: context.read<VendorStoreOperationsViewModel>(),
+                              value: context
+                                  .read<VendorStoreOperationsViewModel>(),
                               child: const StoreOperationsPage(),
                             ),
                           ),
@@ -245,7 +285,11 @@ class HomeTab extends StatelessWidget {
                   child: actionItems.isEmpty
                       ? Text(
                           'No action items for the selected service scope.',
-                          style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w600,
+                            color: colors.textSecondary,
+                          ),
                         )
                       : Column(
                           children: actionItems.map((item) {
@@ -262,7 +306,11 @@ class HomeTab extends StatelessWidget {
                 SizedBox(height: 14.h),
                 Text(
                   'Today KPIs',
-                  style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                  style: TextStyle(
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w800,
+                    color: colors.textPrimary,
+                  ),
                 ),
                 SizedBox(height: 10.h),
                 GridView.count(
@@ -286,12 +334,20 @@ class HomeTab extends StatelessWidget {
                     child: checklistItems.isEmpty
                         ? Text(
                             'No pending optional setup items for this service scope.',
-                            style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w600,
+                              color: colors.textSecondary,
+                            ),
                           )
                         : Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: checklistItems.map((item) {
-                              return ChecklistRow(label: item.label, done: item.done, statusLabel: item.statusLabel);
+                              return ChecklistRow(
+                                label: item.label,
+                                done: item.done,
+                                statusLabel: item.statusLabel,
+                              );
                             }).toList(),
                           ),
                   ),
@@ -305,11 +361,16 @@ class HomeTab extends StatelessWidget {
   }
 
   void _openAlerts(BuildContext context, List<HomeActionItem> alerts) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => HomeAlertsPage(alerts: alerts)));
+    Navigator.push(
+      context,
+      CupertinoPageRoute(builder: (_) => HomeAlertsPage(alerts: alerts)),
+    );
   }
 }
 
-Set<VendorServiceType> _visibleVendorServices(VendorStoreContextViewModel storeContext) {
+Set<VendorServiceType> _visibleVendorServices(
+  VendorStoreContextViewModel storeContext,
+) {
   final scope = storeContext.serviceScope;
   if (scope != null) return {scope};
   return storeContext.availableServicesForSelectedBranch.toSet();
@@ -320,7 +381,11 @@ class _HomeChecklistItem {
   final bool done;
   final String? statusLabel;
 
-  const _HomeChecklistItem({required this.label, required this.done, this.statusLabel});
+  const _HomeChecklistItem({
+    required this.label,
+    required this.done,
+    this.statusLabel,
+  });
 }
 
 class _SnapshotMetricTile extends StatelessWidget {
@@ -328,25 +393,40 @@ class _SnapshotMetricTile extends StatelessWidget {
   final String value;
   final Color color;
 
-  const _SnapshotMetricTile({required this.label, required this.value, required this.color});
+  const _SnapshotMetricTile({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 9.h),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12.r)),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12.r),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w700, color: colors.textSecondary),
+            style: TextStyle(
+              fontSize: 10.sp,
+              fontWeight: FontWeight.w700,
+              color: colors.textSecondary,
+            ),
           ),
           SizedBox(height: 3.h),
           Text(
             value,
-            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800, color: color),
+            style: TextStyle(
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
           ),
         ],
       ),

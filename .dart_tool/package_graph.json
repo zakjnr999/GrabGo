@@ -237,9 +237,11 @@
       "name": "grab_go_vendor",
       "version": "1.0.0+1",
       "dependencies": [
+        "dotted_line",
         "flutter",
         "flutter_screenutil",
         "flutter_svg",
+        "flutter_swipe_action_cell",
         "go_router",
         "grab_go_shared",
         "provider"
@@ -470,6 +472,20 @@
       "version": "6.0.0",
       "dependencies": [
         "lints"
+      ]
+    },
+    {
+      "name": "dotted_line",
+      "version": "3.2.3",
+      "dependencies": [
+        "flutter"
+      ]
+    },
+    {
+      "name": "flutter_swipe_action_cell",
+      "version": "3.1.6",
+      "dependencies": [
+        "flutter"
       ]
     },
     {
@@ -1173,22 +1189,8 @@
       ]
     },
     {
-      "name": "flutter_swipe_action_cell",
-      "version": "3.1.6",
-      "dependencies": [
-        "flutter"
-      ]
-    },
-    {
       "name": "flutter_slidable",
       "version": "4.0.3",
-      "dependencies": [
-        "flutter"
-      ]
-    },
-    {
-      "name": "dotted_line",
-      "version": "3.2.3",
       "dependencies": [
         "flutter"
       ]

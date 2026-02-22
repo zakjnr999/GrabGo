@@ -23,7 +23,11 @@ class NotificationCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: entry.isRead ? colors.border : colors.vendorPrimaryBlue.withValues(alpha: 0.5)),
+          border: Border.all(
+            color: entry.isRead
+                ? colors.border
+                : colors.vendorPrimaryBlue.withValues(alpha: 0.5),
+          ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -37,14 +41,23 @@ class NotificationCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           entry.title,
-                          style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w700,
+                            color: colors.textPrimary,
+                          ),
                         ),
                       ),
                       if (!entry.isRead)
                         Container(
-                          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6.w,
+                            vertical: 2.h,
+                          ),
                           decoration: BoxDecoration(
-                            color: colors.vendorPrimaryBlue.withValues(alpha: 0.14),
+                            color: colors.vendorPrimaryBlue.withValues(
+                              alpha: 0.14,
+                            ),
                             borderRadius: BorderRadius.circular(999.r),
                           ),
                           child: Text(
@@ -61,12 +74,20 @@ class NotificationCard extends StatelessWidget {
                   SizedBox(height: 4.h),
                   Text(
                     entry.body,
-                    style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                    style: TextStyle(
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w500,
+                      color: colors.textSecondary,
+                    ),
                   ),
                   SizedBox(height: 4.h),
                   Text(
                     entry.timeLabel,
-                    style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w700, color: colors.textSecondary),
+                    style: TextStyle(
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textSecondary,
+                    ),
                   ),
                 ],
               ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_vendor/features/analytics/view/basic_analytics_page.dart';
@@ -32,25 +33,38 @@ class MoreTab extends StatelessWidget {
         children: [
           Text(
             'More',
-            style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.w900, color: colors.textPrimary),
+            style: TextStyle(
+              fontSize: 24.sp,
+              fontWeight: FontWeight.w900,
+              color: colors.textPrimary,
+            ),
           ),
           Text(
             'Operations tools, team settings and account controls.',
-            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+            style: TextStyle(
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w500,
+              color: colors.textSecondary,
+            ),
           ),
           SizedBox(height: 14.h),
           _MoreOptionTile(
             icon: Icons.switch_account_outlined,
             title: 'Switch Preview Vendor',
-            subtitle: '${previewSession.activeProfile.title} • ${previewSession.allowedServicesLabel}',
-            onTap: () => context.push('/vendorPreview', extra: {'returnToPrevious': true}),
+            subtitle:
+                '${previewSession.activeProfile.title} • ${previewSession.allowedServicesLabel}',
+            onTap: () => context.push(
+              '/vendorPreview',
+              extra: {'returnToPrevious': true},
+            ),
           ),
           _MoreOptionTile(
             icon: Icons.school_outlined,
             title: 'Training & Setup',
             subtitle:
                 'Required: ${onboardingSetup.requiredCompleted}/${onboardingSetup.requiredTotal} • Optional pending: ${onboardingSetup.optionalPendingOrSkipped}',
-            onTap: () => context.push('/onboardingGuide', extra: {'replayMode': true}),
+            onTap: () =>
+                context.push('/onboardingGuide', extra: {'replayMode': true}),
           ),
           _MoreOptionTile(
             icon: Icons.store_mall_directory_outlined,
@@ -58,7 +72,7 @@ class MoreTab extends StatelessWidget {
             subtitle: 'Open/close, accepting orders, outage controls',
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(
+              CupertinoPageRoute(
                 builder: (_) => ChangeNotifierProvider.value(
                   value: context.read<VendorStoreOperationsViewModel>(),
                   child: const StoreOperationsPage(),
@@ -70,55 +84,86 @@ class MoreTab extends StatelessWidget {
             icon: Icons.groups_2_outlined,
             title: 'Staff Management',
             subtitle: 'Invite members and update role permissions',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StaffManagementPage())),
+            onTap: () => Navigator.push(
+              context,
+              CupertinoPageRoute(builder: (_) => const StaffManagementPage()),
+            ),
           ),
           _MoreOptionTile(
             icon: Icons.analytics_outlined,
             title: 'Basic Analytics',
             subtitle: 'Today, 7-day and 30-day performance',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BasicAnalyticsPage())),
+            onTap: () => Navigator.push(
+              context,
+              CupertinoPageRoute(builder: (_) => const BasicAnalyticsPage()),
+            ),
           ),
           _MoreOptionTile(
             icon: Icons.campaign_outlined,
             title: 'Growth & Campaigns',
             subtitle: 'Promotions, campaign builder, and promo performance',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GrowthCenterPage())),
+            onTap: () => Navigator.push(
+              context,
+              CupertinoPageRoute(builder: (_) => const GrowthCenterPage()),
+            ),
           ),
           _MoreOptionTile(
             icon: Icons.schedule_outlined,
             title: 'Scheduling & Capacity',
             subtitle: 'Scheduled orders, slot capacity, and cutoff rules',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SchedulingCenterPage())),
+            onTap: () => Navigator.push(
+              context,
+              CupertinoPageRoute(builder: (_) => const SchedulingCenterPage()),
+            ),
           ),
           _MoreOptionTile(
             icon: Icons.account_balance_wallet_outlined,
             title: 'Settlements & Finance',
             subtitle: 'Payout history, statements, and export center',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FinanceCenterPage())),
+            onTap: () => Navigator.push(
+              context,
+              CupertinoPageRoute(builder: (_) => const FinanceCenterPage()),
+            ),
           ),
           _MoreOptionTile(
             icon: Icons.print_outlined,
             title: 'Integrations',
             subtitle: 'Printer setup, KDS routing, and test print logs',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const IntegrationsCenterPage())),
+            onTap: () => Navigator.push(
+              context,
+              CupertinoPageRoute(
+                builder: (_) => const IntegrationsCenterPage(),
+              ),
+            ),
           ),
           _MoreOptionTile(
             icon: Icons.person_outline_rounded,
             title: 'Profile & Security',
             subtitle: 'Business profile, password, session controls',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileSecurityPage())),
+            onTap: () => Navigator.push(
+              context,
+              CupertinoPageRoute(builder: (_) => const ProfileSecurityPage()),
+            ),
           ),
           _MoreOptionTile(
             icon: Icons.notifications_none_rounded,
             title: 'Notifications',
             subtitle: 'Alerts, chat notifications, reminder settings',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationSettingsPage())),
+            onTap: () => Navigator.push(
+              context,
+              CupertinoPageRoute(
+                builder: (_) => const NotificationSettingsPage(),
+              ),
+            ),
           ),
           _MoreOptionTile(
             icon: Icons.help_outline_rounded,
             title: 'Help & Onboarding Replay',
             subtitle: 'Training flow, support and policy information',
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpCenterPage())),
+            onTap: () => Navigator.push(
+              context,
+              CupertinoPageRoute(builder: (_) => const HelpCenterPage()),
+            ),
           ),
         ],
       ),
@@ -132,7 +177,12 @@ class _MoreOptionTile extends StatelessWidget {
   final String subtitle;
   final VoidCallback? onTap;
 
-  const _MoreOptionTile({required this.icon, required this.title, required this.subtitle, this.onTap});
+  const _MoreOptionTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -167,12 +217,20 @@ class _MoreOptionTile extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w800,
+                      color: colors.textPrimary,
+                    ),
                   ),
                   SizedBox(height: 3.h),
                   Text(
                     subtitle,
-                    style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w500,
+                      color: colors.textSecondary,
+                    ),
                   ),
                 ],
               ),

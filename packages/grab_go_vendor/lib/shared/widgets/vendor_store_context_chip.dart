@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_vendor/features/store_context/view/store_context_switcher_page.dart';
@@ -18,7 +19,7 @@ class VendorStoreContextChip extends StatelessWidget {
         return InkWell(
           onTap: () => Navigator.push(
             context,
-            MaterialPageRoute(
+            CupertinoPageRoute(
               builder: (_) => ChangeNotifierProvider.value(
                 value: viewModel,
                 child: const StoreContextSwitcherPage(),

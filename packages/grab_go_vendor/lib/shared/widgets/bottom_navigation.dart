@@ -27,9 +27,14 @@ class VendorBottomNavigator extends StatelessWidget {
   }
 }
 
-class _VendorBottomNavigatorView extends StatelessWidget {
+class _VendorBottomNavigatorView extends StatefulWidget {
   const _VendorBottomNavigatorView();
 
+  @override
+  State<_VendorBottomNavigatorView> createState() => _VendorBottomNavigatorViewState();
+}
+
+class _VendorBottomNavigatorViewState extends State<_VendorBottomNavigatorView> with SingleTickerProviderStateMixin {
   static final List<Widget> _screens = <Widget>[
     const HomeTab(),
     const OrdersTab(),
@@ -37,6 +42,66 @@ class _VendorBottomNavigatorView extends StatelessWidget {
     const ChatsTab(),
     const MoreTab(),
   ];
+
+  late final AnimationController _tabSwitchController;
+  VendorBottomNavProvider? _navProvider;
+
+  int _activeIndex = 0;
+  int? _previousIndex;
+  int _slideDirection = 1;
+  int _animationEpoch = 0;
+
+  bool get _isAnimating => _previousIndex != null && _tabSwitchController.isAnimating;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabSwitchController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final provider = context.read<VendorBottomNavProvider>();
+    if (_navProvider == provider) return;
+
+    _navProvider?.removeListener(_handleTabIndexChanged);
+    _navProvider = provider;
+    _activeIndex = provider.selectedIndex;
+    _navProvider!.addListener(_handleTabIndexChanged);
+  }
+
+  void _handleTabIndexChanged() {
+    final provider = _navProvider;
+    if (!mounted || provider == null) return;
+
+    final nextIndex = provider.selectedIndex;
+    if (nextIndex == _activeIndex) return;
+
+    final previous = _activeIndex;
+    _tabSwitchController.stop();
+
+    setState(() {
+      _previousIndex = previous;
+      _activeIndex = nextIndex;
+      _slideDirection = nextIndex > previous ? 1 : -1;
+    });
+
+    final epoch = ++_animationEpoch;
+    _tabSwitchController.forward(from: 0).whenComplete(() {
+      if (!mounted || epoch != _animationEpoch) return;
+      setState(() {
+        _previousIndex = null;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _navProvider?.removeListener(_handleTabIndexChanged);
+    _tabSwitchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +121,7 @@ class _VendorBottomNavigatorView extends StatelessWidget {
           systemNavigationBarDividerColor: Colors.transparent,
           systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         ),
-        child: IndexedStack(index: selectedIndex, children: _screens),
+        child: _buildAnimatedBody(selectedIndex),
       ),
       bottomNavigationBar: Container(
         height: size.height * 0.16,
@@ -104,6 +169,51 @@ class _VendorBottomNavigatorView extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildAnimatedBody(int selectedIndex) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+
+        return AnimatedBuilder(
+          animation: _tabSwitchController,
+          builder: (context, _) {
+            final previousIndex = _previousIndex;
+            final progress = _tabSwitchController.value;
+            final animating = _isAnimating && previousIndex != null;
+
+            return Stack(
+              fit: StackFit.expand,
+              children: List.generate(_screens.length, (index) {
+                if (!animating) {
+                  final isVisible = index == selectedIndex;
+                  return Offstage(
+                    offstage: !isVisible,
+                    child: TickerMode(enabled: isVisible, child: _screens[index]),
+                  );
+                }
+
+                final isCurrent = index == selectedIndex;
+                final isPrevious = index == previousIndex;
+                if (!isCurrent && !isPrevious) {
+                  return Offstage(offstage: true, child: TickerMode(enabled: false, child: _screens[index]));
+                }
+
+                final offsetX = isCurrent
+                    ? _slideDirection * (1 - progress) * width
+                    : -_slideDirection * progress * width;
+
+                return Transform.translate(
+                  offset: Offset(offsetX, 0),
+                  child: TickerMode(enabled: true, child: _screens[index]),
+                );
+              }),
+            );
+          },
+        );
+      },
     );
   }
 }

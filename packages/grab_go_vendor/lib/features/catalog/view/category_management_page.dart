@@ -203,12 +203,16 @@ class CategoryManagementPage extends StatelessWidget {
                           ),
                         ),
                         SizedBox(height: 12.h),
-                        TextField(
+                        AppTextInput(
                           controller: nameController,
-                          decoration: InputDecoration(
-                            labelText: 'Category Name',
-                            errorText: error,
-                          ),
+                          label: 'Category Name',
+                          hintText: 'Enter category name',
+                          errorText: error,
+                          fillColor: colors.backgroundPrimary,
+                          borderColor: colors.inputBorder,
+                          borderActiveColor: colors.vendorPrimaryBlue,
+                          borderRadius: KBorderSize.border,
+                          cursorColor: colors.vendorPrimaryBlue,
                         ),
                         SizedBox(height: 12.h),
                         DropdownButtonFormField<VendorServiceType>(

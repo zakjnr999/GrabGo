@@ -47,12 +47,20 @@ class ActionRow extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                      style: TextStyle(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w700,
+                        color: colors.textPrimary,
+                      ),
                     ),
                     SizedBox(height: 2.h),
                     Text(
                       subtitle,
-                      style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w500,
+                        color: colors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -63,7 +71,10 @@ class ActionRow extends StatelessWidget {
                   package: 'grab_go_shared',
                   height: 18.h,
                   width: 18.w,
-                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(
+                    colors.textSecondary,
+                    BlendMode.srcIn,
+                  ),
                 ),
             ],
           ),

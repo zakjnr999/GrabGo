@@ -35,6 +35,7 @@ class AppTextInput extends StatelessWidget {
   final List<TextInputFormatter>? inputFormatters;
   final ValueChanged<String>? onChanged;
   final FocusNode? focusNode;
+  final TextAlign textAlign;
 
   const AppTextInput({
     super.key,
@@ -62,6 +63,7 @@ class AppTextInput extends StatelessWidget {
     this.inputFormatters,
     this.onChanged,
     this.focusNode,
+    this.textAlign = TextAlign.start,
   });
 
   Future<void> _handleTap(BuildContext context) async {
@@ -70,7 +72,9 @@ class AppTextInput extends StatelessWidget {
       return;
     }
 
-    if (keyboardType == TextInputType.datetime && readOnly && controller != null) {
+    if (keyboardType == TextInputType.datetime &&
+        readOnly &&
+        controller != null) {
       FocusScope.of(context).unfocus();
 
       final colors = context.appColors;
@@ -92,7 +96,10 @@ class AppTextInput extends StatelessWidget {
                     child: CupertinoTheme(
                       data: CupertinoThemeData(
                         textTheme: CupertinoTextThemeData(
-                          dateTimePickerTextStyle: TextStyle(color: colors.textPrimary, fontSize: 21),
+                          dateTimePickerTextStyle: TextStyle(
+                            color: colors.textPrimary,
+                            fontSize: 21,
+                          ),
                         ),
                         brightness: Theme.of(context).brightness,
                       ),
@@ -112,7 +119,10 @@ class AppTextInput extends StatelessWidget {
                       controller!.text = dateFormatter.format(selectedDate);
                       Navigator.of(context).pop();
                     },
-                    child: Text("Done", style: TextStyle(color: colors.accentOrange)),
+                    child: Text(
+                      "Done",
+                      style: TextStyle(color: colors.accentOrange),
+                    ),
                   ),
                 ],
               ),
@@ -151,7 +161,11 @@ class AppTextInput extends StatelessWidget {
             label!,
             style:
                 labelStyle ??
-                TextStyle(fontSize: KTextSize.small.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                TextStyle(
+                  fontSize: KTextSize.small.sp,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary,
+                ),
           ),
           SizedBox(height: KSpacing.sm.h),
         ],
@@ -168,6 +182,7 @@ class AppTextInput extends StatelessWidget {
             focusNode: focusNode,
             cursorOpacityAnimates: true,
             keyboardType: keyboardType,
+            textAlign: textAlign,
             obscureText: obscureText,
             enabled: enabled,
             readOnly: readOnly,
@@ -178,12 +193,21 @@ class AppTextInput extends StatelessWidget {
             onTap: () => _handleTap(context),
             style:
                 textStyle ??
-                TextStyle(fontSize: KTextSize.small.sp, color: colors.textPrimary, fontWeight: FontWeight.w500),
+                TextStyle(
+                  fontSize: KTextSize.small.sp,
+                  color: colors.textPrimary,
+                  fontWeight: FontWeight.w500,
+                ),
             decoration: InputDecoration(
               filled: true,
               fillColor: fillColor ?? colors.inputBorder,
               hintText: hintText,
-              hintStyle: hintStyle ?? TextStyle(fontSize: 13.sp, color: colors.textSecondary.withOpacity(0.7)),
+              hintStyle:
+                  hintStyle ??
+                  TextStyle(
+                    fontSize: 13.sp,
+                    color: colors.textSecondary.withOpacity(0.7),
+                  ),
               prefixIcon: prefixIcon,
               suffixIcon: suffixIcon,
               errorText: errorText,
@@ -193,15 +217,23 @@ class AppTextInput extends StatelessWidget {
                 fontWeight: FontWeight.w500,
               ),
               errorMaxLines: 2,
-              contentPadding: contentPadding ?? const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+              contentPadding:
+                  contentPadding ??
+                  const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(borderRadius),
-                borderSide: BorderSide(color: errorText != null ? colors.error : (borderColor ?? Colors.transparent)),
+                borderSide: BorderSide(
+                  color: errorText != null
+                      ? colors.error
+                      : (borderColor ?? Colors.transparent),
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(borderRadius),
                 borderSide: BorderSide(
-                  color: errorText != null ? colors.error : (borderActiveColor ?? colors.accentOrange),
+                  color: errorText != null
+                      ? colors.error
+                      : (borderActiveColor ?? colors.accentOrange),
                   width: KBorderWidth.thick,
                 ),
               ),
@@ -211,7 +243,10 @@ class AppTextInput extends StatelessWidget {
               ),
               focusedErrorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(borderRadius),
-                borderSide: BorderSide(color: colors.error, width: KBorderWidth.thick),
+                borderSide: BorderSide(
+                  color: colors.error,
+                  width: KBorderWidth.thick,
+                ),
               ),
             ),
           ),

@@ -26,7 +26,7 @@ class StoreOperationsPage extends StatelessWidget {
             final hasMultipleServices = visibleServices.length > 1;
 
             return SingleChildScrollView(
-              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -49,7 +49,7 @@ class StoreOperationsPage extends StatelessWidget {
                   Text(
                     'Store Operations',
                     style: TextStyle(
-                      fontSize: 30.sp,
+                      fontSize: 24.sp,
                       fontWeight: FontWeight.w900,
                       color: colors.textPrimary,
                       height: 1.15,

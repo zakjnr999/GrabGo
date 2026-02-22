@@ -51,14 +51,21 @@ class OrderCard extends StatelessWidget {
               children: [
                 if (showServiceChip) ...[
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 8.w,
+                      vertical: 4.h,
+                    ),
                     decoration: BoxDecoration(
                       color: serviceColor.withValues(alpha: 0.14),
                       borderRadius: BorderRadius.circular(999.r),
                     ),
                     child: Text(
                       order.serviceType.label,
-                      style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w700, color: serviceColor),
+                      style: TextStyle(
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.w700,
+                        color: serviceColor,
+                      ),
                     ),
                   ),
                   SizedBox(width: 8.w),
@@ -71,18 +78,30 @@ class OrderCard extends StatelessWidget {
                   ),
                   child: Text(
                     order.status.label,
-                    style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w700, color: statusColor),
+                    style: TextStyle(
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.w700,
+                      color: statusColor,
+                    ),
                   ),
                 ),
                 if (order.isAtRisk)
                   Padding(
                     padding: EdgeInsets.only(left: 8.w),
-                    child: Icon(Icons.warning_amber_rounded, size: 16.sp, color: colors.warning),
+                    child: Icon(
+                      Icons.warning_amber_rounded,
+                      size: 16.sp,
+                      color: colors.warning,
+                    ),
                   ),
                 const Spacer(),
                 Text(
                   order.elapsedLabel,
-                  style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w700, color: colors.textSecondary),
+                  style: TextStyle(
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w700,
+                    color: colors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -92,19 +111,31 @@ class OrderCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     order.id,
-                    style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                    style: TextStyle(
+                      fontSize: 15.sp,
+                      fontWeight: FontWeight.w800,
+                      color: colors.textPrimary,
+                    ),
                   ),
                 ),
                 Text(
                   'GHS ${order.total.toStringAsFixed(2)}',
-                  style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                  style: TextStyle(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w800,
+                    color: colors.textPrimary,
+                  ),
                 ),
               ],
             ),
             SizedBox(height: 3.h),
             Text(
               '${order.customerName} • ${order.customerPhone}',
-              style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
+              style: TextStyle(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+                color: colors.textSecondary,
+              ),
             ),
             SizedBox(height: 10.h),
             ...previewItems.map((item) {
@@ -115,7 +146,11 @@ class OrderCard extends StatelessWidget {
                   children: [
                     Text(
                       '${item.quantity}x',
-                      style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w800,
+                        color: colors.textPrimary,
+                      ),
                     ),
                     SizedBox(width: 6.w),
                     Expanded(
@@ -123,7 +158,11 @@ class OrderCard extends StatelessWidget {
                         item.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
+                        style: TextStyle(
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w600,
+                          color: colors.textSecondary,
+                        ),
                       ),
                     ),
                   ],
@@ -137,10 +176,17 @@ class OrderCard extends StatelessWidget {
                   onTap: onView,
                   borderRadius: BorderRadius.circular(999.r),
                   child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 2.h),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 2.w,
+                      vertical: 2.h,
+                    ),
                     child: Text(
                       '+$remainingItems more items • View all',
-                      style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w700, color: colors.vendorPrimaryBlue),
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w700,
+                        color: colors.vendorPrimaryBlue,
+                      ),
                     ),
                   ),
                 ),
@@ -156,7 +202,10 @@ class OrderCard extends StatelessWidget {
                       package: 'grab_go_shared',
                       width: 14.w,
                       height: 14.h,
-                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                      colorFilter: ColorFilter.mode(
+                        colors.textSecondary,
+                        BlendMode.srcIn,
+                      ),
                     ),
                     SizedBox(width: 6.w),
                     Expanded(
@@ -164,7 +213,11 @@ class OrderCard extends StatelessWidget {
                         note,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
+                        style: TextStyle(
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w600,
+                          color: colors.textSecondary,
+                        ),
                       ),
                     ),
                   ],
@@ -177,8 +230,16 @@ class OrderCard extends StatelessWidget {
                   spacing: 8.w,
                   runSpacing: 6.h,
                   children: [
-                    if (order.isPickupOrder) OrderMetaChip(label: 'Pickup', color: colors.vendorPrimaryBlue),
-                    if (order.requiresPrescription) OrderMetaChip(label: 'Prescription', color: colors.servicePharmacy),
+                    if (order.isPickupOrder)
+                      OrderMetaChip(
+                        label: 'Pickup',
+                        color: colors.vendorPrimaryBlue,
+                      ),
+                    if (order.requiresPrescription)
+                      OrderMetaChip(
+                        label: 'Prescription',
+                        color: colors.servicePharmacy,
+                      ),
                   ],
                 ),
               ),
@@ -191,9 +252,15 @@ class OrderCard extends StatelessWidget {
                     onPressed: onView,
                     height: 36.h,
                     padding: EdgeInsets.zero,
-                    backgroundColor: colors.vendorPrimaryBlue.withValues(alpha: 0.12),
+                    backgroundColor: colors.vendorPrimaryBlue.withValues(
+                      alpha: 0.12,
+                    ),
                     borderRadius: KBorderSize.border,
-                    textStyle: TextStyle(color: colors.vendorPrimaryBlue, fontSize: 13.sp, fontWeight: FontWeight.w700),
+                    textStyle: TextStyle(
+                      color: colors.vendorPrimaryBlue,
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 SizedBox(width: 8.w),
@@ -205,7 +272,11 @@ class OrderCard extends StatelessWidget {
                     padding: EdgeInsets.zero,
                     backgroundColor: colors.vendorPrimaryBlue,
                     borderRadius: KBorderSize.border,
-                    textStyle: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.w700),
+                    textStyle: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],

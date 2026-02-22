@@ -13,7 +13,8 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with TickerProviderStateMixin {
   late final AnimationController _fadeController;
   late final Animation<double> _fade;
   late final Animation<Offset> _grabSlide;
@@ -25,20 +26,25 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    _fadeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
     _fade = CurvedAnimation(parent: _fadeController, curve: Curves.easeIn);
-    _grabSlide = Tween<Offset>(begin: const Offset(-0.22, 0), end: Offset.zero).animate(
-      CurvedAnimation(
-        parent: _fadeController,
-        curve: const Interval(0.0, 0.65, curve: Curves.easeOutCubic),
-      ),
-    );
-    _vendorSlide = Tween<Offset>(begin: const Offset(0, 0.12), end: Offset.zero).animate(
-      CurvedAnimation(
-        parent: _fadeController,
-        curve: const Interval(0.22, 1.0, curve: Curves.easeOutCubic),
-      ),
-    );
+    _grabSlide = Tween<Offset>(begin: const Offset(-0.22, 0), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _fadeController,
+            curve: const Interval(0.0, 0.65, curve: Curves.easeOutCubic),
+          ),
+        );
+    _vendorSlide = Tween<Offset>(begin: const Offset(0, 0.12), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _fadeController,
+            curve: const Interval(0.22, 1.0, curve: Curves.easeOutCubic),
+          ),
+        );
     _grabOpacity = CurvedAnimation(
       parent: _fadeController,
       curve: const Interval(0.0, 0.72, curve: Curves.easeOut),

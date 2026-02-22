@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -14,7 +15,10 @@ class NotificationsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(create: (_) => NotificationSettingsViewModel(), child: const _NotificationsView());
+    return ChangeNotifierProvider(
+      create: (_) => NotificationSettingsViewModel(),
+      child: const _NotificationsView(),
+    );
   }
 }
 
@@ -27,6 +31,38 @@ class _NotificationsView extends StatefulWidget {
 
 class _NotificationsViewState extends State<_NotificationsView> {
   bool _showUnreadOnly = false;
+  final ScrollController _historyScrollController = ScrollController();
+  bool _showTopDivider = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _historyScrollController.addListener(_handleScroll);
+  }
+
+  void _handleScroll() {
+    if (!_historyScrollController.hasClients) return;
+    final shouldShow = _historyScrollController.offset > 0.5;
+    if (shouldShow == _showTopDivider) return;
+    setState(() => _showTopDivider = shouldShow);
+  }
+
+  void _setUnreadOnly(bool value) {
+    if (_showUnreadOnly == value) return;
+    _showUnreadOnly = value;
+    _showTopDivider = false;
+    if (_historyScrollController.hasClients) {
+      _historyScrollController.jumpTo(0);
+    }
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _historyScrollController.removeListener(_handleScroll);
+    _historyScrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +78,7 @@ class _NotificationsViewState extends State<_NotificationsView> {
           backgroundColor: colors.backgroundPrimary,
           body: SafeArea(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 0),
+              padding: EdgeInsets.fromLTRB(20.w, 6.h, 20.w, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -51,24 +87,36 @@ class _NotificationsViewState extends State<_NotificationsView> {
                     children: [
                       TextButton.icon(
                         onPressed: () => Navigator.of(context).maybePop(),
-                        style: TextButton.styleFrom(padding: EdgeInsets.zero, foregroundColor: colors.textSecondary),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          foregroundColor: colors.textSecondary,
+                        ),
                         icon: SvgPicture.asset(
                           Assets.icons.navArrowLeft,
                           package: 'grab_go_shared',
                           width: 18.w,
                           height: 18.w,
-                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                          colorFilter: ColorFilter.mode(
+                            colors.textSecondary,
+                            BlendMode.srcIn,
+                          ),
                         ),
                         label: Text(
                           'Back',
-                          style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                       const Spacer(),
                       Row(
                         children: [
                           TextButton(
-                            onPressed: viewModel.unreadCount == 0 ? null : viewModel.markAllHistoryRead,
+                            onPressed: viewModel.unreadCount == 0
+                                ? null
+                                : viewModel.markAllHistoryRead,
                             child: Text(
                               'Mark all read',
                               style: TextStyle(
@@ -82,7 +130,10 @@ class _NotificationsViewState extends State<_NotificationsView> {
                             onPressed: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (_) => const NotificationSettingsPage()),
+                                CupertinoPageRoute(
+                                  builder: (_) =>
+                                      const NotificationSettingsPage(),
+                                ),
                               );
                             },
                             child: Text(
@@ -102,7 +153,7 @@ class _NotificationsViewState extends State<_NotificationsView> {
                   Text(
                     'Notifications',
                     style: TextStyle(
-                      fontSize: 30.sp,
+                      fontSize: 24.sp,
                       fontWeight: FontWeight.w900,
                       color: colors.textPrimary,
                       height: 1.15,
@@ -124,22 +175,31 @@ class _NotificationsViewState extends State<_NotificationsView> {
                       AppFilterChip(
                         label: 'All',
                         selected: !_showUnreadOnly,
-                        onTap: () => setState(() => _showUnreadOnly = false),
+                        onTap: () => _setUnreadOnly(false),
                       ),
                       SizedBox(width: 8.w),
                       AppFilterChip(
                         label: 'Unread',
                         selected: _showUnreadOnly,
-                        onTap: () => setState(() => _showUnreadOnly = true),
+                        onTap: () => _setUnreadOnly(true),
                       ),
                     ],
                   ),
-                  SizedBox(height: 12.h),
+                  SizedBox(height: 10.h),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    height: _showTopDivider ? 1.h : 0,
+                    color: colors.divider,
+                  ),
+                  SizedBox(height: 10.h),
                   Expanded(
                     child: entries.isEmpty
                         ? Center(
                             child: Text(
-                              _showUnreadOnly ? 'No unread notifications.' : 'No notifications available.',
+                              _showUnreadOnly
+                                  ? 'No unread notifications.'
+                                  : 'No notifications available.',
                               style: TextStyle(
                                 fontSize: 13.sp,
                                 fontWeight: FontWeight.w600,
@@ -148,13 +208,16 @@ class _NotificationsViewState extends State<_NotificationsView> {
                             ),
                           )
                         : ListView.builder(
+                            controller: _historyScrollController,
                             padding: EdgeInsets.only(bottom: 20.h),
                             itemCount: entries.length,
                             itemBuilder: (context, index) {
                               final entry = entries[index];
                               return NotificationCard(
                                 entry: entry,
-                                onTap: () => context.read<NotificationSettingsViewModel>().markHistoryRead(entry.id),
+                                onTap: () => context
+                                    .read<NotificationSettingsViewModel>()
+                                    .markHistoryRead(entry.id),
                               );
                             },
                           ),

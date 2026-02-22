@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_vendor/features/help/model/vendor_help_models.dart';
@@ -337,7 +338,7 @@ class _HelpCenterView extends StatelessWidget {
                             } else {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(
+                                CupertinoPageRoute(
                                   builder: (_) => const OnboardingSetupShell(
                                     isReplayMode: true,
                                   ),
@@ -363,7 +364,7 @@ class _HelpCenterView extends StatelessWidget {
   void _replayOnboarding(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const OnboardingMain.replay()),
+      CupertinoPageRoute(builder: (_) => const OnboardingMain.replay()),
     );
   }
 
