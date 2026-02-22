@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_vendor/features/auth/view/widgets/auth_entrance.dart';
 import 'package:grab_go_vendor/features/auth/viewmodel/forgot_password_viewmodel.dart';
 import 'package:provider/provider.dart';
 
@@ -35,100 +38,128 @@ class _ForgotPasswordView extends StatelessWidget {
         statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
         systemNavigationBarColor: Colors.transparent,
         systemNavigationBarDividerColor: Colors.transparent,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarIconBrightness: isDark
+            ? Brightness.light
+            : Brightness.dark,
       ),
       child: Scaffold(
         backgroundColor: colors.backgroundPrimary,
         body: SafeArea(
           child: Consumer<ForgotPasswordViewModel>(
             builder: (context, viewModel, child) {
-              return SingleChildScrollView(
-                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextButton.icon(
-                      onPressed: () => context.go('/login'),
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        foregroundColor: colors.textSecondary,
-                      ),
-                      icon: Icon(Icons.arrow_back_rounded, size: 18.sp),
-                      label: Text(
-                        'Back',
-                        style: TextStyle(
-                          color: colors.textSecondary,
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w600,
+              return Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: 430.w),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20.w),
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: SingleChildScrollView(
+                            padding: EdgeInsets.only(top: 8.h, bottom: 12.h),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                AuthEntrance(
+                                  delay: const Duration(milliseconds: 40),
+                                  child: TextButton.icon(
+                                    onPressed: () => context.go('/login'),
+                                    style: TextButton.styleFrom(
+                                      padding: EdgeInsets.zero,
+                                      foregroundColor: colors.textSecondary,
+                                    ),
+                                    icon: SvgPicture.asset(
+                                      Assets.icons.navArrowLeft,
+                                      package: 'grab_go_shared',
+                                      width: 18.w,
+                                      height: 18.w,
+                                      colorFilter: ColorFilter.mode(
+                                        colors.textSecondary,
+                                        BlendMode.srcIn,
+                                      ),
+                                    ),
+                                    label: Text(
+                                      'Back',
+                                      style: TextStyle(
+                                        color: colors.textSecondary,
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                AuthEntrance(
+                                  delay: const Duration(milliseconds: 90),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Forgot your password?',
+                                        style: TextStyle(
+                                          fontSize: 30.sp,
+                                          fontWeight: FontWeight.w900,
+                                          color: colors.textPrimary,
+                                          height: 1.15,
+                                        ),
+                                      ),
+                                      SizedBox(height: 8.h),
+                                      Text(
+                                        'Enter your business email and we’ll continue with password reset.',
+                                        style: TextStyle(
+                                          fontSize: 14.sp,
+                                          fontWeight: FontWeight.w500,
+                                          color: colors.textSecondary,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(height: 24.h),
+                                AuthEntrance(
+                                  delay: const Duration(milliseconds: 150),
+                                  child: AppTextInput(
+                                    controller: viewModel.emailController,
+                                    label: 'Business Email',
+                                    hintText: 'vendor@example.com',
+                                    keyboardType: TextInputType.emailAddress,
+                                    errorText: viewModel.emailError,
+                                    fillColor: colors.backgroundSecondary,
+                                    borderColor: colors.inputBorder,
+                                    borderActiveColor: colors.vendorPrimaryBlue,
+                                    borderRadius: KBorderSize.border,
+                                    cursorColor: colors.vendorPrimaryBlue,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    SizedBox(height: 12.h),
-                    Center(
-                      child: Container(
-                        width: 92.w,
-                        height: 92.w,
-                        decoration: BoxDecoration(
-                          color: colors.vendorPrimaryBlue.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(28.r),
+                        Padding(
+                          padding: EdgeInsets.only(bottom: 12.h),
+                          child: AuthEntrance(
+                            delay: const Duration(milliseconds: 220),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: AppButton(
+                                buttonText: 'Continue',
+                                onPressed: () =>
+                                    _handleContinue(context, viewModel),
+                                backgroundColor: colors.vendorPrimaryBlue,
+                                borderRadius: KBorderSize.border,
+                                textStyle: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15.sp,
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                        child: Icon(
-                          Icons.lock_reset_rounded,
-                          size: 42.sp,
-                          color: colors.vendorPrimaryBlue,
-                        ),
-                      ),
+                      ],
                     ),
-                    SizedBox(height: 22.h),
-                    Text(
-                      'Forgot your password?',
-                      style: TextStyle(
-                        fontSize: 30.sp,
-                        fontWeight: FontWeight.w900,
-                        color: colors.textPrimary,
-                        height: 1.15,
-                      ),
-                    ),
-                    SizedBox(height: 8.h),
-                    Text(
-                      'Enter your business email and we’ll continue with password reset.',
-                      style: TextStyle(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w500,
-                        color: colors.textSecondary,
-                        height: 1.4,
-                      ),
-                    ),
-                    SizedBox(height: 24.h),
-                    AppTextInput(
-                      controller: viewModel.emailController,
-                      label: 'Business Email',
-                      hintText: 'vendor@example.com',
-                      keyboardType: TextInputType.emailAddress,
-                      errorText: viewModel.emailError,
-                      fillColor: colors.backgroundSecondary,
-                      borderColor: colors.inputBorder,
-                      borderActiveColor: colors.vendorPrimaryBlue,
-                      borderRadius: KBorderSize.borderRadius12,
-                      cursorColor: colors.vendorPrimaryBlue,
-                      prefixIcon: const Icon(Icons.mail_outline_rounded),
-                    ),
-                    SizedBox(height: 18.h),
-                    SizedBox(
-                      width: double.infinity,
-                      child: AppButton(
-                        buttonText: 'Continue',
-                        onPressed: () => _handleContinue(context, viewModel),
-                        backgroundColor: colors.vendorPrimaryBlue,
-                        borderRadius: KBorderSize.borderRadius12,
-                        textStyle: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15.sp,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               );
             },
@@ -138,7 +169,10 @@ class _ForgotPasswordView extends StatelessWidget {
     );
   }
 
-  void _handleContinue(BuildContext context, ForgotPasswordViewModel viewModel) {
+  void _handleContinue(
+    BuildContext context,
+    ForgotPasswordViewModel viewModel,
+  ) {
     HapticFeedback.selectionClick();
     if (!viewModel.validate()) return;
 

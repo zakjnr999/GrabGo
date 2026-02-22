@@ -65,10 +65,8 @@ class _IntegrationsCenterView extends StatelessWidget {
                     title: 'Print Routing',
                     child: Column(
                       children: [
-                        SwitchListTile.adaptive(
-                          contentPadding: EdgeInsets.zero,
+                        _SwitchRow(
                           value: viewModel.autoPrintKitchen,
-                          activeThumbColor: colors.vendorPrimaryBlue,
                           title: Text(
                             'Auto Print Kitchen Tickets',
                             style: TextStyle(
@@ -87,10 +85,8 @@ class _IntegrationsCenterView extends StatelessWidget {
                           ),
                           onChanged: viewModel.setAutoPrintKitchen,
                         ),
-                        SwitchListTile.adaptive(
-                          contentPadding: EdgeInsets.zero,
+                        _SwitchRow(
                           value: viewModel.autoPrintCustomerCopy,
-                          activeThumbColor: colors.serviceGrocery,
                           title: Text(
                             'Auto Print Customer Copy',
                             style: TextStyle(
@@ -214,6 +210,51 @@ class _SectionCard extends StatelessWidget {
           ),
           SizedBox(height: 10.h),
           child,
+        ],
+      ),
+    );
+  }
+}
+
+class _SwitchRow extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final Widget title;
+  final Widget subtitle;
+
+  const _SwitchRow({
+    required this.value,
+    required this.onChanged,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.appColors;
+    return Padding(
+      padding: EdgeInsets.only(bottom: 8.h),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                title,
+                SizedBox(height: 2.h),
+                subtitle,
+              ],
+            ),
+          ),
+          SizedBox(width: 8.w),
+          CustomSwitch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: colors.vendorPrimaryBlue,
+            inactiveColor: colors.inputBorder,
+            thumbColor: colors.backgroundPrimary,
+          ),
         ],
       ),
     );

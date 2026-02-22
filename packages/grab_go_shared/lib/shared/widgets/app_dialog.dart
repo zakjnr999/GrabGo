@@ -88,27 +88,33 @@ class AppDialog extends StatelessWidget {
       case AppDialogType.warning:
         return colors.accentOrange;
       case AppDialogType.error:
-        return Colors.red;
+        return colors.error;
       case AppDialogType.success:
         return colors.accentGreen;
       case AppDialogType.question:
         return colors.accentViolet;
       case AppDialogType.logout:
-        return Colors.red;
+        return colors.error;
     }
   }
 
-  SvgPicture _getTypeIcon(BuildContext context) {
+  SvgPicture _getTypeIcon(Color iconColor) {
     switch (type) {
       case AppDialogType.info:
-        return SvgPicture.asset(Assets.icons.infoCircle, package: 'grab_go_shared', height: 35.h, width: 35.h);
+        return SvgPicture.asset(
+          Assets.icons.infoCircle,
+          package: 'grab_go_shared',
+          height: 35.h,
+          width: 35.h,
+          colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+        );
       case AppDialogType.warning:
         return SvgPicture.asset(
           Assets.icons.warningCircle,
           package: 'grab_go_shared',
           height: 35.h,
           width: 35.h,
-          colorFilter: ColorFilter.mode(AppColors.errorRed, BlendMode.srcIn),
+          colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
         );
       case AppDialogType.error:
         return SvgPicture.asset(
@@ -116,7 +122,7 @@ class AppDialog extends StatelessWidget {
           package: 'grab_go_shared',
           height: 35.h,
           width: 35.h,
-          colorFilter: ColorFilter.mode(AppColors.errorRed, BlendMode.srcIn),
+          colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
         );
       case AppDialogType.success:
         return SvgPicture.asset(
@@ -124,7 +130,7 @@ class AppDialog extends StatelessWidget {
           package: 'grab_go_shared',
           height: 35.h,
           width: 35.h,
-          colorFilter: ColorFilter.mode(AppColors.accentGreen, BlendMode.srcIn),
+          colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
         );
       case AppDialogType.question:
         return SvgPicture.asset(
@@ -132,7 +138,7 @@ class AppDialog extends StatelessWidget {
           package: 'grab_go_shared',
           height: 35.h,
           width: 35.h,
-          colorFilter: ColorFilter.mode(AppColors.accentGreen, BlendMode.srcIn),
+          colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
         );
       case AppDialogType.logout:
         return SvgPicture.asset(
@@ -140,7 +146,7 @@ class AppDialog extends StatelessWidget {
           package: 'grab_go_shared',
           height: 35.h,
           width: 35.h,
-          colorFilter: ColorFilter.mode(AppColors.errorRed, BlendMode.srcIn),
+          colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
         );
     }
   }
@@ -159,7 +165,11 @@ class AppDialog extends StatelessWidget {
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(dialogBorderRadius),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 10)),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
           ],
         ),
         child: Column(
@@ -179,16 +189,22 @@ class AppDialog extends StatelessWidget {
                 child: Container(
                   height: 70.h,
                   width: 70.h,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: typeColor.withValues(alpha: 0.15)),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: typeColor.withValues(alpha: 0.15),
+                  ),
                   child: Center(
                     child: icon != null
                         ? SvgPicture.asset(
                             icon!,
                             height: 35.h,
                             width: 35.h,
-                            colorFilter: ColorFilter.mode(typeColor, BlendMode.srcIn),
+                            colorFilter: ColorFilter.mode(
+                              typeColor,
+                              BlendMode.srcIn,
+                            ),
                           )
-                        : _getTypeIcon(context),
+                        : _getTypeIcon(typeColor),
                   ),
                 ),
               ),
@@ -234,7 +250,9 @@ class AppDialog extends StatelessWidget {
                             fontWeight: FontWeight.w800,
                             color: secondaryButtonColor ?? colors.textPrimary,
                           ),
-                          backgroundColor: secondaryButtonColor?.withValues(alpha: 0.1) ?? colors.backgroundSecondary,
+                          backgroundColor:
+                              secondaryButtonColor?.withValues(alpha: 0.1) ??
+                              colors.backgroundSecondary,
                           padding: EdgeInsets.symmetric(vertical: 16.h),
                           borderRadius: KBorderSize.borderMedium,
                         ),
@@ -247,7 +265,11 @@ class AppDialog extends StatelessWidget {
                           width: double.infinity,
                           onPressed: () => Navigator.of(context).pop(true),
                           buttonText: "OK",
-                          textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: Colors.white),
+                          textStyle: TextStyle(
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
                           backgroundColor: typeColor,
                           padding: EdgeInsets.symmetric(vertical: 16.h),
                           borderRadius: KBorderSize.borderMedium,

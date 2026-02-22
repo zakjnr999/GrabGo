@@ -578,27 +578,42 @@ class _CutoffRuleCard extends StatelessWidget {
             label: '${rule.cutoffMinutes} mins',
             onChanged: (value) => onMinutesChanged(value.round()),
           ),
-          SwitchListTile.adaptive(
-            contentPadding: EdgeInsets.zero,
-            value: rule.sameDayEnabled,
-            activeThumbColor: serviceColor,
-            title: Text(
-              'Allow same-day slots',
-              style: TextStyle(
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w700,
-                color: colors.textPrimary,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Allow same-day slots',
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w700,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      'Disable to enforce next-day scheduling only',
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w500,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            subtitle: Text(
-              'Disable to enforce next-day scheduling only',
-              style: TextStyle(
-                fontSize: 11.sp,
-                fontWeight: FontWeight.w500,
-                color: colors.textSecondary,
+              SizedBox(width: 8.w),
+              CustomSwitch(
+                value: rule.sameDayEnabled,
+                onChanged: onSameDayChanged,
+                activeColor: colors.vendorPrimaryBlue,
+                inactiveColor: colors.inputBorder,
+                thumbColor: colors.backgroundPrimary,
               ),
-            ),
-            onChanged: onSameDayChanged,
+            ],
           ),
         ],
       ),

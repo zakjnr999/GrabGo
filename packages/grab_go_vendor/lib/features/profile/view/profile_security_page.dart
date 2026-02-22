@@ -148,7 +148,6 @@ class _ProfileSecurityView extends StatelessWidget {
                           subtitle:
                               'Require OTP verification during login attempts.',
                           value: viewModel.twoFactorEnabled,
-                          activeColor: colors.vendorPrimaryBlue,
                           onChanged: viewModel.setTwoFactorEnabled,
                         ),
                         _SwitchRow(
@@ -156,7 +155,6 @@ class _ProfileSecurityView extends StatelessWidget {
                           subtitle:
                               'Allow fingerprint/face unlock where available.',
                           value: viewModel.biometricEnabled,
-                          activeColor: colors.servicePharmacy,
                           onChanged: viewModel.setBiometricEnabled,
                         ),
                         _SwitchRow(
@@ -164,7 +162,6 @@ class _ProfileSecurityView extends StatelessWidget {
                           subtitle:
                               'Require OTP for staff edits, payouts, and policy changes.',
                           value: viewModel.otpForSensitiveActions,
-                          activeColor: colors.warning,
                           onChanged: viewModel.setOtpForSensitiveActions,
                         ),
                       ],
@@ -436,14 +433,12 @@ class _SwitchRow extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool value;
-  final Color activeColor;
   final ValueChanged<bool> onChanged;
 
   const _SwitchRow({
     required this.title,
     required this.subtitle,
     required this.value,
-    required this.activeColor,
     required this.onChanged,
   });
 
@@ -478,10 +473,12 @@ class _SwitchRow extends StatelessWidget {
               ],
             ),
           ),
-          Switch.adaptive(
+          CustomSwitch(
             value: value,
             onChanged: onChanged,
-            activeTrackColor: activeColor,
+            activeColor: colors.vendorPrimaryBlue,
+            inactiveColor: colors.inputBorder,
+            thumbColor: colors.backgroundPrimary,
           ),
         ],
       ),

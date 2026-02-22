@@ -254,7 +254,7 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
 
                             _buildMethodSelector(colors, "MTN MOMO", Assets.icons.mom, () {}),
                             SizedBox(height: 12.h),
-                            _buildMethodSelector(colors, "Vodafone Cash", Assets.icons.vodafoneCash, () {}),
+                            // _buildMethodSelector(colors, "Vodafone Cash", Assets.icons.vodafoneCash, () {}),
                             SizedBox(height: 12.h),
                           ],
                         ),

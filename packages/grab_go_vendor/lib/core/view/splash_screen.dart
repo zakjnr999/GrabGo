@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_vendor/features/onboarding/viewmodel/onboarding_setup_viewmodel.dart';
+import 'package:provider/provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,34 +13,62 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
-    with TickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
   late final AnimationController _fadeController;
   late final Animation<double> _fade;
+  late final Animation<Offset> _grabSlide;
+  late final Animation<Offset> _vendorSlide;
+  late final Animation<double> _grabOpacity;
+  late final Animation<double> _vendorOpacity;
   bool _hasNavigated = false;
 
   @override
   void initState() {
     super.initState();
-    _fadeController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
+    _fadeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
     _fade = CurvedAnimation(parent: _fadeController, curve: Curves.easeIn);
+    _grabSlide = Tween<Offset>(begin: const Offset(-0.22, 0), end: Offset.zero).animate(
+      CurvedAnimation(
+        parent: _fadeController,
+        curve: const Interval(0.0, 0.65, curve: Curves.easeOutCubic),
+      ),
+    );
+    _vendorSlide = Tween<Offset>(begin: const Offset(0, 0.12), end: Offset.zero).animate(
+      CurvedAnimation(
+        parent: _fadeController,
+        curve: const Interval(0.22, 1.0, curve: Curves.easeOutCubic),
+      ),
+    );
+    _grabOpacity = CurvedAnimation(
+      parent: _fadeController,
+      curve: const Interval(0.0, 0.72, curve: Curves.easeOut),
+    );
+    _vendorOpacity = CurvedAnimation(
+      parent: _fadeController,
+      curve: const Interval(0.24, 1.0, curve: Curves.easeOut),
+    );
     _fadeController.forward();
     _goToInitialRoute();
   }
 
   Future<void> _goToInitialRoute() async {
+    final router = GoRouter.of(context);
+    final onboardingSetup = context.read<OnboardingSetupViewModel>();
+
     await Future.delayed(const Duration(seconds: 3));
     if (!mounted || _hasNavigated) return;
 
-    final router = GoRouter.of(context);
     final currentPath = router.routerDelegate.currentConfiguration.uri.path;
     if (currentPath != '/' && currentPath.isNotEmpty) return;
 
     final isFirstLaunch = CacheService.isFirstLaunch();
     final token = await CacheService.getAuthToken();
+    if (!onboardingSetup.isHydrated) {
+      for (var attempt = 0; attempt < 15; attempt++) {
+        if (!mounted || onboardingSetup.isHydrated) break;
+        await Future.delayed(const Duration(milliseconds: 120));
+      }
+    }
     if (!mounted || _hasNavigated) return;
 
     _hasNavigated = true;
@@ -49,6 +77,10 @@ class _SplashScreenState extends State<SplashScreen>
       return;
     }
     if (token != null && token.isNotEmpty) {
+      if (!onboardingSetup.allRequiredCompleted) {
+        router.go('/onboardingGuide');
+        return;
+      }
       router.go('/home');
       return;
     }
@@ -68,105 +100,78 @@ class _SplashScreenState extends State<SplashScreen>
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
+        statusBarIconBrightness: Brightness.light,
         systemNavigationBarColor: Colors.transparent,
         systemNavigationBarDividerColor: Colors.transparent,
-        systemNavigationBarIconBrightness: Brightness.dark,
+        systemNavigationBarIconBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: colors.vendorPrimaryBlue,
         body: FadeTransition(
           opacity: _fade,
-          child: Stack(
-            children: [
-              Row(
+          child: Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24.w),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: Container(
-                      color: colors.vendorPrimaryBlue,
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: Padding(
-                          padding: EdgeInsets.only(right: 2.w),
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              'Grab',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 64.sp,
-                                height: 1.0,
-                                letterSpacing: 1.0,
-                              ),
+                  SizedBox(
+                    width: 0.78.sw,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: SlideTransition(
+                        position: _grabSlide,
+                        child: FadeTransition(
+                          opacity: _grabOpacity,
+                          child: Text(
+                            'GrabGO',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 21.sp,
+                              letterSpacing: 2.2,
                             ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Container(
-                          color: Colors.white,
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Padding(
-                              padding: EdgeInsets.only(left: 2.w),
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  'GO',
-                                  style: TextStyle(
-                                    color: colors.vendorPrimaryBlue,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 64.sp,
-                                    height: 1.0,
-                                    letterSpacing: 1.0,
-                                  ),
-                                ),
-                              ),
+                  SizedBox(height: 9.h),
+                  Container(
+                    width: 68.w,
+                    height: 2.2.h,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.65),
+                      borderRadius: BorderRadius.circular(100.r),
+                    ),
+                  ),
+                  SizedBox(height: 10.h),
+                  SizedBox(
+                    width: 0.9.sw,
+                    child: SlideTransition(
+                      position: _vendorSlide,
+                      child: FadeTransition(
+                        opacity: _vendorOpacity,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            'Vendor',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 68.sp,
+                              height: 0.95,
+                              letterSpacing: 0.7,
                             ),
                           ),
                         ),
-                        SizedBox(width: 10.w),
-                        SvgPicture.asset(
-                          Assets.icons.store,
-                          package: 'grab_go_shared',
-                          width: 64.w,
-                          height: 64.w,
-                          colorFilter: ColorFilter.mode(
-                            colors.vendorPrimaryBlue,
-                            BlendMode.srcIn,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ],
               ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: MediaQuery.paddingOf(context).bottom + 8.h,
-                child: SizedBox(
-                  height: 6.h,
-                  child: Row(
-                    children: [
-                      Expanded(child: ColoredBox(color: colors.serviceFood)),
-                      Expanded(child: ColoredBox(color: colors.serviceGrocery)),
-                      Expanded(
-                        child: ColoredBox(color: colors.servicePharmacy),
-                      ),
-                      Expanded(
-                        child: ColoredBox(color: colors.serviceGrabMart),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

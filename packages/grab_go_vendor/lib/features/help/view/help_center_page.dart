@@ -165,21 +165,18 @@ class _HelpCenterView extends StatelessWidget {
                           title: 'Prefer In-App Chat',
                           subtitle: 'Receive support replies directly in app',
                           value: viewModel.preferInAppChat,
-                          activeColor: colors.vendorPrimaryBlue,
                           onChanged: viewModel.setPreferInAppChat,
                         ),
                         _SwitchRow(
                           title: 'Prefer Phone Callback',
                           subtitle: 'Support can call for critical issues',
                           value: viewModel.preferPhoneCall,
-                          activeColor: colors.warning,
                           onChanged: viewModel.setPreferPhoneCall,
                         ),
                         _SwitchRow(
                           title: 'Prefer Email Updates',
                           subtitle: 'Get escalation progress via email',
                           value: viewModel.preferEmail,
-                          activeColor: colors.serviceGrocery,
                           onChanged: viewModel.setPreferEmail,
                         ),
                       ],
@@ -557,14 +554,12 @@ class _SwitchRow extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool value;
-  final Color activeColor;
   final ValueChanged<bool> onChanged;
 
   const _SwitchRow({
     required this.title,
     required this.subtitle,
     required this.value,
-    required this.activeColor,
     required this.onChanged,
   });
 
@@ -599,10 +594,12 @@ class _SwitchRow extends StatelessWidget {
               ],
             ),
           ),
-          Switch.adaptive(
+          CustomSwitch(
             value: value,
             onChanged: onChanged,
-            activeTrackColor: activeColor,
+            activeColor: colors.vendorPrimaryBlue,
+            inactiveColor: colors.inputBorder,
+            thumbColor: colors.backgroundPrimary,
           ),
         ],
       ),

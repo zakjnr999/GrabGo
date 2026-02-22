@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:grab_go_vendor/features/auth/model/vendor_service_option.dart';
 
 enum VendorGuidedStepType {
@@ -51,21 +50,6 @@ class VendorGuidedSetupStep {
       serviceHint: serviceHint,
     );
   }
-}
-
-IconData onboardingStepIcon(VendorGuidedStepType stepType) {
-  return switch (stepType) {
-    VendorGuidedStepType.businessProfile => Icons.storefront_rounded,
-    VendorGuidedStepType.branchHours => Icons.schedule_rounded,
-    VendorGuidedStepType.serviceActivation => Icons.tune_rounded,
-    VendorGuidedStepType.payoutSetup => Icons.account_balance_wallet_outlined,
-    VendorGuidedStepType.catalogStarter => Icons.inventory_2_outlined,
-    VendorGuidedStepType.staffInvite => Icons.group_add_outlined,
-    VendorGuidedStepType.notificationsSetup =>
-      Icons.notifications_active_outlined,
-    VendorGuidedStepType.demoOrderRun => Icons.play_circle_outline_rounded,
-    VendorGuidedStepType.complianceReview => Icons.shield_outlined,
-  };
 }
 
 String onboardingStepStatusLabel(VendorGuidedStepStatus status) {

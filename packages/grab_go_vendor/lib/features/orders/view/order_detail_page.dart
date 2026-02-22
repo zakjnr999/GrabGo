@@ -41,19 +41,30 @@ class _OrderDetailView extends StatelessWidget {
             centerTitle: false,
             title: Text(
               'Order ${order.id}',
-              style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+              style: TextStyle(
+                fontSize: 18.sp,
+                fontWeight: FontWeight.w800,
+                color: colors.textPrimary,
+              ),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => OrderAuditTimelinePage(orderId: order.id, entries: viewModel.auditEntries),
+                    builder: (_) => OrderAuditTimelinePage(
+                      orderId: order.id,
+                      entries: viewModel.auditEntries,
+                    ),
                   ),
                 ),
                 child: Text(
                   'Audit',
-                  style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.vendorPrimaryBlue),
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w700,
+                    color: colors.vendorPrimaryBlue,
+                  ),
                 ),
               ),
             ],
@@ -74,6 +85,8 @@ class _OrderDetailView extends StatelessWidget {
                   _ContactCard(
                     customerName: order.customerName,
                     customerPhone: order.customerPhone,
+                    status: viewModel.currentStatus,
+                    isPickupOrder: order.isPickupOrder,
                     riderName: order.riderName,
                     riderEtaLabel: order.riderEtaLabel,
                   ),
@@ -82,7 +95,8 @@ class _OrderDetailView extends StatelessWidget {
                     _InfoBanner(
                       icon: Icons.local_pharmacy_outlined,
                       color: colors.servicePharmacy,
-                      message: 'Prescription-required order. Complete manual review before final dispatch.',
+                      message:
+                          'Prescription-required order. Complete manual review before final dispatch.',
                     ),
                   if (order.isPickupOrder)
                     Padding(
@@ -90,7 +104,8 @@ class _OrderDetailView extends StatelessWidget {
                       child: _InfoBanner(
                         icon: Icons.pin_outlined,
                         color: colors.vendorPrimaryBlue,
-                        message: 'Pickup order. Verify customer pickup OTP before handover.',
+                        message:
+                            'Pickup order. Verify customer pickup OTP before completion.',
                       ),
                     ),
                   SizedBox(height: 10.h),
@@ -106,7 +121,10 @@ class _OrderDetailView extends StatelessWidget {
                               Container(
                                 width: 24.w,
                                 height: 24.w,
-                                decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
+                                decoration: BoxDecoration(
+                                  color: colors.backgroundSecondary,
+                                  shape: BoxShape.circle,
+                                ),
                                 child: Center(
                                   child: Text(
                                     '${item.quantity}',
@@ -167,9 +185,16 @@ class _OrderDetailView extends StatelessWidget {
                       children: [
                         _PriceRow(label: 'Subtotal', value: order.subtotal),
                         SizedBox(height: 6.h),
-                        _PriceRow(label: 'Delivery Fee', value: order.deliveryFee),
+                        _PriceRow(
+                          label: 'Delivery Fee',
+                          value: order.deliveryFee,
+                        ),
                         Divider(height: 18.h, color: colors.divider),
-                        _PriceRow(label: 'Total', value: order.total, emphasized: true),
+                        _PriceRow(
+                          label: 'Total',
+                          value: order.total,
+                          emphasized: true,
+                        ),
                       ],
                     ),
                   ),
@@ -188,7 +213,9 @@ class _OrderDetailView extends StatelessWidget {
                                 height: 10.w,
                                 margin: EdgeInsets.only(top: 4.h),
                                 decoration: BoxDecoration(
-                                  color: entry.isWarning ? colors.warning : colors.success,
+                                  color: entry.isWarning
+                                      ? colors.warning
+                                      : colors.success,
                                   shape: BoxShape.circle,
                                 ),
                               ),
@@ -241,29 +268,38 @@ class _OrderDetailView extends StatelessWidget {
                         _ActionChip(
                           label: 'Status Actions',
                           icon: Icons.playlist_add_check_rounded,
-                          onTap: () => _showOrderActionsSheet(context, viewModel),
+                          onTap: () =>
+                              _showOrderActionsSheet(context, viewModel),
                         ),
-                        _ActionChip(
-                          label: 'Pickup OTP',
-                          icon: Icons.pin_outlined,
-                          onTap: () => _showPickupOtpSheet(context, viewModel),
-                        ),
+                        if (order.isPickupOrder &&
+                            viewModel.currentStatus == VendorOrderStatus.ready)
+                          _ActionChip(
+                            label: 'Pickup OTP',
+                            icon: Icons.pin_outlined,
+                            onTap: () =>
+                                _showPickupOtpSheet(context, viewModel),
+                          ),
                         _ActionChip(
                           label: 'Prescription',
                           icon: Icons.local_pharmacy_outlined,
                           onTap: order.requiresPrescription
-                              ? () => _showPrescriptionReviewSheet(context, viewModel)
+                              ? () => _showPrescriptionReviewSheet(
+                                  context,
+                                  viewModel,
+                                )
                               : null,
                         ),
                         _ActionChip(
                           label: 'Item Change',
                           icon: Icons.swap_horiz_rounded,
-                          onTap: () => _showSubstitutionSheet(context, viewModel),
+                          onTap: () =>
+                              _showSubstitutionSheet(context, viewModel),
                         ),
                         _ActionChip(
                           label: 'Report Issue',
                           icon: Icons.flag_outlined,
-                          onTap: () => _showIssueReportSheet(context, viewModel),
+                          onTap: () =>
+                              _showIssueReportSheet(context, viewModel),
                         ),
                         _ActionChip(
                           label: 'Issue Timeline',
@@ -271,8 +307,10 @@ class _OrderDetailView extends StatelessWidget {
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  OrderIssueTimelinePage(orderId: order.id, entries: viewModel.issueEntries),
+                              builder: (_) => OrderIssueTimelinePage(
+                                orderId: order.id,
+                                entries: viewModel.issueEntries,
+                              ),
                             ),
                           ),
                         ),
@@ -288,7 +326,10 @@ class _OrderDetailView extends StatelessWidget {
     );
   }
 
-  Future<void> _showOrderActionsSheet(BuildContext context, OrderDetailViewModel viewModel) async {
+  Future<void> _showOrderActionsSheet(
+    BuildContext context,
+    OrderDetailViewModel viewModel,
+  ) async {
     final colors = context.appColors;
     final actions = VendorOrderActionType.values;
 
@@ -296,7 +337,9 @@ class _OrderDetailView extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: colors.backgroundPrimary,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18.r))),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18.r)),
+      ),
       builder: (_) {
         return SafeArea(
           child: Padding(
@@ -307,7 +350,11 @@ class _OrderDetailView extends StatelessWidget {
               children: [
                 Text(
                   'Order Actions',
-                  style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                  style: TextStyle(
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w800,
+                    color: colors.textPrimary,
+                  ),
                 ),
                 SizedBox(height: 10.h),
                 ...actions.map((action) {
@@ -325,7 +372,9 @@ class _OrderDetailView extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 13.sp,
                           fontWeight: FontWeight.w700,
-                          color: enabled ? colors.textPrimary : colors.textSecondary,
+                          color: enabled
+                              ? colors.textPrimary
+                              : colors.textSecondary,
                         ),
                       ),
                       subtitle: reason == null
@@ -340,17 +389,29 @@ class _OrderDetailView extends StatelessWidget {
                             ),
                       trailing: Icon(
                         Icons.chevron_right_rounded,
-                        color: enabled ? colors.vendorPrimaryBlue : colors.textSecondary,
+                        color: enabled
+                            ? colors.vendorPrimaryBlue
+                            : colors.textSecondary,
                       ),
                       onTap: !enabled
                           ? null
                           : () {
+                              if (action ==
+                                  VendorOrderActionType.verifyPickupCode) {
+                                Navigator.pop(context);
+                                _showPickupOtpSheet(context, viewModel);
+                                return;
+                              }
                               final updated = viewModel.applyAction(action);
                               Navigator.pop(context);
                               if (!updated) return;
-                              ScaffoldMessenger.of(
-                                context,
-                              ).showSnackBar(SnackBar(content: Text('${action.label} saved (UI mock).')));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    '${action.label} saved (UI mock).',
+                                  ),
+                                ),
+                              );
                             },
                     ),
                   );
@@ -363,7 +424,10 @@ class _OrderDetailView extends StatelessWidget {
     );
   }
 
-  Future<void> _showPickupOtpSheet(BuildContext context, OrderDetailViewModel viewModel) async {
+  Future<void> _showPickupOtpSheet(
+    BuildContext context,
+    OrderDetailViewModel viewModel,
+  ) async {
     final colors = context.appColors;
     viewModel.clearPickupCodeError();
     viewModel.pickupCodeController.clear();
@@ -372,10 +436,17 @@ class _OrderDetailView extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: colors.backgroundPrimary,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18.r))),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18.r)),
+      ),
       builder: (_) {
         return Padding(
-          padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 20.h + MediaQuery.viewInsetsOf(context).bottom),
+          padding: EdgeInsets.fromLTRB(
+            16.w,
+            12.h,
+            16.w,
+            20.h + MediaQuery.viewInsetsOf(context).bottom,
+          ),
           child: Consumer<OrderDetailViewModel>(
             builder: (context, model, child) {
               return Column(
@@ -384,7 +455,11 @@ class _OrderDetailView extends StatelessWidget {
                 children: [
                   Text(
                     'Pickup Code Verification',
-                    style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w800,
+                      color: colors.textPrimary,
+                    ),
                   ),
                   SizedBox(height: 10.h),
                   AppTextInput(
@@ -398,28 +473,46 @@ class _OrderDetailView extends StatelessWidget {
                     borderActiveColor: colors.vendorPrimaryBlue,
                     borderRadius: KBorderSize.borderRadius12,
                     cursorColor: colors.vendorPrimaryBlue,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)],
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(6),
+                    ],
                   ),
                   SizedBox(height: 10.h),
                   SizedBox(
                     width: double.infinity,
                     child: AppButton(
-                      buttonText: 'Verify Code',
+                      buttonText: 'Verify Pickup Code',
                       onPressed: () {
                         HapticFeedback.selectionClick();
                         if (!model.validatePickupCode()) return;
-                        model.addAuditEntry(
-                          action: 'Pickup code verified',
-                          details: 'Customer handover completed with OTP.',
+                        final updated = model.applyAction(
+                          VendorOrderActionType.verifyPickupCode,
                         );
+                        if (!updated) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Order is not ready for pickup verification.',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(const SnackBar(content: Text('Pickup code verified (UI mock).')));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Pickup code verified (UI mock).'),
+                          ),
+                        );
                       },
                       backgroundColor: colors.vendorPrimaryBlue,
                       borderRadius: KBorderSize.borderRadius12,
-                      textStyle: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                      textStyle: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],
@@ -431,7 +524,10 @@ class _OrderDetailView extends StatelessWidget {
     );
   }
 
-  Future<void> _showPrescriptionReviewSheet(BuildContext context, OrderDetailViewModel viewModel) async {
+  Future<void> _showPrescriptionReviewSheet(
+    BuildContext context,
+    OrderDetailViewModel viewModel,
+  ) async {
     final colors = context.appColors;
     viewModel.prescriptionDecisionNoteController.clear();
 
@@ -439,17 +535,28 @@ class _OrderDetailView extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: colors.backgroundPrimary,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18.r))),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18.r)),
+      ),
       builder: (_) {
         return Padding(
-          padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 20.h + MediaQuery.viewInsetsOf(context).bottom),
+          padding: EdgeInsets.fromLTRB(
+            16.w,
+            12.h,
+            16.w,
+            20.h + MediaQuery.viewInsetsOf(context).bottom,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'Prescription Review',
-                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                style: TextStyle(
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w800,
+                  color: colors.textPrimary,
+                ),
               ),
               SizedBox(height: 10.h),
               Row(
@@ -465,7 +572,11 @@ class _OrderDetailView extends StatelessWidget {
                       child: Center(
                         child: Text(
                           'Prescription Image 1',
-                          style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
+                          style: TextStyle(
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w600,
+                            color: colors.textSecondary,
+                          ),
                         ),
                       ),
                     ),
@@ -482,7 +593,11 @@ class _OrderDetailView extends StatelessWidget {
                       child: Center(
                         child: Text(
                           'Prescription Image 2',
-                          style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
+                          style: TextStyle(
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w600,
+                            color: colors.textSecondary,
+                          ),
                         ),
                       ),
                     ),
@@ -509,18 +624,30 @@ class _OrderDetailView extends StatelessWidget {
                       onPressed: () {
                         viewModel.addAuditEntry(
                           action: 'Prescription rejected',
-                          details: viewModel.prescriptionDecisionNoteController.text.trim().isEmpty
+                          details:
+                              viewModel.prescriptionDecisionNoteController.text
+                                  .trim()
+                                  .isEmpty
                               ? 'Rejected without additional note.'
-                              : viewModel.prescriptionDecisionNoteController.text.trim(),
+                              : viewModel
+                                    .prescriptionDecisionNoteController
+                                    .text
+                                    .trim(),
                         );
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(const SnackBar(content: Text('Prescription rejected (UI mock).')));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Prescription rejected (UI mock).'),
+                          ),
+                        );
                       },
                       backgroundColor: colors.error,
                       borderRadius: KBorderSize.borderRadius12,
-                      textStyle: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                      textStyle: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   SizedBox(width: 8.w),
@@ -530,18 +657,30 @@ class _OrderDetailView extends StatelessWidget {
                       onPressed: () {
                         viewModel.addAuditEntry(
                           action: 'Prescription approved',
-                          details: viewModel.prescriptionDecisionNoteController.text.trim().isEmpty
+                          details:
+                              viewModel.prescriptionDecisionNoteController.text
+                                  .trim()
+                                  .isEmpty
                               ? 'Approved by vendor staff.'
-                              : viewModel.prescriptionDecisionNoteController.text.trim(),
+                              : viewModel
+                                    .prescriptionDecisionNoteController
+                                    .text
+                                    .trim(),
                         );
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(const SnackBar(content: Text('Prescription approved (UI mock).')));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Prescription approved (UI mock).'),
+                          ),
+                        );
                       },
                       backgroundColor: colors.success,
                       borderRadius: KBorderSize.borderRadius12,
-                      textStyle: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                      textStyle: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],
@@ -553,7 +692,10 @@ class _OrderDetailView extends StatelessWidget {
     );
   }
 
-  Future<void> _showSubstitutionSheet(BuildContext context, OrderDetailViewModel viewModel) async {
+  Future<void> _showSubstitutionSheet(
+    BuildContext context,
+    OrderDetailViewModel viewModel,
+  ) async {
     final colors = context.appColors;
     viewModel.substitutionNoteController.clear();
 
@@ -561,24 +703,41 @@ class _OrderDetailView extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: colors.backgroundPrimary,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18.r))),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18.r)),
+      ),
       builder: (_) {
-        final replaceableItems = viewModel.order.items.where((e) => e.canBeReplaced).toList();
+        final replaceableItems = viewModel.order.items
+            .where((e) => e.canBeReplaced)
+            .toList();
         return Padding(
-          padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 20.h + MediaQuery.viewInsetsOf(context).bottom),
+          padding: EdgeInsets.fromLTRB(
+            16.w,
+            12.h,
+            16.w,
+            20.h + MediaQuery.viewInsetsOf(context).bottom,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'Item Change Proposal',
-                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                style: TextStyle(
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w800,
+                  color: colors.textPrimary,
+                ),
               ),
               SizedBox(height: 10.h),
               if (replaceableItems.isEmpty)
                 Text(
                   'No replaceable items in this order.',
-                  style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textSecondary,
+                  ),
                 )
               else
                 ...replaceableItems.map((item) {
@@ -594,12 +753,20 @@ class _OrderDetailView extends StatelessWidget {
                         Expanded(
                           child: Text(
                             item.name,
-                            style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w700,
+                              color: colors.textPrimary,
+                            ),
                           ),
                         ),
                         Text(
                           'x${item.quantity}',
-                          style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.textSecondary),
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w700,
+                            color: colors.textSecondary,
+                          ),
                         ),
                       ],
                     ),
@@ -608,7 +775,8 @@ class _OrderDetailView extends StatelessWidget {
               AppTextInput(
                 controller: viewModel.substitutionNoteController,
                 label: 'Proposal Note',
-                hintText: 'Example: Replace unavailable item with similar product',
+                hintText:
+                    'Example: Replace unavailable item with similar product',
                 fillColor: colors.backgroundPrimary,
                 borderColor: colors.inputBorder,
                 borderActiveColor: colors.vendorPrimaryBlue,
@@ -621,19 +789,30 @@ class _OrderDetailView extends StatelessWidget {
                 child: AppButton(
                   buttonText: 'Submit Proposal',
                   onPressed: () {
-                    final note = viewModel.substitutionNoteController.text.trim();
+                    final note = viewModel.substitutionNoteController.text
+                        .trim();
                     viewModel.addAuditEntry(
                       action: 'Item change proposed',
-                      details: note.isEmpty ? 'Replacement proposal sent to customer.' : note,
+                      details: note.isEmpty
+                          ? 'Replacement proposal sent to customer.'
+                          : note,
                     );
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(const SnackBar(content: Text('Item change proposal submitted (UI mock).')));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Item change proposal submitted (UI mock).',
+                        ),
+                      ),
+                    );
                   },
                   backgroundColor: colors.vendorPrimaryBlue,
                   borderRadius: KBorderSize.borderRadius12,
-                  textStyle: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                  textStyle: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
@@ -643,18 +822,34 @@ class _OrderDetailView extends StatelessWidget {
     );
   }
 
-  Future<void> _showIssueReportSheet(BuildContext context, OrderDetailViewModel viewModel) async {
+  Future<void> _showIssueReportSheet(
+    BuildContext context,
+    OrderDetailViewModel viewModel,
+  ) async {
     final colors = context.appColors;
 
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: colors.backgroundPrimary,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18.r))),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18.r)),
+      ),
       builder: (_) {
-        const issueTypes = ['Item Unavailable', 'Customer Unreachable', 'Rider Delay', 'Payment Problem', 'Other'];
+        const issueTypes = [
+          'Item Unavailable',
+          'Customer Unreachable',
+          'Rider Delay',
+          'Payment Problem',
+          'Other',
+        ];
         return Padding(
-          padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 20.h + MediaQuery.viewInsetsOf(context).bottom),
+          padding: EdgeInsets.fromLTRB(
+            16.w,
+            12.h,
+            16.w,
+            20.h + MediaQuery.viewInsetsOf(context).bottom,
+          ),
           child: Consumer<OrderDetailViewModel>(
             builder: (context, model, child) {
               return Column(
@@ -663,7 +858,11 @@ class _OrderDetailView extends StatelessWidget {
                 children: [
                   Text(
                     'Report Issue',
-                    style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w800,
+                      color: colors.textPrimary,
+                    ),
                   ),
                   SizedBox(height: 10.h),
                   Wrap(
@@ -675,20 +874,31 @@ class _OrderDetailView extends StatelessWidget {
                         onTap: () => model.selectIssueType(type),
                         borderRadius: BorderRadius.circular(999.r),
                         child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 10.w,
+                            vertical: 6.h,
+                          ),
                           decoration: BoxDecoration(
                             color: selected
-                                ? colors.vendorPrimaryBlue.withValues(alpha: 0.16)
+                                ? colors.vendorPrimaryBlue.withValues(
+                                    alpha: 0.16,
+                                  )
                                 : colors.backgroundSecondary,
                             borderRadius: BorderRadius.circular(999.r),
-                            border: Border.all(color: selected ? colors.vendorPrimaryBlue : colors.border),
+                            border: Border.all(
+                              color: selected
+                                  ? colors.vendorPrimaryBlue
+                                  : colors.border,
+                            ),
                           ),
                           child: Text(
                             type,
                             style: TextStyle(
                               fontSize: 11.sp,
                               fontWeight: FontWeight.w700,
-                              color: selected ? colors.vendorPrimaryBlue : colors.textSecondary,
+                              color: selected
+                                  ? colors.vendorPrimaryBlue
+                                  : colors.textSecondary,
                             ),
                           ),
                         ),
@@ -714,19 +924,29 @@ class _OrderDetailView extends StatelessWidget {
                       onPressed: () {
                         final submitted = model.submitIssue();
                         if (!submitted) {
-                          ScaffoldMessenger.of(
-                            context,
-                          ).showSnackBar(const SnackBar(content: Text('Select an issue type to continue.')));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Select an issue type to continue.',
+                              ),
+                            ),
+                          );
                           return;
                         }
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(const SnackBar(content: Text('Issue submitted (UI mock).')));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Issue submitted (UI mock).'),
+                          ),
+                        );
                       },
                       backgroundColor: colors.vendorPrimaryBlue,
                       borderRadius: KBorderSize.borderRadius12,
-                      textStyle: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                      textStyle: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],
@@ -775,7 +995,11 @@ class _HeaderCard extends StatelessWidget {
             ),
             child: Text(
               serviceType.label,
-              style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w700, color: serviceColor),
+              style: TextStyle(
+                fontSize: 10.sp,
+                fontWeight: FontWeight.w700,
+                color: serviceColor,
+              ),
             ),
           ),
           SizedBox(width: 8.w),
@@ -787,18 +1011,30 @@ class _HeaderCard extends StatelessWidget {
             ),
             child: Text(
               status.label,
-              style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w700, color: statusColor),
+              style: TextStyle(
+                fontSize: 10.sp,
+                fontWeight: FontWeight.w700,
+                color: statusColor,
+              ),
             ),
           ),
           const Spacer(),
           Text(
             elapsedLabel,
-            style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.textSecondary),
+            style: TextStyle(
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w700,
+              color: colors.textSecondary,
+            ),
           ),
           if (isAtRisk)
             Padding(
               padding: EdgeInsets.only(left: 8.w),
-              child: Icon(Icons.warning_amber_rounded, size: 16.sp, color: colors.warning),
+              child: Icon(
+                Icons.warning_amber_rounded,
+                size: 16.sp,
+                color: colors.warning,
+              ),
             ),
         ],
       ),
@@ -809,12 +1045,16 @@ class _HeaderCard extends StatelessWidget {
 class _ContactCard extends StatelessWidget {
   final String customerName;
   final String customerPhone;
+  final VendorOrderStatus status;
+  final bool isPickupOrder;
   final String riderName;
   final String riderEtaLabel;
 
   const _ContactCard({
     required this.customerName,
     required this.customerPhone,
+    required this.status,
+    required this.isPickupOrder,
     required this.riderName,
     required this.riderEtaLabel,
   });
@@ -822,6 +1062,14 @@ class _ContactCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    final showAssignedRider =
+        !isPickupOrder &&
+        (status == VendorOrderStatus.ready ||
+            status == VendorOrderStatus.pickedUp);
+    final showRiderPending =
+        !isPickupOrder &&
+        (status == VendorOrderStatus.accepted ||
+            status == VendorOrderStatus.preparing);
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(12.r),
@@ -835,25 +1083,79 @@ class _ContactCard extends StatelessWidget {
         children: [
           Text(
             'Customer',
-            style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.textSecondary),
+            style: TextStyle(
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w700,
+              color: colors.textSecondary,
+            ),
           ),
           SizedBox(height: 2.h),
           Text(
             '$customerName • $customerPhone',
-            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+            style: TextStyle(
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w700,
+              color: colors.textPrimary,
+            ),
           ),
           SizedBox(height: 8.h),
           Divider(height: 1, color: colors.divider),
           SizedBox(height: 8.h),
-          Text(
-            'Rider',
-            style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.textSecondary),
-          ),
-          SizedBox(height: 2.h),
-          Text(
-            '$riderName • $riderEtaLabel',
-            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
-          ),
+          if (isPickupOrder) ...[
+            Text(
+              'Fulfillment',
+              style: TextStyle(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w700,
+                color: colors.textSecondary,
+              ),
+            ),
+            SizedBox(height: 2.h),
+            Text(
+              'Customer pickup order',
+              style: TextStyle(
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w700,
+                color: colors.textPrimary,
+              ),
+            ),
+          ] else if (showAssignedRider) ...[
+            Text(
+              'Rider',
+              style: TextStyle(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w700,
+                color: colors.textSecondary,
+              ),
+            ),
+            SizedBox(height: 2.h),
+            Text(
+              '$riderName • $riderEtaLabel',
+              style: TextStyle(
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w700,
+                color: colors.textPrimary,
+              ),
+            ),
+          ] else if (showRiderPending) ...[
+            Text(
+              'Rider',
+              style: TextStyle(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w700,
+                color: colors.textSecondary,
+              ),
+            ),
+            SizedBox(height: 2.h),
+            Text(
+              'Rider assignment pending',
+              style: TextStyle(
+                fontSize: 13.sp,
+                fontWeight: FontWeight.w700,
+                color: colors.textPrimary,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -865,7 +1167,11 @@ class _InfoBanner extends StatelessWidget {
   final Color color;
   final String message;
 
-  const _InfoBanner({required this.icon, required this.color, required this.message});
+  const _InfoBanner({
+    required this.icon,
+    required this.color,
+    required this.message,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -873,7 +1179,10 @@ class _InfoBanner extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12.r)),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12.r),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -882,7 +1191,11 @@ class _InfoBanner extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+              style: TextStyle(
+                fontSize: 11.sp,
+                fontWeight: FontWeight.w600,
+                color: colors.textPrimary,
+              ),
             ),
           ),
         ],
@@ -913,7 +1226,11 @@ class _SectionCard extends StatelessWidget {
         children: [
           Text(
             title,
-            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+            style: TextStyle(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w800,
+              color: colors.textPrimary,
+            ),
           ),
           SizedBox(height: 10.h),
           child,
@@ -928,7 +1245,11 @@ class _PriceRow extends StatelessWidget {
   final double value;
   final bool emphasized;
 
-  const _PriceRow({required this.label, required this.value, this.emphasized = false});
+  const _PriceRow({
+    required this.label,
+    required this.value,
+    this.emphasized = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -962,7 +1283,11 @@ class _ActionChip extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onTap;
 
-  const _ActionChip({required this.label, required this.icon, required this.onTap});
+  const _ActionChip({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -974,21 +1299,33 @@ class _ActionChip extends StatelessWidget {
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 7.h),
         decoration: BoxDecoration(
-          color: enabled ? colors.vendorPrimaryBlue.withValues(alpha: 0.1) : colors.backgroundSecondary,
+          color: enabled
+              ? colors.vendorPrimaryBlue.withValues(alpha: 0.1)
+              : colors.backgroundSecondary,
           borderRadius: BorderRadius.circular(100.r),
-          border: Border.all(color: enabled ? colors.vendorPrimaryBlue.withValues(alpha: 0.4) : colors.border),
+          border: Border.all(
+            color: enabled
+                ? colors.vendorPrimaryBlue.withValues(alpha: 0.4)
+                : colors.border,
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 15.sp, color: enabled ? colors.vendorPrimaryBlue : colors.textSecondary),
+            Icon(
+              icon,
+              size: 15.sp,
+              color: enabled ? colors.vendorPrimaryBlue : colors.textSecondary,
+            ),
             SizedBox(width: 6.w),
             Text(
               label,
               style: TextStyle(
                 fontSize: 11.sp,
                 fontWeight: FontWeight.w700,
-                color: enabled ? colors.vendorPrimaryBlue : colors.textSecondary,
+                color: enabled
+                    ? colors.vendorPrimaryBlue
+                    : colors.textSecondary,
               ),
             ),
           ],
@@ -1013,7 +1350,7 @@ Color _statusColor(AppColorsExtension colors, VendorOrderStatus status) {
     VendorOrderStatus.accepted => colors.info,
     VendorOrderStatus.preparing => colors.warning,
     VendorOrderStatus.ready => colors.success,
-    VendorOrderStatus.handover => colors.accentGreen,
+    VendorOrderStatus.pickedUp => colors.accentGreen,
     VendorOrderStatus.cancelled => colors.error,
   };
 }

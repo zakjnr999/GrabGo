@@ -62,35 +62,30 @@ class _NotificationSettingsView extends StatelessWidget {
                           title: 'Push Notifications',
                           subtitle: 'Receive alerts when app is backgrounded',
                           value: viewModel.pushEnabled,
-                          activeColor: colors.vendorPrimaryBlue,
                           onChanged: viewModel.setPushEnabled,
                         ),
                         _SwitchRow(
                           title: 'In-App Alerts',
                           subtitle: 'Show realtime alerts while app is open',
                           value: viewModel.inAppEnabled,
-                          activeColor: colors.serviceFood,
                           onChanged: viewModel.setInAppEnabled,
                         ),
                         _SwitchRow(
                           title: 'Sound',
                           subtitle: 'Play sound for incoming notifications',
                           value: viewModel.soundEnabled,
-                          activeColor: colors.warning,
                           onChanged: viewModel.setSoundEnabled,
                         ),
                         _SwitchRow(
                           title: 'Vibration',
                           subtitle: 'Vibrate device for notification events',
                           value: viewModel.vibrationEnabled,
-                          activeColor: colors.servicePharmacy,
                           onChanged: viewModel.setVibrationEnabled,
                         ),
                         _SwitchRow(
                           title: 'Message Preview',
                           subtitle: 'Show chat preview in lock-screen alerts',
                           value: viewModel.showMessagePreview,
-                          activeColor: colors.serviceGrocery,
                           onChanged: viewModel.setShowMessagePreview,
                         ),
                       ],
@@ -101,10 +96,6 @@ class _NotificationSettingsView extends StatelessWidget {
                     title: 'Alert Channels',
                     child: Column(
                       children: viewModel.channelSettings.map((entry) {
-                        final channelColor = _channelColor(
-                          colors,
-                          entry.channel,
-                        );
                         final isLocked = entry.isCritical;
                         return _SwitchRow(
                           title: entry.channel.label,
@@ -112,7 +103,6 @@ class _NotificationSettingsView extends StatelessWidget {
                               ? '${entry.channel.subtitle} (critical channel)'
                               : entry.channel.subtitle,
                           value: entry.enabled,
-                          activeColor: channelColor,
                           onChanged: isLocked
                               ? (_) => _showLockedInfo(context)
                               : (value) => viewModel.setChannelEnabled(
@@ -134,7 +124,6 @@ class _NotificationSettingsView extends StatelessWidget {
                           subtitle:
                               'Non-critical alerts are silenced during this period',
                           value: viewModel.quietHoursEnabled,
-                          activeColor: colors.vendorPrimaryBlue,
                           onChanged: viewModel.setQuietHoursEnabled,
                         ),
                         if (viewModel.quietHoursEnabled) ...[
@@ -183,7 +172,6 @@ class _NotificationSettingsView extends StatelessWidget {
                           title: 'Escalate At-Risk Orders',
                           subtitle: 'Trigger high-priority alerts for SLA risk',
                           value: viewModel.escalateAtRiskOrders,
-                          activeColor: colors.error,
                           onChanged: viewModel.setEscalateAtRiskOrders,
                         ),
                         _SwitchRow(
@@ -191,7 +179,6 @@ class _NotificationSettingsView extends StatelessWidget {
                           subtitle:
                               'Alert when orders stay too long in new state',
                           value: viewModel.escalateUnacceptedOrders,
-                          activeColor: colors.warning,
                           onChanged: viewModel.setEscalateUnacceptedOrders,
                         ),
                         _SwitchRow(
@@ -199,7 +186,6 @@ class _NotificationSettingsView extends StatelessWidget {
                           subtitle:
                               'Alert when device disconnects from updates',
                           value: viewModel.escalateOfflineEvents,
-                          activeColor: colors.servicePharmacy,
                           onChanged: viewModel.setEscalateOfflineEvents,
                         ),
                       ],
@@ -419,14 +405,12 @@ class _SwitchRow extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool value;
-  final Color activeColor;
   final ValueChanged<bool> onChanged;
 
   const _SwitchRow({
     required this.title,
     required this.subtitle,
     required this.value,
-    required this.activeColor,
     required this.onChanged,
   });
 
@@ -461,10 +445,12 @@ class _SwitchRow extends StatelessWidget {
               ],
             ),
           ),
-          Switch.adaptive(
+          CustomSwitch(
             value: value,
             onChanged: onChanged,
-            activeTrackColor: activeColor,
+            activeColor: colors.vendorPrimaryBlue,
+            inactiveColor: colors.inputBorder,
+            thumbColor: colors.backgroundPrimary,
           ),
         ],
       ),
@@ -611,18 +597,4 @@ class _HistoryCard extends StatelessWidget {
       ),
     );
   }
-}
-
-Color _channelColor(
-  AppColorsExtension colors,
-  VendorNotificationChannelType channel,
-) {
-  return switch (channel) {
-    VendorNotificationChannelType.newOrders => colors.vendorPrimaryBlue,
-    VendorNotificationChannelType.orderSlaRisk => colors.error,
-    VendorNotificationChannelType.chatMessages => colors.serviceFood,
-    VendorNotificationChannelType.inventoryLowStock => colors.warning,
-    VendorNotificationChannelType.payoutUpdates => colors.serviceGrocery,
-    VendorNotificationChannelType.accountSecurity => colors.servicePharmacy,
-  };
 }

@@ -10,7 +10,11 @@ class OtpVerification extends StatelessWidget {
   final String channel;
   final String destination;
 
-  const OtpVerification({super.key, required this.channel, required this.destination});
+  const OtpVerification({
+    super.key,
+    required this.channel,
+    required this.destination,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +29,10 @@ class _OtpVerificationView extends StatelessWidget {
   final String channel;
   final String destination;
 
-  const _OtpVerificationView({required this.channel, required this.destination});
+  const _OtpVerificationView({
+    required this.channel,
+    required this.destination,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +48,9 @@ class _OtpVerificationView extends StatelessWidget {
         statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
         systemNavigationBarColor: Colors.transparent,
         systemNavigationBarDividerColor: Colors.transparent,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarIconBrightness: isDark
+            ? Brightness.light
+            : Brightness.dark,
       ),
       child: Scaffold(
         backgroundColor: colors.backgroundPrimary,
@@ -54,12 +63,19 @@ class _OtpVerificationView extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     TextButton.icon(
-                      onPressed: () => context.go('/register'),
-                      style: TextButton.styleFrom(padding: EdgeInsets.zero, foregroundColor: colors.textSecondary),
+                      onPressed: () => context.go('/login'),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        foregroundColor: colors.textSecondary,
+                      ),
                       icon: Icon(Icons.arrow_back_rounded, size: 18.sp),
                       label: Text(
                         'Back',
-                        style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                     SizedBox(height: 10.h),
@@ -68,10 +84,16 @@ class _OtpVerificationView extends StatelessWidget {
                         width: 92.w,
                         height: 92.w,
                         decoration: BoxDecoration(
-                          color: colors.vendorPrimaryBlue.withValues(alpha: 0.12),
+                          color: colors.vendorPrimaryBlue.withValues(
+                            alpha: 0.12,
+                          ),
                           borderRadius: BorderRadius.circular(28.r),
                         ),
-                        child: Icon(Icons.verified_user_outlined, size: 44.sp, color: colors.vendorPrimaryBlue),
+                        child: Icon(
+                          Icons.verified_user_outlined,
+                          size: 44.sp,
+                          color: colors.vendorPrimaryBlue,
+                        ),
                       ),
                     ),
                     SizedBox(height: 20.h),
@@ -106,7 +128,10 @@ class _OtpVerificationView extends StatelessWidget {
                       borderActiveColor: colors.vendorPrimaryBlue,
                       borderRadius: KBorderSize.borderRadius12,
                       cursorColor: colors.vendorPrimaryBlue,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)],
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(6),
+                      ],
                     ),
                     SizedBox(height: 10.h),
                     Row(
@@ -115,7 +140,11 @@ class _OtpVerificationView extends StatelessWidget {
                           viewModel.canResend
                               ? 'Didn\'t receive code?'
                               : 'Resend available in ${viewModel.secondsRemaining}s',
-                          style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w500,
+                            color: colors.textSecondary,
+                          ),
                         ),
                         const Spacer(),
                         TextButton(
@@ -123,9 +152,11 @@ class _OtpVerificationView extends StatelessWidget {
                               ? () {
                                   HapticFeedback.selectionClick();
                                   viewModel.resendCode();
-                                  ScaffoldMessenger.of(
-                                    context,
-                                  ).showSnackBar(SnackBar(content: Text('$channel code resent')));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('$channel code resent'),
+                                    ),
+                                  );
                                 }
                               : null,
                           child: Text(
@@ -149,7 +180,11 @@ class _OtpVerificationView extends StatelessWidget {
                         onPressed: () => _handleVerify(context, viewModel),
                         backgroundColor: colors.vendorPrimaryBlue,
                         borderRadius: KBorderSize.borderRadius12,
-                        textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15.sp),
+                        textStyle: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15.sp,
+                        ),
                       ),
                     ),
                   ],
@@ -166,8 +201,10 @@ class _OtpVerificationView extends StatelessWidget {
     HapticFeedback.selectionClick();
     if (!viewModel.validateCode()) return;
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('OTP verified. Next step: business setup screen.')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('OTP verified. Next step: business setup screen.'),
+      ),
+    );
   }
 }

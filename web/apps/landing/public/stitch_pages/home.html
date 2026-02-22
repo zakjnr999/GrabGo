@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>GrabGo | Everything you need, delivered fast</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#fe6132",
+                        "background-light": "#fff9f4",
+                        "background-dark": "#1a0f0a",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 antialiased">
+<!-- Top Navigation Bar -->
+<header class="fixed inset-x-0 top-3 z-50 w-full">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+<div class="top-nav-row flex items-center justify-between gap-3">
+<a class="top-brand inline-flex items-center rounded-full border border-slate-200 bg-white px-5 py-2.5" href="/">
+<span class="text-[1.55rem] sm:text-[1.8rem] leading-none font-extrabold tracking-tight"><span class="text-slate-900">Grab</span><span class="text-primary">GO</span></span>
+</a>
+<nav class="top-nav-links hidden md:flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 shadow-sm">
+<a class="top-nav-link text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors" href="/services">Deliver</a>
+<a class="top-nav-link text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors" href="/vendor">Partner</a>
+<a class="top-nav-link is-active text-sm font-semibold text-slate-900 transition-colors" href="/customer">Order</a>
+</nav>
+<div class="top-nav-actions flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2 py-1 shadow-sm">
+<a class="hidden lg:inline-flex items-center px-3 py-2 text-sm font-semibold text-slate-700 rounded-full hover:bg-slate-50 transition-colors" href="/customer">Download App</a>
+<button class="hidden sm:inline-flex px-3 py-2 text-sm font-semibold text-slate-700 rounded-full hover:bg-slate-50 transition-colors">Login</button>
+<button class="inline-flex px-5 py-2.5 bg-primary text-white text-sm font-bold rounded-full hover:brightness-95 transition-colors">Sign Up</button>
+</div>
+</div>
+</div>
+</header>
+<main>
+<!-- Hero Section -->
+<section class="hero-top-section relative overflow-hidden bg-primary pt-28 pb-16 lg:pt-32 lg:pb-20">
+<div aria-hidden="true" class="hero-media absolute inset-0 z-0 overflow-hidden">
+<video autoplay="" class="hero-bg-video absolute inset-0 h-full w-full object-cover" loop="" muted="" playsinline="" preload="metadata">
+<source src="/media/grabgo-main-video.webm" type="video/webm"/>
+<source src="/media/grabgo-main-video.mp4" type="video/mp4"/>
+</video>
+<div class="hero-bg-overlay absolute inset-0"></div>
+</div>
+<div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center gap-12">
+<div class="flex-1 text-center lg:text-left space-y-8">
+<h1 class="hero-headline text-5xl lg:text-7xl font-black text-white leading-[1.1] tracking-tight">
+                        Everything you need, <span class="text-white/95">delivered <span class="hero-fast-word">fast.</span></span>
+</h1>
+<p class="text-lg text-white/90 max-w-xl mx-auto lg:mx-0">
+                        Order from top-rated local favorites or join our growing network as a vendor or rider. Fresh food, groceries, and essentials at your doorstep.
+                    </p>
+<div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+<button class="hero-primary-cta px-8 py-4 bg-white text-background-dark font-bold rounded-xl text-lg hover:scale-[1.02] transition-transform border border-white/90">
+<span>Order Now</span>
+                        </button>
+</div>
+</div>
+<div class="flex-1 w-full">
+<div class="w-full max-w-lg lg:ml-auto lg:mt-10">
+<form>
+<label class="sr-only" for="hero-location">Search delivery location</label>
+<div class="hero-search-shell flex items-center gap-3 rounded-2xl border border-white/80 bg-white px-4 py-3">
+<span class="material-symbols-outlined text-slate-500">location_on</span>
+<input class="flex-1 bg-transparent text-slate-900 placeholder:text-slate-500 outline-none text-sm sm:text-base" id="hero-location" name="hero-location" placeholder="Search your address..." type="text"/>
+<button class="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors whitespace-nowrap" type="button">
+<span class="material-symbols-outlined text-base">my_location</span>
+Use Current Location
+</button>
+</div>
+</form>
+</div>
+</div>
+</div>
+</section>
+<div aria-hidden="true" class="hero-end-curve"></div>
+<!-- Tri-CTA Grid Section -->
+<section class="py-20 bg-white dark:bg-background-dark/50">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- Customers -->
+<div class="group path-card p-8 rounded-3xl bg-background-light border border-slate-100 transition-all shadow-sm" data-path="order">
+<div class="path-icon-wrap w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+<span class="material-symbols-outlined text-background-dark text-3xl">shopping_basket</span>
+</div>
+<h3 class="text-2xl font-bold mb-3">Order Now</h3>
+<p class="text-slate-600 dark:text-slate-400 mb-6">Hungry? Get the best food and groceries delivered to your door in minutes.</p>
+<a class="path-link inline-flex items-center text-primary font-bold group-hover:gap-2 transition-all" href="/customer">Start Shopping <span class="material-symbols-outlined">chevron_right</span></a>
+</div>
+<!-- Vendors -->
+<div class="group path-card p-8 rounded-3xl bg-background-light border border-slate-100 transition-all shadow-sm" data-path="partner">
+<div class="path-icon-wrap w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+<span class="material-symbols-outlined text-background-dark text-3xl">storefront</span>
+</div>
+<h3 class="text-2xl font-bold mb-3">Become a Vendor</h3>
+<p class="text-slate-600 dark:text-slate-400 mb-6">Expand your reach and grow your sales with our professional delivery fleet.</p>
+<a class="path-link inline-flex items-center text-primary font-bold group-hover:gap-2 transition-all" href="/vendor">Partner With Us <span class="material-symbols-outlined">chevron_right</span></a>
+</div>
+<!-- Riders -->
+<div class="group path-card p-8 rounded-3xl bg-background-light border border-slate-100 transition-all shadow-sm" data-path="ride">
+<div class="path-icon-wrap w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+<span class="material-symbols-outlined text-background-dark text-3xl">pedal_bike</span>
+</div>
+<h3 class="text-2xl font-bold mb-3">Join as Rider</h3>
+<p class="text-slate-600 dark:text-slate-400 mb-6">Be your own boss. Earn competitive rates on your own schedule with GrabGo.</p>
+<a class="path-link inline-flex items-center text-primary font-bold group-hover:gap-2 transition-all" href="/rider">Start Riding <span class="material-symbols-outlined">chevron_right</span></a>
+</div>
+</div>
+</div>
+</section>
+<!-- How it Works Section -->
+<section class="py-24 bg-background-light dark:bg-slate-900">
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-16">
+<h2 class="text-4xl font-black mb-4">Ordering made simple</h2>
+<p class="text-slate-600 dark:text-slate-400">From craving to doorstep in three easy steps</p>
+</div>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+<!-- Connector Line -->
+<div class="hidden lg:block absolute top-1/2 left-0 w-full h-0.5 bg-primary/20 -translate-y-12"></div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-16 relative z-10">
+<div class="flex flex-col items-center text-center">
+<div class="w-20 h-20 rounded-full bg-white dark:bg-slate-800 border-4 border-primary shadow-xl flex items-center justify-center mb-8 relative">
+<span class="absolute -top-2 -left-2 w-8 h-8 rounded-full bg-primary text-background-dark font-black flex items-center justify-center">1</span>
+<span class="material-symbols-outlined text-4xl text-primary">search</span>
+</div>
+<h3 class="text-xl font-bold mb-4">Choose</h3>
+<p class="text-slate-600 dark:text-slate-400">Browse through thousands of local restaurants and stores at your fingertips.</p>
+</div>
+<div class="flex flex-col items-center text-center">
+<div class="w-20 h-20 rounded-full bg-white dark:bg-slate-800 border-4 border-primary shadow-xl flex items-center justify-center mb-8 relative">
+<span class="absolute -top-2 -left-2 w-8 h-8 rounded-full bg-primary text-background-dark font-black flex items-center justify-center">2</span>
+<span class="material-symbols-outlined text-4xl text-primary">payments</span>
+</div>
+<h3 class="text-xl font-bold mb-4">Pay</h3>
+<p class="text-slate-600 dark:text-slate-400">Securely checkout with your preferred payment method. It's fast and easy.</p>
+</div>
+<div class="flex flex-col items-center text-center">
+<div class="w-20 h-20 rounded-full bg-white dark:bg-slate-800 border-4 border-primary shadow-xl flex items-center justify-center mb-8 relative">
+<span class="absolute -top-2 -left-2 w-8 h-8 rounded-full bg-primary text-background-dark font-black flex items-center justify-center">3</span>
+<span class="material-symbols-outlined text-4xl text-primary">near_me</span>
+</div>
+<h3 class="text-xl font-bold mb-4">Track</h3>
+<p class="text-slate-600 dark:text-slate-400">Watch your order arrive in real-time with our advanced GPS tracking system.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Trust Badges Section -->
+<section class="py-12 border-y border-slate-100 dark:border-slate-800">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<p class="text-center text-xs font-bold uppercase tracking-[0.2em] text-slate-400 mb-8">Trusted by industry leaders</p>
+<div class="flex flex-wrap justify-center items-center gap-12 md:gap-20 opacity-50 grayscale hover:grayscale-0 transition-all">
+<span class="text-2xl font-black text-slate-900 dark:text-white">FOODIE<span class="text-primary">HUB</span></span>
+<span class="text-2xl font-black text-slate-900 dark:text-white">STORE<span class="text-primary">SYNC</span></span>
+<span class="text-2xl font-black text-slate-900 dark:text-white">METRO<span class="text-primary">GO</span></span>
+<span class="text-2xl font-black text-slate-900 dark:text-white">QUICK<span class="text-primary">PAY</span></span>
+</div>
+</div>
+</section>
+<!-- Quick FAQ Section -->
+<section class="py-20 overflow-hidden">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="grid grid-cols-1 lg:grid-cols-[0.9fr_1.1fr] gap-10 items-start">
+<div class="space-y-5">
+<p class="section-label">Quick FAQ</p>
+<h2 class="text-3xl lg:text-4xl font-black tracking-tight text-slate-900">Got questions before you order?</h2>
+<p class="text-slate-600 max-w-md">Here are the most common things customers ask before placing their first order.</p>
+<a class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-primary text-white font-bold text-sm hover:brightness-95 transition-all" href="/faq">
+                        View Full FAQs
+                        <span class="material-symbols-outlined">chevron_right</span>
+</a>
+</div>
+<div class="space-y-3">
+<details class="menu-summary faq-quick-item group rounded-2xl border border-slate-200 bg-white p-5" open="">
+<summary class="flex items-center justify-between gap-4 cursor-pointer">
+<span class="font-bold text-slate-900">How fast is GrabGo delivery?</span>
+<span class="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<p class="mt-3 text-sm text-slate-600 leading-relaxed">Most orders arrive in 20-35 minutes depending on distance, traffic, and merchant prep time.</p>
+</details>
+<details class="menu-summary faq-quick-item group rounded-2xl border border-slate-200 bg-white p-5">
+<summary class="flex items-center justify-between gap-4 cursor-pointer">
+<span class="font-bold text-slate-900">Can I schedule an order in advance?</span>
+<span class="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<p class="mt-3 text-sm text-slate-600 leading-relaxed">Yes. You can schedule selected orders ahead of time and choose your preferred delivery window.</p>
+</details>
+<details class="menu-summary faq-quick-item group rounded-2xl border border-slate-200 bg-white p-5">
+<summary class="flex items-center justify-between gap-4 cursor-pointer">
+<span class="font-bold text-slate-900">What payment methods do you accept?</span>
+<span class="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<p class="mt-3 text-sm text-slate-600 leading-relaxed">GrabGo supports cards, mobile wallets, and cash on delivery in supported zones.</p>
+</details>
+<details class="menu-summary faq-quick-item group rounded-2xl border border-slate-200 bg-white p-5">
+<summary class="flex items-center justify-between gap-4 cursor-pointer">
+<span class="font-bold text-slate-900">How do I track my order live?</span>
+<span class="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<p class="mt-3 text-sm text-slate-600 leading-relaxed">After checkout, open your order status page to see real-time rider location and delivery progress.</p>
+</details>
+</div>
+</div>
+</div>
+</section>
+</main>
+<div aria-hidden="true" class="footer-top-curve"></div>
+<!-- Footer -->
+<footer class="bg-primary pt-20 pb-10">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-12 mb-16">
+<div class="col-span-2 lg:col-span-2 space-y-6">
+<div class="flex items-center gap-2">
+<div class="bg-white p-1 rounded flex items-center justify-center">
+<span class="material-symbols-outlined text-primary font-bold text-sm">local_mall</span>
+</div>
+<span class="text-lg font-extrabold tracking-tight text-white">GrabGo</span>
+</div>
+<p class="text-white/85 max-w-xs">Building the future of local commerce through efficient delivery and strong community partnerships.</p>
+<div class="flex gap-4">
+<a aria-label="Instagram" class="w-10 h-10 rounded-full bg-white/14 flex items-center justify-center hover:bg-white transition-colors group" href="https://www.instagram.com" rel="noopener noreferrer" target="_blank">
+<svg aria-hidden="true" class="h-5 w-5 text-white group-hover:text-primary" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
+<rect height="17" rx="4.8" width="17" x="3.5" y="3.5"></rect>
+<circle cx="12" cy="12" r="4.1"></circle>
+<circle cx="17.5" cy="6.8" fill="currentColor" r="1.1" stroke="none"></circle>
+</svg>
+</a>
+<a aria-label="Facebook" class="w-10 h-10 rounded-full bg-white/14 flex items-center justify-center hover:bg-white transition-colors group" href="https://www.facebook.com" rel="noopener noreferrer" target="_blank">
+<svg aria-hidden="true" class="h-5 w-5 text-white group-hover:text-primary" fill="currentColor" viewBox="0 0 24 24">
+<path d="M13.5 8.8V7.7c0-.6.4-.9 1-.9H16V4h-2.1C11.7 4 10 5.5 10 7.9V8.8H8v3h2V20h3v-8.2h2.3l.4-3H13.5z"></path>
+</svg>
+</a>
+<a aria-label="TikTok" class="w-10 h-10 rounded-full bg-white/14 flex items-center justify-center hover:bg-white transition-colors group" href="https://www.tiktok.com" rel="noopener noreferrer" target="_blank">
+<svg aria-hidden="true" class="h-5 w-5 text-white group-hover:text-primary" fill="currentColor" viewBox="0 0 24 24">
+<path d="M14.6 3h3.1c.2 1.2 1.1 2.3 2.3 2.8v3.1c-1.2 0-2.4-.4-3.5-1.1v6.5a5.2 5.2 0 1 1-5.2-5.2c.2 0 .5 0 .7.1V12c-.2-.1-.5-.1-.7-.1a2.2 2.2 0 1 0 2.2 2.2V3z"></path>
+</svg>
+</a>
+</div>
+<div class="space-y-3">
+<p class="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-white/75">Download the app</p>
+<div class="flex flex-col sm:flex-row gap-3">
+<a class="inline-flex min-w-[178px] items-center gap-3 rounded-xl bg-white/10 px-4 py-2.5 transition-colors hover:bg-white group" href="https://play.google.com/store" rel="noopener noreferrer" target="_blank">
+<svg aria-hidden="true" class="h-5 w-5 shrink-0" viewBox="0 0 24 24">
+<path d="M2.4 1.6L13.9 12 2.4 22.4V1.6z" fill="#00A0FF"></path>
+<path d="M2.4 1.6l8 7.2 3.5-3.4L2.4 1.6z" fill="#00C853"></path>
+<path d="M13.9 12l3.1-2.9 3.9 2.2c1 .6 1 1.9 0 2.4L17 15z" fill="#FFEB3B"></path>
+<path d="M2.4 22.4l8-7.2 3.5 3.4-11.5 3.8z" fill="#FF3D00"></path>
+</svg>
+<span class="leading-tight">
+<span class="block text-[0.62rem] text-white/80 group-hover:text-primary/80">Get it on</span>
+<span class="block text-sm font-bold text-white group-hover:text-primary">Google Play</span>
+</span>
+</a>
+<a class="inline-flex min-w-[178px] items-center gap-3 rounded-xl bg-white/10 px-4 py-2.5 transition-colors hover:bg-white group" href="https://www.apple.com/app-store/" rel="noopener noreferrer" target="_blank">
+<svg aria-hidden="true" class="h-5 w-5 shrink-0 text-white group-hover:text-primary" fill="currentColor" viewBox="0 0 16 16">
+<path d="M11.182.008c0 1.066-.78 2.35-2.026 2.35-.014-1.096.793-2.35 2.026-2.35zm2.039 8.858c.018 2.151 1.884 2.867 1.905 2.876-.015.05-.297 1.02-.98 2.02-.59.866-1.203 1.73-2.167 1.748-.946.017-1.25-.56-2.334-.56-1.084 0-1.422.543-2.316.578-.93.035-1.64-.93-2.236-1.79-1.22-1.764-2.154-4.987-.901-7.164.623-1.082 1.737-1.768 2.946-1.786.919-.018 1.786.62 2.334.62.547 0 1.575-.767 2.654-.654.451.019 1.717.182 2.53 1.373-.066.04-1.51.88-1.495 2.739z"></path>
+</svg>
+<span class="leading-tight">
+<span class="block text-[0.62rem] text-white/80 group-hover:text-primary/80">Download on the</span>
+<span class="block text-sm font-bold text-white group-hover:text-primary">App Store</span>
+</span>
+</a>
+</div>
+</div>
+</div>
+<div>
+<h4 class="font-bold mb-6 text-white">Explore</h4>
+<ul class="space-y-4 text-white/85 text-sm">
+<li><a class="hover:text-white transition-colors" href="/services">Restaurants</a></li>
+<li><a class="hover:text-white transition-colors" href="/services">Grocery</a></li>
+<li><a class="hover:text-white transition-colors" href="/services">Convenience</a></li>
+<li><a class="hover:text-white transition-colors" href="/services">Pharmacy</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-bold mb-6 text-white">Company</h4>
+<ul class="space-y-4 text-white/85 text-sm">
+<li><a class="hover:text-white transition-colors" href="/about">About Us</a></li>
+<li><a class="hover:text-white transition-colors" href="/about">Careers</a></li>
+<li><a class="hover:text-white transition-colors" href="/about">Blog</a></li>
+<li><a class="hover:text-white transition-colors" href="/about">Impact</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-bold mb-6 text-white">Support</h4>
+<ul class="space-y-4 text-white/85 text-sm">
+<li><a class="hover:text-white transition-colors" href="/faq">Help Center</a></li>
+<li><a class="hover:text-white transition-colors" href="/faq">Safety</a></li>
+<li><a class="hover:text-white transition-colors" href="/contact">Contact</a></li>
+<li><a class="hover:text-white transition-colors" href="/legal/privacy">Privacy</a></li>
+</ul>
+</div>
+</div>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-white/25 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-white/80 font-medium">
+<p>© 2024 GrabGo Delivery Platform. All rights reserved.</p>
+<div class="flex gap-8">
+<a class="hover:text-white" href="/legal/terms">Terms of Service</a>
+<a class="hover:text-white" href="/legal/cookies">Cookie Policy</a>
+</div>
+</div>
+</footer>
+</body></html>

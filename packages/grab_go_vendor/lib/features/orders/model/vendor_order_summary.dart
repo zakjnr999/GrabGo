@@ -5,16 +5,16 @@ enum VendorOrderStatus {
   accepted,
   preparing,
   ready,
-  handover,
+  pickedUp,
   cancelled,
 }
 
 enum VendorOrderActionType {
   accept,
   reject,
-  markPreparing,
+  startPreparing,
   markReady,
-  handover,
+  verifyPickupCode,
 }
 
 class VendorOrderItem {
@@ -79,6 +79,7 @@ class VendorOrderSummary {
   final String id;
   final String customerName;
   final String customerPhone;
+  final String? customerNote;
   final String riderName;
   final String riderEtaLabel;
   final int itemCount;
@@ -99,6 +100,7 @@ class VendorOrderSummary {
     required this.id,
     required this.customerName,
     required this.customerPhone,
+    this.customerNote,
     required this.riderName,
     required this.riderEtaLabel,
     required this.itemCount,
@@ -121,6 +123,7 @@ class VendorOrderSummary {
   VendorOrderSummary copyWith({
     VendorOrderStatus? status,
     bool? isAtRisk,
+    String? customerNote,
     List<VendorOrderAuditEntry>? auditEntries,
     List<VendorIssueEntry>? issueEntries,
   }) {
@@ -128,6 +131,7 @@ class VendorOrderSummary {
       id: id,
       customerName: customerName,
       customerPhone: customerPhone,
+      customerNote: customerNote ?? this.customerNote,
       riderName: riderName,
       riderEtaLabel: riderEtaLabel,
       itemCount: itemCount,
@@ -162,10 +166,10 @@ extension VendorOrderStatusX on VendorOrderStatus {
   String get label {
     return switch (this) {
       VendorOrderStatus.newOrder => 'New',
-      VendorOrderStatus.accepted => 'Accepted',
+      VendorOrderStatus.accepted => 'Confirmed',
       VendorOrderStatus.preparing => 'Preparing',
       VendorOrderStatus.ready => 'Ready',
-      VendorOrderStatus.handover => 'Handover',
+      VendorOrderStatus.pickedUp => 'Picked Up',
       VendorOrderStatus.cancelled => 'Cancelled',
     };
   }
@@ -175,10 +179,10 @@ extension VendorOrderActionTypeX on VendorOrderActionType {
   String get label {
     return switch (this) {
       VendorOrderActionType.accept => 'Accept Order',
-      VendorOrderActionType.reject => 'Reject Order',
-      VendorOrderActionType.markPreparing => 'Mark Preparing',
+      VendorOrderActionType.reject => 'Cancel Order',
+      VendorOrderActionType.startPreparing => 'Start Preparing',
       VendorOrderActionType.markReady => 'Mark Ready',
-      VendorOrderActionType.handover => 'Complete Handover',
+      VendorOrderActionType.verifyPickupCode => 'Verify Pickup Code',
     };
   }
 }
@@ -189,6 +193,7 @@ List<VendorOrderSummary> mockVendorOrders() {
       id: '#GG-829301',
       customerName: 'Mabel Asare',
       customerPhone: '+233 54 239 1021',
+      customerNote: 'Please call when rider is 2 minutes away.',
       riderName: 'Kwesi Rider',
       riderEtaLabel: '4 min away',
       itemCount: 5,
@@ -237,6 +242,7 @@ List<VendorOrderSummary> mockVendorOrders() {
       id: '#GG-829300',
       customerName: 'Kwame Boateng',
       customerPhone: '+233 20 101 2203',
+      customerNote: 'Pickup on behalf of mother. Confirm dosage at handover.',
       riderName: 'Abena Rider',
       riderEtaLabel: '8 min away',
       itemCount: 2,
@@ -301,6 +307,7 @@ List<VendorOrderSummary> mockVendorOrders() {
       id: '#GG-829298',
       customerName: 'Esi A.',
       customerPhone: '+233 24 555 8120',
+      customerNote: 'Leave at reception if customer is not reachable.',
       riderName: 'Jojo Rider',
       riderEtaLabel: 'Arrived',
       itemCount: 8,
@@ -319,7 +326,7 @@ List<VendorOrderSummary> mockVendorOrders() {
       ],
       timelineEntries: const [
         VendorOrderTimelineEntry(
-          title: 'Ready for handover',
+          title: 'Ready for rider pickup',
           subtitle: 'Rider notified for pickup',
           timeLabel: '12:20 PM',
         ),

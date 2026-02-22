@@ -40,7 +40,6 @@ import 'package:grab_go_customer/features/restaurant/view/restaurant_review_page
 import 'package:grab_go_customer/features/restaurant/model/restaurant_registration_data.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurants_model.dart';
 import 'package:grab_go_customer/features/order/view/orders.dart';
-import 'package:grab_go_customer/features/profile/view/payment.dart';
 import 'package:grab_go_customer/features/profile/view/referral_page.dart';
 import 'package:grab_go_customer/features/profile/view/credits_screen.dart';
 import 'package:grab_go_customer/features/order/view/payment_complete.dart';
@@ -599,25 +598,6 @@ final GoRouter appRouter = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: const OrderTracking(),
-          transitionDuration: const Duration(milliseconds: 400),
-          reverseTransitionDuration: const Duration(milliseconds: 400),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return SharedAxisTransition(
-              animation: animation,
-              secondaryAnimation: secondaryAnimation,
-              transitionType: SharedAxisTransitionType.scaled,
-              child: child,
-            );
-          },
-        );
-      },
-    ),
-    GoRoute(
-      path: "/paymentMethod",
-      pageBuilder: (context, state) {
-        return CustomTransitionPage(
-          key: state.pageKey,
-          child: const Payment(),
           transitionDuration: const Duration(milliseconds: 400),
           reverseTransitionDuration: const Duration(milliseconds: 400),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {

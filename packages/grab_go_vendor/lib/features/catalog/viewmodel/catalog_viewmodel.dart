@@ -10,9 +10,21 @@ class CatalogViewModel extends ChangeNotifier {
   final TextEditingController searchController = TextEditingController();
 
   final List<VendorCatalogCategory> _categories = [
-    const VendorCatalogCategory(id: 'cat_food_main', name: 'Main Meals', serviceType: VendorServiceType.food),
-    const VendorCatalogCategory(id: 'cat_food_drinks', name: 'Drinks', serviceType: VendorServiceType.food),
-    const VendorCatalogCategory(id: 'cat_grocery_rice', name: 'Rice & Grains', serviceType: VendorServiceType.grocery),
+    const VendorCatalogCategory(
+      id: 'cat_food_main',
+      name: 'Main Meals',
+      serviceType: VendorServiceType.food,
+    ),
+    const VendorCatalogCategory(
+      id: 'cat_food_drinks',
+      name: 'Drinks',
+      serviceType: VendorServiceType.food,
+    ),
+    const VendorCatalogCategory(
+      id: 'cat_grocery_rice',
+      name: 'Rice & Grains',
+      serviceType: VendorServiceType.grocery,
+    ),
     const VendorCatalogCategory(
       id: 'cat_pharmacy_otc',
       name: 'Over-the-counter',
@@ -98,14 +110,20 @@ class CatalogViewModel extends ChangeNotifier {
 
   List<VendorCatalogCategory> get visibleCategories {
     if (_serviceFilter == null) return List.unmodifiable(_categories);
-    return _categories.where((category) => category.serviceType == _serviceFilter).toList();
+    return _categories
+        .where((category) => category.serviceType == _serviceFilter)
+        .toList();
   }
 
   List<VendorCatalogItem> get filteredItems {
     return _items.where((item) {
-      final matchesService = _serviceFilter == null || item.serviceType == _serviceFilter;
-      final matchesCategory = _categoryFilterId == null || item.categoryId == _categoryFilterId;
-      final matchesAvailability = _availabilityFilter == null || item.isAvailable == _availabilityFilter;
+      final matchesService =
+          _serviceFilter == null || item.serviceType == _serviceFilter;
+      final matchesCategory =
+          _categoryFilterId == null || item.categoryId == _categoryFilterId;
+      final matchesAvailability =
+          _availabilityFilter == null ||
+          item.isAvailable == _availabilityFilter;
       final search = _query.toLowerCase();
       final categoryName = categoryNameFor(item.categoryId).toLowerCase();
       final matchesSearch =
@@ -113,7 +131,10 @@ class CatalogViewModel extends ChangeNotifier {
           item.name.toLowerCase().contains(search) ||
           item.description.toLowerCase().contains(search) ||
           categoryName.contains(search);
-      return matchesService && matchesCategory && matchesAvailability && matchesSearch;
+      return matchesService &&
+          matchesCategory &&
+          matchesAvailability &&
+          matchesSearch;
     }).toList();
   }
 
@@ -129,11 +150,15 @@ class CatalogViewModel extends ChangeNotifier {
     if (_serviceFilter == value) return;
     _serviceFilter = value;
     if (_categoryFilterId != null) {
-      final currentCategory = _categories.cast<VendorCatalogCategory?>().firstWhere(
-        (entry) => entry?.id == _categoryFilterId,
-        orElse: () => null,
-      );
-      if (currentCategory == null || (_serviceFilter != null && currentCategory.serviceType != _serviceFilter)) {
+      final currentCategory = _categories
+          .cast<VendorCatalogCategory?>()
+          .firstWhere(
+            (entry) => entry?.id == _categoryFilterId,
+            orElse: () => null,
+          );
+      if (currentCategory == null ||
+          (_serviceFilter != null &&
+              currentCategory.serviceType != _serviceFilter)) {
         _categoryFilterId = null;
       }
     }
@@ -185,7 +210,10 @@ class CatalogViewModel extends ChangeNotifier {
       final item = _items[index];
       if (!_selectedItemIds.contains(item.id)) continue;
       final nextStock = (item.stock + delta).clamp(0, 1000000).toInt();
-      _items[index] = item.copyWith(stock: nextStock, isAvailable: nextStock == 0 ? false : item.isAvailable);
+      _items[index] = item.copyWith(
+        stock: nextStock,
+        isAvailable: nextStock == 0 ? false : item.isAvailable,
+      );
     }
     _selectedItemIds.clear();
     notifyListeners();
@@ -251,7 +279,10 @@ class CatalogViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addCategory({required String name, required VendorServiceType serviceType}) {
+  void addCategory({
+    required String name,
+    required VendorServiceType serviceType,
+  }) {
     _categories.add(
       VendorCatalogCategory(
         id: 'cat_${DateTime.now().microsecondsSinceEpoch}',
@@ -271,7 +302,9 @@ class CatalogViewModel extends ChangeNotifier {
 
   void removeCategory(String categoryId) {
     _categories.removeWhere((entry) => entry.id == categoryId);
-    final fallbackCategory = _categories.isNotEmpty ? _categories.first.id : null;
+    final fallbackCategory = _categories.isNotEmpty
+        ? _categories.first.id
+        : null;
     if (fallbackCategory != null) {
       for (var index = 0; index < _items.length; index++) {
         if (_items[index].categoryId == categoryId) {

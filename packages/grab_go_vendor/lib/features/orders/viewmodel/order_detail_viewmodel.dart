@@ -48,11 +48,14 @@ class OrderDetailViewModel extends ChangeNotifier {
     return switch (action) {
       VendorOrderActionType.accept =>
         'Order can only be accepted while status is New.',
-      VendorOrderActionType.reject => 'Rejected orders cannot be changed.',
-      VendorOrderActionType.markPreparing =>
+      VendorOrderActionType.reject => 'Order can no longer be cancelled.',
+      VendorOrderActionType.startPreparing =>
         'Accept order first before moving to Preparing.',
       VendorOrderActionType.markReady => 'Mark Preparing before marking Ready.',
-      VendorOrderActionType.handover => 'Order must be Ready before handover.',
+      VendorOrderActionType.verifyPickupCode =>
+        order.isPickupOrder
+            ? 'Pickup code can only be verified when order is Ready.'
+            : 'Pickup code verification is only for pickup orders.',
     };
   }
 
@@ -62,9 +65,9 @@ class OrderDetailViewModel extends ChangeNotifier {
     _currentStatus = switch (action) {
       VendorOrderActionType.accept => VendorOrderStatus.accepted,
       VendorOrderActionType.reject => VendorOrderStatus.cancelled,
-      VendorOrderActionType.markPreparing => VendorOrderStatus.preparing,
+      VendorOrderActionType.startPreparing => VendorOrderStatus.preparing,
       VendorOrderActionType.markReady => VendorOrderStatus.ready,
-      VendorOrderActionType.handover => VendorOrderStatus.handover,
+      VendorOrderActionType.verifyPickupCode => VendorOrderStatus.pickedUp,
     };
 
     _auditEntries.insert(
@@ -143,15 +146,18 @@ class OrderDetailViewModel extends ChangeNotifier {
         VendorOrderActionType.reject,
       ],
       VendorOrderStatus.accepted => [
-        VendorOrderActionType.markPreparing,
+        VendorOrderActionType.startPreparing,
         VendorOrderActionType.reject,
       ],
       VendorOrderStatus.preparing => [
         VendorOrderActionType.markReady,
         VendorOrderActionType.reject,
       ],
-      VendorOrderStatus.ready => [VendorOrderActionType.handover],
-      VendorOrderStatus.handover => const [],
+      VendorOrderStatus.ready =>
+        order.isPickupOrder
+            ? [VendorOrderActionType.verifyPickupCode]
+            : const [],
+      VendorOrderStatus.pickedUp => const [],
       VendorOrderStatus.cancelled => const [],
     };
   }

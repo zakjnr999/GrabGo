@@ -134,27 +134,13 @@ class CategoryManagementPage extends StatelessWidget {
   ) async {
     final colors = context.appColors;
     final viewModel = context.read<CatalogViewModel>();
-    final shouldDelete = await showDialog<bool>(
+    final shouldDelete = await AppDialog.show(
       context: context,
-      builder: (_) {
-        return AlertDialog(
-          backgroundColor: colors.backgroundPrimary,
-          title: const Text('Delete Category'),
-          content: Text(
-            'Delete "${category.name}"? Items in this category will be reassigned.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text('Delete', style: TextStyle(color: colors.error)),
-            ),
-          ],
-        );
-      },
+      type: AppDialogType.error,
+      title: 'Delete Category',
+      message:
+          'Delete "${category.name}"? Items in this category will be reassigned.',
+      primaryButtonColor: colors.error,
     );
     if (shouldDelete != true) return;
     viewModel.removeCategory(category.id);
@@ -178,78 +164,134 @@ class CategoryManagementPage extends StatelessWidget {
     }
     String? error;
 
-    await showDialog<void>(
-      context: context,
-      builder: (_) {
-        return StatefulBuilder(
-          builder: (context, setLocalState) {
-            return AlertDialog(
-              backgroundColor: colors.backgroundPrimary,
-              title: Text(category == null ? 'Add Category' : 'Edit Category'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameController,
-                    decoration: InputDecoration(
-                      labelText: 'Category Name',
-                      errorText: error,
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) {
+          return StatefulBuilder(
+            builder: (context, setLocalState) {
+              return Dialog(
+                backgroundColor: Colors.transparent,
+                insetPadding: EdgeInsets.symmetric(
+                  horizontal: 20.w,
+                  vertical: 24.h,
+                ),
+                child: Container(
+                  padding: EdgeInsets.all(16.r),
+                  decoration: BoxDecoration(
+                    color: colors.backgroundPrimary,
+                    borderRadius: BorderRadius.circular(20.r),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          category == null ? 'Add Category' : 'Edit Category',
+                          style: TextStyle(
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.w800,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        SizedBox(height: 12.h),
+                        TextField(
+                          controller: nameController,
+                          decoration: InputDecoration(
+                            labelText: 'Category Name',
+                            errorText: error,
+                          ),
+                        ),
+                        SizedBox(height: 12.h),
+                        DropdownButtonFormField<VendorServiceType>(
+                          key: ValueKey<VendorServiceType>(selectedService),
+                          initialValue: selectedService,
+                          decoration: const InputDecoration(
+                            labelText: 'Service',
+                          ),
+                          disabledHint: Text(selectedService.label),
+                          items: orderedServices.map((service) {
+                            return DropdownMenuItem(
+                              value: service,
+                              child: Text(service.label),
+                            );
+                          }).toList(),
+                          onChanged: category == null
+                              ? (value) {
+                                  if (value == null) return;
+                                  setLocalState(() => selectedService = value);
+                                }
+                              : null,
+                        ),
+                        SizedBox(height: 16.h),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: AppButton(
+                                buttonText: 'Cancel',
+                                onPressed: () => Navigator.pop(dialogContext),
+                                backgroundColor: colors.backgroundSecondary,
+                                borderRadius: KBorderSize.borderMedium,
+                                textStyle: TextStyle(
+                                  color: colors.textPrimary,
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 10.w),
+                            Expanded(
+                              child: AppButton(
+                                buttonText: category == null ? 'Add' : 'Save',
+                                onPressed: () {
+                                  final name = nameController.text.trim();
+                                  if (name.isEmpty) {
+                                    setLocalState(
+                                      () => error = 'Enter category name',
+                                    );
+                                    return;
+                                  }
+                                  if (category == null) {
+                                    viewModel.addCategory(
+                                      name: name,
+                                      serviceType: selectedService,
+                                    );
+                                  } else {
+                                    viewModel.renameCategory(category.id, name);
+                                  }
+                                  Navigator.pop(dialogContext);
+                                },
+                                backgroundColor: colors.vendorPrimaryBlue,
+                                borderRadius: KBorderSize.borderMedium,
+                                textStyle: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  SizedBox(height: 12.h),
-                  DropdownButtonFormField<VendorServiceType>(
-                    key: ValueKey<VendorServiceType>(selectedService),
-                    initialValue: selectedService,
-                    decoration: const InputDecoration(labelText: 'Service'),
-                    disabledHint: Text(selectedService.label),
-                    items: orderedServices.map((service) {
-                      return DropdownMenuItem(
-                        value: service,
-                        child: Text(service.label),
-                      );
-                    }).toList(),
-                    onChanged: category == null
-                        ? (value) {
-                            if (value == null) return;
-                            setLocalState(() => selectedService = value);
-                          }
-                        : null,
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
                 ),
-                TextButton(
-                  onPressed: () {
-                    final name = nameController.text.trim();
-                    if (name.isEmpty) {
-                      setLocalState(() => error = 'Enter category name');
-                      return;
-                    }
-                    if (category == null) {
-                      viewModel.addCategory(
-                        name: name,
-                        serviceType: selectedService,
-                      );
-                    } else {
-                      viewModel.renameCategory(category.id, name);
-                    }
-                    Navigator.pop(context);
-                  },
-                  child: Text(
-                    category == null ? 'Add' : 'Save',
-                    style: TextStyle(color: colors.vendorPrimaryBlue),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
+              );
+            },
+          );
+        },
+      );
+    } finally {
+      nameController.dispose();
+    }
   }
 
   Set<VendorServiceType> _scopedServices() {

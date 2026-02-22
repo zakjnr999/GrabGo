@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_shared/shared/widgets/custom_slider.dart';
 import 'package:grab_go_vendor/features/auth/model/vendor_service_option.dart';
 import 'package:grab_go_vendor/features/store_context/viewmodel/store_context_viewmodel.dart';
 import 'package:grab_go_vendor/features/store_operations/viewmodel/store_operations_viewmodel.dart';
@@ -15,198 +18,196 @@ class StoreOperationsPage extends StatelessWidget {
     final colors = context.appColors;
     return Scaffold(
       backgroundColor: colors.backgroundPrimary,
-      appBar: AppBar(
-        backgroundColor: colors.backgroundPrimary,
-        elevation: 0,
-        title: Text(
-          'Store Operations',
-          style: TextStyle(
-            fontSize: 18.sp,
-            fontWeight: FontWeight.w800,
-            color: colors.textPrimary,
-          ),
-        ),
-      ),
       body: SafeArea(
-        child:
-            Consumer3<
-              VendorStoreOperationsViewModel,
-              VendorStoreContextViewModel,
-              VendorPreviewSessionViewModel
-            >(
-              builder: (context, viewModel, storeContext, previewSession, _) {
-                final visibleServices = _visibleVendorServices(
-                  storeContext,
-                ).toList()..sort((a, b) => a.index.compareTo(b.index));
+        child: Consumer3<VendorStoreOperationsViewModel, VendorStoreContextViewModel, VendorPreviewSessionViewModel>(
+          builder: (context, viewModel, storeContext, previewSession, _) {
+            final visibleServices = _visibleVendorServices(storeContext).toList()
+              ..sort((a, b) => a.index.compareTo(b.index));
+            final hasMultipleServices = visibleServices.length > 1;
 
-                return SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 20.w,
-                    vertical: 12.h,
+            return SingleChildScrollView(
+              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextButton.icon(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    style: TextButton.styleFrom(padding: EdgeInsets.zero, foregroundColor: colors.textSecondary),
+                    icon: SvgPicture.asset(
+                      Assets.icons.navArrowLeft,
+                      package: 'grab_go_shared',
+                      width: 18.w,
+                      height: 18.w,
+                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                    ),
+                    label: Text(
+                      'Back',
+                      style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                    ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        visibleServices.isEmpty
-                            ? 'No services are active for this profile and store context.'
-                            : 'Preview: ${previewSession.activeProfile.title}',
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w600,
-                          color: colors.textSecondary,
+                  SizedBox(height: 6.h),
+                  Text(
+                    'Store Operations',
+                    style: TextStyle(
+                      fontSize: 30.sp,
+                      fontWeight: FontWeight.w900,
+                      color: colors.textPrimary,
+                      height: 1.15,
+                    ),
+                  ),
+                  SizedBox(height: 8.h),
+                  Text(
+                    visibleServices.isEmpty
+                        ? 'No services are active for this profile and store context.'
+                        : hasMultipleServices
+                        ? 'Manage store state, service toggles, and fulfillment settings for ${previewSession.activeProfile.title}.'
+                        : 'Manage store state and fulfillment settings for ${previewSession.activeProfile.title}.',
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w500,
+                      color: colors.textSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                  SizedBox(height: 12.h),
+                  _OutageStatusCard(viewModel: viewModel),
+                  SizedBox(height: 12.h),
+                  _SectionCard(
+                    title: 'Store State',
+                    child: Column(
+                      children: [
+                        _SwitchRow(
+                          title: 'Store Open',
+                          subtitle: 'Allow branch to receive operations traffic',
+                          value: viewModel.isStoreOpen,
+                          onChanged: (value) async {
+                            if (!value) {
+                              final allowed = await _confirmAction(
+                                context,
+                                title: 'Close Store?',
+                                message: 'This blocks incoming operations until reopened.',
+                              );
+                              if (!allowed) return;
+                            }
+                            viewModel.setStoreOpen(value);
+                          },
                         ),
-                      ),
-                      SizedBox(height: 10.h),
-                      _OutageStatusCard(viewModel: viewModel),
-                      SizedBox(height: 12.h),
-                      _SectionCard(
-                        title: 'Store State',
-                        child: Column(
+                        _SwitchRow(
+                          title: 'Accepting Orders',
+                          subtitle: 'Queue new customer orders for this branch',
+                          value: viewModel.acceptsOrders,
+                          onChanged: (value) async {
+                            if (!value) {
+                              final allowed = await _confirmAction(
+                                context,
+                                title: 'Pause New Orders?',
+                                message: 'New orders will stop until re-enabled.',
+                              );
+                              if (!allowed) return;
+                            }
+                            viewModel.setAcceptsOrders(value);
+                          },
+                        ),
+                        SizedBox(height: 8.h),
+                        Row(
                           children: [
-                            _SwitchRow(
-                              title: 'Store Open',
-                              subtitle:
-                                  'Allow branch to receive operations traffic',
-                              value: viewModel.isStoreOpen,
-                              activeColor: colors.success,
-                              onChanged: (value) async {
-                                if (!value) {
-                                  final allowed = await _confirmAction(
-                                    context,
-                                    title: 'Close Store?',
-                                    message:
-                                        'This blocks incoming operations until reopened.',
-                                  );
-                                  if (!allowed) return;
-                                }
-                                viewModel.setStoreOpen(value);
-                              },
-                            ),
-                            _SwitchRow(
-                              title: 'Accepting Orders',
-                              subtitle:
-                                  'Queue new customer orders for this branch',
-                              value: viewModel.acceptsOrders,
-                              activeColor: colors.vendorPrimaryBlue,
-                              onChanged: (value) async {
-                                if (!value) {
-                                  final allowed = await _confirmAction(
-                                    context,
-                                    title: 'Pause New Orders?',
-                                    message:
-                                        'New orders will stop until re-enabled.',
-                                  );
-                                  if (!allowed) return;
-                                }
-                                viewModel.setAcceptsOrders(value);
-                              },
-                            ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: AppButton(
-                                    buttonText: viewModel.isPaused
-                                        ? 'Resume Store'
-                                        : 'Pause Store',
-                                    onPressed: viewModel.isPaused
-                                        ? viewModel.resumeStore
-                                        : () => _showPauseSheet(context),
-                                    backgroundColor: viewModel.isPaused
-                                        ? colors.success
-                                        : colors.warning,
-                                    borderRadius: KBorderSize.borderRadius12,
-                                    textStyle: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 13.sp,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            Expanded(
+                              child: AppButton(
+                                buttonText: viewModel.isPaused ? 'Resume Store' : 'Pause Store',
+                                onPressed: viewModel.isPaused ? viewModel.resumeStore : () => _showPauseSheet(context),
+                                backgroundColor: viewModel.isPaused ? colors.success : colors.vendorPrimaryBlue,
+                                borderRadius: KBorderSize.border,
+                                textStyle: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.w700),
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                      SizedBox(height: 12.h),
-                      _SectionCard(
-                        title: 'Service Toggles',
-                        child: visibleServices.isEmpty
-                            ? Text(
-                                'No service toggles available for the selected scope.',
-                                style: TextStyle(
-                                  fontSize: 12.sp,
-                                  fontWeight: FontWeight.w600,
-                                  color: colors.textSecondary,
-                                ),
-                              )
-                            : Column(
-                                children: visibleServices.map((service) {
-                                  return _ServiceToggleRow(
-                                    serviceType: service,
-                                    isEnabled: viewModel.isServiceEnabled(
-                                      service,
-                                    ),
-                                    onChanged: (value) => viewModel
-                                        .setServiceEnabled(service, value),
-                                  );
-                                }).toList(),
-                              ),
-                      ),
-                      SizedBox(height: 12.h),
-                      _SectionCard(
-                        title: 'Prep & Fulfillment',
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Prep time target: ${viewModel.prepTimeMinutes} mins',
-                              style: TextStyle(
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w700,
-                                color: colors.textPrimary,
-                              ),
-                            ),
-                            Slider(
-                              value: viewModel.prepTimeMinutes.toDouble(),
-                              min: 10,
-                              max: 90,
-                              divisions: 16,
-                              activeColor: colors.vendorPrimaryBlue,
-                              label: '${viewModel.prepTimeMinutes} mins',
-                              onChanged: (value) =>
-                                  viewModel.setPrepTimeMinutes(value.round()),
-                            ),
-                            _SwitchRow(
-                              title: 'Pickup Enabled',
-                              subtitle: 'Allow pickup fulfillment orders',
-                              value: viewModel.pickupEnabled,
-                              activeColor: colors.vendorPrimaryBlue,
-                              onChanged: viewModel.setPickupEnabled,
-                            ),
-                            _SwitchRow(
-                              title: 'Delivery Enabled',
-                              subtitle: 'Allow rider delivery fulfillment',
-                              value: viewModel.deliveryEnabled,
-                              activeColor: colors.vendorPrimaryBlue,
-                              onChanged: viewModel.setDeliveryEnabled,
-                            ),
-                            _SwitchRow(
-                              title: 'Auto Accept Orders',
-                              subtitle:
-                                  'Auto move new orders to accepted queue',
-                              value: viewModel.autoAcceptOrders,
-                              activeColor: colors.vendorPrimaryBlue,
-                              onChanged: viewModel.setAutoAcceptOrders,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                );
-              },
-            ),
+                  SizedBox(height: 12.h),
+                  if (hasMultipleServices) ...[
+                    _SectionCard(
+                      title: 'Service Toggles',
+                      child: Column(
+                        children: visibleServices.map((service) {
+                          return _ServiceToggleRow(
+                            serviceType: service,
+                            isEnabled: viewModel.isServiceEnabled(service),
+                            onChanged: (value) => viewModel.setServiceEnabled(service, value),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    SizedBox(height: 12.h),
+                  ],
+                  _SectionCard(
+                    title: 'Prep & Fulfillment',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Prep time target: ${viewModel.prepTimeMinutes} mins',
+                          style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                        ),
+                        SliderTheme(
+                          data: SliderThemeData(
+                            trackHeight: 8.h,
+                            activeTrackColor: colors.vendorPrimaryBlue,
+                            inactiveTrackColor: colors.vendorPrimaryBlue.withValues(alpha: 0.16),
+                            thumbColor: Colors.white,
+                            overlayColor: colors.vendorPrimaryBlue.withValues(alpha: 0.16),
+                            thumbShape: CustomSliderThumbShape(
+                              enabledThumbRadius: 14.r,
+                              thumbColor: colors.vendorPrimaryBlue,
+                            ),
+                            trackShape: const CustomSliderTrackShape(),
+                            overlayShape: RoundSliderOverlayShape(overlayRadius: 22.r),
+                            valueIndicatorColor: colors.vendorPrimaryBlue,
+                            valueIndicatorTextStyle: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            tickMarkShape: const RoundSliderTickMarkShape(tickMarkRadius: 2),
+                            activeTickMarkColor: Colors.white.withValues(alpha: 0.55),
+                            inactiveTickMarkColor: colors.vendorPrimaryBlue.withValues(alpha: 0.3),
+                          ),
+                          child: Slider(
+                            value: viewModel.prepTimeMinutes.toDouble(),
+                            min: 10,
+                            max: 90,
+                            divisions: 16,
+                            label: '${viewModel.prepTimeMinutes} mins',
+                            onChanged: (value) => viewModel.setPrepTimeMinutes(value.round()),
+                          ),
+                        ),
+                        _SwitchRow(
+                          title: 'Pickup Enabled',
+                          subtitle: 'Allow pickup fulfillment orders',
+                          value: viewModel.pickupEnabled,
+                          onChanged: viewModel.setPickupEnabled,
+                        ),
+                        _SwitchRow(
+                          title: 'Delivery Enabled',
+                          subtitle: 'Allow rider delivery fulfillment',
+                          value: viewModel.deliveryEnabled,
+                          onChanged: viewModel.setDeliveryEnabled,
+                        ),
+                        _SwitchRow(
+                          title: 'Auto Accept Orders',
+                          subtitle: 'Auto move new orders to accepted queue',
+                          value: viewModel.autoAcceptOrders,
+                          onChanged: viewModel.setAutoAcceptOrders,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -216,6 +217,7 @@ class StoreOperationsPage extends StatelessWidget {
     final viewModel = context.read<VendorStoreOperationsViewModel>();
     final noteController = TextEditingController();
     String? selectedReason;
+    var showCustomReason = false;
     Duration? selectedDuration;
     String? reasonError;
 
@@ -233,7 +235,7 @@ class StoreOperationsPage extends StatelessWidget {
         isScrollControlled: true,
         backgroundColor: colors.backgroundPrimary,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(18.r)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(KBorderSize.borderRadius20)),
         ),
         builder: (sheetContext) {
           return StatefulBuilder(
@@ -241,176 +243,167 @@ class StoreOperationsPage extends StatelessWidget {
               final customReason = noteController.text.trim();
               final reason = (selectedReason ?? '').trim().isNotEmpty
                   ? selectedReason!.trim()
-                  : customReason;
+                  : (showCustomReason ? customReason : '');
 
-              return Padding(
-                padding: EdgeInsets.fromLTRB(
-                  16.w,
-                  12.h,
-                  16.w,
-                  20.h + MediaQuery.viewInsetsOf(sheetContext).bottom,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Pause Store',
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.w800,
-                        color: colors.textPrimary,
-                      ),
-                    ),
-                    SizedBox(height: 8.h),
-                    Text(
-                      'Reason is required. You can also set an optional auto-resume timer.',
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w500,
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                    SizedBox(height: 12.h),
-                    Wrap(
-                      spacing: 8.w,
-                      runSpacing: 8.h,
-                      children: presetReasons.map((entry) {
-                        final selected = selectedReason == entry;
-                        return InkWell(
-                          onTap: () {
-                            setState(() {
-                              selectedReason = entry;
-                              reasonError = null;
-                            });
-                          },
-                          borderRadius: BorderRadius.circular(999.r),
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 10.w,
-                              vertical: 6.h,
-                            ),
-                            decoration: BoxDecoration(
-                              color: selected
-                                  ? colors.warning
-                                  : colors.warning.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(999.r),
-                              border: Border.all(
-                                color: selected
-                                    ? colors.warning
-                                    : colors.border,
-                              ),
-                            ),
-                            child: Text(
-                              entry,
-                              style: TextStyle(
-                                fontSize: 11.sp,
-                                fontWeight: FontWeight.w700,
-                                color: selected
-                                    ? Colors.white
-                                    : colors.textPrimary,
-                              ),
-                            ),
+              return SafeArea(
+                top: false,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Align(
+                        alignment: Alignment.center,
+                        child: Container(
+                          width: 40.w,
+                          height: 4.h,
+                          margin: EdgeInsets.only(bottom: 12.h),
+                          decoration: BoxDecoration(
+                            color: colors.border,
+                            borderRadius: BorderRadius.circular(KBorderSize.border),
                           ),
-                        );
-                      }).toList(),
-                    ),
-                    SizedBox(height: 12.h),
-                    TextField(
-                      controller: noteController,
-                      onChanged: (_) => setState(() => reasonError = null),
-                      decoration: InputDecoration(
-                        labelText: 'Or enter custom reason',
-                        hintText: 'Type pause reason',
-                        errorText: reasonError,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12.r),
                         ),
                       ),
-                    ),
-                    SizedBox(height: 12.h),
-                    Text(
-                      'Auto-resume',
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w700,
-                        color: colors.textPrimary,
+                      Text(
+                        'Pause Store',
+                        style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
                       ),
-                    ),
-                    SizedBox(height: 8.h),
-                    Wrap(
-                      spacing: 8.w,
-                      runSpacing: 8.h,
-                      children: [
-                        _DurationChip(
-                          label: 'None',
-                          selected: selectedDuration == null,
-                          onTap: () => setState(() => selectedDuration = null),
-                        ),
-                        _DurationChip(
-                          label: '30m',
-                          selected:
-                              selectedDuration == const Duration(minutes: 30),
-                          onTap: () => setState(
-                            () =>
-                                selectedDuration = const Duration(minutes: 30),
-                          ),
-                        ),
-                        _DurationChip(
-                          label: '1h',
-                          selected:
-                              selectedDuration == const Duration(hours: 1),
-                          onTap: () => setState(
-                            () => selectedDuration = const Duration(hours: 1),
-                          ),
-                        ),
-                        _DurationChip(
-                          label: '2h',
-                          selected:
-                              selectedDuration == const Duration(hours: 2),
-                          onTap: () => setState(
-                            () => selectedDuration = const Duration(hours: 2),
-                          ),
-                        ),
-                        _DurationChip(
-                          label: '4h',
-                          selected:
-                              selectedDuration == const Duration(hours: 4),
-                          onTap: () => setState(
-                            () => selectedDuration = const Duration(hours: 4),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 14.h),
-                    SizedBox(
-                      width: double.infinity,
-                      child: AppButton(
-                        buttonText: 'Confirm Pause',
-                        onPressed: () {
-                          final finalReason = reason.trim();
-                          if (finalReason.isEmpty) {
-                            setState(
-                              () => reasonError = 'Pause reason is required',
+                      SizedBox(height: 4.h),
+                      Text(
+                        'Reason is required. You can also set an optional auto-resume timer.',
+                        style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                      ),
+                      SizedBox(height: 16.h),
+                      Wrap(
+                        spacing: 8.w,
+                        runSpacing: 8.h,
+                        children: [
+                          ...presetReasons.map((entry) {
+                            final isSelected = selectedReason == entry;
+                            return _buildInstructionChip(
+                              label: entry,
+                              isSelected: isSelected,
+                              colors: colors,
+                              onTap: () {
+                                setState(() {
+                                  selectedReason = isSelected ? null : entry;
+                                  showCustomReason = false;
+                                  reasonError = null;
+                                });
+                              },
                             );
-                            return;
-                          }
-                          viewModel.pauseStore(
-                            reason: finalReason,
-                            autoResumeAfter: selectedDuration,
+                          }),
+                          _buildCustomInstructionChip(
+                            colors: colors,
+                            isExpanded: showCustomReason,
+                            onTap: () {
+                              setState(() {
+                                showCustomReason = !showCustomReason;
+                                reasonError = null;
+                                if (showCustomReason) {
+                                  selectedReason = null;
+                                } else {
+                                  noteController.clear();
+                                }
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 260),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        transitionBuilder: (child, animation) {
+                          final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+                          return FadeTransition(
+                            opacity: curved,
+                            child: SizeTransition(sizeFactor: curved, axisAlignment: -1, child: child),
                           );
-                          Navigator.pop(sheetContext);
                         },
-                        backgroundColor: colors.warning,
-                        borderRadius: KBorderSize.borderRadius12,
-                        textStyle: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w700,
+                        child: showCustomReason
+                            ? Padding(
+                                key: const ValueKey('custom_reason_input'),
+                                padding: EdgeInsets.only(top: 12.h),
+                                child: AppTextInput(
+                                  controller: noteController,
+                                  onChanged: (_) => setState(() => reasonError = null),
+                                  label: 'Custom reason',
+                                  hintText: 'Type pause reason...',
+                                  errorText: reasonError,
+                                  fillColor: colors.backgroundSecondary,
+                                  borderColor: colors.inputBorder,
+                                  borderActiveColor: colors.vendorPrimaryBlue,
+                                  borderRadius: KBorderSize.border,
+                                  cursorColor: colors.vendorPrimaryBlue,
+                                ),
+                              )
+                            : const SizedBox.shrink(key: ValueKey('custom_reason_empty')),
+                      ),
+                      SizedBox(height: 12.h),
+                      Text(
+                        'Auto-resume',
+                        style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                      ),
+                      SizedBox(height: 8.h),
+                      Wrap(
+                        spacing: 8.w,
+                        runSpacing: 8.h,
+                        children: [
+                          _buildInstructionChip(
+                            label: 'None',
+                            isSelected: selectedDuration == null,
+                            colors: colors,
+                            onTap: () => setState(() => selectedDuration = null),
+                          ),
+                          _buildInstructionChip(
+                            label: '30m',
+                            isSelected: selectedDuration == const Duration(minutes: 30),
+                            colors: colors,
+                            onTap: () => setState(() => selectedDuration = const Duration(minutes: 30)),
+                          ),
+                          _buildInstructionChip(
+                            label: '1h',
+                            isSelected: selectedDuration == const Duration(hours: 1),
+                            colors: colors,
+                            onTap: () => setState(() => selectedDuration = const Duration(hours: 1)),
+                          ),
+                          _buildInstructionChip(
+                            label: '2h',
+                            isSelected: selectedDuration == const Duration(hours: 2),
+                            colors: colors,
+                            onTap: () => setState(() => selectedDuration = const Duration(hours: 2)),
+                          ),
+                          _buildInstructionChip(
+                            label: '4h',
+                            isSelected: selectedDuration == const Duration(hours: 4),
+                            colors: colors,
+                            onTap: () => setState(() => selectedDuration = const Duration(hours: 4)),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 18.h),
+                      SizedBox(
+                        width: double.infinity,
+                        child: AppButton(
+                          buttonText: 'Confirm Pause',
+                          onPressed: () {
+                            final finalReason = reason.trim();
+                            if (finalReason.isEmpty) {
+                              setState(() => reasonError = 'Pause reason is required');
+                              return;
+                            }
+                            viewModel.pauseStore(reason: finalReason, autoResumeAfter: selectedDuration);
+                            Navigator.pop(sheetContext);
+                          },
+                          backgroundColor: colors.vendorPrimaryBlue,
+                          borderRadius: KBorderSize.border,
+                          textStyle: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             },
@@ -422,31 +415,80 @@ class StoreOperationsPage extends StatelessWidget {
     }
   }
 
-  Future<bool> _confirmAction(
-    BuildContext context, {
-    required String title,
-    required String message,
-  }) async {
-    final colors = context.appColors;
-    final shouldProceed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: colors.backgroundPrimary,
-          title: Text(title),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancel'),
+  Widget _buildInstructionChip({
+    required String label,
+    required bool isSelected,
+    required AppColorsExtension colors,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+        decoration: BoxDecoration(
+          color: isSelected ? colors.vendorPrimaryBlue : colors.backgroundSecondary,
+          borderRadius: BorderRadius.circular(20.r),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : colors.textPrimary,
+            fontSize: 13.sp,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCustomInstructionChip({
+    required AppColorsExtension colors,
+    required bool isExpanded,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+        decoration: BoxDecoration(
+          color: isExpanded ? colors.vendorPrimaryBlue : colors.backgroundSecondary,
+          borderRadius: BorderRadius.circular(20.r),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Custom',
+              style: TextStyle(
+                color: isExpanded ? Colors.white : colors.textPrimary,
+                fontSize: 13.sp,
+                fontWeight: isExpanded ? FontWeight.w700 : FontWeight.w500,
+              ),
             ),
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: Text('Continue', style: TextStyle(color: colors.error)),
+            SizedBox(width: 4.w),
+            SvgPicture.asset(
+              isExpanded ? Assets.icons.navArrowUp : Assets.icons.navArrowDown,
+              package: 'grab_go_shared',
+              height: 16.h,
+              width: 16.w,
+              colorFilter: ColorFilter.mode(isExpanded ? Colors.white : colors.textPrimary, BlendMode.srcIn),
             ),
           ],
-        );
-      },
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _confirmAction(BuildContext context, {required String title, required String message}) async {
+    final colors = context.appColors;
+    final shouldProceed = await AppDialog.show(
+      context: context,
+      title: title,
+      message: message,
+      type: AppDialogType.question,
+      primaryButtonColor: colors.error,
     );
     return shouldProceed ?? false;
   }
@@ -466,48 +508,33 @@ class _OutageStatusCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(12.r),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
-      ),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(14.r)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                hasOutage
-                    ? Icons.warning_amber_rounded
-                    : Icons.check_circle_outline_rounded,
-                size: 18.sp,
-                color: color,
+              SvgPicture.asset(
+                hasOutage ? Assets.icons.circleAlert : Assets.icons.checkCircleSolid,
+                package: 'grab_go_shared',
+                width: 18.w,
+                height: 18.w,
+                colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
               ),
+
               SizedBox(width: 8.w),
               Expanded(
                 child: Text(
-                  hasOutage
-                      ? viewModel.outageHeadline
-                      : 'Store is operating normally',
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w800,
-                    color: color,
-                  ),
+                  hasOutage ? viewModel.outageHeadline : 'Store is operating normally',
+                  style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800, color: color),
                 ),
               ),
             ],
           ),
           SizedBox(height: 6.h),
           Text(
-            hasOutage
-                ? viewModel.outageDetail
-                : 'All critical services are active and accepting orders.',
-            style: TextStyle(
-              fontSize: 12.sp,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
+            hasOutage ? viewModel.outageDetail : 'All critical services are active and accepting orders.',
+            style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: color),
           ),
         ],
       ),
@@ -515,9 +542,7 @@ class _OutageStatusCard extends StatelessWidget {
   }
 }
 
-Set<VendorServiceType> _visibleVendorServices(
-  VendorStoreContextViewModel storeContext,
-) {
+Set<VendorServiceType> _visibleVendorServices(VendorStoreContextViewModel storeContext) {
   final scope = storeContext.serviceScope;
   if (scope != null) return {scope};
   return storeContext.availableServicesForSelectedBranch.toSet();
@@ -545,11 +570,7 @@ class _SectionCard extends StatelessWidget {
         children: [
           Text(
             title,
-            style: TextStyle(
-              fontSize: 14.sp,
-              fontWeight: FontWeight.w800,
-              color: colors.textPrimary,
-            ),
+            style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w800, color: colors.textSecondary),
           ),
           SizedBox(height: 10.h),
           child,
@@ -563,16 +584,9 @@ class _SwitchRow extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool value;
-  final Color activeColor;
   final ValueChanged<bool> onChanged;
 
-  const _SwitchRow({
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    required this.activeColor,
-    required this.onChanged,
-  });
+  const _SwitchRow({required this.title, required this.subtitle, required this.value, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -587,28 +601,22 @@ class _SwitchRow extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w700,
-                    color: colors.textPrimary,
-                  ),
+                  style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                 ),
                 SizedBox(height: 2.h),
                 Text(
                   subtitle,
-                  style: TextStyle(
-                    fontSize: 11.sp,
-                    fontWeight: FontWeight.w500,
-                    color: colors.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
                 ),
               ],
             ),
           ),
-          Switch.adaptive(
+          CustomSwitch(
             value: value,
             onChanged: onChanged,
-            activeTrackColor: activeColor,
+            activeColor: colors.vendorPrimaryBlue,
+            inactiveColor: colors.inputBorder,
+            thumbColor: colors.backgroundPrimary,
           ),
         ],
       ),
@@ -621,11 +629,7 @@ class _ServiceToggleRow extends StatelessWidget {
   final bool isEnabled;
   final ValueChanged<bool> onChanged;
 
-  const _ServiceToggleRow({
-    required this.serviceType,
-    required this.isEnabled,
-    required this.onChanged,
-  });
+  const _ServiceToggleRow({required this.serviceType, required this.isEnabled, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -656,70 +660,24 @@ class _ServiceToggleRow extends StatelessWidget {
           Container(
             width: 36.w,
             height: 36.w,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10.r),
-            ),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10.r)),
             child: Icon(icon, color: color, size: 18.sp),
           ),
           SizedBox(width: 10.w),
           Expanded(
             child: Text(
               label,
-              style: TextStyle(
-                fontSize: 13.sp,
-                fontWeight: FontWeight.w700,
-                color: colors.textPrimary,
-              ),
+              style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
             ),
           ),
-          Switch.adaptive(
+          CustomSwitch(
             value: isEnabled,
             onChanged: onChanged,
-            activeTrackColor: color,
+            activeColor: colors.vendorPrimaryBlue,
+            inactiveColor: colors.inputBorder,
+            thumbColor: colors.backgroundPrimary,
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _DurationChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _DurationChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.appColors;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999.r),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-        decoration: BoxDecoration(
-          color: selected
-              ? colors.vendorPrimaryBlue
-              : colors.vendorPrimaryBlue.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(999.r),
-          border: Border.all(
-            color: selected ? colors.vendorPrimaryBlue : colors.border,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11.sp,
-            fontWeight: FontWeight.w700,
-            color: selected ? Colors.white : colors.textPrimary,
-          ),
-        ),
       ),
     );
   }

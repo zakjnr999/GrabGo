@@ -1,0 +1,83 @@
+<svg viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+    <g transform="translate(15, -10)">
+        <!-- Floor Shadow -->
+        <ellipse cx="100" cy="305" rx="45" ry="5" fill="#cbd5e1" opacity="0.7"/>
+
+        <!-- RIGHT ARM (Back / In pocket) -->
+        <!-- Sleeve -->
+        <path d="M 125 120 L 135 150" stroke="#1e293b" stroke-width="24" stroke-linecap="round"/>
+        <path d="M 125 120 L 135 150" stroke="#fef3c7" stroke-width="19" stroke-linecap="round"/>
+        <!-- Skin -->
+        <path d="M 135 150 L 125 195" stroke="#1e293b" stroke-width="14" stroke-linecap="round"/>
+        <path d="M 135 150 L 125 195" stroke="#fcd3a1" stroke-width="9" stroke-linecap="round"/>
+
+        <!-- RIGHT LEG (Back) -->
+        <!-- Shoe -->
+        <rect x="100" y="285" width="35" height="14" rx="7" fill="#92400e" stroke="#1e293b" stroke-width="2.5"/>
+        <!-- Pant Leg -->
+        <line x1="115" y1="190" x2="115" y2="290" stroke="#1e293b" stroke-width="29" stroke-linecap="round"/>
+        <line x1="115" y1="190" x2="115" y2="290" stroke="#334155" stroke-width="24" stroke-linecap="round"/>
+
+        <!-- LEFT LEG (Front) -->
+        <!-- Shoe -->
+        <rect x="75" y="292" width="35" height="14" rx="7" fill="#92400e" stroke="#1e293b" stroke-width="2.5"/>
+        <!-- Pant Leg -->
+        <line x1="90" y1="190" x2="90" y2="297" stroke="#1e293b" stroke-width="29" stroke-linecap="round"/>
+        <line x1="90" y1="190" x2="90" y2="297" stroke="#334155" stroke-width="24" stroke-linecap="round"/>
+
+        <!-- TORSO (T-Shirt) -->
+        <!-- Base Shirt -->
+        <rect x="75" y="110" width="55" height="100" rx="8" fill="#fef3c7" stroke="#1e293b" stroke-width="2.5"/>
+        <!-- Pants Top/Waistline -->
+        <rect x="76" y="195" width="53" height="13" fill="#334155" stroke="#1e293b" stroke-width="2.5"/>
+
+        <!-- LEFT ARM (Front holding phone) -->
+        <!-- Skin/Forearm -->
+        <path d="M 60 160 L 45 130" stroke="#1e293b" stroke-width="14" stroke-linecap="round"/>
+        <path d="M 60 160 L 45 130" stroke="#fcd3a1" stroke-width="9" stroke-linecap="round"/>
+        <!-- Sleeve -->
+        <path d="M 85 120 L 60 160" stroke="#1e293b" stroke-width="24" stroke-linecap="round"/>
+        <path d="M 85 120 L 60 160" stroke="#fef3c7" stroke-width="19" stroke-linecap="round"/>
+
+        <!-- NECK & HEAD -->
+        <!-- Neck -->
+        <line x1="105" y1="110" x2="105" y2="95" stroke="#1e293b" stroke-width="14" stroke-linecap="round"/>
+        <line x1="105" y1="110" x2="105" y2="95" stroke="#fcd3a1" stroke-width="9" stroke-linecap="round"/>
+        <!-- Face Base -->
+        <rect x="90" y="55" width="30" height="40" rx="14" fill="#fcd3a1" stroke="#1e293b" stroke-width="2.5"/>
+        <!-- Hair Front/Top -->
+        <path d="M 88 70 C 88 45, 122 45, 122 70 C 122 60, 115 55, 105 60 C 95 65, 90 60, 88 70 Z" fill="#1e293b" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/>
+        <!-- Ear -->
+        <circle cx="120" cy="75" r="4" fill="#fcd3a1" stroke="#1e293b" stroke-width="2.5"/>
+        <!-- Eyes -->
+        <circle cx="98" cy="74" r="1.5" fill="#1e293b"/>
+        <circle cx="110" cy="74" r="1.5" fill="#1e293b"/>
+        <!-- Smile -->
+        <path d="M 100 82 Q 104 86 108 82" fill="none" stroke="#1e293b" stroke-width="1.5" stroke-linecap="round"/>
+
+        <!-- PHONE -->
+        <rect x="30" y="100" width="22" height="38" rx="4" transform="rotate(-15 41 119)" fill="#334155" stroke="#1e293b" stroke-width="2.5"/>
+        <rect x="33" y="103" width="16" height="32" rx="2" transform="rotate(-15 41 119)" fill="#00b14f" stroke="none"/>
+        <!-- Fingers gripping phone -->
+        <circle cx="41" cy="115" r="4" fill="#fcd3a1" stroke="#1e293b" stroke-width="1.5"/>
+        <circle cx="43" cy="123" r="4" fill="#fcd3a1" stroke="#1e293b" stroke-width="1.5"/>
+
+        <!-- MESSAGE BUBBLE (Clearly) -->
+        <path d="M 150 40 L 250 40 C 255.5 40 260 44.5 260 50 L 260 90 C 260 95.5 255.5 100 250 100 L 170 100 L 150 120 L 150 100 C 144.5 100 140 95.5 140 90 L 140 50 C 140 44.5 144.5 40 150 40 Z" fill="#fef08a" stroke="#1e293b" stroke-width="2.5" stroke-linejoin="round"/>
+        <!-- Text Lines inside bubble -->
+        <line x1="160" y1="60" x2="240" y2="60" stroke="#1e293b" stroke-width="4.5" stroke-linecap="round"/>
+        <line x1="160" y1="80" x2="210" y2="80" stroke="#1e293b" stroke-width="4.5" stroke-linecap="round"/>
+
+        <!-- CLOCK (Quickly) -->
+        <circle cx="215" cy="180" r="45" fill="#ffffff" stroke="#1e293b" stroke-width="3"/>
+        <!-- Clock Tick Marks -->
+        <line x1="215" y1="140" x2="215" y2="148" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
+        <line x1="255" y1="180" x2="247" y2="180" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
+        <line x1="215" y1="220" x2="215" y2="212" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
+        <line x1="175" y1="180" x2="183" y2="180" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
+        <!-- Clock Hands (Pointing to 10:10) -->
+        <line x1="215" y1="180" x2="240" y2="160" stroke="#1e293b" stroke-width="3.5" stroke-linecap="round"/>
+        <line x1="215" y1="180" x2="195" y2="165" stroke="#1e293b" stroke-width="4.5" stroke-linecap="round"/>
+        <circle cx="215" cy="180" r="4" fill="#1e293b"/>
+    </g>
+</svg>

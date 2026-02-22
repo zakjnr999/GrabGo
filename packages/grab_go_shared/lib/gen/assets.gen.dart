@@ -148,6 +148,12 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/chat-bubble.svg
   String get chatBubble => 'lib/assets/icons/chat-bubble.svg';
 
+  /// File path: lib/assets/icons/check-circle-solid.svg
+  String get checkCircleSolid => 'lib/assets/icons/check-circle-solid.svg';
+
+  /// File path: lib/assets/icons/check-circle.svg
+  String get checkCircle => 'lib/assets/icons/check-circle.svg';
+
   /// File path: lib/assets/icons/check.svg
   String get check => 'lib/assets/icons/check.svg';
 
@@ -528,12 +534,20 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/utensils-crossed.svg
   String get utensilsCrossed => 'lib/assets/icons/utensils-crossed.svg';
 
+  /// File path: lib/assets/icons/vendor_onboarding_one.svg
+  String get vendorOnboardingOne =>
+      'lib/assets/icons/vendor_onboarding_one.svg';
+
+  /// File path: lib/assets/icons/vendor_onboarding_three.svg
+  String get vendorOnboardingThree =>
+      'lib/assets/icons/vendor_onboarding_three.svg';
+
+  /// File path: lib/assets/icons/vendor_onboarding_two.svg
+  String get vendorOnboardingTwo =>
+      'lib/assets/icons/vendor_onboarding_two.svg';
+
   /// File path: lib/assets/icons/view-grid.svg
   String get viewGrid => 'lib/assets/icons/view-grid.svg';
-
-  /// File path: lib/assets/icons/vodafone_cash.jpg
-  AssetGenImage get vodafoneCash =>
-      const AssetGenImage('lib/assets/icons/vodafone_cash.jpg');
 
   /// File path: lib/assets/icons/wallet.svg
   String get wallet => 'lib/assets/icons/wallet.svg';
@@ -587,6 +601,8 @@ class $LibAssetsIconsGen {
     cc,
     chatBubbleSolid,
     chatBubble,
+    checkCircleSolid,
+    checkCircle,
     check,
     checkBig,
     chefHat,
@@ -709,8 +725,10 @@ class $LibAssetsIconsGen {
     trophy,
     user,
     utensilsCrossed,
+    vendorOnboardingOne,
+    vendorOnboardingThree,
+    vendorOnboardingTwo,
     viewGrid,
-    vodafoneCash,
     wallet,
     warningCircle,
     weight,
@@ -772,6 +790,42 @@ class $LibAssetsImagesGen {
   AssetGenImage get ingredientTwo =>
       const AssetGenImage('lib/assets/images/ingredient_two.png');
 
+  /// File path: lib/assets/images/person1.png
+  AssetGenImage get person1 =>
+      const AssetGenImage('lib/assets/images/person1.png');
+
+  /// File path: lib/assets/images/person2.png
+  AssetGenImage get person2 =>
+      const AssetGenImage('lib/assets/images/person2.png');
+
+  /// File path: lib/assets/images/person3.png
+  AssetGenImage get person3 =>
+      const AssetGenImage('lib/assets/images/person3.png');
+
+  /// File path: lib/assets/images/person4.png
+  AssetGenImage get person4 =>
+      const AssetGenImage('lib/assets/images/person4.png');
+
+  /// File path: lib/assets/images/person5.png
+  AssetGenImage get person5 =>
+      const AssetGenImage('lib/assets/images/person5.png');
+
+  /// File path: lib/assets/images/person6.png
+  AssetGenImage get person6 =>
+      const AssetGenImage('lib/assets/images/person6.png');
+
+  /// File path: lib/assets/images/person7.png
+  AssetGenImage get person7 =>
+      const AssetGenImage('lib/assets/images/person7.png');
+
+  /// File path: lib/assets/images/person8.png
+  AssetGenImage get person8 =>
+      const AssetGenImage('lib/assets/images/person8.png');
+
+  /// File path: lib/assets/images/person9.png
+  AssetGenImage get person9 =>
+      const AssetGenImage('lib/assets/images/person9.png');
+
   /// File path: lib/assets/images/sample_four.jpg
   AssetGenImage get sampleFour =>
       const AssetGenImage('lib/assets/images/sample_four.jpg');
@@ -806,6 +860,15 @@ class $LibAssetsImagesGen {
     ingredientOne,
     ingredientThree,
     ingredientTwo,
+    person1,
+    person2,
+    person3,
+    person4,
+    person5,
+    person6,
+    person7,
+    person8,
+    person9,
     sampleFour,
     sampleOne,
     sampleThree,

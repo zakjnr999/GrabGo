@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -43,10 +42,8 @@ class _VendorBottomNavigatorView extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final selectedIndex = context.select<VendorBottomNavProvider, int>(
-      (value) => value.selectedIndex,
-    );
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final selectedIndex = context.select<VendorBottomNavProvider, int>((value) => value.selectedIndex);
+    final size = MediaQuery.sizeOf(context);
 
     return Scaffold(
       backgroundColor: colors.backgroundPrimary,
@@ -57,73 +54,54 @@ class _VendorBottomNavigatorView extends StatelessWidget {
           statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
           systemNavigationBarColor: colors.backgroundPrimary,
           systemNavigationBarDividerColor: Colors.transparent,
-          systemNavigationBarIconBrightness: isDark
-              ? Brightness.light
-              : Brightness.dark,
+          systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         ),
         child: IndexedStack(index: selectedIndex, children: _screens),
       ),
       bottomNavigationBar: Container(
+        height: size.height * 0.16,
         decoration: BoxDecoration(
-          color: colors.backgroundPrimary,
-          border: Border(top: BorderSide(color: colors.divider)),
+          color: colors.backgroundTertiary,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(KBorderSize.borderRadius20),
+            topRight: Radius.circular(KBorderSize.borderRadius20),
+          ),
           boxShadow: [
-            BoxShadow(
-              color: colors.shadow.withValues(alpha: 0.08),
-              blurRadius: 16,
-              offset: const Offset(0, -4),
-            ),
+            BoxShadow(color: Colors.black.withAlpha(25), spreadRadius: 1, blurRadius: 20, offset: const Offset(0, -3)),
           ],
         ),
-        padding: EdgeInsets.fromLTRB(
-          10.w,
-          10.h,
-          10.w,
-          bottomInset > 0 ? bottomInset : 10.h,
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: _NavButton(
-                icon: Assets.icons.home,
-                label: 'Home',
-                index: 0,
-                selectedIndex: selectedIndex,
+        child: BottomAppBar(
+          color: Colors.transparent,
+          elevation: 0,
+          child: Row(
+            children: [
+              Expanded(
+                child: _NavButton(icon: Assets.icons.home, label: 'Home', index: 0, selectedIndex: selectedIndex),
               ),
-            ),
-            Expanded(
-              child: _NavButton(
-                icon: Assets.icons.boxIso,
-                label: 'Orders',
-                index: 1,
-                selectedIndex: selectedIndex,
+              Expanded(
+                child: _NavButton(icon: Assets.icons.boxIso, label: 'Orders', index: 1, selectedIndex: selectedIndex),
               ),
-            ),
-            Expanded(
-              child: _NavButton(
-                icon: Assets.icons.viewGrid,
-                label: 'Catalog',
-                index: 2,
-                selectedIndex: selectedIndex,
+              Expanded(
+                child: _NavButton(
+                  icon: Assets.icons.viewGrid,
+                  label: 'Catalog',
+                  index: 2,
+                  selectedIndex: selectedIndex,
+                ),
               ),
-            ),
-            Expanded(
-              child: _NavButton(
-                icon: Assets.icons.chatBubble,
-                label: 'Chats',
-                index: 3,
-                selectedIndex: selectedIndex,
+              Expanded(
+                child: _NavButton(
+                  icon: Assets.icons.chatBubble,
+                  label: 'Chats',
+                  index: 3,
+                  selectedIndex: selectedIndex,
+                ),
               ),
-            ),
-            Expanded(
-              child: _NavButton(
-                icon: Assets.icons.squareMenu,
-                label: 'More',
-                index: 4,
-                selectedIndex: selectedIndex,
+              Expanded(
+                child: _NavButton(icon: Assets.icons.squareMenu, label: 'More', index: 4, selectedIndex: selectedIndex),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -136,60 +114,64 @@ class _NavButton extends StatelessWidget {
   final int index;
   final int selectedIndex;
 
-  const _NavButton({
-    required this.icon,
-    required this.label,
-    required this.index,
-    required this.selectedIndex,
-  });
+  const _NavButton({required this.icon, required this.label, required this.index, required this.selectedIndex});
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final selected = selectedIndex == index;
 
-    return InkWell(
+    return GestureDetector(
       onTap: () => context.read<VendorBottomNavProvider>().setIndex(index),
-      borderRadius: BorderRadius.circular(14.r),
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 2.h),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedContainer(
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOutCubic,
+            padding: EdgeInsets.all(selected ? 6.0 : 0),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: selected ? colors.vendorPrimaryBlue : Colors.transparent,
+            ),
+            child: AnimatedScale(
               duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              padding: EdgeInsets.all(selected ? 8.r : 6.r),
-              decoration: BoxDecoration(
-                color: selected ? colors.vendorPrimaryBlue : Colors.transparent,
-                borderRadius: BorderRadius.circular(12.r),
-              ),
-              child: SvgPicture.asset(
-                icon,
-                package: 'grab_go_shared',
-                width: 20.w,
-                height: 20.w,
-                colorFilter: ColorFilter.mode(
-                  selected ? Colors.white : colors.iconSecondary,
-                  BlendMode.srcIn,
+              curve: Curves.easeInOutCubic,
+              scale: selected ? 1.0 : 0.95,
+              child: TweenAnimationBuilder<Color?>(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOutCubic,
+                tween: ColorTween(
+                  begin: selected ? Colors.white : colors.textPrimary,
+                  end: selected ? Colors.white : colors.textPrimary,
                 ),
+                builder: (context, color, child) {
+                  return SvgPicture.asset(
+                    icon,
+                    package: 'grab_go_shared',
+                    height: KIconSize.lg,
+                    width: KIconSize.lg,
+                    colorFilter: ColorFilter.mode(color ?? colors.textPrimary, BlendMode.srcIn),
+                  );
+                },
               ),
             ),
-            SizedBox(height: 4.h),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              style: TextStyle(
-                fontSize: 11.sp,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                color: selected
-                    ? colors.vendorPrimaryBlue
-                    : colors.textSecondary,
-              ),
-              child: Text(label),
+          ),
+          const SizedBox(height: 4),
+          AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOutCubic,
+            style: TextStyle(
+              fontFamily: 'Lato',
+              package: 'grab_go_shared',
+              fontSize: 12,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              color: selected ? colors.vendorPrimaryBlue : colors.textPrimary,
             ),
-          ],
-        ),
+            child: Text(label),
+          ),
+        ],
       ),
     );
   }

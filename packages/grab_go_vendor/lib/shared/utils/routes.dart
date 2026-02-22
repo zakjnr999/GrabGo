@@ -3,7 +3,6 @@ import 'package:grab_go_vendor/core/view/splash_screen.dart';
 import 'package:grab_go_vendor/features/auth/view/forgot_password.dart';
 import 'package:grab_go_vendor/features/auth/view/login.dart';
 import 'package:grab_go_vendor/features/auth/view/otp_verification.dart';
-import 'package:grab_go_vendor/features/auth/view/register.dart';
 import 'package:grab_go_vendor/features/auth/view/reset_password.dart';
 import 'package:grab_go_vendor/features/auth/view/session_recovery.dart';
 import 'package:grab_go_vendor/features/auth/view/vendor_preview_selector.dart';
@@ -32,7 +31,6 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(path: "/login", builder: (context, state) => const Login()),
-    GoRoute(path: "/register", builder: (context, state) => const Register()),
     GoRoute(
       path: "/sessionRecovery",
       builder: (context, state) => const SessionRecoveryPage(),

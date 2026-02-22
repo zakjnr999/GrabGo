@@ -9,20 +9,23 @@ class OnboardingViewModel extends ChangeNotifier {
     VendorOnboardingItem(
       badge: 'Operations Hub',
       title: 'Manage all GrabGo services in one workspace.',
-      subtitle: 'Food, grocery, pharmacy, and GrabMart orders in one clean daily workflow.',
-      heroIcon: Assets.icons.store,
+      subtitle:
+          'Food, grocery, pharmacy, and GrabMart orders in one clean daily workflow.',
+      heroIcon: Assets.icons.vendorOnboardingOne,
     ),
     VendorOnboardingItem(
       badge: 'Fast Fulfillment',
       title: 'Handle incoming orders quickly and clearly.',
-      subtitle: 'Accept requests, update prep status, and keep dispatch running on time.',
-      heroIcon: Assets.icons.store,
+      subtitle:
+          'Accept requests, update prep status, and keep dispatch running on time.',
+      heroIcon: Assets.icons.vendorOnboardingTwo,
     ),
     VendorOnboardingItem(
       badge: 'Business Insights',
       title: 'Track performance and grow with confidence.',
-      subtitle: 'Monitor sales, peak times, and service quality to make smarter decisions.',
-      heroIcon: Assets.icons.store,
+      subtitle:
+          'Monitor sales, peak times, and service quality to make smarter decisions.',
+      heroIcon: Assets.icons.vendorOnboardingThree,
     ),
   ];
 
@@ -40,7 +43,10 @@ class OnboardingViewModel extends ChangeNotifier {
 
   Future<void> nextPage() async {
     if (isLastPage) return;
-    await pageController.nextPage(duration: const Duration(milliseconds: 320), curve: Curves.easeInOut);
+    await pageController.nextPage(
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeInOut,
+    );
   }
 
   Future<void> skipToLastPage() async {

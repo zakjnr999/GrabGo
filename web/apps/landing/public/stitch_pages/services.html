@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>GrabGo Services Overview</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#fe6132",
+                        "background-light": "#fff9f4",
+                        "background-dark": "#1a0f0a",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: "Plus Jakarta Sans", sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 transition-colors duration-300">
+<!-- Top Navigation Bar -->
+<header class="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md">
+<div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-slate-900">
+<span class="material-symbols-outlined text-3xl font-bold">bolt</span>
+</div>
+<h2 class="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">GrabGo</h2>
+</div>
+<nav class="hidden md:flex items-center gap-10">
+<a class="text-sm font-semibold hover:text-primary transition-colors" href="/services">Services</a>
+<a class="text-sm font-semibold hover:text-primary transition-colors" href="/vendor">Vendors</a>
+<a class="text-sm font-semibold hover:text-primary transition-colors" href="/rider">Riders</a>
+<a class="text-sm font-semibold hover:text-primary transition-colors" href="/about">About</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="hidden sm:block text-sm font-bold px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">Log In</button>
+<button class="bg-primary text-slate-900 text-sm font-extrabold px-6 py-2.5 rounded-lg hover:brightness-110 transition-all shadow-lg shadow-primary/20">
+                    Get Started
+                </button>
+</div>
+</div>
+</header>
+<main>
+<!-- Hero Section -->
+<section class="relative overflow-hidden pt-16 pb-24 md:pt-24 md:pb-32">
+<div class="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+<div class="relative z-10 space-y-8">
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-bold">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+</span>
+                        New Features Available
+                    </div>
+<h1 class="text-5xl md:text-7xl font-black leading-[1.1] tracking-tight text-slate-900 dark:text-white">
+                        Everything you need, delivered <span class="text-primary underline decoration-primary/30 underline-offset-8">exactly</span> when you want it.
+                    </h1>
+<p class="text-lg md:text-xl text-slate-600 dark:text-slate-400 max-w-xl font-medium">
+                        Connecting you with your favorite local vendors and riders for seamless, lightning-fast delivery across the city.
+                    </p>
+<div class="flex flex-col sm:flex-row gap-4">
+<button class="bg-primary text-slate-900 text-lg font-bold px-10 py-4 rounded-xl hover:scale-[1.02] transition-transform shadow-xl shadow-primary/20">
+                            Start Ordering Now
+                        </button>
+<button class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-lg font-bold px-10 py-4 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                            View All Vendors
+                        </button>
+</div>
+</div>
+<div class="relative">
+<div class="absolute -top-20 -right-20 w-96 h-96 bg-primary/20 rounded-full blur-[100px] -z-10"></div>
+<div class="w-full aspect-square rounded-3xl overflow-hidden shadow-2xl bg-slate-200" data-alt="Courier on a bike delivering fresh food" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAVq5sP8n7oIT2TnJdE6CRi4Rf3vXSC6AlnQCx1OvZg-Mz6g9ZszPjP9ODpnj_p3mRImhAGqDCwNCUDeQpc7T08w68_uioMvve5om1W07GN1NOZatcAu4bT71C6Vo9DH5y_ktmuCUjC0XqNLO6H88kkTc4yf0lduexPJ14TjIQzbwbEb3v-uf5OJ8ZAACQA3Obzvm_NqCj-Vi8sJpPkpHSM4U4oIFTa3u0Huc3OUWeCaQTIw2SF1d7ytIs4y2BZm1Coo2tJWkWPX9ZV'); background-size: cover; background-position: center;">
+</div>
+<div class="absolute -bottom-6 -left-6 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 max-w-[240px]">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-primary text-3xl">verified</span>
+<span class="text-sm font-bold">Express Delivery</span>
+</div>
+<p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">Over 500+ local partners ready to deliver to your doorstep in under 30 mins.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Process Section -->
+<section class="bg-white dark:bg-slate-900/50 py-20 border-y border-slate-100 dark:border-slate-800">
+<div class="max-w-7xl mx-auto px-6">
+<div class="flex flex-wrap justify-between items-center gap-8 md:gap-4">
+<div class="flex flex-col items-center text-center gap-4 flex-1 min-w-[150px]">
+<div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-3xl">search</span>
+</div>
+<h4 class="font-bold text-lg">1. Browse</h4>
+</div>
+<div class="hidden md:block h-px bg-slate-200 dark:bg-slate-700 flex-1"></div>
+<div class="flex flex-col items-center text-center gap-4 flex-1 min-w-[150px]">
+<div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-3xl">shopping_cart</span>
+</div>
+<h4 class="font-bold text-lg">2. Order</h4>
+</div>
+<div class="hidden md:block h-px bg-slate-200 dark:bg-slate-700 flex-1"></div>
+<div class="flex flex-col items-center text-center gap-4 flex-1 min-w-[150px]">
+<div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-3xl">location_on</span>
+</div>
+<h4 class="font-bold text-lg">3. Track</h4>
+</div>
+<div class="hidden md:block h-px bg-slate-200 dark:bg-slate-700 flex-1"></div>
+<div class="flex flex-col items-center text-center gap-4 flex-1 min-w-[150px]">
+<div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-3xl">restaurant</span>
+</div>
+<h4 class="font-bold text-lg">4. Enjoy</h4>
+</div>
+</div>
+</div>
+</section>
+<!-- Specialized Services Grid -->
+<section class="py-24 md:py-32">
+<div class="max-w-7xl mx-auto px-6">
+<div class="text-center max-w-2xl mx-auto mb-20 space-y-4">
+<h2 class="text-4xl md:text-5xl font-black tracking-tight">Our Specialized Services</h2>
+<p class="text-slate-600 dark:text-slate-400 font-medium">Choose the way you want to receive your orders. We offer flexibility for every occasion.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- Food Delivery Card -->
+<div class="group relative bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-xl hover:border-primary/30 transition-all duration-300">
+<div class="w-full aspect-video rounded-2xl mb-8 overflow-hidden bg-slate-100" data-alt="Delicious flatlay of various restaurant foods" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDIIxc3WipWucjCQEaW_0Ztytxora_vqJwb7qTtd6qIw7EBm_fKOJO04NwIfHlhuZfZqACFOb2b7kx0sJ_NPY_o-du7mN7JOEa566C5vLen5BD1OybOMIBOOQifShM0xHNoKUnt4xGvFUcHpyP4MhO8rwgMk9YzGHKQCVSKEihpCqZRZo94JLpfkSvLycgmJVBec4wv1tEoVnE-iXZZPsXhG11o4CXk73Phd3jRBqt33US2fE9CNkIFFb5RiKOBFZ5OKc8mJqBa8te3'); background-size: cover; background-position: center;"></div>
+<div class="space-y-4">
+<h3 class="text-2xl font-extrabold tracking-tight">Food Delivery</h3>
+<p class="text-slate-600 dark:text-slate-400 font-medium leading-relaxed">
+                                On-demand service from your local favorites. Fast, hot, and straight to your door.
+                            </p>
+<ul class="space-y-3 pt-2">
+<li class="flex items-center gap-3 text-sm font-semibold">
+<span class="material-symbols-outlined text-primary text-xl">check_circle</span>
+                                    Real-time tracking included
+                                </li>
+<li class="flex items-center gap-3 text-sm font-semibold">
+<span class="material-symbols-outlined text-primary text-xl">check_circle</span>
+                                    Average 25 min delivery
+                                </li>
+<li class="flex items-center gap-3 text-sm font-semibold">
+<span class="material-symbols-outlined text-primary text-xl">check_circle</span>
+                                    24/7 Availability
+                                </li>
+</ul>
+</div>
+</div>
+<!-- Scheduled Orders Card -->
+<div class="group relative bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-xl hover:border-primary/30 transition-all duration-300">
+<div class="w-full aspect-video rounded-2xl mb-8 overflow-hidden bg-slate-100" data-alt="Calendar with food planning icons" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAr_0puUcV4v6ymLPQL9H58PQ4AMvza5V1ABSKOQbtWeikNMYTq8Iok0Vij8AVEArhTjTXJyHoVpFsgP6zlnH9toryDjp0JcVTk1sDSpEFTjpfSMsFHfCjVnYc7Ldb-LqFb0voYOyBoOl6T5tua6v1s7rneyfDa-XNnqf374q_V1H9XTwICK7_gMk7tEFcMMsC-ACXwaP3RwNIPKiHMtFOr-HEcB4RbTlYx2x-GoyuOJ7RROkFq4PiytqbpOaszzoqv9uYp4oub1YQx'); background-size: cover; background-position: center;"></div>
+<div class="space-y-4">
+<h3 class="text-2xl font-extrabold tracking-tight">Scheduled Orders</h3>
+<p class="text-slate-600 dark:text-slate-400 font-medium leading-relaxed">
+                                Plan ahead up to 7 days in advance. Perfect for recurring meals or event planning.
+                            </p>
+<ul class="space-y-3 pt-2">
+<li class="flex items-center gap-3 text-sm font-semibold">
+<span class="material-symbols-outlined text-primary text-xl">calendar_month</span>
+                                    Plan up to 7 days out
+                                </li>
+<li class="flex items-center gap-3 text-sm font-semibold">
+<span class="material-symbols-outlined text-primary text-xl">update</span>
+                                    Recurring order options
+                                </li>
+<li class="flex items-center gap-3 text-sm font-semibold">
+<span class="material-symbols-outlined text-primary text-xl">notifications_active</span>
+                                    Reminder notifications
+                                </li>
+</ul>
+</div>
+</div>
+<!-- Group Orders Card -->
+<div class="group relative bg-slate-50 dark:bg-slate-900/40 p-8 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-700 shadow-sm hover:border-primary/50 transition-all duration-300">
+<div class="absolute top-6 right-6">
+<span class="px-3 py-1 bg-primary text-slate-900 text-xs font-black uppercase tracking-widest rounded-full shadow-sm">Coming Soon</span>
+</div>
+<div class="w-full aspect-video rounded-2xl mb-8 overflow-hidden grayscale bg-slate-200" data-alt="Office workers eating lunch together" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBWc3RJhDll8bFVhzSUuKhHZl0XwRo4B-9WnDEMBiH21ATM8qY6H9Fo5iirUbr4quQKdy0nYINjWu-I9la-GEt_cPVl6sFSm-pw85Up-LK2gVkZgfam3AsJVvO60RFCgPknGKJ0G_hAbyht1U9kN4v-7853o33etidzr8Wx5N3kach80vpgUAgcTY2OlqzTMlJrdXeE3W0v8qB1NxxSI-QaJKpD8h_kq8Us60IYtRaPUaPuE1w1sG7xBfwf2jfmYayqkqWTrOpwFhgi'); background-size: cover; background-position: center;"></div>
+<div class="space-y-4">
+<h3 class="text-2xl font-extrabold tracking-tight opacity-70">Group Orders</h3>
+<p class="text-slate-500 dark:text-slate-500 font-medium leading-relaxed">
+                                Shared baskets for teams and social gatherings. Simplify lunch for the whole office.
+                            </p>
+<ul class="space-y-3 pt-2 opacity-50">
+<li class="flex items-center gap-3 text-sm font-semibold">
+<span class="material-symbols-outlined text-slate-400 text-xl">groups</span>
+                                    Split bills instantly
+                                </li>
+<li class="flex items-center gap-3 text-sm font-semibold">
+<span class="material-symbols-outlined text-slate-400 text-xl">share</span>
+                                    Collaborative basket link
+                                </li>
+<li class="flex items-center gap-3 text-sm font-semibold">
+<span class="material-symbols-outlined text-slate-400 text-xl">request_quote</span>
+                                    Team budgeting tools
+                                </li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Final CTA Section -->
+<section class="py-20">
+<div class="max-w-5xl mx-auto px-6">
+<div class="bg-background-dark text-white rounded-[2rem] p-12 md:p-20 relative overflow-hidden text-center space-y-8">
+<div class="absolute inset-0 bg-primary/10 pointer-events-none"></div>
+<div class="absolute -top-1/2 -left-1/4 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px]"></div>
+<h2 class="text-4xl md:text-6xl font-black tracking-tight relative z-10">Ready to eat?<br/>Join GrabGo today.</h2>
+<p class="text-slate-400 text-lg md:text-xl font-medium max-w-2xl mx-auto relative z-10">
+                        Download the app or use our web platform to start browsing thousands of options near you.
+                    </p>
+<div class="flex flex-col sm:flex-row items-center justify-center gap-6 relative z-10">
+<button class="w-full sm:w-auto bg-primary text-slate-900 text-lg font-bold px-12 py-5 rounded-2xl hover:brightness-110 hover:scale-105 transition-all shadow-xl shadow-primary/20">
+                            Go to Web App
+                        </button>
+<div class="flex items-center gap-4">
+<button class="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-colors">
+<svg class="w-8 h-8" fill="currentColor" viewbox="0 0 24 24"><path d="M17.5,12c0,0.5-0.1,1-0.3,1.5c-0.5,1.5-1.9,2.5-3.5,2.5s-3-1-3.5-2.5C10.1,13,10,12.5,10,12s0.1-1,0.3-1.5c0.5-1.5,1.9-2.5,3.5-2.5s3,1,3.5,2.5C17.4,11,17.5,11.5,17.5,12z M12,2C6.5,2,2,6.5,2,12s4.5,10,10,10s10-4.5,10-10S17.5,2,12,2z M18,12c0,3.3-2.7,6-6,6s-6-2.7-6-6s2.7-6,6-6S18,8.7,18,12z"></path></svg>
+</button>
+<button class="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-colors">
+<svg class="w-8 h-8" fill="currentColor" viewbox="0 0 24 24"><path d="M18.7,3.3C17.8,2.4,16.7,2,15.5,2c-1.2,0-2.3,0.4-3.2,1.3l-0.3,0.3l-0.3-0.3C10.8,2.4,9.7,2,8.5,2C7.3,2,6.2,2.4,5.3,3.3C3.5,5.1,3.5,8,5.3,9.8l6.7,6.7l6.7-6.7C20.5,8,20.5,5.1,18.7,3.3z"></path></svg>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-16">
+<div class="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-12">
+<div class="col-span-2">
+<div class="flex items-center gap-3 mb-6">
+<div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-slate-900">
+<span class="material-symbols-outlined font-bold">bolt</span>
+</div>
+<h2 class="text-xl font-extrabold tracking-tight">GrabGo</h2>
+</div>
+<p class="text-slate-500 dark:text-slate-400 font-medium max-w-xs mb-8">
+                    The next-gen delivery platform connecting local communities through technology and logistics.
+                </p>
+<div class="flex gap-4">
+<a class="w-10 h-10 rounded-lg bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:text-primary transition-colors" href="/about">
+<span class="material-symbols-outlined">public</span>
+</a>
+<a class="w-10 h-10 rounded-lg bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:text-primary transition-colors" href="/contact">
+<span class="material-symbols-outlined">alternate_email</span>
+</a>
+</div>
+</div>
+<div>
+<h4 class="font-extrabold mb-6">Company</h4>
+<ul class="space-y-4 text-slate-500 dark:text-slate-400 font-medium">
+<li><a class="hover:text-primary transition-colors" href="/about">About Us</a></li>
+<li><a class="hover:text-primary transition-colors" href="/about">Careers</a></li>
+<li><a class="hover:text-primary transition-colors" href="/about">Press</a></li>
+<li><a class="hover:text-primary transition-colors" href="/about">Blog</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-extrabold mb-6">Partners</h4>
+<ul class="space-y-4 text-slate-500 dark:text-slate-400 font-medium">
+<li><a class="hover:text-primary transition-colors" href="/vendor">For Vendors</a></li>
+<li><a class="hover:text-primary transition-colors" href="/rider">For Riders</a></li>
+<li><a class="hover:text-primary transition-colors" href="/faq">Merchant Help</a></li>
+<li><a class="hover:text-primary transition-colors" href="/rider">Rider Perks</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-extrabold mb-6">Legal</h4>
+<ul class="space-y-4 text-slate-500 dark:text-slate-400 font-medium">
+<li><a class="hover:text-primary transition-colors" href="/legal/privacy">Privacy Policy</a></li>
+<li><a class="hover:text-primary transition-colors" href="/legal/terms">Terms of Service</a></li>
+<li><a class="hover:text-primary transition-colors" href="/legal/cookies">Cookie Policy</a></li>
+</ul>
+</div>
+</div>
+<div class="max-w-7xl mx-auto px-6 mt-16 pt-8 border-t border-slate-200 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
+<p class="text-slate-400 text-sm font-medium">© 2024 GrabGo Technologies Inc. All rights reserved.</p>
+<div class="flex items-center gap-6">
+<button class="text-sm font-bold flex items-center gap-2 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-lg">language</span>
+                    English (US)
+                </button>
+</div>
+</div>
+</footer>
+</body></html>

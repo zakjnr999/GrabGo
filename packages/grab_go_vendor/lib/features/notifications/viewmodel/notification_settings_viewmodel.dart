@@ -135,6 +135,15 @@ class NotificationSettingsViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void markHistoryRead(String id) {
+    final index = _history.indexWhere((entry) => entry.id == id);
+    if (index < 0) return;
+    final current = _history[index];
+    if (current.isRead) return;
+    _history[index] = current.copyWith(isRead: true);
+    notifyListeners();
+  }
+
   void addTestAlert(VendorNotificationSeverity severity) {
     final now = DateTime.now().microsecondsSinceEpoch;
     final (title, body) = switch (severity) {

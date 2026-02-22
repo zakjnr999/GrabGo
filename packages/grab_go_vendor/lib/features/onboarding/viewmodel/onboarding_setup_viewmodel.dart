@@ -170,7 +170,12 @@ class OnboardingSetupViewModel extends ChangeNotifier {
 
   void resumeSelectedStep() {
     final current = selectedStep;
-    if (current.status != VendorGuidedStepStatus.skipped) {
+    if (current.status == VendorGuidedStepStatus.completed) {
+      return;
+    }
+    if (current.status == VendorGuidedStepStatus.inProgress) {
+      notifyListeners();
+      unawaited(_persistState());
       return;
     }
     _updateStep(current.id, VendorGuidedStepStatus.inProgress);

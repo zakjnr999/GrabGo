@@ -9,10 +9,7 @@ import 'package:provider/provider.dart';
 class ResetPassword extends StatelessWidget {
   final String email;
 
-  const ResetPassword({
-    super.key,
-    required this.email,
-  });
+  const ResetPassword({super.key, required this.email});
 
   @override
   Widget build(BuildContext context) {
@@ -26,9 +23,7 @@ class ResetPassword extends StatelessWidget {
 class _ResetPasswordView extends StatelessWidget {
   final String email;
 
-  const _ResetPasswordView({
-    required this.email,
-  });
+  const _ResetPasswordView({required this.email});
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +39,9 @@ class _ResetPasswordView extends StatelessWidget {
         statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
         systemNavigationBarColor: Colors.transparent,
         systemNavigationBarDividerColor: Colors.transparent,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarIconBrightness: isDark
+            ? Brightness.light
+            : Brightness.dark,
       ),
       child: Scaffold(
         backgroundColor: colors.backgroundPrimary,
@@ -78,7 +75,9 @@ class _ResetPasswordView extends StatelessWidget {
                         width: 92.w,
                         height: 92.w,
                         decoration: BoxDecoration(
-                          color: colors.vendorPrimaryBlue.withValues(alpha: 0.12),
+                          color: colors.vendorPrimaryBlue.withValues(
+                            alpha: 0.12,
+                          ),
                           borderRadius: BorderRadius.circular(28.r),
                         ),
                         child: Icon(
@@ -186,9 +185,7 @@ class _ResetPasswordView extends StatelessWidget {
     if (!viewModel.validate()) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Password reset saved. You can now login.'),
-      ),
+      const SnackBar(content: Text('Password reset saved. You can now login.')),
     );
     context.go('/login');
   }

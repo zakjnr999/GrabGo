@@ -14,7 +14,10 @@ class GrowthCenterPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(create: (_) => GrowthCenterViewModel(), child: const _GrowthCenterView());
+    return ChangeNotifierProvider(
+      create: (_) => GrowthCenterViewModel(),
+      child: const _GrowthCenterView(),
+    );
   }
 }
 
@@ -25,10 +28,15 @@ class _GrowthCenterView extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.appColors;
 
-    return Consumer3<GrowthCenterViewModel, VendorStoreContextViewModel, VendorPreviewSessionViewModel>(
+    return Consumer3<
+      GrowthCenterViewModel,
+      VendorStoreContextViewModel,
+      VendorPreviewSessionViewModel
+    >(
       builder: (context, viewModel, storeContext, previewSession, _) {
         final visibleServices = _visibleVendorServices(storeContext);
-        if (viewModel.serviceFilter != null && !visibleServices.contains(viewModel.serviceFilter)) {
+        if (viewModel.serviceFilter != null &&
+            !visibleServices.contains(viewModel.serviceFilter)) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!context.mounted) {
               return;
@@ -37,7 +45,8 @@ class _GrowthCenterView extends StatelessWidget {
           });
         }
 
-        final orderedServices = visibleServices.toList()..sort((a, b) => a.index.compareTo(b.index));
+        final orderedServices = visibleServices.toList()
+          ..sort((a, b) => a.index.compareTo(b.index));
         final campaigns = viewModel.filteredCampaigns(visibleServices);
 
         return Scaffold(
@@ -47,13 +56,19 @@ class _GrowthCenterView extends StatelessWidget {
             elevation: 0,
             title: Text(
               'Growth & Campaigns',
-              style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+              style: TextStyle(
+                fontSize: 18.sp,
+                fontWeight: FontWeight.w800,
+                color: colors.textPrimary,
+              ),
             ),
           ),
           floatingActionButton: FloatingActionButton.extended(
             backgroundColor: colors.vendorPrimaryBlue,
             foregroundColor: Colors.white,
-            onPressed: visibleServices.isEmpty ? null : () => _showCreateCampaignSheet(context, orderedServices),
+            onPressed: visibleServices.isEmpty
+                ? null
+                : () => _showCreateCampaignSheet(context, orderedServices),
             icon: const Icon(Icons.campaign_outlined),
             label: const Text('New Campaign'),
           ),
@@ -67,10 +82,17 @@ class _GrowthCenterView extends StatelessWidget {
                     visibleServices.isEmpty
                         ? 'No services are active for this profile and store context.'
                         : 'Build promotions for ${previewSession.servicesLabel(visibleServices)}.',
-                    style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w500,
+                      color: colors.textSecondary,
+                    ),
                   ),
                   SizedBox(height: 8.h),
-                  const Align(alignment: Alignment.centerRight, child: VendorStoreContextChip(compact: false)),
+                  const Align(
+                    alignment: Alignment.centerRight,
+                    child: VendorStoreContextChip(compact: false),
+                  ),
                   SizedBox(height: 12.h),
                   GridView.count(
                     shrinkWrap: true,
@@ -92,7 +114,8 @@ class _GrowthCenterView extends StatelessWidget {
                       ),
                       _MetricCard(
                         label: 'Avg Lift',
-                        value: '${viewModel.averageLift(visibleServices).toStringAsFixed(1)}%',
+                        value:
+                            '${viewModel.averageLift(visibleServices).toStringAsFixed(1)}%',
                         color: colors.warning,
                       ),
                     ],
@@ -100,11 +123,23 @@ class _GrowthCenterView extends StatelessWidget {
                   SizedBox(height: 12.h),
                   TextField(
                     controller: viewModel.searchController,
-                    style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textPrimary,
+                    ),
                     decoration: InputDecoration(
                       hintText: 'Search campaigns and audience',
-                      hintStyle: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
-                      prefixIcon: Icon(Icons.search_rounded, size: 18.sp, color: colors.textSecondary),
+                      hintStyle: TextStyle(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w500,
+                        color: colors.textSecondary,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search_rounded,
+                        size: 18.sp,
+                        color: colors.textSecondary,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12.r),
                         borderSide: BorderSide(color: colors.inputBorder),
@@ -184,7 +219,8 @@ class _GrowthCenterView extends StatelessWidget {
                             children: campaigns.map((campaign) {
                               return _CampaignCard(
                                 campaign: campaign,
-                                onAdvance: () => viewModel.advanceCampaignStatus(campaign.id),
+                                onAdvance: () => viewModel
+                                    .advanceCampaignStatus(campaign.id),
                               );
                             }).toList(),
                           ),
@@ -219,7 +255,10 @@ class _GrowthCenterView extends StatelessWidget {
                                     ),
                                   ),
                                   TextButton(
-                                    onPressed: () => _showInfo(context, 'Template applied in UI preview mode.'),
+                                    onPressed: () => _showInfo(
+                                      context,
+                                      'Template applied in UI preview mode.',
+                                    ),
                                     child: Text(
                                       'Use',
                                       style: TextStyle(
@@ -243,20 +282,28 @@ class _GrowthCenterView extends StatelessWidget {
                                 Padding(
                                   padding: EdgeInsets.only(top: 6.h),
                                   child: Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8.w,
+                                      vertical: 4.h,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: _serviceColor(
                                         colors,
                                         template.recommendedService!,
                                       ).withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(999.r),
+                                      borderRadius: BorderRadius.circular(
+                                        999.r,
+                                      ),
                                     ),
                                     child: Text(
                                       'Best for ${_serviceLabel(template.recommendedService!)}',
                                       style: TextStyle(
                                         fontSize: 10.sp,
                                         fontWeight: FontWeight.w700,
-                                        color: _serviceColor(colors, template.recommendedService!),
+                                        color: _serviceColor(
+                                          colors,
+                                          template.recommendedService!,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -276,7 +323,10 @@ class _GrowthCenterView extends StatelessWidget {
     );
   }
 
-  Future<void> _showCreateCampaignSheet(BuildContext context, List<VendorServiceType> visibleServices) async {
+  Future<void> _showCreateCampaignSheet(
+    BuildContext context,
+    List<VendorServiceType> visibleServices,
+  ) async {
     final colors = context.appColors;
     final viewModel = context.read<GrowthCenterViewModel>();
     final nameController = TextEditingController();
@@ -291,12 +341,19 @@ class _GrowthCenterView extends StatelessWidget {
         context: context,
         isScrollControlled: true,
         backgroundColor: colors.backgroundPrimary,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18.r))),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18.r)),
+        ),
         builder: (sheetContext) {
           return StatefulBuilder(
             builder: (sheetContext, setSheetState) {
               return Padding(
-                padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 20.h + MediaQuery.viewInsetsOf(sheetContext).bottom),
+                padding: EdgeInsets.fromLTRB(
+                  16.w,
+                  12.h,
+                  16.w,
+                  20.h + MediaQuery.viewInsetsOf(sheetContext).bottom,
+                ),
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -304,20 +361,30 @@ class _GrowthCenterView extends StatelessWidget {
                     children: [
                       Text(
                         'Create Campaign',
-                        style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                        style: TextStyle(
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.w800,
+                          color: colors.textPrimary,
+                        ),
                       ),
                       SizedBox(height: 10.h),
                       TextField(
                         controller: nameController,
                         onChanged: (_) => setSheetState(() => nameError = null),
-                        decoration: InputDecoration(labelText: 'Campaign Name', errorText: nameError),
+                        decoration: InputDecoration(
+                          labelText: 'Campaign Name',
+                          errorText: nameError,
+                        ),
                       ),
                       SizedBox(height: 8.h),
                       DropdownButtonFormField<VendorServiceType>(
                         initialValue: selectedService,
                         decoration: const InputDecoration(labelText: 'Service'),
                         items: visibleServices.map((service) {
-                          return DropdownMenuItem(value: service, child: Text(_serviceLabel(service)));
+                          return DropdownMenuItem(
+                            value: service,
+                            child: Text(_serviceLabel(service)),
+                          );
                         }).toList(),
                         onChanged: (value) {
                           if (value == null) {
@@ -331,7 +398,10 @@ class _GrowthCenterView extends StatelessWidget {
                         initialValue: selectedType,
                         decoration: const InputDecoration(labelText: 'Type'),
                         items: VendorPromotionType.values.map((type) {
-                          return DropdownMenuItem(value: type, child: Text(type.label));
+                          return DropdownMenuItem(
+                            value: type,
+                            child: Text(type.label),
+                          );
                         }).toList(),
                         onChanged: (value) {
                           if (value == null) {
@@ -344,8 +414,12 @@ class _GrowthCenterView extends StatelessWidget {
                       TextField(
                         controller: budgetController,
                         keyboardType: TextInputType.number,
-                        onChanged: (_) => setSheetState(() => budgetError = null),
-                        decoration: InputDecoration(labelText: 'Budget (GHS)', errorText: budgetError),
+                        onChanged: (_) =>
+                            setSheetState(() => budgetError = null),
+                        decoration: InputDecoration(
+                          labelText: 'Budget (GHS)',
+                          errorText: budgetError,
+                        ),
                       ),
                       SizedBox(height: 14.h),
                       SizedBox(
@@ -354,10 +428,16 @@ class _GrowthCenterView extends StatelessWidget {
                           buttonText: 'Save Draft',
                           onPressed: () {
                             final name = nameController.text.trim();
-                            final budget = double.tryParse(budgetController.text.trim());
+                            final budget = double.tryParse(
+                              budgetController.text.trim(),
+                            );
                             setSheetState(() {
-                              nameError = name.isEmpty ? 'Campaign name is required' : null;
-                              budgetError = budget == null || budget <= 0 ? 'Enter valid budget' : null;
+                              nameError = name.isEmpty
+                                  ? 'Campaign name is required'
+                                  : null;
+                              budgetError = budget == null || budget <= 0
+                                  ? 'Enter valid budget'
+                                  : null;
                             });
                             if (nameError != null || budgetError != null) {
                               return;
@@ -369,11 +449,18 @@ class _GrowthCenterView extends StatelessWidget {
                               budget: budget!,
                             );
                             Navigator.pop(sheetContext);
-                            _showInfo(context, 'Draft campaign created in UI preview mode.');
+                            _showInfo(
+                              context,
+                              'Draft campaign created in UI preview mode.',
+                            );
                           },
                           backgroundColor: colors.vendorPrimaryBlue,
                           borderRadius: KBorderSize.borderRadius12,
-                          textStyle: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                          textStyle: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ],
@@ -391,11 +478,15 @@ class _GrowthCenterView extends StatelessWidget {
   }
 
   void _showInfo(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
-Set<VendorServiceType> _visibleVendorServices(VendorStoreContextViewModel storeContext) {
+Set<VendorServiceType> _visibleVendorServices(
+  VendorStoreContextViewModel storeContext,
+) {
   final scope = storeContext.serviceScope;
   if (scope != null) {
     return {scope};
@@ -436,7 +527,11 @@ class _MetricCard extends StatelessWidget {
   final String value;
   final Color color;
 
-  const _MetricCard({required this.label, required this.value, required this.color});
+  const _MetricCard({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -453,12 +548,20 @@ class _MetricCard extends StatelessWidget {
         children: [
           Text(
             label,
-            style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
+            style: TextStyle(
+              fontSize: 11.sp,
+              fontWeight: FontWeight.w600,
+              color: colors.textSecondary,
+            ),
           ),
           SizedBox(height: 4.h),
           Text(
             value,
-            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: color),
+            style: TextStyle(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
           ),
         ],
       ),
@@ -488,7 +591,11 @@ class _SectionCard extends StatelessWidget {
         children: [
           Text(
             title,
-            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+            style: TextStyle(
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w800,
+              color: colors.textPrimary,
+            ),
           ),
           SizedBox(height: 10.h),
           child,
@@ -504,7 +611,12 @@ class _FilterChip extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
 
-  const _FilterChip({required this.label, required this.selected, required this.color, required this.onTap});
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.color,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -562,7 +674,11 @@ class _CampaignCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   campaign.name,
-                  style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                  style: TextStyle(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w800,
+                    color: colors.textPrimary,
+                  ),
                 ),
               ),
               Container(
@@ -573,7 +689,11 @@ class _CampaignCard extends StatelessWidget {
                 ),
                 child: Text(
                   campaign.status.label,
-                  style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w700, color: statusColor),
+                  style: TextStyle(
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w700,
+                    color: statusColor,
+                  ),
                 ),
               ),
             ],
@@ -583,29 +703,50 @@ class _CampaignCard extends StatelessWidget {
             spacing: 8.w,
             runSpacing: 6.h,
             children: [
-              _MetaTag(label: campaign.type.label, color: colors.vendorPrimaryBlue),
-              _MetaTag(label: _serviceLabel(campaign.serviceType), color: serviceColor),
-              _MetaTag(label: campaign.audienceLabel, color: colors.textSecondary),
+              _MetaTag(
+                label: campaign.type.label,
+                color: colors.vendorPrimaryBlue,
+              ),
+              _MetaTag(
+                label: _serviceLabel(campaign.serviceType),
+                color: serviceColor,
+              ),
+              _MetaTag(
+                label: campaign.audienceLabel,
+                color: colors.textSecondary,
+              ),
             ],
           ),
           SizedBox(height: 8.h),
           Text(
             'Window: ${campaign.startLabel} → ${campaign.endLabel}',
-            style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
+            style: TextStyle(
+              fontSize: 11.sp,
+              fontWeight: FontWeight.w600,
+              color: colors.textSecondary,
+            ),
           ),
           SizedBox(height: 2.h),
           Text(
             'Budget: GHS ${campaign.budget.toStringAsFixed(0)} • Redemptions: ${campaign.redemptions} • Lift: ${campaign.revenueLiftPercent.toStringAsFixed(1)}%',
-            style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
+            style: TextStyle(
+              fontSize: 11.sp,
+              fontWeight: FontWeight.w600,
+              color: colors.textSecondary,
+            ),
           ),
           SizedBox(height: 8.h),
           Align(
             alignment: Alignment.centerRight,
             child: TextButton.icon(
-              onPressed: campaign.status == VendorPromotionStatus.ended ? null : onAdvance,
+              onPressed: campaign.status == VendorPromotionStatus.ended
+                  ? null
+                  : onAdvance,
               icon: Icon(Icons.skip_next_rounded, size: 16.sp),
               label: Text(
-                campaign.status == VendorPromotionStatus.ended ? 'Completed' : 'Advance Status',
+                campaign.status == VendorPromotionStatus.ended
+                    ? 'Completed'
+                    : 'Advance Status',
                 style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w700),
               ),
             ),
@@ -626,10 +767,17 @@ class _MetaTag extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(999.r)),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999.r),
+      ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w700, color: color),
+        style: TextStyle(
+          fontSize: 10.sp,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
       ),
     );
   }

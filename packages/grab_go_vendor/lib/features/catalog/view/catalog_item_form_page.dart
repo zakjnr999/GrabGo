@@ -257,51 +257,81 @@ class _CatalogItemFormPageState extends State<CatalogItemFormPage> {
               ],
             ),
             SizedBox(height: 12.h),
-            SwitchListTile.adaptive(
-              contentPadding: EdgeInsets.zero,
-              value: _isAvailable,
-              onChanged: (value) => setState(() => _isAvailable = value),
-              title: Text(
-                'Available',
-                style: TextStyle(
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w700,
-                  color: colors.textPrimary,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Available',
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w700,
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                      SizedBox(height: 2.h),
+                      Text(
+                        'Show item in customer catalog',
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w500,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              subtitle: Text(
-                'Show item in customer catalog',
-                style: TextStyle(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w500,
-                  color: colors.textSecondary,
+                SizedBox(width: 8.w),
+                CustomSwitch(
+                  value: _isAvailable,
+                  onChanged: (value) => setState(() => _isAvailable = value),
+                  activeColor: colors.vendorPrimaryBlue,
+                  inactiveColor: colors.inputBorder,
+                  thumbColor: colors.backgroundPrimary,
                 ),
-              ),
-              activeTrackColor: colors.vendorPrimaryBlue,
+              ],
             ),
             if (_serviceType == VendorServiceType.pharmacy)
-              SwitchListTile.adaptive(
-                contentPadding: EdgeInsets.zero,
-                value: _requiresPrescription,
-                onChanged: (value) =>
-                    setState(() => _requiresPrescription = value),
-                title: Text(
-                  'Requires Prescription',
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w700,
-                    color: colors.textPrimary,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Requires Prescription',
+                          style: TextStyle(
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w700,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        SizedBox(height: 2.h),
+                        Text(
+                          'Customer must upload prescription for this item',
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w500,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                subtitle: Text(
-                  'Customer must upload prescription for this item',
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w500,
-                    color: colors.textSecondary,
+                  SizedBox(width: 8.w),
+                  CustomSwitch(
+                    value: _requiresPrescription,
+                    onChanged: (value) =>
+                        setState(() => _requiresPrescription = value),
+                    activeColor: colors.vendorPrimaryBlue,
+                    inactiveColor: colors.inputBorder,
+                    thumbColor: colors.backgroundPrimary,
                   ),
-                ),
-                activeTrackColor: colors.servicePharmacy,
+                ],
               ),
             if (_serviceType == VendorServiceType.pharmacy)
               Container(

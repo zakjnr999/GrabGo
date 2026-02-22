@@ -126,6 +126,12 @@ importers:
       '@grabgo/utils':
         specifier: workspace:*
         version: link:../../packages/utils
+      iconoir-react:
+        specifier: ^7.11.0
+        version: 7.11.0(react@19.2.3)
+      lucide-react:
+        specifier: ^0.562.0
+        version: 0.562.0(react@19.2.3)
       next:
         specifier: 16.1.0
         version: 16.1.0(@babel/core@7.28.5)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -160,49 +166,6 @@ importers:
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0
-      typescript:
-        specifier: ^5
-        version: 5.9.3
-
-  apps/vendor:
-    dependencies:
-      '@grabgo/config':
-        specifier: workspace:*
-        version: link:../../packages/config
-      '@grabgo/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
-      '@grabgo/utils':
-        specifier: workspace:*
-        version: link:../../packages/utils
-      next:
-        specifier: 16.1.0
-        version: 16.1.0(@babel/core@7.28.5)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      react:
-        specifier: 19.2.3
-        version: 19.2.3
-    devDependencies:
-      '@tailwindcss/postcss':
-        specifier: ^4
-        version: 4.1.18
-      '@types/node':
-        specifier: ^20
-        version: 20.19.27
-      '@types/react':
-        specifier: ^19
-        version: 19.2.7
-      '@types/react-dom':
-        specifier: ^19
-        version: 19.2.3(@types/react@19.2.7)
-      eslint:
-        specifier: ^9
-        version: 9.39.2(jiti@2.6.1)
-      eslint-config-next:
-        specifier: 16.1.0
-        version: 16.1.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
-      tailwindcss:
-        specifier: ^4
-        version: 4.1.18
       typescript:
         specifier: ^5
         version: 5.9.3

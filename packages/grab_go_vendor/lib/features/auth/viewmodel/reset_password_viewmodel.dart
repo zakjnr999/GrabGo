@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 
 class ResetPasswordViewModel extends ChangeNotifier {
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController confirmPasswordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
 
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;

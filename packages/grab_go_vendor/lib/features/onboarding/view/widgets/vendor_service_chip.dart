@@ -6,13 +6,21 @@ class VendorServiceChip extends StatelessWidget {
   final IconData icon;
   final Color color;
 
-  const VendorServiceChip({super.key, required this.label, required this.icon, required this.color});
+  const VendorServiceChip({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 7.h),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(100.r)),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(100.r),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -20,7 +28,11 @@ class VendorServiceChip extends StatelessWidget {
           SizedBox(width: 6.w),
           Text(
             label,
-            style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 12.sp),
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontSize: 12.sp,
+            ),
           ),
         ],
       ),
