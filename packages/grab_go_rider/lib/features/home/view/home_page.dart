@@ -167,7 +167,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       _isTogglingStatus = false;
       if (success) {
         onlineStatus = value;
-        // Clear orders when going offline, load when going online
         if (value) {
           _loadAvailableOrders();
         } else {
@@ -677,6 +676,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDart = Theme.of(context).brightness == Brightness.dark;
+    final totalOrders = _statistics?.totalOrders ?? 0;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
@@ -937,7 +937,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                   if (onlineStatus)
                                     Row(
                                       children: [
-                                        (_statistics != null && _statistics!.totalOrders > 5)
+                                        (totalOrders > 5)
                                             ? Container(
                                                 padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                                                 decoration: BoxDecoration(
@@ -958,17 +958,15 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     ),
                                   if (onlineStatus) SizedBox(height: 8.h),
                                   Text(
-                                    !onlineStatus && _statistics!.totalOrders == 0
+                                    !onlineStatus && totalOrders == 0
                                         ? "No Orders Available"
                                         : isLoadingOrders
                                         ? "..."
                                         : ordersError != null
                                         ? "Failed to load orders..."
-                                        : _statistics != null
-                                        ? (_statistics!.totalOrders == 0
-                                              ? "No available orders"
-                                              : "${_statistics!.totalOrders} orders available")
-                                        : "No available orders",
+                                        : totalOrders == 0
+                                        ? "You have no available orders"
+                                        : "$totalOrders orders available",
                                     style: TextStyle(
                                       color: !onlineStatus
                                           ? colors.textPrimary

@@ -136,7 +136,6 @@ class ProfileSliverAppbar extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(KBorderSize.borderRadius50),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
