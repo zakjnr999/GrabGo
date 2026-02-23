@@ -504,10 +504,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       setState(() {
         _availableOrders = result['orders'] as List<AvailableOrderDto>;
         _statistics = result['statistics'] as OrderStatistics?;
-
-        if (_availableOrders.isEmpty) {
-          ordersError = 'No available orders at the moment.';
-        }
       });
     } catch (e) {
       if (!mounted) return;
@@ -887,7 +883,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     child: GestureDetector(
                       onTap: onlineStatus
                           ? () {
-                              ordersError != null ? _loadAvailableOrders() : context.push("/orders");
+                              final hasAvailableOrders = (_statistics?.totalOrders ?? 0) > 0;
+                              if (ordersError != null) {
+                                _loadAvailableOrders();
+                                return;
+                              }
+                              if (hasAvailableOrders) {
+                                context.push("/orders");
+                              }
                             }
                           : null,
                       child: AnimatedContainer(
@@ -898,6 +901,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                               ? colors.backgroundPrimary
                               : ordersError != null
                               ? colors.error.withValues(alpha: 0.09)
+                              : (_statistics?.totalOrders ?? 0) == 0
+                              ? colors.backgroundPrimary
                               : colors.accentGreen.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                         ),
@@ -953,15 +958,17 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     ),
                                   if (onlineStatus) SizedBox(height: 8.h),
                                   Text(
-                                    !onlineStatus
+                                    !onlineStatus && _statistics!.totalOrders == 0
                                         ? "No Orders Available"
                                         : isLoadingOrders
                                         ? "..."
                                         : ordersError != null
                                         ? "Failed to load orders..."
                                         : _statistics != null
-                                        ? "${_statistics!.totalOrders} orders available"
-                                        : "You have no available orders",
+                                        ? (_statistics!.totalOrders == 0
+                                              ? "No available orders"
+                                              : "${_statistics!.totalOrders} orders available")
+                                        : "No available orders",
                                     style: TextStyle(
                                       color: !onlineStatus
                                           ? colors.textPrimary
@@ -977,7 +984,9 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     !onlineStatus
                                         ? "Go online to see available orders"
                                         : ordersError == null
-                                        ? "Tap to view and accept"
+                                        ? (_statistics?.totalOrders ?? 0) == 0
+                                              ? "We'll notify you when new orders are available while you're online"
+                                              : "Tap to view and accept"
                                         : "Tap to try again",
                                     style: TextStyle(
                                       color: colors.textSecondary,
@@ -988,7 +997,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                 ],
                               ),
                             ),
-                            if (onlineStatus && ordersError == null)
+                            if (onlineStatus && ordersError == null && (_statistics?.totalOrders ?? 0) > 0)
                               SvgPicture.asset(
                                 Assets.icons.navArrowRight,
                                 package: "grab_go_shared",
