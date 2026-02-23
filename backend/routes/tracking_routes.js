@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const trackingService = require('../services/tracking_service');
 const { protect } = require('../middleware/auth');
+const LIFECYCLE_STATUSES = new Set(['confirmed', 'preparing', 'ready', 'picked_up', 'on_the_way', 'delivered', 'cancelled']);
 
 // Initialize tracking (called when rider accepts order)
 router.post('/initialize', protect, async (req, res) => {
@@ -61,6 +62,10 @@ router.post('/location', protect, async (req, res) => {
 router.patch('/status', protect, async (req, res) => {
     try {
         const { orderId, status } = req.body;
+
+        if (LIFECYCLE_STATUSES.has(status)) {
+            console.warn(`[tracking/status] Lifecycle status "${status}" received for order ${orderId}. Use /orders/:orderId/status as source of truth.`);
+        }
 
         const tracking = await trackingService.updateOrderStatus(orderId, status);
 

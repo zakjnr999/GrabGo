@@ -75,6 +75,11 @@ enum FulfillmentMode {
   pickup
 }
 
+enum DeliveryVerificationMethod {
+  code
+  authorized_photo
+}
+
 enum VehicleType {
   motorcycle
   bicycle
@@ -1056,6 +1061,25 @@ model Order {
   pickupOtpHash      String?
   pickupOtpFailedAttempts Int         @default(0)
   pickupOtpLastAttemptAt DateTime?
+  isGiftOrder             Boolean      @default(false)
+  giftRecipientName       String?
+  giftRecipientPhone      String?
+  giftNote                String?
+  deliveryVerificationRequired Boolean @default(false)
+  deliveryCodeHash        String?
+  deliveryCodeEncrypted   String?
+  deliveryCodeFailedAttempts Int      @default(0)
+  deliveryCodeLockedUntil DateTime?
+  deliveryCodeVerifiedAt  DateTime?
+  deliveryCodeVerifiedByRiderId String?
+  deliveryVerificationMethod DeliveryVerificationMethod?
+  deliveryProofPhotoUrl   String?
+  deliveryProofReason     String?
+  deliveryProofCapturedAt DateTime?
+  deliveryVerificationLat Float?
+  deliveryVerificationLng Float?
+  deliveryCodeResendCount Int         @default(0)
+  deliveryCodeLastSentAt  DateTime?
   pickupReadyToCollectedSeconds Int?
   noShowPolicyAcceptedAt DateTime?
   noShowPolicyVersion String?

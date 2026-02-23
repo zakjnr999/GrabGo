@@ -29,14 +29,20 @@ class Checkout extends StatefulWidget {
   State<Checkout> createState() => _CheckoutState();
 }
 
-class _CheckoutState extends State<Checkout> {
+class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
   static const Duration _addressCacheMaxAge = Duration(minutes: 30);
+  static const int _collapsedAddressCount = 3;
+  static const int _scheduleSlotCount = 6;
   String _selectedAddress = "";
   String _selectedAddressDetails = "";
   String? _selectedAddressId;
   double? _selectedLatitude;
   double? _selectedLongitude;
   List<AddressModel> _savedAddresses = [];
+  bool _showAllAddresses = false;
+  bool _isScheduleEnabled = false;
+  int _selectedScheduleIndex = 0;
+  List<_ScheduleSlot> _scheduleSlots = [];
   bool _isLoadingAddresses = false;
   String? _userPhone;
   bool _isProcessingPayment = false;
@@ -58,6 +64,7 @@ class _CheckoutState extends State<Checkout> {
     super.initState();
     _loadSavedAddresses();
     _loadUserPhone();
+    _scheduleSlots = _generateScheduleSlots();
   }
 
   @override
@@ -193,11 +200,21 @@ class _CheckoutState extends State<Checkout> {
     selectedAddress ??= addresses.isNotEmpty
         ? addresses.firstWhere((address) => address.isDefault, orElse: () => addresses.first)
         : null;
+    final String? selectedKey = selectedAddress != null ? _addressSelectionKey(selectedAddress) : null;
+    final int selectedIndex = selectedKey == null
+        ? -1
+        : addresses.indexWhere((address) => _addressSelectionKey(address) == selectedKey);
+    final bool shouldExpandForSelection = selectedIndex >= _collapsedAddressCount;
 
     if (!mounted) return;
     setState(() {
       _savedAddresses = addresses;
       _isLoadingAddresses = false;
+      if (addresses.length <= _collapsedAddressCount) {
+        _showAllAddresses = false;
+      } else if (shouldExpandForSelection) {
+        _showAllAddresses = true;
+      }
 
       if (selectedAddress != null) {
         _selectedAddressId = _addressSelectionKey(selectedAddress);
@@ -351,6 +368,11 @@ class _CheckoutState extends State<Checkout> {
             final double effectiveTip = isPickupMode ? 0.0 : _tipAmount;
             final double total = provider.total + effectiveTip;
             final bool isPricingLoading = provider.isPricingLoading;
+            final bool hasMoreAddresses = _savedAddresses.length > _collapsedAddressCount;
+            final int hiddenAddressCount = math.max(0, _savedAddresses.length - _collapsedAddressCount);
+            final List<AddressModel> addressesToShow = _showAllAddresses
+                ? _savedAddresses
+                : _savedAddresses.take(_collapsedAddressCount).toList();
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -423,17 +445,43 @@ class _CheckoutState extends State<Checkout> {
                             _buildAddressShimmerTile(colors, isDark),
                           ],
                           if (!_isLoadingAddresses && _savedAddresses.isNotEmpty)
-                            ..._savedAddresses.map(
-                              (address) => _buildAddressTile(
-                                id: _addressSelectionKey(address),
-                                title: _addressTitle(address),
-                                phone: _userPhone,
-                                address: address.formattedAddress,
-                                latitude: address.latitude,
-                                longitude: address.longitude,
-                                context: context,
+                            AnimatedSize(
+                              duration: const Duration(milliseconds: 280),
+                              curve: Curves.easeInOut,
+                              alignment: Alignment.topCenter,
+                              clipBehavior: Clip.hardEdge,
+                              child: Column(
+                                children: List.generate(addressesToShow.length, (index) {
+                                  final address = addressesToShow[index];
+                                  final bool showDivider = index < addressesToShow.length - 1;
+
+                                  return Column(
+                                    children: [
+                                      _buildAddressTile(
+                                        id: _addressSelectionKey(address),
+                                        title: _addressTitle(address),
+                                        phone: _userPhone,
+                                        address: address.formattedAddress,
+                                        latitude: address.latitude,
+                                        longitude: address.longitude,
+                                        context: context,
+                                      ),
+                                      if (showDivider)
+                                        Padding(
+                                          padding: EdgeInsets.only(left: 56.w, right: 20.w),
+                                          child: Divider(
+                                            height: 8.h,
+                                            thickness: 0.8,
+                                            color: colors.inputBorder.withValues(alpha: 0.35),
+                                          ),
+                                        ),
+                                    ],
+                                  );
+                                }),
                               ),
                             ),
+                          if (!_isLoadingAddresses && _savedAddresses.isNotEmpty && hasMoreAddresses)
+                            _buildAddressListToggle(colors, hiddenAddressCount),
                           if (!_isLoadingAddresses && _savedAddresses.isEmpty && confirmedAddress != null)
                             _buildAddressTile(
                               id: _addressSelectionKey(confirmedAddress),
@@ -457,6 +505,8 @@ class _CheckoutState extends State<Checkout> {
                               ),
                             ),
                           if (!_isLoadingAddresses && _savedAddresses.isEmpty) _buildCurrentLocationTile(context),
+                          SizedBox(height: 12.h),
+                          _buildScheduleSection(colors),
                           SizedBox(height: 8.h),
                         ] else ...[
                           Padding(
@@ -541,7 +591,7 @@ class _CheckoutState extends State<Checkout> {
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
                           child: Text(
-                            "Special Instructions",
+                            "Vendor Instructions",
                             style: TextStyle(
                               fontFamily: "Lato",
                               package: 'grab_go_shared',
@@ -1601,6 +1651,278 @@ class _CheckoutState extends State<Checkout> {
     );
   }
 
+  Widget _buildAddressListToggle(AppColorsExtension colors, int hiddenCount) {
+    final String label = _showAllAddresses ? "Show less" : "Show $hiddenCount more";
+    final String icon = _showAllAddresses ? Assets.icons.navArrowUp : Assets.icons.navArrowDown;
+
+    return Padding(
+      padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 2.h, bottom: 6.h),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              setState(() {
+                _showAllAddresses = !_showAllAddresses;
+              });
+            },
+            borderRadius: BorderRadius.circular(20.r),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(color: colors.accentOrange, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                  ),
+                  SizedBox(width: 4.w),
+                  SvgPicture.asset(
+                    icon,
+                    package: 'grab_go_shared',
+                    height: 14.h,
+                    width: 14.w,
+                    colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScheduleSection(AppColorsExtension colors) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+          child: Text(
+            "Delivery Time",
+            style: TextStyle(
+              fontFamily: "Lato",
+              package: 'grab_go_shared',
+              color: colors.textPrimary,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.w),
+          child: Wrap(
+            spacing: 10.w,
+            children: [
+              _buildScheduleToggleChip(
+                label: "ASAP",
+                isSelected: !_isScheduleEnabled,
+                onTap: () {
+                  setState(() {
+                    _isScheduleEnabled = false;
+                  });
+                },
+                colors: colors,
+              ),
+              _buildScheduleToggleChip(
+                label: "Schedule",
+                isSelected: _isScheduleEnabled,
+                onTap: () {
+                  setState(() {
+                    _isScheduleEnabled = true;
+                    _scheduleSlots = _generateScheduleSlots();
+                    if (_selectedScheduleIndex >= _scheduleSlots.length) {
+                      _selectedScheduleIndex = 0;
+                    }
+                  });
+                },
+                colors: colors,
+              ),
+            ],
+          ),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeInOut,
+          alignment: Alignment.topCenter,
+          clipBehavior: Clip.hardEdge,
+          child: _isScheduleEnabled
+              ? Padding(
+                  padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 12.h),
+                  child: Column(
+                    children: _scheduleSlots.isEmpty
+                        ? [
+                            Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8.h),
+                              child: Text(
+                                "No delivery slots available right now.",
+                                style: TextStyle(
+                                  color: colors.textSecondary,
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ]
+                        : List.generate(
+                            _scheduleSlots.length,
+                            (index) => _buildScheduleSlotTile(_scheduleSlots[index], index, colors),
+                          ),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildScheduleToggleChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required AppColorsExtension colors,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
+        decoration: BoxDecoration(
+          color: isSelected ? colors.accentOrange : colors.backgroundSecondary,
+          borderRadius: BorderRadius.circular(20.r),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : colors.textPrimary,
+            fontSize: 13.sp,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScheduleSlotTile(_ScheduleSlot slot, int index, AppColorsExtension colors) {
+    final bool isSelected = _selectedScheduleIndex == index;
+
+    final bool showDivider = index < _scheduleSlots.length - 1;
+
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedScheduleIndex = index;
+            });
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
+            decoration: BoxDecoration(color: colors.backgroundPrimary, borderRadius: BorderRadius.circular(12.r)),
+            child: Row(
+              children: [
+                Container(
+                  height: 20.h,
+                  width: 20.w,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isSelected ? colors.accentOrange.withValues(alpha: 0.15) : Colors.transparent,
+                  ),
+                  child: isSelected
+                      ? Center(
+                          child: Container(
+                            height: 8.h,
+                            width: 8.w,
+                            decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
+                          ),
+                        )
+                      : null,
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        slot.dayLabel,
+                        style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                      ),
+                      SizedBox(height: 4.h),
+                      Text(
+                        slot.timeRange,
+                        style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (showDivider)
+          Padding(
+            padding: EdgeInsets.only(left: 32.w),
+            child: Divider(height: 12.h, thickness: 0.8, color: colors.inputBorder.withValues(alpha: 0.4)),
+          ),
+      ],
+    );
+  }
+
+  List<_ScheduleSlot> _generateScheduleSlots() {
+    final now = DateTime.now();
+    final leadTime = now.add(const Duration(minutes: 45));
+    DateTime start = _roundUpToSlot(leadTime, const Duration(minutes: 30));
+    final slots = <_ScheduleSlot>[];
+
+    for (int i = 0; i < _scheduleSlotCount; i++) {
+      final slotStart = start.add(Duration(minutes: i * 30));
+      final slotEnd = slotStart.add(const Duration(minutes: 30));
+      slots.add(
+        _ScheduleSlot(
+          dayLabel: _formatDayLabel(slotStart),
+          timeRange: '${_formatTime(slotStart)} - ${_formatTime(slotEnd)}',
+        ),
+      );
+    }
+
+    return slots;
+  }
+
+  DateTime _roundUpToSlot(DateTime time, Duration slot) {
+    final slotMinutes = slot.inMinutes;
+    final totalMinutes = time.hour * 60 + time.minute;
+    final remainder = totalMinutes % slotMinutes;
+    final delta = remainder == 0 ? 0 : slotMinutes - remainder;
+    final rounded = time.add(Duration(minutes: delta));
+    return DateTime(rounded.year, rounded.month, rounded.day, rounded.hour, rounded.minute);
+  }
+
+  String _formatDayLabel(DateTime time) {
+    final now = DateTime.now();
+    if (_isSameDay(time, now)) return "Today";
+    if (_isSameDay(time, now.add(const Duration(days: 1)))) return "Tomorrow";
+
+    const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final dayName = weekdays[time.weekday - 1];
+    final monthName = months[time.month - 1];
+    return '$dayName, $monthName ${time.day}';
+  }
+
+  String _formatTime(DateTime time) {
+    final hour = time.hour % 12 == 0 ? 12 : time.hour % 12;
+    final minute = time.minute.toString().padLeft(2, '0');
+    final suffix = time.hour >= 12 ? 'PM' : 'AM';
+    return '$hour:$minute $suffix';
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
   Widget _buildShimmerBox({
     required double width,
     required double height,
@@ -2173,6 +2495,13 @@ class _CheckoutState extends State<Checkout> {
     }
     return 30;
   }
+}
+
+class _ScheduleSlot {
+  final String dayLabel;
+  final String timeRange;
+
+  const _ScheduleSlot({required this.dayLabel, required this.timeRange});
 }
 
 class _CachedAddresses {

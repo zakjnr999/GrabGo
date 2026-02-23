@@ -853,7 +853,7 @@ class _ReferralPageState extends State<ReferralPage> with TickerProviderStateMix
                     children: [
                       Text(
                         'Next Reward: GHS 5.00',
-                        style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                        style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700, color: colors.accentOrange),
                       ),
                       SizedBox(height: 4.h),
                       Text(

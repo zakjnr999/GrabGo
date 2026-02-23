@@ -3,6 +3,7 @@ const { body, validationResult } = require("express-validator");
 const crypto = require("crypto");
 const prisma = require("../config/prisma");
 const { protect, authorize } = require("../middleware/auth");
+const { uploadSingle, uploadToCloudinary } = require("../middleware/upload");
 const { cacheMiddleware } = require("../middleware/cache");
 const cache = require("../utils/cache");
 const { sendOrderNotification, sendToUser } = require("../services/fcm_service");
@@ -14,6 +15,17 @@ const paystackService = require("../services/paystack_service");
 const { getIO } = require("../utils/socket");
 const dispatchService = require("../services/dispatch_service");
 const featureFlags = require("../config/feature_flags");
+const { normalizeGhanaPhone } = require("../services/otp_service");
+const {
+  DeliveryVerificationError,
+  generateDeliveryCode,
+  hashDeliveryCode,
+  encryptDeliveryCode,
+  decryptDeliveryCode,
+  getResendAvailability,
+  sendDeliveryCodeSms,
+  verifyDeliveryCodeOrThrow,
+} = require("../services/delivery_verification_service");
 const {
   createOrderAudit,
   reserveInventoryForOrder,
@@ -35,6 +47,14 @@ const PICKUP_OTP_MAX_ATTEMPTS = Number(process.env.PICKUP_OTP_MAX_ATTEMPTS || 5)
 const PICKUP_OTP_LOCK_SECONDS = Number(process.env.PICKUP_OTP_LOCK_SECONDS || 300);
 const PICKUP_ACCEPT_TIMEOUT_MINUTES = Number(process.env.PICKUP_ACCEPT_TIMEOUT_MINUTES || 10);
 const PICKUP_READY_EXPIRY_MINUTES = Number(process.env.PICKUP_READY_EXPIRY_MINUTES || 30);
+const DELIVERY_ACTIVE_STATUSES = new Set(["picked_up", "on_the_way"]);
+const STATUS_UPDATE_ROLE_RULES = {
+  customer: new Set(["cancelled"]),
+  restaurant: new Set(["confirmed", "preparing", "ready", "cancelled"]),
+  rider: new Set(["picked_up", "on_the_way", "delivered", "cancelled"]),
+  admin: null,
+};
+const SENSITIVE_ORDER_FIELDS = new Set(["pickupOtpHash", "deliveryCodeHash", "deliveryCodeEncrypted"]);
 
 const generatePickupCode = () => {
   const value = Math.floor(100000 + Math.random() * 900000);
@@ -54,6 +74,64 @@ const isPickupOtpLocked = (order) => {
 
   const lockUntil = new Date(order.pickupOtpLastAttemptAt).getTime() + PICKUP_OTP_LOCK_SECONDS * 1000;
   return Date.now() < lockUntil;
+};
+
+const sanitizeOrderPayload = (payload) => {
+  if (Array.isArray(payload)) {
+    return payload.map((entry) => sanitizeOrderPayload(entry));
+  }
+  if (!payload || typeof payload !== "object") {
+    return payload;
+  }
+
+  const sanitized = { ...payload };
+  for (const field of SENSITIVE_ORDER_FIELDS) {
+    delete sanitized[field];
+  }
+  return sanitized;
+};
+
+const getVendorContextForUser = async (user) => {
+  if (!user?.email) return null;
+  const [restaurant, groceryStore, pharmacyStore, grabMartStore] = await Promise.all([
+    prisma.restaurant.findFirst({
+      where: { email: user.email },
+      select: { id: true },
+    }),
+    prisma.groceryStore.findFirst({
+      where: { email: user.email },
+      select: { id: true },
+    }),
+    prisma.pharmacyStore.findFirst({
+      where: { email: user.email },
+      select: { id: true },
+    }),
+    prisma.grabMartStore.findFirst({
+      where: { email: user.email },
+      select: { id: true },
+    }),
+  ]);
+
+  return {
+    restaurantId: restaurant?.id || null,
+    groceryStoreId: groceryStore?.id || null,
+    pharmacyStoreId: pharmacyStore?.id || null,
+    grabMartStoreId: grabMartStore?.id || null,
+  };
+};
+
+const isOrderOwnedByVendorContext = (order, vendorContext) =>
+  Boolean(
+    (vendorContext?.restaurantId && order?.restaurantId === vendorContext.restaurantId) ||
+      (vendorContext?.groceryStoreId && order?.groceryStoreId === vendorContext.groceryStoreId) ||
+      (vendorContext?.pharmacyStoreId && order?.pharmacyStoreId === vendorContext.pharmacyStoreId) ||
+      (vendorContext?.grabMartStoreId && order?.grabMartStoreId === vendorContext.grabMartStoreId)
+  );
+
+const normalizeGiftRecipientPhone = (phoneNumber) => {
+  if (!phoneNumber) return null;
+  const normalized = normalizeGhanaPhone(phoneNumber);
+  return normalized ? normalized.e164 : null;
 };
 
 /**
@@ -175,6 +253,10 @@ router.post(
     body("pickupContactName").optional().isString().withMessage("pickupContactName must be a string"),
     body("pickupContactPhone").optional().isString().withMessage("pickupContactPhone must be a string"),
     body("acceptNoShowPolicy").optional().isBoolean().withMessage("acceptNoShowPolicy must be a boolean"),
+    body("isGiftOrder").optional().isBoolean().withMessage("isGiftOrder must be a boolean"),
+    body("giftRecipientName").optional().isString().withMessage("giftRecipientName must be a string"),
+    body("giftRecipientPhone").optional().isString().withMessage("giftRecipientPhone must be a string"),
+    body("giftNote").optional().isString().withMessage("giftNote must be a string"),
     body("paymentMethod")
       .isIn(["card"])
       .withMessage("Invalid payment method"),
@@ -191,6 +273,13 @@ router.post(
         });
       }
 
+      if (req.user.role !== "customer") {
+        return res.status(403).json({
+          success: false,
+          message: "Only customers can place orders",
+        });
+      }
+
       const {
         restaurant: requestedVendorId,
         items,
@@ -199,6 +288,10 @@ router.post(
         pickupContactName,
         pickupContactPhone,
         acceptNoShowPolicy,
+        isGiftOrder,
+        giftRecipientName,
+        giftRecipientPhone,
+        giftNote,
         paymentMethod,
         useCredits,
         notes,
@@ -209,6 +302,10 @@ router.post(
       const fulfillmentMode = normalizeFulfillmentMode(rawFulfillmentMode);
       const isPickupMode = fulfillmentMode === "pickup";
       const isDeliveryMode = !isPickupMode;
+      const isGiftOrderRequested = isGiftOrder === true;
+      const normalizedGiftRecipientName = giftRecipientName ? String(giftRecipientName).trim() : null;
+      const normalizedGiftNote = giftNote ? String(giftNote).trim() : null;
+      const normalizedGiftPhone = normalizeGiftRecipientPhone(giftRecipientPhone);
 
       if (isPickupMode && !featureFlags.isPickupCheckoutEnabled) {
         return res.status(403).json({
@@ -235,6 +332,36 @@ router.post(
           return res.status(400).json({
             success: false,
             message: "You must accept the no-show pickup policy",
+          });
+        }
+      }
+
+      if (isGiftOrderRequested) {
+        if (!featureFlags.isGiftOrdersEnabled) {
+          return res.status(403).json({
+            success: false,
+            message: "Gift orders are temporarily unavailable",
+          });
+        }
+
+        if (!isDeliveryMode) {
+          return res.status(400).json({
+            success: false,
+            message: "Gift orders are only supported for delivery orders",
+          });
+        }
+
+        if (!normalizedGiftRecipientName) {
+          return res.status(400).json({
+            success: false,
+            message: "Recipient name is required for gift orders",
+          });
+        }
+
+        if (giftRecipientPhone && !normalizedGiftPhone) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid gift recipient phone number",
           });
         }
       }
@@ -475,6 +602,13 @@ router.post(
         deliveryLongitude: isDeliveryMode ? deliveryAddress?.longitude : null,
         pickupContactName: isPickupMode ? pickupContactName : null,
         pickupContactPhone: isPickupMode ? pickupContactPhone : null,
+        isGiftOrder: isGiftOrderRequested,
+        giftRecipientName: isGiftOrderRequested ? normalizedGiftRecipientName : null,
+        giftRecipientPhone: isGiftOrderRequested ? normalizedGiftPhone : null,
+        giftNote: isGiftOrderRequested ? (normalizedGiftNote || null) : null,
+        deliveryVerificationRequired: isGiftOrderRequested,
+        deliveryCodeFailedAttempts: 0,
+        deliveryCodeResendCount: 0,
         noShowPolicyAcceptedAt: isPickupMode && acceptNoShowPolicy ? new Date() : null,
         noShowPolicyVersion: isPickupMode && acceptNoShowPolicy ? (noShowPolicyVersion || "v1") : null,
         paymentMethod,
@@ -563,6 +697,33 @@ router.post(
         }
       });
 
+      let giftDeliveryCode = null;
+      if (isGiftOrderRequested) {
+        giftDeliveryCode = generateDeliveryCode();
+        const sentAt = new Date();
+        await prisma.order.update({
+          where: { id: order.id },
+          data: {
+            deliveryCodeHash: hashDeliveryCode(order.id, giftDeliveryCode),
+            deliveryCodeEncrypted: encryptDeliveryCode(giftDeliveryCode),
+            deliveryCodeFailedAttempts: 0,
+            deliveryCodeLockedUntil: null,
+            deliveryCodeResendCount: 0,
+            deliveryCodeLastSentAt: sentAt,
+          },
+        });
+
+        await createOrderAudit({
+          orderId: order.id,
+          actorId: req.user.id,
+          actorRole: req.user.role,
+          action: "gift_code_generated",
+          metadata: {
+            sentAt: sentAt.toISOString(),
+          },
+        }).catch(() => null);
+      }
+
       if (isPickupMode && isCreditOnly) {
         try {
           await reserveInventoryForOrder({ orderId: order.id });
@@ -624,10 +785,60 @@ router.post(
         data: { lastOrderDate: new Date() }
       });
 
+      if (isGiftOrderRequested && giftDeliveryCode) {
+        if (req.user.phone) {
+          const customerSendResult = await sendDeliveryCodeSms({
+            phoneNumber: req.user.phone,
+            orderNumber: order.orderNumber,
+            code: giftDeliveryCode,
+            audience: "customer",
+          });
+
+          await createOrderAudit({
+            orderId: order.id,
+            actorId: req.user.id,
+            actorRole: req.user.role,
+            action: "gift_code_sent_customer",
+            metadata: {
+              success: !!customerSendResult?.success,
+              provider: customerSendResult?.provider || null,
+              errorMessage: customerSendResult?.success ? null : (customerSendResult?.message || null),
+            },
+          }).catch(() => null);
+        }
+
+        if (normalizedGiftPhone) {
+          const recipientSendResult = await sendDeliveryCodeSms({
+            phoneNumber: normalizedGiftPhone,
+            orderNumber: order.orderNumber,
+            code: giftDeliveryCode,
+            audience: "recipient",
+            recipientName: normalizedGiftRecipientName,
+          });
+
+          await createOrderAudit({
+            orderId: order.id,
+            actorId: req.user.id,
+            actorRole: req.user.role,
+            action: "gift_code_sent_recipient",
+            metadata: {
+              success: !!recipientSendResult?.success,
+              provider: recipientSendResult?.provider || null,
+              errorMessage: recipientSendResult?.success ? null : (recipientSendResult?.message || null),
+            },
+          }).catch(() => null);
+        }
+      }
+
+      const responseOrder = sanitizeOrderPayload(order);
+      if (isGiftOrderRequested && giftDeliveryCode) {
+        responseOrder.giftDeliveryCode = giftDeliveryCode;
+      }
+
       res.status(201).json({
         success: true,
         message: "Order created successfully",
-        data: order,
+        data: responseOrder,
       });
     } catch (error) {
       console.error("Create order error:", error);
@@ -647,11 +858,16 @@ router.get("/", protect, async (req, res) => {
     if (req.user.role === "customer") {
       where.customerId = req.user.id;
     } else if (req.user.role === "restaurant") {
-      const restaurant = await prisma.restaurant.findFirst({
-        where: { user: { email: req.user.email } }
-      });
-      if (restaurant) {
-        where.restaurantId = restaurant.id;
+      const vendorContext = await getVendorContextForUser(req.user);
+      const vendorConditions = [
+        vendorContext?.restaurantId ? { restaurantId: vendorContext.restaurantId } : null,
+        vendorContext?.groceryStoreId ? { groceryStoreId: vendorContext.groceryStoreId } : null,
+        vendorContext?.pharmacyStoreId ? { pharmacyStoreId: vendorContext.pharmacyStoreId } : null,
+        vendorContext?.grabMartStoreId ? { grabMartStoreId: vendorContext.grabMartStoreId } : null,
+      ].filter(Boolean);
+
+      if (vendorConditions.length > 0) {
+        where.OR = vendorConditions;
       } else {
         return res.json({
           success: true,
@@ -726,7 +942,7 @@ router.get("/", protect, async (req, res) => {
     res.json({
       success: true,
       message: "Orders retrieved successfully",
-      data: orders,
+      data: sanitizeOrderPayload(orders),
     });
   } catch (error) {
     console.error("Get orders error:", error);
@@ -900,20 +1116,40 @@ router.get("/:orderId", protect, async (req, res) => {
       });
     }
 
-    if (
-      req.user.role === "customer" &&
-      order.customerId !== req.user.id
-    ) {
+    if (req.user.role === "customer" && order.customerId !== req.user.id) {
       return res.status(403).json({
         success: false,
         message: "Not authorized to view this order",
       });
     }
 
+    if (req.user.role === "rider" && order.riderId !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to view this order",
+      });
+    }
+
+    if (req.user.role === "restaurant") {
+      const vendorContext = await getVendorContextForUser(req.user);
+      const isOwnedByVendor =
+        (vendorContext?.restaurantId && order.restaurantId === vendorContext.restaurantId) ||
+        (vendorContext?.groceryStoreId && order.groceryStoreId === vendorContext.groceryStoreId) ||
+        (vendorContext?.pharmacyStoreId && order.pharmacyStoreId === vendorContext.pharmacyStoreId) ||
+        (vendorContext?.grabMartStoreId && order.grabMartStoreId === vendorContext.grabMartStoreId);
+
+      if (!isOwnedByVendor) {
+        return res.status(403).json({
+          success: false,
+          message: "Not authorized to view this order",
+        });
+      }
+    }
+
     res.json({
       success: true,
       message: "Order retrieved successfully",
-      data: order,
+      data: sanitizeOrderPayload(order),
     });
   } catch (error) {
     console.error("Get order error:", error);
@@ -1184,6 +1420,10 @@ router.post(
           customerId: true,
           status: true,
           fulfillmentMode: true,
+          restaurantId: true,
+          groceryStoreId: true,
+          pharmacyStoreId: true,
+          grabMartStoreId: true,
           acceptedAt: true,
           paymentStatus: true,
         },
@@ -1191,6 +1431,16 @@ router.post(
 
       if (!order) {
         return res.status(404).json({ success: false, message: "Order not found" });
+      }
+
+      if (req.user.role === "restaurant") {
+        const vendorContext = await getVendorContextForUser(req.user);
+        if (!isOrderOwnedByVendorContext(order, vendorContext)) {
+          return res.status(403).json({
+            success: false,
+            message: "Not authorized to manage this order",
+          });
+        }
       }
 
       if (order.fulfillmentMode !== "pickup") {
@@ -1234,7 +1484,7 @@ router.post(
       return res.json({
         success: true,
         message: "Pickup order accepted",
-        data: updatedOrder,
+        data: sanitizeOrderPayload(updatedOrder),
       });
     } catch (error) {
       console.error("Pickup accept error:", error);
@@ -1281,12 +1531,26 @@ router.post(
           customerId: true,
           status: true,
           fulfillmentMode: true,
+          restaurantId: true,
+          groceryStoreId: true,
+          pharmacyStoreId: true,
+          grabMartStoreId: true,
           paymentStatus: true,
         },
       });
 
       if (!order) {
         return res.status(404).json({ success: false, message: "Order not found" });
+      }
+
+      if (req.user.role === "restaurant") {
+        const vendorContext = await getVendorContextForUser(req.user);
+        if (!isOrderOwnedByVendorContext(order, vendorContext)) {
+          return res.status(403).json({
+            success: false,
+            message: "Not authorized to manage this order",
+          });
+        }
       }
 
       if (order.fulfillmentMode !== "pickup") {
@@ -1326,7 +1590,7 @@ router.post(
       return res.json({
         success: true,
         message: "Pickup order rejected and refunded",
-        data: updatedOrder,
+        data: sanitizeOrderPayload(updatedOrder),
       });
     } catch (error) {
       console.error("Pickup reject error:", error);
@@ -1373,6 +1637,10 @@ router.post(
           customerId: true,
           status: true,
           fulfillmentMode: true,
+          restaurantId: true,
+          groceryStoreId: true,
+          pharmacyStoreId: true,
+          grabMartStoreId: true,
           readyAt: true,
           pickupExpiresAt: true,
           pickupOtpHash: true,
@@ -1383,6 +1651,16 @@ router.post(
 
       if (!order) {
         return res.status(404).json({ success: false, message: "Order not found" });
+      }
+
+      if (req.user.role === "restaurant") {
+        const vendorContext = await getVendorContextForUser(req.user);
+        if (!isOrderOwnedByVendorContext(order, vendorContext)) {
+          return res.status(403).json({
+            success: false,
+            message: "Not authorized to manage this order",
+          });
+        }
       }
 
       if (order.fulfillmentMode !== "pickup") {
@@ -1483,7 +1761,7 @@ router.post(
       return res.json({
         success: true,
         message: "Pickup code verified. Order marked as picked up.",
-        data: updatedOrder,
+        data: sanitizeOrderPayload(updatedOrder),
       });
     } catch (error) {
       console.error("Pickup verify-code error:", error);
@@ -1567,7 +1845,7 @@ router.post(
       return res.json({
         success: true,
         message: "Order cancelled by support",
-        data: updatedOrder,
+        data: sanitizeOrderPayload(updatedOrder),
       });
     } catch (error) {
       console.error("Support cancel error:", error);
@@ -1635,7 +1913,7 @@ router.post(
       return res.json({
         success: true,
         message: "Order refunded by support",
-        data: updatedOrder,
+        data: sanitizeOrderPayload(updatedOrder),
       });
     } catch (error) {
       console.error("Support refund error:", error);
@@ -1720,10 +1998,301 @@ router.post(
       return res.json({
         success: true,
         message: "Order force-completed by support",
-        data: updatedOrder,
+        data: sanitizeOrderPayload(updatedOrder),
       });
     } catch (error) {
       console.error("Support force-complete error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message,
+      });
+    }
+  }
+);
+
+router.post(
+  "/:orderId/delivery-proof/photo",
+  protect,
+  authorize("rider", "admin"),
+  uploadSingle("photo"),
+  uploadToCloudinary,
+  async (req, res) => {
+    try {
+      const { orderId } = req.params;
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: {
+          id: true,
+          status: true,
+          riderId: true,
+          isGiftOrder: true,
+          deliveryVerificationRequired: true,
+        },
+      });
+
+      if (!order) {
+        return res.status(404).json({ success: false, message: "Order not found" });
+      }
+
+      if (!order.isGiftOrder || !order.deliveryVerificationRequired) {
+        return res.status(400).json({
+          success: false,
+          message: "Delivery proof upload is only available for gift orders requiring verification",
+        });
+      }
+
+      if (req.user.role === "rider") {
+        if (order.riderId !== req.user.id) {
+          return res.status(403).json({
+            success: false,
+            message: "Not authorized to upload proof for this order",
+          });
+        }
+
+        if (!DELIVERY_ACTIVE_STATUSES.has(order.status)) {
+          return res.status(400).json({
+            success: false,
+            message: "Delivery proof can only be uploaded while delivery is active",
+          });
+        }
+      }
+
+      if (!req.file || !req.file.cloudinaryUrl) {
+        return res.status(400).json({
+          success: false,
+          message: "No delivery proof photo uploaded",
+        });
+      }
+
+      await createOrderAudit({
+        orderId,
+        actorId: req.user.id,
+        actorRole: req.user.role,
+        action: "gift_delivery_photo_uploaded",
+        metadata: {
+          photoUrl: req.file.cloudinaryUrl,
+          uploadedAt: new Date().toISOString(),
+        },
+      }).catch(() => null);
+
+      return res.status(201).json({
+        success: true,
+        message: "Delivery proof photo uploaded successfully",
+        data: {
+          orderId,
+          photoUrl: req.file.cloudinaryUrl,
+          blurHash: req.file.blurHash || null,
+        },
+      });
+    } catch (error) {
+      console.error("Delivery proof upload error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message,
+      });
+    }
+  }
+);
+
+router.post(
+  "/:orderId/delivery-code/resend",
+  protect,
+  [body("target").isIn(["customer", "recipient"]).withMessage("target must be customer or recipient")],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: errors.array(),
+        });
+      }
+
+      const { orderId } = req.params;
+      const { target } = req.body;
+
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: {
+          id: true,
+          orderNumber: true,
+          customerId: true,
+          riderId: true,
+          status: true,
+          isGiftOrder: true,
+          deliveryVerificationRequired: true,
+          giftRecipientName: true,
+          giftRecipientPhone: true,
+          deliveryCodeEncrypted: true,
+          deliveryCodeResendCount: true,
+          deliveryCodeLastSentAt: true,
+          deliveryCodeVerifiedAt: true,
+          deliveryVerificationMethod: true,
+        },
+      });
+
+      if (!order) {
+        return res.status(404).json({ success: false, message: "Order not found" });
+      }
+
+      if (!order.isGiftOrder || !order.deliveryVerificationRequired) {
+        return res.status(400).json({
+          success: false,
+          message: "Delivery code resend is only available for gift orders",
+        });
+      }
+
+      if (!order.deliveryCodeEncrypted) {
+        return res.status(400).json({
+          success: false,
+          message: "Delivery code is unavailable for this order",
+        });
+      }
+
+      if (["delivered", "cancelled"].includes(order.status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Cannot resend delivery code for completed or cancelled orders",
+          code: "DELIVERY_CODE_RESEND_NOT_ALLOWED",
+        });
+      }
+
+      if (req.user.role === "customer") {
+        if (order.customerId !== req.user.id) {
+          return res.status(403).json({
+            success: false,
+            message: "Not authorized to resend code for this order",
+          });
+        }
+      } else if (req.user.role === "rider") {
+        if (order.riderId !== req.user.id) {
+          return res.status(403).json({
+            success: false,
+            message: "Not authorized to resend code for this order",
+          });
+        }
+        if (target !== "recipient") {
+          return res.status(403).json({
+            success: false,
+            message: "Riders can only resend code to recipient",
+          });
+        }
+        if (!DELIVERY_ACTIVE_STATUSES.has(order.status)) {
+          return res.status(400).json({
+            success: false,
+            message: "Code can only be resent while delivery is active",
+          });
+        }
+      } else if (req.user.role !== "admin") {
+        return res.status(403).json({
+          success: false,
+          message: "Not authorized to resend delivery codes",
+        });
+      }
+
+      const resendAvailability = getResendAvailability(order);
+      if (!resendAvailability.allowed) {
+        return res.status(resendAvailability.status).json({
+          success: false,
+          message: resendAvailability.message,
+          code: resendAvailability.code,
+          retryAfterSeconds: resendAvailability.retryAfterSeconds || null,
+        });
+      }
+
+      const deliveryCode = decryptDeliveryCode(order.deliveryCodeEncrypted);
+      let phoneNumber = null;
+      let audience = target;
+
+      if (target === "customer") {
+        const customer = await prisma.user.findUnique({
+          where: { id: order.customerId },
+          select: { phone: true },
+        });
+        phoneNumber = customer?.phone || null;
+        if (!phoneNumber) {
+          return res.status(400).json({
+            success: false,
+            message: "Customer phone number is unavailable for this order",
+          });
+        }
+      } else {
+        phoneNumber = order.giftRecipientPhone;
+        audience = "recipient";
+        if (!phoneNumber) {
+          return res.status(400).json({
+            success: false,
+            message: "Gift recipient phone number is unavailable for this order",
+          });
+        }
+      }
+
+      const sendResult = await sendDeliveryCodeSms({
+        phoneNumber,
+        orderNumber: order.orderNumber,
+        code: deliveryCode,
+        audience,
+        recipientName: order.giftRecipientName,
+      });
+
+      if (!sendResult?.success) {
+        return res.status(502).json({
+          success: false,
+          message: sendResult?.message || "Failed to resend delivery code",
+          code: "DELIVERY_CODE_RESEND_FAILED",
+        });
+      }
+
+      const resentAt = new Date();
+      await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          deliveryCodeResendCount: { increment: 1 },
+          deliveryCodeLastSentAt: resentAt,
+        },
+      });
+
+      await createOrderAudit({
+        orderId: order.id,
+        actorId: req.user.id,
+        actorRole: req.user.role,
+        action: "gift_code_resent",
+        metadata: {
+          target,
+          provider: sendResult.provider || null,
+          resentAt: resentAt.toISOString(),
+        },
+      }).catch(() => null);
+
+      const responseData = {
+        orderId: order.id,
+        target,
+        resentAt: resentAt.toISOString(),
+      };
+
+      if (req.user.role === "customer" && target === "customer") {
+        responseData.giftDeliveryCode = deliveryCode;
+      }
+
+      return res.json({
+        success: true,
+        message: "Delivery code resent successfully",
+        data: responseData,
+      });
+    } catch (error) {
+      if (error instanceof DeliveryVerificationError) {
+        return res.status(error.status || 400).json({
+          success: false,
+          message: error.message,
+          code: error.code || "DELIVERY_VERIFICATION_ERROR",
+          ...(error.meta || {}),
+        });
+      }
+
+      console.error("Delivery code resend error:", error);
       return res.status(500).json({
         success: false,
         message: "Server error",
@@ -1879,6 +2448,25 @@ router.put(
         "cancelled",
       ])
       .withMessage("Invalid status"),
+    body("cancellationReason").optional().isString().withMessage("cancellationReason must be a string"),
+    body("deliveryVerification").optional().isObject().withMessage("deliveryVerification must be an object"),
+    body("deliveryVerification.method")
+      .optional()
+      .isIn(["code", "authorized_photo"])
+      .withMessage("deliveryVerification.method must be code or authorized_photo"),
+    body("deliveryVerification.code").optional().isString().withMessage("deliveryVerification.code must be a string"),
+    body("deliveryVerification.photoUrl").optional().isString().withMessage("deliveryVerification.photoUrl must be a string"),
+    body("deliveryVerification.reason").optional().isString().withMessage("deliveryVerification.reason must be a string"),
+    body("deliveryVerification.contactAttempted")
+      .optional()
+      .isBoolean()
+      .withMessage("deliveryVerification.contactAttempted must be a boolean"),
+    body("deliveryVerification.authorizedRecipientName")
+      .optional()
+      .isString()
+      .withMessage("deliveryVerification.authorizedRecipientName must be a string"),
+    body("deliveryVerification.riderLat").optional().isFloat().withMessage("deliveryVerification.riderLat must be numeric"),
+    body("deliveryVerification.riderLng").optional().isFloat().withMessage("deliveryVerification.riderLng must be numeric"),
   ],
   async (req, res) => {
     try {
@@ -1892,7 +2480,7 @@ router.put(
       }
 
       const { orderId } = req.params;
-      const { status, cancellationReason } = req.body;
+      const { status, cancellationReason, deliveryVerification } = req.body;
 
       const order = await prisma.order.findUnique({
         where: { id: orderId }
@@ -1905,10 +2493,46 @@ router.put(
         });
       }
 
-      if (req.user.role === "customer" && status !== "cancelled") {
+      const roleStatusRules = STATUS_UPDATE_ROLE_RULES[req.user.role];
+      if (roleStatusRules && !roleStatusRules.has(status)) {
         return res.status(403).json({
           success: false,
-          message: "Customers can only cancel orders",
+          message: `Role ${req.user.role} is not allowed to set status ${status}`,
+        });
+      }
+
+      if (req.user.role === "customer") {
+        if (order.customerId !== req.user.id) {
+          return res.status(403).json({
+            success: false,
+            message: "Not authorized to update this order",
+          });
+        }
+      } else if (req.user.role === "rider") {
+        if (order.riderId !== req.user.id) {
+          return res.status(403).json({
+            success: false,
+            message: "Not authorized to update this order",
+          });
+        }
+      } else if (req.user.role === "restaurant") {
+        const vendorContext = await getVendorContextForUser(req.user);
+        const isOwnedByVendor =
+          (vendorContext?.restaurantId && order.restaurantId === vendorContext.restaurantId) ||
+          (vendorContext?.groceryStoreId && order.groceryStoreId === vendorContext.groceryStoreId) ||
+          (vendorContext?.pharmacyStoreId && order.pharmacyStoreId === vendorContext.pharmacyStoreId) ||
+          (vendorContext?.grabMartStoreId && order.grabMartStoreId === vendorContext.grabMartStoreId);
+
+        if (!isOwnedByVendor) {
+          return res.status(403).json({
+            success: false,
+            message: "Not authorized to update this order",
+          });
+        }
+      } else if (req.user.role !== "admin") {
+        return res.status(403).json({
+          success: false,
+          message: "Not authorized to update order status",
         });
       }
 
@@ -1917,6 +2541,71 @@ router.put(
           success: false,
           message: "Pickup orders must be marked picked up via OTP verification endpoint",
           code: "PICKUP_OTP_REQUIRED",
+        });
+      }
+
+      if (status === "delivered" && order.deliveryVerificationRequired) {
+        if (!deliveryVerification || typeof deliveryVerification !== "object") {
+          return res.status(400).json({
+            success: false,
+            message: "deliveryVerification is required before marking this order as delivered",
+            code: "DELIVERY_VERIFICATION_REQUIRED",
+          });
+        }
+
+        const method = deliveryVerification.method;
+        if (!["code", "authorized_photo"].includes(method)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid deliveryVerification.method",
+            code: "DELIVERY_VERIFICATION_METHOD_INVALID",
+          });
+        }
+
+        if (method === "code") {
+          if (!deliveryVerification.code || !String(deliveryVerification.code).trim()) {
+            return res.status(400).json({
+              success: false,
+              message: "deliveryVerification.code is required for code verification",
+              code: "DELIVERY_CODE_REQUIRED",
+            });
+          }
+        } else {
+          if (!deliveryVerification.photoUrl || !String(deliveryVerification.photoUrl).trim()) {
+            return res.status(400).json({
+              success: false,
+              message: "deliveryVerification.photoUrl is required for fallback verification",
+              code: "DELIVERY_PROOF_PHOTO_REQUIRED",
+            });
+          }
+          if (!deliveryVerification.reason || !String(deliveryVerification.reason).trim()) {
+            return res.status(400).json({
+              success: false,
+              message: "deliveryVerification.reason is required for fallback verification",
+              code: "DELIVERY_PROOF_REASON_REQUIRED",
+            });
+          }
+          if (deliveryVerification.contactAttempted !== true) {
+            return res.status(400).json({
+              success: false,
+              message: "deliveryVerification.contactAttempted must be true for fallback verification",
+              code: "DELIVERY_CONTACT_ATTEMPT_REQUIRED",
+            });
+          }
+        }
+      }
+
+      let codeVerificationUpdateData = null;
+      if (status === "delivered" && order.deliveryVerificationRequired && deliveryVerification?.method === "code") {
+        codeVerificationUpdateData = await verifyDeliveryCodeOrThrow({
+          tx: prisma,
+          order,
+          code: deliveryVerification?.code,
+          actorId: req.user.id,
+          actorRole: req.user.role,
+          riderLat: deliveryVerification?.riderLat,
+          riderLng: deliveryVerification?.riderLng,
+          skipSuccessAudit: true,
         });
       }
 
@@ -1954,6 +2643,99 @@ router.put(
         }
 
         if (status === "delivered") {
+          if (order.deliveryVerificationRequired) {
+            const latestVerificationState = await tx.order.findUnique({
+              where: { id: orderId },
+              select: {
+                id: true,
+                deliveryCodeVerifiedAt: true,
+                deliveryVerificationMethod: true,
+              },
+            });
+
+            if (!latestVerificationState) {
+              throw new DeliveryVerificationError("Order not found", 404, "ORDER_NOT_FOUND");
+            }
+
+            const method = deliveryVerification?.method;
+            if (method === "code") {
+              if (
+                latestVerificationState.deliveryCodeVerifiedAt ||
+                latestVerificationState.deliveryVerificationMethod === "authorized_photo"
+              ) {
+                throw new DeliveryVerificationError(
+                  "Delivery verification has already been completed for this order",
+                  400,
+                  "DELIVERY_VERIFICATION_ALREADY_COMPLETED"
+                );
+              }
+
+              updateData = {
+                ...updateData,
+                ...codeVerificationUpdateData,
+              };
+
+              await tx.orderActionAudit.create({
+                data: {
+                  orderId,
+                  actorId: req.user.id,
+                  actorRole: req.user.role,
+                  action: "gift_code_verified",
+                  metadata: {
+                    riderLat: Number.isFinite(Number(deliveryVerification?.riderLat))
+                      ? Number(deliveryVerification.riderLat)
+                      : null,
+                    riderLng: Number.isFinite(Number(deliveryVerification?.riderLng))
+                      ? Number(deliveryVerification.riderLng)
+                      : null,
+                    verifiedAt: codeVerificationUpdateData?.deliveryCodeVerifiedAt
+                      ? new Date(codeVerificationUpdateData.deliveryCodeVerifiedAt).toISOString()
+                      : new Date().toISOString(),
+                  },
+                },
+              });
+            } else if (method === "authorized_photo") {
+              if (
+                latestVerificationState.deliveryCodeVerifiedAt ||
+                latestVerificationState.deliveryVerificationMethod === "authorized_photo"
+              ) {
+                throw new DeliveryVerificationError(
+                  "Delivery verification has already been completed for this order",
+                  400,
+                  "DELIVERY_VERIFICATION_ALREADY_COMPLETED"
+                );
+              }
+
+              updateData.deliveryVerificationMethod = "authorized_photo";
+              updateData.deliveryProofPhotoUrl = String(deliveryVerification.photoUrl).trim();
+              updateData.deliveryProofReason = String(deliveryVerification.reason).trim();
+              updateData.deliveryProofCapturedAt = new Date();
+              updateData.deliveryVerificationLat = Number.isFinite(Number(deliveryVerification?.riderLat))
+                ? Number(deliveryVerification.riderLat)
+                : null;
+              updateData.deliveryVerificationLng = Number.isFinite(Number(deliveryVerification?.riderLng))
+                ? Number(deliveryVerification.riderLng)
+                : null;
+
+              await tx.orderActionAudit.create({
+                data: {
+                  orderId,
+                  actorId: req.user.id,
+                  actorRole: req.user.role,
+                  action: "gift_delivered_fallback",
+                  metadata: {
+                    reason: updateData.deliveryProofReason,
+                    photoUrl: updateData.deliveryProofPhotoUrl,
+                    contactAttempted: deliveryVerification?.contactAttempted === true,
+                    authorizedRecipientName: deliveryVerification?.authorizedRecipientName || null,
+                    riderLat: updateData.deliveryVerificationLat,
+                    riderLng: updateData.deliveryVerificationLng,
+                  },
+                },
+              });
+            }
+          }
+
           updateData.deliveredDate = new Date();
 
           if (order.riderId) {
@@ -2044,6 +2826,10 @@ router.put(
           previousStatus: order.status,
           nextStatus: status,
           fulfillmentMode: order.fulfillmentMode,
+          deliveryVerificationMethod:
+            status === "delivered" && order.deliveryVerificationRequired
+              ? (deliveryVerification?.method || null)
+              : null,
         },
       }).catch(() => null);
 
@@ -2054,6 +2840,41 @@ router.put(
           ? `Your order is ready for pickup. Show this code at the store: ${pickupCodeForNotification}`
           : null;
       notifyOrderStatusChange(updatedOrder, status, pickupReadyMessage, io);
+
+      if (
+        status === "on_the_way" &&
+        order.status !== "on_the_way" &&
+        order.isGiftOrder &&
+        order.deliveryVerificationRequired &&
+        order.giftRecipientPhone &&
+        order.deliveryCodeEncrypted
+      ) {
+        try {
+          const deliveryCode = decryptDeliveryCode(order.deliveryCodeEncrypted);
+          const recipientSendResult = await sendDeliveryCodeSms({
+            phoneNumber: order.giftRecipientPhone,
+            orderNumber: updatedOrder.orderNumber,
+            code: deliveryCode,
+            audience: "recipient",
+            recipientName: order.giftRecipientName,
+          });
+
+          await createOrderAudit({
+            orderId,
+            actorId: req.user.id,
+            actorRole: req.user.role,
+            action: "gift_code_sent_recipient",
+            metadata: {
+              trigger: "status_on_the_way",
+              success: !!recipientSendResult?.success,
+              provider: recipientSendResult?.provider || null,
+              errorMessage: recipientSendResult?.success ? null : (recipientSendResult?.message || null),
+            },
+          }).catch(() => null);
+        } catch (giftNotifyError) {
+          console.error("Gift recipient on_the_way notification error:", giftNotifyError.message);
+        }
+      }
 
       // Reset rider delivery status when order is delivered or cancelled
       if ((status === 'delivered' || status === 'cancelled') && order.riderId) {
@@ -2099,9 +2920,18 @@ router.put(
       res.json({
         success: true,
         message: "Order status updated successfully",
-        data: updatedOrder,
+        data: sanitizeOrderPayload(updatedOrder),
       });
     } catch (error) {
+      if (error instanceof DeliveryVerificationError) {
+        return res.status(error.status || 400).json({
+          success: false,
+          message: error.message,
+          code: error.code || "DELIVERY_VERIFICATION_ERROR",
+          ...(error.meta || {}),
+        });
+      }
+
       console.error("Update order status error:", error);
       res.status(500).json({
         success: false,
@@ -2175,7 +3005,7 @@ router.put(
       res.json({
         success: true,
         message: "Rider assigned successfully",
-        data: updatedOrder,
+        data: sanitizeOrderPayload(updatedOrder),
       });
     } catch (error) {
       console.error("Assign rider error:", error);

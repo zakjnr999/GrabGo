@@ -2,16 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
-/// A custom price tag widget that mimics a physical retail price tag
-///
-/// Features:
-/// - Authentic price tag shape with circular notch cutout
-/// - Hole punch detail for realism
-/// - Colored border with white/light background
-/// - Soft shadow for depth
-/// - Clean typography with currency and price
 class PriceTag extends StatelessWidget {
-  /// The price to display
   final double price;
 
   /// The currency code (e.g., "GHS", "USD")

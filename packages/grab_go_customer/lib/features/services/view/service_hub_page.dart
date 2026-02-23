@@ -804,6 +804,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
           getEmoji: getEmoji,
           getId: getId,
           autoNotify: false,
+          accentColor: accentColor,
           onCategorySelected: (category) {
             final categoryId = getId(category);
             final categoryName = getName(category);

@@ -19,4 +19,5 @@ module.exports = {
   isPickupVendorOpsEnabled: parseFlag('PICKUP_VENDOR_OPS_ENABLED', defaultPickupEnabled),
   isPickupOtpEnabled: parseFlag('PICKUP_OTP_ENABLED', defaultPickupEnabled),
   isPickupReadyExpiryEnabled: parseFlag('PICKUP_READY_EXPIRY_ENABLED', defaultPickupEnabled),
+  isGiftOrdersEnabled: parseFlag('GIFT_ORDERS_ENABLED', false),
 };

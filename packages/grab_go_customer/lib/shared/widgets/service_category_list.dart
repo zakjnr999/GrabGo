@@ -2,86 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
-/// A generic, reusable horizontal category selector widget.
-///
-/// This widget displays a scrollable list of categories with selection state,
-/// smooth animations, and callbacks. It works with any category type through
-/// generic type parameters and accessor functions.
-///
-/// **Type Parameter:**
-/// - `T`: The type of category object (e.g., `FoodCategoryModel`, `GroceryCategory`)
-///
-/// **Features:**
-/// - ✅ Type-safe generic implementation
-/// - ✅ Smooth selection animations
-/// - ✅ Automatic initial selection
-/// - ✅ Handles category list changes gracefully
-/// - ✅ Preserves selection across rebuilds
-/// - ✅ Theme-aware styling
-///
-/// **Example Usage:**
-///
-/// ```dart
-/// // For Food Categories
-/// ServiceCategoryList<FoodCategoryModel>(
-///   categories: foodCategories,
-///   getName: (cat) => cat.name,
-///   getEmoji: (cat) => cat.emoji,
-///   getId: (cat) => cat.id,
-///   onCategorySelected: (cat) => handleFoodCategorySelected(cat),
-///   initialSelectedCategory: selectedFoodCategory,
-/// )
-///
-/// // For Grocery Categories
-/// ServiceCategoryList<GroceryCategory>(
-///   categories: groceryCategories,
-///   getName: (cat) => cat.name,
-///   getEmoji: (cat) => cat.emoji,
-///   getId: (cat) => cat.id,
-///   onCategorySelected: (cat) => handleGroceryCategorySelected(cat),
-///   initialSelectedCategory: selectedGroceryCategory,
-/// )
-/// ```
-///
-/// **Accessor Functions:**
-/// The widget uses accessor functions to extract properties from category objects,
-/// making it compatible with any category model structure:
-/// - `getName(T)`: Extract the category name
-/// - `getEmoji(T)`: Extract the category emoji/icon
-/// - `getId(T)`: Extract the unique category identifier
-///
-/// **State Management:**
-/// - Maintains internal selection state
-/// - Automatically selects first category on mount
-/// - Preserves selection when category list changes
-/// - Resets to first category if selected category is removed
-///
-/// **Performance:**
-/// - No runtime overhead from generics (compile-time only)
-/// - Efficient list rendering with ListView.builder
-/// - Optimized animations with AnimatedContainer
-///
 class ServiceCategoryList<T> extends StatefulWidget {
-  /// List of categories to display
   final List<T> categories;
 
-  /// Function to extract the name from a category
   final String Function(T) getName;
 
-  /// Function to extract the emoji/icon from a category
   final String Function(T) getEmoji;
 
-  /// Function to extract the unique ID from a category
   final String Function(T) getId;
 
-  /// Callback when a category is selected
   final ValueChanged<T> onCategorySelected;
 
-  /// Optional initial selected category
   final T? initialSelectedCategory;
 
-  /// Whether to automatically notify onCategorySelected on build/list change
   final bool autoNotify;
+
+  final Color? accentColor;
 
   const ServiceCategoryList({
     super.key,
@@ -92,6 +28,7 @@ class ServiceCategoryList<T> extends StatefulWidget {
     required this.onCategorySelected,
     this.initialSelectedCategory,
     this.autoNotify = true,
+    this.accentColor,
   });
 
   @override
@@ -99,7 +36,6 @@ class ServiceCategoryList<T> extends StatefulWidget {
 }
 
 class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
-  /// Currently selected category index
   int selectedIndex = 0;
 
   @override
@@ -111,7 +47,6 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
     }
   }
 
-  /// Initialize the selected index based on initialSelectedCategory
   void _initializeSelection() {
     final initial = widget.initialSelectedCategory;
     if (initial != null) {
@@ -122,7 +57,6 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
     }
   }
 
-  /// Notify parent of initial selection after first frame
   void _notifyInitialSelection() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && widget.categories.isNotEmpty && selectedIndex < widget.categories.length) {
@@ -135,28 +69,22 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
   void didUpdateWidget(ServiceCategoryList<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // Guard against empty categories
     if (widget.categories.isEmpty) {
       return;
     }
 
-    // Handle category list changes
     if (_categoriesChanged(oldWidget.categories)) {
       _handleCategoryListChange(oldWidget);
-    }
-    // Handle initial selection change
-    else if (_initialSelectionChanged(oldWidget)) {
+    } else if (_initialSelectionChanged(oldWidget)) {
       _handleInitialSelectionChange();
     }
   }
 
-  /// Check if categories list has changed
   bool _categoriesChanged(List<T> oldCategories) {
     if (widget.categories.length != oldCategories.length) return true;
     return !_categoriesEqual(widget.categories, oldCategories);
   }
 
-  /// Check if initial selection has changed
   bool _initialSelectionChanged(ServiceCategoryList<T> oldWidget) {
     final current = widget.initialSelectedCategory;
     final old = oldWidget.initialSelectedCategory;
@@ -170,35 +98,29 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
     return widget.getId(current) != widget.getId(old);
   }
 
-  /// Handle category list changes
   void _handleCategoryListChange(ServiceCategoryList<T> oldWidget) {
     int newIndex = selectedIndex;
 
-    // Try to preserve the selected category if it still exists
     final initial = widget.initialSelectedCategory;
     if (initial != null) {
       final index = _findCategoryIndex(initial);
       newIndex = index >= 0 ? index : 0;
     } else {
-      // Check if current selected index is still valid
       if (selectedIndex >= widget.categories.length) {
         newIndex = 0;
       }
     }
 
-    // Update state and notify if index changed
     if (newIndex != selectedIndex && newIndex < widget.categories.length) {
       setState(() {
         selectedIndex = newIndex;
       });
       _notifySelectionChange(newIndex);
     } else if (newIndex < widget.categories.length) {
-      // Index is valid, just notify parent
       _notifySelectionChange(newIndex);
     }
   }
 
-  /// Handle initial selection change
   void _handleInitialSelectionChange() {
     final initial = widget.initialSelectedCategory;
     if (initial == null) return;
@@ -212,13 +134,11 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
     }
   }
 
-  /// Find the index of a category by ID
   int _findCategoryIndex(T category) {
     final categoryId = widget.getId(category);
     return widget.categories.indexWhere((cat) => widget.getId(cat) == categoryId);
   }
 
-  /// Notify parent of selection change
   void _notifySelectionChange(int index) {
     if (!widget.autoNotify) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -228,7 +148,6 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
     });
   }
 
-  /// Check if two category lists are equal (by ID)
   bool _categoriesEqual(List<T> list1, List<T> list2) {
     if (list1.length != list2.length) return false;
     for (int i = 0; i < list1.length; i++) {
@@ -237,7 +156,6 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
     return true;
   }
 
-  /// Handle category tap
   void _onCategoryTap(int index) {
     if (index >= 0 && index < widget.categories.length) {
       setState(() {
@@ -274,8 +192,8 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
     );
   }
 
-  /// Build individual category chip with animations
   Widget _buildCategoryChip(T category, bool isSelected, AppColorsExtension colors) {
+    final chipColor = widget.accentColor ?? colors.accentOrange;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -283,7 +201,7 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeInOut,
           padding: EdgeInsets.all(20.r),
-          decoration: BoxDecoration(color: colors.accentOrange.withValues(alpha: 0.1), shape: BoxShape.circle),
+          decoration: BoxDecoration(color: chipColor.withValues(alpha: 0.1), shape: BoxShape.circle),
           child: _buildEmoji(category, isSelected, colors),
         ),
         SizedBox(height: 8.h),
@@ -292,7 +210,6 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
     );
   }
 
-  /// Build animated emoji
   Widget _buildEmoji(T category, bool isSelected, AppColorsExtension colors) {
     return AnimatedDefaultTextStyle(
       duration: const Duration(milliseconds: 300),
@@ -302,7 +219,6 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
     );
   }
 
-  /// Build animated category name
   Widget _buildName(T category, bool isSelected, AppColorsExtension colors) {
     return AnimatedDefaultTextStyle(
       duration: const Duration(milliseconds: 250),

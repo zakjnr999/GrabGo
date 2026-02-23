@@ -83,6 +83,18 @@ const getVendorPrepTime = (order) =>
     order?.pharmacyStore?.averagePreparationTime
   ) || 15;
 
+const SENSITIVE_ORDER_FIELDS = new Set(["pickupOtpHash", "deliveryCodeHash", "deliveryCodeEncrypted"]);
+const sanitizeOrderForRider = (payload) => {
+  if (Array.isArray(payload)) return payload.map((entry) => sanitizeOrderForRider(entry));
+  if (!payload || typeof payload !== "object") return payload;
+
+  const sanitized = { ...payload };
+  for (const field of SENSITIVE_ORDER_FIELDS) {
+    delete sanitized[field];
+  }
+  return sanitized;
+};
+
 router.get(
   "/available-orders",
   protect,
@@ -562,7 +574,7 @@ router.post(
       res.json({
         success: true,
         message: "Order accepted successfully via reservation",
-        data: updatedOrder
+        data: sanitizeOrderForRider(updatedOrder)
       });
 
     } catch (error) {
@@ -1350,7 +1362,7 @@ router.post(
       res.json({
         success: true,
         message: "Order accepted successfully",
-        data: updatedOrder,
+        data: sanitizeOrderForRider(updatedOrder),
       });
     } catch (error) {
       console.error("Accept order error:", error);

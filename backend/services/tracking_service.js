@@ -14,6 +14,7 @@ const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 const LOCATION_CACHE_TTL = 30;
 const MONGO_PERSIST_INTERVAL = 10000;
 const LOCATION_HISTORY_BATCH_SIZE = 5;
+const LIFECYCLE_STATUSES = new Set(['confirmed', 'preparing', 'ready', 'picked_up', 'on_the_way', 'delivered', 'cancelled']);
 
 class TrackingService {
     constructor() {
@@ -567,6 +568,10 @@ class TrackingService {
     async updateOrderStatus(orderId, status) {
         try {
             const orderIdStr = orderId.toString();
+
+            if (LIFECYCLE_STATUSES.has(status)) {
+                console.warn(`[tracking_service] Non-authoritative lifecycle status "${status}" written to tracking for order ${orderIdStr}.`);
+            }
 
             const tracking = await OrderTracking.findOneAndUpdate(
                 { orderId: orderIdStr },
