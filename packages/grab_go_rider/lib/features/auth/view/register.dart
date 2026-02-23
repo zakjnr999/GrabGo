@@ -161,7 +161,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
     }
 
     FocusManager.instance.primaryFocus?.unfocus();
-    LoadingDialog.instance().show(context: context, text: "Checking connection...");
+    LoadingDialog.instance().show(context: context, spinColor: AppColors.accentGreen, text: "Checking connection...");
 
     final hasInternet = await _checkInternetConnection();
     if (!hasInternet) {
@@ -189,7 +189,11 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
       return;
     }
 
-    LoadingDialog.instance().show(context: context, text: "Creating your account...\nThis may take up to a minute.");
+    LoadingDialog.instance().show(
+      context: context,
+      spinColor: AppColors.accentGreen,
+      text: "Creating your account...\nThis may take up to a minute.",
+    );
 
     try {
       final request = RegisterRequest(
@@ -213,7 +217,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
           );
 
       if (!mounted) return;
-      LoadingDialog.instance().show(context: context, text: "Almost done..");
+      LoadingDialog.instance().show(context: context, spinColor: AppColors.accentGreen, text: "Almost done..");
       await Future.delayed(const Duration(milliseconds: 500));
 
       if (!mounted) return;
@@ -313,167 +317,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
     }
   }
 
-  Future<void> _handleGoogleSignUp() async {
-    FocusManager.instance.primaryFocus?.unfocus();
-    LoadingDialog.instance().show(context: context, text: "Checking connection...");
-
-    final hasInternet = await _checkInternetConnection();
-    if (!hasInternet) {
-      if (mounted) {
-        LoadingDialog.instance().hide();
-        AppToastMessage.show(
-          context: context,
-          message: "No internet connection. Please check your network settings.",
-          backgroundColor: context.appColors.error,
-        );
-      }
-      return;
-    }
-
-    final serverReachable = await _checkServerConnection();
-    if (!serverReachable) {
-      if (mounted) {
-        LoadingDialog.instance().hide();
-        AppToastMessage.show(
-          context: context,
-          message: "Cannot reach server. Please try again later.",
-          backgroundColor: context.appColors.error,
-        );
-      }
-      return;
-    }
-
-    LoadingDialog.instance().show(context: context, text: "Signing up with Google...\nThis may take up to a minute.");
-
-    try {
-      final googleUserData = await GoogleSignInService().signInWithGoogle();
-
-      if (googleUserData == null) {
-        if (mounted) {
-          LoadingDialog.instance().hide();
-        }
-        return;
-      }
-
-      if (!mounted) return;
-
-      LoadingDialog.instance().show(context: context, text: "Creating your account...");
-
-      final request = GoogleSignInRequest(
-        googleId: googleUserData['googleId'],
-        email: googleUserData['email'],
-        displayName: googleUserData['displayName'],
-        photoUrl: googleUserData['photoUrl'],
-        idToken: googleUserData['idToken'],
-        role: 'rider',
-      );
-
-      final response = await authService
-          .googleSignUp(request)
-          .timeout(
-            const Duration(seconds: 60),
-            onTimeout: () {
-              throw TimeoutException(
-                'Server is taking too long to respond. '
-                'This might be because the free server is waking up. Please try again.',
-              );
-            },
-          );
-
-      if (!mounted) return;
-
-      LoadingDialog.instance().show(context: context, text: "Almost done..");
-
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      if (!mounted) return;
-      LoadingDialog.instance().hide();
-      if (response.isSuccessful && response.body != null) {
-        final token = response.body!.token;
-        final user = response.body!.userData;
-
-        // Save token if provided
-        if (token != null && token.isNotEmpty) {
-          await CacheService.saveAuthToken(token);
-        }
-
-        // Save user data if provided
-        if (user != null) {
-          await CacheService.saveUserData(user.toJson());
-          // Store user ID for phone verification
-          FirebasePhoneAuthService().setUserId(user.id ?? '');
-        }
-
-        if (mounted) {
-          // Navigate to rider verification after successful Google sign-up
-          // Don't show success message here, let the next page handle it
-          await Future.delayed(const Duration(milliseconds: 300));
-          if (mounted) {
-            // Use push instead of go to preserve navigation stack for context.pop()
-            context.push("/riderVerification");
-          }
-        }
-      } else {
-        String errorMessage = "Google Sign-Up failed. Please try again.";
-
-        if (response.error != null) {
-          errorMessage = response.error.toString();
-        } else if (response.statusCode == 400) {
-          errorMessage = "Invalid Google account data.";
-        } else if (response.statusCode == 409) {
-          errorMessage = "Email already exists with a different login method.";
-        } else if (response.statusCode == 500) {
-          errorMessage = "Server error. Please try again later.";
-        }
-
-        if (mounted) {
-          AppToastMessage.show(context: context, message: errorMessage, backgroundColor: context.appColors.error);
-        }
-      }
-    } on SocketException {
-      if (mounted) {
-        LoadingDialog.instance().hide();
-      }
-
-      final hasInternet = await _checkInternetConnection();
-      String message;
-
-      if (!hasInternet) {
-        message = "No internet connection detected. Please check your network.";
-      } else {
-        message = "Cannot connect to server. Please try again.";
-      }
-
-      if (mounted) {
-        AppToastMessage.show(context: context, message: message, backgroundColor: context.appColors.error);
-      }
-    } on TimeoutException {
-      if (mounted) {
-        LoadingDialog.instance().hide();
-      }
-
-      if (mounted) {
-        AppToastMessage.show(
-          context: context,
-          message: "Request timeout. Server is taking too long. Please try again.",
-          backgroundColor: context.appColors.error,
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        LoadingDialog.instance().hide();
-      }
-
-      if (mounted) {
-        AppToastMessage.show(
-          context: context,
-          message: "An unexpected error occurred. Please try again.",
-          backgroundColor: context.appColors.error,
-        );
-      }
-    }
-  }
-
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -539,7 +382,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
           ),
           child: SafeArea(
             child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w, vertical: KSpacing.xl40.h),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -619,7 +462,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                             controller: usernameController,
                             label: AppStrings.riderRegisterUsernameLabel,
                             hintText: AppStrings.riderRegisterUsernameHint,
-                            borderColor: colors.inputBorder,
                             fillColor: colors.backgroundSecondary,
                             borderActiveColor: colors.accentGreen,
                             borderRadius: KBorderSize.borderRadius4,
@@ -644,7 +486,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                             controller: emailController,
                             label: AppStrings.riderRegisterEmailLabel,
                             hintText: AppStrings.registerEmailHint,
-                            borderColor: colors.inputBorder,
                             fillColor: colors.backgroundSecondary,
                             borderActiveColor: colors.accentGreen,
                             borderRadius: KBorderSize.borderRadius4,
@@ -671,7 +512,7 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                               label: AppStrings.riderRegisterBdayLabel,
                               hintText: AppStrings.registerBdayHint,
                               fillColor: colors.backgroundSecondary,
-                              borderColor: colors.inputBorder,
+                              borderActiveColor: colors.accentGreen,
                               borderRadius: KBorderSize.borderRadius4,
                               contentPadding: EdgeInsets.all(KSpacing.md15.r),
                               keyboardType: TextInputType.datetime,
@@ -697,7 +538,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                             label: AppStrings.riderRegisterPasswordLabel,
                             hintText: AppStrings.riderRegisterPasswordHint,
                             fillColor: colors.backgroundSecondary,
-                            borderColor: colors.inputBorder,
                             borderActiveColor: colors.accentGreen,
                             borderRadius: KBorderSize.borderRadius4,
                             contentPadding: EdgeInsets.all(KSpacing.md15.r),
@@ -739,7 +579,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                             label: AppStrings.registerConfirmPasswordLabel,
                             hintText: AppStrings.registerConfirmPasswordHint,
                             fillColor: colors.backgroundSecondary,
-                            borderColor: colors.inputBorder,
                             borderActiveColor: colors.accentGreen,
                             borderRadius: KBorderSize.borderRadius4,
                             contentPadding: EdgeInsets.all(KSpacing.md15.r),
@@ -781,7 +620,6 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                             label: AppStrings.registerReferralCodeLabel,
                             hintText: AppStrings.registerReferralCodeHint,
                             fillColor: colors.backgroundSecondary,
-                            borderColor: colors.inputBorder,
                             borderActiveColor: colors.accentGreen,
                             keyboardType: TextInputType.text,
                             borderRadius: KBorderSize.borderRadius4,
@@ -794,43 +632,25 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                                 package: 'grab_go_shared',
                                 width: KIconSize.md,
                                 height: KIconSize.md,
-                                color: colors.iconSecondary,
+                                colorFilter: ColorFilter.mode(colors.iconSecondary, BlendMode.srcIn),
                               ),
                             ),
                           ),
 
                           SizedBox(height: KSpacing.lg25.h),
 
-                          GestureDetector(
-                            onTap: () => handleRegister(),
-                            child: Container(
-                              height: 56.h,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [colors.accentGreen, colors.accentGreen.withValues(alpha: 0.8)],
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                ),
-                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: colors.accentGreen.withValues(alpha: 0.4),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
-                              ),
-                              child: Center(
-                                child: Text(
-                                  AppStrings.register,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ),
+                          AppButton(
+                            width: double.infinity,
+                            height: 56.h,
+                            buttonText: AppStrings.register,
+                            onPressed: () => handleRegister(),
+                            backgroundColor: colors.accentGreen,
+                            borderRadius: KBorderSize.borderRadius4,
+                            textStyle: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ],
@@ -854,130 +674,15 @@ class _RegisterState extends State<Register> with SingleTickerProviderStateMixin
                         child: Text(
                           "  Login Now",
                           style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: colors.textPrimary,
+                            fontFamily: "Lato",
+                            package: 'grab_go_shared',
+                            fontWeight: FontWeight.w600,
+                            color: colors.accentGreen,
                             fontSize: KTextSize.small.sp,
                           ),
                         ),
                       ),
                     ],
-                  ),
-
-                  SizedBox(height: KSpacing.lg25.h),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Divider(color: colors.divider, thickness: KBorderWidth.normal, endIndent: KSpacing.md),
-                      ),
-                      Text(
-                        "or sign up with",
-                        style: TextStyle(
-                          color: colors.textSecondary,
-                          fontSize: KTextSize.small,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Expanded(
-                        child: Divider(color: colors.divider, thickness: KBorderWidth.normal, indent: KSpacing.md),
-                      ),
-                    ],
-                  ),
-
-                  SizedBox(height: KSpacing.lg25.h),
-
-                  FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: SlideTransition(
-                      position: _slideAnimation,
-                      child: Column(
-                        children: [
-                          GestureDetector(
-                            onTap: _handleGoogleSignUp,
-                            child: Container(
-                              height: 56.h,
-                              decoration: BoxDecoration(
-                                color: colors.backgroundSecondary,
-                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                                border: Border.all(color: colors.border, width: 1.5),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: colors.shadow.withValues(alpha: 0.05),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Image(
-                                    image: Assets.icons.google.provider(package: 'grab_go_shared'),
-                                    height: 24.r,
-                                    width: 24.r,
-                                  ),
-                                  SizedBox(width: KSpacing.md.w),
-                                  Text(
-                                    "Sign Up with Google",
-                                    style: TextStyle(
-                                      color: colors.textPrimary,
-                                      fontSize: 15.sp,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          SizedBox(height: KSpacing.md.h),
-
-                          GestureDetector(
-                            onTap: () {
-                              AppToastMessage.show(
-                                context: context,
-                                message: "Facebook sign-up coming soon!",
-                                backgroundColor: context.appColors.accentOrange,
-                              );
-                            },
-                            child: Container(
-                              height: 56.h,
-                              decoration: BoxDecoration(
-                                color: colors.backgroundSecondary,
-                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                                border: Border.all(color: colors.border, width: 1.5),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: colors.shadow.withValues(alpha: 0.05),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Image(
-                                    image: Assets.icons.facebook.provider(package: 'grab_go_shared'),
-                                    height: 24.r,
-                                    width: 24.r,
-                                  ),
-                                  SizedBox(width: KSpacing.md.w),
-                                  Text(
-                                    "Sign Up with Facebook",
-                                    style: TextStyle(
-                                      color: colors.textPrimary,
-                                      fontSize: 15.sp,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
                 ],
               ),

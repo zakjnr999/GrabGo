@@ -3,7 +3,6 @@ enum VendorNotificationSeverity { info, warning, critical }
 enum VendorNotificationChannelType {
   newOrders,
   orderSlaRisk,
-  chatMessages,
   inventoryLowStock,
   payoutUpdates,
   accountSecurity,
@@ -63,7 +62,6 @@ extension VendorNotificationChannelTypeX on VendorNotificationChannelType {
     return switch (this) {
       VendorNotificationChannelType.newOrders => 'New Orders',
       VendorNotificationChannelType.orderSlaRisk => 'SLA Risk Alerts',
-      VendorNotificationChannelType.chatMessages => 'Chat Messages',
       VendorNotificationChannelType.inventoryLowStock => 'Low Stock Alerts',
       VendorNotificationChannelType.payoutUpdates => 'Payout Updates',
       VendorNotificationChannelType.accountSecurity => 'Security Alerts',
@@ -76,8 +74,6 @@ extension VendorNotificationChannelTypeX on VendorNotificationChannelType {
         'Immediate alert when a new order enters queue',
       VendorNotificationChannelType.orderSlaRisk =>
         'Warn when active orders are close to SLA breach',
-      VendorNotificationChannelType.chatMessages =>
-        'Notify on customer/rider chat replies',
       VendorNotificationChannelType.inventoryLowStock =>
         'Alert when key items reach low stock threshold',
       VendorNotificationChannelType.payoutUpdates =>
@@ -99,11 +95,6 @@ List<VendorNotificationChannelSetting> defaultNotificationChannels() {
       channel: VendorNotificationChannelType.orderSlaRisk,
       enabled: true,
       isCritical: true,
-    ),
-    VendorNotificationChannelSetting(
-      channel: VendorNotificationChannelType.chatMessages,
-      enabled: true,
-      isCritical: false,
     ),
     VendorNotificationChannelSetting(
       channel: VendorNotificationChannelType.inventoryLowStock,

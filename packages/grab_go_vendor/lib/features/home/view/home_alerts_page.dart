@@ -29,23 +29,38 @@ class HomeAlertsPage extends StatelessWidget {
             children: [
               TextButton.icon(
                 onPressed: () => Navigator.of(context).maybePop(),
-                style: TextButton.styleFrom(padding: EdgeInsets.zero, foregroundColor: colors.textSecondary),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  foregroundColor: colors.textSecondary,
+                ),
                 icon: SvgPicture.asset(
                   Assets.icons.navArrowLeft,
                   package: 'grab_go_shared',
                   width: 18.w,
                   height: 18.w,
-                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(
+                    colors.textSecondary,
+                    BlendMode.srcIn,
+                  ),
                 ),
                 label: Text(
                   'Back',
-                  style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
               SizedBox(height: 6.h),
               Text(
                 'Alerts',
-                style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.w900, color: colors.textPrimary, height: 1.15),
+                style: TextStyle(
+                  fontSize: 24.sp,
+                  fontWeight: FontWeight.w900,
+                  color: colors.textPrimary,
+                  height: 1.15,
+                ),
               ),
               SizedBox(height: 8.h),
               Text(
@@ -80,7 +95,10 @@ class HomeAlertsPage extends StatelessWidget {
                                 Container(
                                   width: 10.w,
                                   height: 10.w,
-                                  decoration: BoxDecoration(color: alert.color, shape: BoxShape.circle),
+                                  decoration: BoxDecoration(
+                                    color: alert.color,
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
                                 SizedBox(width: 8.w),
                                 Expanded(
@@ -109,10 +127,17 @@ class HomeAlertsPage extends StatelessWidget {
                               children: [
                                 if (alert.serviceType != null)
                                   Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8.w,
+                                      vertical: 4.h,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: alert.color.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(999.r),
+                                      color: alert.color.withValues(
+                                        alpha: 0.12,
+                                      ),
+                                      borderRadius: BorderRadius.circular(
+                                        999.r,
+                                      ),
                                     ),
                                     child: Text(
                                       _serviceLabel(alert.serviceType!),
@@ -125,7 +150,8 @@ class HomeAlertsPage extends StatelessWidget {
                                   ),
                                 const Spacer(),
                                 TextButton(
-                                  onPressed: () => _handleAlertAction(context, alert),
+                                  onPressed: () =>
+                                      _handleAlertAction(context, alert),
                                   child: Text(
                                     _alertActionLabel(alert.action),
                                     style: TextStyle(

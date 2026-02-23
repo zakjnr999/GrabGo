@@ -144,7 +144,7 @@ class _VerifyPhoneState extends State<ForgotPassword> with SingleTickerProviderS
                           width: 80.h,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                            color: colors.accentViolet.withValues(alpha: 0.15),
+                            color: colors.accentGreen.withValues(alpha: 0.15),
                           ),
                           child: Center(
                             child: SvgPicture.asset(
@@ -152,7 +152,7 @@ class _VerifyPhoneState extends State<ForgotPassword> with SingleTickerProviderS
                               package: 'grab_go_shared',
                               height: 48.h,
                               width: 48.h,
-                              colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                              colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
                             ),
                           ),
                         ),
@@ -209,9 +209,8 @@ class _VerifyPhoneState extends State<ForgotPassword> with SingleTickerProviderS
                             controller: emailController,
                             label: AppStrings.loginEmailLabel,
                             hintText: AppStrings.loginEmailHint,
-                            borderColor: colors.inputBorder,
                             fillColor: colors.backgroundSecondary,
-                            borderActiveColor: colors.accentViolet,
+                            borderActiveColor: colors.accentGreen,
                             borderRadius: KBorderSize.borderRadius4,
                             contentPadding: EdgeInsets.all(KSpacing.md15.r),
                             keyboardType: TextInputType.emailAddress,
@@ -230,14 +229,21 @@ class _VerifyPhoneState extends State<ForgotPassword> with SingleTickerProviderS
 
                           SizedBox(height: KSpacing.lg25.h),
 
-                          GestureDetector(
-                            onTap: () async {
+                          AppButton(
+                            width: double.infinity,
+                            height: 56.h,
+                            buttonText: 'Send Reset Link',
+                            onPressed: () async {
                               if (!_validateEmail()) {
                                 return;
                               }
 
                               FocusManager.instance.primaryFocus?.unfocus();
-                              LoadingDialog.instance().show(context: context);
+                              LoadingDialog.instance().show(
+                                context: context,
+                                text: "Checking connection...",
+                                spinColor: colors.accentGreen,
+                              );
                               await Future.delayed(const Duration(seconds: 1));
                               if (mounted) {
                                 LoadingDialog.instance().show(context: context, text: "Almost done..");
@@ -245,37 +251,15 @@ class _VerifyPhoneState extends State<ForgotPassword> with SingleTickerProviderS
                               await Future.delayed(const Duration(seconds: 1));
                               LoadingDialog.instance().hide();
                             },
-                            child: Container(
-                              height: 56.h,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [colors.accentViolet, colors.accentViolet.withValues(alpha: 0.8)],
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                ),
-                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: colors.accentViolet.withValues(alpha: 0.4),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
-                              ),
-                              child: Center(
-                                child: Text(
-                                  "Send Reset Link",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ),
+                            backgroundColor: colors.accentGreen,
+                            borderRadius: KBorderSize.borderRadius4,
+                            textStyle: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
                             ),
                           ),
-
                           SizedBox(height: KSpacing.lg25.h),
 
                           GestureDetector(
@@ -285,10 +269,10 @@ class _VerifyPhoneState extends State<ForgotPassword> with SingleTickerProviderS
                                 text: "Remember your password? ",
                                 style: TextStyle(
                                   fontFamily: "Lato",
-                                  package: "grab_go_shared",
+                                  package: 'grab_go_shared',
                                   color: colors.textSecondary,
                                   fontSize: KTextSize.small.sp,
-                                  fontWeight: FontWeight.w600,
+                                  height: 1.4,
                                 ),
                                 children: [
                                   TextSpan(
@@ -296,9 +280,9 @@ class _VerifyPhoneState extends State<ForgotPassword> with SingleTickerProviderS
                                     style: TextStyle(
                                       fontFamily: "Lato",
                                       package: 'grab_go_shared',
-                                      color: colors.accentViolet,
+                                      fontWeight: FontWeight.w600,
+                                      color: colors.accentGreen,
                                       fontSize: KTextSize.small.sp,
-                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                 ],

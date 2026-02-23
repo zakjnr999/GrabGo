@@ -117,157 +117,17 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
     return false;
   }
 
-  Future<void> handleGoogleSignIn() async {
-    FocusManager.instance.primaryFocus?.unfocus();
-    LoadingDialog.instance().show(context: context, text: "Checking connection...");
-
-    final hasInternet = await checkInternetConnection();
-    if (!hasInternet) {
-      if (mounted) {
-        LoadingDialog.instance().hide();
-        AppToastMessage.show(
-          context: context,
-          message: "No internet connection. Please check your network settings.",
-          backgroundColor: context.appColors.error,
-        );
-      }
-      return;
-    }
-
-    LoadingDialog.instance().show(context: context, text: "Signing in with Google...");
-
-    try {
-      final googleUserData = await GoogleSignInService().signInWithGoogle();
-
-      if (googleUserData == null) {
-        if (mounted) {
-          LoadingDialog.instance().hide();
-        }
-        return;
-      }
-
-      if (!mounted) return;
-
-      LoadingDialog.instance().show(context: context, text: "Authenticating with server...");
-
-      final request = GoogleSignInRequest(
-        googleId: googleUserData['googleId'],
-        email: googleUserData['email'],
-        displayName: googleUserData['displayName'],
-        photoUrl: googleUserData['photoUrl'],
-        idToken: googleUserData['idToken'],
-      );
-
-      final response = await authService
-          .googleSignIn(request)
-          .timeout(
-            const Duration(seconds: 60),
-            onTimeout: () {
-              throw TimeoutException(
-                'Server is taking too long to respond. '
-                'This might be because the free server is waking up. Please try again.',
-              );
-            },
-          );
-
-      if (!mounted) return;
-
-      LoadingDialog.instance().show(context: context, text: "Almost done..");
-
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      if (!mounted) return;
-      LoadingDialog.instance().hide();
-
-      if (response.isSuccessful && response.body != null) {
-        final token = response.body!.token;
-        User? user = response.body!.userData;
-
-        if (user != null && user.role != null && user.role!.toLowerCase() != 'rider') {
-          if (mounted) {
-            AppToastMessage.show(context: context, message: "User not found", backgroundColor: context.appColors.error);
-          }
-          return;
-        }
-
-        if (token != null && token.isNotEmpty) {
-          await CacheService.saveAuthToken(token);
-        }
-
-        if (user != null) {
-          await UserService().setCurrentUser(user);
-          await SocketService().initialize();
-        }
-
-        if (mounted) {
-          context.go("/home");
-        }
-      } else {
-        String errorMessage = "Google Sign-In failed. Please try again.";
-
-        if (response.statusCode == 400) {
-          errorMessage = "Invalid Google account data.";
-        } else if (response.statusCode == 409) {
-          errorMessage = "Email already exists with a different login method.";
-        } else if (response.statusCode == 500) {
-          errorMessage = "Server error. Please try again later.";
-        }
-
-        if (mounted) {
-          AppToastMessage.show(context: context, message: errorMessage, backgroundColor: context.appColors.error);
-        }
-      }
-    } on SocketException {
-      if (mounted) {
-        LoadingDialog.instance().hide();
-      }
-
-      final hasInternet = await checkInternetConnection();
-      String message;
-
-      if (!hasInternet) {
-        message = "No internet connection detected. Please check your network.";
-      } else {
-        message = "Cannot connect to server. Please try again.";
-      }
-
-      if (mounted) {
-        AppToastMessage.show(context: context, message: message, backgroundColor: context.appColors.error);
-      }
-    } on TimeoutException {
-      if (mounted) {
-        LoadingDialog.instance().hide();
-      }
-
-      if (mounted) {
-        AppToastMessage.show(
-          context: context,
-          message: "Request timeout. Server is taking too long. Please try again.",
-          backgroundColor: context.appColors.error,
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        LoadingDialog.instance().hide();
-      }
-
-      if (mounted) {
-        AppToastMessage.show(
-          context: context,
-          message: "An unexpected error occurred. Please try again.",
-          backgroundColor: context.appColors.error,
-        );
-      }
-    }
-  }
-
   Future<void> _handleLogin() async {
     if (!validateFields()) {
       return;
     }
 
     FocusManager.instance.primaryFocus?.unfocus();
-    LoadingDialog.instance().show(context: context, text: "Checking connection...");
+    LoadingDialog.instance().show(
+      context: context,
+      text: "Checking connection...",
+      spinColor: context.appColors.accentGreen,
+    );
 
     final hasInternet = await checkInternetConnection();
     if (!hasInternet) {
@@ -282,7 +142,11 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
       return;
     }
 
-    LoadingDialog.instance().show(context: context, text: "Signing you in...\nThis may take up to a minute.");
+    LoadingDialog.instance().show(
+      context: context,
+      text: "Signing you in...\nThis may take up to a minute.",
+      spinColor: AppColors.accentGreen,
+    );
 
     try {
       final request = LoginRequest(email: emailController.text.trim(), password: passwordController.text);
@@ -301,7 +165,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
 
       if (!mounted) return;
 
-      LoadingDialog.instance().show(context: context, text: "Almost done..");
+      LoadingDialog.instance().show(context: context, text: "Almost done..", spinColor: context.appColors.accentGreen);
 
       await Future.delayed(const Duration(milliseconds: 500));
 
@@ -312,7 +176,6 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         final token = response.body!.token;
         User? user = response.body!.userData;
 
-        // Validate that the user has the "rider" role
         if (user != null && user.role != null && user.role!.toLowerCase() != 'rider') {
           if (mounted) {
             AppToastMessage.show(context: context, message: "User not found", backgroundColor: context.appColors.error);
@@ -418,7 +281,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
           ),
           child: SafeArea(
             child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w, vertical: KSpacing.xl40.h),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -434,7 +297,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                           width: 80.w,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                            color: colors.accentOrange.withValues(alpha: 0.15),
+                            color: colors.accentGreen.withValues(alpha: 0.15),
                           ),
                           child: Center(
                             child: SvgPicture.asset(
@@ -442,7 +305,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                               package: "grab_go_shared",
                               height: 50.h,
                               width: 50.w,
-                              colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                              colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
                             ),
                           ),
                         ),
@@ -498,7 +361,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                             controller: emailController,
                             label: AppStrings.loginEmailLabel,
                             hintText: AppStrings.loginEmailHint,
-                            borderColor: colors.inputBorder,
+                            borderActiveColor: colors.accentGreen,
                             fillColor: colors.backgroundSecondary,
                             borderRadius: KBorderSize.borderRadius4,
                             contentPadding: EdgeInsets.all(KSpacing.md15.r),
@@ -523,7 +386,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                             label: AppStrings.loginPasswordLabel,
                             hintText: AppStrings.loginPasswordHint,
                             fillColor: colors.backgroundSecondary,
-                            borderColor: colors.inputBorder,
+                            borderActiveColor: colors.accentGreen,
                             borderRadius: KBorderSize.borderRadius4,
                             contentPadding: EdgeInsets.all(KSpacing.md15.r),
                             obscureText: !isPasswordVisible,
@@ -575,7 +438,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                             await CacheService.clearCredentials();
                           }
                         },
-                        activeColor: colors.accentOrange,
+                        activeColor: colors.accentGreen,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.borderRadius4)),
                         side: BorderSide(color: colors.border, width: KBorderWidth.thick),
                       ),
@@ -610,36 +473,18 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                     opacity: fadeAnimation,
                     child: SlideTransition(
                       position: slideAnimation,
-                      child: GestureDetector(
-                        onTap: _handleLogin,
-                        child: Container(
-                          height: 56.h,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                            ),
-                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                            boxShadow: [
-                              BoxShadow(
-                                color: colors.accentOrange.withValues(alpha: 0.4),
-                                blurRadius: 20,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Text(
-                              AppStrings.login,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16.sp,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
+                      child: AppButton(
+                        width: double.infinity,
+                        height: 56.h,
+                        buttonText: AppStrings.login,
+                        onPressed: _handleLogin,
+                        backgroundColor: colors.accentGreen,
+                        borderRadius: KBorderSize.borderRadius4,
+                        textStyle: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ),
@@ -671,7 +516,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                                 fontFamily: "Lato",
                                 package: 'grab_go_shared',
                                 fontWeight: FontWeight.w600,
-                                color: colors.textPrimary,
+                                color: colors.accentGreen,
                                 fontSize: KTextSize.small.sp,
                               ),
                             ),
@@ -679,118 +524,6 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                         ),
                       ),
                     ],
-                  ),
-
-                  SizedBox(height: KSpacing.lg25.h),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Divider(color: colors.divider, thickness: KBorderWidth.normal, endIndent: KSpacing.md),
-                      ),
-                      Text(
-                        "or continue with",
-                        style: TextStyle(
-                          color: colors.textSecondary,
-                          fontSize: KTextSize.small,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Expanded(
-                        child: Divider(color: colors.divider, thickness: KBorderWidth.normal, indent: KSpacing.md),
-                      ),
-                    ],
-                  ),
-
-                  SizedBox(height: KSpacing.lg25.h),
-
-                  FadeTransition(
-                    opacity: fadeAnimation,
-                    child: SlideTransition(
-                      position: slideAnimation,
-                      child: Column(
-                        children: [
-                          GestureDetector(
-                            onTap: handleGoogleSignIn,
-                            child: Container(
-                              height: 56.h,
-                              decoration: BoxDecoration(
-                                color: colors.backgroundSecondary,
-                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                                border: Border.all(color: colors.border, width: 1.5),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: colors.shadow.withValues(alpha: 0.05),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Image(
-                                    image: Assets.icons.google.provider(package: 'grab_go_shared'),
-                                    height: 24.r,
-                                    width: 24.r,
-                                  ),
-                                  SizedBox(width: KSpacing.md.w),
-                                  Text(
-                                    "Login with Google",
-                                    style: TextStyle(
-                                      color: colors.textPrimary,
-                                      fontSize: 15.sp,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          SizedBox(height: KSpacing.md.h),
-                          GestureDetector(
-                            onTap: () {
-                              // TODO: Implement Facebook Sign-In
-                            },
-                            child: Container(
-                              height: 56.h,
-                              decoration: BoxDecoration(
-                                color: colors.backgroundSecondary,
-                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                                border: Border.all(color: colors.border, width: 1.5),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: colors.shadow.withValues(alpha: 0.05),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Image(
-                                    image: Assets.icons.facebook.provider(package: 'grab_go_shared'),
-                                    height: 24.r,
-                                    width: 24.r,
-                                  ),
-                                  SizedBox(width: KSpacing.md.w),
-                                  Text(
-                                    "Login with Facebook",
-                                    style: TextStyle(
-                                      color: colors.textPrimary,
-                                      fontSize: 15.sp,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
                 ],
               ),

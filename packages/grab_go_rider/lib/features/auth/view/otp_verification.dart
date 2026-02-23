@@ -118,14 +118,11 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
     );
 
     if (userCredential != null && mounted) {
-      debugPrint('✅ Firebase verification successful, updating API...');
-
       LoadingDialog.instance().show(context: context, text: "Updating phone verification...");
 
       try {
         final userId = FirebasePhoneAuthService().userId;
         if (userId == null) {
-          debugPrint('❌ User ID not found. Cannot update phone verification.');
           if (mounted) {
             LoadingDialog.instance().hide();
             AppToastMessage.show(
@@ -137,21 +134,9 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
           return;
         }
 
-        // Check if auth token exists - CRITICAL: Token must be saved during registration
         final token = await CacheService.getAuthToken();
-        debugPrint('🔍 ========== TOKEN CHECK BEFORE PHONE VERIFICATION ==========');
-        debugPrint('   Token exists: ${token != null}');
-        debugPrint('   Token length: ${token?.length ?? 0}');
-        if (token != null) {
-          debugPrint('   Token preview: ${token.substring(0, token.length > 30 ? 30 : token.length)}...');
-        }
-        debugPrint('   User ID from Firebase: ${FirebasePhoneAuthService().userId}');
-        debugPrint('==============================================================');
 
         if (token == null || token.isEmpty) {
-          debugPrint('❌ CRITICAL ERROR: No auth token found!');
-          debugPrint('   This means registration did not save the token.');
-          debugPrint('   Please register/login again to get a token.');
           if (mounted) {
             LoadingDialog.instance().hide();
             AppToastMessage.show(
@@ -168,24 +153,6 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
           isPhoneVerified: true,
         );
 
-        debugPrint('🚀 Sending phone verification update:');
-        debugPrint('   User ID: $userId');
-        debugPrint('   Phone: ${request.phoneNumber}');
-        debugPrint('   Is Phone Verified: ${request.isPhoneVerified}');
-        debugPrint('   Request JSON: ${request.toJson()}');
-
-        // Log token info for debugging
-        final tokenForLog = await CacheService.getAuthToken();
-        if (tokenForLog != null) {
-          debugPrint(
-            '   Token preview: ${tokenForLog.substring(0, tokenForLog.length > 20 ? 20 : tokenForLog.length)}...',
-          );
-        } else {
-          debugPrint('   ⚠️ WARNING: No token found in cache!');
-        }
-
-        // Make the request - the converter should add the token, but if it doesn't work,
-        // we'll need to manually add it via an interceptor or modify the request
         final response = await authService
             .verifyPhone(userId, request)
             .timeout(
@@ -195,21 +162,7 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
               },
             );
 
-        debugPrint('📡 API Response:');
-        debugPrint('   Status Code: ${response.statusCode}');
-        debugPrint('   Is Successful: ${response.isSuccessful}');
-        debugPrint('   Response Body: ${response.body}');
-        debugPrint('   Response Error: ${response.error}');
-
         if (response.isSuccessful && response.body != null) {
-          final message = response.body!.message;
-          final user = response.body!.user;
-
-          debugPrint('✅ Phone verification updated successfully!');
-          debugPrint('Message: $message');
-          debugPrint('User: ${user?.username} (${user?.email})');
-          debugPrint('Phone Verified: ${user?.isPhoneVerified}');
-
           if (mounted) {
             LoadingDialog.instance().hide();
             AppToastMessage.show(
@@ -233,19 +186,12 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
             errorMessage = "Server error. Please try again later.";
           }
 
-          debugPrint('❌ API Error - Status: ${response.statusCode}, Error: ${response.error}');
-
           if (mounted) {
             LoadingDialog.instance().hide();
-            AppToastMessage.show(
-              context: context,
-              message: errorMessage,
-              backgroundColor: context.appColors.error,
-            );
+            AppToastMessage.show(context: context, message: errorMessage, backgroundColor: context.appColors.error);
           }
         }
       } catch (e) {
-        debugPrint('❌ Error updating phone verification: $e');
         if (mounted) {
           LoadingDialog.instance().hide();
           AppToastMessage.show(
@@ -287,11 +233,7 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
         debugPrint('✅ OTP resent successfully');
         if (mounted) {
           LoadingDialog.instance().hide();
-          AppToastMessage.show(
-            context: context,
-            message: "OTP resent successfully!",
-            backgroundColor: Colors.green,
-          );
+          AppToastMessage.show(context: context, message: "OTP resent successfully!", backgroundColor: Colors.green);
           _startCountdown();
         }
       },
@@ -379,14 +321,8 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
                         width: 80.h,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                          gradient: LinearGradient(
-                            colors: [
-                              colors.accentViolet.withValues(alpha: 0.15),
-                              colors.accentGreen.withValues(alpha: 0.15),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
+                          color: colors.accentGreen.withValues(alpha: 0.15),
+
                           boxShadow: [
                             BoxShadow(
                               color: colors.accentViolet.withValues(alpha: 0.15),
@@ -456,7 +392,6 @@ class _VerifyPhoneState extends State<OtpVerification> with SingleTickerProvider
                       children: [
                         OtpTextField(
                           numberOfFields: 6,
-                          borderColor: colors.inputBorder,
                           enabledBorderColor: colors.inputBorder,
                           disabledBorderColor: colors.inputBorder,
                           fillColor: colors.backgroundSecondary,

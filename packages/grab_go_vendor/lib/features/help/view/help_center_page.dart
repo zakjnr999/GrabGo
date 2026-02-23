@@ -132,7 +132,7 @@ class _HelpCenterView extends StatelessWidget {
                               child: OutlinedButton.icon(
                                 onPressed: () => _showInfo(
                                   context,
-                                  'Support chat shortcut opened (UI preview).',
+                                  'Support request shortcut opened (UI preview).',
                                 ),
                                 icon: Icon(
                                   Icons.support_agent_rounded,

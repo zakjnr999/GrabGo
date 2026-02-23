@@ -36,7 +36,6 @@ class OnboardingMainState extends State<OnboardingMain> with SingleTickerProvide
     if (_index < 2) {
       controller.nextPage(duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
     } else {
-      // Mark first launch as complete when user finishes onboarding
       await StorageService.setFirstLaunchComplete();
       if (mounted) {
         context.go('/login');

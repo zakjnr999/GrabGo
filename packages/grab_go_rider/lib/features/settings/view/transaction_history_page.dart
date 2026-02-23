@@ -3,11 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:grab_go_rider/features/home/models/transaction_model.dart';
 import 'package:grab_go_rider/features/home/models/transaction_history_model.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:intl/intl.dart';
 
 enum TransactionPeriod { today, thisWeek, thisMonth, allTime }
 

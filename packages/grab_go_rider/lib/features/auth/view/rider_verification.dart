@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:async';
 import 'dart:io';
 import 'package:dotted_line/dotted_line.dart';
@@ -72,8 +70,8 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(KBorderSize.borderRadius8),
-            topRight: Radius.circular(KBorderSize.borderRadius8),
+            topLeft: Radius.circular(KBorderSize.borderRadius20),
+            topRight: Radius.circular(KBorderSize.borderRadius20),
           ),
         ),
         child: Column(
@@ -82,9 +80,9 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
             Container(
               width: 40.w,
               height: 4.h,
-              margin: EdgeInsets.only(top: 12.h, bottom: 20.h),
+              margin: EdgeInsets.only(top: 12.h, bottom: 16.h),
               decoration: BoxDecoration(
-                color: colors.textSecondary.withOpacity(0.3),
+                color: colors.textSecondary.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2.r),
               ),
             ),
@@ -104,15 +102,24 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                 final option = options[index];
                 final isSelected = vehicleTypeController.text == option['value'];
                 return ListTile(
+                  splashColor: colors.backgroundSecondary,
                   title: Text(
                     option['label']!,
                     style: TextStyle(
                       fontSize: 16.sp,
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                      color: isSelected ? colors.accentOrange : colors.textPrimary,
+                      color: colors.textPrimary,
                     ),
                   ),
-                  trailing: isSelected ? Icon(Icons.check_circle, color: colors.accentOrange, size: 24.sp) : null,
+                  trailing: isSelected
+                      ? SvgPicture.asset(
+                          Assets.icons.checkCircleSolid,
+                          package: 'grab_go_shared',
+                          colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                          height: 20.sp,
+                          width: 20.sp,
+                        )
+                      : null,
                   onTap: () {
                     setState(() {
                       vehicleTypeController.text = option['value']!;
@@ -145,8 +152,8 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(KBorderSize.borderRadius8),
-            topRight: Radius.circular(KBorderSize.borderRadius8),
+            topLeft: Radius.circular(KBorderSize.borderRadius20),
+            topRight: Radius.circular(KBorderSize.borderRadius20),
           ),
         ),
         child: Column(
@@ -157,7 +164,7 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
               height: 4.h,
               margin: EdgeInsets.only(top: 12.h, bottom: 20.h),
               decoration: BoxDecoration(
-                color: colors.textSecondary.withOpacity(0.3),
+                color: colors.textSecondary.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2.r),
               ),
             ),
@@ -182,10 +189,18 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                     style: TextStyle(
                       fontSize: 16.sp,
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                      color: isSelected ? colors.accentOrange : colors.textPrimary,
+                      color: colors.textPrimary,
                     ),
                   ),
-                  trailing: isSelected ? Icon(Icons.check_circle, color: colors.accentOrange, size: 24.sp) : null,
+                  trailing: isSelected
+                      ? SvgPicture.asset(
+                          Assets.icons.checkCircleSolid,
+                          package: 'grab_go_shared',
+                          colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                          height: 20.sp,
+                          width: 20.sp,
+                        )
+                      : null,
                   onTap: () {
                     setState(() {
                       nationalIdTypeController.text = option['value']!;
@@ -217,8 +232,8 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(KBorderSize.borderRadius8),
-            topRight: Radius.circular(KBorderSize.borderRadius8),
+            topLeft: Radius.circular(KBorderSize.borderRadius20),
+            topRight: Radius.circular(KBorderSize.borderRadius20),
           ),
         ),
         child: Column(
@@ -229,7 +244,7 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
               height: 4.h,
               margin: EdgeInsets.only(top: 12.h, bottom: 20.h),
               decoration: BoxDecoration(
-                color: colors.textSecondary.withOpacity(0.3),
+                color: colors.textSecondary.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2.r),
               ),
             ),
@@ -254,10 +269,18 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                     style: TextStyle(
                       fontSize: 16.sp,
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                      color: isSelected ? colors.accentOrange : colors.textPrimary,
+                      color: colors.textPrimary,
                     ),
                   ),
-                  trailing: isSelected ? Icon(Icons.check_circle, color: colors.accentOrange, size: 24.sp) : null,
+                  trailing: isSelected
+                      ? SvgPicture.asset(
+                          Assets.icons.checkCircleSolid,
+                          package: 'grab_go_shared',
+                          colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                          height: 20.sp,
+                          width: 20.sp,
+                        )
+                      : null,
                   onTap: () {
                     setState(() {
                       paymentMethodController.text = option['value']!;
@@ -310,7 +333,7 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
               height: 4.h,
               margin: EdgeInsets.only(top: 12.h, bottom: 20.h),
               decoration: BoxDecoration(
-                color: colors.textSecondary.withOpacity(0.3),
+                color: colors.textSecondary.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2.r),
               ),
             ),
@@ -338,7 +361,15 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                       color: isSelected ? colors.accentOrange : colors.textPrimary,
                     ),
                   ),
-                  trailing: isSelected ? Icon(Icons.check_circle, color: colors.accentOrange, size: 24.sp) : null,
+                  trailing: isSelected
+                      ? SvgPicture.asset(
+                          Assets.icons.checkCircleSolid,
+                          package: 'grab_go_shared',
+                          colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                          height: 20.sp,
+                          width: 20.sp,
+                        )
+                      : null,
                   onTap: () {
                     setState(() {
                       mobileMoneyProviderController.text = option['value']!;
@@ -434,6 +465,7 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
       title: 'Cancel Verification',
       message: 'Are you sure you want to cancel your verification? Your progress will be lost.',
       type: AppDialogType.warning,
+      borderRadius: KBorderSize.borderRadius4,
       primaryButtonText: 'Cancel',
       secondaryButtonText: 'Continue',
       primaryButtonColor: Colors.red,
@@ -518,8 +550,6 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
         if (vehicleTypeController.text.trim().isNotEmpty) {
           await CacheService.saveVehicleType(vehicleTypeController.text.trim());
         }
-
-        // Upload ID images separately after successful submission
         try {
           if (idFrontImage != null) {
             await riderService.uploadIdImage(imageType: 'front', imagePath: idFrontImage!.path);
@@ -546,11 +576,7 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
           errorMessage = response.error.toString();
         }
 
-        AppToastMessage.show(
-          context: context,
-          message: errorMessage,
-          backgroundColor: context.appColors.error,
-        );
+        AppToastMessage.show(context: context, message: errorMessage, backgroundColor: context.appColors.error);
       }
     } catch (e) {
       if (mounted) {
@@ -571,11 +597,7 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
       }
 
       if (mounted) {
-        AppToastMessage.show(
-          context: context,
-          message: errorMessage,
-          backgroundColor: context.appColors.error,
-        );
+        AppToastMessage.show(context: context, message: errorMessage, backgroundColor: context.appColors.error);
       }
     }
   }
@@ -639,7 +661,7 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
           child: AnnotatedRegion<SystemUiOverlayStyle>(
             value: ThemeHelper.getSystemUiOverlayStyle(context),
             child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w, vertical: KSpacing.xl40.h),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -653,7 +675,7 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                         width: 80.h,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                          color: colors.accentOrange.withValues(alpha: 0.15),
+                          color: colors.accentGreen.withValues(alpha: 0.15),
                         ),
                         child: Center(
                           child: SvgPicture.asset(
@@ -661,7 +683,7 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                             package: 'grab_go_shared',
                             height: 50.h,
                             width: 50.h,
-                            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                            colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
                           ),
                         ),
                       ),
@@ -712,6 +734,11 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                   ),
 
                   SizedBox(height: KSpacing.lg25.h),
+                  Text(
+                    "Vehicle Type *",
+                    style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                  ),
+                  SizedBox(height: 6.h),
 
                   GestureDetector(
                     onTap: _showVehicleTypeSelector,
@@ -720,7 +747,7 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                         color: colors.backgroundSecondary,
                         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                         border: Border.all(
-                          color: vehicleTypeError != null ? colors.error : colors.inputBorder,
+                          color: vehicleTypeError != null ? colors.error : Colors.transparent,
                           width: 1,
                         ),
                       ),
@@ -728,11 +755,6 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            "Vehicle Type *",
-                            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
-                          ),
-                          SizedBox(height: KSpacing.xs.h),
                           Row(
                             children: [
                               Expanded(
@@ -749,7 +771,13 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                                   ),
                                 ),
                               ),
-                              Icon(Icons.keyboard_arrow_down, color: colors.textSecondary, size: 24.sp),
+                              SvgPicture.asset(
+                                Assets.icons.navArrowDown,
+                                package: 'grab_go_shared',
+                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                height: 20.h,
+                                width: 20.h,
+                              ),
                             ],
                           ),
                           if (vehicleTypeError != null) ...[
@@ -770,8 +798,8 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                     controller: licensePlateController,
                     label: "License Plate Number *",
                     hintText: "Enter your license plate number",
-                    borderColor: colors.inputBorder,
                     fillColor: colors.backgroundSecondary,
+                    borderActiveColor: colors.accentGreen,
                     borderRadius: KBorderSize.borderRadius4,
                     contentPadding: EdgeInsets.all(KSpacing.md15.r),
                     keyboardType: TextInputType.text,
@@ -783,8 +811,8 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                     controller: vehicleBrandController,
                     label: "Vehicle Brand",
                     hintText: "Enter your vehicle brand",
-                    borderColor: colors.inputBorder,
                     fillColor: colors.backgroundSecondary,
+                    borderActiveColor: colors.accentGreen,
                     borderRadius: KBorderSize.borderRadius4,
                     contentPadding: EdgeInsets.all(KSpacing.md15.r),
                     keyboardType: TextInputType.text,
@@ -795,8 +823,8 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                     controller: vehicleModelController,
                     label: "Vehicle Model",
                     hintText: "Enter your vehicle model",
-                    borderColor: colors.inputBorder,
                     fillColor: colors.backgroundSecondary,
+                    borderActiveColor: colors.accentGreen,
                     borderRadius: KBorderSize.borderRadius4,
                     contentPadding: EdgeInsets.all(KSpacing.md15.r),
                     keyboardType: TextInputType.text,
@@ -806,6 +834,7 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                   ImageUploadWidget(
                     label: "Vehicle Image",
                     hintText: "Tap to select image",
+                    color: colors.accentGreen,
                     borderRadius: KBorderSize.borderRadius4,
                     height: 120.h,
                     onImageSelected: (File? image) {
@@ -837,6 +866,12 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
 
                   SizedBox(height: KSpacing.lg25.h),
 
+                  Text(
+                    "National ID Type *",
+                    style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                  ),
+                  SizedBox(height: 6.h),
+
                   GestureDetector(
                     onTap: _showNationalIdTypeSelector,
                     child: Container(
@@ -844,7 +879,7 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                         color: colors.backgroundSecondary,
                         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                         border: Border.all(
-                          color: nationalIdTypeError != null ? colors.error : colors.inputBorder,
+                          color: nationalIdTypeError != null ? colors.error : Colors.transparent,
                           width: 1,
                         ),
                       ),
@@ -852,11 +887,6 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            "National ID Type *",
-                            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
-                          ),
-                          SizedBox(height: KSpacing.xs.h),
                           Row(
                             children: [
                               Expanded(
@@ -873,7 +903,13 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                                   ),
                                 ),
                               ),
-                              Icon(Icons.keyboard_arrow_down, color: colors.textSecondary, size: 24.sp),
+                              SvgPicture.asset(
+                                Assets.icons.navArrowDown,
+                                package: 'grab_go_shared',
+                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                height: 20.h,
+                                width: 20.h,
+                              ),
                             ],
                           ),
                           if (nationalIdTypeError != null) ...[
@@ -894,8 +930,8 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                     controller: nationalIdNumberController,
                     label: "National ID Number *",
                     hintText: "Enter your national ID number",
-                    borderColor: colors.inputBorder,
                     fillColor: colors.backgroundSecondary,
+                    borderActiveColor: colors.accentGreen,
                     borderRadius: KBorderSize.borderRadius4,
                     contentPadding: EdgeInsets.all(KSpacing.md15.r),
                     keyboardType: TextInputType.text,
@@ -905,8 +941,9 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                   SizedBox(height: KSpacing.lg.h),
 
                   ImageUploadWidget(
-                    label: "Upload ID (Front) *",
+                    label: "ID (Front) *",
                     hintText: "Tap to select image",
+                    color: colors.accentGreen,
                     borderRadius: KBorderSize.borderRadius4,
                     height: 120.h,
                     onImageSelected: (File? image) {
@@ -921,8 +958,9 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                   SizedBox(height: KSpacing.lg.h),
 
                   ImageUploadWidget(
-                    label: "Upload ID (Back) *",
+                    label: "ID (Back) *",
                     hintText: "Tap to select image",
+                    color: colors.accentGreen,
                     borderRadius: KBorderSize.borderRadius4,
                     height: 120.h,
                     onImageSelected: (File? image) {
@@ -937,8 +975,9 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                   SizedBox(height: KSpacing.lg.h),
 
                   ImageUploadWidget(
-                    label: "Upload Selfie Photo",
+                    label: "Selfie Photo",
                     hintText: "Tap to select image",
+                    color: colors.accentGreen,
                     borderRadius: KBorderSize.borderRadius4,
                     height: 120.h,
                     onImageSelected: (File? image) {
@@ -970,23 +1009,23 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
 
                   SizedBox(height: KSpacing.lg25.h),
 
+                  Text(
+                    "Payment Method *",
+                    style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                  ),
+                  SizedBox(height: 6.h),
+
                   GestureDetector(
                     onTap: _showPaymentMethodSelector,
                     child: Container(
                       decoration: BoxDecoration(
                         color: colors.backgroundSecondary,
                         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                        border: Border.all(color: colors.inputBorder, width: 1),
                       ),
                       padding: EdgeInsets.all(KSpacing.md15.r),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            "Payment Method *",
-                            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
-                          ),
-                          SizedBox(height: KSpacing.xs.h),
                           Row(
                             children: [
                               Expanded(
@@ -1003,7 +1042,13 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                                   ),
                                 ),
                               ),
-                              Icon(Icons.keyboard_arrow_down, color: colors.textSecondary, size: 24.sp),
+                              SvgPicture.asset(
+                                Assets.icons.navArrowDown,
+                                package: 'grab_go_shared',
+                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                height: 20.h,
+                                width: 20.h,
+                              ),
                             ],
                           ),
                         ],
@@ -1011,15 +1056,14 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                     ),
                   ),
 
-                  // Show bank account fields if payment method is bank_account
                   if (paymentMethodController.text == 'bank_account') ...[
                     SizedBox(height: KSpacing.lg.h),
                     AppTextInput(
                       controller: bankNameController,
                       label: "Bank Name *",
                       hintText: "Enter your preferred bank name",
-                      borderColor: colors.inputBorder,
                       fillColor: colors.backgroundSecondary,
+                      borderActiveColor: colors.accentGreen,
                       borderRadius: KBorderSize.borderRadius4,
                       contentPadding: EdgeInsets.all(KSpacing.md15.r),
                       keyboardType: TextInputType.text,
@@ -1029,8 +1073,8 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                       controller: accountNumberController,
                       label: "Account Number *",
                       hintText: "Enter your account number",
-                      borderColor: colors.inputBorder,
                       fillColor: colors.backgroundSecondary,
+                      borderActiveColor: colors.accentGreen,
                       borderRadius: KBorderSize.borderRadius4,
                       contentPadding: EdgeInsets.all(KSpacing.md15.r),
                       keyboardType: TextInputType.text,
@@ -1040,15 +1084,14 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                       controller: accountHolderNameController,
                       label: "Account Holder Name *",
                       hintText: "Enter your account holder name",
-                      borderColor: colors.inputBorder,
                       fillColor: colors.backgroundSecondary,
+                      borderActiveColor: colors.accentGreen,
                       borderRadius: KBorderSize.borderRadius4,
                       contentPadding: EdgeInsets.all(KSpacing.md15.r),
                       keyboardType: TextInputType.text,
                     ),
                   ],
 
-                  // Show mobile money fields if payment method is mobile_money
                   if (paymentMethodController.text == 'mobile_money') ...[
                     SizedBox(height: KSpacing.lg.h),
                     GestureDetector(
@@ -1057,7 +1100,6 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                         decoration: BoxDecoration(
                           color: colors.backgroundSecondary,
                           borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                          border: Border.all(color: colors.inputBorder, width: 1),
                         ),
                         padding: EdgeInsets.all(KSpacing.md15.r),
                         child: Column(
@@ -1104,8 +1146,8 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                       controller: mobileMoneyNumberController,
                       label: "Mobile Money Number *",
                       hintText: "Enter your mobile money number",
-                      borderColor: colors.inputBorder,
                       fillColor: colors.backgroundSecondary,
+                      borderActiveColor: colors.accentGreen,
                       borderRadius: KBorderSize.borderRadius4,
                       contentPadding: EdgeInsets.all(KSpacing.md15.r),
                       keyboardType: TextInputType.number,
@@ -1117,9 +1159,8 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                     decoration: BoxDecoration(
-                      color: colors.accentOrange.withOpacity(0.1),
+                      color: colors.accentGreen.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                      border: Border.all(color: colors.accentOrange.withOpacity(0.3), width: 1),
                     ),
                     child: Row(
                       children: [
@@ -1128,7 +1169,7 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                           child: SvgPicture.asset(
                             Assets.icons.shieldCheck,
                             package: 'grab_go_shared',
-                            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                            colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
                           ),
                         ),
                         SizedBox(width: KSpacing.sm.w),
@@ -1162,14 +1203,22 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                           width: 20.w,
                           height: 20.h,
                           decoration: BoxDecoration(
-                            color: agreedToTerms ? colors.accentOrange : Colors.transparent,
+                            color: agreedToTerms ? colors.accentGreen : Colors.transparent,
                             border: Border.all(
-                              color: agreedToTerms ? colors.accentOrange : colors.inputBorder,
+                              color: agreedToTerms ? colors.accentGreen : colors.inputBorder,
                               width: 2,
                             ),
                             borderRadius: BorderRadius.circular(4.r),
                           ),
-                          child: agreedToTerms ? Icon(Icons.check, color: Colors.white, size: 14.sp) : null,
+                          child: agreedToTerms
+                              ? SvgPicture.asset(
+                                  Assets.icons.check,
+                                  package: 'grab_go_shared',
+                                  colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                  height: 14.sp,
+                                  width: 14.sp,
+                                )
+                              : null,
                         ),
                       ),
                       SizedBox(width: KSpacing.sm.w),
@@ -1195,7 +1244,7 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                                   style: TextStyle(
                                     fontFamily: "Lato",
                                     fontSize: 12.sp,
-                                    color: colors.accentOrange,
+                                    color: colors.accentGreen,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -1208,7 +1257,7 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                                   style: TextStyle(
                                     fontFamily: "Lato",
                                     fontSize: 12.sp,
-                                    color: colors.accentOrange,
+                                    color: colors.accentGreen,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -1235,9 +1284,9 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                           width: 20.w,
                           height: 20.h,
                           decoration: BoxDecoration(
-                            color: agreedToLocationAccess ? colors.accentOrange : Colors.transparent,
+                            color: agreedToLocationAccess ? colors.accentGreen : Colors.transparent,
                             border: Border.all(
-                              color: agreedToLocationAccess ? colors.accentOrange : colors.inputBorder,
+                              color: agreedToLocationAccess ? colors.accentGreen : colors.inputBorder,
                               width: 2,
                             ),
                             borderRadius: BorderRadius.circular(4.r),
@@ -1268,7 +1317,7 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                                   style: TextStyle(
                                     fontFamily: "Lato",
                                     fontSize: 12.sp,
-                                    color: colors.accentOrange,
+                                    color: colors.accentGreen,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -1294,14 +1343,22 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
                           width: 20.w,
                           height: 20.h,
                           decoration: BoxDecoration(
-                            color: agreedToAccuracy ? colors.accentOrange : Colors.transparent,
+                            color: agreedToAccuracy ? colors.accentGreen : Colors.transparent,
                             border: Border.all(
-                              color: agreedToAccuracy ? colors.accentOrange : colors.inputBorder,
+                              color: agreedToAccuracy ? colors.accentGreen : colors.inputBorder,
                               width: 2,
                             ),
                             borderRadius: BorderRadius.circular(4.r),
                           ),
-                          child: agreedToAccuracy ? Icon(Icons.check, color: Colors.white, size: 14.sp) : null,
+                          child: agreedToAccuracy
+                              ? SvgPicture.asset(
+                                  Assets.icons.check,
+                                  package: 'grab_go_shared',
+                                  colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                  height: 14.sp,
+                                  width: 14.sp,
+                                )
+                              : null,
                         ),
                       ),
                       SizedBox(width: KSpacing.sm.w),
@@ -1330,48 +1387,25 @@ class _RiderVerificationState extends State<RiderVerification> with SingleTicker
 
                   SizedBox(height: KSpacing.xl40.h),
 
-                  GestureDetector(
-                    onTap: (agreedToTerms && agreedToLocationAccess && agreedToAccuracy) ? _submitVerification : null,
-                    child: Container(
-                      height: 56.h,
-                      decoration: BoxDecoration(
-                        gradient: (agreedToTerms && agreedToLocationAccess && agreedToAccuracy)
-                            ? LinearGradient(
-                                colors: [colors.accentOrange, colors.accentOrange.withOpacity(0.8)],
-                                begin: Alignment.centerLeft,
-                                end: Alignment.centerRight,
-                              )
-                            : null,
-                        color: (agreedToTerms && agreedToLocationAccess && agreedToAccuracy)
-                            ? null
-                            : colors.inputBorder,
-                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                        boxShadow: (agreedToTerms && agreedToLocationAccess && agreedToAccuracy)
-                            ? [
-                                BoxShadow(
-                                  color: colors.accentOrange.withOpacity(0.4),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: Center(
-                        child: Text(
-                          "Submit Registration",
-                          style: TextStyle(
-                            color: (agreedToTerms && agreedToLocationAccess && agreedToAccuracy)
-                                ? Colors.white
-                                : colors.textSecondary,
-                            fontSize: 16.sp,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
+                  AppButton(
+                    width: double.infinity,
+                    height: 56.h,
+                    buttonText: 'SUBMIT',
+                    onPressed: () =>
+                        (agreedToTerms && agreedToLocationAccess && agreedToAccuracy) ? _submitVerification : null,
+                    backgroundColor: (agreedToTerms && agreedToLocationAccess && agreedToAccuracy)
+                        ? colors.accentGreen
+                        : colors.inputBorder,
+                    borderRadius: KBorderSize.borderRadius4,
+                    textStyle: TextStyle(
+                      color: (agreedToTerms && agreedToLocationAccess && agreedToAccuracy)
+                          ? Colors.white
+                          : colors.textSecondary,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
                     ),
                   ),
-
                   SizedBox(height: KSpacing.lg.h),
                 ],
               ),

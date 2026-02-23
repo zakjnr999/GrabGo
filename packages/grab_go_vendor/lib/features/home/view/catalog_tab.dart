@@ -20,10 +20,7 @@ class CatalogTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => CatalogViewModel(),
-      child: const _CatalogTabView(),
-    );
+    return ChangeNotifierProvider(create: (_) => CatalogViewModel(), child: const _CatalogTabView());
   }
 }
 
@@ -34,17 +31,11 @@ class _CatalogTabView extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.appColors;
 
-    return Consumer3<
-      CatalogViewModel,
-      VendorStoreContextViewModel,
-      VendorPreviewSessionViewModel
-    >(
+    return Consumer3<CatalogViewModel, VendorStoreContextViewModel, VendorPreviewSessionViewModel>(
       builder: (context, viewModel, storeContext, previewSession, _) {
         final visibleServices = _visibleVendorServices(storeContext);
-        final orderedVisibleServices = visibleServices.toList()
-          ..sort((a, b) => a.index.compareTo(b.index));
-        if (viewModel.serviceFilter != null &&
-            !visibleServices.contains(viewModel.serviceFilter)) {
+        final orderedVisibleServices = visibleServices.toList()..sort((a, b) => a.index.compareTo(b.index));
+        if (viewModel.serviceFilter != null && !visibleServices.contains(viewModel.serviceFilter)) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!context.mounted) return;
             viewModel.setServiceFilter(null);
@@ -55,17 +46,14 @@ class _CatalogTabView extends StatelessWidget {
             .where((category) => visibleServices.contains(category.serviceType))
             .map((category) => category.id)
             .toSet();
-        if (viewModel.categoryFilterId != null &&
-            !visibleCategoryIds.contains(viewModel.categoryFilterId)) {
+        if (viewModel.categoryFilterId != null && !visibleCategoryIds.contains(viewModel.categoryFilterId)) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!context.mounted) return;
             viewModel.setCategoryFilter(null);
           });
         }
 
-        final items = viewModel.filteredItems
-            .where((item) => visibleServices.contains(item.serviceType))
-            .toList();
+        final items = viewModel.filteredItems.where((item) => visibleServices.contains(item.serviceType)).toList();
         final visibleCategories = viewModel.visibleCategories
             .where((category) => visibleServices.contains(category.serviceType))
             .toList();
@@ -73,8 +61,7 @@ class _CatalogTabView extends StatelessWidget {
         final canCreateCatalogEntries = visibleServices.isNotEmpty;
         final isSelectionMode = viewModel.selectedCount > 0;
         final allVisibleSelected =
-            items.isNotEmpty &&
-            items.every((item) => viewModel.selectedItemIds.contains(item.id));
+            items.isNotEmpty && items.every((item) => viewModel.selectedItemIds.contains(item.id));
 
         return SafeArea(
           child: Stack(
@@ -84,12 +71,7 @@ class _CatalogTabView extends StatelessWidget {
                   child: AnimatedPadding(
                     duration: const Duration(milliseconds: 260),
                     curve: Curves.easeOutCubic,
-                    padding: EdgeInsets.fromLTRB(
-                      0,
-                      14.h,
-                      0,
-                      isSelectionMode ? 164.h : 110.h,
-                    ),
+                    padding: EdgeInsets.fromLTRB(0, 14.h, 0, isSelectionMode ? 164.h : 110.h),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -102,65 +84,43 @@ class _CatalogTabView extends StatelessWidget {
                             transitionBuilder: (child, animation) {
                               return FadeTransition(
                                 opacity: animation,
-                                child: SizeTransition(
-                                  sizeFactor: animation,
-                                  axisAlignment: -1,
-                                  child: child,
-                                ),
+                                child: SizeTransition(sizeFactor: animation, axisAlignment: -1, child: child),
                               );
                             },
                             child: isSelectionMode
                                 ? Column(
-                                    key: const ValueKey(
-                                      'catalog_selection_header',
-                                    ),
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    key: const ValueKey('catalog_selection_header'),
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
                                           Expanded(
                                             child: AnimatedSwitcher(
-                                              duration: const Duration(
-                                                milliseconds: 180,
-                                              ),
-                                              layoutBuilder:
-                                                  (
-                                                    currentChild,
-                                                    previousChildren,
-                                                  ) {
-                                                    return Stack(
-                                                      alignment:
-                                                          Alignment.centerLeft,
-                                                      children: [
-                                                        ...previousChildren,
-                                                        if (currentChild !=
-                                                            null)
-                                                          currentChild,
-                                                      ],
-                                                    );
-                                                  },
-                                              transitionBuilder:
-                                                  (child, animation) {
-                                                    return FadeTransition(
-                                                      opacity: animation,
-                                                      child: SlideTransition(
-                                                        position: Tween<Offset>(
-                                                          begin: const Offset(
-                                                            0.04,
-                                                            0,
-                                                          ),
-                                                          end: Offset.zero,
-                                                        ).animate(animation),
-                                                        child: child,
-                                                      ),
-                                                    );
-                                                  },
+                                              duration: const Duration(milliseconds: 180),
+                                              layoutBuilder: (currentChild, previousChildren) {
+                                                return Stack(
+                                                  alignment: Alignment.centerLeft,
+                                                  children: [
+                                                    ...previousChildren,
+                                                    if (currentChild != null) currentChild,
+                                                  ],
+                                                );
+                                              },
+                                              transitionBuilder: (child, animation) {
+                                                return FadeTransition(
+                                                  opacity: animation,
+                                                  child: SlideTransition(
+                                                    position: Tween<Offset>(
+                                                      begin: const Offset(0.04, 0),
+                                                      end: Offset.zero,
+                                                    ).animate(animation),
+                                                    child: child,
+                                                  ),
+                                                );
+                                              },
                                               child: Text(
                                                 '${viewModel.selectedCount} selected',
-                                                key: ValueKey(
-                                                  viewModel.selectedCount,
-                                                ),
+                                                key: ValueKey(viewModel.selectedCount),
                                                 style: TextStyle(
                                                   fontSize: 24.sp,
                                                   fontWeight: FontWeight.w900,
@@ -170,24 +130,13 @@ class _CatalogTabView extends StatelessWidget {
                                             ),
                                           ),
                                           TextButton(
-                                            onPressed:
-                                                items.isEmpty ||
-                                                    allVisibleSelected
+                                            onPressed: items.isEmpty || allVisibleSelected
                                                 ? null
-                                                : () => viewModel.selectItems(
-                                                    items
-                                                        .map((item) => item.id)
-                                                        .toSet(),
-                                                  ),
+                                                : () => viewModel.selectItems(items.map((item) => item.id).toSet()),
                                             style: TextButton.styleFrom(
-                                              padding: EdgeInsets.symmetric(
-                                                horizontal: 8.w,
-                                                vertical: 2.h,
-                                              ),
+                                              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
                                               minimumSize: Size.zero,
-                                              tapTargetSize:
-                                                  MaterialTapTargetSize
-                                                      .shrinkWrap,
+                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                             ),
                                             child: Text(
                                               'Select all',
@@ -201,14 +150,9 @@ class _CatalogTabView extends StatelessWidget {
                                           TextButton(
                                             onPressed: viewModel.clearSelection,
                                             style: TextButton.styleFrom(
-                                              padding: EdgeInsets.symmetric(
-                                                horizontal: 8.w,
-                                                vertical: 2.h,
-                                              ),
+                                              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
                                               minimumSize: Size.zero,
-                                              tapTargetSize:
-                                                  MaterialTapTargetSize
-                                                      .shrinkWrap,
+                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                             ),
                                             child: Text(
                                               'Clear',
@@ -232,11 +176,8 @@ class _CatalogTabView extends StatelessWidget {
                                     ],
                                   )
                                 : Column(
-                                    key: const ValueKey(
-                                      'catalog_default_header',
-                                    ),
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    key: const ValueKey('catalog_default_header'),
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Catalog',
@@ -272,26 +213,16 @@ class _CatalogTabView extends StatelessWidget {
                           transitionBuilder: (child, animation) {
                             return FadeTransition(
                               opacity: animation,
-                              child: SizeTransition(
-                                sizeFactor: animation,
-                                axisAlignment: -1,
-                                child: child,
-                              ),
+                              child: SizeTransition(sizeFactor: animation, axisAlignment: -1, child: child),
                             );
                           },
                           child: isSelectionMode
-                              ? const SizedBox(
-                                  key: ValueKey('catalog_filters_hidden'),
-                                )
+                              ? const SizedBox(key: ValueKey('catalog_filters_hidden'))
                               : Column(
-                                  key: const ValueKey(
-                                    'catalog_filters_visible',
-                                  ),
+                                  key: const ValueKey('catalog_filters_visible'),
                                   children: [
                                     Padding(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 20.w,
-                                      ),
+                                      padding: EdgeInsets.symmetric(horizontal: 20.w),
                                       child: AppTextInput(
                                         controller: viewModel.searchController,
                                         prefixIcon: Padding(
@@ -301,16 +232,12 @@ class _CatalogTabView extends StatelessWidget {
                                             package: 'grab_go_shared',
                                             width: 18.w,
                                             height: 18.w,
-                                            colorFilter: ColorFilter.mode(
-                                              colors.textSecondary,
-                                              BlendMode.srcIn,
-                                            ),
+                                            colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                                           ),
                                         ),
                                         hintText: 'Search by item or category',
                                         fillColor: colors.backgroundSecondary,
-                                        borderActiveColor:
-                                            colors.vendorPrimaryBlue,
+                                        borderActiveColor: colors.vendorPrimaryBlue,
                                         borderRadius: KBorderSize.border,
                                         cursorColor: colors.vendorPrimaryBlue,
                                       ),
@@ -324,29 +251,17 @@ class _CatalogTabView extends StatelessWidget {
                                             SizedBox(width: 20.w),
                                             AppFilterChip(
                                               label: 'All Services',
-                                              selected:
-                                                  viewModel.serviceFilter ==
-                                                  null,
-                                              onTap: () => viewModel
-                                                  .setServiceFilter(null),
+                                              selected: viewModel.serviceFilter == null,
+                                              onTap: () => viewModel.setServiceFilter(null),
                                             ),
                                             SizedBox(width: 8.w),
-                                            ...orderedVisibleServices.map((
-                                              service,
-                                            ) {
+                                            ...orderedVisibleServices.map((service) {
                                               return Padding(
-                                                padding: EdgeInsets.only(
-                                                  right: 8.w,
-                                                ),
+                                                padding: EdgeInsets.only(right: 8.w),
                                                 child: AppFilterChip(
                                                   label: service.label,
-                                                  selected:
-                                                      viewModel.serviceFilter ==
-                                                      service,
-                                                  onTap: () => viewModel
-                                                      .setServiceFilter(
-                                                        service,
-                                                      ),
+                                                  selected: viewModel.serviceFilter == service,
+                                                  onTap: () => viewModel.setServiceFilter(service),
                                                 ),
                                               );
                                             }),
@@ -362,64 +277,41 @@ class _CatalogTabView extends StatelessWidget {
                                         children: [
                                           SizedBox(width: 20.w),
                                           AppFilterChip(
-                                            label: 'All Categories',
-                                            selected:
-                                                viewModel.categoryFilterId ==
-                                                null,
-                                            onTap: () => viewModel
-                                                .setCategoryFilter(null),
+                                            label: 'All Categories (${viewModel.categories.length})',
+                                            selected: viewModel.categoryFilterId == null,
+                                            onTap: () => viewModel.setCategoryFilter(null),
                                           ),
                                           SizedBox(width: 8.w),
                                           ...visibleCategories.map((category) {
                                             return Padding(
-                                              padding: EdgeInsets.only(
-                                                right: 8.w,
-                                              ),
+                                              padding: EdgeInsets.only(right: 8.w),
                                               child: AppFilterChip(
-                                                label: category.name,
-                                                selected:
-                                                    viewModel
-                                                        .categoryFilterId ==
-                                                    category.id,
-                                                onTap: () =>
-                                                    viewModel.setCategoryFilter(
-                                                      category.id,
-                                                    ),
+                                                label:
+                                                    "${category.name} (${viewModel.itemCountForCategory(category.id)})",
+                                                selected: viewModel.categoryFilterId == category.id,
+                                                onTap: () => viewModel.setCategoryFilter(category.id),
                                               ),
                                             );
                                           }),
                                           SizedBox(width: 4.w),
-                                          Container(
-                                            width: 1.w,
-                                            height: 20.h,
-                                            color: colors.border,
-                                          ),
+                                          Container(width: 1.w, height: 20.h, color: colors.border),
                                           SizedBox(width: 12.w),
                                           AppFilterChip(
                                             label: 'All Status',
-                                            selected:
-                                                viewModel.availabilityFilter ==
-                                                null,
-                                            onTap: () => viewModel
-                                                .setAvailabilityFilter(null),
+                                            selected: viewModel.availabilityFilter == null,
+                                            onTap: () => viewModel.setAvailabilityFilter(null),
                                           ),
                                           SizedBox(width: 8.w),
                                           AppFilterChip(
                                             label: 'Available',
-                                            selected:
-                                                viewModel.availabilityFilter ==
-                                                true,
-                                            onTap: () => viewModel
-                                                .setAvailabilityFilter(true),
+                                            selected: viewModel.availabilityFilter == true,
+                                            onTap: () => viewModel.setAvailabilityFilter(true),
                                           ),
                                           SizedBox(width: 8.w),
                                           AppFilterChip(
                                             label: 'Unavailable',
-                                            selected:
-                                                viewModel.availabilityFilter ==
-                                                false,
-                                            onTap: () => viewModel
-                                                .setAvailabilityFilter(false),
+                                            selected: viewModel.availabilityFilter == false,
+                                            onTap: () => viewModel.setAvailabilityFilter(false),
                                           ),
                                           SizedBox(width: 20.w),
                                         ],
@@ -475,8 +367,7 @@ class _CatalogTabView extends StatelessWidget {
                           )
                         else
                           ...items.map((item) {
-                            final isSelected = viewModel.selectedItemIds
-                                .contains(item.id);
+                            final isSelected = viewModel.selectedItemIds.contains(item.id);
                             return Padding(
                               padding: EdgeInsets.only(bottom: 12.h),
                               child: SwipeActionCell(
@@ -487,8 +378,7 @@ class _CatalogTabView extends StatelessWidget {
                                   SwipeAction(
                                     color: Colors.transparent,
                                     widthSpace: 102.w,
-                                    onTap: (handler) =>
-                                        _confirmDeleteItem(context, item),
+                                    onTap: (handler) => _confirmDeleteItem(context, item),
                                     content: Align(
                                       alignment: Alignment.centerRight,
                                       child: Container(
@@ -496,9 +386,7 @@ class _CatalogTabView extends StatelessWidget {
                                         margin: EdgeInsets.only(right: 20.w),
                                         decoration: BoxDecoration(
                                           color: colors.error,
-                                          borderRadius: BorderRadius.circular(
-                                            12.r,
-                                          ),
+                                          borderRadius: BorderRadius.circular(12.r),
                                         ),
                                         child: Center(
                                           child: Text(
@@ -516,22 +404,13 @@ class _CatalogTabView extends StatelessWidget {
                                 ],
                                 child: GestureDetector(
                                   behavior: HitTestBehavior.opaque,
-                                  onLongPress: () =>
-                                      viewModel.toggleItemSelection(item.id),
+                                  onLongPress: () => viewModel.toggleItemSelection(item.id),
                                   onTap: isSelectionMode
-                                      ? () => viewModel.toggleItemSelection(
-                                          item.id,
-                                        )
-                                      : () => _showCatalogItemActionsSheet(
-                                          context,
-                                          item,
-                                          visibleServices,
-                                        ),
+                                      ? () => viewModel.toggleItemSelection(item.id)
+                                      : () => _showCatalogItemActionsSheet(context, item, visibleServices),
                                   child: _CatalogItemCard(
                                     item: item,
-                                    categoryName: viewModel.categoryNameFor(
-                                      item.categoryId,
-                                    ),
+                                    categoryName: viewModel.categoryNameFor(item.categoryId),
                                     showServiceChip: hasMultipleServices,
                                     isSelectionMode: isSelectionMode,
                                     isSelected: isSelected,
@@ -561,46 +440,36 @@ class _CatalogTabView extends StatelessWidget {
                         child: AnimatedSlide(
                           duration: const Duration(milliseconds: 220),
                           curve: Curves.easeOutCubic,
-                          offset: isSelectionMode
-                              ? const Offset(0, 0.25)
-                              : Offset.zero,
+                          offset: isSelectionMode ? const Offset(0, 0.25) : Offset.zero,
                           child: Align(
                             alignment: Alignment.centerRight,
-                            child: FloatingActionButton(
-                              heroTag: 'catalogFab',
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                  KBorderSize.border,
-                                ),
+                            child: FloatingActionButton.extended(
+                              label: Text(
+                                'Catalog Actions',
+                                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: Colors.white),
                               ),
+                              icon: SvgPicture.asset(
+                                Assets.icons.plus,
+                                package: 'grab_go_shared',
+                                width: 24.w,
+                                height: 24.w,
+                                colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                              ),
+                              heroTag: 'catalogFab',
+
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.border)),
                               onPressed: () {
                                 if (!canCreateCatalogEntries) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'No active service available for catalog actions.',
-                                      ),
-                                    ),
+                                    const SnackBar(content: Text('No active service available for catalog actions.')),
                                   );
                                   return;
                                 }
                                 _showCatalogActions(context, visibleServices);
                               },
-                              backgroundColor: canCreateCatalogEntries
-                                  ? colors.vendorPrimaryBlue
-                                  : colors.inputBorder,
+                              backgroundColor: canCreateCatalogEntries ? colors.vendorPrimaryBlue : colors.inputBorder,
                               foregroundColor: Colors.white,
                               elevation: 2,
-                              child: SvgPicture.asset(
-                                Assets.icons.plus,
-                                package: 'grab_go_shared',
-                                width: 24.w,
-                                height: 24.w,
-                                colorFilter: ColorFilter.mode(
-                                  Colors.white,
-                                  BlendMode.srcIn,
-                                ),
-                              ),
                             ),
                           ),
                         ),
@@ -615,16 +484,12 @@ class _CatalogTabView extends StatelessWidget {
                         child: AnimatedSlide(
                           duration: const Duration(milliseconds: 240),
                           curve: Curves.easeOutCubic,
-                          offset: isSelectionMode
-                              ? Offset.zero
-                              : const Offset(0, 0.2),
+                          offset: isSelectionMode ? Offset.zero : const Offset(0, 0.2),
                           child: _SelectionActionBar(
                             key: const ValueKey('catalog_selection_action_bar'),
                             selectedCount: viewModel.selectedCount,
-                            onMarkAvailable: () =>
-                                viewModel.setSelectedItemsAvailability(true),
-                            onMarkUnavailable: () =>
-                                viewModel.setSelectedItemsAvailability(false),
+                            onMarkAvailable: () => viewModel.setSelectedItemsAvailability(true),
+                            onMarkUnavailable: () => viewModel.setSelectedItemsAvailability(false),
                             onAdjustStock: () => _openBulkStockAdjust(context),
                           ),
                         ),
@@ -641,17 +506,12 @@ class _CatalogTabView extends StatelessWidget {
   }
 }
 
-Future<void> _showCatalogActions(
-  BuildContext context,
-  Set<VendorServiceType> visibleServices,
-) async {
+Future<void> _showCatalogActions(BuildContext context, Set<VendorServiceType> visibleServices) async {
   final colors = context.appColors;
   await showModalBottomSheet<void>(
     context: context,
     backgroundColor: colors.backgroundPrimary,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(18.r)),
-    ),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18.r))),
     builder: (sheetContext) {
       return SafeArea(
         top: false,
@@ -675,20 +535,12 @@ Future<void> _showCatalogActions(
               ),
               Text(
                 'Catalog Actions',
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.w800,
-                  color: colors.textPrimary,
-                ),
+                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
               ),
               SizedBox(height: 4.h),
               Text(
                 'Choose what you want to create.',
-                style: TextStyle(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w500,
-                  color: colors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
               ),
               SizedBox(height: 12.h),
               _CatalogQuickActionTile(
@@ -720,56 +572,35 @@ Future<void> _showCatalogActions(
   );
 }
 
-Future<void> _openAddItem(
-  BuildContext context,
-  Set<VendorServiceType> visibleServices,
-) async {
+Future<void> _openAddItem(BuildContext context, Set<VendorServiceType> visibleServices) async {
   final viewModel = context.read<CatalogViewModel>();
-  final categories = viewModel.categories
-      .where((category) => visibleServices.contains(category.serviceType))
-      .toList();
+  final categories = viewModel.categories.where((category) => visibleServices.contains(category.serviceType)).toList();
   if (categories.isEmpty) return;
   final draft = await Navigator.push<VendorCatalogItemDraft>(
     context,
     CupertinoPageRoute(
-      builder: (_) => CatalogItemFormPage(
-        title: 'Add Catalog Item',
-        categories: categories,
-      ),
+      builder: (_) => CatalogItemFormPage(title: 'Add Catalog Item', categories: categories),
     ),
   );
   if (draft == null) return;
   viewModel.addItem(draft);
 }
 
-Future<void> _openEditItem(
-  BuildContext context,
-  VendorCatalogItem item,
-  Set<VendorServiceType> visibleServices,
-) async {
+Future<void> _openEditItem(BuildContext context, VendorCatalogItem item, Set<VendorServiceType> visibleServices) async {
   final viewModel = context.read<CatalogViewModel>();
-  final categories = viewModel.categories
-      .where((category) => visibleServices.contains(category.serviceType))
-      .toList();
+  final categories = viewModel.categories.where((category) => visibleServices.contains(category.serviceType)).toList();
   if (categories.isEmpty) return;
   final draft = await Navigator.push<VendorCatalogItemDraft>(
     context,
     CupertinoPageRoute(
-      builder: (_) => CatalogItemFormPage(
-        title: 'Edit Item',
-        categories: categories,
-        initialItem: item,
-      ),
+      builder: (_) => CatalogItemFormPage(title: 'Edit Item', categories: categories, initialItem: item),
     ),
   );
   if (draft == null) return;
   viewModel.updateItem(item.id, draft);
 }
 
-Future<void> _openCategoryManager(
-  BuildContext context,
-  Set<VendorServiceType> visibleServices,
-) async {
+Future<void> _openCategoryManager(BuildContext context, Set<VendorServiceType> visibleServices) async {
   final viewModel = context.read<CatalogViewModel>();
   await Navigator.push<void>(
     context,
@@ -782,10 +613,7 @@ Future<void> _openCategoryManager(
   );
 }
 
-Future<void> _confirmDeleteItem(
-  BuildContext context,
-  VendorCatalogItem item,
-) async {
+Future<void> _confirmDeleteItem(BuildContext context, VendorCatalogItem item) async {
   final colors = context.appColors;
   final viewModel = context.read<CatalogViewModel>();
   final shouldDelete = await AppDialog.show(
@@ -814,9 +642,7 @@ Future<void> _showCatalogItemActionsSheet(
     isScrollControlled: true,
     backgroundColor: colors.backgroundPrimary,
     shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(
-        top: Radius.circular(KBorderSize.borderRadius20),
-      ),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(KBorderSize.borderRadius20)),
     ),
     builder: (sheetContext) {
       return StatefulBuilder(
@@ -830,12 +656,7 @@ Future<void> _showCatalogItemActionsSheet(
           return SafeArea(
             top: false,
             child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                16.w,
-                8.h,
-                16.w,
-                16.h + MediaQuery.viewInsetsOf(sheetContext).bottom,
-              ),
+              padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h + MediaQuery.viewInsetsOf(sheetContext).bottom),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -854,28 +675,17 @@ Future<void> _showCatalogItemActionsSheet(
                   ),
                   Text(
                     currentItem.name,
-                    style: TextStyle(
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.w800,
-                      color: colors.textPrimary,
-                    ),
+                    style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
                   ),
                   SizedBox(height: 4.h),
                   Text(
                     '$categoryName • ${currentItem.serviceType.label}',
-                    style: TextStyle(
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w500,
-                      color: colors.textSecondary,
-                    ),
+                    style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
                   ),
                   SizedBox(height: 14.h),
                   Container(
                     width: double.infinity,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 12.h,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12.r),
                       border: Border.all(color: colors.border),
@@ -886,11 +696,7 @@ Future<void> _showCatalogItemActionsSheet(
                         Expanded(
                           child: Text(
                             'Availability',
-                            style: TextStyle(
-                              fontSize: 13.sp,
-                              fontWeight: FontWeight.w700,
-                              color: colors.textPrimary,
-                            ),
+                            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                           ),
                         ),
                         CustomSwitch(
@@ -909,10 +715,7 @@ Future<void> _showCatalogItemActionsSheet(
                   SizedBox(height: 10.h),
                   Container(
                     width: double.infinity,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 10.h,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12.r),
                       border: Border.all(color: colors.border),
@@ -923,11 +726,7 @@ Future<void> _showCatalogItemActionsSheet(
                         Expanded(
                           child: Text(
                             'GHS ${currentItem.price.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontSize: 13.sp,
-                              fontWeight: FontWeight.w800,
-                              color: colors.textPrimary,
-                            ),
+                            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
                           ),
                         ),
                         Text(
@@ -936,11 +735,7 @@ Future<void> _showCatalogItemActionsSheet(
                               : currentItem.stock < 5
                               ? 'Low stock: ${currentItem.stock}'
                               : 'In stock: ${currentItem.stock}',
-                          style: TextStyle(
-                            fontSize: 11.sp,
-                            fontWeight: FontWeight.w700,
-                            color: stockColor,
-                          ),
+                          style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w700, color: stockColor),
                         ),
                       ],
                     ),
@@ -959,11 +754,7 @@ Future<void> _showCatalogItemActionsSheet(
                       backgroundColor: colors.backgroundSecondary,
                       borderColor: colors.inputBorder,
                       borderRadius: KBorderSize.border,
-                      textStyle: TextStyle(
-                        color: colors.textPrimary,
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      textStyle: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w700),
                     ),
                   ),
                   SizedBox(height: 8.h),
@@ -979,11 +770,7 @@ Future<void> _showCatalogItemActionsSheet(
                       },
                       backgroundColor: colors.error.withValues(alpha: 0.2),
                       borderRadius: KBorderSize.border,
-                      textStyle: TextStyle(
-                        color: colors.error,
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      textStyle: TextStyle(color: colors.error, fontSize: 13.sp, fontWeight: FontWeight.w700),
                     ),
                   ),
                   SizedBox(height: 8.h),
@@ -995,19 +782,11 @@ Future<void> _showCatalogItemActionsSheet(
                         final actionItem = viewModel.itemById(item.id) ?? item;
                         Navigator.pop(sheetContext);
                         if (!context.mounted) return;
-                        await _openEditItem(
-                          context,
-                          actionItem,
-                          visibleServices,
-                        );
+                        await _openEditItem(context, actionItem, visibleServices);
                       },
                       backgroundColor: colors.vendorPrimaryBlue,
                       borderRadius: KBorderSize.border,
-                      textStyle: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      textStyle: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.w700),
                     ),
                   ),
                 ],
@@ -1033,9 +812,7 @@ Future<void> _openBulkStockAdjust(BuildContext context) async {
       context: context,
       isScrollControlled: true,
       backgroundColor: colors.backgroundPrimary,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18.r)),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18.r))),
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (sheetContext, setSheetState) {
@@ -1043,32 +820,19 @@ Future<void> _openBulkStockAdjust(BuildContext context) async {
             if (amount < 1) amount = 1;
 
             return Padding(
-              padding: EdgeInsets.fromLTRB(
-                16.w,
-                12.h,
-                16.w,
-                20.h + MediaQuery.viewInsetsOf(sheetContext).bottom,
-              ),
+              padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 20.h + MediaQuery.viewInsetsOf(sheetContext).bottom),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Bulk Stock Update',
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w800,
-                      color: colors.textPrimary,
-                    ),
+                    style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
                   ),
                   SizedBox(height: 8.h),
                   Text(
                     '${viewModel.selectedCount} selected items',
-                    style: TextStyle(
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w600,
-                      color: colors.textSecondary,
-                    ),
+                    style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
                   ),
                   SizedBox(height: 12.h),
                   Row(
@@ -1077,17 +841,9 @@ Future<void> _openBulkStockAdjust(BuildContext context) async {
                         child: OutlinedButton(
                           onPressed: () => setSheetState(() => increase = true),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: increase
-                                ? colors.success
-                                : colors.textSecondary,
-                            side: BorderSide(
-                              color: increase
-                                  ? colors.success
-                                  : colors.inputBorder,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10.r),
-                            ),
+                            foregroundColor: increase ? colors.success : colors.textSecondary,
+                            side: BorderSide(color: increase ? colors.success : colors.inputBorder),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
                           ),
                           child: const Text('Increase'),
                         ),
@@ -1095,20 +851,11 @@ Future<void> _openBulkStockAdjust(BuildContext context) async {
                       SizedBox(width: 8.w),
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: () =>
-                              setSheetState(() => increase = false),
+                          onPressed: () => setSheetState(() => increase = false),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: !increase
-                                ? colors.error
-                                : colors.textSecondary,
-                            side: BorderSide(
-                              color: !increase
-                                  ? colors.error
-                                  : colors.inputBorder,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10.r),
-                            ),
+                            foregroundColor: !increase ? colors.error : colors.textSecondary,
+                            side: BorderSide(color: !increase ? colors.error : colors.inputBorder),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
                           ),
                           child: const Text('Decrease'),
                         ),
@@ -1139,10 +886,7 @@ Future<void> _openBulkStockAdjust(BuildContext context) async {
                           borderActiveColor: colors.vendorPrimaryBlue,
                           borderRadius: KBorderSize.border,
                           cursorColor: colors.vendorPrimaryBlue,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12.w,
-                            vertical: 12.h,
-                          ),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
                         ),
                       ),
                       IconButton(
@@ -1159,26 +903,16 @@ Future<void> _openBulkStockAdjust(BuildContext context) async {
                   SizedBox(
                     width: double.infinity,
                     child: AppButton(
-                      buttonText: increase
-                          ? 'Apply Increase'
-                          : 'Apply Decrease',
+                      buttonText: increase ? 'Apply Increase' : 'Apply Decrease',
                       onPressed: () {
-                        final parsed = int.tryParse(
-                          valueController.text.trim(),
-                        );
+                        final parsed = int.tryParse(valueController.text.trim());
                         if (parsed == null || parsed < 1) return;
-                        viewModel.adjustSelectedItemsStockBy(
-                          increase ? parsed : -parsed,
-                        );
+                        viewModel.adjustSelectedItemsStockBy(increase ? parsed : -parsed);
                         Navigator.pop(sheetContext);
                       },
                       backgroundColor: colors.vendorPrimaryBlue,
                       borderRadius: KBorderSize.borderRadius12,
-                      textStyle: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      textStyle: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
                     ),
                   ),
                 ],
@@ -1193,10 +927,7 @@ Future<void> _openBulkStockAdjust(BuildContext context) async {
   }
 }
 
-Future<void> _openStockAdjust(
-  BuildContext context,
-  VendorCatalogItem item,
-) async {
+Future<void> _openStockAdjust(BuildContext context, VendorCatalogItem item) async {
   final viewModel = context.read<CatalogViewModel>();
   final colors = context.appColors;
   final stockController = TextEditingController(text: item.stock.toString());
@@ -1206,20 +937,13 @@ Future<void> _openStockAdjust(
       context: context,
       isScrollControlled: true,
       backgroundColor: colors.backgroundPrimary,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18.r)),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18.r))),
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (sheetContext, setSheetState) {
             int stock = int.tryParse(stockController.text.trim()) ?? item.stock;
             return Padding(
-              padding: EdgeInsets.fromLTRB(
-                16.w,
-                12.h,
-                16.w,
-                20.h + MediaQuery.viewInsetsOf(sheetContext).bottom,
-              ),
+              padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 20.h + MediaQuery.viewInsetsOf(sheetContext).bottom),
               child: SafeArea(
                 top: false,
                 child: Column(
@@ -1234,28 +958,18 @@ Future<void> _openStockAdjust(
                         margin: EdgeInsets.only(bottom: 12.h),
                         decoration: BoxDecoration(
                           color: colors.border,
-                          borderRadius: BorderRadius.circular(
-                            KBorderSize.border,
-                          ),
+                          borderRadius: BorderRadius.circular(KBorderSize.border),
                         ),
                       ),
                     ),
                     Text(
                       'Adjust Stock',
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.w800,
-                        color: colors.textPrimary,
-                      ),
+                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
                     ),
                     SizedBox(height: 8.h),
                     Text(
                       item.name,
-                      style: TextStyle(
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w700,
-                        color: colors.textSecondary,
-                      ),
+                      style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.textSecondary),
                     ),
                     SizedBox(height: 12.h),
                     Row(
@@ -1281,10 +995,7 @@ Future<void> _openStockAdjust(
                             borderActiveColor: colors.vendorPrimaryBlue,
                             borderRadius: KBorderSize.border,
                             cursorColor: colors.vendorPrimaryBlue,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12.w,
-                              vertical: 12.h,
-                            ),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
                           ),
                         ),
                         IconButton(
@@ -1293,10 +1004,7 @@ Future<void> _openStockAdjust(
                             stockController.text = '$stock';
                             setSheetState(() {});
                           },
-                          icon: Icon(
-                            Icons.add,
-                            color: colors.vendorPrimaryBlue,
-                          ),
+                          icon: Icon(Icons.add, color: colors.vendorPrimaryBlue),
                         ),
                       ],
                     ),
@@ -1306,20 +1014,14 @@ Future<void> _openStockAdjust(
                       child: AppButton(
                         buttonText: 'Update Stock',
                         onPressed: () {
-                          final parsed = int.tryParse(
-                            stockController.text.trim(),
-                          );
+                          final parsed = int.tryParse(stockController.text.trim());
                           if (parsed == null || parsed < 0) return;
                           viewModel.adjustItemStock(item.id, parsed);
                           Navigator.pop(sheetContext);
                         },
                         backgroundColor: colors.vendorPrimaryBlue,
                         borderRadius: KBorderSize.border,
-                        textStyle: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w700,
-                        ),
+                        textStyle: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
                       ),
                     ),
                   ],
@@ -1376,10 +1078,7 @@ class _CatalogQuickActionTile extends StatelessWidget {
               width: 38.w,
               height: 38.w,
               padding: EdgeInsets.all(10.r),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10.r),
-              ),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10.r)),
               child: SvgPicture.asset(
                 icon,
                 package: 'grab_go_shared',
@@ -1395,20 +1094,12 @@ class _CatalogQuickActionTile extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: TextStyle(
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w800,
-                      color: colors.textPrimary,
-                    ),
+                    style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
                   ),
                   SizedBox(height: 2.h),
                   Text(
                     subtitle,
-                    style: TextStyle(
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.w500,
-                      color: colors.textSecondary,
-                    ),
+                    style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
                   ),
                 ],
               ),
@@ -1416,10 +1107,7 @@ class _CatalogQuickActionTile extends StatelessWidget {
             SvgPicture.asset(
               Assets.icons.navArrowRight,
               package: 'grab_go_shared',
-              colorFilter: ColorFilter.mode(
-                colors.textSecondary,
-                BlendMode.srcIn,
-              ),
+              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
               width: 20.w,
               height: 20.w,
             ),
@@ -1462,11 +1150,7 @@ class _SelectionActionBar extends StatelessWidget {
             padding: EdgeInsets.fromLTRB(10.w, 10.h, 10.w, 0),
             child: Text(
               'Bulk actions ($selectedCount)',
-              style: TextStyle(
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w700,
-                color: colors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.textSecondary),
             ),
           ),
           SizedBox(height: 8.h),
@@ -1493,11 +1177,7 @@ class _SelectionActionBar extends StatelessWidget {
                     unselectedTextColor: colors.textPrimary,
                   ),
                   SizedBox(width: 8.w),
-                  AppFilterChip(
-                    label: 'Adjust Stock',
-                    selected: true,
-                    onTap: onAdjustStock,
-                  ),
+                  AppFilterChip(label: 'Adjust Stock', selected: true, onTap: onAdjustStock),
                 ],
               ),
             ),
@@ -1539,14 +1219,9 @@ class _CatalogItemCard extends StatelessWidget {
       margin: EdgeInsets.symmetric(horizontal: 20.w),
       padding: EdgeInsets.all(12.r),
       decoration: BoxDecoration(
-        color: isSelected
-            ? colors.vendorPrimaryBlue.withValues(alpha: 0.08)
-            : colors.backgroundPrimary,
+        color: isSelected ? colors.vendorPrimaryBlue.withValues(alpha: 0.08) : colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(
-          color: isSelected ? colors.vendorPrimaryBlue : colors.border,
-          width: isSelected ? 1.3 : 1,
-        ),
+        border: Border.all(color: isSelected ? colors.vendorPrimaryBlue : colors.border, width: isSelected ? 1.3 : 1),
       ),
       child: Column(
         children: [
@@ -1556,17 +1231,11 @@ class _CatalogItemCard extends StatelessWidget {
                 width: 50,
                 height: 50,
                 padding: EdgeInsets.all(12.r),
-                decoration: BoxDecoration(
-                  color: colors.backgroundSecondary,
-                  borderRadius: BorderRadius.circular(12.r),
-                ),
+                decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(12.r)),
                 child: SvgPicture.asset(
                   item.serviceType.icon,
                   package: 'grab_go_shared',
-                  colorFilter: ColorFilter.mode(
-                    colors.textSecondary,
-                    BlendMode.srcIn,
-                  ),
+                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                   width: 20.w,
                   height: 20.w,
                 ),
@@ -1578,20 +1247,12 @@ class _CatalogItemCard extends StatelessWidget {
                   children: [
                     Text(
                       item.name,
-                      style: TextStyle(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w800,
-                        color: colors.textPrimary,
-                      ),
+                      style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
                     ),
                     SizedBox(height: 2.h),
                     Text(
                       categoryName,
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w500,
-                        color: colors.textSecondary,
-                      ),
+                      style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
                     ),
                   ],
                 ),
@@ -1614,22 +1275,14 @@ class _CatalogItemCard extends StatelessWidget {
                         height: 24,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: isSelected
-                              ? colors.vendorPrimaryBlue
-                              : colors.backgroundPrimary,
-                          border: Border.all(
-                            color: colors.vendorPrimaryBlue,
-                            width: 1.4,
-                          ),
+                          color: isSelected ? colors.vendorPrimaryBlue : colors.backgroundPrimary,
+                          border: Border.all(color: colors.vendorPrimaryBlue, width: 1.4),
                         ),
                         child: isSelected
                             ? SvgPicture.asset(
                                 Assets.icons.check,
                                 package: 'grab_go_shared',
-                                colorFilter: ColorFilter.mode(
-                                  Colors.white,
-                                  BlendMode.srcIn,
-                                ),
+                                colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
                                 width: 12.w,
                                 height: 12.w,
                               )
@@ -1639,10 +1292,7 @@ class _CatalogItemCard extends StatelessWidget {
                         key: const ValueKey('catalog_item_open_indicator'),
                         Assets.icons.navArrowRight,
                         package: 'grab_go_shared',
-                        colorFilter: ColorFilter.mode(
-                          colors.textSecondary,
-                          BlendMode.srcIn,
-                        ),
+                        colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                         width: 20.w,
                         height: 20.w,
                       ),
@@ -1659,10 +1309,7 @@ class _CatalogItemCard extends StatelessWidget {
                   onTap: null,
                   selectedColor: serviceColor.withValues(alpha: 0.14),
                   selectedTextColor: serviceColor,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 8.w,
-                    vertical: 4.h,
-                  ),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                 ),
                 SizedBox(width: 8.w),
               ],
@@ -1670,16 +1317,9 @@ class _CatalogItemCard extends StatelessWidget {
                 label: item.isAvailable ? 'Available' : 'Unavailable',
                 selected: true,
                 onTap: null,
-                selectedColor:
-                    (item.isAvailable ? colors.success : colors.error)
-                        .withValues(alpha: 0.14),
-                selectedTextColor: item.isAvailable
-                    ? colors.success
-                    : colors.error,
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 8.w,
-                  vertical: 4.h,
-                ),
+                selectedColor: (item.isAvailable ? colors.success : colors.error).withValues(alpha: 0.14),
+                selectedTextColor: item.isAvailable ? colors.success : colors.error,
+                contentPadding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
               ),
               if (item.requiresPrescription) ...[
                 SizedBox(width: 8.w),
@@ -1689,10 +1329,7 @@ class _CatalogItemCard extends StatelessWidget {
                   onTap: null,
                   selectedColor: colors.servicePharmacy.withValues(alpha: 0.14),
                   selectedTextColor: colors.servicePharmacy,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 8.w,
-                    vertical: 4.h,
-                  ),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                 ),
               ],
             ],
@@ -1703,11 +1340,7 @@ class _CatalogItemCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   'GHS ${item.price.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w800,
-                    color: colors.textPrimary,
-                  ),
+                  style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
                 ),
               ),
               Text(
@@ -1716,11 +1349,7 @@ class _CatalogItemCard extends StatelessWidget {
                     : item.stock < 5
                     ? 'Low stock: ${item.stock}'
                     : 'In stock: ${item.stock}',
-                style: TextStyle(
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w700,
-                  color: stockColor,
-                ),
+                style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w700, color: stockColor),
               ),
             ],
           ),
@@ -1730,9 +1359,7 @@ class _CatalogItemCard extends StatelessWidget {
   }
 }
 
-Set<VendorServiceType> _visibleVendorServices(
-  VendorStoreContextViewModel storeContext,
-) {
+Set<VendorServiceType> _visibleVendorServices(VendorStoreContextViewModel storeContext) {
   final scope = storeContext.serviceScope;
   if (scope != null) return {scope};
   return storeContext.availableServicesForSelectedBranch.toSet();

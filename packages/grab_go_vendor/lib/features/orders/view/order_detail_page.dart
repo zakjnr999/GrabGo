@@ -208,7 +208,7 @@ class _OrderDetailViewState extends State<_OrderDetailView> {
                                       ),
                                       child: Center(
                                         child: Text(
-                                          '${item.quantity}',
+                                          '${item.quantity} x',
                                           style: TextStyle(
                                             fontSize: 11.sp,
                                             fontWeight: FontWeight.w700,
@@ -1151,9 +1151,34 @@ class _ContactCard extends StatelessWidget {
             style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.textSecondary),
           ),
           SizedBox(height: 2.h),
-          Text(
-            '$customerName • $customerPhone',
-            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '$customerName • $customerPhone',
+                  style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                ),
+              ),
+              SizedBox(width: 8.w),
+              InkWell(
+                onTap: () => _showCallSnack(context),
+                borderRadius: BorderRadius.circular(10.r),
+                child: Container(
+                  padding: EdgeInsets.all(8.r),
+                  decoration: BoxDecoration(
+                    color: colors.backgroundSecondary,
+                    borderRadius: BorderRadius.circular(KBorderSize.border),
+                  ),
+                  child: SvgPicture.asset(
+                    Assets.icons.phone,
+                    package: 'grab_go_shared',
+                    width: 18.w,
+                    height: 18.w,
+                    colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                  ),
+                ),
+              ),
+            ],
           ),
           SizedBox(height: 8.h),
           if (isPickupOrder) ...[
@@ -1188,6 +1213,18 @@ class _ContactCard extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  void _showCallSnack(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Calling $customerName is not available in preview.',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
     );
   }

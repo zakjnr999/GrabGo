@@ -19,7 +19,11 @@ class VendorPreviewSelectorPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: colors.backgroundPrimary,
       appBar: returnToPrevious
-          ? AppBar(backgroundColor: colors.backgroundPrimary, elevation: 0, automaticallyImplyLeading: true)
+          ? AppBar(
+              backgroundColor: colors.backgroundPrimary,
+              elevation: 0,
+              automaticallyImplyLeading: true,
+            )
           : null,
       body: SafeArea(
         child: Consumer<VendorPreviewSessionViewModel>(
@@ -59,7 +63,11 @@ class VendorPreviewSelectorPage extends StatelessWidget {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.info_outline_rounded, color: colors.vendorPrimaryBlue, size: 18.sp),
+                        Icon(
+                          Icons.info_outline_rounded,
+                          color: colors.vendorPrimaryBlue,
+                          size: 18.sp,
+                        ),
                         SizedBox(width: 8.w),
                         Expanded(
                           child: Text(
@@ -77,22 +85,30 @@ class VendorPreviewSelectorPage extends StatelessWidget {
                   ),
                   SizedBox(height: 14.h),
                   ...previewSession.profiles.map((profile) {
-                    final selected = previewSession.activeProfile.type == profile.type;
+                    final selected =
+                        previewSession.activeProfile.type == profile.type;
                     return _PreviewProfileCard(
                       profile: profile,
                       selected: selected,
-                      onTap: () => previewSession.setActiveProfile(profile.type),
+                      onTap: () =>
+                          previewSession.setActiveProfile(profile.type),
                     );
                   }),
                   SizedBox(height: 8.h),
                   SizedBox(
                     width: double.infinity,
                     child: AppButton(
-                      buttonText: returnToPrevious ? 'Apply Selection' : 'Continue to Dashboard',
+                      buttonText: returnToPrevious
+                          ? 'Apply Selection'
+                          : 'Continue to Dashboard',
                       onPressed: () => _handleContinue(context),
                       backgroundColor: colors.vendorPrimaryBlue,
                       borderRadius: KBorderSize.border,
-                      textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14.sp),
+                      textStyle: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14.sp,
+                      ),
                     ),
                   ),
                 ],
@@ -118,12 +134,17 @@ class _PreviewProfileCard extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _PreviewProfileCard({required this.profile, required this.selected, required this.onTap});
+  const _PreviewProfileCard({
+    required this.profile,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final orderedServices = profile.allowedServices.toList()..sort((a, b) => a.index.compareTo(b.index));
+    final orderedServices = profile.allowedServices.toList()
+      ..sort((a, b) => a.index.compareTo(b.index));
 
     return InkWell(
       onTap: onTap,
@@ -135,7 +156,10 @@ class _PreviewProfileCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(14.r),
-          border: Border.all(color: selected ? colors.vendorPrimaryBlue : colors.border, width: selected ? 1.5 : 1),
+          border: Border.all(
+            color: selected ? colors.vendorPrimaryBlue : colors.border,
+            width: selected ? 1.5 : 1,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -148,12 +172,20 @@ class _PreviewProfileCard extends StatelessWidget {
                     children: [
                       Text(
                         profile.title,
-                        style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w800,
+                          color: colors.textPrimary,
+                        ),
                       ),
                       SizedBox(height: 2.h),
                       Text(
                         profile.subtitle,
-                        style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
+                        style: TextStyle(
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w600,
+                          color: colors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -162,7 +194,10 @@ class _PreviewProfileCard extends StatelessWidget {
                   SvgPicture.asset(
                     Assets.icons.check,
                     package: 'grab_go_shared',
-                    colorFilter: ColorFilter.mode(colors.vendorPrimaryBlue, BlendMode.srcIn),
+                    colorFilter: ColorFilter.mode(
+                      colors.vendorPrimaryBlue,
+                      BlendMode.srcIn,
+                    ),
                     width: 19.w,
                     height: 19.h,
                   ),
@@ -185,7 +220,11 @@ class _PreviewProfileCard extends StatelessWidget {
                     children: [
                       Text(
                         _serviceLabel(service),
-                        style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w700, color: color),
+                        style: TextStyle(
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.w700,
+                          color: color,
+                        ),
                       ),
                     ],
                   ),

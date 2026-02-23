@@ -18,7 +18,6 @@ class NotificationSettingsViewModel extends ChangeNotifier {
   bool _inAppEnabled = true;
   bool _soundEnabled = true;
   bool _vibrationEnabled = true;
-  bool _showMessagePreview = true;
 
   bool _quietHoursEnabled = false;
   TimeOfDay _quietStart = const TimeOfDay(hour: 22, minute: 0);
@@ -37,7 +36,6 @@ class NotificationSettingsViewModel extends ChangeNotifier {
   bool get inAppEnabled => _inAppEnabled;
   bool get soundEnabled => _soundEnabled;
   bool get vibrationEnabled => _vibrationEnabled;
-  bool get showMessagePreview => _showMessagePreview;
   bool get quietHoursEnabled => _quietHoursEnabled;
   TimeOfDay get quietStart => _quietStart;
   TimeOfDay get quietEnd => _quietEnd;
@@ -67,12 +65,6 @@ class NotificationSettingsViewModel extends ChangeNotifier {
   void setVibrationEnabled(bool value) {
     if (_vibrationEnabled == value) return;
     _vibrationEnabled = value;
-    notifyListeners();
-  }
-
-  void setShowMessagePreview(bool value) {
-    if (_showMessagePreview == value) return;
-    _showMessagePreview = value;
     notifyListeners();
   }
 

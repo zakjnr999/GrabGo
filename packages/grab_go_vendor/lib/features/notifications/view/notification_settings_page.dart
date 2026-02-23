@@ -82,12 +82,6 @@ class _NotificationSettingsView extends StatelessWidget {
                           value: viewModel.vibrationEnabled,
                           onChanged: viewModel.setVibrationEnabled,
                         ),
-                        _SwitchRow(
-                          title: 'Message Preview',
-                          subtitle: 'Show chat preview in lock-screen alerts',
-                          value: viewModel.showMessagePreview,
-                          onChanged: viewModel.setShowMessagePreview,
-                        ),
                       ],
                     ),
                   ),

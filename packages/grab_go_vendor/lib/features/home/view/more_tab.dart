@@ -148,7 +148,7 @@ class MoreTab extends StatelessWidget {
           _MoreOptionTile(
             icon: Icons.notifications_none_rounded,
             title: 'Notifications',
-            subtitle: 'Alerts, chat notifications, reminder settings',
+            subtitle: 'Alerts, reminders, and status updates',
             onTap: () => Navigator.push(
               context,
               CupertinoPageRoute(

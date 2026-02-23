@@ -1,5 +1,3 @@
-// ignore_for_file: use_build_context_synchronously
-
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -149,11 +147,7 @@ class _VerifyEmailState extends State<VerifyEmail> with SingleTickerProviderStat
           errorMessage = "Server error. Please try again later.";
         }
 
-        AppToastMessage.show(
-          context: context,
-          message: errorMessage,
-          backgroundColor: context.appColors.error,
-        );
+        AppToastMessage.show(context: context, message: errorMessage, backgroundColor: context.appColors.error);
       }
     } on SocketException {
       AppToastMessage.show(
@@ -229,7 +223,7 @@ class _VerifyEmailState extends State<VerifyEmail> with SingleTickerProviderStat
           onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
           child: SafeArea(
             child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w, vertical: KSpacing.xl40.h),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -243,7 +237,7 @@ class _VerifyEmailState extends State<VerifyEmail> with SingleTickerProviderStat
                         width: 80.w,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                          color: colors.accentViolet.withValues(alpha: 0.15),
+                          color: colors.accentGreen.withValues(alpha: 0.15),
                         ),
                         child: Center(
                           child: SvgPicture.asset(
@@ -251,7 +245,7 @@ class _VerifyEmailState extends State<VerifyEmail> with SingleTickerProviderStat
                             package: 'grab_go_shared',
                             height: 50.h,
                             width: 50.h,
-                            colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                            colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
                           ),
                         ),
                       ),
@@ -310,7 +304,7 @@ class _VerifyEmailState extends State<VerifyEmail> with SingleTickerProviderStat
                         hintText: AppStrings.loginEmailHint,
                         borderColor: colors.inputBorder,
                         fillColor: colors.backgroundSecondary,
-                        borderActiveColor: colors.accentViolet,
+                        borderActiveColor: colors.accentGreen,
                         borderRadius: KBorderSize.borderRadius4,
                         contentPadding: EdgeInsets.all(KSpacing.md15.r),
                         keyboardType: TextInputType.emailAddress,
@@ -335,51 +329,18 @@ class _VerifyEmailState extends State<VerifyEmail> with SingleTickerProviderStat
                     opacity: _fadeAnimation,
                     child: SlideTransition(
                       position: _slideAnimation,
-                      child: GestureDetector(
-                        onTap: isResending ? null : _sendVerificationEmail,
-                        child: Container(
-                          height: 56.h,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            gradient: isResending
-                                ? null
-                                : LinearGradient(
-                                    colors: [colors.accentViolet, colors.accentViolet.withValues(alpha: 0.8)],
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                  ),
-                            color: isResending ? colors.backgroundSecondary : null,
-                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                            boxShadow: isResending
-                                ? null
-                                : [
-                                    BoxShadow(
-                                      color: colors.accentViolet.withValues(alpha: 0.4),
-                                      blurRadius: 20,
-                                      offset: const Offset(0, 8),
-                                    ),
-                                  ],
-                          ),
-                          child: Center(
-                            child: isResending
-                                ? SizedBox(
-                                    height: 20.h,
-                                    width: 20.w,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(colors.accentViolet),
-                                    ),
-                                  )
-                                : Text(
-                                    "SEND VERIFICATION CODE",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16.sp,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                          ),
+                      child: AppButton(
+                        width: double.infinity,
+                        height: 56.h,
+                        buttonText: 'SEND CODE',
+                        onPressed: () => isResending ? null : _sendVerificationEmail,
+                        backgroundColor: colors.accentGreen,
+                        borderRadius: KBorderSize.borderRadius4,
+                        textStyle: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ),

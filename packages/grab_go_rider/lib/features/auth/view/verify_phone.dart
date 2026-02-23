@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -106,11 +104,7 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
         debugPrint('✅ OTP sent successfully');
         if (mounted) {
           LoadingDialog.instance().hide();
-          AppToastMessage.show(
-            context: context,
-            message: "OTP sent successfully!",
-            backgroundColor: Colors.green,
-          );
+          AppToastMessage.show(context: context, message: "OTP sent successfully!", backgroundColor: Colors.green);
           context.push("/otpVerification");
         }
       },
@@ -188,9 +182,10 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w, vertical: KSpacing.xl40.h),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(height: KSpacing.xl40.h),
 
@@ -204,22 +199,8 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
                         height: 80.h,
                         width: 80.h,
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20.r),
-                          gradient: LinearGradient(
-                            colors: [
-                              colors.accentGreen.withValues(alpha: 0.15),
-                              colors.accentViolet.withValues(alpha: 0.15),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: colors.accentGreen.withValues(alpha: 0.15),
-                              blurRadius: 30,
-                              spreadRadius: 5,
-                            ),
-                          ],
+                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                          color: colors.accentGreen.withValues(alpha: 0.15),
                         ),
                         child: Center(
                           child: SvgPicture.asset(
@@ -259,17 +240,14 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
                   opacity: _fadeAnimation,
                   child: SlideTransition(
                     position: _slideAnimation,
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w),
-                      child: Text(
-                        AppStrings.verifyPhoneSub,
-                        textAlign: TextAlign.left,
-                        style: TextStyle(
-                          fontSize: 15.sp,
-                          fontWeight: FontWeight.w500,
-                          color: colors.textSecondary,
-                          height: 1.5,
-                        ),
+                    child: Text(
+                      AppStrings.verifyPhoneSub,
+                      textAlign: TextAlign.left,
+                      style: TextStyle(
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.w500,
+                        color: colors.textSecondary,
+                        height: 1.5,
                       ),
                     ),
                   ),
@@ -297,7 +275,7 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
                             fillColor: colors.backgroundSecondary,
                             hintText: "23456789",
                             errorText: phoneError,
-                            hintStyle: TextStyle(fontSize: 15.sp, color: colors.textSecondary.withOpacity(0.7)),
+                            hintStyle: TextStyle(fontSize: 15.sp, color: colors.textSecondary.withValues(alpha: 0.7)),
                             contentPadding: EdgeInsets.all(KSpacing.md15.r),
                             prefixIcon: Padding(
                               padding: EdgeInsets.only(left: 12.w, right: 8.w),
@@ -320,7 +298,7 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
                               ),
                             ),
                             enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                               borderSide: BorderSide(
                                 color: phoneError != null ? colors.error : colors.inputBorder,
                                 width: 1.5,
@@ -346,36 +324,18 @@ class _VerifyPhoneState extends State<VerifyPhone> with SingleTickerProviderStat
 
                         SizedBox(height: KSpacing.lg25.h),
 
-                        GestureDetector(
-                          onTap: isLoading ? null : () => _sendOTP(),
-                          child: Container(
-                            height: 56.h,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [colors.accentGreen, colors.accentGreen.withValues(alpha: 0.8)],
-                                begin: Alignment.centerLeft,
-                                end: Alignment.centerRight,
-                              ),
-                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: colors.accentGreen.withValues(alpha: 0.4),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: Center(
-                              child: Text(
-                                "Send Code",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ),
+                        AppButton(
+                          width: double.infinity,
+                          height: 56.h,
+                          buttonText: 'SEND CODE',
+                          onPressed: () => isLoading ? null : _sendOTP,
+                          backgroundColor: colors.accentGreen,
+                          borderRadius: KBorderSize.borderRadius4,
+                          textStyle: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
                           ),
                         ),
                         SizedBox(height: KSpacing.lg.h),

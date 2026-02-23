@@ -185,11 +185,7 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
           }
         } else {
           String errorMessage = response.body!['message'] as String? ?? "Invalid verification code. Please try again.";
-          AppToastMessage.show(
-            context: context,
-            message: errorMessage,
-            backgroundColor: context.appColors.error,
-          );
+          AppToastMessage.show(context: context, message: errorMessage, backgroundColor: context.appColors.error);
         }
       } else {
         String errorMessage = "Invalid verification code. Please try again.";
@@ -199,11 +195,7 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
           errorMessage = "Server error. Please try again later.";
         }
 
-        AppToastMessage.show(
-          context: context,
-          message: errorMessage,
-          backgroundColor: context.appColors.error,
-        );
+        AppToastMessage.show(context: context, message: errorMessage, backgroundColor: context.appColors.error);
       }
     } on SocketException {
       if (mounted) {
@@ -284,11 +276,7 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
           errorMessage = "Server error. Please try again later.";
         }
 
-        AppToastMessage.show(
-          context: context,
-          message: errorMessage,
-          backgroundColor: context.appColors.error,
-        );
+        AppToastMessage.show(context: context, message: errorMessage, backgroundColor: context.appColors.error);
         setState(() {
           canResend = true;
         });
@@ -396,7 +384,7 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
                       width: 80.w,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                        color: colors.accentViolet.withValues(alpha: 0.15),
+                        color: colors.accentGreen.withValues(alpha: 0.15),
                       ),
                       child: Center(
                         child: SvgPicture.asset(
@@ -404,7 +392,7 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
                           package: 'grab_go_shared',
                           height: 50.h,
                           width: 50.w,
-                          colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                          colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
                         ),
                       ),
                     ),
@@ -461,7 +449,6 @@ class _EmailOtpVerificationState extends State<EmailOtpVerification> with Single
                       children: [
                         OtpTextField(
                           numberOfFields: 6,
-                          borderColor: colors.inputBorder,
                           enabledBorderColor: colors.inputBorder,
                           disabledBorderColor: colors.inputBorder,
                           fillColor: colors.backgroundSecondary,

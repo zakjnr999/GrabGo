@@ -4,7 +4,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_vendor/features/home/view/catalog_tab.dart';
-import 'package:grab_go_vendor/features/home/view/chats_tab.dart';
 import 'package:grab_go_vendor/features/home/view/home_tab.dart';
 import 'package:grab_go_vendor/features/home/view/more_tab.dart';
 import 'package:grab_go_vendor/features/home/view/orders_tab.dart';
@@ -31,15 +30,16 @@ class _VendorBottomNavigatorView extends StatefulWidget {
   const _VendorBottomNavigatorView();
 
   @override
-  State<_VendorBottomNavigatorView> createState() => _VendorBottomNavigatorViewState();
+  State<_VendorBottomNavigatorView> createState() =>
+      _VendorBottomNavigatorViewState();
 }
 
-class _VendorBottomNavigatorViewState extends State<_VendorBottomNavigatorView> with SingleTickerProviderStateMixin {
+class _VendorBottomNavigatorViewState extends State<_VendorBottomNavigatorView>
+    with SingleTickerProviderStateMixin {
   static final List<Widget> _screens = <Widget>[
     const HomeTab(),
     const OrdersTab(),
     const CatalogTab(),
-    const ChatsTab(),
     const MoreTab(),
   ];
 
@@ -51,12 +51,16 @@ class _VendorBottomNavigatorViewState extends State<_VendorBottomNavigatorView> 
   int _slideDirection = 1;
   int _animationEpoch = 0;
 
-  bool get _isAnimating => _previousIndex != null && _tabSwitchController.isAnimating;
+  bool get _isAnimating =>
+      _previousIndex != null && _tabSwitchController.isAnimating;
 
   @override
   void initState() {
     super.initState();
-    _tabSwitchController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _tabSwitchController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
   }
 
   @override
@@ -107,7 +111,9 @@ class _VendorBottomNavigatorViewState extends State<_VendorBottomNavigatorView> 
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final selectedIndex = context.select<VendorBottomNavProvider, int>((value) => value.selectedIndex);
+    final selectedIndex = context.select<VendorBottomNavProvider, int>(
+      (value) => value.selectedIndex,
+    );
     final size = MediaQuery.sizeOf(context);
 
     return Scaffold(
@@ -119,7 +125,9 @@ class _VendorBottomNavigatorViewState extends State<_VendorBottomNavigatorView> 
           statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
           systemNavigationBarColor: colors.backgroundPrimary,
           systemNavigationBarDividerColor: Colors.transparent,
-          systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+          systemNavigationBarIconBrightness: isDark
+              ? Brightness.light
+              : Brightness.dark,
         ),
         child: _buildAnimatedBody(selectedIndex),
       ),
@@ -132,7 +140,12 @@ class _VendorBottomNavigatorViewState extends State<_VendorBottomNavigatorView> 
             topRight: Radius.circular(KBorderSize.borderRadius20),
           ),
           boxShadow: [
-            BoxShadow(color: Colors.black.withAlpha(25), spreadRadius: 1, blurRadius: 20, offset: const Offset(0, -3)),
+            BoxShadow(
+              color: Colors.black.withAlpha(25),
+              spreadRadius: 1,
+              blurRadius: 20,
+              offset: const Offset(0, -3),
+            ),
           ],
         ),
         child: BottomAppBar(
@@ -141,10 +154,20 @@ class _VendorBottomNavigatorViewState extends State<_VendorBottomNavigatorView> 
           child: Row(
             children: [
               Expanded(
-                child: _NavButton(icon: Assets.icons.home, label: 'Home', index: 0, selectedIndex: selectedIndex),
+                child: _NavButton(
+                  icon: Assets.icons.home,
+                  label: 'Home',
+                  index: 0,
+                  selectedIndex: selectedIndex,
+                ),
               ),
               Expanded(
-                child: _NavButton(icon: Assets.icons.boxIso, label: 'Orders', index: 1, selectedIndex: selectedIndex),
+                child: _NavButton(
+                  icon: Assets.icons.boxIso,
+                  label: 'Orders',
+                  index: 1,
+                  selectedIndex: selectedIndex,
+                ),
               ),
               Expanded(
                 child: _NavButton(
@@ -156,14 +179,11 @@ class _VendorBottomNavigatorViewState extends State<_VendorBottomNavigatorView> 
               ),
               Expanded(
                 child: _NavButton(
-                  icon: Assets.icons.chatBubble,
-                  label: 'Chats',
+                  icon: Assets.icons.squareMenu,
+                  label: 'More',
                   index: 3,
                   selectedIndex: selectedIndex,
                 ),
-              ),
-              Expanded(
-                child: _NavButton(icon: Assets.icons.squareMenu, label: 'More', index: 4, selectedIndex: selectedIndex),
               ),
             ],
           ),
@@ -191,14 +211,20 @@ class _VendorBottomNavigatorViewState extends State<_VendorBottomNavigatorView> 
                   final isVisible = index == selectedIndex;
                   return Offstage(
                     offstage: !isVisible,
-                    child: TickerMode(enabled: isVisible, child: _screens[index]),
+                    child: TickerMode(
+                      enabled: isVisible,
+                      child: _screens[index],
+                    ),
                   );
                 }
 
                 final isCurrent = index == selectedIndex;
                 final isPrevious = index == previousIndex;
                 if (!isCurrent && !isPrevious) {
-                  return Offstage(offstage: true, child: TickerMode(enabled: false, child: _screens[index]));
+                  return Offstage(
+                    offstage: true,
+                    child: TickerMode(enabled: false, child: _screens[index]),
+                  );
                 }
 
                 final offsetX = isCurrent
@@ -224,7 +250,12 @@ class _NavButton extends StatelessWidget {
   final int index;
   final int selectedIndex;
 
-  const _NavButton({required this.icon, required this.label, required this.index, required this.selectedIndex});
+  const _NavButton({
+    required this.icon,
+    required this.label,
+    required this.index,
+    required this.selectedIndex,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -262,7 +293,10 @@ class _NavButton extends StatelessWidget {
                     package: 'grab_go_shared',
                     height: KIconSize.lg,
                     width: KIconSize.lg,
-                    colorFilter: ColorFilter.mode(color ?? colors.textPrimary, BlendMode.srcIn),
+                    colorFilter: ColorFilter.mode(
+                      color ?? colors.textPrimary,
+                      BlendMode.srcIn,
+                    ),
                   );
                 },
               ),

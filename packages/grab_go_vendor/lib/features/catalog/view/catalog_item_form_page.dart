@@ -22,9 +22,11 @@ class CatalogItemFormPage extends StatefulWidget {
 class _CatalogItemFormPageState extends State<CatalogItemFormPage> {
   late final TextEditingController _nameController;
   late final TextEditingController _descriptionController;
+  late final TextEditingController _ingredientsController;
   late final TextEditingController _categoryController;
   late final TextEditingController _priceController;
   late final TextEditingController _stockController;
+  final ScrollController _contentScrollController = ScrollController();
 
   String? _nameError;
   String? _priceError;
@@ -36,6 +38,7 @@ class _CatalogItemFormPageState extends State<CatalogItemFormPage> {
   String? _itemImagePath;
   bool _isAvailable = true;
   bool _requiresPrescription = false;
+  bool _showTopDivider = false;
 
   bool get _showServiceSelector => _availableServiceTypes.length > 1;
 
@@ -45,6 +48,7 @@ class _CatalogItemFormPageState extends State<CatalogItemFormPage> {
     final item = widget.initialItem;
     _nameController = TextEditingController(text: item?.name ?? '');
     _descriptionController = TextEditingController(text: item?.description ?? '');
+    _ingredientsController = TextEditingController(text: item?.ingredients ?? '');
     _categoryController = TextEditingController();
     _priceController = TextEditingController(text: item == null ? '' : item.price.toStringAsFixed(2));
     _stockController = TextEditingController(text: item == null ? '' : item.stock.toString());
@@ -62,12 +66,24 @@ class _CatalogItemFormPageState extends State<CatalogItemFormPage> {
       _categoryId = first?.id;
     }
     _syncCategoryController();
+    _contentScrollController.addListener(_handleScroll);
+  }
+
+  void _handleScroll() {
+    if (!_contentScrollController.hasClients) return;
+    final shouldShow = _contentScrollController.offset > 0.5;
+    if (shouldShow == _showTopDivider) return;
+    setState(() => _showTopDivider = shouldShow);
   }
 
   @override
   void dispose() {
+    _contentScrollController
+      ..removeListener(_handleScroll)
+      ..dispose();
     _nameController.dispose();
     _descriptionController.dispose();
+    _ingredientsController.dispose();
     _categoryController.dispose();
     _priceController.dispose();
     _stockController.dispose();
@@ -83,51 +99,66 @@ class _CatalogItemFormPageState extends State<CatalogItemFormPage> {
       backgroundColor: colors.backgroundPrimary,
       body: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(20.w, 6.h, 20.w, 8.h),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextButton.icon(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    style: TextButton.styleFrom(padding: EdgeInsets.zero, foregroundColor: colors.textSecondary),
+                    icon: SvgPicture.asset(
+                      Assets.icons.navArrowLeft,
+                      package: 'grab_go_shared',
+                      width: 18.w,
+                      height: 18.w,
+                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                    ),
+                    label: Text(
+                      'Back',
+                      style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  SizedBox(height: 6.h),
+                  Text(
+                    widget.title,
+                    style: TextStyle(
+                      fontSize: 24.sp,
+                      fontWeight: FontWeight.w900,
+                      color: colors.textPrimary,
+                      height: 1.15,
+                    ),
+                  ),
+                  SizedBox(height: 8.h),
+                  Text(
+                    widget.initialItem == null
+                        ? 'Add catalog details, pricing and stock availability.'
+                        : 'Update catalog details, pricing and stock availability.',
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w500,
+                      color: colors.textSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              height: _showTopDivider ? 1.h : 0,
+              color: colors.backgroundSecondary,
+            ),
             Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
+                controller: _contentScrollController,
+                padding: EdgeInsets.fromLTRB(20.w, 10.h, 20.w, 6.h),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextButton.icon(
-                      onPressed: () => Navigator.of(context).maybePop(),
-                      style: TextButton.styleFrom(padding: EdgeInsets.zero, foregroundColor: colors.textSecondary),
-                      icon: SvgPicture.asset(
-                        Assets.icons.navArrowLeft,
-                        package: 'grab_go_shared',
-                        width: 18.w,
-                        height: 18.w,
-                        colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                      ),
-                      label: Text(
-                        'Back',
-                        style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w500),
-                      ),
-                    ),
-                    SizedBox(height: 6.h),
-                    Text(
-                      widget.title,
-                      style: TextStyle(
-                        fontSize: 24.sp,
-                        fontWeight: FontWeight.w900,
-                        color: colors.textPrimary,
-                        height: 1.15,
-                      ),
-                    ),
-                    SizedBox(height: 8.h),
-                    Text(
-                      widget.initialItem == null
-                          ? 'Add catalog details, pricing and stock availability.'
-                          : 'Update catalog details, pricing and stock availability.',
-                      style: TextStyle(
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w500,
-                        color: colors.textSecondary,
-                        height: 1.4,
-                      ),
-                    ),
-                    SizedBox(height: 14.h),
                     Text(
                       'Item Image',
                       style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
@@ -273,6 +304,19 @@ class _CatalogItemFormPageState extends State<CatalogItemFormPage> {
                       borderRadius: KBorderSize.border,
                       cursorColor: colors.vendorPrimaryBlue,
                     ),
+                    if (_serviceType == VendorServiceType.food) ...[
+                      SizedBox(height: 12.h),
+                      AppTextInput(
+                        controller: _ingredientsController,
+                        label: 'Ingredients',
+                        hintText: 'Rice, chicken, onion, pepper...',
+                        fillColor: colors.backgroundSecondary,
+                        borderColor: colors.inputBorder,
+                        borderActiveColor: colors.vendorPrimaryBlue,
+                        borderRadius: KBorderSize.border,
+                        cursorColor: colors.vendorPrimaryBlue,
+                      ),
+                    ],
                     SizedBox(height: 12.h),
                     AppTextInput(
                       controller: _categoryController,
@@ -606,6 +650,7 @@ class _CatalogItemFormPageState extends State<CatalogItemFormPage> {
       VendorCatalogItemDraft(
         name: name,
         description: _descriptionController.text.trim(),
+        ingredients: _serviceType == VendorServiceType.food ? _ingredientsController.text.trim() : '',
         serviceType: _serviceType,
         categoryId: _categoryId!,
         price: price!,

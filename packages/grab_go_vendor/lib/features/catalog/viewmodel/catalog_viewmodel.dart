@@ -42,6 +42,7 @@ class CatalogViewModel extends ChangeNotifier {
       id: 'item_001',
       name: 'Smoked Chicken Jollof',
       description: 'Served with sauce and salad',
+      ingredients: 'Rice, chicken, tomato stew, onion, pepper, spices',
       serviceType: VendorServiceType.food,
       categoryId: 'cat_food_main',
       price: 45.0,
@@ -53,6 +54,7 @@ class CatalogViewModel extends ChangeNotifier {
       id: 'item_002',
       name: 'Orange Juice 500ml',
       description: 'Freshly squeezed and chilled',
+      ingredients: 'Fresh oranges',
       serviceType: VendorServiceType.food,
       categoryId: 'cat_food_drinks',
       price: 12.0,
@@ -130,6 +132,7 @@ class CatalogViewModel extends ChangeNotifier {
           search.isEmpty ||
           item.name.toLowerCase().contains(search) ||
           item.description.toLowerCase().contains(search) ||
+          item.ingredients.toLowerCase().contains(search) ||
           categoryName.contains(search);
       return matchesService &&
           matchesCategory &&
@@ -151,6 +154,10 @@ class CatalogViewModel extends ChangeNotifier {
       (entry) => entry?.id == itemId,
       orElse: () => null,
     );
+  }
+
+  int itemCountForCategory(String categoryId) {
+    return _items.where((item) => item.categoryId == categoryId).length;
   }
 
   void setServiceFilter(VendorServiceType? value) {
@@ -262,6 +269,7 @@ class CatalogViewModel extends ChangeNotifier {
         id: 'item_${DateTime.now().microsecondsSinceEpoch}',
         name: draft.name,
         description: draft.description,
+        ingredients: draft.ingredients,
         serviceType: draft.serviceType,
         categoryId: draft.categoryId,
         price: draft.price,
@@ -279,6 +287,7 @@ class CatalogViewModel extends ChangeNotifier {
     _items[index] = _items[index].copyWith(
       name: draft.name,
       description: draft.description,
+      ingredients: draft.ingredients,
       serviceType: draft.serviceType,
       categoryId: draft.categoryId,
       price: draft.price,

@@ -6,10 +6,21 @@ class VendorCatalogCategory {
   final String name;
   final VendorServiceType serviceType;
 
-  const VendorCatalogCategory({required this.id, required this.name, required this.serviceType});
+  const VendorCatalogCategory({
+    required this.id,
+    required this.name,
+    required this.serviceType,
+  });
 
-  VendorCatalogCategory copyWith({String? name, VendorServiceType? serviceType}) {
-    return VendorCatalogCategory(id: id, name: name ?? this.name, serviceType: serviceType ?? this.serviceType);
+  VendorCatalogCategory copyWith({
+    String? name,
+    VendorServiceType? serviceType,
+  }) {
+    return VendorCatalogCategory(
+      id: id,
+      name: name ?? this.name,
+      serviceType: serviceType ?? this.serviceType,
+    );
   }
 }
 
@@ -17,6 +28,7 @@ class VendorCatalogItem {
   final String id;
   final String name;
   final String description;
+  final String ingredients;
   final VendorServiceType serviceType;
   final String categoryId;
   final double price;
@@ -28,6 +40,7 @@ class VendorCatalogItem {
     required this.id,
     required this.name,
     required this.description,
+    this.ingredients = '',
     required this.serviceType,
     required this.categoryId,
     required this.price,
@@ -39,6 +52,7 @@ class VendorCatalogItem {
   VendorCatalogItem copyWith({
     String? name,
     String? description,
+    String? ingredients,
     VendorServiceType? serviceType,
     String? categoryId,
     double? price,
@@ -50,6 +64,7 @@ class VendorCatalogItem {
       id: id,
       name: name ?? this.name,
       description: description ?? this.description,
+      ingredients: ingredients ?? this.ingredients,
       serviceType: serviceType ?? this.serviceType,
       categoryId: categoryId ?? this.categoryId,
       price: price ?? this.price,
@@ -63,6 +78,7 @@ class VendorCatalogItem {
 class VendorCatalogItemDraft {
   final String name;
   final String description;
+  final String ingredients;
   final VendorServiceType serviceType;
   final String categoryId;
   final double price;
@@ -73,6 +89,7 @@ class VendorCatalogItemDraft {
   const VendorCatalogItemDraft({
     required this.name,
     required this.description,
+    this.ingredients = '',
     required this.serviceType,
     required this.categoryId,
     required this.price,

@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -15,6 +13,7 @@ class ImageUploadWidget extends StatefulWidget {
   final String? hintText;
   final double? height;
   final double? width;
+  final Color? color;
   final Function(File?)? onImageSelected;
   final File? initialImage;
   final bool showRemoveButton;
@@ -34,6 +33,7 @@ class ImageUploadWidget extends StatefulWidget {
     this.successMessage,
     this.padding,
     this.borderRadius,
+    this.color,
   });
 
   @override
@@ -135,7 +135,10 @@ class _ImageUploadWidgetState extends State<ImageUploadWidget> {
                               onTap: _removeImage,
                               child: Container(
                                 padding: EdgeInsets.all(4.r),
-                                decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), shape: BoxShape.circle),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.6),
+                                  shape: BoxShape.circle,
+                                ),
                                 child: Icon(Icons.close, color: Colors.white, size: 16.sp),
                               ),
                             ),
@@ -150,13 +153,15 @@ class _ImageUploadWidgetState extends State<ImageUploadWidget> {
                           height: 48.h,
                           padding: EdgeInsets.all(KSpacing.md12.r),
                           decoration: BoxDecoration(
-                            color: colors.accentOrange.withOpacity(0.1),
+                            color: widget.color != null
+                                ? widget.color!.withValues(alpha: 0.1)
+                                : colors.accentOrange.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
                           child: SvgPicture.asset(
                             Assets.icons.mediaImagePlus,
                             package: 'grab_go_shared',
-                            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                            colorFilter: ColorFilter.mode(widget.color ?? colors.accentOrange, BlendMode.srcIn),
                           ),
                         ),
                         SizedBox(height: KSpacing.sm.h),

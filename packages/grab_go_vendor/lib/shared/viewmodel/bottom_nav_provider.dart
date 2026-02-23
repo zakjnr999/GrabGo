@@ -17,6 +17,5 @@ class VendorBottomNavProvider extends ChangeNotifier {
   void navigateToHome() => setIndex(0);
   void navigateToOrders() => setIndex(1);
   void navigateToCatalog() => setIndex(2);
-  void navigateToChats() => setIndex(3);
-  void navigateToMore() => setIndex(4);
+  void navigateToMore() => setIndex(3);
 }
