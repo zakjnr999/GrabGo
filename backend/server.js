@@ -595,6 +595,7 @@ const { runAutoOfflineJob } = require("./jobs/rider_auto_offline");
 const { initializeDeliveryMonitor } = require("./jobs/delivery_monitor");
 const { initializePickupAcceptTimeoutJob } = require("./jobs/pickup_accept_timeout");
 const { initializePickupReadyExpiryJob } = require("./jobs/pickup_ready_expiry");
+const { initializeScheduledOrderReleaseJob } = require("./jobs/scheduled_order_release");
 
 // Import cache utility
 const cache = require("./utils/cache");
@@ -629,6 +630,7 @@ initializeDeliveryMonitor();
 // Initialize pickup lifecycle jobs (runs every minute)
 initializePickupAcceptTimeoutJob(io);
 initializePickupReadyExpiryJob(io);
+initializeScheduledOrderReleaseJob(io);
 
 // Schedule rider auto-offline job (runs every 5 minutes)
 setInterval(() => {

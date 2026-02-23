@@ -27,6 +27,11 @@ const {
   verifyDeliveryCodeOrThrow,
 } = require("../services/delivery_verification_service");
 const {
+  ScheduledOrderError,
+  validateScheduledDeliveryRequest,
+  normalizeDeliveryTimeType,
+} = require("../services/scheduled_order_service");
+const {
   createOrderAudit,
   reserveInventoryForOrder,
   releaseInventoryHolds,
@@ -246,6 +251,11 @@ router.post(
   [
     body("restaurant").optional().isString().withMessage("restaurant must be a string"),
     body("fulfillmentMode").optional().isIn(["delivery", "pickup"]).withMessage("Invalid fulfillment mode"),
+    body("deliveryTimeType").optional().isIn(["asap", "scheduled"]).withMessage("Invalid delivery time type"),
+    body("scheduledForAt")
+      .optional()
+      .isISO8601({ strict: true, strictSeparator: true })
+      .withMessage("scheduledForAt must be a valid ISO datetime"),
     body("items")
       .isArray({ min: 1 })
       .withMessage("At least one item is required"),
@@ -285,6 +295,8 @@ router.post(
         items,
         deliveryAddress,
         fulfillmentMode: rawFulfillmentMode,
+        deliveryTimeType,
+        scheduledForAt,
         pickupContactName,
         pickupContactPhone,
         acceptNoShowPolicy,
@@ -365,6 +377,34 @@ router.post(
           });
         }
       }
+
+      const normalizedDeliveryTimeType = normalizeDeliveryTimeType(deliveryTimeType);
+      let scheduledOrderMetadata = null;
+      try {
+        scheduledOrderMetadata = validateScheduledDeliveryRequest({
+          deliveryTimeType: normalizedDeliveryTimeType,
+          scheduledForAt,
+          fulfillmentMode,
+          featureEnabled: featureFlags.isScheduledOrdersEnabled,
+          now: new Date(),
+        });
+      } catch (scheduleError) {
+        if (scheduleError instanceof ScheduledOrderError) {
+          return res.status(scheduleError.status || 400).json({
+            success: false,
+            message: scheduleError.message,
+            code: scheduleError.code || "SCHEDULED_ORDER_ERROR",
+            ...(scheduleError.meta || {}),
+          });
+        }
+        throw scheduleError;
+      }
+
+      const isScheduledOrderRequested = scheduledOrderMetadata?.isScheduledOrder === true;
+      const scheduledForAtDate = scheduledOrderMetadata?.scheduledForAt || null;
+      const scheduledWindowStartAt = scheduledOrderMetadata?.scheduledWindowStartAt || null;
+      const scheduledWindowEndAt = scheduledOrderMetadata?.scheduledWindowEndAt || null;
+      const scheduledReleaseAt = scheduledOrderMetadata?.scheduledReleaseAt || null;
 
       const normalizeItemType = (itemType) => {
         if (!itemType) return null;
@@ -606,6 +646,12 @@ router.post(
         giftRecipientName: isGiftOrderRequested ? normalizedGiftRecipientName : null,
         giftRecipientPhone: isGiftOrderRequested ? normalizedGiftPhone : null,
         giftNote: isGiftOrderRequested ? (normalizedGiftNote || null) : null,
+        isScheduledOrder: isScheduledOrderRequested,
+        scheduledForAt: isScheduledOrderRequested ? scheduledForAtDate : null,
+        scheduledWindowStartAt: isScheduledOrderRequested ? scheduledWindowStartAt : null,
+        scheduledWindowEndAt: isScheduledOrderRequested ? scheduledWindowEndAt : null,
+        scheduledReleaseAt: isScheduledOrderRequested ? scheduledReleaseAt : null,
+        scheduledReleasedAt: null,
         deliveryVerificationRequired: isGiftOrderRequested,
         deliveryCodeFailedAttempts: 0,
         deliveryCodeResendCount: 0,
@@ -613,7 +659,7 @@ router.post(
         noShowPolicyVersion: isPickupMode && acceptNoShowPolicy ? (noShowPolicyVersion || "v1") : null,
         paymentMethod,
         notes,
-        status: isCreditOnly ? "confirmed" : "pending",
+        status: isCreditOnly && !isScheduledOrderRequested ? "confirmed" : "pending",
         items: {
           create: orderItemsData
         }
@@ -785,6 +831,20 @@ router.post(
         data: { lastOrderDate: new Date() }
       });
 
+      if (isScheduledOrderRequested) {
+        await createOrderAudit({
+          orderId: order.id,
+          actorId: req.user.id,
+          actorRole: req.user.role,
+          action: "scheduled_order_created",
+          metadata: {
+            scheduledForAt: scheduledForAtDate ? scheduledForAtDate.toISOString() : null,
+            scheduledReleaseAt: scheduledReleaseAt ? scheduledReleaseAt.toISOString() : null,
+            deliveryTimeType: normalizedDeliveryTimeType,
+          },
+        }).catch(() => null);
+      }
+
       if (isGiftOrderRequested && giftDeliveryCode) {
         if (req.user.phone) {
           const customerSendResult = await sendDeliveryCodeSms({
@@ -807,7 +867,7 @@ router.post(
           }).catch(() => null);
         }
 
-        if (normalizedGiftPhone) {
+        if (normalizedGiftPhone && !isScheduledOrderRequested) {
           const recipientSendResult = await sendDeliveryCodeSms({
             phoneNumber: normalizedGiftPhone,
             orderNumber: order.orderNumber,
@@ -841,6 +901,15 @@ router.post(
         data: responseOrder,
       });
     } catch (error) {
+      if (error instanceof ScheduledOrderError) {
+        return res.status(error.status || 400).json({
+          success: false,
+          message: error.message,
+          code: error.code || "SCHEDULED_ORDER_ERROR",
+          ...(error.meta || {}),
+        });
+      }
+
       console.error("Create order error:", error);
       res.status(500).json({
         success: false,
@@ -1190,6 +1259,10 @@ router.post(
           paymentStatus: true,
           status: true,
           fulfillmentMode: true,
+          isScheduledOrder: true,
+          scheduledForAt: true,
+          scheduledReleaseAt: true,
+          scheduledReleasedAt: true,
           creditsApplied: true,
           totalAmount: true,
           orderNumber: true,
@@ -1215,7 +1288,12 @@ router.post(
         return res.json({
           success: true,
           message: "Payment already confirmed",
-          data: { orderId: order.id },
+          data: {
+            orderId: order.id,
+            isScheduledOrder: order.isScheduledOrder === true,
+            scheduledForAt: order.scheduledForAt ? new Date(order.scheduledForAt).toISOString() : null,
+            scheduledReleaseAt: order.scheduledReleaseAt ? new Date(order.scheduledReleaseAt).toISOString() : null,
+          },
         });
       }
 
@@ -1332,12 +1410,19 @@ router.post(
       }
 
       const shouldConfirmPickup = order.fulfillmentMode === "pickup" && order.status === "pending";
+      const shouldKeepScheduledPending =
+        order.isScheduledOrder &&
+        order.fulfillmentMode === "delivery" &&
+        order.status === "pending" &&
+        !order.scheduledReleasedAt;
+
       await prisma.order.update({
         where: { id: order.id },
         data: {
           paymentStatus: "paid",
           paymentProvider: provider || "paystack",
           paymentReferenceId: persistedReference,
+          ...(shouldKeepScheduledPending ? { status: "pending" } : {}),
           ...(shouldConfirmPickup
             ? {
                 status: "confirmed",
@@ -1356,13 +1441,20 @@ router.post(
           reference: persistedReference || null,
           provider: provider || "paystack",
           fulfillmentMode: order.fulfillmentMode,
+          isScheduledOrder: order.isScheduledOrder === true,
+          scheduledForAt: order.scheduledForAt ? new Date(order.scheduledForAt).toISOString() : null,
+          scheduledReleaseAt: order.scheduledReleaseAt ? new Date(order.scheduledReleaseAt).toISOString() : null,
         },
       }).catch(() => null);
 
       try {
         const amount = Number(order.totalAmount || 0);
         const title = "Payment Confirmed";
-        const message = `Payment for order #${order.orderNumber} (GHS ${amount.toFixed(2)}) has been confirmed.`;
+        const message = shouldKeepScheduledPending
+          ? `Payment for scheduled order #${order.orderNumber} (GHS ${amount.toFixed(
+              2
+            )}) has been confirmed. We'll start processing near your selected delivery time.`
+          : `Payment for order #${order.orderNumber} (GHS ${amount.toFixed(2)}) has been confirmed.`;
         const io = getIO();
 
         await createNotification(
@@ -1385,7 +1477,12 @@ router.post(
       return res.json({
         success: true,
         message: "Payment confirmed",
-        data: { orderId: order.id },
+        data: {
+          orderId: order.id,
+          isScheduledOrder: order.isScheduledOrder === true,
+          scheduledForAt: order.scheduledForAt ? new Date(order.scheduledForAt).toISOString() : null,
+          scheduledReleaseAt: order.scheduledReleaseAt ? new Date(order.scheduledReleaseAt).toISOString() : null,
+        },
       });
     } catch (error) {
       console.error("Confirm payment error:", error);
@@ -2536,6 +2633,16 @@ router.put(
         });
       }
 
+      if (order.isScheduledOrder && !order.scheduledReleasedAt && status !== "cancelled" && req.user.role !== "admin") {
+        return res.status(409).json({
+          success: false,
+          message: "Scheduled order is not yet released for processing",
+          code: "SCHEDULED_ORDER_NOT_RELEASED",
+          scheduledForAt: order.scheduledForAt ? new Date(order.scheduledForAt).toISOString() : null,
+          scheduledReleaseAt: order.scheduledReleaseAt ? new Date(order.scheduledReleaseAt).toISOString() : null,
+        });
+      }
+
       if (order.fulfillmentMode === "pickup" && status === "picked_up") {
         return res.status(400).json({
           success: false,
@@ -2959,6 +3066,16 @@ router.put(
         return res.status(404).json({
           success: false,
           message: "Order not found",
+        });
+      }
+
+      if (order.isScheduledOrder && !order.scheduledReleasedAt) {
+        return res.status(409).json({
+          success: false,
+          message: "Scheduled order is not yet released for rider assignment",
+          code: "SCHEDULED_ORDER_NOT_RELEASED",
+          scheduledForAt: order.scheduledForAt ? new Date(order.scheduledForAt).toISOString() : null,
+          scheduledReleaseAt: order.scheduledReleaseAt ? new Date(order.scheduledReleaseAt).toISOString() : null,
         });
       }
 

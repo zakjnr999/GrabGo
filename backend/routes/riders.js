@@ -410,6 +410,30 @@ router.post(
         });
       }
 
+      if (!["confirmed", "preparing", "ready"].includes(order.status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Order is not available for pickup",
+        });
+      }
+
+      if (order.fulfillmentMode === "pickup") {
+        return res.status(400).json({
+          success: false,
+          message: "Pickup orders are not eligible for rider assignment",
+        });
+      }
+
+      if (order.isScheduledOrder && !order.scheduledReleasedAt) {
+        return res.status(409).json({
+          success: false,
+          message: "Scheduled order is not yet released for rider assignment",
+          code: "SCHEDULED_ORDER_NOT_RELEASED",
+          scheduledForAt: order.scheduledForAt ? new Date(order.scheduledForAt).toISOString() : null,
+          scheduledReleaseAt: order.scheduledReleaseAt ? new Date(order.scheduledReleaseAt).toISOString() : null,
+        });
+      }
+
       // Calculate rider earnings and lock them in
       const { calculateRiderEarnings } = require('../utils/riderEarningsCalculator');
 
@@ -1114,6 +1138,16 @@ router.post(
         return res.status(400).json({
           success: false,
           message: "Pickup orders are not eligible for rider assignment",
+        });
+      }
+
+      if (order.isScheduledOrder && !order.scheduledReleasedAt) {
+        return res.status(409).json({
+          success: false,
+          message: "Scheduled order is not yet released for rider assignment",
+          code: "SCHEDULED_ORDER_NOT_RELEASED",
+          scheduledForAt: order.scheduledForAt ? new Date(order.scheduledForAt).toISOString() : null,
+          scheduledReleaseAt: order.scheduledReleaseAt ? new Date(order.scheduledReleaseAt).toISOString() : null,
         });
       }
 

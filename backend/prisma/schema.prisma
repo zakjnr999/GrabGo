@@ -1065,6 +1065,12 @@ model Order {
   giftRecipientName       String?
   giftRecipientPhone      String?
   giftNote                String?
+  isScheduledOrder        Boolean      @default(false)
+  scheduledForAt          DateTime?
+  scheduledWindowStartAt  DateTime?
+  scheduledWindowEndAt    DateTime?
+  scheduledReleaseAt      DateTime?
+  scheduledReleasedAt     DateTime?
   deliveryVerificationRequired Boolean @default(false)
   deliveryCodeHash        String?
   deliveryCodeEncrypted   String?
@@ -1133,6 +1139,7 @@ model Order {
   @@index([groceryStoreId])
   @@index([pharmacyStoreId])
   @@index([grabMartStoreId])
+  @@index([isScheduledOrder, status, paymentStatus, scheduledReleasedAt, scheduledReleaseAt])
   @@index([riderId])
   @@index([status])
   @@index([orderDate])
