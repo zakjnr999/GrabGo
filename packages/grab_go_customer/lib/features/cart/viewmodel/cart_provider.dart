@@ -802,9 +802,6 @@ class CartProvider extends ChangeNotifier {
 
   String? _getLocalAddToCartBlockingIssue(CartItem item) {
     if (!item.isAvailable) return 'This item is currently unavailable.';
-    if (item is FoodItem && !item.isRestaurantOpen) {
-      return 'This vendor is currently closed.';
-    }
     if (item is GroceryItem && item.stock <= 0) {
       return 'This item is out of stock.';
     }

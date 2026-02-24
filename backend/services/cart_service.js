@@ -37,9 +37,6 @@ const getVendorAvailabilityError = (vendor, label) => {
     if (vendor.isAcceptingOrders === false) {
         return `${label} is not accepting orders`;
     }
-    if (vendor.isOpen === false) {
-        return `${label} is currently closed`;
-    }
     return null;
 };
 
