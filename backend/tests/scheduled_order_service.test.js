@@ -153,4 +153,20 @@ describe("scheduled_order_service", () => {
       })
     ).not.toThrow();
   });
+
+  it("allows scheduled slot when vendor is closed now but allowClosedNow is true", () => {
+    expect(() =>
+      validateScheduledVendorAvailability({
+        isOpen: false,
+        allowClosedNow: true,
+        openingHours: [
+          { dayOfWeek: 4, openTime: "09:00", closeTime: "17:00", isClosed: false },
+        ],
+        scheduledWindowStartAt: "2026-01-01T12:00:00.000Z",
+        scheduledWindowEndAt: "2026-01-01T12:30:00.000Z",
+        vendorType: "food",
+        vendorName: "Test Kitchen",
+      })
+    ).not.toThrow();
+  });
 });

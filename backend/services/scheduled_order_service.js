@@ -209,6 +209,7 @@ const validateScheduledVendorAvailability = ({
   scheduledWindowEndAt,
   vendorType,
   vendorName,
+  allowClosedNow = false,
 }) => {
   if (!scheduledWindowStartAt) return;
 
@@ -224,7 +225,7 @@ const validateScheduledVendorAvailability = ({
   const rawEndAt = scheduledWindowEndAt ? new Date(scheduledWindowEndAt) : null;
   const endAt = rawEndAt && !Number.isNaN(rawEndAt.getTime()) ? rawEndAt : null;
 
-  if (isOpen === false) {
+  if (isOpen === false && !allowClosedNow) {
     throw new ScheduledOrderError(
       `${vendorName || "Vendor"} is not accepting scheduled orders at the selected time`,
       400,
@@ -244,6 +245,19 @@ const validateScheduledVendorAvailability = ({
 
   if (!Array.isArray(openingHours) || openingHours.length === 0) {
     // Without opening-hours records we fall back to the manual isOpen/is24Hours flags.
+    if (isOpen === false) {
+      throw new ScheduledOrderError(
+        `${vendorName || "Vendor"} is closed during the selected delivery window`,
+        400,
+        "SCHEDULED_ORDER_VENDOR_CLOSED",
+        {
+          vendorType: vendorType || null,
+          vendorName: vendorName || null,
+          scheduledWindowStartAt: startAt.toISOString(),
+          scheduledWindowEndAt: endAt ? endAt.toISOString() : null,
+        }
+      );
+    }
     return;
   }
 

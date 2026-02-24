@@ -1694,6 +1694,13 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       scheduleAvailability?['isOpen'],
       defaultValue: true,
     );
+    final vendorIsAcceptingScheduledOrders = _parseBool(
+      scheduleAvailability?['isAcceptingScheduledOrders'],
+      defaultValue: true,
+    );
+    if (allowClosedVendor && !vendorIsAcceptingScheduledOrders) {
+      return "This vendor is not accepting scheduled orders right now.";
+    }
     if (!allowClosedVendor && !vendorIsOpenNow) {
       return "This vendor is currently closed. Choose a scheduled slot or try again later.";
     }
@@ -2121,6 +2128,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
 
   String? _getOrderCreationFailureToastMessage(Object error) {
     final rawError = error.toString().toLowerCase();
+
+    if (rawError.contains('scheduled_order_vendor_disabled') ||
+        rawError.contains('not accepting scheduled orders')) {
+      return "This vendor is not accepting scheduled orders right now.";
+    }
 
     final isVendorUnavailable =
         rawError.contains('store/restaurant not found or inactive') ||
@@ -2974,12 +2986,16 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       min: 1,
       max: 30,
     );
-    final bool isOpen = _parseBool(
+    final bool isOpenNow = _parseBool(
       scheduleAvailability?['isOpen'],
       defaultValue: true,
     );
     final bool isAcceptingOrders = _parseBool(
       scheduleAvailability?['isAcceptingOrders'],
+      defaultValue: true,
+    );
+    final bool isAcceptingScheduledOrders = _parseBool(
+      scheduleAvailability?['isAcceptingScheduledOrders'],
       defaultValue: true,
     );
     final bool is24Hours = _parseBool(
@@ -2990,9 +3006,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       scheduleAvailability?['openingHours'],
     );
 
-    if (!isOpen || !isAcceptingOrders) {
+    if (!isAcceptingOrders || !isAcceptingScheduledOrders) {
       return [];
     }
+    if (!is24Hours && openingHours.isEmpty && !isOpenNow) return [];
 
     final now = DateTime.now();
     final leadTime = now.add(Duration(minutes: minLeadMinutes));
@@ -3140,17 +3157,37 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
   String _getNoScheduleSlotsMessage(
     Map<String, dynamic>? scheduleAvailability,
   ) {
-    final bool isOpen = _parseBool(
-      scheduleAvailability?['isOpen'],
-      defaultValue: true,
-    );
     final bool isAcceptingOrders = _parseBool(
       scheduleAvailability?['isAcceptingOrders'],
       defaultValue: true,
     );
-    if (!isOpen || !isAcceptingOrders) {
+    if (!isAcceptingOrders) {
+      return "This vendor is currently unavailable for new orders.";
+    }
+
+    final bool isAcceptingScheduledOrders = _parseBool(
+      scheduleAvailability?['isAcceptingScheduledOrders'],
+      defaultValue: true,
+    );
+    if (!isAcceptingScheduledOrders) {
       return "This vendor is not accepting scheduled orders right now.";
     }
+
+    final bool isOpenNow = _parseBool(
+      scheduleAvailability?['isOpen'],
+      defaultValue: true,
+    );
+    final bool is24Hours = _parseBool(
+      scheduleAvailability?['is24Hours'],
+      defaultValue: false,
+    );
+    final openingHours = _parseOpeningHours(
+      scheduleAvailability?['openingHours'],
+    );
+    if (!is24Hours && openingHours.isEmpty && !isOpenNow) {
+      return "No scheduled slots available right now. Try again later.";
+    }
+
     return "No delivery slots available in the selected scheduling window.";
   }
 

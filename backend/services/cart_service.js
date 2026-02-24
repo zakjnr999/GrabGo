@@ -1,5 +1,6 @@
 const prisma = require('../config/prisma');
 const { isRestaurantOpen } = require('../utils/restaurant');
+const { isVendorAcceptingScheduledOrders } = require('../utils/scheduled_orders');
 
 /**
  * Get or create cart for user
@@ -92,6 +93,7 @@ const buildScheduleAvailability = (cart) => {
             vendorName: restaurant.restaurantName || null,
             isOpen: restaurant.isOpen !== false,
             isAcceptingOrders: restaurant.isAcceptingOrders !== false,
+            isAcceptingScheduledOrders: isVendorAcceptingScheduledOrders(restaurant),
             is24Hours: false,
             openingHours: sanitizeOpeningHours(restaurant.openingHours),
         };
@@ -107,6 +109,7 @@ const buildScheduleAvailability = (cart) => {
             vendorName: store.storeName || null,
             isOpen: store.isOpen !== false,
             isAcceptingOrders: store.isAcceptingOrders !== false,
+            isAcceptingScheduledOrders: isVendorAcceptingScheduledOrders(store),
             is24Hours: false,
             openingHours: sanitizeOpeningHours(store.openingHours),
         };
@@ -122,6 +125,7 @@ const buildScheduleAvailability = (cart) => {
             vendorName: store.storeName || null,
             isOpen: store.isOpen !== false,
             isAcceptingOrders: store.isAcceptingOrders !== false,
+            isAcceptingScheduledOrders: isVendorAcceptingScheduledOrders(store),
             is24Hours: false,
             openingHours: sanitizeOpeningHours(store.openingHours),
         };
@@ -137,6 +141,7 @@ const buildScheduleAvailability = (cart) => {
             vendorName: store.storeName || null,
             isOpen: store.isOpen !== false,
             isAcceptingOrders: store.isAcceptingOrders !== false,
+            isAcceptingScheduledOrders: isVendorAcceptingScheduledOrders(store),
             is24Hours: store.is24Hours === true,
             openingHours: [],
         };
@@ -626,6 +631,7 @@ const getUserCart = async (userId, cartType = null, fulfillmentMode = 'delivery'
                                     status: true,
                                     isAcceptingOrders: true,
                                     isDeleted: true,
+                                    features: true,
                                     openingHours: {
                                         select: {
                                             dayOfWeek: true,
@@ -649,6 +655,7 @@ const getUserCart = async (userId, cartType = null, fulfillmentMode = 'delivery'
                                     status: true,
                                     isAcceptingOrders: true,
                                     isDeleted: true,
+                                    features: true,
                                     openingHours: {
                                         select: {
                                             dayOfWeek: true,
@@ -672,6 +679,7 @@ const getUserCart = async (userId, cartType = null, fulfillmentMode = 'delivery'
                                     status: true,
                                     isAcceptingOrders: true,
                                     isDeleted: true,
+                                    features: true,
                                     openingHours: {
                                         select: {
                                             dayOfWeek: true,
@@ -695,6 +703,7 @@ const getUserCart = async (userId, cartType = null, fulfillmentMode = 'delivery'
                                     status: true,
                                     isAcceptingOrders: true,
                                     isDeleted: true,
+                                    features: true,
                                     is24Hours: true
                                 }
                             }

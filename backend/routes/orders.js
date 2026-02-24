@@ -38,6 +38,7 @@ const {
   releaseInventoryHolds,
   cancelPickupOrder,
 } = require("../services/pickup_order_service");
+const { isVendorAcceptingScheduledOrders } = require("../utils/scheduled_orders");
 
 const router = express.Router();
 
@@ -643,6 +644,7 @@ router.post(
             isDeleted: true,
             isAcceptingOrders: true,
             isOpen: true,
+            features: true,
             openingHours: openingHoursSelect,
           },
         });
@@ -660,6 +662,7 @@ router.post(
             isDeleted: true,
             isAcceptingOrders: true,
             isOpen: true,
+            features: true,
             openingHours: openingHoursSelect,
           },
         });
@@ -677,6 +680,7 @@ router.post(
             isDeleted: true,
             isAcceptingOrders: true,
             isOpen: true,
+            features: true,
             openingHours: openingHoursSelect,
           },
         });
@@ -693,6 +697,7 @@ router.post(
             isAcceptingOrders: true,
             isOpen: true,
             is24Hours: true,
+            features: true,
           },
         });
       }
@@ -717,6 +722,16 @@ router.post(
       }
 
       if (isScheduledOrderRequested) {
+        const isVendorScheduledEnabled = isVendorAcceptingScheduledOrders(vendorDoc);
+        if (!isVendorScheduledEnabled) {
+          return res.status(400).json({
+            success: false,
+            message: `${vendorDoc.restaurantName || vendorDoc.storeName || "Vendor"} is not accepting scheduled orders right now`,
+            code: "SCHEDULED_ORDER_VENDOR_DISABLED",
+            vendorType: resolvedOrderType,
+          });
+        }
+
         try {
           validateScheduledVendorAvailability({
             isOpen: vendorDoc.isOpen,
@@ -726,6 +741,7 @@ router.post(
             scheduledWindowEndAt,
             vendorType: resolvedOrderType,
             vendorName: vendorDoc.restaurantName || vendorDoc.storeName || "Vendor",
+            allowClosedNow: true,
           });
         } catch (scheduleError) {
           if (scheduleError instanceof ScheduledOrderError) {
