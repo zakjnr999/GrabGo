@@ -38,7 +38,8 @@ class CartProvider extends ChangeNotifier {
   double get rainFee => _rainFee;
   double get creditsApplied => _creditsApplied;
   double get availableCredits => _availableCredits;
-  double get total => _total ?? (subtotal + deliveryFee + serviceFee + tax + rainFee);
+  double get total =>
+      _total ?? (subtotal + deliveryFee + serviceFee + tax + rainFee);
   int? get estimatedDeliveryMin => _estimatedDeliveryMin;
   int? get estimatedDeliveryMax => _estimatedDeliveryMax;
   bool get useCredits => _useCredits;
@@ -63,7 +64,9 @@ class CartProvider extends ChangeNotifier {
       final cartList = CacheService.getCartItems();
       _cartItems.clear();
       if (cartList.isNotEmpty) {
-        _fulfillmentMode = _normalizeFulfillmentMode(cartList.first['fulfillmentMode'] as String?);
+        _fulfillmentMode = _normalizeFulfillmentMode(
+          cartList.first['fulfillmentMode'] as String?,
+        );
       }
 
       for (var item in cartList) {
@@ -103,8 +106,9 @@ class CartProvider extends ChangeNotifier {
   }
 
   /// Sync cart from backend
-  Future<void> syncFromBackend() async {
-    if (_isSyncing) return;
+  Future<bool> syncFromBackend() async {
+    if (_isSyncing) return true;
+    var syncSucceeded = false;
 
     try {
       _isSyncing = true;
@@ -128,16 +132,23 @@ class CartProvider extends ChangeNotifier {
       );
 
       if (response.isSuccessful && response.body != null) {
+        syncSucceeded = true;
         final cartData = response.body!['cart'];
         if (cartData != null && cartData['items'] != null) {
-          _fulfillmentMode = _normalizeFulfillmentMode(cartData['fulfillmentMode']?.toString());
+          _fulfillmentMode = _normalizeFulfillmentMode(
+            cartData['fulfillmentMode']?.toString(),
+          );
           _cartItems.clear();
           _cartItemIdsByKey.clear();
 
           for (var item in cartData['items']) {
             // Extract the populated item (Food/Grocery/Pharmacy)
             final itemData =
-                item['itemId'] ?? item['food'] ?? item['groceryItem'] ?? item['pharmacyItem'] ?? item['grabMartItem'];
+                item['itemId'] ??
+                item['food'] ??
+                item['groceryItem'] ??
+                item['pharmacyItem'] ??
+                item['grabMartItem'];
             if (itemData == null) continue; // Skip if item was deleted
 
             String? itemType = item['itemType'];
@@ -154,9 +165,13 @@ class CartProvider extends ChangeNotifier {
               final restaurantData = itemData['restaurant'];
               String? providerId;
               if (restaurantData is Map) {
-                providerId = restaurantData['_id']?.toString() ?? restaurantData['id']?.toString();
+                providerId =
+                    restaurantData['_id']?.toString() ??
+                    restaurantData['id']?.toString();
               }
-              providerId ??= itemData['restaurantId']?.toString() ?? itemData['restaurant']?.toString();
+              providerId ??=
+                  itemData['restaurantId']?.toString() ??
+                  itemData['restaurant']?.toString();
               providerId ??= item['restaurantId']?.toString();
 
               final fallbackOpen =
@@ -165,18 +180,29 @@ class CartProvider extends ChangeNotifier {
                       item['foodId']?.toString() ??
                       item['itemId']?.toString() ??
                       ''] ??
-                  (providerId != null ? previousOpenByProviderId[providerId] : null);
+                  (providerId != null
+                      ? previousOpenByProviderId[providerId]
+                      : null);
               cartItem = _createFoodItemFromBackend(
                 Map<String, dynamic>.from(itemData),
                 item,
                 fallbackIsOpen: fallbackOpen,
               );
             } else if (itemType == 'GroceryItem') {
-              cartItem = _createGroceryItemFromBackend(Map<String, dynamic>.from(itemData), item);
+              cartItem = _createGroceryItemFromBackend(
+                Map<String, dynamic>.from(itemData),
+                item,
+              );
             } else if (itemType == 'PharmacyItem') {
-              cartItem = PharmacyItem.fromJson(Map<String, dynamic>.from(itemData));
+              cartItem = _createPharmacyItemFromBackend(
+                Map<String, dynamic>.from(itemData),
+                item,
+              );
             } else if (itemType == 'GrabMartItem') {
-              cartItem = GrabMartItem.fromJson(Map<String, dynamic>.from(itemData));
+              cartItem = _createGrabMartItemFromBackend(
+                Map<String, dynamic>.from(itemData),
+                item,
+              );
             } else {
               debugPrint('Unknown item type: $itemType');
               continue; // Skip unknown types
@@ -201,6 +227,8 @@ class CartProvider extends ChangeNotifier {
           await _saveCart();
           notifyListeners();
         }
+      } else {
+        debugPrint('Error syncing cart from backend: ${response.error}');
       }
     } catch (e) {
       debugPrint('Error syncing cart from backend: $e');
@@ -209,6 +237,7 @@ class CartProvider extends ChangeNotifier {
       _isSyncing = false;
       notifyListeners();
     }
+    return syncSucceeded;
   }
 
   void _applyPricing(Map<String, dynamic>? pricing) {
@@ -234,7 +263,9 @@ class CartProvider extends ChangeNotifier {
     _rainFee = (pricing['rainFee'] as num?)?.toDouble() ?? 0.0;
     _creditsApplied = (pricing['creditsApplied'] as num?)?.toDouble() ?? 0.0;
     _availableCredits =
-        (pricing['availableBalance'] as num?)?.toDouble() ?? (pricing['creditBalance'] as num?)?.toDouble() ?? 0.0;
+        (pricing['availableBalance'] as num?)?.toDouble() ??
+        (pricing['creditBalance'] as num?)?.toDouble() ??
+        0.0;
     _total = (pricing['total'] as num?)?.toDouble();
     _estimatedDeliveryMin = (pricing['estimatedDeliveryMin'] as num?)?.toInt();
     _estimatedDeliveryMax = (pricing['estimatedDeliveryMax'] as num?)?.toInt();
@@ -259,7 +290,11 @@ class CartProvider extends ChangeNotifier {
     return '${item.itemType}:${item.name}:${item.providerId}';
   }
 
-  String? _itemKeyFromBackend(String? itemType, Map<String, dynamic> itemData, Map<String, dynamic> cartItem) {
+  String? _itemKeyFromBackend(
+    String? itemType,
+    Map<String, dynamic> itemData,
+    Map<String, dynamic> cartItem,
+  ) {
     if (itemType == null) return null;
     final id =
         itemData['_id']?.toString() ??
@@ -328,7 +363,9 @@ class CartProvider extends ChangeNotifier {
   Future<bool> replaceCartWithOrder(Map<String, dynamic> order) async {
     final rawItems = order['items'];
     if (rawItems is! List || rawItems.isEmpty) return false;
-    _fulfillmentMode = _normalizeFulfillmentMode(order['fulfillmentMode']?.toString());
+    _fulfillmentMode = _normalizeFulfillmentMode(
+      order['fulfillmentMode']?.toString(),
+    );
 
     final orderType = order['orderType']?.toString().toLowerCase();
     if (orderType == 'pharmacy') {
@@ -423,15 +460,11 @@ class CartProvider extends ChangeNotifier {
     String restaurantId = '';
     String restaurantName = '';
     String restaurantImage = '';
-    bool parseBool(dynamic value, {bool defaultValue = true}) {
-      if (value is bool) return value;
-      if (value is num) return value != 0;
-      if (value is String) return value.toLowerCase() == 'true';
-      return defaultValue;
-    }
-
     if (restaurantData != null) {
-      restaurantId = restaurantData['_id']?.toString() ?? restaurantData['id']?.toString() ?? '';
+      restaurantId =
+          restaurantData['_id']?.toString() ??
+          restaurantData['id']?.toString() ??
+          '';
       restaurantName =
           restaurantData['name']?.toString() ??
           restaurantData['restaurant_name']?.toString() ??
@@ -445,7 +478,8 @@ class CartProvider extends ChangeNotifier {
     }
 
     if (restaurantId.isEmpty) {
-      final rawRestaurantId = itemData['restaurantId'] ?? itemData['restaurant'];
+      final rawRestaurantId =
+          itemData['restaurantId'] ?? itemData['restaurant'];
       if (rawRestaurantId != null) {
         restaurantId = rawRestaurantId.toString();
       }
@@ -456,17 +490,35 @@ class CartProvider extends ChangeNotifier {
     }
 
     dynamic rawOpen = () {
-      if (itemData.containsKey('isRestaurantOpen')) return itemData['isRestaurantOpen'];
-      if (restaurantData is Map) {
-        if (restaurantData.containsKey('isRestaurantOpen')) return restaurantData['isRestaurantOpen'];
-        if (restaurantData.containsKey('isOpen')) return restaurantData['isOpen'];
-        if (restaurantData.containsKey('is_open')) return restaurantData['is_open'];
+      if (itemData.containsKey('isRestaurantOpen')) {
+        return itemData['isRestaurantOpen'];
       }
-      if (itemData.containsKey('isOpen')) return itemData['isOpen'];
-      if (itemData.containsKey('is_open')) return itemData['is_open'];
+      if (restaurantData is Map) {
+        if (restaurantData.containsKey('isRestaurantOpen')) {
+          return restaurantData['isRestaurantOpen'];
+        }
+        if (restaurantData.containsKey('isOpen')) {
+          return restaurantData['isOpen'];
+        }
+        if (restaurantData.containsKey('is_open')) {
+          return restaurantData['is_open'];
+        }
+      }
+      if (itemData.containsKey('isOpen')) {
+        return itemData['isOpen'];
+      }
+      if (itemData.containsKey('is_open')) {
+        return itemData['is_open'];
+      }
       return null;
     }();
     rawOpen ??= fallbackIsOpen;
+    final isVendorOperational = _isVendorOperational(restaurantData);
+    final effectiveItemAvailable =
+        _parseBool(itemData['isAvailable'], defaultValue: true) &&
+        isVendorOperational;
+    final effectiveRestaurantOpen =
+        _parseBool(rawOpen, defaultValue: true) && isVendorOperational;
 
     return FoodItem(
       id:
@@ -490,39 +542,56 @@ class CartProvider extends ChangeNotifier {
       restaurantImage: restaurantImage,
       prepTimeMinutes: (itemData['prepTimeMinutes'] as num?)?.toInt() ?? 15,
       calories: (itemData['calories'] as num?)?.toInt() ?? 300,
-      deliveryTimeMinutes: (itemData['deliveryTimeMinutes'] as num?)?.toInt() ?? 30,
-      isAvailable: itemData['isAvailable'] ?? true,
-      isRestaurantOpen: parseBool(rawOpen, defaultValue: true),
+      deliveryTimeMinutes:
+          (itemData['deliveryTimeMinutes'] as num?)?.toInt() ?? 30,
+      isAvailable: effectiveItemAvailable,
+      isRestaurantOpen: effectiveRestaurantOpen,
     );
   }
 
   /// Create GroceryItem from backend data
-  GroceryItem _createGroceryItemFromBackend(Map<String, dynamic> itemData, Map<String, dynamic> cartItem) {
+  GroceryItem _createGroceryItemFromBackend(
+    Map<String, dynamic> itemData,
+    Map<String, dynamic> cartItem,
+  ) {
     // Extract store data if available
     final storeData = itemData['store'];
     String storeId = '';
-    String? storeName;
-    String? storeLogo;
 
     if (storeData != null) {
-      storeId = storeData['_id']?.toString() ?? storeData['id']?.toString() ?? '';
-      storeName =
-          storeData['store_name']?.toString() ?? storeData['storeName']?.toString() ?? storeData['name']?.toString();
-      storeLogo = storeData['logo']?.toString() ?? storeData['image']?.toString();
+      storeId =
+          storeData['_id']?.toString() ?? storeData['id']?.toString() ?? '';
     }
+    final isStoreOperational = _isVendorOperational(storeData);
+    final effectiveItemAvailable =
+        _parseBool(itemData['isAvailable'], defaultValue: true) &&
+        isStoreOperational;
 
     return GroceryItem.fromJson({
-      '_id': itemData['_id'] ?? itemData['id'] ?? cartItem['itemId'] ?? cartItem['groceryItemId'],
+      '_id':
+          itemData['_id'] ??
+          itemData['id'] ??
+          cartItem['itemId'] ??
+          cartItem['groceryItemId'],
       'name': itemData['name'] ?? '',
       'description': itemData['description'] ?? '',
       'image': itemData['image'] ?? itemData['imageUrl'] ?? '',
       'price': itemData['price'] ?? 0.0,
       'unit': itemData['unit'] ?? 'piece',
       'category': itemData['category'],
-      'store': storeId.isNotEmpty ? storeId : itemData['storeId'],
+      'store': storeData is Map
+          ? {
+              ...Map<String, dynamic>.from(storeData),
+              '_id': storeId.isNotEmpty
+                  ? storeId
+                  : (storeData['_id']?.toString() ??
+                        storeData['id']?.toString() ??
+                        itemData['storeId']),
+            }
+          : (storeId.isNotEmpty ? storeId : itemData['storeId']),
       'brand': itemData['brand'] ?? '',
       'stock': itemData['stock'] ?? 0,
-      'isAvailable': itemData['isAvailable'] ?? true,
+      'isAvailable': effectiveItemAvailable,
       'discountPercentage': itemData['discountPercentage'] ?? 0.0,
       'discountEndDate': itemData['discountEndDate'],
       'nutritionInfo': itemData['nutritionInfo'],
@@ -534,9 +603,104 @@ class CartProvider extends ChangeNotifier {
     });
   }
 
+  PharmacyItem _createPharmacyItemFromBackend(
+    Map<String, dynamic> itemData,
+    Map<String, dynamic> cartItem,
+  ) {
+    final storeData = itemData['store'];
+    final storeMap = storeData is Map
+        ? Map<String, dynamic>.from(storeData)
+        : null;
+    final storeId =
+        storeMap?['_id']?.toString() ??
+        storeMap?['id']?.toString() ??
+        itemData['storeId']?.toString();
+    final isStoreOperational = _isVendorOperational(storeData);
+    final effectiveItemAvailable =
+        _parseBool(itemData['isAvailable'], defaultValue: true) &&
+        isStoreOperational;
+
+    return PharmacyItem.fromJson({
+      ...itemData,
+      '_id':
+          itemData['_id'] ??
+          itemData['id'] ??
+          cartItem['itemId'] ??
+          cartItem['pharmacyItemId'],
+      'store': storeMap != null
+          ? {...storeMap, '_id': storeId}
+          : (storeId ?? itemData['store']),
+      'isAvailable': effectiveItemAvailable,
+    });
+  }
+
+  GrabMartItem _createGrabMartItemFromBackend(
+    Map<String, dynamic> itemData,
+    Map<String, dynamic> cartItem,
+  ) {
+    final storeData = itemData['store'];
+    final storeMap = storeData is Map
+        ? Map<String, dynamic>.from(storeData)
+        : null;
+    final storeId =
+        storeMap?['_id']?.toString() ??
+        storeMap?['id']?.toString() ??
+        itemData['storeId']?.toString();
+    final isStoreOperational = _isVendorOperational(storeData);
+    final effectiveItemAvailable =
+        _parseBool(itemData['isAvailable'], defaultValue: true) &&
+        isStoreOperational;
+
+    return GrabMartItem.fromJson({
+      ...itemData,
+      '_id':
+          itemData['_id'] ??
+          itemData['id'] ??
+          cartItem['itemId'] ??
+          cartItem['grabMartItemId'],
+      'store': storeMap != null
+          ? {...storeMap, '_id': storeId}
+          : (storeId ?? itemData['store']),
+      'isAvailable': effectiveItemAvailable,
+    });
+  }
+
+  bool _parseBool(dynamic value, {bool defaultValue = true}) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      if (['true', '1', 'yes', 'y', 'on'].contains(normalized)) return true;
+      if (['false', '0', 'no', 'n', 'off'].contains(normalized)) return false;
+    }
+    return defaultValue;
+  }
+
+  bool _isVendorOperational(dynamic vendorData) {
+    if (vendorData is! Map) return true;
+    final map = vendorData;
+
+    final status = map['status']?.toString().toLowerCase();
+    final isApproved = status == null || status == 'approved';
+
+    final isOpen = _parseBool(
+      map['isOpen'] ?? map['is_open'] ?? map['isRestaurantOpen'],
+      defaultValue: true,
+    );
+    final isAcceptingOrders = _parseBool(
+      map['isAcceptingOrders'],
+      defaultValue: true,
+    );
+    final isDeleted = _parseBool(map['isDeleted'], defaultValue: false);
+
+    return isApproved && isOpen && isAcceptingOrders && !isDeleted;
+  }
+
   Future<void> _saveCart() async {
     try {
-      final List<Map<String, dynamic>> cartList = _cartItems.entries.map((entry) {
+      final List<Map<String, dynamic>> cartList = _cartItems.entries.map((
+        entry,
+      ) {
         return {
           'item': entry.key.toJson(),
           'quantity': entry.value,
@@ -560,7 +724,11 @@ class CartProvider extends ChangeNotifier {
       debugPrint('  Item Name: ${item.name}');
       debugPrint('  Provider ID: ${item.providerId}');
 
-      final body = {'itemId': item.id, 'itemType': item.itemType, 'quantity': quantity};
+      final body = {
+        'itemId': item.id,
+        'itemType': item.itemType,
+        'quantity': quantity,
+      };
       body['fulfillmentMode'] = _fulfillmentMode;
 
       if (item.itemType == 'Food') {

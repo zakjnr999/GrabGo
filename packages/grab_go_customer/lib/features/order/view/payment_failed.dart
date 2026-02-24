@@ -99,121 +99,139 @@ class _PaymentFailedState extends State<PaymentFailed> with TickerProviderStateM
 
     return Scaffold(
       backgroundColor: colors.backgroundPrimary,
-      body: AnimatedBuilder(
-        animation: _animationController,
-        builder: (context, child) {
-          return Column(
-            children: [
-              Expanded(
-                child: Transform.translate(
-                  offset: Offset(0, _slideAnimation.value),
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Padding(
+      body: SafeArea(
+        bottom: false,
+        child: AnimatedBuilder(
+          animation: _animationController,
+          builder: (context, child) {
+            return Column(
+              children: [
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) => SingleChildScrollView(
                       padding: EdgeInsets.symmetric(horizontal: 20.w),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          ScaleTransition(
-                            scale: _scaleAnimation,
-                            child: Container(
-                              width: 120.w,
-                              height: 120.h,
-                              margin: EdgeInsets.only(bottom: 32.h),
-                              decoration: BoxDecoration(shape: BoxShape.circle, color: colors.error),
-                              child: AnimatedBuilder(
-                                animation: _bounceController,
-                                builder: (context, child) {
-                                  return Transform.scale(
-                                    scale: _bounceAnimation.value,
-                                    child: Center(
-                                      child: SvgPicture.asset(
-                                        Assets.icons.xmark,
-                                        package: 'grab_go_shared',
-                                        height: 52.h,
-                                        width: 52.h,
-                                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                                      ),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                        child: Transform.translate(
+                          offset: Offset(0, _slideAnimation.value),
+                          child: FadeTransition(
+                            opacity: _fadeAnimation,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(height: 16.h),
+                                ScaleTransition(
+                                  scale: _scaleAnimation,
+                                  child: Container(
+                                    width: 120.w,
+                                    height: 120.h,
+                                    margin: EdgeInsets.only(bottom: 32.h),
+                                    decoration: BoxDecoration(shape: BoxShape.circle, color: colors.error),
+                                    child: AnimatedBuilder(
+                                      animation: _bounceController,
+                                      builder: (context, child) {
+                                        return Transform.scale(
+                                          scale: _bounceAnimation.value,
+                                          child: Center(
+                                            child: SvgPicture.asset(
+                                              Assets.icons.xmark,
+                                              package: 'grab_go_shared',
+                                              height: 52.h,
+                                              width: 52.h,
+                                              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                            ),
+                                          ),
+                                        );
+                                      },
                                     ),
-                                  );
-                                },
-                              ),
+                                  ),
+                                ),
+
+                                Text(
+                                  "Payment Failed",
+                                  style: TextStyle(
+                                    fontSize: 28.sp,
+                                    color: colors.textPrimary,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.2,
+                                    height: 1.5,
+                                  ),
+                                ),
+                                SizedBox(height: 8.h),
+                                Text(
+                                  "We couldn't complete your payment.\nYour order is still pending. You can retry from Orders.",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 14.sp,
+                                    color: colors.textSecondary,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.5,
+                                  ),
+                                ),
+
+                                SizedBox(height: 40.h),
+
+                                _buildPaymentDetailsCard(colors),
+                                SizedBox(height: 16.h),
+                              ],
                             ),
                           ),
-
-                          Text(
-                            "Payment Failed",
-                            style: TextStyle(
-                              fontSize: 28.sp,
-                              color: colors.textPrimary,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.2,
-                              height: 1.5,
-                            ),
-                          ),
-                          SizedBox(height: 8.h),
-                          Text(
-                            "We couldn't complete your payment.\nYour order is still pending. You can retry from Orders.",
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              color: colors.textSecondary,
-                              fontWeight: FontWeight.w500,
-                              height: 1.5,
-                            ),
-                          ),
-
-                          SizedBox(height: 48.h),
-
-                          _buildPaymentDetailsCard(colors),
-                        ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-
-              _buildBottomActionBar(colors),
-            ],
-          );
-        },
+                _buildBottomActionBar(colors),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
 
   Widget _buildPaymentDetailsCard(AppColorsExtension colors) {
+    final formattedTimestamp = _formatReceiptTimestamp(widget.timestamp);
+
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(color: colors.backgroundPrimary, borderRadius: BorderRadius.circular(20.r)),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+      decoration: BoxDecoration(
+        color: colors.backgroundSecondary.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+      ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
+          Row(
             children: [
               Text(
-                widget.method,
-                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                "Payment Receipt",
+                style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
               ),
-              SizedBox(height: 4.h),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                decoration: BoxDecoration(
-                  color: colors.error.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8.r),
+              const Spacer(),
+              if (widget.orderNumber != null && widget.orderNumber!.trim().isNotEmpty)
+                Text(
+                  "#${widget.orderNumber}",
+                  style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w700, color: colors.textSecondary),
                 ),
-                child: Text(
-                  "Payment not completed",
-                  style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.error),
-                ),
-              ),
             ],
           ),
-
-          SizedBox(height: 24.h),
-
-          DottedLine(dashLength: 6, dashGapLength: 4, lineThickness: 1, dashColor: colors.textSecondary.withAlpha(50)),
-
-          SizedBox(height: 24.h),
+          SizedBox(height: 8.h),
+          Text(
+            widget.method,
+            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+          ),
+          if (formattedTimestamp.isNotEmpty) ...[
+            SizedBox(height: 2.h),
+            Text(
+              formattedTimestamp,
+              style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+            ),
+          ],
+          SizedBox(height: 16.h),
+          _buildReceiptDivider(colors),
+          SizedBox(height: 16.h),
 
           _buildEnhancedDetailRow("Subtotal", "GHC ${widget.subTotal.toStringAsFixed(2)}", colors, false),
           SizedBox(height: 8.h),
@@ -230,12 +248,67 @@ class _PaymentFailedState extends State<PaymentFailed> with TickerProviderStateM
             SizedBox(height: 8.h),
             _buildEnhancedDetailRow("Driver Tip", "GHC ${widget.tip.toStringAsFixed(2)}", colors, false),
           ],
-          SizedBox(height: 8.h),
+          SizedBox(height: 12.h),
+          DottedLine(
+            dashLength: 4,
+            dashGapLength: 3,
+            lineThickness: 1,
+            dashColor: colors.textSecondary.withValues(alpha: 0.35),
+          ),
+          SizedBox(height: 12.h),
 
           _buildEnhancedDetailRow("Total Due", "GHC ${widget.total.toStringAsFixed(2)}", colors, true),
         ],
       ),
     );
+  }
+
+  Widget _buildReceiptDivider(AppColorsExtension colors) {
+    return SizedBox(
+      height: 16.h,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          DottedLine(
+            dashLength: 6,
+            dashGapLength: 4,
+            lineThickness: 1,
+            dashColor: colors.textSecondary.withValues(alpha: 0.35),
+          ),
+          Positioned(left: -26.w, child: _buildReceiptCutout(colors)),
+          Positioned(right: -26.w, child: _buildReceiptCutout(colors)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReceiptCutout(AppColorsExtension colors) {
+    return Container(
+      width: 20.w,
+      height: 20.w,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: colors.backgroundPrimary,
+        border: Border.all(color: colors.inputBorder.withValues(alpha: 0.2)),
+      ),
+    );
+  }
+
+  String _formatReceiptTimestamp(String? value) {
+    if (value == null || value.trim().isEmpty) return "";
+
+    final parsed = DateTime.tryParse(value.trim());
+    if (parsed == null) return value;
+
+    const months = <String>["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    final local = parsed.toLocal();
+    final hour12 = local.hour == 0 ? 12 : (local.hour > 12 ? local.hour - 12 : local.hour);
+    final minute = local.minute.toString().padLeft(2, "0");
+    final period = local.hour >= 12 ? "PM" : "AM";
+
+    return "${local.day} ${months[local.month - 1]} ${local.year}, $hour12:$minute $period";
   }
 
   Widget _buildBottomActionBar(AppColorsExtension colors) {
@@ -287,7 +360,7 @@ class _PaymentFailedState extends State<PaymentFailed> with TickerProviderStateM
           value,
           style: TextStyle(
             fontSize: isTotal ? 16.sp : 14.sp,
-            color: isTotal ? colors.error : colors.textPrimary,
+            color: colors.textPrimary,
             fontWeight: isTotal ? FontWeight.w800 : FontWeight.w500,
             letterSpacing: 0.5,
           ),

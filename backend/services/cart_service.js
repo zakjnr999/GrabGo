@@ -498,7 +498,11 @@ const getUserCart = async (userId, cartType = null, fulfillmentMode = 'delivery'
                                 select: {
                                     id: true,
                                     restaurantName: true,
-                                    logo: true
+                                    logo: true,
+                                    isOpen: true,
+                                    status: true,
+                                    isAcceptingOrders: true,
+                                    isDeleted: true
                                 }
                             }
                         }
@@ -509,7 +513,11 @@ const getUserCart = async (userId, cartType = null, fulfillmentMode = 'delivery'
                                 select: {
                                     id: true,
                                     storeName: true,
-                                    logo: true
+                                    logo: true,
+                                    isOpen: true,
+                                    status: true,
+                                    isAcceptingOrders: true,
+                                    isDeleted: true
                                 }
                             }
                         }
@@ -520,7 +528,11 @@ const getUserCart = async (userId, cartType = null, fulfillmentMode = 'delivery'
                                 select: {
                                     id: true,
                                     storeName: true,
-                                    logo: true
+                                    logo: true,
+                                    isOpen: true,
+                                    status: true,
+                                    isAcceptingOrders: true,
+                                    isDeleted: true
                                 }
                             }
                         }
@@ -531,7 +543,11 @@ const getUserCart = async (userId, cartType = null, fulfillmentMode = 'delivery'
                                 select: {
                                     id: true,
                                     storeName: true,
-                                    logo: true
+                                    logo: true,
+                                    isOpen: true,
+                                    status: true,
+                                    isAcceptingOrders: true,
+                                    isDeleted: true
                                 }
                             }
                         }

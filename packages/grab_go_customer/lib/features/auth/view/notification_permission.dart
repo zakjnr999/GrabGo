@@ -196,12 +196,7 @@ class _NotificationPermissionState extends State<NotificationPermission> with Si
                               child: Container(
                                 height: 100.h,
                                 width: 100.h,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: RadialGradient(
-                                    colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
-                                  ),
-                                ),
+                                decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
                                 child: Center(
                                   child: SvgPicture.asset(
                                     Assets.icons.bell,

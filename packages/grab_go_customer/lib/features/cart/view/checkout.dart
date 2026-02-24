@@ -16,6 +16,7 @@ import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
+import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
 import 'package:grab_go_customer/features/order/service/order_service_wrapper.dart';
 import 'package:grab_go_customer/shared/services/paystack_service.dart' as paystack;
 import 'package:provider/provider.dart';
@@ -1216,12 +1217,67 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     }
 
     if (provider.isPricingLoading) {
-      AppToastMessage.show(context: context, message: "Calculating fees, please wait...");
+      AppToastMessage.show(
+        context: context,
+        backgroundColor: colors.error,
+        message: "Calculating fees, please wait...",
+      );
       return;
     }
 
     if (provider.cartItems.isEmpty) {
-      AppToastMessage.show(context: context, message: "Your cart is empty.");
+      AppToastMessage.show(context: context, backgroundColor: colors.error, message: "Your cart is empty.");
+      return;
+    }
+
+    final preSyncIssue = _getPrePaymentBlockingIssue(provider);
+    if (preSyncIssue != null) {
+      AppToastMessage.show(context: context, message: preSyncIssue, backgroundColor: colors.error, maxLines: 3);
+      return;
+    }
+
+    setState(() {
+      _isProcessingPayment = true;
+    });
+
+    bool syncSucceeded = true;
+    try {
+      syncSucceeded = await provider.syncFromBackend();
+    } catch (e) {
+      debugPrint('Checkout: pre-payment cart sync failed: $e');
+      syncSucceeded = false;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessingPayment = false;
+        });
+      }
+    }
+
+    if (!mounted) return;
+    if (!syncSucceeded) {
+      AppToastMessage.show(
+        context: context,
+        backgroundColor: colors.error,
+        message: "Couldn't verify latest availability. Please refresh and try again.",
+        maxLines: 3,
+      );
+      return;
+    }
+
+    if (provider.cartItems.isEmpty) {
+      AppToastMessage.show(
+        context: context,
+        backgroundColor: colors.error,
+        message: "Some items in your cart are no longer available.",
+        maxLines: 2,
+      );
+      return;
+    }
+
+    final postSyncIssue = _getPrePaymentBlockingIssue(provider);
+    if (postSyncIssue != null) {
+      AppToastMessage.show(context: context, message: postSyncIssue, backgroundColor: colors.error, maxLines: 3);
       return;
     }
 
@@ -1232,19 +1288,38 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     if (provider.fulfillmentMode == 'pickup') {
       final normalizedPickupPhone = _normalizeGhanaPhone(_pickupContactPhoneController.text);
       if (_pickupContactNameController.text.trim().isEmpty || _pickupContactPhoneController.text.trim().isEmpty) {
-        AppToastMessage.show(context: context, message: "Please provide pickup contact details.");
+        AppToastMessage.show(
+          context: context,
+          backgroundColor: colors.error,
+          message: "Please provide pickup contact details.",
+          maxLines: 2,
+        );
         return;
       }
       if (normalizedPickupPhone == null) {
-        AppToastMessage.show(context: context, message: "Please enter a valid Ghana phone number.", maxLines: 2);
+        AppToastMessage.show(
+          context: context,
+          backgroundColor: colors.error,
+          message: "Please enter a valid Ghana phone number.",
+          maxLines: 2,
+        );
         return;
       }
       if (!_pickupNoShowAccepted) {
-        AppToastMessage.show(context: context, message: "Please accept the no-show policy to continue.", maxLines: 2);
+        AppToastMessage.show(
+          context: context,
+          backgroundColor: colors.error,
+          message: "Please accept the no-show policy to continue.",
+          maxLines: 2,
+        );
         return;
       }
     } else if (_selectedAddress.isEmpty) {
-      AppToastMessage.show(context: context, message: "Please select a delivery address.");
+      AppToastMessage.show(
+        context: context,
+        backgroundColor: colors.error,
+        message: "Please select a delivery address.",
+      );
       return;
     }
 
@@ -1271,6 +1346,53 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     }
 
     _showPaymentConfirmationSheet(context, provider, colors);
+  }
+
+  String? _getPrePaymentBlockingIssue(CartProvider provider) {
+    if (provider.cartItems.isEmpty) return "Your cart is empty.";
+
+    final unavailableItems = <CartItem>[];
+    final outOfStockItems = <CartItem>[];
+    final closedVendorItems = <FoodItem>[];
+
+    for (final entry in provider.cartItems.entries) {
+      final item = entry.key;
+      final quantity = entry.value;
+
+      if (!item.isAvailable) {
+        unavailableItems.add(item);
+      }
+
+      if (item is FoodItem && !item.isRestaurantOpen) {
+        closedVendorItems.add(item);
+      }
+
+      if (item is GroceryItem && (item.stock <= 0 || quantity > item.stock)) {
+        outOfStockItems.add(item);
+      } else if (item is PharmacyItem && (item.stock <= 0 || quantity > item.stock)) {
+        outOfStockItems.add(item);
+      } else if (item is GrabMartItem && (item.stock <= 0 || quantity > item.stock)) {
+        outOfStockItems.add(item);
+      }
+    }
+
+    if (closedVendorItems.isNotEmpty) {
+      return "This vendor is currently closed. Please remove those items and try again.";
+    }
+
+    if (unavailableItems.isNotEmpty) {
+      final names = unavailableItems.take(2).map((item) => item.name).join(", ");
+      final suffix = unavailableItems.length > 2 ? " and more" : "";
+      return "Some items are unavailable: $names$suffix. Please update your cart.";
+    }
+
+    if (outOfStockItems.isNotEmpty) {
+      final names = outOfStockItems.take(2).map((item) => item.name).join(", ");
+      final suffix = outOfStockItems.length > 2 ? " and more" : "";
+      return "Insufficient stock for: $names$suffix. Please update your cart quantities.";
+    }
+
+    return null;
   }
 
   void _showPaymentConfirmationSheet(BuildContext context, CartProvider provider, AppColorsExtension colors) {
@@ -1424,6 +1546,50 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       _isProcessingPayment = true;
     });
 
+    bool syncSucceeded = true;
+    try {
+      syncSucceeded = await provider.syncFromBackend();
+    } catch (e) {
+      debugPrint('Checkout: payment-time cart sync failed: $e');
+      syncSucceeded = false;
+    }
+
+    if (!mounted) return;
+    if (!syncSucceeded) {
+      setState(() {
+        _isProcessingPayment = false;
+      });
+      AppToastMessage.show(
+        context: context,
+        backgroundColor: context.appColors.error,
+        message: "Couldn't verify latest availability. Please refresh and try again.",
+        maxLines: 3,
+      );
+      return;
+    }
+
+    if (provider.cartItems.isEmpty) {
+      setState(() {
+        _isProcessingPayment = false;
+      });
+      AppToastMessage.show(context: context, message: "Some items in your cart are no longer available.");
+      return;
+    }
+
+    final prePaymentIssue = _getPrePaymentBlockingIssue(provider);
+    if (prePaymentIssue != null) {
+      setState(() {
+        _isProcessingPayment = false;
+      });
+      AppToastMessage.show(
+        context: context,
+        message: prePaymentIssue,
+        backgroundColor: context.appColors.error,
+        maxLines: 3,
+      );
+      return;
+    }
+
     final double subtotal = provider.subtotal;
     final bool isPickupMode = provider.fulfillmentMode == 'pickup';
     final double deliveryFee = isPickupMode ? 0.0 : provider.deliveryFee;
@@ -1498,7 +1664,12 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       } else {
         final toastMessage = _getOrderCreationFailureToastMessage(e);
         if (toastMessage != null) {
-          AppToastMessage.show(context: context, message: toastMessage, maxLines: 3);
+          AppToastMessage.show(
+            context: context,
+            backgroundColor: context.appColors.error,
+            message: toastMessage,
+            maxLines: 3,
+          );
           return;
         }
         _showErrorDialog(context, 'Payment failed: ${e.toString()}');
@@ -1513,16 +1684,23 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         rawError.contains('store/restaurant not found or inactive') ||
         rawError.contains('store/restaurant') && rawError.contains('inactive') ||
         rawError.contains('vendor') && rawError.contains('closed') ||
-        rawError.contains('restaurant') && rawError.contains('closed');
+        rawError.contains('restaurant') && rawError.contains('closed') ||
+        rawError.contains('store is currently closed') ||
+        rawError.contains('store is currently unavailable for new orders') ||
+        rawError.contains('not accepting orders');
     if (isVendorUnavailable) {
       return "This vendor is currently closed or unavailable. Please choose another vendor.";
     }
 
     final isItemUnavailable =
         rawError.contains('no longer available') ||
+        rawError.contains('currently unavailable') ||
         rawError.contains('item') && rawError.contains('not found') ||
         rawError.contains('unable to reserve inventory') ||
-        rawError.contains('stock changes');
+        rawError.contains('stock changes') ||
+        rawError.contains('out of stock') ||
+        rawError.contains('insufficient stock') ||
+        rawError.contains('not enough stock');
     if (isItemUnavailable) {
       return "Some items in your cart are unavailable. Please review your cart and try again.";
     }

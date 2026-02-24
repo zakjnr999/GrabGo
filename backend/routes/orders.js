@@ -457,6 +457,12 @@ router.post(
           if (type === "Food") {
             const food = await prisma.food.findUnique({ where: { id: payloadItemId } });
             if (food) {
+              if (food.isAvailable !== true) {
+                return res.status(400).json({
+                  success: false,
+                  message: `${food.name || "This item"} is currently unavailable`,
+                });
+              }
               matchedItem = {
                 itemType: "Food",
                 orderType: "food",
@@ -473,6 +479,18 @@ router.post(
           } else if (type === "GroceryItem") {
             const groceryItem = await prisma.groceryItem.findUnique({ where: { id: payloadItemId } });
             if (groceryItem) {
+              if (groceryItem.isAvailable !== true) {
+                return res.status(400).json({
+                  success: false,
+                  message: `${groceryItem.name || "This item"} is currently unavailable`,
+                });
+              }
+              if (Number.isFinite(groceryItem.stock) && quantity > groceryItem.stock) {
+                return res.status(400).json({
+                  success: false,
+                  message: `Not enough stock for ${groceryItem.name || "this item"}`,
+                });
+              }
               matchedItem = {
                 itemType: "GroceryItem",
                 orderType: "grocery",
@@ -489,6 +507,18 @@ router.post(
           } else if (type === "PharmacyItem") {
             const pharmacyItem = await prisma.pharmacyItem.findUnique({ where: { id: payloadItemId } });
             if (pharmacyItem) {
+              if (pharmacyItem.isAvailable !== true) {
+                return res.status(400).json({
+                  success: false,
+                  message: `${pharmacyItem.name || "This item"} is currently unavailable`,
+                });
+              }
+              if (Number.isFinite(pharmacyItem.stock) && quantity > pharmacyItem.stock) {
+                return res.status(400).json({
+                  success: false,
+                  message: `Not enough stock for ${pharmacyItem.name || "this item"}`,
+                });
+              }
               matchedItem = {
                 itemType: "PharmacyItem",
                 orderType: "pharmacy",
@@ -505,6 +535,18 @@ router.post(
           } else if (type === "GrabMartItem") {
             const grabMartItem = await prisma.grabMartItem.findUnique({ where: { id: payloadItemId } });
             if (grabMartItem) {
+              if (grabMartItem.isAvailable !== true) {
+                return res.status(400).json({
+                  success: false,
+                  message: `${grabMartItem.name || "This item"} is currently unavailable`,
+                });
+              }
+              if (Number.isFinite(grabMartItem.stock) && quantity > grabMartItem.stock) {
+                return res.status(400).json({
+                  success: false,
+                  message: `Not enough stock for ${grabMartItem.name || "this item"}`,
+                });
+              }
               matchedItem = {
                 itemType: "GrabMartItem",
                 orderType: "grabmart",
@@ -591,6 +633,18 @@ router.post(
         return res.status(404).json({
           success: false,
           message: "Store/restaurant not found or inactive",
+        });
+      }
+      if (vendorDoc.isDeleted === true || vendorDoc.isAcceptingOrders === false) {
+        return res.status(400).json({
+          success: false,
+          message: "Store is currently unavailable for new orders",
+        });
+      }
+      if (!isScheduledOrderRequested && vendorDoc.isOpen === false) {
+        return res.status(400).json({
+          success: false,
+          message: "Store is currently closed",
         });
       }
 

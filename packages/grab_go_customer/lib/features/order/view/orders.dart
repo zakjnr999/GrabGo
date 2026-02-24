@@ -618,10 +618,6 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
                   children: [
                     Row(
                       children: [
-                        Text(
-                          AppStrings.ordersOrderNumber,
-                          style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
-                        ),
                         Flexible(
                           child: Padding(
                             padding: EdgeInsets.only(right: 12.w),
