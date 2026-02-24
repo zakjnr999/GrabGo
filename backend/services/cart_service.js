@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const { isRestaurantOpen } = require('../utils/restaurant');
 
 /**
  * Get or create cart for user
@@ -520,7 +521,15 @@ const getUserCart = async (userId, cartType = null, fulfillmentMode = 'delivery'
                                     isOpen: true,
                                     status: true,
                                     isAcceptingOrders: true,
-                                    isDeleted: true
+                                    isDeleted: true,
+                                    openingHours: {
+                                        select: {
+                                            dayOfWeek: true,
+                                            openTime: true,
+                                            closeTime: true,
+                                            isClosed: true
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -574,6 +583,18 @@ const getUserCart = async (userId, cartType = null, fulfillmentMode = 'delivery'
             }
         }
     });
+
+    // Keep cart restaurant-open status aligned with food listing logic (opening hours aware)
+    if (cart && cart.items) {
+        for (const item of cart.items) {
+            if (item.itemType !== 'Food' || !item.food || !item.food.restaurant) continue;
+            const computedIsOpen = isRestaurantOpen(item.food.restaurant);
+            item.food.isRestaurantOpen = computedIsOpen;
+            item.food.restaurant.isRestaurantOpen = computedIsOpen;
+            item.food.restaurant.isOpen = computedIsOpen;
+            delete item.food.restaurant.openingHours;
+        }
+    }
 
     // Filter out items with deleted references
     if (cart && cart.items) {
