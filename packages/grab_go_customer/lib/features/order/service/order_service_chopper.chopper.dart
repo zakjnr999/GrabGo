@@ -77,4 +77,11 @@ final class _$OrderServiceChopper extends OrderServiceChopper {
     final Request $request = Request('GET', $url, client.baseUrl);
     return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
   }
+
+  @override
+  Future<Response<Map<String, dynamic>>> getCodEligibility() {
+    final Uri $url = Uri.parse('/orders/cod/eligibility');
+    final Request $request = Request('GET', $url, client.baseUrl);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
 }

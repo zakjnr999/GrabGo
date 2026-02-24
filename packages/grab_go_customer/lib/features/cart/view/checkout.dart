@@ -51,6 +51,8 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
   bool _isScheduleSyncQueued = false;
   bool _isGiftOrder = false;
   _CheckoutPaymentMethod _selectedPaymentMethod = _CheckoutPaymentMethod.card;
+  CodEligibilityResult? _codEligibility;
+  bool _isCheckingCodEligibility = false;
   bool _didHydrateGiftDraft = false;
   bool _isHydratingGiftDraft = false;
   bool _isLoadingAddresses = false;
@@ -81,6 +83,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     _giftRecipientNameController.addListener(_syncGiftDraftToProvider);
     _giftRecipientPhoneController.addListener(_syncGiftDraftToProvider);
     _giftNoteController.addListener(_syncGiftDraftToProvider);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshCodEligibility();
+    });
   }
 
   @override
@@ -441,6 +446,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
               final double creditsApplied = _effectiveCreditsAppliedForCheckout(provider, isPickupMode: isPickupMode);
               final double effectiveTip = isPickupMode ? 0.0 : _tipAmount;
               final double total = _checkoutGrandTotal(provider, isPickupMode: isPickupMode);
+              final bool isCashOnDelivery = _isCashOnDeliverySelected(isPickupMode: isPickupMode);
+              final double payableNowAmount = isCashOnDelivery
+                  ? _codUpfrontAmountForCheckout(provider, isPickupMode: isPickupMode)
+                  : total;
               final bool isPricingLoading = provider.isPricingLoading;
               final bool hasMoreAddresses = _savedAddresses.length > _collapsedAddressCount;
               final int hiddenAddressCount = math.max(0, _savedAddresses.length - _collapsedAddressCount);
@@ -991,7 +1000,7 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                                   ),
                                   if (!_isProcessingPayment)
                                     Text(
-                                      total > 0 ? " (GHS ${total.toStringAsFixed(2)})" : "",
+                                      payableNowAmount > 0 ? " (GHS ${payableNowAmount.toStringAsFixed(2)})" : "",
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w800,
@@ -1317,6 +1326,227 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     return math.max(0, orderTotal - upfrontAmount);
   }
 
+  Future<CodEligibilityResult?> _refreshCodEligibility() async {
+    if (!mounted || _isCheckingCodEligibility) return null;
+    setState(() {
+      _isCheckingCodEligibility = true;
+    });
+
+    final result = await OrderServiceWrapper().getCodEligibility();
+    if (!mounted) return null;
+
+    setState(() {
+      _isCheckingCodEligibility = false;
+      _codEligibility = result;
+      if (!result.eligible && _selectedPaymentMethod == _CheckoutPaymentMethod.cash) {
+        _selectedPaymentMethod = _CheckoutPaymentMethod.card;
+      }
+    });
+    return result;
+  }
+
+  _CodEligibilitySheetContent _buildCodEligibilitySheetContent(CodEligibilityResult eligibility) {
+    switch (eligibility.code) {
+      case 'COD_TRUST_THRESHOLD_NOT_MET':
+        final delivered = eligibility.deliveredPrepaidOrders ?? 0;
+        final minimum = eligibility.minPrepaidDeliveredOrders ?? delivered;
+        final remaining = math.max(0, minimum - delivered);
+        final progress = minimum > 0 ? '$delivered / $minimum prepaid delivered orders completed' : null;
+        return _CodEligibilitySheetContent(
+          title: 'Unlock Cash on Delivery',
+          message: remaining > 0
+              ? 'You need $remaining more prepaid delivered ${remaining == 1 ? 'order' : 'orders'} before COD is unlocked.'
+              : 'Complete more prepaid delivered orders to unlock COD.',
+          steps: const [
+            'Use Pay Online for your next orders.',
+            'Ensure those orders are marked delivered.',
+            'Avoid cancellations and no-shows while building trust.',
+          ],
+          progress: progress,
+        );
+      case 'COD_PHONE_REQUIRED':
+        return const _CodEligibilitySheetContent(
+          title: 'Add Phone Number',
+          message: 'Cash on delivery requires a phone number on your account.',
+          steps: ['Open Profile settings.', 'Add your phone number.', 'Verify the number with OTP.'],
+        );
+      case 'COD_PHONE_NOT_VERIFIED':
+        return const _CodEligibilitySheetContent(
+          title: 'Verify Your Phone',
+          message: 'Your phone number must be verified before COD can be used.',
+          steps: ['Open Profile settings.', 'Tap phone verification.', 'Complete OTP verification.'],
+        );
+      case 'COD_ACTIVE_ORDER_EXISTS':
+        return const _CodEligibilitySheetContent(
+          title: 'Complete Current COD Order',
+          message: 'You already have an active cash-on-delivery order.',
+          steps: ['Wait for the current COD order to be completed.', 'Then return to checkout and select COD again.'],
+        );
+      case 'COD_DISABLED_NO_SHOW':
+        return const _CodEligibilitySheetContent(
+          title: 'COD Temporarily Disabled',
+          message: 'COD is disabled on your account due to previous no-show activity.',
+          steps: [
+            'Use Pay Online for upcoming orders.',
+            'Complete orders successfully to restore trust.',
+            'Contact support if this was applied in error.',
+          ],
+        );
+      case 'COD_DISABLED':
+        return _CodEligibilitySheetContent(
+          title: 'COD Unavailable',
+          message: eligibility.message,
+          steps: const ['Use Pay Online for now and try COD again later.'],
+        );
+      default:
+        return _CodEligibilitySheetContent(
+          title: 'COD Not Available',
+          message: eligibility.message,
+          steps: const ['Use Pay Online to continue checkout.'],
+        );
+    }
+  }
+
+  void _showCodEligibilityBottomSheet(CodEligibilityResult eligibility) {
+    final colors = context.appColors;
+    final content = _buildCodEligibilitySheetContent(eligibility);
+
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Container(
+          decoration: BoxDecoration(
+            color: colors.backgroundPrimary,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(22.r)),
+          ),
+          padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 20.h),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36.w,
+                  height: 4.h,
+                  decoration: BoxDecoration(color: colors.divider, borderRadius: BorderRadius.circular(999)),
+                ),
+              ),
+              SizedBox(height: 14.h),
+              Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, size: 20.r, color: colors.accentOrange),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: Text(
+                      content.title,
+                      style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8.h),
+              Text(
+                content.message,
+                style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w500),
+              ),
+              if (content.progress != null) ...[
+                SizedBox(height: 10.h),
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+                  decoration: BoxDecoration(
+                    color: colors.backgroundSecondary,
+                    borderRadius: BorderRadius.circular(KBorderSize.borderSmall),
+                  ),
+                  child: Text(
+                    content.progress!,
+                    style: TextStyle(color: colors.textPrimary, fontSize: 12.sp, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+              SizedBox(height: 12.h),
+              ...content.steps.map(
+                (step) => Padding(
+                  padding: EdgeInsets.only(bottom: 8.h),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.only(top: 6.h),
+                        child: Container(
+                          width: 5.w,
+                          height: 5.h,
+                          decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
+                      Expanded(
+                        child: Text(
+                          step,
+                          style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(height: 8.h),
+              AppButton(
+                width: double.infinity,
+                onPressed: () {
+                  Navigator.of(sheetContext).pop();
+                  if (_selectedPaymentMethod != _CheckoutPaymentMethod.card) {
+                    setState(() {
+                      _selectedPaymentMethod = _CheckoutPaymentMethod.card;
+                    });
+                  }
+                },
+                buttonText: "Use Pay Online",
+                textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800),
+                textColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 14.h),
+                borderRadius: KBorderSize.borderMedium,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _handleCodSelectionTap({required bool isPickupMode}) async {
+    if (isPickupMode) return;
+
+    if (_isCheckingCodEligibility && _codEligibility == null) {
+      return;
+    }
+
+    final eligibility = _codEligibility ?? await _refreshCodEligibility();
+    if (!mounted) return;
+
+    if (eligibility == null) {
+      AppToastMessage.show(
+        context: context,
+        backgroundColor: context.appColors.error,
+        message: "We couldn't check COD eligibility right now. Please try again.",
+        maxLines: 3,
+      );
+      return;
+    }
+
+    if (eligibility.eligible) {
+      setState(() {
+        _selectedPaymentMethod = _CheckoutPaymentMethod.cash;
+      });
+      return;
+    }
+
+    _showCodEligibilityBottomSheet(eligibility);
+  }
+
   Future<void> _onProceedToPayment(BuildContext context, CartProvider provider, AppColorsExtension colors) async {
     if (_isProcessingPayment) return;
 
@@ -1324,6 +1554,26 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     if (isPickupTab && provider.fulfillmentMode != 'pickup') {
       await provider.setFulfillmentMode('pickup');
       if (!mounted) return;
+    }
+
+    final bool isPickupMode = provider.fulfillmentMode == 'pickup';
+    final bool wantsCashOnDelivery = _isCashOnDeliverySelected(isPickupMode: isPickupMode);
+    if (!isPickupMode && wantsCashOnDelivery) {
+      final eligibility = _codEligibility ?? await _refreshCodEligibility();
+      if (!mounted) return;
+      if (eligibility?.eligible != true) {
+        if (eligibility != null) {
+          _showCodEligibilityBottomSheet(eligibility);
+        } else {
+          AppToastMessage.show(
+            context: context,
+            backgroundColor: colors.error,
+            message: "We couldn't verify COD eligibility right now. Please try again.",
+            maxLines: 3,
+          );
+        }
+        return;
+      }
     }
 
     if (provider.isPricingLoading) {
@@ -1801,6 +2051,16 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         throw Exception('Failed to create order');
       }
 
+      final double expectedOnlineAmount = isCashOnDelivery
+          ? math.max(
+              0,
+              createdOrder?.codUpfrontAmount ?? _codUpfrontAmountForCheckout(provider, isPickupMode: isPickupMode),
+            )
+          : orderGrandTotal;
+      final double? expectedCodRemainingAmount = isCashOnDelivery
+          ? (createdOrder?.codRemainingCashOnDelivery ?? math.max(0, orderGrandTotal - expectedOnlineAmount))
+          : null;
+
       paymentData = _buildPaymentCompletePayload(
         orderId: orderId,
         orderNumber: createdOrder?.orderNumber,
@@ -1808,11 +2068,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         paymentMethod: _selectedPaymentMethodApiValue(isPickupMode: isPickupMode),
         paymentMethodLabel: _selectedPaymentMethodLabel(isPickupMode: isPickupMode),
         orderGrandTotal: orderGrandTotal,
-        paidOnlineAmount: isCashOnDelivery ? createdOrder?.codUpfrontAmount : orderGrandTotal,
-        codRemainingCashAmount: isCashOnDelivery ? createdOrder?.codRemainingCashOnDelivery : null,
+        paidOnlineAmount: expectedOnlineAmount,
+        codRemainingCashAmount: expectedCodRemainingAmount,
       );
 
-      if (orderGrandTotal <= 0) {
+      if (expectedOnlineAmount <= 0) {
         setState(() {
           _isProcessingPayment = false;
         });
@@ -1835,14 +2095,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       final authUrl = init.authorizationUrl;
       final reference = init.reference;
 
-      final paidOnlineAmount =
-          init.paymentAmount ??
-          (isCashOnDelivery ? _codUpfrontAmountForCheckout(provider, isPickupMode: isPickupMode) : orderGrandTotal);
+      final paidOnlineAmount = init.paymentAmount ?? expectedOnlineAmount;
       final codRemainingCashAmount =
           init.codRemainingCashAmount ??
-          (isCashOnDelivery
-              ? (createdOrder?.codRemainingCashOnDelivery ?? math.max(0, orderGrandTotal - paidOnlineAmount))
-              : null);
+          (isCashOnDelivery ? (expectedCodRemainingAmount ?? math.max(0, orderGrandTotal - paidOnlineAmount)) : null);
       paymentData = {
         ...paymentData,
         'paymentScope': init.paymentScope,
@@ -2474,6 +2730,21 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     final double totalAmount = _checkoutGrandTotal(provider, isPickupMode: isPickupMode);
     final double codUpfrontAmount = _codUpfrontAmountForCheckout(provider, isPickupMode: isPickupMode);
     final double codRemainingAmount = _codRemainingAmountForCheckout(provider, isPickupMode: isPickupMode);
+    final codEligibility = _codEligibility;
+    final bool codEligibilityKnown = codEligibility != null;
+    final bool codEligible = codEligibility?.eligible == true;
+    final String codSubtitle;
+    if (isPickupMode) {
+      codSubtitle = "Available only for delivery orders";
+    } else if (_isCheckingCodEligibility && !codEligibilityKnown) {
+      codSubtitle = "Checking eligibility...";
+    } else if (!codEligible && codEligibilityKnown) {
+      codSubtitle = codEligibility.code == 'COD_DISABLED'
+          ? "Temporarily unavailable right now"
+          : "Not eligible yet. Tap to view requirements.";
+    } else {
+      codSubtitle = "Pay part now and the rest on delivery";
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2513,16 +2784,13 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
               SizedBox(height: 10.h),
               _buildPaymentMethodTile(
                 title: "Cash on Delivery",
-                subtitle: isPickupMode ? "Available only for delivery orders" : "Pay part now and the rest on delivery",
+                subtitle: codSubtitle,
                 icon: Icons.payments_outlined,
                 isSelected: !isPickupMode && _selectedPaymentMethod == _CheckoutPaymentMethod.cash,
                 colors: colors,
                 isDisabled: isPickupMode,
                 onTap: () {
-                  if (isPickupMode) return;
-                  setState(() {
-                    _selectedPaymentMethod = _CheckoutPaymentMethod.cash;
-                  });
+                  _handleCodSelectionTap(isPickupMode: isPickupMode);
                 },
               ),
             ],
@@ -3672,6 +3940,15 @@ class _CachedAddresses {
   final bool isStale;
 
   const _CachedAddresses({required this.addresses, required this.isStale});
+}
+
+class _CodEligibilitySheetContent {
+  final String title;
+  final String message;
+  final List<String> steps;
+  final String? progress;
+
+  const _CodEligibilitySheetContent({required this.title, required this.message, required this.steps, this.progress});
 }
 
 enum _FeeInfoType { delivery, service, rain }

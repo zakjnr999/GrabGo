@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:math';
 
+import 'package:chopper/chopper.dart';
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_customer/features/order/service/order_service_chopper.dart';
 import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
@@ -66,6 +68,30 @@ class InitializePaymentResult {
     this.paymentAmount,
     this.paymentScope,
     this.codRemainingCashAmount,
+  });
+}
+
+class CodEligibilityResult {
+  final bool eligible;
+  final String code;
+  final String message;
+  final int? deliveredPrepaidOrders;
+  final int? minPrepaidDeliveredOrders;
+  final int? confirmedNoShows;
+  final int? noShowDisableThreshold;
+  final int? activeCodOrders;
+  final int? maxConcurrentCodOrders;
+
+  const CodEligibilityResult({
+    required this.eligible,
+    required this.code,
+    required this.message,
+    this.deliveredPrepaidOrders,
+    this.minPrepaidDeliveredOrders,
+    this.confirmedNoShows,
+    this.noShowDisableThreshold,
+    this.activeCodOrders,
+    this.maxConcurrentCodOrders,
   });
 }
 
@@ -370,6 +396,67 @@ class OrderServiceWrapper {
     }
   }
 
+  Future<CodEligibilityResult> getCodEligibility() async {
+    try {
+      final response = await _orderService.getCodEligibility();
+      final body = _resolveResponseMap(response);
+
+      if (body == null) {
+        return const CodEligibilityResult(
+          eligible: false,
+          code: 'COD_CHECK_FAILED',
+          message: 'Unable to check cash on delivery eligibility right now.',
+        );
+      }
+
+      final data = body['data'] as Map<String, dynamic>?;
+      final isSuccess = body['success'] == true;
+      final code =
+          body['code']?.toString() ??
+          (isSuccess ? 'COD_ELIGIBLE' : 'COD_UNAVAILABLE');
+      final message =
+          body['message']?.toString() ?? 'Cash on delivery is unavailable.';
+
+      return CodEligibilityResult(
+        eligible: isSuccess && code == 'COD_ELIGIBLE',
+        code: code,
+        message: message,
+        deliveredPrepaidOrders: _asInt(data?['deliveredPrepaidOrders']),
+        minPrepaidDeliveredOrders: _asInt(data?['minPrepaidDeliveredOrders']),
+        confirmedNoShows: _asInt(data?['confirmedNoShows']),
+        noShowDisableThreshold: _asInt(data?['noShowDisableThreshold']),
+        activeCodOrders: _asInt(data?['activeCodOrders']),
+        maxConcurrentCodOrders: _asInt(data?['maxConcurrentCodOrders']),
+      );
+    } catch (_) {
+      return const CodEligibilityResult(
+        eligible: false,
+        code: 'COD_CHECK_FAILED',
+        message: 'Unable to check cash on delivery eligibility right now.',
+      );
+    }
+  }
+
+  Map<String, dynamic>? _resolveResponseMap(
+    Response<Map<String, dynamic>> response,
+  ) {
+    if (response.body != null) return response.body;
+
+    final dynamic errorPayload = response.error;
+    if (errorPayload is Map<String, dynamic>) return errorPayload;
+    if (errorPayload is Map) return Map<String, dynamic>.from(errorPayload);
+    if (errorPayload is String && errorPayload.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(errorPayload);
+        if (decoded is Map<String, dynamic>) return decoded;
+        if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+
   String _generateOrderNumber() {
     final random = Random();
     final suffix = random.nextInt(9000) + 1000;
@@ -417,6 +504,13 @@ class OrderServiceWrapper {
   double? _asDouble(dynamic value) {
     if (value is num) return value.toDouble();
     if (value is String) return double.tryParse(value);
+    return null;
+  }
+
+  int? _asInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
     return null;
   }
 

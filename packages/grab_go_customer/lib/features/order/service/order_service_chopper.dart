@@ -39,6 +39,9 @@ abstract class OrderServiceChopper extends ChopperService {
   @GET(path: '/orders')
   Future<Response<Map<String, dynamic>>> getUserOrders();
 
+  @GET(path: '/orders/cod/eligibility')
+  Future<Response<Map<String, dynamic>>> getCodEligibility();
+
   static OrderServiceChopper create([ChopperClient? client]) =>
       _$OrderServiceChopper(client);
 }
