@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:chopper/chopper.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
@@ -716,7 +717,7 @@ class CartProvider extends ChangeNotifier {
   }
 
   /// Add item to backend
-  Future<void> _addToBackend(CartItem item, int quantity) async {
+  Future<String?> _addToBackend(CartItem item, int quantity) async {
     try {
       debugPrint('🛒 Adding to backend cart:');
       debugPrint('  Item ID: ${item.id}');
@@ -742,17 +743,101 @@ class CartProvider extends ChangeNotifier {
       }
 
       debugPrint('  Request body: $body');
-      await cartApiService.addToCart(
+      final response = await cartApiService.addToCart(
         body,
         fulfillmentMode: _fulfillmentMode,
         lat: _deliveryLatitude,
         lng: _deliveryLongitude,
         useCredits: _useCredits,
       );
+      if (!response.isSuccessful) {
+        return _extractCartApiErrorMessage(
+          response,
+          fallback: 'Failed to add item to cart.',
+        );
+      }
       debugPrint('✅ Successfully added to backend');
+      return null;
     } catch (e) {
       debugPrint('❌ Error adding to backend cart: $e');
+      return e.toString();
     }
+  }
+
+  String _extractCartApiErrorMessage(
+    Response<Map<String, dynamic>> response, {
+    required String fallback,
+  }) {
+    final body = response.body;
+    if (body is Map<String, dynamic>) {
+      final message = body['message']?.toString();
+      if (message != null && message.trim().isNotEmpty) {
+        return message.trim();
+      }
+      final error = body['error']?.toString();
+      if (error != null && error.trim().isNotEmpty) {
+        return error.trim();
+      }
+    }
+
+    final errorBody = response.error;
+    if (errorBody is Map<String, dynamic>) {
+      final message = errorBody['message']?.toString();
+      if (message != null && message.trim().isNotEmpty) {
+        return message.trim();
+      }
+      final error = errorBody['error']?.toString();
+      if (error != null && error.trim().isNotEmpty) {
+        return error.trim();
+      }
+    }
+
+    final rawError = response.error?.toString();
+    if (rawError != null && rawError.trim().isNotEmpty) {
+      return rawError.trim();
+    }
+
+    return fallback;
+  }
+
+  String? _getLocalAddToCartBlockingIssue(CartItem item) {
+    if (!item.isAvailable) return 'This item is currently unavailable.';
+    if (item is FoodItem && !item.isRestaurantOpen) {
+      return 'This vendor is currently closed.';
+    }
+    if (item is GroceryItem && item.stock <= 0) {
+      return 'This item is out of stock.';
+    }
+    if (item is PharmacyItem && item.stock <= 0) {
+      return 'This item is out of stock.';
+    }
+    if (item is GrabMartItem && item.stock <= 0) {
+      return 'This item is out of stock.';
+    }
+    return null;
+  }
+
+  String _humanizeAddToCartError(String rawError) {
+    final normalized = rawError.toLowerCase();
+    if (normalized.contains('currently closed') ||
+        normalized.contains('vendor is closed')) {
+      return 'This vendor is currently closed.';
+    }
+    if (normalized.contains('not accepting orders')) {
+      return 'This vendor is not accepting orders right now.';
+    }
+    if (normalized.contains('inactive') || normalized.contains('not found')) {
+      return 'This vendor is unavailable right now.';
+    }
+    if (normalized.contains('out of stock') ||
+        normalized.contains('not enough stock') ||
+        normalized.contains('insufficient stock')) {
+      return 'This item is out of stock.';
+    }
+    if (normalized.contains('unavailable')) {
+      return 'This item is currently unavailable.';
+    }
+    return 'Could not add item to cart. Please try again.';
   }
 
   /// Update quantity on backend
@@ -792,6 +877,20 @@ class CartProvider extends ChangeNotifier {
     final key = _itemKey(item);
     if (_pendingItemOps.contains(key)) return;
     _pendingItemOps.add(key);
+
+    final localIssue = _getLocalAddToCartBlockingIssue(item);
+    if (localIssue != null) {
+      if (context != null && context.mounted) {
+        AppToastMessage.show(
+          context: context,
+          backgroundColor: context.appColors.error,
+          message: localIssue,
+          maxLines: 2,
+        );
+      }
+      _pendingItemOps.remove(key);
+      return;
+    }
 
     _cartType = item.itemType == 'Food'
         ? 'food'
@@ -851,15 +950,37 @@ class CartProvider extends ChangeNotifier {
       notifyListeners();
 
       // Sync to backend async
+      String? addError;
       if (previousQuantity == 0) {
-        await _addToBackend(item, 1);
+        addError = await _addToBackend(item, 1);
       } else {
         final cartItemId = _cartItemIdsByKey[key];
         if (cartItemId != null) {
           await _updateQuantityOnBackend(cartItemId, _cartItems[item]!);
         } else {
-          await _addToBackend(item, 1);
+          addError = await _addToBackend(item, 1);
         }
+      }
+
+      if (addError != null) {
+        if (previousQuantity == 0) {
+          _cartItems.remove(item);
+        } else {
+          _cartItems[item] = previousQuantity;
+        }
+        _recalculateLocalPricing();
+        _saveCart();
+        notifyListeners();
+        await syncFromBackend();
+        if (context != null && context.mounted) {
+          AppToastMessage.show(
+            context: context,
+            backgroundColor: context.appColors.error,
+            message: _humanizeAddToCartError(addError),
+            maxLines: 2,
+          );
+        }
+        return;
       }
 
       await syncFromBackend();

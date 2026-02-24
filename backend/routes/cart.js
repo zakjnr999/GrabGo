@@ -130,6 +130,11 @@ router.post('/add', protect, async (req, res) => {
         if (error.message.includes('not found') ||
             error.message.includes('unavailable') ||
             error.message.includes('inactive') ||
+            error.message.includes('closed') ||
+            error.message.includes('accepting orders') ||
+            error.message.includes('out of stock') ||
+            error.message.includes('not enough stock') ||
+            error.message.includes('insufficient stock') ||
             error.message.includes('Quantity must be') ||
             error.message.includes('Maximum quantity') ||
             error.message.includes('Invalid')) {

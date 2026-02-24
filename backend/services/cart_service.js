@@ -30,6 +30,19 @@ const normalizeFulfillmentMode = (mode) => {
     return normalized === 'pickup' ? 'pickup' : 'delivery';
 };
 
+const getVendorAvailabilityError = (vendor, label) => {
+    if (!vendor || vendor.status !== 'approved' || vendor.isDeleted === true) {
+        return `${label} not found or inactive`;
+    }
+    if (vendor.isAcceptingOrders === false) {
+        return `${label} is not accepting orders`;
+    }
+    if (vendor.isOpen === false) {
+        return `${label} is currently closed`;
+    }
+    return null;
+};
+
 const getOrCreateCart = async (userId, cartType = 'food', fulfillmentMode = 'delivery') => {
     const normalizedMode = normalizeFulfillmentMode(fulfillmentMode);
     let cart = await prisma.cart.findFirst({
@@ -147,15 +160,17 @@ const addToCart = async (userId, itemData) => {
     let cart = await getOrCreateCart(userId, cartType, normalizedMode);
 
     // Validate and check if switching restaurants/stores
-    if (cartType === 'food' && restaurantId) {
-        const restaurant = await prisma.restaurant.findUnique({
-            where: { id: restaurantId }
-        });
-        if (!restaurant || restaurant.status !== 'approved') {
-            throw new Error('Restaurant not found or inactive');
-        }
+    if (cartType === 'food') {
+        const resolvedRestaurantId = restaurantId || item?.restaurantId;
+        if (!resolvedRestaurantId) throw new Error('Restaurant not found or inactive');
 
-        if (cart.restaurantId && cart.restaurantId !== restaurantId) {
+        const restaurant = await prisma.restaurant.findUnique({
+            where: { id: resolvedRestaurantId }
+        });
+        const availabilityError = getVendorAvailabilityError(restaurant, 'Restaurant');
+        if (availabilityError) throw new Error(availabilityError);
+
+        if (cart.restaurantId && cart.restaurantId !== resolvedRestaurantId) {
             // Clear cart if switching restaurants
             await prisma.cartItem.deleteMany({
                 where: { cartId: cart.id }
@@ -164,17 +179,19 @@ const addToCart = async (userId, itemData) => {
 
         await prisma.cart.update({
             where: { id: cart.id },
-            data: { restaurantId }
+            data: { restaurantId: resolvedRestaurantId }
         });
-    } else if (cartType === 'grocery' && groceryStoreId) {
+    } else if (cartType === 'grocery') {
+        const resolvedStoreId = groceryStoreId || item?.storeId;
+        if (!resolvedStoreId) throw new Error('Grocery store not found or inactive');
+
         const store = await prisma.groceryStore.findUnique({
-            where: { id: groceryStoreId }
+            where: { id: resolvedStoreId }
         });
-        if (!store || store.status !== 'approved') {
-            throw new Error('Grocery store not found or inactive');
-        }
+        const availabilityError = getVendorAvailabilityError(store, 'Grocery store');
+        if (availabilityError) throw new Error(availabilityError);
 
-        if (cart.groceryStoreId && cart.groceryStoreId !== groceryStoreId) {
+        if (cart.groceryStoreId && cart.groceryStoreId !== resolvedStoreId) {
             // Clear cart if switching stores
             await prisma.cartItem.deleteMany({
                 where: { cartId: cart.id }
@@ -183,17 +200,19 @@ const addToCart = async (userId, itemData) => {
 
         await prisma.cart.update({
             where: { id: cart.id },
-            data: { groceryStoreId }
+            data: { groceryStoreId: resolvedStoreId }
         });
-    } else if (cartType === 'pharmacy' && pharmacyStoreId) {
+    } else if (cartType === 'pharmacy') {
+        const resolvedStoreId = pharmacyStoreId || item?.storeId;
+        if (!resolvedStoreId) throw new Error('Pharmacy store not found or inactive');
+
         const store = await prisma.pharmacyStore.findUnique({
-            where: { id: pharmacyStoreId }
+            where: { id: resolvedStoreId }
         });
-        if (!store || store.status !== 'approved') {
-            throw new Error('Pharmacy store not found or inactive');
-        }
+        const availabilityError = getVendorAvailabilityError(store, 'Pharmacy store');
+        if (availabilityError) throw new Error(availabilityError);
 
-        if (cart.pharmacyStoreId && cart.pharmacyStoreId !== pharmacyStoreId) {
+        if (cart.pharmacyStoreId && cart.pharmacyStoreId !== resolvedStoreId) {
             // Clear cart if switching stores
             await prisma.cartItem.deleteMany({
                 where: { cartId: cart.id }
@@ -202,17 +221,19 @@ const addToCart = async (userId, itemData) => {
 
         await prisma.cart.update({
             where: { id: cart.id },
-            data: { pharmacyStoreId }
+            data: { pharmacyStoreId: resolvedStoreId }
         });
-    } else if (cartType === 'grabmart' && grabMartStoreId) {
+    } else if (cartType === 'grabmart') {
+        const resolvedStoreId = grabMartStoreId || item?.storeId;
+        if (!resolvedStoreId) throw new Error('GrabMart store not found or inactive');
+
         const store = await prisma.grabMartStore.findUnique({
-            where: { id: grabMartStoreId }
+            where: { id: resolvedStoreId }
         });
-        if (!store || store.status !== 'approved') {
-            throw new Error('GrabMart store not found or inactive');
-        }
+        const availabilityError = getVendorAvailabilityError(store, 'GrabMart store');
+        if (availabilityError) throw new Error(availabilityError);
 
-        if (cart.grabMartStoreId && cart.grabMartStoreId !== grabMartStoreId) {
+        if (cart.grabMartStoreId && cart.grabMartStoreId !== resolvedStoreId) {
             // Clear cart if switching stores
             await prisma.cartItem.deleteMany({
                 where: { cartId: cart.id }
@@ -221,7 +242,7 @@ const addToCart = async (userId, itemData) => {
 
         await prisma.cart.update({
             where: { id: cart.id },
-            data: { grabMartStoreId }
+            data: { grabMartStoreId: resolvedStoreId }
         });
     }
 
