@@ -1,6 +1,7 @@
 const {
   normalizeDeliveryTimeType,
   validateScheduledDeliveryRequest,
+  validateScheduledVendorAvailability,
   ScheduledOrderError,
   SCHEDULED_ORDER_MIN_LEAD_MINUTES,
   SCHEDULED_ORDER_RELEASE_LEAD_MINUTES,
@@ -76,5 +77,80 @@ describe("scheduled_order_service", () => {
 
     expect(result.scheduledReleaseAt.toISOString()).toBe(expectedReleaseAt.toISOString());
     expect(result.scheduledWindowEndAt.toISOString()).toBe(expectedWindowEnd.toISOString());
+  });
+
+  it("rejects scheduled slot when vendor is manually closed", () => {
+    expect(() =>
+      validateScheduledVendorAvailability({
+        isOpen: false,
+        openingHours: [
+          { dayOfWeek: 4, openTime: "09:00", closeTime: "20:00", isClosed: false },
+        ],
+        scheduledWindowStartAt: "2026-01-01T12:00:00.000Z",
+        scheduledWindowEndAt: "2026-01-01T12:30:00.000Z",
+        vendorType: "food",
+        vendorName: "Test Kitchen",
+      })
+    ).toThrow(ScheduledOrderError);
+  });
+
+  it("rejects scheduled slot outside configured opening hours", () => {
+    expect(() =>
+      validateScheduledVendorAvailability({
+        isOpen: true,
+        openingHours: [
+          { dayOfWeek: 4, openTime: "09:00", closeTime: "17:00", isClosed: false },
+        ],
+        scheduledWindowStartAt: "2026-01-01T18:00:00.000Z",
+        scheduledWindowEndAt: "2026-01-01T18:30:00.000Z",
+        vendorType: "food",
+        vendorName: "Test Kitchen",
+      })
+    ).toThrow(ScheduledOrderError);
+  });
+
+  it("rejects scheduled slot that extends past close time", () => {
+    expect(() =>
+      validateScheduledVendorAvailability({
+        isOpen: true,
+        openingHours: [
+          { dayOfWeek: 4, openTime: "09:00", closeTime: "10:00", isClosed: false },
+        ],
+        scheduledWindowStartAt: "2026-01-01T09:45:00.000Z",
+        scheduledWindowEndAt: "2026-01-01T10:15:00.000Z",
+        vendorType: "food",
+        vendorName: "Test Kitchen",
+      })
+    ).toThrow(ScheduledOrderError);
+  });
+
+  it("allows scheduled slot inside configured opening hours", () => {
+    expect(() =>
+      validateScheduledVendorAvailability({
+        isOpen: true,
+        openingHours: [
+          { dayOfWeek: 4, openTime: "09:00", closeTime: "17:00", isClosed: false },
+        ],
+        scheduledWindowStartAt: "2026-01-01T12:00:00.000Z",
+        scheduledWindowEndAt: "2026-01-01T12:30:00.000Z",
+        vendorType: "food",
+        vendorName: "Test Kitchen",
+      })
+    ).not.toThrow();
+  });
+
+  it("allows overnight schedule slots when previous day spills past midnight", () => {
+    expect(() =>
+      validateScheduledVendorAvailability({
+        isOpen: true,
+        openingHours: [
+          { dayOfWeek: 4, openTime: "22:00", closeTime: "02:00", isClosed: false },
+        ],
+        scheduledWindowStartAt: "2026-01-02T00:30:00.000Z",
+        scheduledWindowEndAt: "2026-01-02T01:00:00.000Z",
+        vendorType: "food",
+        vendorName: "Late Night Kitchen",
+      })
+    ).not.toThrow();
   });
 });

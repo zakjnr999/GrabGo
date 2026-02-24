@@ -34,6 +34,69 @@ const SCHEDULED_ORDER_SLOT_MINUTES = parsePositiveIntEnv("SCHEDULED_ORDER_SLOT_M
   max: 4 * 60,
 });
 
+const parseTimeToMinutes = (value) => {
+  if (typeof value !== "string") return null;
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (!match) return null;
+
+  const hour = Number.parseInt(match[1], 10);
+  const minute = Number.parseInt(match[2], 10);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+
+  return hour * 60 + minute;
+};
+
+const getOpeningHoursForDay = (openingHours, dayOfWeek) => {
+  if (!Array.isArray(openingHours)) return null;
+  return openingHours.find((entry) => Number(entry?.dayOfWeek) === dayOfWeek) || null;
+};
+
+const isTimeWithinWindow = (minuteOfDay, openMinute, closeMinute) => {
+  // Equal open/close means full-day availability.
+  if (openMinute === closeMinute) return true;
+  if (closeMinute > openMinute) {
+    return minuteOfDay >= openMinute && minuteOfDay < closeMinute;
+  }
+
+  // Overnight window (e.g. 22:00 -> 02:00).
+  return minuteOfDay >= openMinute || minuteOfDay < closeMinute;
+};
+
+const isOpenAtWithOpeningHours = (openingHours, atDate) => {
+  if (!Array.isArray(openingHours) || openingHours.length === 0) return false;
+  if (!(atDate instanceof Date) || Number.isNaN(atDate.getTime())) return false;
+
+  const dayOfWeek = atDate.getDay();
+  const minuteOfDay = atDate.getHours() * 60 + atDate.getMinutes();
+  const todayHours = getOpeningHoursForDay(openingHours, dayOfWeek);
+
+  if (todayHours && todayHours.isClosed !== true) {
+    const todayOpenMinute = parseTimeToMinutes(todayHours.openTime);
+    const todayCloseMinute = parseTimeToMinutes(todayHours.closeTime);
+    if (
+      todayOpenMinute !== null &&
+      todayCloseMinute !== null &&
+      isTimeWithinWindow(minuteOfDay, todayOpenMinute, todayCloseMinute)
+    ) {
+      return true;
+    }
+  }
+
+  // Also check if previous day spills overnight into current day.
+  const previousDay = (dayOfWeek + 6) % 7;
+  const previousDayHours = getOpeningHoursForDay(openingHours, previousDay);
+  if (!previousDayHours || previousDayHours.isClosed === true) return false;
+
+  const prevOpenMinute = parseTimeToMinutes(previousDayHours.openTime);
+  const prevCloseMinute = parseTimeToMinutes(previousDayHours.closeTime);
+  if (prevOpenMinute === null || prevCloseMinute === null) return false;
+
+  // Previous-day window is overnight only when close < open.
+  if (prevCloseMinute >= prevOpenMinute) return false;
+  return minuteOfDay < prevCloseMinute;
+};
+
 class ScheduledOrderError extends Error {
   constructor(message, status = 400, code = "SCHEDULED_ORDER_ERROR", meta = {}) {
     super(message);
@@ -138,6 +201,74 @@ const validateScheduledDeliveryRequest = ({
   };
 };
 
+const validateScheduledVendorAvailability = ({
+  isOpen,
+  is24Hours,
+  openingHours,
+  scheduledWindowStartAt,
+  scheduledWindowEndAt,
+  vendorType,
+  vendorName,
+}) => {
+  if (!scheduledWindowStartAt) return;
+
+  const startAt = new Date(scheduledWindowStartAt);
+  if (Number.isNaN(startAt.getTime())) {
+    throw new ScheduledOrderError(
+      "Scheduled delivery window is invalid",
+      400,
+      "SCHEDULED_ORDER_WINDOW_INVALID"
+    );
+  }
+
+  const rawEndAt = scheduledWindowEndAt ? new Date(scheduledWindowEndAt) : null;
+  const endAt = rawEndAt && !Number.isNaN(rawEndAt.getTime()) ? rawEndAt : null;
+
+  if (isOpen === false) {
+    throw new ScheduledOrderError(
+      `${vendorName || "Vendor"} is not accepting scheduled orders at the selected time`,
+      400,
+      "SCHEDULED_ORDER_VENDOR_CLOSED",
+      {
+        vendorType: vendorType || null,
+        vendorName: vendorName || null,
+        scheduledWindowStartAt: startAt.toISOString(),
+        scheduledWindowEndAt: endAt ? endAt.toISOString() : null,
+      }
+    );
+  }
+
+  if (is24Hours === true) {
+    return;
+  }
+
+  if (!Array.isArray(openingHours) || openingHours.length === 0) {
+    // Without opening-hours records we fall back to the manual isOpen/is24Hours flags.
+    return;
+  }
+
+  const effectiveEndCheckAt =
+    endAt && endAt.getTime() > startAt.getTime() ? new Date(endAt.getTime() - 60 * 1000) : startAt;
+  const isStartInsideHours = isOpenAtWithOpeningHours(openingHours, startAt);
+  const isEndInsideHours = isOpenAtWithOpeningHours(openingHours, effectiveEndCheckAt);
+
+  if (isStartInsideHours && isEndInsideHours) {
+    return;
+  }
+
+  throw new ScheduledOrderError(
+    `${vendorName || "Vendor"} is closed during the selected delivery window`,
+    400,
+    "SCHEDULED_ORDER_VENDOR_CLOSED",
+    {
+      vendorType: vendorType || null,
+      vendorName: vendorName || null,
+      scheduledWindowStartAt: startAt.toISOString(),
+      scheduledWindowEndAt: endAt ? endAt.toISOString() : null,
+    }
+  );
+};
+
 const isScheduledOrderReleased = (order) => {
   if (!order?.isScheduledOrder) return true;
   return !!order.scheduledReleasedAt;
@@ -149,8 +280,11 @@ module.exports = {
   SCHEDULED_ORDER_RELEASE_LEAD_MINUTES,
   SCHEDULED_ORDER_MAX_HORIZON_DAYS,
   SCHEDULED_ORDER_SLOT_MINUTES,
+  parseTimeToMinutes,
+  isOpenAtWithOpeningHours,
   normalizeDeliveryTimeType,
   parseScheduledForAt,
   validateScheduledDeliveryRequest,
+  validateScheduledVendorAvailability,
   isScheduledOrderReleased,
 };

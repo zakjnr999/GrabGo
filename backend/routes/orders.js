@@ -29,6 +29,7 @@ const {
 const {
   ScheduledOrderError,
   validateScheduledDeliveryRequest,
+  validateScheduledVendorAvailability,
   normalizeDeliveryTimeType,
 } = require("../services/scheduled_order_service");
 const {
@@ -618,15 +619,82 @@ router.post(
         });
       }
 
+      const openingHoursSelect = {
+        select: {
+          dayOfWeek: true,
+          openTime: true,
+          closeTime: true,
+          isClosed: true,
+        },
+      };
+
       let vendorDoc = null;
       if (resolvedOrderType === "food") {
-        vendorDoc = await prisma.restaurant.findUnique({ where: { id: resolvedVendorId } });
+        vendorDoc = await prisma.restaurant.findUnique({
+          where: { id: resolvedVendorId },
+          select: {
+            restaurantName: true,
+            deliveryFee: true,
+            latitude: true,
+            longitude: true,
+            averagePreparationTime: true,
+            averageDeliveryTime: true,
+            status: true,
+            isDeleted: true,
+            isAcceptingOrders: true,
+            isOpen: true,
+            openingHours: openingHoursSelect,
+          },
+        });
       } else if (resolvedOrderType === "grocery") {
-        vendorDoc = await prisma.groceryStore.findUnique({ where: { id: resolvedVendorId } });
+        vendorDoc = await prisma.groceryStore.findUnique({
+          where: { id: resolvedVendorId },
+          select: {
+            storeName: true,
+            deliveryFee: true,
+            latitude: true,
+            longitude: true,
+            averagePreparationTime: true,
+            averageDeliveryTime: true,
+            status: true,
+            isDeleted: true,
+            isAcceptingOrders: true,
+            isOpen: true,
+            openingHours: openingHoursSelect,
+          },
+        });
       } else if (resolvedOrderType === "pharmacy") {
-        vendorDoc = await prisma.pharmacyStore.findUnique({ where: { id: resolvedVendorId } });
+        vendorDoc = await prisma.pharmacyStore.findUnique({
+          where: { id: resolvedVendorId },
+          select: {
+            storeName: true,
+            deliveryFee: true,
+            latitude: true,
+            longitude: true,
+            averagePreparationTime: true,
+            averageDeliveryTime: true,
+            status: true,
+            isDeleted: true,
+            isAcceptingOrders: true,
+            isOpen: true,
+            openingHours: openingHoursSelect,
+          },
+        });
       } else if (resolvedOrderType === "grabmart") {
-        vendorDoc = await prisma.grabMartStore.findUnique({ where: { id: resolvedVendorId } });
+        vendorDoc = await prisma.grabMartStore.findUnique({
+          where: { id: resolvedVendorId },
+          select: {
+            storeName: true,
+            deliveryFee: true,
+            latitude: true,
+            longitude: true,
+            status: true,
+            isDeleted: true,
+            isAcceptingOrders: true,
+            isOpen: true,
+            is24Hours: true,
+          },
+        });
       }
 
       if (!vendorDoc || vendorDoc.status !== "approved") {
@@ -646,6 +714,30 @@ router.post(
           success: false,
           message: "Store is currently closed",
         });
+      }
+
+      if (isScheduledOrderRequested) {
+        try {
+          validateScheduledVendorAvailability({
+            isOpen: vendorDoc.isOpen,
+            is24Hours: vendorDoc.is24Hours === true,
+            openingHours: vendorDoc.openingHours || [],
+            scheduledWindowStartAt,
+            scheduledWindowEndAt,
+            vendorType: resolvedOrderType,
+            vendorName: vendorDoc.restaurantName || vendorDoc.storeName || "Vendor",
+          });
+        } catch (scheduleError) {
+          if (scheduleError instanceof ScheduledOrderError) {
+            return res.status(scheduleError.status || 400).json({
+              success: false,
+              message: scheduleError.message,
+              code: scheduleError.code || "SCHEDULED_ORDER_ERROR",
+              ...(scheduleError.meta || {}),
+            });
+          }
+          throw scheduleError;
+        }
       }
 
       const baseDeliveryFee = vendorDoc.deliveryFee || 0;
