@@ -49,6 +49,8 @@ class CreateOrderRequest {
   final String restaurant;
   final List<OrderItem> items;
   final String fulfillmentMode;
+  final String? deliveryTimeType;
+  final String? scheduledForAt;
   final DeliveryAddress? deliveryAddress;
   final String? pickupContactName;
   final String? pickupContactPhone;
@@ -68,6 +70,8 @@ class CreateOrderRequest {
     required this.restaurant,
     required this.items,
     required this.fulfillmentMode,
+    this.deliveryTimeType,
+    this.scheduledForAt,
     this.deliveryAddress,
     this.pickupContactName,
     this.pickupContactPhone,

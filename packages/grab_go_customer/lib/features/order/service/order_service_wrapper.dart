@@ -43,6 +43,8 @@ class OrderServiceWrapper {
   Future<CreateOrderResult> createOrder({
     required Map<CartItem, int> cartItems,
     required String fulfillmentMode,
+    String? deliveryTimeType,
+    String? scheduledForAt,
     String? deliveryAddress,
     double? deliveryLatitude,
     double? deliveryLongitude,
@@ -105,6 +107,8 @@ class OrderServiceWrapper {
         restaurant: restaurantId,
         items: items,
         fulfillmentMode: fulfillmentMode,
+        deliveryTimeType: deliveryTimeType,
+        scheduledForAt: scheduledForAt,
         deliveryAddress: fulfillmentMode == 'pickup'
             ? null
             : _resolveDeliveryAddress(

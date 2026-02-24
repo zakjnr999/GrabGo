@@ -14,6 +14,8 @@ CreateOrderRequest _$CreateOrderRequestFromJson(Map<String, dynamic> json) =>
           .map((e) => OrderItem.fromJson(e as Map<String, dynamic>))
           .toList(),
       fulfillmentMode: json['fulfillmentMode'] as String,
+      deliveryTimeType: json['deliveryTimeType'] as String?,
+      scheduledForAt: json['scheduledForAt'] as String?,
       deliveryAddress: json['deliveryAddress'] == null
           ? null
           : DeliveryAddress.fromJson(
@@ -40,6 +42,8 @@ Map<String, dynamic> _$CreateOrderRequestToJson(
   'restaurant': instance.restaurant,
   'items': instance.items.map((e) => e.toJson()).toList(),
   'fulfillmentMode': instance.fulfillmentMode,
+  if (instance.deliveryTimeType case final value?) 'deliveryTimeType': value,
+  if (instance.scheduledForAt case final value?) 'scheduledForAt': value,
   if (instance.deliveryAddress?.toJson() case final value?)
     'deliveryAddress': value,
   if (instance.pickupContactName case final value?) 'pickupContactName': value,

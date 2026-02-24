@@ -41,6 +41,110 @@ const getVendorAvailabilityError = (vendor, label) => {
     return null;
 };
 
+const parsePositiveIntEnv = (name, fallback, { min = 0, max = Number.MAX_SAFE_INTEGER } = {}) => {
+    const raw = process.env[name];
+    const parsed = Number.parseInt(String(raw), 10);
+    if (!Number.isFinite(parsed) || parsed < min || parsed > max) return fallback;
+    return parsed;
+};
+
+const SCHEDULED_ORDER_MIN_LEAD_MINUTES = parsePositiveIntEnv('SCHEDULED_ORDER_MIN_LEAD_MINUTES', 45, {
+    min: 1,
+    max: 24 * 60,
+});
+const SCHEDULED_ORDER_SLOT_MINUTES = parsePositiveIntEnv('SCHEDULED_ORDER_SLOT_MINUTES', 30, {
+    min: 5,
+    max: 4 * 60,
+});
+const SCHEDULED_ORDER_MAX_HORIZON_DAYS = parsePositiveIntEnv('SCHEDULED_ORDER_MAX_HORIZON_DAYS', 7, {
+    min: 1,
+    max: 30,
+});
+
+const sanitizeOpeningHours = (openingHours) => {
+    if (!Array.isArray(openingHours)) return [];
+    return openingHours
+        .map((entry) => ({
+            dayOfWeek: Number(entry?.dayOfWeek),
+            openTime: typeof entry?.openTime === 'string' ? entry.openTime : null,
+            closeTime: typeof entry?.closeTime === 'string' ? entry.closeTime : null,
+            isClosed: entry?.isClosed === true,
+        }))
+        .filter((entry) => Number.isInteger(entry.dayOfWeek) && entry.dayOfWeek >= 0 && entry.dayOfWeek <= 6);
+};
+
+const buildScheduleAvailability = (cart) => {
+    if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) return null;
+
+    const defaults = {
+        minLeadMinutes: SCHEDULED_ORDER_MIN_LEAD_MINUTES,
+        slotMinutes: SCHEDULED_ORDER_SLOT_MINUTES,
+        maxHorizonDays: SCHEDULED_ORDER_MAX_HORIZON_DAYS,
+    };
+
+    if (cart.cartType === 'food') {
+        const restaurant = cart.items.find((item) => item.food?.restaurant)?.food?.restaurant;
+        if (!restaurant) return null;
+        return {
+            ...defaults,
+            vendorType: 'food',
+            vendorId: restaurant.id,
+            vendorName: restaurant.restaurantName || null,
+            isOpen: restaurant.isOpen !== false,
+            isAcceptingOrders: restaurant.isAcceptingOrders !== false,
+            is24Hours: false,
+            openingHours: sanitizeOpeningHours(restaurant.openingHours),
+        };
+    }
+
+    if (cart.cartType === 'grocery') {
+        const store = cart.items.find((item) => item.groceryItem?.store)?.groceryItem?.store;
+        if (!store) return null;
+        return {
+            ...defaults,
+            vendorType: 'grocery',
+            vendorId: store.id,
+            vendorName: store.storeName || null,
+            isOpen: store.isOpen !== false,
+            isAcceptingOrders: store.isAcceptingOrders !== false,
+            is24Hours: false,
+            openingHours: sanitizeOpeningHours(store.openingHours),
+        };
+    }
+
+    if (cart.cartType === 'pharmacy') {
+        const store = cart.items.find((item) => item.pharmacyItem?.store)?.pharmacyItem?.store;
+        if (!store) return null;
+        return {
+            ...defaults,
+            vendorType: 'pharmacy',
+            vendorId: store.id,
+            vendorName: store.storeName || null,
+            isOpen: store.isOpen !== false,
+            isAcceptingOrders: store.isAcceptingOrders !== false,
+            is24Hours: false,
+            openingHours: sanitizeOpeningHours(store.openingHours),
+        };
+    }
+
+    if (cart.cartType === 'grabmart') {
+        const store = cart.items.find((item) => item.grabMartItem?.store)?.grabMartItem?.store;
+        if (!store) return null;
+        return {
+            ...defaults,
+            vendorType: 'grabmart',
+            vendorId: store.id,
+            vendorName: store.storeName || null,
+            isOpen: store.isOpen !== false,
+            isAcceptingOrders: store.isAcceptingOrders !== false,
+            is24Hours: store.is24Hours === true,
+            openingHours: [],
+        };
+    }
+
+    return null;
+};
+
 const getOrCreateCart = async (userId, cartType = 'food', fulfillmentMode = 'delivery') => {
     const normalizedMode = normalizeFulfillmentMode(fulfillmentMode);
     let cart = await prisma.cart.findFirst({
@@ -544,7 +648,15 @@ const getUserCart = async (userId, cartType = null, fulfillmentMode = 'delivery'
                                     isOpen: true,
                                     status: true,
                                     isAcceptingOrders: true,
-                                    isDeleted: true
+                                    isDeleted: true,
+                                    openingHours: {
+                                        select: {
+                                            dayOfWeek: true,
+                                            openTime: true,
+                                            closeTime: true,
+                                            isClosed: true
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -559,7 +671,15 @@ const getUserCart = async (userId, cartType = null, fulfillmentMode = 'delivery'
                                     isOpen: true,
                                     status: true,
                                     isAcceptingOrders: true,
-                                    isDeleted: true
+                                    isDeleted: true,
+                                    openingHours: {
+                                        select: {
+                                            dayOfWeek: true,
+                                            openTime: true,
+                                            closeTime: true,
+                                            isClosed: true
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -574,7 +694,8 @@ const getUserCart = async (userId, cartType = null, fulfillmentMode = 'delivery'
                                     isOpen: true,
                                     status: true,
                                     isAcceptingOrders: true,
-                                    isDeleted: true
+                                    isDeleted: true,
+                                    is24Hours: true
                                 }
                             }
                         }
@@ -592,7 +713,6 @@ const getUserCart = async (userId, cartType = null, fulfillmentMode = 'delivery'
             item.food.isRestaurantOpen = computedIsOpen;
             item.food.restaurant.isRestaurantOpen = computedIsOpen;
             item.food.restaurant.isOpen = computedIsOpen;
-            delete item.food.restaurant.openingHours;
         }
     }
 
@@ -631,6 +751,10 @@ const getUserCart = async (userId, cartType = null, fulfillmentMode = 'delivery'
 
             cart.items = validItems;
         }
+    }
+
+    if (cart) {
+        cart.scheduleAvailability = buildScheduleAvailability(cart);
     }
 
     return cart;

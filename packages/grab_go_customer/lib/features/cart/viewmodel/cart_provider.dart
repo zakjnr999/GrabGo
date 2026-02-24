@@ -27,6 +27,7 @@ class CartProvider extends ChangeNotifier {
   double? _deliveryLongitude;
   String? _cartType;
   String _fulfillmentMode = 'delivery';
+  Map<String, dynamic>? _scheduleAvailability;
   final Map<String, String> _cartItemIdsByKey = {};
   final Set<String> _pendingItemOps = {};
 
@@ -46,6 +47,10 @@ class CartProvider extends ChangeNotifier {
   bool get useCredits => _useCredits;
   bool get isPricingLoading => _isSyncing && !_hasPricingFromBackend;
   String get fulfillmentMode => _fulfillmentMode;
+  Map<String, dynamic>? get scheduleAvailability =>
+      _scheduleAvailability == null
+      ? null
+      : Map<String, dynamic>.unmodifiable(_scheduleAvailability!);
 
   String _normalizeFulfillmentMode(String? mode) {
     if (mode == null) return 'delivery';
@@ -136,6 +141,9 @@ class CartProvider extends ChangeNotifier {
         syncSucceeded = true;
         final cartData = response.body!['cart'];
         if (cartData != null && cartData['items'] != null) {
+          _scheduleAvailability = _parseScheduleAvailability(
+            cartData['scheduleAvailability'],
+          );
           _fulfillmentMode = _normalizeFulfillmentMode(
             cartData['fulfillmentMode']?.toString(),
           );
@@ -229,6 +237,7 @@ class CartProvider extends ChangeNotifier {
           notifyListeners();
         }
       } else {
+        _scheduleAvailability = null;
         debugPrint('Error syncing cart from backend: ${response.error}');
       }
     } catch (e) {
@@ -275,6 +284,21 @@ class CartProvider extends ChangeNotifier {
     if (_availableCredits <= 0 && _useCredits) {
       _useCredits = false;
     }
+  }
+
+  Map<String, dynamic>? _parseScheduleAvailability(dynamic raw) {
+    if (raw is! Map) return null;
+    final parsed = Map<String, dynamic>.from(raw);
+    final openingHoursRaw = parsed['openingHours'];
+    if (openingHoursRaw is List) {
+      parsed['openingHours'] = openingHoursRaw
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    } else {
+      parsed['openingHours'] = const <Map<String, dynamic>>[];
+    }
+    return parsed;
   }
 
   void _recalculateLocalPricing() {
@@ -329,6 +353,7 @@ class CartProvider extends ChangeNotifier {
     _cartItems.clear();
     _cartItemIdsByKey.clear();
     _cartType = null;
+    _scheduleAvailability = null;
     _applyPricing(null);
     notifyListeners();
     await syncFromBackend();
@@ -515,11 +540,13 @@ class CartProvider extends ChangeNotifier {
     }();
     rawOpen ??= fallbackIsOpen;
     final isVendorOperational = _isVendorOperational(restaurantData);
+    final isVendorOpenNow = _isVendorOpenNow(restaurantData);
     final effectiveItemAvailable =
         _parseBool(itemData['isAvailable'], defaultValue: true) &&
         isVendorOperational;
     final effectiveRestaurantOpen =
-        _parseBool(rawOpen, defaultValue: true) && isVendorOperational;
+        _parseBool(rawOpen, defaultValue: isVendorOpenNow) &&
+        isVendorOperational;
 
     return FoodItem(
       id:
@@ -683,18 +710,23 @@ class CartProvider extends ChangeNotifier {
 
     final status = map['status']?.toString().toLowerCase();
     final isApproved = status == null || status == 'approved';
-
-    final isOpen = _parseBool(
-      map['isOpen'] ?? map['is_open'] ?? map['isRestaurantOpen'],
-      defaultValue: true,
-    );
     final isAcceptingOrders = _parseBool(
       map['isAcceptingOrders'],
       defaultValue: true,
     );
     final isDeleted = _parseBool(map['isDeleted'], defaultValue: false);
 
-    return isApproved && isOpen && isAcceptingOrders && !isDeleted;
+    return isApproved && isAcceptingOrders && !isDeleted;
+  }
+
+  bool _isVendorOpenNow(dynamic vendorData) {
+    if (vendorData is! Map) return true;
+    return _parseBool(
+      vendorData['isOpen'] ??
+          vendorData['is_open'] ??
+          vendorData['isRestaurantOpen'],
+      defaultValue: true,
+    );
   }
 
   Future<void> _saveCart() async {
