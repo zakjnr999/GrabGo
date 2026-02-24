@@ -61,6 +61,10 @@ const STATUS_UPDATE_ROLE_RULES = {
   rider: new Set(["picked_up", "on_the_way", "delivered", "cancelled"]),
   admin: null,
 };
+const DISPATCH_TRIGGER_STATUSES = new Set(["preparing", "ready"]);
+const shouldTriggerDispatchForStatus = (status) =>
+  DISPATCH_TRIGGER_STATUSES.has(status) ||
+  (featureFlags.isConfirmedPredispatchEnabled && status === "confirmed");
 const SENSITIVE_ORDER_FIELDS = new Set(["pickupOtpHash", "deliveryCodeHash", "deliveryCodeEncrypted"]);
 
 const generatePickupCode = () => {
@@ -1453,7 +1457,7 @@ router.post(
         if (
           order.fulfillmentMode !== "pickup" &&
           !order.riderId &&
-          ["preparing", "ready"].includes(order.status)
+          shouldTriggerDispatchForStatus(order.status)
         ) {
           dispatchService.dispatchOrder(order.id).then((result) => {
             if (result.success) {
@@ -1632,7 +1636,7 @@ router.post(
         orderAfterPayment.fulfillmentMode !== "pickup" &&
         !orderAfterPayment.riderId &&
         ["paid", "successful"].includes(orderAfterPayment.paymentStatus) &&
-        ["preparing", "ready"].includes(orderAfterPayment.status)
+        shouldTriggerDispatchForStatus(orderAfterPayment.status)
       ) {
         dispatchService.dispatchOrder(order.id).then((result) => {
           if (result.success) {
@@ -2951,6 +2955,10 @@ router.put(
           updatedAt: new Date()
         };
 
+        if (status === "confirmed" && !order.acceptedAt) {
+          updateData.acceptedAt = new Date();
+        }
+
         if (order.fulfillmentMode === "pickup") {
           if (status === "preparing") {
             updateData.preparingAt = new Date();
@@ -3225,7 +3233,7 @@ router.put(
 
       // Trigger dispatch only when order is paid and in rider-dispatchable states
       if (
-        ['preparing', 'ready'].includes(status) &&
+        shouldTriggerDispatchForStatus(status) &&
         ['paid', 'successful'].includes(updatedOrder.paymentStatus || order.paymentStatus) &&
         !updatedOrder.riderId &&
         updatedOrder.fulfillmentMode !== 'pickup'
@@ -3329,10 +3337,10 @@ router.put(
         });
       }
 
-      if (!["preparing", "ready"].includes(order.status)) {
+      if (!shouldTriggerDispatchForStatus(order.status)) {
         return res.status(409).json({
           success: false,
-          message: "Order is not ready for rider assignment",
+          message: "Order is not in a rider-assignable state",
           code: "ORDER_STATUS_NOT_DISPATCHABLE",
         });
       }

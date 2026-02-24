@@ -14,6 +14,7 @@ const RiderStatus = require('../models/RiderStatus');
 const { calculateRiderEarnings, calculateDistance } = require('../utils/riderEarningsCalculator');
 const socketService = require('./socket_service');
 const { sendToUser } = require('./fcm_service');
+const featureFlags = require('../config/feature_flags');
 
 // Configuration
 const CONFIG = {
@@ -53,6 +54,32 @@ const SCORING = {
 const DISPATCHABLE_STATUSES = new Set(['preparing', 'ready']);
 const DISPATCHABLE_PAYMENT_STATUSES = new Set(['paid', 'successful']);
 
+const parsePositiveIntEnv = (name, fallback, { min = 0, max = Number.MAX_SAFE_INTEGER } = {}) => {
+    const parsed = Number.parseInt(String(process.env[name]), 10);
+    if (!Number.isFinite(parsed) || parsed < min || parsed > max) {
+        return fallback;
+    }
+    return parsed;
+};
+
+const CONFIRMED_PREDISPATCH_BUFFER_MINUTES = parsePositiveIntEnv(
+    'CONFIRMED_PREDISPATCH_BUFFER_MINUTES',
+    5,
+    { min: 0, max: 60 }
+);
+
+const CONFIRMED_PREDISPATCH_AVG_SPEED_KMPH = parsePositiveIntEnv(
+    'CONFIRMED_PREDISPATCH_AVG_SPEED_KMPH',
+    20,
+    { min: 5, max: 80 }
+);
+
+const CONFIRMED_PREDISPATCH_DEFAULT_PREP_MINUTES = parsePositiveIntEnv(
+    'CONFIRMED_PREDISPATCH_DEFAULT_PREP_MINUTES',
+    15,
+    { min: 1, max: 120 }
+);
+
 const firstDefined = (...values) =>
     values.find((value) => value !== null && value !== undefined);
 
@@ -80,6 +107,91 @@ const getStoreLogo = (order) =>
 const getPickupAddress = (order) =>
     firstDefined(order?.restaurant?.address, order?.groceryStore?.address, order?.pharmacyStore?.address, order?.grabMartStore?.address) || 'Unknown';
 
+const getVendorPrepMinutes = (order) => {
+    const raw = firstDefined(
+        order?.restaurant?.averagePreparationTime,
+        order?.groceryStore?.averagePreparationTime,
+        order?.pharmacyStore?.averagePreparationTime
+    );
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed) && parsed > 0) {
+        return Math.ceil(parsed);
+    }
+    return CONFIRMED_PREDISPATCH_DEFAULT_PREP_MINUTES;
+};
+
+const getPrepBaselineAt = (order) => {
+    const candidate = firstDefined(
+        order?.preparingAt,
+        order?.acceptedAt,
+        order?.updatedAt,
+        order?.orderDate,
+        order?.createdAt
+    );
+    const date = candidate ? new Date(candidate) : null;
+    if (date && !Number.isNaN(date.getTime())) {
+        return date;
+    }
+    return new Date();
+};
+
+const estimateTravelMinutesFromDistanceKm = (distanceKm) => {
+    const distance = Number(distanceKm);
+    if (!Number.isFinite(distance) || distance < 0) return null;
+    return Math.max(1, Math.ceil((distance / CONFIRMED_PREDISPATCH_AVG_SPEED_KMPH) * 60));
+};
+
+const evaluateConfirmedPredispatch = (order, eligibleRiders) => {
+    const validDistances = (eligibleRiders || [])
+        .map((rider) => Number(rider?._distanceToPickup))
+        .filter((distance) => Number.isFinite(distance) && distance >= 0);
+
+    if (validDistances.length === 0) {
+        return {
+            shouldDispatch: false,
+            reason: 'No eligible riders available',
+            nearestRiderDistanceKm: null,
+            nearestRiderTravelMinutes: null,
+            remainingPrepMinutes: null,
+            thresholdMinutes: null,
+        };
+    }
+
+    const nearestRiderDistanceKm = Math.min(...validDistances);
+    const nearestRiderTravelMinutes = estimateTravelMinutesFromDistanceKm(nearestRiderDistanceKm);
+    if (!Number.isFinite(nearestRiderTravelMinutes)) {
+        return {
+            shouldDispatch: false,
+            reason: 'Unable to estimate rider travel time',
+            nearestRiderDistanceKm,
+            nearestRiderTravelMinutes: null,
+            remainingPrepMinutes: null,
+            thresholdMinutes: null,
+        };
+    }
+
+    const prepMinutes = getVendorPrepMinutes(order);
+    const baselineAt = getPrepBaselineAt(order);
+    const elapsedMinutes = Math.max(0, (Date.now() - baselineAt.getTime()) / (60 * 1000));
+    const remainingPrepMinutes = Math.max(0, prepMinutes - elapsedMinutes);
+    const thresholdMinutes = Math.max(0, remainingPrepMinutes - CONFIRMED_PREDISPATCH_BUFFER_MINUTES);
+    const shouldDispatch = nearestRiderTravelMinutes >= thresholdMinutes;
+
+    return {
+        shouldDispatch,
+        reason: shouldDispatch
+            ? 'Dispatch is timely for confirmed order'
+            : 'Dispatch deferred until vendor is closer to ready',
+        nearestRiderDistanceKm: Number(nearestRiderDistanceKm.toFixed(2)),
+        nearestRiderTravelMinutes,
+        remainingPrepMinutes: Number(remainingPrepMinutes.toFixed(2)),
+        thresholdMinutes: Number(thresholdMinutes.toFixed(2)),
+        prepMinutes,
+        elapsedMinutes: Number(elapsedMinutes.toFixed(2)),
+        bufferMinutes: CONFIRMED_PREDISPATCH_BUFFER_MINUTES,
+    };
+};
+
 /**
  * Main dispatch function - Called when a new order needs a rider
  * @param {string} orderId - PostgreSQL Order ID
@@ -94,9 +206,9 @@ async function dispatchOrder(orderId) {
             where: { id: orderId },
             include: {
                 customer: { select: { id: true, username: true, phone: true } },
-                restaurant: { select: { restaurantName: true, logo: true, address: true, latitude: true, longitude: true } },
-                groceryStore: { select: { storeName: true, logo: true, address: true, latitude: true, longitude: true } },
-                pharmacyStore: { select: { storeName: true, logo: true, address: true, latitude: true, longitude: true } },
+                restaurant: { select: { restaurantName: true, logo: true, address: true, latitude: true, longitude: true, averagePreparationTime: true } },
+                groceryStore: { select: { storeName: true, logo: true, address: true, latitude: true, longitude: true, averagePreparationTime: true } },
+                pharmacyStore: { select: { storeName: true, logo: true, address: true, latitude: true, longitude: true, averagePreparationTime: true } },
                 grabMartStore: { select: { storeName: true, logo: true, address: true, latitude: true, longitude: true } },
                 items: { select: { id: true, name: true, quantity: true, price: true } }
             }
@@ -125,7 +237,9 @@ async function dispatchOrder(orderId) {
         }
 
         // Check if order is in dispatchable status
-        if (!DISPATCHABLE_STATUSES.has(order.status)) {
+        const isConfirmedPredispatch =
+            order.status === 'confirmed' && featureFlags.isConfirmedPredispatchEnabled;
+        if (!DISPATCHABLE_STATUSES.has(order.status) && !isConfirmedPredispatch) {
             console.log(`⚠️ [Dispatch] Order status not dispatchable: ${order.status}`);
             return { success: false, error: `Order status "${order.status}" is not dispatchable` };
         }
@@ -165,6 +279,26 @@ async function dispatchOrder(orderId) {
         }
 
         console.log(`📊 [Dispatch] Found ${eligibleRiders.length} eligible riders`);
+
+        if (isConfirmedPredispatch) {
+            const decision = evaluateConfirmedPredispatch(order, eligibleRiders);
+            if (!decision.shouldDispatch) {
+                console.log(
+                    `⏳ [Dispatch] Predispatch deferred for order ${order.orderNumber}: ${decision.reason} ` +
+                    `(nearest=${decision.nearestRiderTravelMinutes ?? 'n/a'}m, remainingPrep=${decision.remainingPrepMinutes ?? 'n/a'}m, threshold=${decision.thresholdMinutes ?? 'n/a'}m)`
+                );
+                return {
+                    success: false,
+                    error: decision.reason,
+                    code: 'PREDISPATCH_DEFERRED',
+                    meta: decision,
+                };
+            }
+            console.log(
+                `🚦 [Dispatch] Predispatch allowed for order ${order.orderNumber} ` +
+                `(nearest=${decision.nearestRiderTravelMinutes}m, remainingPrep=${decision.remainingPrepMinutes}m, threshold=${decision.thresholdMinutes}m)`
+            );
+        }
 
         // 5. Score and rank riders
         const scoredRiders = await scoreRiders(eligibleRiders, order);

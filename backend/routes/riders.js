@@ -1,6 +1,7 @@
 const express = require("express");
 const { body, validationResult } = require("express-validator");
 const prisma = require("../config/prisma");
+const featureFlags = require("../config/feature_flags");
 const { protect, authorize } = require("../middleware/auth");
 const { uploadSingle, uploadToCloudinary } = require("../middleware/upload");
 const dispatchService = require("../services/dispatch_service");
@@ -416,7 +417,9 @@ router.post(
         });
       }
 
-      if (!["preparing", "ready"].includes(order.status)) {
+      const canAcceptConfirmedReservation =
+        featureFlags.isConfirmedPredispatchEnabled && order.status === "confirmed";
+      if (!["preparing", "ready"].includes(order.status) && !canAcceptConfirmedReservation) {
         return res.status(400).json({
           success: false,
           message: "Order is not available for rider assignment",
@@ -1149,13 +1152,6 @@ router.post(
         });
       }
 
-      if (!["preparing", "ready"].includes(order.status)) {
-        return res.status(400).json({
-          success: false,
-          message: "Order is not available for rider assignment",
-        });
-      }
-
       if (order.fulfillmentMode === "pickup") {
         return res.status(400).json({
           success: false,
@@ -1182,7 +1178,6 @@ router.post(
       }
 
       // Check if order has an active reservation by ANOTHER rider
-      const OrderReservation = require('../models/OrderReservation');
       const activeReservation = await OrderReservation.findOne({
         orderId: orderId,
         status: 'pending',
@@ -1194,6 +1189,30 @@ router.post(
           success: false,
           message: "This order is currently reserved for another rider. Please wait or choose a different order.",
           reservedUntil: activeReservation.expiresAt
+        });
+      }
+
+      const hasReservationForRider =
+        !!activeReservation && activeReservation.riderId === riderId;
+      const canAcceptConfirmedOrder =
+        featureFlags.isConfirmedPredispatchEnabled &&
+        order.status === "confirmed" &&
+        hasReservationForRider;
+      if (!["preparing", "ready"].includes(order.status) && !canAcceptConfirmedOrder) {
+        if (
+          featureFlags.isConfirmedPredispatchEnabled &&
+          order.status === "confirmed" &&
+          !hasReservationForRider
+        ) {
+          return res.status(409).json({
+            success: false,
+            message: "Confirmed orders can only be accepted from an active reservation",
+            code: "CONFIRMED_ORDER_RESERVATION_REQUIRED",
+          });
+        }
+        return res.status(400).json({
+          success: false,
+          message: "Order is not available for rider assignment",
         });
       }
 

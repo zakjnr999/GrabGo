@@ -21,4 +21,5 @@ module.exports = {
   isPickupReadyExpiryEnabled: parseFlag('PICKUP_READY_EXPIRY_ENABLED', defaultPickupEnabled),
   isGiftOrdersEnabled: parseFlag('GIFT_ORDERS_ENABLED', false),
   isScheduledOrdersEnabled: parseFlag('SCHEDULED_ORDERS_ENABLED', false),
+  isConfirmedPredispatchEnabled: parseFlag('CONFIRMED_PREDISPATCH_ENABLED', false),
 };
