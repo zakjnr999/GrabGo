@@ -182,50 +182,44 @@ class Cart extends StatelessWidget {
                                     ],
                                   ),
                                 ),
+                                if (!isPickupMode) ...[SizedBox(height: 12.h), _buildGiftEntry(provider, colors)],
                                 SizedBox(height: 20.h),
-                                Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
-                                  decoration: BoxDecoration(
-                                    color: colors.backgroundSecondary.withValues(alpha: 0.6),
-                                    borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            "Use Credits",
-                                            style: TextStyle(
-                                              color: colors.textPrimary,
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 13.sp,
-                                            ),
+                                Row(
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "Use Credits",
+                                          style: TextStyle(
+                                            color: colors.textPrimary,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 13.sp,
                                           ),
-                                          SizedBox(height: 2.h),
-                                          Text(
-                                            hasCredits
-                                                ? "Apply your GrabGo credits to this order"
-                                                : "No GrabGo credits available yet. Earn credits from \nreferrals.",
-                                            style: TextStyle(
-                                              color: colors.textSecondary,
-                                              fontWeight: FontWeight.w500,
-                                              fontSize: 11.sp,
-                                            ),
+                                        ),
+                                        SizedBox(height: 2.h),
+                                        Text(
+                                          hasCredits
+                                              ? "Apply your GrabGo credits to this order"
+                                              : "No GrabGo credits available yet. Earn credits from \nreferrals.",
+                                          style: TextStyle(
+                                            color: colors.textSecondary,
+                                            fontWeight: FontWeight.w500,
+                                            fontSize: 11.sp,
                                           ),
-                                        ],
-                                      ),
-                                      const Spacer(),
-                                      CustomSwitch(
-                                        value: useCredits,
-                                        onChanged: (value) {
-                                          if (!hasCredits) return;
-                                          provider.setUseCredits(value);
-                                        },
-                                        activeColor: colors.accentOrange,
-                                      ),
-                                    ],
-                                  ),
+                                        ),
+                                      ],
+                                    ),
+                                    const Spacer(),
+                                    CustomSwitch(
+                                      value: useCredits,
+                                      onChanged: (value) {
+                                        if (!hasCredits) return;
+                                        provider.setUseCredits(value);
+                                      },
+                                      activeColor: colors.accentOrange,
+                                    ),
+                                  ],
                                 ),
                                 SizedBox(height: 16.h),
 
@@ -461,6 +455,59 @@ class Cart extends StatelessWidget {
                   fontWeight: isTotal ? FontWeight.w600 : FontWeight.w400,
                 ),
               ),
+      ],
+    );
+  }
+
+  Widget _buildGiftEntry(CartProvider provider, AppColorsExtension colors) {
+    final isGiftEnabled = provider.isGiftOrderDraftEnabled;
+    final recipientName = provider.giftRecipientNameDraft.trim();
+    final giftSummary = !isGiftEnabled
+        ? "Recipient details are completed in checkout."
+        : recipientName.isNotEmpty
+        ? "Recipient: $recipientName"
+        : "Recipient details are completed in checkout.";
+
+    return Row(
+      children: [
+        Container(
+          padding: EdgeInsets.all(8.r),
+          decoration: BoxDecoration(
+            color: colors.accentOrange.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+          ),
+          child: SvgPicture.asset(
+            Assets.icons.gift,
+            package: 'grab_go_shared',
+            height: 20.h,
+            width: 20.w,
+            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+          ),
+        ),
+        SizedBox(width: 10.w),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Send as a gift",
+                style: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w700),
+              ),
+              SizedBox(height: 2.h),
+              Text(
+                giftSummary,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+        ),
+        CustomSwitch(
+          value: provider.isGiftOrderDraftEnabled,
+          onChanged: provider.setGiftOrderDraftEnabled,
+          activeColor: colors.accentOrange,
+        ),
       ],
     );
   }

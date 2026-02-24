@@ -50,6 +50,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
   String? _lastScheduleAvailabilitySignature;
   bool _isScheduleSyncQueued = false;
   bool _isGiftOrder = false;
+  _CheckoutPaymentMethod _selectedPaymentMethod = _CheckoutPaymentMethod.card;
+  bool _didHydrateGiftDraft = false;
+  bool _isHydratingGiftDraft = false;
   bool _isLoadingAddresses = false;
   String? _userPhone;
   bool _isProcessingPayment = false;
@@ -75,10 +78,24 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     _loadSavedAddresses();
     _loadUserPhone();
     _scheduleSlots = _generateScheduleSlots();
+    _giftRecipientNameController.addListener(_syncGiftDraftToProvider);
+    _giftRecipientPhoneController.addListener(_syncGiftDraftToProvider);
+    _giftNoteController.addListener(_syncGiftDraftToProvider);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didHydrateGiftDraft) return;
+    _hydrateGiftDraftFromProvider();
+    _didHydrateGiftDraft = true;
   }
 
   @override
   void dispose() {
+    _giftRecipientNameController.removeListener(_syncGiftDraftToProvider);
+    _giftRecipientPhoneController.removeListener(_syncGiftDraftToProvider);
+    _giftNoteController.removeListener(_syncGiftDraftToProvider);
     _restaurantInstructionController.dispose();
     _deliveryInstructionController.dispose();
     _pickupContactNameController.dispose();
@@ -148,6 +165,47 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     if (raw.isEmpty) return '';
     final normalized = _normalizeGhanaPhone(_pickupContactPhoneController.text);
     return normalized ?? '+233$raw';
+  }
+
+  void _hydrateGiftDraftFromProvider() {
+    final provider = context.read<CartProvider>();
+    _isHydratingGiftDraft = true;
+    _isGiftOrder = provider.fulfillmentMode == 'pickup' ? false : provider.isGiftOrderDraftEnabled;
+    _giftRecipientNameController.text = provider.giftRecipientNameDraft;
+    _giftRecipientPhoneController.text = provider.giftRecipientPhoneDraft;
+    _giftNoteController.text = provider.giftNoteDraft;
+    _isHydratingGiftDraft = false;
+  }
+
+  void _syncGiftDraftToProvider() {
+    if (!mounted || _isHydratingGiftDraft) return;
+    final provider = context.read<CartProvider>();
+    final isPickupMode = provider.fulfillmentMode == 'pickup';
+    provider.setGiftOrderDraft(
+      enabled: isPickupMode ? false : _isGiftOrder,
+      recipientName: _giftRecipientNameController.text,
+      recipientPhone: _giftRecipientPhoneController.text,
+      giftNote: _giftNoteController.text,
+      notify: false,
+    );
+  }
+
+  void _setGiftOrderEnabled(bool enabled) {
+    final provider = context.read<CartProvider>();
+    final isPickupMode = provider.fulfillmentMode == 'pickup';
+    final nextValue = isPickupMode ? false : enabled;
+    if (_isGiftOrder == nextValue) return;
+
+    setState(() {
+      _isGiftOrder = nextValue;
+    });
+
+    provider.setGiftOrderDraft(
+      enabled: nextValue,
+      recipientName: _giftRecipientNameController.text,
+      recipientPhone: _giftRecipientPhoneController.text,
+      giftNote: _giftNoteController.text,
+    );
   }
 
   String _addressCacheKey(String userId) => 'user_addresses_$userId';
@@ -379,10 +437,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
               final double deliveryFee = provider.deliveryFee;
               final double serviceFee = provider.serviceFee;
               final double rainFee = provider.rainFee;
-              final double creditsApplied = provider.creditsApplied;
               final bool isPickupMode = provider.fulfillmentMode == 'pickup' || isPickupTab;
+              final double creditsApplied = _effectiveCreditsAppliedForCheckout(provider, isPickupMode: isPickupMode);
               final double effectiveTip = isPickupMode ? 0.0 : _tipAmount;
-              final double total = provider.total + effectiveTip;
+              final double total = _checkoutGrandTotal(provider, isPickupMode: isPickupMode);
               final bool isPricingLoading = provider.isPricingLoading;
               final bool hasMoreAddresses = _savedAddresses.length > _collapsedAddressCount;
               final int hiddenAddressCount = math.max(0, _savedAddresses.length - _collapsedAddressCount);
@@ -809,6 +867,8 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                             ],
                           ],
                           SizedBox(height: 16.h),
+                          _buildPaymentMethodSection(colors, provider, isPickupMode: isPickupMode),
+                          SizedBox(height: 16.h),
 
                           Padding(
                             padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
@@ -1213,6 +1273,50 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     );
   }
 
+  bool _isCashOnDeliverySelected({required bool isPickupMode}) {
+    return !isPickupMode && _selectedPaymentMethod == _CheckoutPaymentMethod.cash;
+  }
+
+  String _selectedPaymentMethodApiValue({required bool isPickupMode}) {
+    return _isCashOnDeliverySelected(isPickupMode: isPickupMode) ? "cash" : "card";
+  }
+
+  String _selectedPaymentMethodLabel({required bool isPickupMode}) {
+    return _isCashOnDeliverySelected(isPickupMode: isPickupMode) ? "Cash on Delivery" : "Paystack";
+  }
+
+  double _effectiveCreditsAppliedForCheckout(CartProvider provider, {required bool isPickupMode}) {
+    if (_isCashOnDeliverySelected(isPickupMode: isPickupMode)) {
+      return 0.0;
+    }
+    return provider.creditsApplied;
+  }
+
+  double _checkoutGrandTotal(CartProvider provider, {required bool isPickupMode}) {
+    final double tipAmount = isPickupMode ? 0.0 : _tipAmount;
+    final double baseTotal = provider.total + tipAmount;
+    if (_isCashOnDeliverySelected(isPickupMode: isPickupMode)) {
+      return baseTotal + provider.creditsApplied;
+    }
+    return baseTotal;
+  }
+
+  double _codUpfrontAmountForCheckout(CartProvider provider, {required bool isPickupMode}) {
+    if (isPickupMode) {
+      return _checkoutGrandTotal(provider, isPickupMode: isPickupMode);
+    }
+    return provider.deliveryFee + provider.rainFee;
+  }
+
+  double _codRemainingAmountForCheckout(CartProvider provider, {required bool isPickupMode}) {
+    if (!_isCashOnDeliverySelected(isPickupMode: isPickupMode)) {
+      return 0.0;
+    }
+    final orderTotal = _checkoutGrandTotal(provider, isPickupMode: isPickupMode);
+    final upfrontAmount = _codUpfrontAmountForCheckout(provider, isPickupMode: isPickupMode);
+    return math.max(0, orderTotal - upfrontAmount);
+  }
+
   Future<void> _onProceedToPayment(BuildContext context, CartProvider provider, AppColorsExtension colors) async {
     if (_isProcessingPayment) return;
 
@@ -1454,9 +1558,12 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     final double deliveryFee = isPickupMode ? 0 : provider.deliveryFee;
     final double serviceFee = provider.serviceFee;
     final double rainFee = isPickupMode ? 0 : provider.rainFee;
-    final double creditsApplied = provider.creditsApplied;
+    final double creditsApplied = _effectiveCreditsAppliedForCheckout(provider, isPickupMode: isPickupMode);
     final double effectiveTip = isPickupMode ? 0.0 : _tipAmount;
-    final double total = provider.total + effectiveTip;
+    final double total = _checkoutGrandTotal(provider, isPickupMode: isPickupMode);
+    final bool isCashOnDelivery = _isCashOnDeliverySelected(isPickupMode: isPickupMode);
+    final double codUpfrontAmount = _codUpfrontAmountForCheckout(provider, isPickupMode: isPickupMode);
+    final double codRemainingAmount = _codRemainingAmountForCheckout(provider, isPickupMode: isPickupMode);
 
     showModalBottomSheet<void>(
       context: context,
@@ -1501,7 +1608,13 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                 _buildSummaryBlock("Gift Delivery", _buildGiftSummaryText(), colors),
               ],
               SizedBox(height: 10.h),
-              _buildSummaryBlock("Payment Method", "Paystack (Card, Mobile Money & Bank Transfer)", colors),
+              _buildSummaryBlock(
+                "Payment Method",
+                isCashOnDelivery
+                    ? "Cash on Delivery\nReview your payment breakdown below."
+                    : "Paystack (Card, Mobile Money & Bank Transfer)",
+                colors,
+              ),
               SizedBox(height: 14.h),
               _buildSummaryRow("Subtotal", subtotal, colors),
               if (!isPickupMode) ...[SizedBox(height: 6.h), _buildSummaryRow("Delivery Fee", deliveryFee, colors)],
@@ -1519,10 +1632,18 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                 SizedBox(height: 6.h),
                 _buildSummaryRow("Tip", effectiveTip, colors),
               ],
+              if (isCashOnDelivery) ...[
+                SizedBox(height: 10.h),
+                Divider(color: colors.backgroundSecondary, height: 1),
+                SizedBox(height: 10.h),
+                _buildSummaryRow("Pay Online", codUpfrontAmount, colors),
+                SizedBox(height: 6.h),
+                _buildSummaryRow("Cash at Delivery", codRemainingAmount, colors),
+              ],
               SizedBox(height: 10.h),
               Divider(color: colors.backgroundSecondary, height: 1),
               SizedBox(height: 10.h),
-              _buildSummaryRow("Total", total, colors, isEmphasis: true),
+              _buildSummaryRow(isCashOnDelivery ? "Order Total" : "Total", total, colors, isEmphasis: true),
               SizedBox(height: 16.h),
               AppButton(
                 width: double.infinity,
@@ -1531,7 +1652,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                   Navigator.of(sheetContext).pop();
                   _handlePaystackPayment(parentContext, provider);
                 },
-                buttonText: "Pay Now (GHS ${total.toStringAsFixed(2)})",
+                buttonText: isCashOnDelivery
+                    ? "Pay Online (GHS ${codUpfrontAmount.toStringAsFixed(2)})"
+                    : "Pay Now (GHS ${total.toStringAsFixed(2)})",
                 textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800),
                 textColor: Colors.white,
                 padding: EdgeInsets.symmetric(vertical: 16.h),
@@ -1664,14 +1787,15 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     final double subtotal = provider.subtotal;
     final bool isPickupMode = provider.fulfillmentMode == 'pickup';
     final double deliveryFee = isPickupMode ? 0.0 : provider.deliveryFee;
-    final double total = provider.total + (isPickupMode ? 0.0 : _tipAmount);
+    final bool isCashOnDelivery = _isCashOnDeliverySelected(isPickupMode: isPickupMode);
+    final double orderGrandTotal = _checkoutGrandTotal(provider, isPickupMode: isPickupMode);
     CreateOrderResult? createdOrder;
     String? orderId;
     bool paymentSucceeded = false;
     Map<String, dynamic>? paymentData;
 
     try {
-      createdOrder = await _createOrder(context, subtotal, deliveryFee, total);
+      createdOrder = await _createOrder(context, subtotal, deliveryFee, orderGrandTotal);
       orderId = createdOrder?.orderId;
       if (orderId == null) {
         throw Exception('Failed to create order');
@@ -1681,14 +1805,25 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         orderId: orderId,
         orderNumber: createdOrder?.orderNumber,
         giftDeliveryCode: createdOrder?.giftDeliveryCode,
+        paymentMethod: _selectedPaymentMethodApiValue(isPickupMode: isPickupMode),
+        paymentMethodLabel: _selectedPaymentMethodLabel(isPickupMode: isPickupMode),
+        orderGrandTotal: orderGrandTotal,
+        paidOnlineAmount: isCashOnDelivery ? createdOrder?.codUpfrontAmount : orderGrandTotal,
+        codRemainingCashAmount: isCashOnDelivery ? createdOrder?.codRemainingCashOnDelivery : null,
       );
 
-      if (total <= 0) {
+      if (orderGrandTotal <= 0) {
         setState(() {
           _isProcessingPayment = false;
         });
-        final confirmed = await _confirmOrderPayment(orderId: orderId, reference: 'credits-only');
-        if (confirmed) {
+        final confirmationResult = await _confirmOrderPayment(orderId: orderId, reference: 'credits-only');
+        paymentData = _mergePaymentResultIntoPayload(
+          paymentData,
+          confirmationResult: confirmationResult,
+          isCashOnDelivery: isCashOnDelivery,
+        );
+
+        if (confirmationResult.success) {
           _handlePaymentSuccess(context, paymentData: paymentData);
         } else {
           _showErrorDialog(context, 'Payment confirmation failed. Please try again.');
@@ -1697,8 +1832,24 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       }
 
       final init = await OrderServiceWrapper().initializePaystackPayment(orderId: orderId);
-      final authUrl = init['authorizationUrl']!;
-      final reference = init['reference']!;
+      final authUrl = init.authorizationUrl;
+      final reference = init.reference;
+
+      final paidOnlineAmount =
+          init.paymentAmount ??
+          (isCashOnDelivery ? _codUpfrontAmountForCheckout(provider, isPickupMode: isPickupMode) : orderGrandTotal);
+      final codRemainingCashAmount =
+          init.codRemainingCashAmount ??
+          (isCashOnDelivery
+              ? (createdOrder?.codRemainingCashOnDelivery ?? math.max(0, orderGrandTotal - paidOnlineAmount))
+              : null);
+      paymentData = {
+        ...paymentData,
+        'paymentScope': init.paymentScope,
+        'total': paidOnlineAmount,
+        'orderGrandTotal': orderGrandTotal,
+        'codRemainingCashAmount': codRemainingCashAmount,
+      };
 
       setState(() {
         _isProcessingPayment = false;
@@ -1755,6 +1906,31 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       return "This vendor is not accepting scheduled orders right now.";
     }
 
+    if (rawError.contains('cod_disabled')) {
+      return "Cash on delivery is currently unavailable.";
+    }
+    if (rawError.contains('cod_trust_threshold_not_met')) {
+      return "Complete more prepaid orders to unlock cash on delivery.";
+    }
+    if (rawError.contains('cod_phone_not_verified') || rawError.contains('cod_phone_required')) {
+      return "Please verify your phone number to use cash on delivery.";
+    }
+    if (rawError.contains('cod_active_order_exists')) {
+      return "Complete your active cash-on-delivery order before placing a new one.";
+    }
+    if (rawError.contains('cod_disabled_no_show')) {
+      return "Cash on delivery is disabled for this account due to prior no-shows.";
+    }
+    if (rawError.contains('cod_max_order_total_exceeded')) {
+      return "This order total exceeds the current cash-on-delivery limit.";
+    }
+    if (rawError.contains('cod_upfront_amount_invalid')) {
+      return "This order cannot be placed as cash on delivery.";
+    }
+    if (rawError.contains('cod_delivery_only')) {
+      return "Cash on delivery is available for delivery orders only.";
+    }
+
     final isVendorUnavailable =
         rawError.contains('store/restaurant not found or inactive') ||
         rawError.contains('store/restaurant') && rawError.contains('inactive') ||
@@ -1792,6 +1968,7 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     final cart = context.read<CartProvider>();
     final orderService = OrderServiceWrapper();
     final isPickupMode = cart.fulfillmentMode == 'pickup';
+    final selectedPaymentMethod = _selectedPaymentMethodApiValue(isPickupMode: isPickupMode);
     final shouldCreateGiftOrder = !isPickupMode && _isGiftOrder;
     final selectedScheduleSlot = !isPickupMode ? _selectedScheduleSlot() : null;
     final deliveryTimeType = selectedScheduleSlot != null ? 'scheduled' : 'asap';
@@ -1813,11 +1990,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         pickupContactPhone: isPickupMode ? _normalizeGhanaPhone(_pickupContactPhoneController.text) : null,
         acceptNoShowPolicy: isPickupMode ? _pickupNoShowAccepted : null,
         noShowPolicyVersion: isPickupMode ? "v1" : null,
-        paymentMethod: "card",
+        paymentMethod: selectedPaymentMethod,
         subtotal: subtotal,
         deliveryFee: deliveryFee,
         total: total,
-        useCredits: cart.useCredits,
+        useCredits: selectedPaymentMethod == "cash" ? false : cart.useCredits,
         notes: _getConcatenatedNotes(),
         isGiftOrder: shouldCreateGiftOrder,
         giftRecipientName: shouldCreateGiftOrder ? giftRecipientName : null,
@@ -1832,7 +2009,7 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     }
   }
 
-  Future<bool> _confirmOrderPayment({required String orderId, required String reference}) async {
+  Future<ConfirmPaymentResult> _confirmOrderPayment({required String orderId, required String reference}) async {
     final orderService = OrderServiceWrapper();
     return await orderService.confirmPayment(orderId: orderId, reference: reference);
   }
@@ -1848,8 +2025,14 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
 
   Map<String, dynamic> _buildPaymentCompletePayload({
     required String orderId,
+    required String paymentMethod,
+    required String paymentMethodLabel,
+    required double orderGrandTotal,
     String? orderNumber,
     String? giftDeliveryCode,
+    double? paidOnlineAmount,
+    double? codRemainingCashAmount,
+    String? paymentScope,
   }) {
     final cart = context.read<CartProvider>();
     final isPickupMode = cart.fulfillmentMode == 'pickup';
@@ -1859,15 +2042,19 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     final rainFeeAmount = isPickupMode ? 0.0 : cart.rainFee;
     final taxAmount = cart.tax;
     final double effectiveTip = isPickupMode ? 0.0 : _tipAmount;
-    final double totalAmount = cart.total + effectiveTip;
     final bool isGiftOrder = !isPickupMode && _isGiftOrder;
     final String? normalizedGiftPhone = isGiftOrder ? _normalizeGhanaPhone(_giftRecipientPhoneController.text) : null;
+    final onlinePaidAmount = paidOnlineAmount ?? orderGrandTotal;
 
     return {
       'orderId': orderId,
       'fulfillmentMode': cart.fulfillmentMode,
-      'method': 'Paystack',
-      'total': totalAmount,
+      'method': paymentMethodLabel,
+      'paymentMethod': paymentMethod,
+      'paymentScope': paymentScope,
+      'total': onlinePaidAmount,
+      'orderGrandTotal': orderGrandTotal,
+      'codRemainingCashAmount': codRemainingCashAmount,
       'subTotal': cartSubtotal,
       'deliveryFee': deliveryFeeAmount,
       'serviceFee': serviceFeeAmount,
@@ -1881,6 +2068,32 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       'giftRecipientPhone': normalizedGiftPhone,
       'giftDeliveryCode': isGiftOrder ? giftDeliveryCode : null,
     };
+  }
+
+  Map<String, dynamic> _mergePaymentResultIntoPayload(
+    Map<String, dynamic> payload, {
+    required ConfirmPaymentResult confirmationResult,
+    required bool isCashOnDelivery,
+  }) {
+    final merged = <String, dynamic>{...payload};
+    final previousTotal = _asDouble(merged['total']) ?? 0.0;
+    final orderGrandTotal = _asDouble(merged['orderGrandTotal']) ?? previousTotal;
+    final confirmedExternalAmount = confirmationResult.externalPaymentAmount ?? previousTotal;
+    final confirmedCodRemaining =
+        confirmationResult.codRemainingCashAmount ??
+        (isCashOnDelivery ? math.max(0, orderGrandTotal - confirmedExternalAmount) : null);
+
+    merged['paymentScope'] = confirmationResult.paymentScope ?? merged['paymentScope'];
+    merged['total'] = confirmedExternalAmount;
+    merged['orderGrandTotal'] = orderGrandTotal;
+    merged['codRemainingCashAmount'] = confirmedCodRemaining;
+    return merged;
+  }
+
+  double? _asDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
   }
 
   void _handlePaymentSuccess(BuildContext context, {required Map<String, dynamic> paymentData}) {
@@ -2183,15 +2396,7 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                     ],
                   ),
                 ),
-                CustomSwitch(
-                  value: _isGiftOrder,
-                  onChanged: (value) {
-                    setState(() {
-                      _isGiftOrder = value;
-                    });
-                  },
-                  activeColor: colors.accentOrange,
-                ),
+                CustomSwitch(value: _isGiftOrder, onChanged: _setGiftOrderEnabled, activeColor: colors.accentOrange),
               ],
             ),
           ),
@@ -2261,6 +2466,204 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
               : const SizedBox.shrink(),
         ),
       ],
+    );
+  }
+
+  Widget _buildPaymentMethodSection(AppColorsExtension colors, CartProvider provider, {required bool isPickupMode}) {
+    final bool isCashOnDelivery = _isCashOnDeliverySelected(isPickupMode: isPickupMode);
+    final double totalAmount = _checkoutGrandTotal(provider, isPickupMode: isPickupMode);
+    final double codUpfrontAmount = _codUpfrontAmountForCheckout(provider, isPickupMode: isPickupMode);
+    final double codRemainingAmount = _codRemainingAmountForCheckout(provider, isPickupMode: isPickupMode);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+          child: Text(
+            "Payment Method",
+            style: TextStyle(
+              fontFamily: "Lato",
+              package: 'grab_go_shared',
+              color: colors.textPrimary,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.w),
+          child: Column(
+            children: [
+              _buildPaymentMethodTile(
+                title: "Pay Online",
+                subtitle: "Card, mobile money, or bank transfer",
+                icon: Icons.credit_card_rounded,
+                isSelected: _selectedPaymentMethod == _CheckoutPaymentMethod.card || isPickupMode,
+                colors: colors,
+                onTap: () {
+                  if (_selectedPaymentMethod == _CheckoutPaymentMethod.card) {
+                    return;
+                  }
+                  setState(() {
+                    _selectedPaymentMethod = _CheckoutPaymentMethod.card;
+                  });
+                },
+              ),
+              SizedBox(height: 10.h),
+              _buildPaymentMethodTile(
+                title: "Cash on Delivery",
+                subtitle: isPickupMode ? "Available only for delivery orders" : "Pay part now and the rest on delivery",
+                icon: Icons.payments_outlined,
+                isSelected: !isPickupMode && _selectedPaymentMethod == _CheckoutPaymentMethod.cash,
+                colors: colors,
+                isDisabled: isPickupMode,
+                onTap: () {
+                  if (isPickupMode) return;
+                  setState(() {
+                    _selectedPaymentMethod = _CheckoutPaymentMethod.cash;
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeInOut,
+          alignment: Alignment.topCenter,
+          clipBehavior: Clip.hardEdge,
+          child: isCashOnDelivery
+              ? Padding(
+                  padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 10.h),
+                  child: Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(12.r),
+                    decoration: BoxDecoration(
+                      color: colors.backgroundSecondary,
+                      borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                      border: Border.all(color: colors.inputBorder.withValues(alpha: 0.35), width: 0.8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "COD Breakdown",
+                          style: TextStyle(color: colors.textPrimary, fontSize: 12.sp, fontWeight: FontWeight.w700),
+                        ),
+                        SizedBox(height: 8.h),
+                        Row(
+                          children: [
+                            Text(
+                              "Pay Online",
+                              style: TextStyle(
+                                color: colors.textSecondary,
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              "GHS ${codUpfrontAmount.toStringAsFixed(2)}",
+                              style: TextStyle(color: colors.textPrimary, fontSize: 11.sp, fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 4.h),
+                        Row(
+                          children: [
+                            Text(
+                              "Pay at Delivery",
+                              style: TextStyle(
+                                color: colors.textSecondary,
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              "GHS ${codRemainingAmount.toStringAsFixed(2)}",
+                              style: TextStyle(color: colors.textPrimary, fontSize: 11.sp, fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 6.h),
+                        Text(
+                          "Order total: GHS ${totalAmount.toStringAsFixed(2)}",
+                          style: TextStyle(color: colors.textSecondary, fontSize: 10.sp, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPaymentMethodTile({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool isSelected,
+    required AppColorsExtension colors,
+    required VoidCallback onTap,
+    bool isDisabled = false,
+  }) {
+    final Color tileColor = isSelected
+        ? colors.accentOrange.withValues(alpha: 0.08)
+        : colors.backgroundSecondary.withValues(alpha: 0.0);
+    final Color titleColor = isDisabled ? colors.textSecondary : colors.textPrimary;
+    final Color subtitleColor = colors.textSecondary;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: isDisabled ? null : onTap,
+        borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
+          decoration: BoxDecoration(color: tileColor, borderRadius: BorderRadius.circular(KBorderSize.borderMedium)),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(color: titleColor, fontSize: 13.sp, fontWeight: FontWeight.w700),
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      subtitle,
+                      style: TextStyle(color: subtitleColor, fontSize: 11.sp, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                height: 24.h,
+                width: 24.w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isSelected ? colors.accentOrange.withValues(alpha: 0.1) : Colors.transparent,
+                ),
+                child: isSelected
+                    ? Center(
+                        child: Container(
+                          height: 10.h,
+                          width: 10.w,
+                          decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
+                        ),
+                      )
+                    : null,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -3272,6 +3675,8 @@ class _CachedAddresses {
 }
 
 enum _FeeInfoType { delivery, service, rain }
+
+enum _CheckoutPaymentMethod { card, cash }
 
 class _FeeInfoDetail {
   final String title;

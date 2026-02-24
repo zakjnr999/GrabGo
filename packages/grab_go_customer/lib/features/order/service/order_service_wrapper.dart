@@ -9,11 +9,17 @@ class CreateOrderResult {
   final String orderId;
   final String? orderNumber;
   final String? giftDeliveryCode;
+  final String? paymentMethod;
+  final double? codUpfrontAmount;
+  final double? codRemainingCashOnDelivery;
 
   const CreateOrderResult({
     required this.orderId,
     this.orderNumber,
     this.giftDeliveryCode,
+    this.paymentMethod,
+    this.codUpfrontAmount,
+    this.codRemainingCashOnDelivery,
   });
 }
 
@@ -30,6 +36,36 @@ class DeliveryCodeResendResult {
     this.giftDeliveryCode,
     this.retryAfterSeconds,
     this.code,
+  });
+}
+
+class ConfirmPaymentResult {
+  final bool success;
+  final String? paymentScope;
+  final double? externalPaymentAmount;
+  final double? codRemainingCashAmount;
+
+  const ConfirmPaymentResult({
+    required this.success,
+    this.paymentScope,
+    this.externalPaymentAmount,
+    this.codRemainingCashAmount,
+  });
+}
+
+class InitializePaymentResult {
+  final String authorizationUrl;
+  final String reference;
+  final double? paymentAmount;
+  final String? paymentScope;
+  final double? codRemainingCashAmount;
+
+  const InitializePaymentResult({
+    required this.authorizationUrl,
+    required this.reference,
+    this.paymentAmount,
+    this.paymentScope,
+    this.codRemainingCashAmount,
   });
 }
 
@@ -151,6 +187,11 @@ class OrderServiceWrapper {
             orderId: orderId.toString(),
             orderNumber: orderData?['orderNumber']?.toString(),
             giftDeliveryCode: orderData?['giftDeliveryCode']?.toString(),
+            paymentMethod: orderData?['paymentMethod']?.toString(),
+            codUpfrontAmount: _asDouble(orderData?['cod']?['upfrontAmount']),
+            codRemainingCashOnDelivery: _asDouble(
+              orderData?['cod']?['remainingCashOnDelivery'],
+            ),
           );
         } else {
           throw Exception(responseData['message'] ?? 'Order creation failed');
@@ -208,7 +249,7 @@ class OrderServiceWrapper {
     }
   }
 
-  Future<bool> confirmPayment({
+  Future<ConfirmPaymentResult> confirmPayment({
     required String orderId,
     required String reference,
     String provider = 'paystack',
@@ -220,11 +261,21 @@ class OrderServiceWrapper {
       });
 
       if (!response.isSuccessful || response.body == null) {
-        return false;
+        return const ConfirmPaymentResult(success: false);
       }
-      return response.body?['success'] == true;
+
+      final body = response.body!;
+      final isSuccess = body['success'] == true;
+      final data = body['data'] as Map<String, dynamic>?;
+
+      return ConfirmPaymentResult(
+        success: isSuccess,
+        paymentScope: data?['paymentScope']?.toString(),
+        externalPaymentAmount: _asDouble(data?['externalPaymentAmount']),
+        codRemainingCashAmount: _asDouble(data?['codRemainingCashAmount']),
+      );
     } catch (e) {
-      return false;
+      return const ConfirmPaymentResult(success: false);
     }
   }
 
@@ -243,7 +294,7 @@ class OrderServiceWrapper {
     }
   }
 
-  Future<Map<String, String>> initializePaystackPayment({
+  Future<InitializePaymentResult> initializePaystackPayment({
     required String orderId,
   }) async {
     try {
@@ -264,7 +315,13 @@ class OrderServiceWrapper {
         throw Exception('Payment initialization missing authorization URL');
       }
 
-      return {'authorizationUrl': authorizationUrl, 'reference': reference};
+      return InitializePaymentResult(
+        authorizationUrl: authorizationUrl,
+        reference: reference,
+        paymentAmount: _asDouble(data['paymentAmount']),
+        paymentScope: data['paymentScope']?.toString(),
+        codRemainingCashAmount: _asDouble(data['codRemainingCashAmount']),
+      );
     } catch (e) {
       throw Exception('Payment initialization failed: $e');
     }
@@ -355,6 +412,12 @@ class OrderServiceWrapper {
           longitude: longitude,
         );
     }
+  }
+
+  double? _asDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
   }
 
   String _normalizeOrderItemType(String itemType) {

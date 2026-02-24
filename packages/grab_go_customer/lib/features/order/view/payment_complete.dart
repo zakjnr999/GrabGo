@@ -27,6 +27,8 @@ class PaymentComplete extends StatefulWidget {
   final String? giftRecipientName;
   final String? giftRecipientPhone;
   final String? giftDeliveryCode;
+  final double? codRemainingCashAmount;
+  final double? orderGrandTotal;
 
   const PaymentComplete({
     super.key,
@@ -45,13 +47,16 @@ class PaymentComplete extends StatefulWidget {
     this.giftRecipientName,
     this.giftRecipientPhone,
     this.giftDeliveryCode,
+    this.codRemainingCashAmount,
+    this.orderGrandTotal,
   });
 
   @override
   State<PaymentComplete> createState() => _PaymentCompleteState();
 }
 
-class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderStateMixin {
+class _PaymentCompleteState extends State<PaymentComplete>
+    with TickerProviderStateMixin {
   late AnimationController _animationController;
   late AnimationController _bounceController;
   late Animation<double> _fadeAnimation;
@@ -66,9 +71,15 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
     super.initState();
     _currentGiftDeliveryCode = widget.giftDeliveryCode;
 
-    _animationController = AnimationController(duration: const Duration(milliseconds: 1200), vsync: this);
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
 
-    _bounceController = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
+    _bounceController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
@@ -91,10 +102,9 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
       ),
     );
 
-    _bounceAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _bounceController, curve: Curves.elasticOut));
+    _bounceAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _bounceController, curve: Curves.elasticOut),
+    );
 
     _animationController.forward();
 
@@ -134,7 +144,9 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
                     builder: (context, constraints) => SingleChildScrollView(
                       padding: EdgeInsets.symmetric(horizontal: 20.w),
                       child: ConstrainedBox(
-                        constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
                         child: Transform.translate(
                           offset: Offset(0, _slideAnimation.value),
                           child: FadeTransition(
@@ -149,7 +161,10 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
                                     width: 120.w,
                                     height: 120.h,
                                     margin: EdgeInsets.only(bottom: 32.h),
-                                    decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentGreen),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: colors.accentGreen,
+                                    ),
                                     child: AnimatedBuilder(
                                       animation: _bounceController,
                                       builder: (context, child) {
@@ -161,7 +176,11 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
                                               package: 'grab_go_shared',
                                               height: 60.h,
                                               width: 60.h,
-                                              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                              colorFilter:
+                                                  const ColorFilter.mode(
+                                                    Colors.white,
+                                                    BlendMode.srcIn,
+                                                  ),
                                             ),
                                           ),
                                         );
@@ -195,7 +214,10 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
                                 SizedBox(height: 40.h),
 
                                 _buildPaymentDetailsCard(colors),
-                                if (widget.isGiftOrder) ...[SizedBox(height: 14.h), _buildGiftCodeCard(colors)],
+                                if (widget.isGiftOrder) ...[
+                                  SizedBox(height: 14.h),
+                                  _buildGiftCodeCard(colors),
+                                ],
                                 SizedBox(height: 16.h),
                               ],
                             ),
@@ -216,6 +238,10 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
 
   Widget _buildPaymentDetailsCard(AppColorsExtension colors) {
     final formattedTimestamp = _formatReceiptTimestamp(widget.timestamp);
+    final codRemainingCashAmount = widget.codRemainingCashAmount ?? 0.0;
+    final hasCodSplit = codRemainingCashAmount > 0;
+    final orderGrandTotal =
+        widget.orderGrandTotal ?? (widget.total + codRemainingCashAmount);
 
     return Container(
       width: double.infinity,
@@ -231,26 +257,43 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
             children: [
               Text(
                 "Payment Receipt",
-                style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                style: TextStyle(
+                  fontSize: 15.sp,
+                  fontWeight: FontWeight.w800,
+                  color: colors.textPrimary,
+                ),
               ),
               const Spacer(),
-              if (widget.orderNumber != null && widget.orderNumber!.trim().isNotEmpty)
+              if (widget.orderNumber != null &&
+                  widget.orderNumber!.trim().isNotEmpty)
                 Text(
                   "#${widget.orderNumber}",
-                  style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w700, color: colors.textSecondary),
+                  style: TextStyle(
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w700,
+                    color: colors.textSecondary,
+                  ),
                 ),
             ],
           ),
           SizedBox(height: 8.h),
           Text(
             widget.method,
-            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+            style: TextStyle(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w700,
+              color: colors.textPrimary,
+            ),
           ),
           if (formattedTimestamp.isNotEmpty) ...[
             SizedBox(height: 2.h),
             Text(
               formattedTimestamp,
-              style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+              style: TextStyle(
+                fontSize: 11.sp,
+                fontWeight: FontWeight.w500,
+                color: colors.textSecondary,
+              ),
             ),
           ],
 
@@ -258,20 +301,45 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
           _buildReceiptDivider(colors),
           SizedBox(height: 16.h),
 
-          _buildEnhancedDetailRow("Subtotal", "GHC ${widget.subTotal.toStringAsFixed(2)}", colors, false),
+          _buildEnhancedDetailRow(
+            "Subtotal",
+            "GHC ${widget.subTotal.toStringAsFixed(2)}",
+            colors,
+            false,
+          ),
           SizedBox(height: 8.h),
-          _buildEnhancedDetailRow("Delivery Fee", "GHC ${widget.deliveryFee.toStringAsFixed(2)}", colors, false),
+          _buildEnhancedDetailRow(
+            "Delivery Fee",
+            "GHC ${widget.deliveryFee.toStringAsFixed(2)}",
+            colors,
+            false,
+          ),
           if (widget.serviceFee > 0) ...[
             SizedBox(height: 8.h),
-            _buildEnhancedDetailRow("Service Fee", " GHC ${widget.serviceFee.toStringAsFixed(2)}", colors, false),
+            _buildEnhancedDetailRow(
+              "Service Fee",
+              " GHC ${widget.serviceFee.toStringAsFixed(2)}",
+              colors,
+              false,
+            ),
           ],
           if (widget.rainFee > 0) ...[
             SizedBox(height: 8.h),
-            _buildEnhancedDetailRow("Rain Fee", "GHC ${widget.rainFee.toStringAsFixed(2)}", colors, false),
+            _buildEnhancedDetailRow(
+              "Rain Fee",
+              "GHC ${widget.rainFee.toStringAsFixed(2)}",
+              colors,
+              false,
+            ),
           ],
           if (widget.tip > 0) ...[
             SizedBox(height: 8.h),
-            _buildEnhancedDetailRow("Driver Tip", "GHC ${widget.tip.toStringAsFixed(2)}", colors, false),
+            _buildEnhancedDetailRow(
+              "Driver Tip",
+              "GHC ${widget.tip.toStringAsFixed(2)}",
+              colors,
+              false,
+            ),
           ],
           SizedBox(height: 12.h),
           DottedLine(
@@ -282,7 +350,41 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
           ),
           SizedBox(height: 12.h),
 
-          _buildEnhancedDetailRow("Total Paid", "GHC ${widget.total.toStringAsFixed(2)}", colors, true),
+          if (hasCodSplit) ...[
+            _buildEnhancedDetailRow(
+              "Paid Online",
+              "GHC ${widget.total.toStringAsFixed(2)}",
+              colors,
+              false,
+            ),
+            SizedBox(height: 8.h),
+            _buildEnhancedDetailRow(
+              "Cash at Delivery",
+              "GHC ${codRemainingCashAmount.toStringAsFixed(2)}",
+              colors,
+              false,
+            ),
+            SizedBox(height: 12.h),
+            DottedLine(
+              dashLength: 4,
+              dashGapLength: 3,
+              lineThickness: 1,
+              dashColor: colors.textSecondary.withValues(alpha: 0.35),
+            ),
+            SizedBox(height: 12.h),
+            _buildEnhancedDetailRow(
+              "Order Total",
+              "GHC ${orderGrandTotal.toStringAsFixed(2)}",
+              colors,
+              true,
+            ),
+          ] else
+            _buildEnhancedDetailRow(
+              "Total Paid",
+              "GHC ${widget.total.toStringAsFixed(2)}",
+              colors,
+              true,
+            ),
         ],
       ),
     );
@@ -326,10 +428,25 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
     final parsed = DateTime.tryParse(value.trim());
     if (parsed == null) return value;
 
-    const months = <String>["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const months = <String>[
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
 
     final local = parsed.toLocal();
-    final hour12 = local.hour == 0 ? 12 : (local.hour > 12 ? local.hour - 12 : local.hour);
+    final hour12 = local.hour == 0
+        ? 12
+        : (local.hour > 12 ? local.hour - 12 : local.hour);
     final minute = local.minute.toString().padLeft(2, "0");
     final period = local.hour >= 12 ? "PM" : "AM";
 
@@ -337,8 +454,12 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
   }
 
   Widget _buildGiftCodeCard(AppColorsExtension colors) {
-    final hasCode = _currentGiftDeliveryCode != null && _currentGiftDeliveryCode!.trim().isNotEmpty;
-    final canResendToRecipient = widget.giftRecipientPhone != null && widget.giftRecipientPhone!.trim().isNotEmpty;
+    final hasCode =
+        _currentGiftDeliveryCode != null &&
+        _currentGiftDeliveryCode!.trim().isNotEmpty;
+    final canResendToRecipient =
+        widget.giftRecipientPhone != null &&
+        widget.giftRecipientPhone!.trim().isNotEmpty;
     final recipientName = widget.giftRecipientName?.trim();
 
     return Container(
@@ -353,20 +474,32 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
         children: [
           Text(
             "Gift Delivery Code",
-            style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+            style: TextStyle(
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w800,
+              color: colors.textPrimary,
+            ),
           ),
           SizedBox(height: 4.h),
           Text(
             hasCode
                 ? "Share this code with the recipient for delivery verification."
                 : "Delivery code unavailable. Use resend below.",
-            style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+            style: TextStyle(
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w500,
+              color: colors.textSecondary,
+            ),
           ),
           if (recipientName != null && recipientName.isNotEmpty) ...[
             SizedBox(height: 8.h),
             Text(
               "Recipient: $recipientName",
-              style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+              style: TextStyle(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+                color: colors.textPrimary,
+              ),
             ),
           ],
           SizedBox(height: 10.h),
@@ -392,15 +525,22 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
                   ),
                   IconButton(
                     onPressed: () {
-                      Clipboard.setData(ClipboardData(text: _currentGiftDeliveryCode!));
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Delivery code copied")));
+                      Clipboard.setData(
+                        ClipboardData(text: _currentGiftDeliveryCode!),
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Delivery code copied")),
+                      );
                     },
                     icon: SvgPicture.asset(
                       Assets.icons.copy,
                       package: 'grab_go_shared',
                       height: 18,
                       width: 18,
-                      colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                      colorFilter: ColorFilter.mode(
+                        colors.textPrimary,
+                        BlendMode.srcIn,
+                      ),
                     ),
                     tooltip: "Copy code",
                     visualDensity: VisualDensity.compact,
@@ -417,8 +557,14 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
                 if (_isResendingDeliveryCode) return;
                 _resendDeliveryCode(target: "recipient");
               },
-              buttonText: _isResendingDeliveryCode ? "Sending..." : "Resend to recipient",
-              textStyle: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+              buttonText: _isResendingDeliveryCode
+                  ? "Sending..."
+                  : "Resend to recipient",
+              textStyle: TextStyle(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w700,
+                color: colors.textPrimary,
+              ),
               backgroundColor: colors.backgroundPrimary,
               padding: EdgeInsets.symmetric(vertical: 10.h),
               borderRadius: KBorderSize.borderMedium,
@@ -431,9 +577,11 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
 
   Future<void> _resendDeliveryCode({required String target}) async {
     if (widget.orderId == null || widget.orderId!.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Order reference missing; cannot resend code.")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Order reference missing; cannot resend code."),
+        ),
+      );
       return;
     }
 
@@ -441,20 +589,29 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
       _isResendingDeliveryCode = true;
     });
 
-    final result = await OrderServiceWrapper().resendDeliveryCode(orderId: widget.orderId!, target: target);
+    final result = await OrderServiceWrapper().resendDeliveryCode(
+      orderId: widget.orderId!,
+      target: target,
+    );
     if (!mounted) return;
 
     setState(() {
       _isResendingDeliveryCode = false;
-      if (result.success && target == "customer" && result.giftDeliveryCode != null) {
+      if (result.success &&
+          target == "customer" &&
+          result.giftDeliveryCode != null) {
         _currentGiftDeliveryCode = result.giftDeliveryCode;
       }
     });
 
-    final retryMessage = result.retryAfterSeconds != null ? " Try again in ${result.retryAfterSeconds}s." : "";
+    final retryMessage = result.retryAfterSeconds != null
+        ? " Try again in ${result.retryAfterSeconds}s."
+        : "";
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(result.success ? result.message : "${result.message}$retryMessage"),
+        content: Text(
+          result.success ? result.message : "${result.message}$retryMessage",
+        ),
         backgroundColor: result.success ? Colors.green : Colors.red,
       ),
     );
@@ -464,8 +621,13 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
     return Container(
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
-        borderRadius: BorderRadius.only(topLeft: Radius.circular(24.r), topRight: Radius.circular(24.r)),
-        border: Border(top: BorderSide(color: colors.backgroundSecondary, width: 1)),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(24.r),
+          topRight: Radius.circular(24.r),
+        ),
+        border: Border(
+          top: BorderSide(color: colors.backgroundSecondary, width: 1),
+        ),
       ),
       child: Padding(
         padding: EdgeInsets.only(
@@ -485,10 +647,17 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
                   context.go('/homepage');
                   return;
                 }
-                context.go('/notificationPermission', extra: {'nextRoute': '/homepage'});
+                context.go(
+                  '/notificationPermission',
+                  extra: {'nextRoute': '/homepage'},
+                );
               },
               buttonText: "Continue",
-              textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: Colors.white),
+              textStyle: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
               backgroundColor: colors.accentGreen,
               padding: EdgeInsets.symmetric(vertical: 16.h),
               borderRadius: KBorderSize.borderMedium,
@@ -499,7 +668,12 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
     );
   }
 
-  Widget _buildEnhancedDetailRow(String label, String value, AppColorsExtension colors, bool isTotal) {
+  Widget _buildEnhancedDetailRow(
+    String label,
+    String value,
+    AppColorsExtension colors,
+    bool isTotal,
+  ) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,

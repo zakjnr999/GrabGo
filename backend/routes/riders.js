@@ -103,7 +103,6 @@ router.get(
   async (req, res) => {
     try {
       // First, get IDs of orders that have active reservations (pending status, not expired)
-      const OrderReservation = require('../models/OrderReservation');
       const activeReservations = await OrderReservation.find({
         status: 'pending',
         expiresAt: { $gt: new Date() }
@@ -1078,7 +1077,6 @@ router.post(
 
       // Clear previous reservations if requested (for testing)
       if (clearPrevious === 'true') {
-        const OrderReservation = require('../models/OrderReservation');
         await OrderReservation.deleteMany({ orderId });
         console.log(`🧹 [Test Dispatch] Cleared previous reservations for order: ${orderId}`);
       }

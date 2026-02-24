@@ -10,7 +10,12 @@ class PaymentConfirming extends StatefulWidget {
   final String reference;
   final Map<String, dynamic> paymentData;
 
-  const PaymentConfirming({super.key, required this.orderId, required this.reference, required this.paymentData});
+  const PaymentConfirming({
+    super.key,
+    required this.orderId,
+    required this.reference,
+    required this.paymentData,
+  });
 
   @override
   State<PaymentConfirming> createState() => _PaymentConfirmingState();
@@ -31,17 +36,34 @@ class _PaymentConfirmingState extends State<PaymentConfirming> {
     });
 
     final orderService = OrderServiceWrapper();
-    bool confirmed = false;
+    ConfirmPaymentResult confirmationResult = const ConfirmPaymentResult(
+      success: false,
+    );
     try {
-      confirmed = await orderService.confirmPayment(orderId: widget.orderId, reference: widget.reference);
+      confirmationResult = await orderService.confirmPayment(
+        orderId: widget.orderId,
+        reference: widget.reference,
+      );
     } catch (e) {
       debugPrint('⚠️ Failed to confirm payment: $e');
     }
 
     if (!mounted) return;
 
-    if (confirmed) {
-      context.go('/paymentComplete', extra: widget.paymentData);
+    if (confirmationResult.success) {
+      final mergedPaymentData = <String, dynamic>{
+        ...widget.paymentData,
+        'paymentScope':
+            confirmationResult.paymentScope ??
+            widget.paymentData['paymentScope'],
+        'total':
+            confirmationResult.externalPaymentAmount ??
+            widget.paymentData['total'],
+        'codRemainingCashAmount':
+            confirmationResult.codRemainingCashAmount ??
+            widget.paymentData['codRemainingCashAmount'],
+      };
+      context.go('/paymentComplete', extra: mergedPaymentData);
       return;
     }
     context.go('/paymentFailed', extra: widget.paymentData);
@@ -64,12 +86,20 @@ class _PaymentConfirmingState extends State<PaymentConfirming> {
                 SizedBox(height: 16.h),
                 Text(
                   'Confirming payment...',
-                  style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 SizedBox(height: 6.h),
                 Text(
                   'Please wait a moment',
-                  style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ],

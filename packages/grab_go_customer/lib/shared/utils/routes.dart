@@ -672,6 +672,9 @@ final GoRouter appRouter = GoRouter(
             giftRecipientName: extra["giftRecipientName"] as String?,
             giftRecipientPhone: extra["giftRecipientPhone"] as String?,
             giftDeliveryCode: extra["giftDeliveryCode"] as String?,
+            codRemainingCashAmount: (extra["codRemainingCashAmount"] as num?)
+                ?.toDouble(),
+            orderGrandTotal: (extra["orderGrandTotal"] as num?)?.toDouble(),
           ),
           transitionDuration: const Duration(milliseconds: 400),
           reverseTransitionDuration: const Duration(milliseconds: 400),

@@ -39,6 +39,16 @@ const {
   cancelPickupOrder,
 } = require("../services/pickup_order_service");
 const { isVendorAcceptingScheduledOrders } = require("../utils/scheduled_orders");
+const {
+  CodPolicyError,
+  COD_NO_SHOW_REASON,
+  isCodNoShowReason,
+  getCodExternalPaymentAmount,
+  getCodRemainingCashAmount,
+  validateCodNoShowEvidence,
+  evaluateCodEligibility,
+  isCodDispatchAllowedStatus,
+} = require("../services/cod_service");
 
 const router = express.Router();
 
@@ -65,6 +75,13 @@ const DISPATCH_TRIGGER_STATUSES = new Set(["preparing", "ready"]);
 const shouldTriggerDispatchForStatus = (status) =>
   DISPATCH_TRIGGER_STATUSES.has(status) ||
   (featureFlags.isConfirmedPredispatchEnabled && status === "confirmed");
+const shouldTriggerDispatchForOrder = (order, status = order?.status) => {
+  if (!order) return false;
+  if (order.paymentMethod === "cash") {
+    return isCodDispatchAllowedStatus(status);
+  }
+  return shouldTriggerDispatchForStatus(status);
+};
 const SENSITIVE_ORDER_FIELDS = new Set(["pickupOtpHash", "deliveryCodeHash", "deliveryCodeEncrypted"]);
 
 const generatePickupCode = () => {
@@ -98,6 +115,17 @@ const sanitizeOrderPayload = (payload) => {
   const sanitized = { ...payload };
   for (const field of SENSITIVE_ORDER_FIELDS) {
     delete sanitized[field];
+  }
+  if (sanitized.paymentMethod === "cash") {
+    sanitized.cod = {
+      upfrontAmount: getCodExternalPaymentAmount(sanitized, {
+        includeRainFee: featureFlags.codUpfrontIncludeRainFee,
+      }),
+      remainingCashOnDelivery: getCodRemainingCashAmount(sanitized, {
+        includeRainFee: featureFlags.codUpfrontIncludeRainFee,
+      }),
+      includeRainFeeInUpfront: featureFlags.codUpfrontIncludeRainFee,
+    };
   }
   return sanitized;
 };
@@ -255,7 +283,7 @@ router.post(
   "/",
   protect,
   [
-    body("restaurant").optional().isString().withMessage("restaurant must be a string"),
+    body("restaurant").optional({ nullable: true }).isString().withMessage("restaurant must be a string"),
     body("fulfillmentMode").optional().isIn(["delivery", "pickup"]).withMessage("Invalid fulfillment mode"),
     body("deliveryTimeType").optional().isIn(["asap", "scheduled"]).withMessage("Invalid delivery time type"),
     body("scheduledForAt")
@@ -266,15 +294,15 @@ router.post(
       .isArray({ min: 1 })
       .withMessage("At least one item is required"),
     body("deliveryAddress").optional(),
-    body("pickupContactName").optional().isString().withMessage("pickupContactName must be a string"),
-    body("pickupContactPhone").optional().isString().withMessage("pickupContactPhone must be a string"),
-    body("acceptNoShowPolicy").optional().isBoolean().withMessage("acceptNoShowPolicy must be a boolean"),
-    body("isGiftOrder").optional().isBoolean().withMessage("isGiftOrder must be a boolean"),
-    body("giftRecipientName").optional().isString().withMessage("giftRecipientName must be a string"),
-    body("giftRecipientPhone").optional().isString().withMessage("giftRecipientPhone must be a string"),
-    body("giftNote").optional().isString().withMessage("giftNote must be a string"),
+    body("pickupContactName").optional({ nullable: true }).isString().withMessage("pickupContactName must be a string"),
+    body("pickupContactPhone").optional({ nullable: true }).isString().withMessage("pickupContactPhone must be a string"),
+    body("acceptNoShowPolicy").optional({ nullable: true }).isBoolean().withMessage("acceptNoShowPolicy must be a boolean"),
+    body("isGiftOrder").optional({ nullable: true }).isBoolean().withMessage("isGiftOrder must be a boolean"),
+    body("giftRecipientName").optional({ nullable: true }).isString().withMessage("giftRecipientName must be a string"),
+    body("giftRecipientPhone").optional({ nullable: true }).isString().withMessage("giftRecipientPhone must be a string"),
+    body("giftNote").optional({ nullable: true }).isString().withMessage("giftNote must be a string"),
     body("paymentMethod")
-      .isIn(["card"])
+      .isIn(["card", "cash"])
       .withMessage("Invalid payment method"),
     body("useCredits").optional({ nullable: true }).isBoolean().withMessage("useCredits must be a boolean"),
   ],
@@ -320,6 +348,8 @@ router.post(
       const fulfillmentMode = normalizeFulfillmentMode(rawFulfillmentMode);
       const isPickupMode = fulfillmentMode === "pickup";
       const isDeliveryMode = !isPickupMode;
+      const normalizedPaymentMethod = String(paymentMethod || "").trim().toLowerCase();
+      const isCashOnDelivery = normalizedPaymentMethod === "cash";
       const isGiftOrderRequested = isGiftOrder === true;
       const normalizedGiftRecipientName = giftRecipientName ? String(giftRecipientName).trim() : null;
       const normalizedGiftNote = giftNote ? String(giftNote).trim() : null;
@@ -350,6 +380,24 @@ router.post(
           return res.status(400).json({
             success: false,
             message: "You must accept the no-show pickup policy",
+          });
+        }
+      }
+
+      if (isCashOnDelivery) {
+        if (!featureFlags.isCodEnabled) {
+          return res.status(403).json({
+            success: false,
+            message: "Cash on delivery is currently unavailable",
+            code: "COD_DISABLED",
+          });
+        }
+
+        if (!isDeliveryMode) {
+          return res.status(400).json({
+            success: false,
+            message: "Cash on delivery is only supported for delivery orders",
+            code: "COD_DELIVERY_ONLY",
           });
         }
       }
@@ -779,15 +827,63 @@ router.post(
       });
       const tax = pricing.tax;
       let totalAmount = pricing.total;
+      let codUpfrontAmount = null;
+      let codRemainingAmount = null;
 
-      const shouldUseCredits = useCredits !== false;
+      if (isCashOnDelivery) {
+        if (featureFlags.codMaxOrderTotalGhs > 0 && pricing.total > featureFlags.codMaxOrderTotalGhs) {
+          return res.status(400).json({
+            success: false,
+            message: `Cash on delivery is limited to orders up to GHS ${featureFlags.codMaxOrderTotalGhs.toFixed(2)}`,
+            code: "COD_MAX_ORDER_TOTAL_EXCEEDED",
+          });
+        }
+
+        const codEligibility = await evaluateCodEligibility({
+          prisma,
+          customerId: req.user.id,
+          minPrepaidDeliveredOrders: featureFlags.codMinPrepaidDeliveredOrders,
+          noShowDisableThreshold: featureFlags.codNoShowDisableThreshold,
+          requirePhoneVerified: featureFlags.codRequirePhoneVerified,
+          maxConcurrentCodOrders: featureFlags.codMaxConcurrentOrders,
+        });
+
+        if (!codEligibility.eligible) {
+          return res.status(codEligibility.status || 403).json({
+            success: false,
+            message: codEligibility.message,
+            code: codEligibility.code,
+            data: codEligibility.metrics,
+          });
+        }
+
+        codUpfrontAmount = getCodExternalPaymentAmount(
+          { deliveryFee: pricing.deliveryFee, rainFee: pricing.rainFee },
+          { includeRainFee: featureFlags.codUpfrontIncludeRainFee }
+        );
+
+        if (codUpfrontAmount <= 0) {
+          return res.status(400).json({
+            success: false,
+            message: "Cash on delivery is unavailable for orders without a delivery-fee commitment",
+            code: "COD_UPFRONT_AMOUNT_INVALID",
+          });
+        }
+
+        codRemainingAmount = getCodRemainingCashAmount(
+          { totalAmount: pricing.total, deliveryFee: pricing.deliveryFee, rainFee: pricing.rainFee },
+          { includeRainFee: featureFlags.codUpfrontIncludeRainFee }
+        );
+      }
+
+      const shouldUseCredits = !isCashOnDelivery && useCredits !== false;
       // Apply credits if available
       const creditResult = await creditService.calculateCreditApplication(req.user.id, totalAmount, shouldUseCredits);
       const creditApplied = creditResult?.creditsApplied || 0;
       if (creditApplied > 0) {
         totalAmount = creditResult.remainingPayment;
       }
-      const isCreditOnly = creditApplied > 0 && totalAmount <= 0;
+      const isCreditOnly = !isCashOnDelivery && creditApplied > 0 && totalAmount <= 0;
 
       const orderData = {
         orderNumber,
@@ -823,7 +919,7 @@ router.post(
         deliveryCodeResendCount: 0,
         noShowPolicyAcceptedAt: isPickupMode && acceptNoShowPolicy ? new Date() : null,
         noShowPolicyVersion: isPickupMode && acceptNoShowPolicy ? (noShowPolicyVersion || "v1") : null,
-        paymentMethod,
+        paymentMethod: normalizedPaymentMethod,
         notes,
         status: isCreditOnly && !isScheduledOrderRequested ? "confirmed" : "pending",
         items: {
@@ -1011,6 +1107,20 @@ router.post(
         }).catch(() => null);
       }
 
+      if (isCashOnDelivery) {
+        await createOrderAudit({
+          orderId: order.id,
+          actorId: req.user.id,
+          actorRole: req.user.role,
+          action: "cod_order_created",
+          metadata: {
+            upfrontAmount: codUpfrontAmount,
+            remainingCashOnDelivery: codRemainingAmount,
+            includeRainFeeInUpfront: featureFlags.codUpfrontIncludeRainFee,
+          },
+        }).catch(() => null);
+      }
+
       if (isGiftOrderRequested && giftDeliveryCode) {
         if (req.user.phone) {
           const customerSendResult = await sendDeliveryCodeSms({
@@ -1060,6 +1170,13 @@ router.post(
       if (isGiftOrderRequested && giftDeliveryCode) {
         responseOrder.giftDeliveryCode = giftDeliveryCode;
       }
+      if (isCashOnDelivery) {
+        responseOrder.cod = {
+          upfrontAmount: codUpfrontAmount,
+          remainingCashOnDelivery: codRemainingAmount,
+          includeRainFeeInUpfront: featureFlags.codUpfrontIncludeRainFee,
+        };
+      }
 
       res.status(201).json({
         success: true,
@@ -1072,6 +1189,14 @@ router.post(
           success: false,
           message: error.message,
           code: error.code || "SCHEDULED_ORDER_ERROR",
+          ...(error.meta || {}),
+        });
+      }
+      if (error instanceof CodPolicyError) {
+        return res.status(error.status || 400).json({
+          success: false,
+          message: error.message,
+          code: error.code || "COD_POLICY_ERROR",
           ...(error.meta || {}),
         });
       }
@@ -1327,6 +1452,57 @@ router.get("/recent-items", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM 
   }
 });
 
+router.get("/cod/eligibility", protect, async (req, res) => {
+  try {
+    if (req.user.role !== "customer") {
+      return res.status(403).json({
+        success: false,
+        message: "Only customers can check COD eligibility",
+      });
+    }
+
+    if (!featureFlags.isCodEnabled) {
+      return res.status(403).json({
+        success: false,
+        message: "Cash on delivery is currently unavailable",
+        code: "COD_DISABLED",
+      });
+    }
+
+    const eligibility = await evaluateCodEligibility({
+      prisma,
+      customerId: req.user.id,
+      minPrepaidDeliveredOrders: featureFlags.codMinPrepaidDeliveredOrders,
+      noShowDisableThreshold: featureFlags.codNoShowDisableThreshold,
+      requirePhoneVerified: featureFlags.codRequirePhoneVerified,
+      maxConcurrentCodOrders: featureFlags.codMaxConcurrentOrders,
+    });
+
+    if (!eligibility.eligible) {
+      return res.status(eligibility.status || 403).json({
+        success: false,
+        message: eligibility.message,
+        code: eligibility.code,
+        data: eligibility.metrics,
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: eligibility.message,
+      code: eligibility.code,
+      data: eligibility.metrics,
+    });
+  } catch (error) {
+    console.error("COD eligibility error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
 router.get("/:orderId", protect, async (req, res) => {
   try {
     const order = await prisma.order.findUnique({
@@ -1422,6 +1598,7 @@ router.post(
         select: {
           id: true,
           customerId: true,
+          paymentMethod: true,
           paymentStatus: true,
           status: true,
           fulfillmentMode: true,
@@ -1431,6 +1608,8 @@ router.post(
           scheduledReleaseAt: true,
           scheduledReleasedAt: true,
           creditsApplied: true,
+          deliveryFee: true,
+          rainFee: true,
           totalAmount: true,
           orderNumber: true,
           paymentReferenceId: true,
@@ -1457,7 +1636,7 @@ router.post(
         if (
           order.fulfillmentMode !== "pickup" &&
           !order.riderId &&
-          shouldTriggerDispatchForStatus(order.status)
+          shouldTriggerDispatchForOrder(order, order.status)
         ) {
           dispatchService.dispatchOrder(order.id).then((result) => {
             if (result.success) {
@@ -1483,7 +1662,10 @@ router.post(
       }
 
       const paymentReference = reference || order.paymentReferenceId || null;
-      const requiresExternalPayment = Number(order.totalAmount || 0) > 0;
+      const externalPaymentAmount = order.paymentMethod === "cash"
+        ? getCodExternalPaymentAmount(order, { includeRainFee: featureFlags.codUpfrontIncludeRainFee })
+        : Number(order.totalAmount || 0);
+      const requiresExternalPayment = externalPaymentAmount > 0;
       const persistedReference =
         paymentReference && paymentReference !== "credits-only" ? paymentReference : undefined;
 
@@ -1524,7 +1706,7 @@ router.post(
           });
         }
 
-        const expectedAmount = Math.round(Number(order.totalAmount || 0) * 100);
+        const expectedAmount = Math.round(externalPaymentAmount * 100);
         const verifiedAmount = Number(verification?.amount ?? verification?.amount_in_kobo ?? Number.NaN);
         if (expectedAmount > 0 && Number.isFinite(verifiedAmount) && verifiedAmount !== expectedAmount) {
           return res.status(409).json({
@@ -1626,6 +1808,7 @@ router.post(
           orderNumber: true,
           status: true,
           paymentStatus: true,
+          paymentMethod: true,
           fulfillmentMode: true,
           riderId: true,
         },
@@ -1636,7 +1819,7 @@ router.post(
         orderAfterPayment.fulfillmentMode !== "pickup" &&
         !orderAfterPayment.riderId &&
         ["paid", "successful"].includes(orderAfterPayment.paymentStatus) &&
-        shouldTriggerDispatchForStatus(orderAfterPayment.status)
+        shouldTriggerDispatchForOrder(orderAfterPayment, orderAfterPayment.status)
       ) {
         dispatchService.dispatchOrder(order.id).then((result) => {
           if (result.success) {
@@ -1657,6 +1840,11 @@ router.post(
         metadata: {
           reference: persistedReference || null,
           provider: provider || "paystack",
+          paymentScope: order.paymentMethod === "cash" ? "cod_delivery_fee" : "full_order_payment",
+          externalPaymentAmount,
+          codRemainingCashAmount: order.paymentMethod === "cash"
+            ? getCodRemainingCashAmount(order, { includeRainFee: featureFlags.codUpfrontIncludeRainFee })
+            : null,
           fulfillmentMode: order.fulfillmentMode,
           isScheduledOrder: order.isScheduledOrder === true,
           scheduledForAt: order.scheduledForAt ? new Date(order.scheduledForAt).toISOString() : null,
@@ -1665,7 +1853,10 @@ router.post(
       }).catch(() => null);
 
       try {
-        const amount = Number(order.totalAmount || 0);
+        const amount = Number(externalPaymentAmount || 0);
+        const codRemainingCashAmount = order.paymentMethod === "cash"
+          ? getCodRemainingCashAmount(order, { includeRainFee: featureFlags.codUpfrontIncludeRainFee })
+          : null;
         const title = "Payment Confirmed";
         let giftDeliveryCodeForNotification = null;
         if (order.isGiftOrder && order.deliveryCodeEncrypted) {
@@ -1676,7 +1867,11 @@ router.post(
           }
         }
 
-        const baseMessage = shouldKeepScheduledPending
+        const baseMessage = order.paymentMethod === "cash"
+          ? `Delivery-fee payment for COD order #${order.orderNumber} (GHS ${amount.toFixed(
+              2
+            )}) has been confirmed. Remaining cash due on delivery: GHS ${(codRemainingCashAmount || 0).toFixed(2)}.`
+          : shouldKeepScheduledPending
           ? `Payment for scheduled order #${order.orderNumber} (GHS ${amount.toFixed(
               2
             )}) has been confirmed. We'll start processing near your selected delivery time.`
@@ -1695,6 +1890,8 @@ router.post(
             orderId: order.id,
             orderNumber: order.orderNumber,
             amount,
+            paymentScope: order.paymentMethod === "cash" ? "cod_delivery_fee" : "full_order_payment",
+            ...(order.paymentMethod === "cash" ? { codRemainingCashAmount } : {}),
             route: `/orders/${order.id}`,
             ...(giftDeliveryCodeForNotification ? { giftDeliveryCode: giftDeliveryCodeForNotification } : {}),
           },
@@ -1709,6 +1906,11 @@ router.post(
         message: "Payment confirmed",
         data: {
           orderId: order.id,
+          paymentScope: order.paymentMethod === "cash" ? "cod_delivery_fee" : "full_order_payment",
+          externalPaymentAmount,
+          codRemainingCashAmount: order.paymentMethod === "cash"
+            ? getCodRemainingCashAmount(order, { includeRainFee: featureFlags.codUpfrontIncludeRainFee })
+            : null,
           isScheduledOrder: order.isScheduledOrder === true,
           scheduledForAt: order.scheduledForAt ? new Date(order.scheduledForAt).toISOString() : null,
           scheduledReleaseAt: order.scheduledReleaseAt ? new Date(order.scheduledReleaseAt).toISOString() : null,
@@ -2635,7 +2837,16 @@ router.post("/:orderId/paystack/initialize", protect, async (req, res) => {
 
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      select: { id: true, customerId: true, totalAmount: true, paymentStatus: true, orderNumber: true },
+      select: {
+        id: true,
+        customerId: true,
+        totalAmount: true,
+        deliveryFee: true,
+        rainFee: true,
+        paymentMethod: true,
+        paymentStatus: true,
+        orderNumber: true,
+      },
     });
 
     if (!order) {
@@ -2659,7 +2870,11 @@ router.post("/:orderId/paystack/initialize", protect, async (req, res) => {
       });
     }
 
-    if (order.totalAmount <= 0) {
+    const externalPaymentAmount = order.paymentMethod === "cash"
+      ? getCodExternalPaymentAmount(order, { includeRainFee: featureFlags.codUpfrontIncludeRainFee })
+      : Number(order.totalAmount || 0);
+
+    if (externalPaymentAmount <= 0) {
       return res.status(400).json({
         success: false,
         message: "Order does not require external payment",
@@ -2680,13 +2895,16 @@ router.post("/:orderId/paystack/initialize", protect, async (req, res) => {
     }
 
     const reference = `ORD-${order.orderNumber}-${Date.now()}`;
-    const amount = Math.round(order.totalAmount * 100);
+    const amount = Math.round(externalPaymentAmount * 100);
 
     const init = await paystackService.initializeTransaction({
       email,
       amount,
       reference,
-      metadata: { orderId: order.id },
+      metadata: {
+        orderId: order.id,
+        paymentScope: order.paymentMethod === "cash" ? "cod_delivery_fee" : "full_order_payment",
+      },
     });
 
     await prisma.order.update({
@@ -2705,6 +2923,8 @@ router.post("/:orderId/paystack/initialize", protect, async (req, res) => {
         authorizationUrl: init.authorization_url,
         reference: init.reference || reference,
         accessCode: init.access_code,
+        paymentAmount: externalPaymentAmount,
+        paymentScope: order.paymentMethod === "cash" ? "cod_delivery_fee" : "full_order_payment",
       },
     });
   } catch (error) {
@@ -2794,6 +3014,18 @@ router.put(
       .withMessage("deliveryVerification.authorizedRecipientName must be a string"),
     body("deliveryVerification.riderLat").optional().isFloat().withMessage("deliveryVerification.riderLat must be numeric"),
     body("deliveryVerification.riderLng").optional().isFloat().withMessage("deliveryVerification.riderLng must be numeric"),
+    body("noShowEvidence").optional().isObject().withMessage("noShowEvidence must be an object"),
+    body("noShowEvidence.photoUrl").optional().isString().withMessage("noShowEvidence.photoUrl must be a string"),
+    body("noShowEvidence.contactAttempts")
+      .optional()
+      .isInt({ min: 0 })
+      .withMessage("noShowEvidence.contactAttempts must be an integer"),
+    body("noShowEvidence.waitedMinutes")
+      .optional()
+      .isFloat({ min: 0 })
+      .withMessage("noShowEvidence.waitedMinutes must be numeric"),
+    body("noShowEvidence.riderLat").optional().isFloat().withMessage("noShowEvidence.riderLat must be numeric"),
+    body("noShowEvidence.riderLng").optional().isFloat().withMessage("noShowEvidence.riderLng must be numeric"),
   ],
   async (req, res) => {
     try {
@@ -2807,7 +3039,7 @@ router.put(
       }
 
       const { orderId } = req.params;
-      const { status, cancellationReason, deliveryVerification } = req.body;
+      const { status, cancellationReason, deliveryVerification, noShowEvidence } = req.body;
 
       const order = await prisma.order.findUnique({
         where: { id: orderId }
@@ -2861,6 +3093,26 @@ router.put(
           success: false,
           message: "Not authorized to update order status",
         });
+      }
+
+      const rawCancellationReason = typeof cancellationReason === "string" ? cancellationReason.trim() : "";
+      const isCodNoShowCancellation =
+        status === "cancelled" &&
+        order.paymentMethod === "cash" &&
+        isCodNoShowReason(rawCancellationReason);
+      let normalizedCancellationReason = rawCancellationReason || null;
+      let normalizedNoShowEvidence = null;
+
+      if (isCodNoShowCancellation) {
+        if (!["rider", "admin"].includes(req.user.role)) {
+          return res.status(403).json({
+            success: false,
+            message: "Only rider or admin can confirm COD no-show cancellation",
+            code: "COD_NO_SHOW_NOT_AUTHORIZED",
+          });
+        }
+        normalizedNoShowEvidence = validateCodNoShowEvidence(noShowEvidence);
+        normalizedCancellationReason = COD_NO_SHOW_REASON;
       }
 
       if (order.isScheduledOrder && !order.scheduledReleasedAt && status !== "cancelled" && req.user.role !== "admin") {
@@ -3130,8 +3382,8 @@ router.put(
           }
         } else if (status === "cancelled") {
           updateData.cancelledDate = new Date();
-          if (cancellationReason) {
-            updateData.cancellationReason = cancellationReason;
+          if (normalizedCancellationReason) {
+            updateData.cancellationReason = normalizedCancellationReason;
           }
         }
 
@@ -3162,7 +3414,7 @@ router.put(
         actorId: req.user.id,
         actorRole: req.user.role,
         action: `status_${status}`,
-        reason: status === "cancelled" ? (cancellationReason || null) : null,
+        reason: status === "cancelled" ? (normalizedCancellationReason || null) : null,
         metadata: {
           previousStatus: order.status,
           nextStatus: status,
@@ -3173,6 +3425,19 @@ router.put(
               : null,
         },
       }).catch(() => null);
+
+      if (isCodNoShowCancellation && normalizedNoShowEvidence) {
+        await createOrderAudit({
+          orderId,
+          actorId: req.user.id,
+          actorRole: req.user.role,
+          action: "cod_no_show_confirmed",
+          reason: COD_NO_SHOW_REASON,
+          metadata: {
+            ...normalizedNoShowEvidence,
+          },
+        }).catch(() => null);
+      }
 
       // Send push notification to customer about order status change
       const io = getIO();
@@ -3233,7 +3498,7 @@ router.put(
 
       // Trigger dispatch only when order is paid and in rider-dispatchable states
       if (
-        shouldTriggerDispatchForStatus(status) &&
+        shouldTriggerDispatchForOrder(updatedOrder, status) &&
         ['paid', 'successful'].includes(updatedOrder.paymentStatus || order.paymentStatus) &&
         !updatedOrder.riderId &&
         updatedOrder.fulfillmentMode !== 'pickup'
@@ -3270,6 +3535,14 @@ router.put(
           success: false,
           message: error.message,
           code: error.code || "DELIVERY_VERIFICATION_ERROR",
+          ...(error.meta || {}),
+        });
+      }
+      if (error instanceof CodPolicyError) {
+        return res.status(error.status || 400).json({
+          success: false,
+          message: error.message,
+          code: error.code || "COD_POLICY_ERROR",
           ...(error.meta || {}),
         });
       }
@@ -3337,7 +3610,7 @@ router.put(
         });
       }
 
-      if (!shouldTriggerDispatchForStatus(order.status)) {
+      if (!shouldTriggerDispatchForOrder(order, order.status)) {
         return res.status(409).json({
           success: false,
           message: "Order is not in a rider-assignable state",

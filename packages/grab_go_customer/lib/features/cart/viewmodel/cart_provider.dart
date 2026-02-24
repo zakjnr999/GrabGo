@@ -30,6 +30,10 @@ class CartProvider extends ChangeNotifier {
   Map<String, dynamic>? _scheduleAvailability;
   final Map<String, String> _cartItemIdsByKey = {};
   final Set<String> _pendingItemOps = {};
+  bool _giftOrderEnabled = false;
+  String _giftRecipientNameDraft = '';
+  String _giftRecipientPhoneDraft = '';
+  String _giftNoteDraft = '';
 
   Map<CartItem, int> get cartItems => _cartItems;
   bool get isSyncing => _isSyncing;
@@ -51,6 +55,10 @@ class CartProvider extends ChangeNotifier {
       _scheduleAvailability == null
       ? null
       : Map<String, dynamic>.unmodifiable(_scheduleAvailability!);
+  bool get isGiftOrderDraftEnabled => _giftOrderEnabled;
+  String get giftRecipientNameDraft => _giftRecipientNameDraft;
+  String get giftRecipientPhoneDraft => _giftRecipientPhoneDraft;
+  String get giftNoteDraft => _giftNoteDraft;
 
   String _normalizeFulfillmentMode(String? mode) {
     if (mode == null) return 'delivery';
@@ -233,6 +241,7 @@ class CartProvider extends ChangeNotifier {
           } else {
             _recalculateLocalPricing();
           }
+          _resetGiftOrderDraftIfCartIsEmpty(notify: false);
           await _saveCart();
           notifyListeners();
         }
@@ -305,6 +314,64 @@ class CartProvider extends ChangeNotifier {
     _subtotal = totalPrice;
     _total = _subtotal! + _deliveryFee + _serviceFee + _tax + _rainFee;
     _hasPricingFromBackend = false;
+  }
+
+  bool _resetGiftOrderDraft({bool notify = true}) {
+    final hadGiftDraft =
+        _giftOrderEnabled ||
+        _giftRecipientNameDraft.isNotEmpty ||
+        _giftRecipientPhoneDraft.isNotEmpty ||
+        _giftNoteDraft.isNotEmpty;
+    if (!hadGiftDraft) return false;
+
+    _giftOrderEnabled = false;
+    _giftRecipientNameDraft = '';
+    _giftRecipientPhoneDraft = '';
+    _giftNoteDraft = '';
+
+    if (notify) {
+      notifyListeners();
+    }
+    return true;
+  }
+
+  void _resetGiftOrderDraftIfCartIsEmpty({bool notify = true}) {
+    if (_cartItems.isNotEmpty) return;
+    _resetGiftOrderDraft(notify: notify);
+  }
+
+  void setGiftOrderDraftEnabled(bool enabled) {
+    if (_giftOrderEnabled == enabled) return;
+    _giftOrderEnabled = enabled;
+    notifyListeners();
+  }
+
+  void setGiftOrderDraft({
+    required bool enabled,
+    required String recipientName,
+    required String recipientPhone,
+    required String giftNote,
+    bool notify = true,
+  }) {
+    final normalizedName = recipientName.trim();
+    final normalizedPhone = recipientPhone.trim();
+    final normalizedNote = giftNote.trim();
+    final changed =
+        _giftOrderEnabled != enabled ||
+        _giftRecipientNameDraft != normalizedName ||
+        _giftRecipientPhoneDraft != normalizedPhone ||
+        _giftNoteDraft != normalizedNote;
+
+    if (!changed) return;
+
+    _giftOrderEnabled = enabled;
+    _giftRecipientNameDraft = normalizedName;
+    _giftRecipientPhoneDraft = normalizedPhone;
+    _giftNoteDraft = normalizedNote;
+
+    if (notify) {
+      notifyListeners();
+    }
   }
 
   String _itemKey(CartItem item) {
@@ -1040,6 +1107,7 @@ class CartProvider extends ChangeNotifier {
         _cartItems[item] = _cartItems[item]! - 1;
         _recalculateLocalPricing();
         _saveCart();
+        _resetGiftOrderDraftIfCartIsEmpty(notify: false);
         notifyListeners();
         await _updateQuantityOnBackend(cartItemId, _cartItems[item]!);
       } else {
@@ -1049,6 +1117,7 @@ class CartProvider extends ChangeNotifier {
         }
         _recalculateLocalPricing();
         _saveCart();
+        _resetGiftOrderDraftIfCartIsEmpty(notify: false);
         notifyListeners();
         await _removeFromBackend(cartItemId);
       }
@@ -1087,6 +1156,7 @@ class CartProvider extends ChangeNotifier {
       }
       _recalculateLocalPricing();
       _saveCart();
+      _resetGiftOrderDraftIfCartIsEmpty(notify: false);
       notifyListeners();
       await _removeFromBackend(cartItemId);
       debugPrint('✅ Remove operation completed');
@@ -1102,6 +1172,7 @@ class CartProvider extends ChangeNotifier {
     _cartType = null;
     _cartItemIdsByKey.clear();
     _applyPricing(null);
+    _resetGiftOrderDraftIfCartIsEmpty(notify: false);
     _saveCart();
     notifyListeners();
 

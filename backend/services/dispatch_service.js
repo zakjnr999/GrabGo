@@ -192,6 +192,66 @@ const evaluateConfirmedPredispatch = (order, eligibleRiders) => {
     };
 };
 
+const normalizeAcceptanceRate = (rawRate) => {
+    const numeric = Number(rawRate);
+    if (!Number.isFinite(numeric) || numeric < 0) return 0.5;
+    if (numeric > 1) {
+        return Math.max(0, Math.min(1, numeric / 100));
+    }
+    return Math.max(0, Math.min(1, numeric));
+};
+
+const buildOnTimeStatsMap = async (riderIds, minDeliveries = 20) => {
+    if (!Array.isArray(riderIds) || riderIds.length === 0) {
+        return new Map();
+    }
+
+    const normalizedRiderIds = riderIds.map((id) => String(id));
+
+    try {
+        const DeliveryAnalytics = require('../models/DeliveryAnalytics');
+        const rows = await DeliveryAnalytics.aggregate([
+            {
+                $match: {
+                    riderId: { $in: normalizedRiderIds },
+                    wasOnTime: { $ne: null },
+                },
+            },
+            {
+                $group: {
+                    _id: '$riderId',
+                    totalDeliveries: { $sum: 1 },
+                    onTimeCount: {
+                        $sum: {
+                            $cond: ['$wasOnTime', 1, 0],
+                        },
+                    },
+                },
+            },
+        ]);
+
+        const result = new Map();
+        for (const row of rows) {
+            const totalDeliveries = Number(row?.totalDeliveries || 0);
+            const onTimeCount = Number(row?.onTimeCount || 0);
+            const onTimeRate = totalDeliveries > 0
+                ? Math.round((onTimeCount / totalDeliveries) * 100)
+                : 100;
+            result.set(String(row?._id), {
+                onTimeRate,
+                totalDeliveries,
+                onTimeCount,
+                isReliable: totalDeliveries >= minDeliveries,
+            });
+        }
+
+        return result;
+    } catch (error) {
+        console.error('[Dispatch] Failed to load rider on-time analytics:', error.message);
+        return new Map();
+    }
+};
+
 /**
  * Main dispatch function - Called when a new order needs a rider
  * @param {string} orderId - PostgreSQL Order ID
@@ -237,11 +297,18 @@ async function dispatchOrder(orderId) {
         }
 
         // Check if order is in dispatchable status
+        const isCodOrder = order.paymentMethod === 'cash';
         const isConfirmedPredispatch =
-            order.status === 'confirmed' && featureFlags.isConfirmedPredispatchEnabled;
+            order.status === 'confirmed' &&
+            featureFlags.isConfirmedPredispatchEnabled &&
+            !isCodOrder;
         if (!DISPATCHABLE_STATUSES.has(order.status) && !isConfirmedPredispatch) {
             console.log(`⚠️ [Dispatch] Order status not dispatchable: ${order.status}`);
             return { success: false, error: `Order status "${order.status}" is not dispatchable` };
+        }
+        if (isCodOrder && order.status === 'confirmed') {
+            console.log(`⏳ [Dispatch] COD order ${order.orderNumber} waiting for vendor prep before dispatch`);
+            return { success: false, error: 'COD order not dispatchable at confirmed status' };
         }
 
         // 2. Check for existing active reservation
@@ -381,11 +448,10 @@ async function findEligibleRiders(order, excludedRiderIds = []) {
             }
         }).limit(20); // Limit to prevent overload
 
-        // Fetch user details from Prisma for each rider
-        eligibleRiders = [];
-        for (const status of riderStatuses) {
-            const user = await prisma.user.findUnique({
-                where: { id: status.riderId },
+        const riderIds = riderStatuses.map((status) => String(status.riderId));
+        const riderUsers = riderIds.length > 0
+            ? await prisma.user.findMany({
+                where: { id: { in: riderIds } },
                 select: {
                     id: true,
                     username: true,
@@ -395,11 +461,19 @@ async function findEligibleRiders(order, excludedRiderIds = []) {
                     rider: {
                         select: {
                             vehicleType: true,
-                            verificationStatus: true
-                        }
-                    }
-                }
-            });
+                            verificationStatus: true,
+                        },
+                    },
+                },
+            })
+            : [];
+        const riderById = new Map(riderUsers.map((user) => [user.id, user]));
+
+        // Build eligible riders from batched user fetch + Mongo rider status
+        eligibleRiders = [];
+        for (const status of riderStatuses) {
+            const riderId = String(status.riderId);
+            const user = riderById.get(riderId);
 
             if (user && user.rider?.verificationStatus === 'approved') {
                 // Calculate distance
@@ -432,63 +506,93 @@ async function findEligibleRiders(order, excludedRiderIds = []) {
  * Score riders based on multiple factors
  */
 async function scoreRiders(riders, order) {
+    if (!Array.isArray(riders) || riders.length === 0) {
+        return [];
+    }
+
     const scoredRiders = [];
-    const DeliveryAnalytics = require('../models/DeliveryAnalytics');
+    const riderIds = riders.map((rider) => String(rider.id)).filter(Boolean);
+
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+
+    const [declineIdsRaw, recentDeliveryRows, onTimeStatsByRider] = await Promise.all([
+        OrderReservation.find({
+            riderId: { $in: riderIds },
+            status: 'declined',
+            respondedAt: { $gte: fiveMinutesAgo },
+        }).distinct('riderId').catch((error) => {
+            console.error('[Dispatch] Failed to fetch recent rider declines:', error.message);
+            return [];
+        }),
+        prisma.order.findMany({
+            where: {
+                riderId: { in: riderIds },
+                status: 'delivered',
+                deliveredDate: { gte: thirtyMinutesAgo },
+            },
+            select: { riderId: true },
+            distinct: ['riderId'],
+        }).catch((error) => {
+            console.error('[Dispatch] Failed to fetch recent delivered orders for scoring:', error.message);
+            return [];
+        }),
+        buildOnTimeStatsMap(riderIds, 20).catch((error) => {
+            console.error('[Dispatch] Failed to build on-time stats map:', error.message);
+            return new Map();
+        }),
+    ]);
+
+    const recentDeclineIds = new Set((declineIdsRaw || []).map((id) => String(id)));
+    const recentDeliveryIds = new Set(
+        (recentDeliveryRows || []).map((row) => String(row.riderId)).filter(Boolean)
+    );
 
     for (const rider of riders) {
-        let score = 100; // Base score
+        const riderId = String(rider.id);
+        let score = 0;
 
-        // 1. Distance penalty (closer = better)
+        // 1) Pickup ETA is the dominant term to prioritize fast deliveries.
         const distanceToPickup = rider._distanceToPickup || 0;
-        score += distanceToPickup * SCORING.DISTANCE_WEIGHT;
+        const pickupEtaMinutes = estimateTravelMinutesFromDistanceKm(distanceToPickup) || 60;
+        const etaScore = Math.max(-120, 120 - pickupEtaMinutes * 8);
+        score += etaScore;
+        // Keep a small tie-breaker for actual distance.
+        score += distanceToPickup * -1;
 
-        // 2. Rating bonus
+        // 2) Service quality modifiers (smaller than ETA impact).
         const rating = rider.riderRating || 4.0;
         if (rating > 4.0) {
             score += (rating - 4.0) * SCORING.RATING_BONUS;
         }
 
-        // 3. Acceptance rate bonus
-        const acceptanceRate = rider.riderAcceptanceRate || 0.5;
+        const acceptanceRate = normalizeAcceptanceRate(rider.riderAcceptanceRate);
         score += acceptanceRate * SCORING.ACCEPTANCE_RATE_WEIGHT;
 
-        // 4. Recent decline penalty - check if rider declined anything in last 5 min
-        const recentDecline = await OrderReservation.findOne({
-            riderId: rider.id,
-            status: 'declined',
-            respondedAt: { $gte: new Date(Date.now() - 5 * 60 * 1000) }
-        });
+        const recentDecline = recentDeclineIds.has(riderId);
         if (recentDecline) {
             score += SCORING.RECENT_DECLINE_PENALTY;
         }
 
-        // 5. Order type preference match
+        // 3) Preference / activity bonuses.
         const orderType = order.orderType || 'food';
         const preferredTypes = rider.riderPreferredOrderTypes || [];
         if (preferredTypes.includes(orderType)) {
             score += SCORING.ORDER_TYPE_MATCH_BONUS;
         }
 
-        // 6. Recent activity bonus (delivered in last 30 min = active & warmed up)
-        const recentDelivery = await prisma.order.findFirst({
-            where: {
-                riderId: rider.id,
-                status: 'delivered',
-                deliveredDate: { gte: new Date(Date.now() - 30 * 60 * 1000) }
-            }
-        });
+        const recentDelivery = recentDeliveryIds.has(riderId);
         if (recentDelivery) {
             score += SCORING.RECENT_DELIVERY_BONUS;
         }
 
-        // 7. Low earnings today bonus (fairness - give opportunities to those with less)
-        // Use the todayEarnings from RiderStatus MongoDB model
+        // 4) Fairness (small bonus).
         const todayEarnings = rider._status?.metrics?.todayEarnings || 0;
-        if (todayEarnings < 50) { // Less than GHS 50 today
+        if (todayEarnings < 50) {
             score += SCORING.LOW_EARNINGS_TODAY_BONUS;
         }
 
-        // 8. Battery level scoring
+        // 5) Operational risk controls.
         const batteryLevel = rider._status?.batteryLevel ?? 100;
         const isCharging = rider._status?.isCharging || false;
         let batteryPenalty = 0;
@@ -508,10 +612,10 @@ async function scoreRiders(riders, order) {
         }
         score += batteryPenalty;
 
-        // 9. Vehicle type scoring
+        // 6) Vehicle fit.
         const vehicleType = rider._status?.vehicleType || null;
         const deliveryDistance = order.deliveryDistance || distanceToPickup * 2; // Estimate if not provided
-        const orderItemCount = order.orderItems?.length || order.groceryItems?.length || order.pharmacyItems?.length || 1;
+        const orderItemCount = Array.isArray(order?.items) ? order.items.length : 1;
         let vehicleBonus = 0;
         
         if (vehicleType) {
@@ -536,28 +640,24 @@ async function scoreRiders(riders, order) {
         }
         score += vehicleBonus;
 
-        // 10. On-time performance scoring (uses DeliveryAnalytics)
+        // 7) On-time performance from one batched analytics query.
         let onTimeBonus = 0;
         let onTimeRate = 100;
         let onTimeReliable = false;
-        
-        try {
-            const performanceStats = await DeliveryAnalytics.getRiderOnTimeRate(rider.id, 20);
+
+        const performanceStats = onTimeStatsByRider.get(riderId);
+        if (performanceStats) {
             onTimeRate = performanceStats.onTimeRate;
             onTimeReliable = performanceStats.isReliable;
-            
-            // Only apply on-time scoring for riders with enough data
             if (performanceStats.isReliable) {
                 if (onTimeRate >= 90) {
-                    onTimeBonus = SCORING.ON_TIME_BONUS; // Excellent - priority dispatch
+                    onTimeBonus = SCORING.ON_TIME_BONUS;
                 } else if (onTimeRate >= 80) {
-                    onTimeBonus = SCORING.GOOD_ON_TIME_BONUS; // Good performance
+                    onTimeBonus = SCORING.GOOD_ON_TIME_BONUS;
                 } else if (onTimeRate < 70) {
-                    onTimeBonus = SCORING.LOW_ON_TIME_PENALTY; // Consistently late
+                    onTimeBonus = SCORING.LOW_ON_TIME_PENALTY;
                 }
             }
-        } catch (e) {
-            console.error(`Error getting on-time rate for rider ${rider.id}:`, e.message);
         }
         score += onTimeBonus;
 
@@ -576,6 +676,8 @@ async function scoreRiders(riders, order) {
                 batteryLevel,
                 isCharging,
                 batteryPenalty,
+                pickupEtaMinutes,
+                etaScore,
                 vehicleType,
                 vehicleBonus,
                 onTimeRate,
