@@ -5,13 +5,42 @@ import 'package:grab_go_customer/features/order/service/order_service_chopper.da
 import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
 
+class CreateOrderResult {
+  final String orderId;
+  final String? orderNumber;
+  final String? giftDeliveryCode;
+
+  const CreateOrderResult({
+    required this.orderId,
+    this.orderNumber,
+    this.giftDeliveryCode,
+  });
+}
+
+class DeliveryCodeResendResult {
+  final bool success;
+  final String message;
+  final String? giftDeliveryCode;
+  final int? retryAfterSeconds;
+  final String? code;
+
+  const DeliveryCodeResendResult({
+    required this.success,
+    required this.message,
+    this.giftDeliveryCode,
+    this.retryAfterSeconds,
+    this.code,
+  });
+}
+
 class OrderServiceWrapper {
   final OrderServiceChopper _orderService;
 
-  OrderServiceWrapper() : _orderService = chopperClient.getService<OrderServiceChopper>();
+  OrderServiceWrapper()
+    : _orderService = chopperClient.getService<OrderServiceChopper>();
 
   // Create a new order
-  Future<String> createOrder({
+  Future<CreateOrderResult> createOrder({
     required Map<CartItem, int> cartItems,
     required String fulfillmentMode,
     String? deliveryAddress,
@@ -27,13 +56,20 @@ class OrderServiceWrapper {
     required double total,
     bool? useCredits,
     String? notes,
+    bool? isGiftOrder,
+    String? giftRecipientName,
+    String? giftRecipientPhone,
+    String? giftNote,
   }) async {
     try {
       if (cartItems.isEmpty) {
         throw Exception('Cart is empty');
       }
 
-      final restaurantIds = cartItems.keys.map((item) => item.providerId).where((id) => id.isNotEmpty).toSet();
+      final restaurantIds = cartItems.keys
+          .map((item) => item.providerId)
+          .where((id) => id.isNotEmpty)
+          .toSet();
 
       if (restaurantIds.isEmpty) {
         throw Exception('Unable to determine restaurant for order');
@@ -51,7 +87,9 @@ class OrderServiceWrapper {
         final itemType = _normalizeOrderItemType(entry.key.itemType);
 
         if (itemId.isEmpty) {
-          throw Exception('Missing identifier for item ${entry.key.name}. Please refresh your menu data.');
+          throw Exception(
+            'Missing identifier for item ${entry.key.name}. Please refresh your menu data.',
+          );
         }
 
         return OrderItem(
@@ -81,7 +119,15 @@ class OrderServiceWrapper {
         paymentMethod: paymentMethod.toLowerCase().replaceAll(' ', '_'),
         useCredits: useCredits,
         notes: notes,
-        pricing: OrderPricing(subtotal: subtotal, deliveryFee: deliveryFee, total: total),
+        isGiftOrder: isGiftOrder,
+        giftRecipientName: giftRecipientName,
+        giftRecipientPhone: giftRecipientPhone,
+        giftNote: giftNote,
+        pricing: OrderPricing(
+          subtotal: subtotal,
+          deliveryFee: deliveryFee,
+          total: total,
+        ),
       );
 
       // Debug: Print the request JSON to verify itemType is included
@@ -97,7 +143,11 @@ class OrderServiceWrapper {
           if (orderId == null) {
             throw Exception('Order created but no id returned');
           }
-          return orderId.toString();
+          return CreateOrderResult(
+            orderId: orderId.toString(),
+            orderNumber: orderData?['orderNumber']?.toString(),
+            giftDeliveryCode: orderData?['giftDeliveryCode']?.toString(),
+          );
         } else {
           throw Exception(responseData['message'] ?? 'Order creation failed');
         }
@@ -107,13 +157,50 @@ class OrderServiceWrapper {
     } catch (e) {
       // Handle specific food not found errors
       final errorMessage = e.toString();
-      if (errorMessage.contains('Food item') && errorMessage.contains('not found')) {
+      if (errorMessage.contains('Food item') &&
+          errorMessage.contains('not found')) {
         throw Exception(
           'Some items in your cart are no longer available. Please refresh the menu and add items again.',
         );
       }
 
       throw Exception('Failed to create order: $e');
+    }
+  }
+
+  Future<DeliveryCodeResendResult> resendDeliveryCode({
+    required String orderId,
+    required String target,
+  }) async {
+    try {
+      final response = await _orderService.resendDeliveryCode(orderId, {
+        'target': target,
+      });
+      final body = response.body;
+
+      if (response.isSuccessful && body != null && body['success'] == true) {
+        final data = body['data'] as Map<String, dynamic>?;
+        return DeliveryCodeResendResult(
+          success: true,
+          message: body['message']?.toString() ?? 'Delivery code resent',
+          giftDeliveryCode: data?['giftDeliveryCode']?.toString(),
+        );
+      }
+
+      return DeliveryCodeResendResult(
+        success: false,
+        message:
+            body?['message']?.toString() ?? 'Failed to resend delivery code',
+        retryAfterSeconds: body?['retryAfterSeconds'] is num
+            ? (body?['retryAfterSeconds'] as num).toInt()
+            : null,
+        code: body?['code']?.toString(),
+      );
+    } catch (e) {
+      return DeliveryCodeResendResult(
+        success: false,
+        message: 'Failed to resend delivery code: $e',
+      );
     }
   }
 
@@ -140,19 +227,29 @@ class OrderServiceWrapper {
   Future<void> releaseCreditHold({required String orderId}) async {
     try {
       final response = await _orderService.releaseCreditHold(orderId);
-      if (!response.isSuccessful || response.body == null || response.body!['success'] != true) {
-        throw Exception(response.body?['message'] ?? 'Release credit hold failed');
+      if (!response.isSuccessful ||
+          response.body == null ||
+          response.body!['success'] != true) {
+        throw Exception(
+          response.body?['message'] ?? 'Release credit hold failed',
+        );
       }
     } catch (e) {
       throw Exception('Release credit hold failed: $e');
     }
   }
 
-  Future<Map<String, String>> initializePaystackPayment({required String orderId}) async {
+  Future<Map<String, String>> initializePaystackPayment({
+    required String orderId,
+  }) async {
     try {
       final response = await _orderService.initializePaystack(orderId);
-      if (!response.isSuccessful || response.body == null || response.body!['success'] != true) {
-        throw Exception(response.body?['message'] ?? 'Payment initialization failed');
+      if (!response.isSuccessful ||
+          response.body == null ||
+          response.body!['success'] != true) {
+        throw Exception(
+          response.body?['message'] ?? 'Payment initialization failed',
+        );
       }
 
       final data = response.body?['data'] as Map<String, dynamic>? ?? {};
@@ -163,10 +260,7 @@ class OrderServiceWrapper {
         throw Exception('Payment initialization missing authorization URL');
       }
 
-      return {
-        'authorizationUrl': authorizationUrl,
-        'reference': reference,
-      };
+      return {'authorizationUrl': authorizationUrl, 'reference': reference};
     } catch (e) {
       throw Exception('Payment initialization failed: $e');
     }

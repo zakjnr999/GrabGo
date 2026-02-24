@@ -137,7 +137,7 @@ class Cart extends StatelessWidget {
                                         padding: EdgeInsets.all(8.r),
                                         decoration: BoxDecoration(
                                           color: colors.accentOrange.withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(8.r),
+                                          borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                                         ),
                                         child: SvgPicture.asset(
                                           Assets.icons.badgePercent,

@@ -6,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
+import 'package:grab_go_customer/features/order/service/order_service_wrapper.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -21,6 +22,11 @@ class PaymentComplete extends StatefulWidget {
   final double tip;
   final String? orderNumber;
   final String? timestamp;
+  final String? orderId;
+  final bool isGiftOrder;
+  final String? giftRecipientName;
+  final String? giftRecipientPhone;
+  final String? giftDeliveryCode;
 
   const PaymentComplete({
     super.key,
@@ -34,27 +40,42 @@ class PaymentComplete extends StatefulWidget {
     this.tip = 0.0,
     this.orderNumber,
     this.timestamp,
+    this.orderId,
+    this.isGiftOrder = false,
+    this.giftRecipientName,
+    this.giftRecipientPhone,
+    this.giftDeliveryCode,
   });
 
   @override
   State<PaymentComplete> createState() => _PaymentCompleteState();
 }
 
-class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderStateMixin {
+class _PaymentCompleteState extends State<PaymentComplete>
+    with TickerProviderStateMixin {
   late AnimationController _animationController;
   late AnimationController _bounceController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _slideAnimation;
   late Animation<double> _scaleAnimation;
   late Animation<double> _bounceAnimation;
+  bool _isResendingDeliveryCode = false;
+  String? _currentGiftDeliveryCode;
 
   @override
   void initState() {
     super.initState();
+    _currentGiftDeliveryCode = widget.giftDeliveryCode;
 
-    _animationController = AnimationController(duration: const Duration(milliseconds: 1200), vsync: this);
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
 
-    _bounceController = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
+    _bounceController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
@@ -77,10 +98,9 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
       ),
     );
 
-    _bounceAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _bounceController, curve: Curves.elasticOut));
+    _bounceAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _bounceController, curve: Curves.elasticOut),
+    );
 
     _animationController.forward();
 
@@ -129,7 +149,10 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
                               width: 120.w,
                               height: 120.h,
                               margin: EdgeInsets.only(bottom: 32.h),
-                              decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentGreen),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: colors.accentGreen,
+                              ),
                               child: AnimatedBuilder(
                                 animation: _bounceController,
                                 builder: (context, child) {
@@ -141,7 +164,10 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
                                         package: 'grab_go_shared',
                                         height: 60.h,
                                         width: 60.h,
-                                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                        colorFilter: const ColorFilter.mode(
+                                          Colors.white,
+                                          BlendMode.srcIn,
+                                        ),
                                       ),
                                     ),
                                   );
@@ -175,6 +201,10 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
                           SizedBox(height: 48.h),
 
                           _buildPaymentDetailsCard(colors),
+                          if (widget.isGiftOrder) ...[
+                            SizedBox(height: 14.h),
+                            _buildGiftCodeCard(colors),
+                          ],
                         ],
                       ),
                     ),
@@ -193,7 +223,10 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
   Widget _buildPaymentDetailsCard(AppColorsExtension colors) {
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(color: colors.backgroundPrimary, borderRadius: BorderRadius.circular(20.r)),
+      decoration: BoxDecoration(
+        color: colors.backgroundPrimary,
+        borderRadius: BorderRadius.circular(20.r),
+      ),
       child: Column(
         children: [
           Column(
@@ -201,7 +234,11 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
             children: [
               Text(
                 widget.method,
-                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                style: TextStyle(
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w700,
+                  color: colors.textPrimary,
+                ),
               ),
               SizedBox(height: 4.h),
               Container(
@@ -212,7 +249,11 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
                 ),
                 child: Text(
                   "Your order has been placed",
-                  style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.accentGreen),
+                  style: TextStyle(
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w600,
+                    color: colors.accentGreen,
+                  ),
                 ),
               ),
             ],
@@ -220,29 +261,212 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
 
           SizedBox(height: 24.h),
 
-          DottedLine(dashLength: 6, dashGapLength: 4, lineThickness: 1, dashColor: colors.textSecondary.withAlpha(50)),
+          DottedLine(
+            dashLength: 6,
+            dashGapLength: 4,
+            lineThickness: 1,
+            dashColor: colors.textSecondary.withAlpha(50),
+          ),
 
           SizedBox(height: 24.h),
 
-          _buildEnhancedDetailRow("Subtotal", "GHC ${widget.subTotal.toStringAsFixed(2)}", colors, false),
+          _buildEnhancedDetailRow(
+            "Subtotal",
+            "GHC ${widget.subTotal.toStringAsFixed(2)}",
+            colors,
+            false,
+          ),
           SizedBox(height: 8.h),
-          _buildEnhancedDetailRow("Delivery Fee", "GHC ${widget.deliveryFee.toStringAsFixed(2)}", colors, false),
+          _buildEnhancedDetailRow(
+            "Delivery Fee",
+            "GHC ${widget.deliveryFee.toStringAsFixed(2)}",
+            colors,
+            false,
+          ),
           if (widget.serviceFee > 0) ...[
             SizedBox(height: 8.h),
-            _buildEnhancedDetailRow("Service Fee", " GHC ${widget.serviceFee.toStringAsFixed(2)}", colors, false),
+            _buildEnhancedDetailRow(
+              "Service Fee",
+              " GHC ${widget.serviceFee.toStringAsFixed(2)}",
+              colors,
+              false,
+            ),
           ],
           if (widget.rainFee > 0) ...[
             SizedBox(height: 8.h),
-            _buildEnhancedDetailRow("Rain Fee", "GHC ${widget.rainFee.toStringAsFixed(2)}", colors, false),
+            _buildEnhancedDetailRow(
+              "Rain Fee",
+              "GHC ${widget.rainFee.toStringAsFixed(2)}",
+              colors,
+              false,
+            ),
           ],
           if (widget.tip > 0) ...[
             SizedBox(height: 8.h),
-            _buildEnhancedDetailRow("Driver Tip", "GHC ${widget.tip.toStringAsFixed(2)}", colors, false),
+            _buildEnhancedDetailRow(
+              "Driver Tip",
+              "GHC ${widget.tip.toStringAsFixed(2)}",
+              colors,
+              false,
+            ),
           ],
           SizedBox(height: 8.h),
 
-          _buildEnhancedDetailRow("Total Paid", "GHC ${widget.total.toStringAsFixed(2)}", colors, true),
+          _buildEnhancedDetailRow(
+            "Total Paid",
+            "GHC ${widget.total.toStringAsFixed(2)}",
+            colors,
+            true,
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildGiftCodeCard(AppColorsExtension colors) {
+    final hasCode =
+        _currentGiftDeliveryCode != null &&
+        _currentGiftDeliveryCode!.trim().isNotEmpty;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(14.r),
+      decoration: BoxDecoration(
+        color: colors.backgroundSecondary,
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(
+          color: colors.inputBorder.withValues(alpha: 0.45),
+          width: 0.6,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Gift Delivery Code",
+            style: TextStyle(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w800,
+              color: colors.textPrimary,
+            ),
+          ),
+          SizedBox(height: 4.h),
+          Text(
+            hasCode
+                ? "Share this code with the recipient for delivery verification."
+                : "Delivery code was sent via SMS. You can resend it below.",
+            style: TextStyle(
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w500,
+              color: colors.textSecondary,
+            ),
+          ),
+          if (widget.giftRecipientName != null &&
+              widget.giftRecipientName!.trim().isNotEmpty) ...[
+            SizedBox(height: 8.h),
+            Text(
+              "Recipient: ${widget.giftRecipientName}",
+              style: TextStyle(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+                color: colors.textPrimary,
+              ),
+            ),
+          ],
+          SizedBox(height: 12.h),
+          if (hasCode)
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _currentGiftDeliveryCode!,
+                    style: TextStyle(
+                      fontSize: 24.sp,
+                      fontWeight: FontWeight.w900,
+                      color: colors.accentOrange,
+                      letterSpacing: 2.2,
+                    ),
+                  ),
+                ),
+                OutlinedButton(
+                  onPressed: () {
+                    Clipboard.setData(
+                      ClipboardData(text: _currentGiftDeliveryCode!),
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Delivery code copied")),
+                    );
+                  },
+                  child: const Text("Copy"),
+                ),
+              ],
+            ),
+          SizedBox(height: 10.h),
+          Wrap(
+            spacing: 8.w,
+            runSpacing: 8.h,
+            children: [
+              OutlinedButton(
+                onPressed: _isResendingDeliveryCode
+                    ? null
+                    : () => _resendDeliveryCode(target: "customer"),
+                child: Text(
+                  _isResendingDeliveryCode ? "Sending..." : "Resend to me",
+                ),
+              ),
+              if (widget.giftRecipientPhone != null &&
+                  widget.giftRecipientPhone!.trim().isNotEmpty)
+                OutlinedButton(
+                  onPressed: _isResendingDeliveryCode
+                      ? null
+                      : () => _resendDeliveryCode(target: "recipient"),
+                  child: const Text("Resend to recipient"),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _resendDeliveryCode({required String target}) async {
+    if (widget.orderId == null || widget.orderId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Order reference missing; cannot resend code."),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isResendingDeliveryCode = true;
+    });
+
+    final result = await OrderServiceWrapper().resendDeliveryCode(
+      orderId: widget.orderId!,
+      target: target,
+    );
+    if (!mounted) return;
+
+    setState(() {
+      _isResendingDeliveryCode = false;
+      if (result.success &&
+          target == "customer" &&
+          result.giftDeliveryCode != null) {
+        _currentGiftDeliveryCode = result.giftDeliveryCode;
+      }
+    });
+
+    final retryMessage = result.retryAfterSeconds != null
+        ? " Try again in ${result.retryAfterSeconds}s."
+        : "";
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          result.success ? result.message : "${result.message}$retryMessage",
+        ),
+        backgroundColor: result.success ? Colors.green : Colors.red,
       ),
     );
   }
@@ -251,8 +475,13 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
     return Container(
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
-        borderRadius: BorderRadius.only(topLeft: Radius.circular(24.r), topRight: Radius.circular(24.r)),
-        border: Border(top: BorderSide(color: colors.backgroundSecondary, width: 1)),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(24.r),
+          topRight: Radius.circular(24.r),
+        ),
+        border: Border(
+          top: BorderSide(color: colors.backgroundSecondary, width: 1),
+        ),
       ),
       child: Padding(
         padding: EdgeInsets.only(
@@ -272,10 +501,17 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
                   context.go('/homepage');
                   return;
                 }
-                context.go('/notificationPermission', extra: {'nextRoute': '/homepage'});
+                context.go(
+                  '/notificationPermission',
+                  extra: {'nextRoute': '/homepage'},
+                );
               },
               buttonText: "Continue",
-              textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: Colors.white),
+              textStyle: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
               backgroundColor: colors.accentGreen,
               padding: EdgeInsets.symmetric(vertical: 16.h),
               borderRadius: KBorderSize.borderMedium,
@@ -286,7 +522,12 @@ class _PaymentCompleteState extends State<PaymentComplete> with TickerProviderSt
     );
   }
 
-  Widget _buildEnhancedDetailRow(String label, String value, AppColorsExtension colors, bool isTotal) {
+  Widget _buildEnhancedDetailRow(
+    String label,
+    String value,
+    AppColorsExtension colors,
+    bool isTotal,
+  ) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,

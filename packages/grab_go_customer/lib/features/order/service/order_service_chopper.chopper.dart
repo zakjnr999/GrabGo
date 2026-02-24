@@ -29,6 +29,17 @@ final class _$OrderServiceChopper extends OrderServiceChopper {
   }
 
   @override
+  Future<Response<Map<String, dynamic>>> resendDeliveryCode(
+    String orderId,
+    Map<String, dynamic> body,
+  ) {
+    final Uri $url = Uri.parse('/orders/${orderId}/delivery-code/resend');
+    final $body = body;
+    final Request $request = Request('POST', $url, client.baseUrl, body: $body);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
+
+  @override
   Future<Response<Map<String, dynamic>>> confirmPayment(
     String orderId,
     Map<String, dynamic> body,

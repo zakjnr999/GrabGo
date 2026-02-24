@@ -115,7 +115,8 @@ router.get(
         where: {
           riderId: null,
           fulfillmentMode: "delivery",
-          status: { in: ["confirmed", "preparing", "ready"] },
+          paymentStatus: { in: ["paid", "successful"] },
+          status: { in: ["preparing", "ready"] },
           // Exclude orders that have active reservations
           id: { notIn: reservedOrderIds }
         },
@@ -379,18 +380,23 @@ router.post(
       const { reservationId } = req.params;
       const riderId = req.user.id;
 
-      // Accept the reservation
-      const acceptResult = await dispatchService.acceptReservation(reservationId, riderId);
-
-      if (!acceptResult.success) {
-        return res.status(400).json({
+      const reservation = await OrderReservation.findById(reservationId);
+      if (!reservation) {
+        return res.status(404).json({
           success: false,
-          message: acceptResult.error
+          message: "Reservation not found",
         });
       }
 
-      // Now actually assign the order to the rider (same logic as accept-order)
-      const orderId = acceptResult.orderId;
+      if (reservation.riderId !== riderId) {
+        return res.status(403).json({
+          success: false,
+          message: "This reservation does not belong to you",
+        });
+      }
+
+      // Validate order eligibility before flipping reservation state to accepted.
+      const orderId = reservation.orderId;
 
       const order = await prisma.order.findUnique({
         where: { id: orderId }
@@ -410,10 +416,10 @@ router.post(
         });
       }
 
-      if (!["confirmed", "preparing", "ready"].includes(order.status)) {
+      if (!["preparing", "ready"].includes(order.status)) {
         return res.status(400).json({
           success: false,
-          message: "Order is not available for pickup",
+          message: "Order is not available for rider assignment",
         });
       }
 
@@ -431,6 +437,22 @@ router.post(
           code: "SCHEDULED_ORDER_NOT_RELEASED",
           scheduledForAt: order.scheduledForAt ? new Date(order.scheduledForAt).toISOString() : null,
           scheduledReleaseAt: order.scheduledReleaseAt ? new Date(order.scheduledReleaseAt).toISOString() : null,
+        });
+      }
+
+      if (!["paid", "successful"].includes(order.paymentStatus)) {
+        return res.status(409).json({
+          success: false,
+          message: "Order payment is not confirmed yet",
+          code: "ORDER_PAYMENT_NOT_CONFIRMED",
+        });
+      }
+
+      const acceptResult = await dispatchService.acceptReservation(reservationId, riderId);
+      if (!acceptResult.success) {
+        return res.status(409).json({
+          success: false,
+          message: acceptResult.error,
         });
       }
 
@@ -1127,10 +1149,10 @@ router.post(
         });
       }
 
-      if (!["confirmed", "preparing", "ready"].includes(order.status)) {
+      if (!["preparing", "ready"].includes(order.status)) {
         return res.status(400).json({
           success: false,
-          message: "Order is not available for pickup",
+          message: "Order is not available for rider assignment",
         });
       }
 
@@ -1148,6 +1170,14 @@ router.post(
           code: "SCHEDULED_ORDER_NOT_RELEASED",
           scheduledForAt: order.scheduledForAt ? new Date(order.scheduledForAt).toISOString() : null,
           scheduledReleaseAt: order.scheduledReleaseAt ? new Date(order.scheduledReleaseAt).toISOString() : null,
+        });
+      }
+
+      if (!["paid", "successful"].includes(order.paymentStatus)) {
+        return res.status(409).json({
+          success: false,
+          message: "Order payment is not confirmed yet",
+          code: "ORDER_PAYMENT_NOT_CONFIRMED",
         });
       }
 

@@ -50,6 +50,9 @@ const SCORING = {
     LOW_ON_TIME_PENALTY: -20,          // -20 points for riders with <70% on-time rate (consistently late)
 };
 
+const DISPATCHABLE_STATUSES = new Set(['preparing', 'ready']);
+const DISPATCHABLE_PAYMENT_STATUSES = new Set(['paid', 'successful']);
+
 const firstDefined = (...values) =>
     values.find((value) => value !== null && value !== undefined);
 
@@ -115,8 +118,14 @@ async function dispatchOrder(orderId) {
             return { success: false, error: 'Order already assigned to a rider' };
         }
 
+        // Check if order payment is confirmed
+        if (!DISPATCHABLE_PAYMENT_STATUSES.has(order.paymentStatus)) {
+            console.log(`⚠️ [Dispatch] Order payment not dispatchable: ${order.paymentStatus}`);
+            return { success: false, error: `Order payment status "${order.paymentStatus}" is not dispatchable` };
+        }
+
         // Check if order is in dispatchable status
-        if (!['confirmed', 'preparing', 'ready'].includes(order.status)) {
+        if (!DISPATCHABLE_STATUSES.has(order.status)) {
             console.log(`⚠️ [Dispatch] Order status not dispatchable: ${order.status}`);
             return { success: false, error: `Order status "${order.status}" is not dispatchable` };
         }

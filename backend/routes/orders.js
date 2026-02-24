@@ -1259,6 +1259,7 @@ router.post(
           paymentStatus: true,
           status: true,
           fulfillmentMode: true,
+          riderId: true,
           isScheduledOrder: true,
           scheduledForAt: true,
           scheduledReleaseAt: true,
@@ -1285,6 +1286,22 @@ router.post(
       }
 
       if (["paid", "successful"].includes(order.paymentStatus)) {
+        if (
+          order.fulfillmentMode !== "pickup" &&
+          !order.riderId &&
+          ["preparing", "ready"].includes(order.status)
+        ) {
+          dispatchService.dispatchOrder(order.id).then((result) => {
+            if (result.success) {
+              console.log(`✅ Dispatch initiated for already-paid order ${order.orderNumber}`);
+            } else {
+              console.log(`⚠️ Dispatch deferred for already-paid order ${order.orderNumber}: ${result.error}`);
+            }
+          }).catch((err) => {
+            console.error(`❌ Dispatch error for already-paid order ${order.orderNumber}:`, err.message);
+          });
+        }
+
         return res.json({
           success: true,
           message: "Payment already confirmed",
@@ -1431,6 +1448,38 @@ router.post(
             : {}),
         },
       });
+
+      // If vendor already moved the order into a dispatchable state before payment settled,
+      // kick off dispatch now that payment is confirmed.
+      const orderAfterPayment = await prisma.order.findUnique({
+        where: { id: order.id },
+        select: {
+          id: true,
+          orderNumber: true,
+          status: true,
+          paymentStatus: true,
+          fulfillmentMode: true,
+          riderId: true,
+        },
+      });
+
+      if (
+        orderAfterPayment &&
+        orderAfterPayment.fulfillmentMode !== "pickup" &&
+        !orderAfterPayment.riderId &&
+        ["paid", "successful"].includes(orderAfterPayment.paymentStatus) &&
+        ["preparing", "ready"].includes(orderAfterPayment.status)
+      ) {
+        dispatchService.dispatchOrder(order.id).then((result) => {
+          if (result.success) {
+            console.log(`✅ Dispatch initiated after payment for order ${orderAfterPayment.orderNumber}`);
+          } else {
+            console.log(`⚠️ Dispatch deferred after payment for order ${orderAfterPayment.orderNumber}: ${result.error}`);
+          }
+        }).catch((err) => {
+          console.error(`❌ Dispatch error after payment for order ${orderAfterPayment.orderNumber}:`, err.message);
+        });
+      }
 
       await createOrderAudit({
         orderId: order.id,
@@ -2997,9 +3046,10 @@ router.put(
         }
       }
 
-      // Trigger dispatch when order is confirmed and doesn't have a rider yet
+      // Trigger dispatch only when order is paid and in rider-dispatchable states
       if (
-        ['confirmed', 'preparing', 'ready'].includes(status) &&
+        ['preparing', 'ready'].includes(status) &&
+        ['paid', 'successful'].includes(updatedOrder.paymentStatus || order.paymentStatus) &&
         !updatedOrder.riderId &&
         updatedOrder.fulfillmentMode !== 'pickup'
       ) {
@@ -3052,11 +3102,12 @@ router.put(
 router.put(
   "/:orderId/assign-rider",
   protect,
-  authorize("admin", "rider"),
+  authorize("admin"),
   async (req, res) => {
     try {
       const { orderId } = req.params;
-      const { riderId } = req.body;
+      const { riderId: requestedRiderId } = req.body;
+      const riderId = requestedRiderId;
 
       const order = await prisma.order.findUnique({
         where: { id: orderId }
@@ -3076,6 +3127,36 @@ router.put(
           code: "SCHEDULED_ORDER_NOT_RELEASED",
           scheduledForAt: order.scheduledForAt ? new Date(order.scheduledForAt).toISOString() : null,
           scheduledReleaseAt: order.scheduledReleaseAt ? new Date(order.scheduledReleaseAt).toISOString() : null,
+        });
+      }
+
+      if (!riderId) {
+        return res.status(400).json({
+          success: false,
+          message: "riderId is required",
+        });
+      }
+
+      if (order.fulfillmentMode === "pickup") {
+        return res.status(400).json({
+          success: false,
+          message: "Pickup orders are not eligible for rider assignment",
+        });
+      }
+
+      if (!["paid", "successful"].includes(order.paymentStatus)) {
+        return res.status(409).json({
+          success: false,
+          message: "Order payment is not confirmed yet",
+          code: "ORDER_PAYMENT_NOT_CONFIRMED",
+        });
+      }
+
+      if (!["preparing", "ready"].includes(order.status)) {
+        return res.status(409).json({
+          success: false,
+          message: "Order is not ready for rider assignment",
+          code: "ORDER_STATUS_NOT_DISPATCHABLE",
         });
       }
 
@@ -3112,7 +3193,7 @@ router.put(
 
       // Notify customer that a rider has been assigned
       const io = getIO();
-      const statusToNotify = updatedOrder.status === 'picked_up' ? 'picked_up' : 'confirmed';
+      const statusToNotify = updatedOrder.status === 'picked_up' ? 'picked_up' : updatedOrder.status;
       const customMsg = updatedOrder.status === 'picked_up'
         ? `${rider.username} is picking up your order!`
         : `${rider.username} has been assigned to your order.`;

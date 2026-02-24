@@ -16,7 +16,9 @@ CreateOrderRequest _$CreateOrderRequestFromJson(Map<String, dynamic> json) =>
       fulfillmentMode: json['fulfillmentMode'] as String,
       deliveryAddress: json['deliveryAddress'] == null
           ? null
-          : DeliveryAddress.fromJson(json['deliveryAddress'] as Map<String, dynamic>),
+          : DeliveryAddress.fromJson(
+              json['deliveryAddress'] as Map<String, dynamic>,
+            ),
       pickupContactName: json['pickupContactName'] as String?,
       pickupContactPhone: json['pickupContactPhone'] as String?,
       acceptNoShowPolicy: json['acceptNoShowPolicy'] as bool?,
@@ -24,25 +26,39 @@ CreateOrderRequest _$CreateOrderRequestFromJson(Map<String, dynamic> json) =>
       paymentMethod: json['paymentMethod'] as String,
       useCredits: json['useCredits'] as bool?,
       notes: json['notes'] as String?,
+      isGiftOrder: json['isGiftOrder'] as bool?,
+      giftRecipientName: json['giftRecipientName'] as String?,
+      giftRecipientPhone: json['giftRecipientPhone'] as String?,
+      giftNote: json['giftNote'] as String?,
       pricing: OrderPricing.fromJson(json['pricing'] as Map<String, dynamic>),
     );
 
-Map<String, dynamic> _$CreateOrderRequestToJson(CreateOrderRequest instance) =>
-    <String, dynamic>{
-      'orderNumber': instance.orderNumber,
-      'restaurant': instance.restaurant,
-      'items': instance.items.map((e) => e.toJson()).toList(),
-      'fulfillmentMode': instance.fulfillmentMode,
-      'deliveryAddress': instance.deliveryAddress?.toJson(),
-      'pickupContactName': instance.pickupContactName,
-      'pickupContactPhone': instance.pickupContactPhone,
-      'acceptNoShowPolicy': instance.acceptNoShowPolicy,
-      'noShowPolicyVersion': instance.noShowPolicyVersion,
-      'paymentMethod': instance.paymentMethod,
-      'useCredits': instance.useCredits,
-      'notes': instance.notes,
-      'pricing': instance.pricing.toJson(),
-    };
+Map<String, dynamic> _$CreateOrderRequestToJson(
+  CreateOrderRequest instance,
+) => <String, dynamic>{
+  'orderNumber': instance.orderNumber,
+  'restaurant': instance.restaurant,
+  'items': instance.items.map((e) => e.toJson()).toList(),
+  'fulfillmentMode': instance.fulfillmentMode,
+  if (instance.deliveryAddress?.toJson() case final value?)
+    'deliveryAddress': value,
+  if (instance.pickupContactName case final value?) 'pickupContactName': value,
+  if (instance.pickupContactPhone case final value?)
+    'pickupContactPhone': value,
+  if (instance.acceptNoShowPolicy case final value?)
+    'acceptNoShowPolicy': value,
+  if (instance.noShowPolicyVersion case final value?)
+    'noShowPolicyVersion': value,
+  'paymentMethod': instance.paymentMethod,
+  if (instance.useCredits case final value?) 'useCredits': value,
+  if (instance.notes case final value?) 'notes': value,
+  if (instance.isGiftOrder case final value?) 'isGiftOrder': value,
+  if (instance.giftRecipientName case final value?) 'giftRecipientName': value,
+  if (instance.giftRecipientPhone case final value?)
+    'giftRecipientPhone': value,
+  if (instance.giftNote case final value?) 'giftNote': value,
+  'pricing': instance.pricing.toJson(),
+};
 
 DeliveryAddress _$DeliveryAddressFromJson(Map<String, dynamic> json) =>
     DeliveryAddress(

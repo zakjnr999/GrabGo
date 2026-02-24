@@ -141,9 +141,7 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
 
     bool hasChange = false;
     try {
-      hasChange = await locationProvider
-          .hasSignificantLocationChange()
-          .timeout(const Duration(seconds: 5));
+      hasChange = await locationProvider.hasSignificantLocationChange().timeout(const Duration(seconds: 5));
     } catch (_) {
       hasChange = false;
     }
@@ -231,7 +229,6 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
           final decoded = jsonDecode(response.bodyString);
           if (decoded is Map<String, dynamic>) {
             parsedResponse = UserResponse.fromJson(decoded);
-            // ignore: dead_code
           } else if (decoded is Map) {
             parsedResponse = UserResponse.fromJson(Map<String, dynamic>.from(decoded));
           }

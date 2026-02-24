@@ -4,7 +4,6 @@ const cache = require("../utils/cache");
 const { sendOrderNotification } = require("../services/fcm_service");
 const { createNotification } = require("../services/notification_service");
 const { getIO } = require("../utils/socket");
-const dispatchService = require("../services/dispatch_service");
 const featureFlags = require("../config/feature_flags");
 const { createOrderAudit } = require("../services/pickup_order_service");
 
@@ -164,18 +163,7 @@ const processScheduledOrderReleases = async (io = null) => {
         },
       }).catch(() => null);
 
-      dispatchService
-        .dispatchOrder(order.id)
-        .then((result) => {
-          if (result.success) {
-            console.log(`✅ Scheduled order ${order.orderNumber} dispatched to ${result.riderName}`);
-          } else {
-            console.log(`⚠️ Scheduled order ${order.orderNumber} dispatch deferred: ${result.error}`);
-          }
-        })
-        .catch((error) => {
-          console.error(`❌ Scheduled order ${order.orderNumber} dispatch error:`, error.message);
-        });
+      console.log(`📌 Scheduled order ${order.orderNumber} released; awaiting vendor to move to preparing/ready.`);
     } catch (error) {
       console.error(`❌ Scheduled order release failed for order ${order.id}:`, error.message);
     }
