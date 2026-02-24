@@ -1268,6 +1268,8 @@ router.post(
           totalAmount: true,
           orderNumber: true,
           paymentReferenceId: true,
+          isGiftOrder: true,
+          deliveryCodeEncrypted: true,
         },
       });
 
@@ -1499,11 +1501,23 @@ router.post(
       try {
         const amount = Number(order.totalAmount || 0);
         const title = "Payment Confirmed";
-        const message = shouldKeepScheduledPending
+        let giftDeliveryCodeForNotification = null;
+        if (order.isGiftOrder && order.deliveryCodeEncrypted) {
+          try {
+            giftDeliveryCodeForNotification = decryptDeliveryCode(order.deliveryCodeEncrypted);
+          } catch (giftCodeError) {
+            console.error("Gift code decrypt error for payment notification:", giftCodeError.message);
+          }
+        }
+
+        const baseMessage = shouldKeepScheduledPending
           ? `Payment for scheduled order #${order.orderNumber} (GHS ${amount.toFixed(
               2
             )}) has been confirmed. We'll start processing near your selected delivery time.`
           : `Payment for order #${order.orderNumber} (GHS ${amount.toFixed(2)}) has been confirmed.`;
+        const message = giftDeliveryCodeForNotification
+          ? `${baseMessage} Your gift delivery code is ${giftDeliveryCodeForNotification}.`
+          : baseMessage;
         const io = getIO();
 
         await createNotification(
@@ -1516,6 +1530,7 @@ router.post(
             orderNumber: order.orderNumber,
             amount,
             route: `/orders/${order.id}`,
+            ...(giftDeliveryCodeForNotification ? { giftDeliveryCode: giftDeliveryCodeForNotification } : {}),
           },
           io
         );
