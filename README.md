@@ -21,10 +21,14 @@
 
 - Multi-service browsing with category-based navigation
 - Advanced search and filtering capabilities
-- Real-time order tracking with live GPS location updates and ETA
+- Delivery and pickup checkout modes with per-mode validation
+- Scheduled delivery slots with vendor availability checks
+- Real-time order tracking with live GPS location updates, socket streaming, and fallback polling
+- Explicit tracking health states in UI (Live / Degraded / Offline)
 - In-app chat with riders (text, voice messages, images)
 - Voice/Video calling with riders via WebRTC
-- Payments via Paystack (card/online) plus Cash on Delivery
+- Payments via Paystack (card/online) plus policy-based Cash on Delivery (COD)
+- Gift orders with recipient details, optional note, and delivery verification code
 - Restaurant promotional stories (Instagram-style with reactions & comments)
 - Favorites management for restaurants, stores, pharmacies, and items
 - Order history with one-tap reorder
@@ -50,9 +54,11 @@
 - Smart order dispatch with proximity-based assignment
 - Real-time order reservation with countdown timer
 - Turn-by-turn navigation integration
-- Delivery window tracking with ETA management
+- Delivery window tracking with ETA management and geofence events
 - Delivery warnings (5-min soft warning before deadline)
 - Delay reason submission for late deliveries (protects riders from unfair penalties)
+- Resilient location tracking with offline queueing and retry flush on reconnect
+- Gift-order verification flow (delivery code, resend, authorized-photo fallback)
 - Earnings tracking (base fee, distance fee, tips)
 - Performance metrics dashboard (on-time rate, completion rate)
 - In-app chat with customers
@@ -78,8 +84,12 @@
 - Weather-aware rain surge fee via Tomorrow.io (configurable thresholds)
 - Credit hold flow to prevent double-spend while payments are pending
 - Paystack initialize/verify flow with customer payment confirmation screens
+- COD policy engine (eligibility, trust checks, no-show controls, and upfront/remaining split)
+- Gift-order delivery verification (4-digit code, resend guardrails, authorized photo fallback)
+- Pickup lifecycle controls (vendor accept/reject, pickup OTP verification, timeout/expiry jobs)
+- Scheduled-order release job for paid delivery orders
+- Tracking resilience hardening (customer fallback polling + rider offline queue + health state UI)
 - OTP system via Arkesel (SMS + WhatsApp) with Redis rate limiting/lockouts
-- Redis locks added to scheduled notification jobs to prevent duplicate runs
 
 ## Project Structure
 
@@ -97,7 +107,7 @@ GrabGo/
 │   │   ├── Status.js            # Instagram-style stories
 │   │   └── Notification.js      # Push notification logs
 │   ├── routes/                   # RESTful API endpoints
-│   │   ├── auth.js              # Authentication & registration
+│   │   ├── auth.js              # Authentication (/api/users/*)
 │   │   ├── orders.js            # Order management
 │   │   ├── riders.js            # Rider operations & dispatch
 │   │   ├── restaurants.js       # Restaurant management
@@ -105,6 +115,7 @@ GrabGo/
 │   │   ├── pharmacies.js        # Pharmacy operations
 │   │   ├── chats.js             # Real-time messaging
 │   │   ├── payments.js          # Payment processing
+│   │   ├── credits.js           # Wallet credits & transactions
 │   │   ├── statuses.js          # Stories/status updates
 │   │   ├── referrals.js         # Referral program
 │   │   └── tracking_routes.js   # Order tracking
@@ -112,6 +123,11 @@ GrabGo/
 │   │   ├── dispatch_service.js  # Smart rider dispatch algorithm
 │   │   ├── tracking_service.js  # Real-time order tracking & ETA
 │   │   ├── analytic_service.js  # Delivery analytics & metrics
+│   │   ├── cod_service.js       # COD eligibility and policy checks
+│   │   ├── delivery_verification_service.js # Gift delivery verification
+│   │   ├── pickup_order_service.js # Pickup lifecycle operations
+│   │   ├── scheduled_order_service.js # Scheduled delivery validation
+│   │   ├── credit_service.js    # Wallet credits and hold/release
 │   │   ├── fcm_service.js       # Firebase Cloud Messaging
 │   │   ├── socket_service.js    # Real-time Socket.IO communication
 │   │   ├── chat_service.js      # Chat & messaging logic
@@ -123,6 +139,9 @@ GrabGo/
 │   │   ├── delivery_monitor.js  # Delivery window monitoring
 │   │   ├── reservation_expiry.js # Order reservation timeout
 │   │   ├── rider_auto_offline.js # Auto-offline inactive riders
+│   │   ├── pickup_accept_timeout.js # Auto-cancel unaccepted pickup orders
+│   │   ├── pickup_ready_expiry.js # Pickup ready-window expiry handling
+│   │   ├── scheduled_order_release.js # Release scheduled delivery orders
 │   │   ├── cart_abandonment.js  # Cart abandonment nudges
 │   │   ├── meal_nudges.js       # Meal-time notifications
 │   │   └── statusCleanup.js     # Expired stories cleanup
@@ -189,8 +208,8 @@ GrabGo/
 - **File Storage**: Cloudinary CDN
 - **Image Processing**: Sharp, Blurhash
 - **Push Notifications**: Firebase Cloud Messaging (FCM)
-- **Email**: Resend (primary) / SendGrid (legacy)
-- **SMS/WhatsApp**: Arkesel (OTP)
+- **Email**: SMTP (Nodemailer) with SendGrid utilities
+- **SMS/WhatsApp**: Arkesel (OTP + gift delivery code)
 - **Payment Gateway**: Paystack
 - **Maps & Geocoding**: Google Maps API, node-geocoder, geolib
 - **Background Jobs**: node-cron
@@ -209,7 +228,7 @@ GrabGo/
 - **Image Handling**: cached_network_image, flutter_blurhash
 - **Real-time**: Socket.IO Client
 - **Maps & Location**: Geolocator, Geocoding, Google Places
-- **Payments**: MTN Mobile Money
+- **Payments**: Paystack inline checkout + COD flow support
 - **Media**: image_picker, photo_view
 - **Audio**: record, audioplayers (voice messages)
 - **Voice/Video Calls**: flutter_webrtc
@@ -233,11 +252,11 @@ GrabGo/
 
 ### External Services
 
-- **Payment Processing**: MTN Mobile Money (Ghana)
+- **Payment Processing**: Paystack
 - **Push Notifications**: Firebase Cloud Messaging
 - **Media CDN**: Cloudinary
-- **Email Service**: SendGrid / Nodemailer
-- **SMS Service**: Twilio
+- **Email Service**: SMTP (Nodemailer), SendGrid (legacy helpers)
+- **SMS/WhatsApp Service**: Arkesel (primary), Twilio utility support
 - **Maps & Geocoding**: Google Maps API, Google Places API
 - **WebRTC TURN Server**: Metered.ca (voice/video calls)
 
@@ -312,11 +331,14 @@ dart run build_runner build --delete-conflicting-outputs
 - **Service Categories**: Food, Groceries, Pharmacy (expandable)
 - **Smart Search**: Search across restaurants, stores, items, and categories
 - **Advanced Filters**: Price range, ratings, delivery time, dietary preferences
-- **Cart Management**: Per-vendor carts with automatic grouping
-- **Order Tracking**: Real-time GPS tracking with live ETA updates
+- **Cart Management**: Per-vendor carts with fulfillment mode (delivery/pickup)
+- **Scheduling**: ASAP and scheduled delivery windows with vendor checks
+- **Order Tracking**: Real-time GPS tracking with fallback polling and health states
 - **Chat System**: Rich messaging with text, voice notes, images, and emoji reactions
 - **Voice/Video Calls**: WebRTC-powered calls with riders
-- **Payment Options**: Cash on Delivery, MTN Mobile Money
+- **Payment Options**: Paystack + policy-based COD
+- **Gift Orders**: Recipient details, gift note, and delivery code verification flow
+- **Wallet Credits**: Checkout calculation, hold/release, and transaction history
 - **Stories**: Instagram-style promotional content with reactions and comments
 - **Favorites**: Save favorite restaurants, stores, pharmacies, and items
 - **Order History**: View past orders with one-tap reorder
@@ -329,6 +351,7 @@ dart run build_runner build --delete-conflicting-outputs
 
 - **Menu Builder**: Create and organize menu items with categories and modifiers
 - **Order Management**: Accept, prepare, and complete orders with status updates
+- **Pickup Operations**: Accept/reject pickup orders and verify pickup OTP codes
 - **Story Creator**: Upload promotional images and videos (24-hour expiry)
 - **Analytics Dashboard**: Sales trends, popular items, customer insights
 - **Inventory Tracking**: Stock management and availability settings
@@ -341,6 +364,8 @@ dart run build_runner build --delete-conflicting-outputs
 - **Order Reservation**: Accept/decline orders with countdown timer
 - **Delivery Window**: ETA tracking with soft warnings (5 mins before deadline)
 - **Delay Reasons**: Submit delay reasons for late deliveries (traffic, vendor delay, etc.)
+- **Tracking Resilience**: Offline queueing of location updates with retry flush
+- **Gift Verification**: Verify delivery by code, resend code, or upload authorized photo fallback
 - **Navigation**: Integrated maps with turn-by-turn directions
 - **Earnings Breakdown**: Base fee, distance fee, tips, platform commission
 - **Performance Metrics**: On-time rate, completion rate, ratings
@@ -367,9 +392,10 @@ dart run build_runner build --delete-conflicting-outputs
 - **RESTful API**: Stateless API design with JWT authentication
 - **Microservices-Ready**: Modular service layer for easy scaling
 - **Real-time Layer**: Socket.IO for live updates, chat, and order tracking
+- **Tracking Resilience**: Rider-side queued location writes + customer-side fallback polling
 - **WebRTC Signaling**: Voice/video call coordination via Socket.IO
 - **Caching Strategy**: Redis/node-cache for session management and frequent queries
-- **Background Jobs**: node-cron for scheduled tasks (delivery monitoring, cleanup, nudges)
+- **Background Jobs**: node-cron for delivery monitoring, pickup lifecycle timeouts, scheduled release, and nudges
 - **File Upload**: Cloudinary integration with image optimization and blurhash
 - **Security**: Multi-layer security with rate limiting, input validation, and sanitization
 
@@ -448,7 +474,7 @@ dart run build_runner build --delete-conflicting-outputs
 - **Non-Sensitive Data**: SharedPreferences for app preferences
 - **API Communication**: HTTPS only in production
 - **Input Validation**: Server-side validation with express-validator
-- **SQL Injection Prevention**: MongoDB parameterized queries
+- **SQL Injection Prevention**: Prisma query APIs and strict server-side validation
 
 ### Security Best Practices
 
@@ -460,64 +486,56 @@ dart run build_runner build --delete-conflicting-outputs
 
 ## API Endpoints
 
-### Authentication
+### Authentication (`/api/users`)
 
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login
-- `POST /api/auth/verify-email` - Email verification
-- `POST /api/auth/forgot-password` - Password reset request
-- `POST /api/auth/rider/register` - Rider registration with documents
+- `POST /api/users` - Register user
+- `POST /api/users/login` - Login
+- `GET /api/users/me` - Current user profile
+- `POST /api/users/send-phone-otp` - Send OTP for phone verification
+- `POST /api/users/verify-phone-otp` - Verify OTP
 
-### Orders
+### Orders (`/api/orders`)
 
-- `POST /api/orders` - Create new order
-- `GET /api/orders/:id` - Get order details
-- `PUT /api/orders/:id/status` - Update order status
-- `GET /api/orders/user/history` - User order history
+- `POST /api/orders` - Create order (delivery/pickup, scheduled/asap, COD/card, gift)
+- `GET /api/orders` - List orders for current role
+- `GET /api/orders/:orderId` - Order details
+- `GET /api/orders/cod/eligibility` - Check COD eligibility
+- `POST /api/orders/:orderId/paystack/initialize` - Initialize Paystack payment
+- `POST /api/orders/:orderId/confirm-payment` - Confirm payment and unlock lifecycle
+- `POST /api/orders/:orderId/release-credit-hold` - Release held credits when needed
+- `PUT /api/orders/:orderId/status` - Update lifecycle status (with delivery verification payloads)
+- `POST /api/orders/:orderId/pickup/accept` - Vendor accepts pickup order
+- `POST /api/orders/:orderId/pickup/reject` - Vendor rejects pickup order
+- `POST /api/orders/:orderId/pickup/verify-code` - Verify pickup OTP
+- `POST /api/orders/:orderId/delivery-code/resend` - Resend gift delivery code
+- `POST /api/orders/:orderId/delivery-proof/photo` - Upload fallback proof photo
 
-### Riders
+### Tracking (`/api/tracking`)
 
-- `POST /api/riders/go-online` - Go online for deliveries
-- `POST /api/riders/go-offline` - Go offline
-- `POST /api/riders/accept-order/:orderId` - Accept order reservation
-- `POST /api/riders/decline-order/:orderId` - Decline order reservation
-- `POST /api/riders/orders/:orderId/delay-reason` - Submit delay reason
-- `GET /api/riders/earnings` - Get earnings breakdown
-- `GET /api/riders/analytics` - Get performance metrics
+- `POST /api/tracking/initialize` - Initialize tracking for assigned rider/order
+- `POST /api/tracking/location` - Rider location update
+- `PATCH /api/tracking/status` - Tracking status update
+- `GET /api/tracking/:orderId` - Tracking snapshot
 
-### Restaurants
+### Credits (`/api/credits`)
 
-- `GET /api/restaurants` - List restaurants
-- `GET /api/restaurants/:id` - Restaurant details with menu
-- `GET /api/restaurants/:id/foods` - Restaurant menu items
+- `GET /api/credits/balance` - Current wallet credit balance
+- `GET /api/credits/transactions` - Credit ledger
+- `POST /api/credits/calculate` - Checkout credit calculation preview
 
-### Groceries & Pharmacy
+### Referrals (`/api/referral`)
 
-- `GET /api/groceries/stores` - List grocery stores
-- `GET /api/pharmacies/stores` - List pharmacies
-- `GET /api/grabmart/items` - GrabMart items
+- `GET /api/referral/my-code` - Get referral code and stats
+- `GET /api/referral/my-referrals` - List referral history
+- `POST /api/referral/validate` - Validate referral code
+- `POST /api/referral/apply` - Apply referral code
 
-### Chat & Communication
+### Other Core Endpoints
 
-- `GET /api/chats/:orderId` - Get chat for order
-- `POST /api/chats/:chatId/messages` - Send message
-- `POST /api/calls/initiate` - Initiate voice/video call
-
-### Payments
-
-- `POST /api/payments/mtn-momo/initiate` - Initiate MTN MoMo payment
-- `POST /api/payments/mtn-momo/callback` - Payment callback webhook
-
-### Stories/Statuses
-
-- `GET /api/statuses` - Get active stories
-- `POST /api/statuses` - Create new story
-- `POST /api/statuses/:id/reactions` - React to story
-
-### Referrals
-
-- `GET /api/referrals/code` - Get user's referral code
-- `POST /api/referrals/apply` - Apply referral code
+- `GET /api/statuses` - Active promotional stories
+- `GET /api/chats/:orderId` - Order chat thread
+- `GET /api/calls/:callId` - Retrieve WebRTC call details for reconnect flows
+- `GET /api/payments/my-payments` - Payment history
 
 ## Known Issues & Roadmap
 
@@ -536,7 +554,6 @@ dart run build_runner build --delete-conflicting-outputs
 - [ ] Subscription-based delivery passes
 - [ ] AI-powered restaurant recommendations
 - [ ] In-app wallet and top-up
-- [ ] Scheduled deliveries
 - [ ] Group ordering
 
 ## License

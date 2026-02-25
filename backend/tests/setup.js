@@ -56,7 +56,15 @@ if (process.env.SUPPRESS_LOGS === 'true') {
 
 // Clean up after all tests
 afterAll(async () => {
-    // Close Prisma client
-    const prisma = require('../config/prisma');
-    await prisma.$disconnect();
+    // Close Prisma client when available.
+    // Some unit tests do not require Prisma and should not fail teardown if
+    // the client has not been generated yet.
+    try {
+        const prisma = require('../config/prisma');
+        if (prisma && typeof prisma.$disconnect === 'function') {
+            await prisma.$disconnect();
+        }
+    } catch (_) {
+        // Ignore missing Prisma client in teardown for non-Prisma unit tests.
+    }
 });

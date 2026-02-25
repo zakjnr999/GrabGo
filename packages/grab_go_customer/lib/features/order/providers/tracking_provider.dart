@@ -10,6 +10,8 @@ import '../service/tracking_api_service.dart';
 import '../service/tracking_socket_service.dart';
 import 'base_tracking_provider.dart';
 
+enum TrackingConnectionHealth { live, degraded, offline }
+
 /// Provider for managing tracking state and real-time updates
 class TrackingProvider extends BaseTrackingProvider {
   final TrackingApiService _apiService;
@@ -36,6 +38,10 @@ class TrackingProvider extends BaseTrackingProvider {
   static const int _animationFrameMs = 16; // ~60fps
   static const int _animationSteps = _animationDurationMs ~/ _animationFrameMs;
   static const int _maxLocationHistoryPoints = 300;
+  static const Duration _fallbackPollingInterval = Duration(seconds: 8);
+  static const Duration _fallbackPollingMaxInterval = Duration(seconds: 45);
+  static const Duration _liveFreshnessWindow = Duration(seconds: 25);
+  static const Duration _degradedFreshnessWindow = Duration(seconds: 60);
 
   // Subscriptions
   StreamSubscription? _locationSubscription;
@@ -43,9 +49,19 @@ class TrackingProvider extends BaseTrackingProvider {
   StreamSubscription? _connectionSubscription;
   Timer? _animationTimer;
   Timer? _waitingForRiderTimer;
+  Timer? _fallbackPollingTimer;
+  Timer? _connectionHealthTimer;
   LatLng? _lastKnownPosition;
   double _currentBearing = 0;
   final Map<String, BitmapDescriptor> _markerIconCache = {};
+  TrackingConnectionHealth _connectionHealth =
+      TrackingConnectionHealth.degraded;
+  DateTime? _lastRealtimeUpdateAt;
+  DateTime? _lastSuccessfulApiSyncAt;
+  int _consecutiveFallbackFailures = 0;
+  bool _isFallbackRequestInFlight = false;
+  int _fallbackPollingAttempt = 0;
+  final Random _fallbackJitterRandom = Random();
 
   // Getters
   @override
@@ -63,6 +79,8 @@ class TrackingProvider extends BaseTrackingProvider {
   Set<Circle> get circles => _circles;
   @override
   bool get isSocketConnected => _socketService.isConnected;
+  TrackingConnectionHealth get connectionHealth => _connectionHealth;
+  bool get isFallbackPollingActive => _fallbackPollingTimer != null;
 
   TrackingProvider({
     required TrackingApiService apiService,
@@ -94,14 +112,22 @@ class TrackingProvider extends BaseTrackingProvider {
       print(isConnected ? '✅ Socket connected' : '❌ Socket disconnected');
       if (isConnected && _activeOrderId != null) {
         _socketService.joinOrderRoom(_activeOrderId!);
+        _stopFallbackPolling();
+      } else {
+        _startFallbackPolling();
       }
+      _syncConnectionHealth();
+      notifyListeners();
     });
+
+    _startConnectionHealthMonitor();
   }
 
   /// Initialize tracking for an order
   @override
   Future<void> initializeTracking(String orderId) async {
     _activeOrderId = orderId;
+    _stopFallbackPolling();
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -110,6 +136,8 @@ class TrackingProvider extends BaseTrackingProvider {
       // 1. Get initial tracking data from API
       print('📡 Fetching tracking data for order: $orderId');
       _trackingData = await _apiService.getTrackingInfo(orderId);
+      _lastSuccessfulApiSyncAt = DateTime.now();
+      _consecutiveFallbackFailures = 0;
       print(
         '✅ Got tracking data: status=${_trackingData?.status}, rider=${_trackingData?.rider?.name}',
       );
@@ -125,6 +153,7 @@ class TrackingProvider extends BaseTrackingProvider {
 
       // 4. Setup map elements
       await _setupMapElements();
+      _syncConnectionHealth();
 
       _isLoading = false;
       _error = null;
@@ -144,6 +173,7 @@ class TrackingProvider extends BaseTrackingProvider {
         _stopWaitingForRiderPolling();
       }
       _isLoading = false;
+      _syncConnectionHealth();
       notifyListeners();
       print('❌ Failed to initialize tracking: $e');
     } catch (e) {
@@ -151,6 +181,7 @@ class TrackingProvider extends BaseTrackingProvider {
       _isWaitingForRider = false;
       _stopWaitingForRiderPolling();
       _isLoading = false;
+      _syncConnectionHealth();
       notifyListeners();
       print('❌ Failed to initialize tracking: $e');
     }
@@ -169,6 +200,8 @@ class TrackingProvider extends BaseTrackingProvider {
       try {
         final data = await _apiService.getTrackingInfo(orderId);
         _trackingData = data;
+        _lastSuccessfulApiSyncAt = DateTime.now();
+        _consecutiveFallbackFailures = 0;
         _isWaitingForRider = false;
         _error = null;
         _isLoading = false;
@@ -179,6 +212,7 @@ class TrackingProvider extends BaseTrackingProvider {
         }
         _waitForSocketAndJoinRoom(orderId);
         await _setupMapElements();
+        _syncConnectionHealth();
         notifyListeners();
       } on TrackingException catch (e) {
         // Keep polling while tracking is not available yet.
@@ -197,12 +231,136 @@ class TrackingProvider extends BaseTrackingProvider {
     _waitingForRiderTimer = null;
   }
 
+  void _startFallbackPolling() {
+    if (_activeOrderId == null || _fallbackPollingTimer != null) {
+      return;
+    }
+    _fallbackPollingAttempt = 0;
+    _scheduleNextFallbackPoll(const Duration(seconds: 1));
+  }
+
+  void _scheduleNextFallbackPoll(Duration delay) {
+    if (_activeOrderId == null || _socketService.isConnected) {
+      _stopFallbackPolling();
+      return;
+    }
+    _fallbackPollingTimer?.cancel();
+    _fallbackPollingTimer = Timer(delay, () {
+      _runFallbackPoll();
+    });
+  }
+
+  Future<void> _runFallbackPoll() async {
+    if (_activeOrderId == null || _socketService.isConnected) {
+      _stopFallbackPolling();
+      _syncConnectionHealth();
+      notifyListeners();
+      return;
+    }
+
+    if (_isFallbackRequestInFlight) {
+      _scheduleNextFallbackPoll(_nextFallbackPollDelay());
+      return;
+    }
+
+    _isFallbackRequestInFlight = true;
+    try {
+      final snapshot = await _apiService.getTrackingInfo(_activeOrderId!);
+      _trackingData = snapshot;
+      _lastSuccessfulApiSyncAt = DateTime.now();
+      _consecutiveFallbackFailures = 0;
+      _fallbackPollingAttempt = 0;
+      _error = null;
+      await _setupMapElements(animateCamera: false);
+    } on TrackingException catch (e) {
+      if (e.statusCode != 404) {
+        _consecutiveFallbackFailures += 1;
+        _error = e.message;
+      }
+      _fallbackPollingAttempt = min(_fallbackPollingAttempt + 1, 4);
+    } catch (_) {
+      _consecutiveFallbackFailures += 1;
+      _fallbackPollingAttempt = min(_fallbackPollingAttempt + 1, 4);
+    } finally {
+      _isFallbackRequestInFlight = false;
+      _syncConnectionHealth();
+      notifyListeners();
+
+      if (_activeOrderId != null && !_socketService.isConnected) {
+        _scheduleNextFallbackPoll(_nextFallbackPollDelay());
+      }
+    }
+  }
+
+  Duration _nextFallbackPollDelay() {
+    final backoffMultiplier = 1 << _fallbackPollingAttempt;
+    final baseDelayMs =
+        _fallbackPollingInterval.inMilliseconds * backoffMultiplier;
+    final cappedDelayMs = min(
+      baseDelayMs,
+      _fallbackPollingMaxInterval.inMilliseconds,
+    );
+
+    // Add 15% jitter to avoid synchronized retries under outages.
+    final jitterFactor = 0.85 + (_fallbackJitterRandom.nextDouble() * 0.3);
+    final delayMs = (cappedDelayMs * jitterFactor).round();
+    return Duration(milliseconds: max(delayMs, 1000));
+  }
+
+  void _stopFallbackPolling() {
+    _fallbackPollingTimer?.cancel();
+    _fallbackPollingTimer = null;
+    _isFallbackRequestInFlight = false;
+    _fallbackPollingAttempt = 0;
+  }
+
+  void _startConnectionHealthMonitor() {
+    _connectionHealthTimer?.cancel();
+    _connectionHealthTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      _syncConnectionHealth();
+    });
+  }
+
+  void _stopConnectionHealthMonitor() {
+    _connectionHealthTimer?.cancel();
+    _connectionHealthTimer = null;
+  }
+
+  void _syncConnectionHealth() {
+    final previous = _connectionHealth;
+    final now = DateTime.now();
+    final hasFreshRealtime =
+        _lastRealtimeUpdateAt != null &&
+        now.difference(_lastRealtimeUpdateAt!) <= _liveFreshnessWindow;
+    final hasRecentApiSync =
+        _lastSuccessfulApiSyncAt != null &&
+        now.difference(_lastSuccessfulApiSyncAt!) <= _degradedFreshnessWindow;
+
+    if (_socketService.isConnected && hasFreshRealtime) {
+      _connectionHealth = TrackingConnectionHealth.live;
+    } else if ((_socketService.isConnected || isFallbackPollingActive) &&
+        hasRecentApiSync &&
+        _consecutiveFallbackFailures < 3) {
+      _connectionHealth = TrackingConnectionHealth.degraded;
+    } else if (hasRecentApiSync && _consecutiveFallbackFailures < 5) {
+      _connectionHealth = TrackingConnectionHealth.degraded;
+    } else {
+      _connectionHealth = TrackingConnectionHealth.offline;
+    }
+
+    if (previous != _connectionHealth) {
+      notifyListeners();
+    }
+  }
+
   /// Wait for socket connection and then join the order room
   void _waitForSocketAndJoinRoom(String orderId) {
     // If already connected, join immediately
     if (_socketService.isConnected) {
       print('🚪 Socket already connected, joining order room: $orderId');
       _socketService.joinOrderRoom(orderId);
+      _stopFallbackPolling();
+      _syncConnectionHealth();
       return;
     }
 
@@ -224,7 +382,7 @@ class TrackingProvider extends BaseTrackingProvider {
   }
 
   /// Setup markers and polylines on the map
-  Future<void> _setupMapElements() async {
+  Future<void> _setupMapElements({bool animateCamera = true}) async {
     if (_trackingData == null) return;
 
     final markers = <Marker>{};
@@ -311,7 +469,9 @@ class TrackingProvider extends BaseTrackingProvider {
     }
 
     // Animate camera to show all markers
-    _animateCameraToFitMarkers();
+    if (animateCamera) {
+      _animateCameraToFitMarkers();
+    }
 
     notifyListeners();
   }
@@ -401,6 +561,8 @@ class TrackingProvider extends BaseTrackingProvider {
     if (_trackingData == null || event.orderId != _trackingData!.orderId) {
       return;
     }
+    _lastRealtimeUpdateAt = DateTime.now();
+    _consecutiveFallbackFailures = 0;
 
     print(
       '📍 Updating rider location: ${event.location.latitude}, ${event.location.longitude}',
@@ -467,6 +629,7 @@ class TrackingProvider extends BaseTrackingProvider {
 
     // Only animate camera if not already following (to avoid jerky movement)
     // Camera will follow naturally during marker animation
+    _syncConnectionHealth();
   }
 
   /// Smoothly animate marker from one position to another with easing
@@ -587,6 +750,8 @@ class TrackingProvider extends BaseTrackingProvider {
     if (_trackingData == null || event.orderId != _trackingData!.orderId) {
       return;
     }
+    _lastRealtimeUpdateAt = DateTime.now();
+    _consecutiveFallbackFailures = 0;
 
     print('📊 Status updated to: ${event.status}');
 
@@ -603,6 +768,7 @@ class TrackingProvider extends BaseTrackingProvider {
       locationHistory: _trackingData!.locationHistory,
     );
 
+    _syncConnectionHealth();
     notifyListeners();
   }
 
@@ -687,10 +853,15 @@ class TrackingProvider extends BaseTrackingProvider {
       _socketService.leaveOrderRoom(orderId);
     }
     _socketService.disconnect();
+    _stopFallbackPolling();
     _activeOrderId = null;
     _trackingData = null;
     _isWaitingForRider = false;
     _stopWaitingForRiderPolling();
+    _lastRealtimeUpdateAt = null;
+    _lastSuccessfulApiSyncAt = null;
+    _consecutiveFallbackFailures = 0;
+    _connectionHealth = TrackingConnectionHealth.offline;
     _markers = {};
     _polylines = {};
     _markerIconCache.clear();
@@ -702,6 +873,8 @@ class TrackingProvider extends BaseTrackingProvider {
   void dispose() {
     _animationTimer?.cancel();
     _stopWaitingForRiderPolling();
+    _stopFallbackPolling();
+    _stopConnectionHealthMonitor();
     _locationSubscription?.cancel();
     _statusSubscription?.cancel();
     _connectionSubscription?.cancel();

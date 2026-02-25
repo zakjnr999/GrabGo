@@ -7,6 +7,7 @@
     "node": ">=20.0.0"
   },
   "scripts": {
+    "pretest": "prisma generate",
     "start": "node server.js",
     "dev": "nodemon server.js",
     "init-db": "node scripts/init-db.js",
@@ -22,6 +23,7 @@
     "test:status": "jest tests/status.test.js",
     "test:cache": "jest tests/cache.test.js",
     "test:routes": "jest tests/status.routes.test.js",
+    "test:tracking": "jest tests/tracking.routes.test.js",
     "docs:build": "npx @redocly/cli build-docs docs/openapi.yaml -o docs/index.html",
     "docs:lint": "npx @redocly/cli lint docs/openapi.yaml",
     "docs:serve": "npx serve docs -l 8080",

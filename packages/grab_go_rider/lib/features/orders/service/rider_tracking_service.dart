@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Data transfer object for tracking initialization
 class TrackingInitDto {
@@ -45,6 +46,62 @@ class LocationDto {
     latitude: (json['latitude'] as num).toDouble(),
     longitude: (json['longitude'] as num).toDouble(),
   );
+}
+
+class _QueuedLocationUpdate {
+  final String orderId;
+  final double latitude;
+  final double longitude;
+  final double speed;
+  final double accuracy;
+  final DateTime queuedAt;
+
+  const _QueuedLocationUpdate({
+    required this.orderId,
+    required this.latitude,
+    required this.longitude,
+    required this.speed,
+    required this.accuracy,
+    required this.queuedAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'orderId': orderId,
+    'latitude': latitude,
+    'longitude': longitude,
+    'speed': speed,
+    'accuracy': accuracy,
+    'queuedAt': queuedAt.toIso8601String(),
+  };
+
+  Map<String, dynamic> toRequestJson() => {
+    'orderId': orderId,
+    'latitude': latitude,
+    'longitude': longitude,
+    'speed': speed,
+    'accuracy': accuracy,
+  };
+
+  factory _QueuedLocationUpdate.fromJson(Map<String, dynamic> json) {
+    final orderId = json['orderId']?.toString() ?? '';
+    final latitude = (json['latitude'] as num?)?.toDouble();
+    final longitude = (json['longitude'] as num?)?.toDouble();
+
+    if (orderId.isEmpty || latitude == null || longitude == null) {
+      throw const FormatException('Invalid queued location update');
+    }
+
+    return _QueuedLocationUpdate(
+      orderId: orderId,
+      latitude: latitude,
+      longitude: longitude,
+      speed: (json['speed'] as num?)?.toDouble() ?? 0,
+      accuracy: (json['accuracy'] as num?)?.toDouble() ?? 0,
+      queuedAt:
+          DateTime.tryParse(json['queuedAt']?.toString() ?? '') ??
+          DateTime.now(),
+    );
+  }
 }
 
 /// Response from location update API
@@ -282,8 +339,42 @@ class RiderTrackingService {
 
   final http.Client _client;
   final String? _authToken;
+  final List<_QueuedLocationUpdate> _pendingLocationUpdates = [];
+  static const int _maxPendingLocationUpdates = 100;
+  static const Duration _queuedLocationTtl = Duration(minutes: 15);
+  static const String _pendingLocationQueueStorageKey =
+      'rider_tracking_pending_location_updates_v1';
+  bool _isFlushingLocationQueue = false;
+  bool _isQueueHydrated = false;
+  Future<void>? _queueHydrationFuture;
+  DateTime? _lastLocationSendSuccessAt;
+  DateTime? _lastLocationSendFailureAt;
+  int _consecutiveLocationSendFailures = 0;
 
   String get _baseUrl => AppConfig.apiBaseUrl;
+  int get pendingLocationCount => _pendingLocationUpdates.length;
+  bool get hasPendingLocationUpdates => _pendingLocationUpdates.isNotEmpty;
+  bool get isFlushingLocationQueue => _isFlushingLocationQueue;
+  int get consecutiveLocationSendFailures => _consecutiveLocationSendFailures;
+  DateTime? get lastLocationSendSuccessAt => _lastLocationSendSuccessAt;
+  DateTime? get lastLocationSendFailureAt => _lastLocationSendFailureAt;
+
+  Future<void> hydratePendingLocationQueue() async {
+    await _ensureQueueHydrated();
+  }
+
+  Future<void> clearPendingLocationUpdatesForOrder(String orderId) async {
+    if (orderId.isEmpty) {
+      return;
+    }
+
+    await _ensureQueueHydrated();
+    final removedCount = _pendingLocationUpdates.length;
+    _pendingLocationUpdates.removeWhere((item) => item.orderId == orderId);
+    if (_pendingLocationUpdates.length != removedCount) {
+      await _persistPendingLocationQueue();
+    }
+  }
 
   Future<Map<String, String>> _buildHeaders() async {
     final headers = <String, String>{'Content-Type': 'application/json'};
@@ -343,18 +434,41 @@ class RiderTrackingService {
     double speed = 0,
     double accuracy = 0,
   }) async {
+    await _ensureQueueHydrated();
+    await _pruneExpiredQueuedUpdates();
+    await _removeQueuedUpdatesForOtherOrders(orderId);
+
+    final update = _QueuedLocationUpdate(
+      orderId: orderId,
+      latitude: latitude,
+      longitude: longitude,
+      speed: speed,
+      accuracy: accuracy,
+      queuedAt: DateTime.now(),
+    );
+
+    final response = await _sendLocationUpdate(update);
+    if (response != null) {
+      _markLocationSendSuccess();
+      await _removeQueuedUpdatesForOrder(orderId);
+      await _flushPendingLocationUpdates();
+      return response;
+    }
+
+    _markLocationSendFailure();
+    await _enqueueLocationUpdate(update);
+    return null;
+  }
+
+  Future<LocationUpdateResponse?> _sendLocationUpdate(
+    _QueuedLocationUpdate update,
+  ) async {
     final uri = Uri.parse('$_baseUrl/tracking/location');
     try {
       final response = await _client.post(
         uri,
         headers: await _buildHeaders(),
-        body: jsonEncode({
-          'orderId': orderId,
-          'latitude': latitude,
-          'longitude': longitude,
-          'speed': speed,
-          'accuracy': accuracy,
-        }),
+        body: jsonEncode(update.toRequestJson()),
       );
 
       if (response.statusCode == 200) {
@@ -369,6 +483,174 @@ class RiderTrackingService {
     } catch (e) {
       debugPrint('❌ Error updating location: $e');
       return null;
+    }
+  }
+
+  Future<void> _enqueueLocationUpdate(_QueuedLocationUpdate update) async {
+    final existingIndex = _pendingLocationUpdates.indexWhere(
+      (item) => item.orderId == update.orderId,
+    );
+    if (existingIndex != -1) {
+      _pendingLocationUpdates[existingIndex] = update;
+      debugPrint(
+        '🗂️ Replaced queued location for order ${update.orderId} '
+        '(queue=$pendingLocationCount)',
+      );
+      await _persistPendingLocationQueue();
+      return;
+    }
+
+    if (_pendingLocationUpdates.length >= _maxPendingLocationUpdates) {
+      _pendingLocationUpdates.removeAt(0);
+    }
+    _pendingLocationUpdates.add(update);
+    debugPrint(
+      '🗂️ Queued unsent location for order ${update.orderId} '
+      '(queue=$pendingLocationCount)',
+    );
+    await _persistPendingLocationQueue();
+  }
+
+  Future<void> _removeQueuedUpdatesForOrder(String orderId) async {
+    final previousLength = _pendingLocationUpdates.length;
+    _pendingLocationUpdates.removeWhere((item) => item.orderId == orderId);
+    if (_pendingLocationUpdates.length != previousLength) {
+      await _persistPendingLocationQueue();
+    }
+  }
+
+  Future<void> _removeQueuedUpdatesForOtherOrders(String activeOrderId) async {
+    final previousLength = _pendingLocationUpdates.length;
+    _pendingLocationUpdates.removeWhere(
+      (item) => item.orderId != activeOrderId,
+    );
+    if (_pendingLocationUpdates.length != previousLength) {
+      await _persistPendingLocationQueue();
+    }
+  }
+
+  void _markLocationSendSuccess() {
+    _consecutiveLocationSendFailures = 0;
+    _lastLocationSendSuccessAt = DateTime.now();
+  }
+
+  void _markLocationSendFailure() {
+    _consecutiveLocationSendFailures += 1;
+    _lastLocationSendFailureAt = DateTime.now();
+  }
+
+  Future<void> _flushPendingLocationUpdates() async {
+    if (_isFlushingLocationQueue || _pendingLocationUpdates.isEmpty) {
+      return;
+    }
+
+    _isFlushingLocationQueue = true;
+    var queueChanged = false;
+    try {
+      for (final pending in List<_QueuedLocationUpdate>.from(
+        _pendingLocationUpdates,
+      )) {
+        final response = await _sendLocationUpdate(pending);
+        if (response == null) {
+          _markLocationSendFailure();
+          break;
+        }
+
+        _markLocationSendSuccess();
+        _pendingLocationUpdates.removeWhere(
+          (item) =>
+              item.orderId == pending.orderId &&
+              item.queuedAt == pending.queuedAt,
+        );
+        queueChanged = true;
+      }
+    } finally {
+      if (queueChanged) {
+        await _persistPendingLocationQueue();
+      }
+      _isFlushingLocationQueue = false;
+    }
+  }
+
+  Future<void> _ensureQueueHydrated() async {
+    if (_isQueueHydrated) {
+      return;
+    }
+
+    if (_queueHydrationFuture != null) {
+      return _queueHydrationFuture!;
+    }
+
+    _queueHydrationFuture = _hydratePendingLocationQueue();
+    await _queueHydrationFuture;
+    _queueHydrationFuture = null;
+  }
+
+  Future<void> _hydratePendingLocationQueue() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final rawValue = prefs.getString(_pendingLocationQueueStorageKey);
+      if (rawValue == null || rawValue.isEmpty) {
+        _isQueueHydrated = true;
+        return;
+      }
+
+      final decoded = jsonDecode(rawValue);
+      if (decoded is! List) {
+        _isQueueHydrated = true;
+        return;
+      }
+
+      final hydrated = <_QueuedLocationUpdate>[];
+      for (final item in decoded) {
+        if (item is! Map) {
+          continue;
+        }
+        try {
+          hydrated.add(
+            _QueuedLocationUpdate.fromJson(Map<String, dynamic>.from(item)),
+          );
+        } catch (_) {
+          // Ignore malformed queue entries.
+        }
+      }
+
+      hydrated.sort((a, b) => a.queuedAt.compareTo(b.queuedAt));
+      _pendingLocationUpdates
+        ..clear()
+        ..addAll(hydrated.take(_maxPendingLocationUpdates));
+
+      await _pruneExpiredQueuedUpdates();
+      _isQueueHydrated = true;
+    } catch (e) {
+      debugPrint('⚠️ Failed to hydrate pending location queue: $e');
+      _isQueueHydrated = true;
+    }
+  }
+
+  Future<void> _persistPendingLocationQueue() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final payload = _pendingLocationUpdates
+          .map((item) => item.toJson())
+          .toList();
+      await prefs.setString(
+        _pendingLocationQueueStorageKey,
+        jsonEncode(payload),
+      );
+    } catch (e) {
+      debugPrint('⚠️ Failed to persist pending location queue: $e');
+    }
+  }
+
+  Future<void> _pruneExpiredQueuedUpdates() async {
+    final cutoff = DateTime.now().subtract(_queuedLocationTtl);
+    final previousLength = _pendingLocationUpdates.length;
+    _pendingLocationUpdates.removeWhere(
+      (item) => item.queuedAt.isBefore(cutoff),
+    );
+    if (_pendingLocationUpdates.length != previousLength) {
+      await _persistPendingLocationQueue();
     }
   }
 

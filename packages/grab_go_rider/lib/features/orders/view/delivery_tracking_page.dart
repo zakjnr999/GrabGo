@@ -350,6 +350,14 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                         trackingProvider.distanceKm ??
                         (_currentPhase == "pickup" ? 4.5 : 5.2);
                     final isTracking = trackingProvider.isTracking;
+                    final connectionHealth = trackingProvider.connectionHealth;
+                    final pendingUpdates =
+                        trackingProvider.pendingLocationUpdates;
+                    final shouldShowHealthBanner =
+                        _isInitializing ||
+                        _initError != null ||
+                        trackingProvider.hasActiveSession ||
+                        isTracking;
 
                     return Container(
                       height: size.height * 0.50,
@@ -410,17 +418,25 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                                       message: _initError!,
                                       color: colors.accentOrange,
                                     )
-                                  else if (isTracking)
+                                  else if (trackingProvider.hasActiveSession ||
+                                      isTracking)
                                     _buildTrackingStatusBanner(
                                       colors: colors,
-                                      icon: Icons.gps_fixed,
-                                      message: 'Live tracking active',
-                                      color: colors.accentGreen,
+                                      icon: _bannerIconForConnectionHealth(
+                                        connectionHealth,
+                                      ),
+                                      message:
+                                          _bannerMessageForConnectionHealth(
+                                            connectionHealth,
+                                            pendingUpdates: pendingUpdates,
+                                          ),
+                                      color: _bannerColorForConnectionHealth(
+                                        colors,
+                                        connectionHealth,
+                                      ),
                                     ),
 
-                                  if (_isInitializing ||
-                                      _initError != null ||
-                                      isTracking)
+                                  if (shouldShowHealthBanner)
                                     SizedBox(height: 12.h),
 
                                   Row(
@@ -574,6 +590,53 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         ),
       ),
     );
+  }
+
+  Color _bannerColorForConnectionHealth(
+    AppColorsExtension colors,
+    RiderTrackingConnectionHealth health,
+  ) {
+    switch (health) {
+      case RiderTrackingConnectionHealth.live:
+        return colors.accentGreen;
+      case RiderTrackingConnectionHealth.degraded:
+        return colors.accentOrange;
+      case RiderTrackingConnectionHealth.offline:
+        return colors.error;
+    }
+  }
+
+  IconData _bannerIconForConnectionHealth(
+    RiderTrackingConnectionHealth health,
+  ) {
+    switch (health) {
+      case RiderTrackingConnectionHealth.live:
+        return Icons.gps_fixed;
+      case RiderTrackingConnectionHealth.degraded:
+        return Icons.sync_problem;
+      case RiderTrackingConnectionHealth.offline:
+        return Icons.cloud_off;
+    }
+  }
+
+  String _bannerMessageForConnectionHealth(
+    RiderTrackingConnectionHealth health, {
+    required int pendingUpdates,
+  }) {
+    switch (health) {
+      case RiderTrackingConnectionHealth.live:
+        return 'Live tracking active';
+      case RiderTrackingConnectionHealth.degraded:
+        if (pendingUpdates > 0) {
+          return 'Tracking degraded: $pendingUpdates update(s) queued for retry';
+        }
+        return 'Tracking degraded: retrying connection';
+      case RiderTrackingConnectionHealth.offline:
+        if (pendingUpdates > 0) {
+          return 'Offline: $pendingUpdates update(s) queued until network recovers';
+        }
+        return 'Offline: waiting for network to recover';
+    }
   }
 
   Widget _buildTrackingStatusBanner({

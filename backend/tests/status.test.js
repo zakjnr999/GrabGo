@@ -288,7 +288,9 @@ describe('Status Model', () => {
 
             expect(result.isLiked).toBe(true);
             expect(result.likeCount).toBe(1);
-            expect(status.likedBy).toContainEqual(mockUserId);
+            expect(status.likedBy.map((id) => id.toString())).toContain(
+                mockUserId.toString()
+            );
         });
 
         test('should unlike a status', async () => {
@@ -299,7 +301,9 @@ describe('Status Model', () => {
 
             expect(result.isLiked).toBe(false);
             expect(result.likeCount).toBe(0);
-            expect(status.likedBy).not.toContainEqual(mockUserId);
+            expect(status.likedBy.map((id) => id.toString())).not.toContain(
+                mockUserId.toString()
+            );
         });
 
         test('should track multiple users likes', async () => {

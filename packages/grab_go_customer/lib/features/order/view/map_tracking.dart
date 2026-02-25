@@ -653,7 +653,7 @@ class _MapTrackingState extends State<MapTracking> {
                                           context,
                                         ).showSnackBar(
                                           SnackBar(
-                                            content: Text(
+                                            content: const Text(
                                               'Rider information not available',
                                             ),
                                             backgroundColor: colors.error,
@@ -726,8 +726,8 @@ class _MapTrackingState extends State<MapTracking> {
                                       bottom: 16.h,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: colors.textSecondary.withOpacity(
-                                        0.3,
+                                      color: colors.textSecondary.withValues(
+                                        alpha: 0.3,
                                       ),
                                       borderRadius: BorderRadius.circular(2.r),
                                     ),
@@ -742,6 +742,11 @@ class _MapTrackingState extends State<MapTracking> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
+                                      _buildTrackingHealthBanner(
+                                        colors: colors,
+                                        provider: provider,
+                                      ),
+                                      SizedBox(height: 12.h),
                                       // Status Text
                                       Text(
                                         provider.trackingData?.statusText ??
@@ -1397,6 +1402,79 @@ class _MapTrackingState extends State<MapTracking> {
         ],
       ),
     );
+  }
+
+  Widget _buildTrackingHealthBanner({
+    required AppColorsExtension colors,
+    required TrackingProvider provider,
+  }) {
+    final health = provider.connectionHealth;
+    final color = _trackingHealthColor(colors, health);
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8.r),
+        border: Border.all(color: color.withValues(alpha: 0.25), width: 1),
+      ),
+      child: Row(
+        children: [
+          Icon(_trackingHealthIcon(health), color: color, size: 16.sp),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Text(
+              _trackingHealthMessage(provider),
+              style: TextStyle(
+                color: color,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _trackingHealthColor(
+    AppColorsExtension colors,
+    TrackingConnectionHealth health,
+  ) {
+    switch (health) {
+      case TrackingConnectionHealth.live:
+        return colors.accentGreen;
+      case TrackingConnectionHealth.degraded:
+        return colors.accentOrange;
+      case TrackingConnectionHealth.offline:
+        return colors.error;
+    }
+  }
+
+  IconData _trackingHealthIcon(TrackingConnectionHealth health) {
+    switch (health) {
+      case TrackingConnectionHealth.live:
+        return Icons.gps_fixed;
+      case TrackingConnectionHealth.degraded:
+        return Icons.sync_problem;
+      case TrackingConnectionHealth.offline:
+        return Icons.cloud_off;
+    }
+  }
+
+  String _trackingHealthMessage(TrackingProvider provider) {
+    switch (provider.connectionHealth) {
+      case TrackingConnectionHealth.live:
+        return 'Live updates';
+      case TrackingConnectionHealth.degraded:
+        if (provider.isFallbackPollingActive) {
+          return 'Connection unstable: using fallback updates';
+        }
+        return 'Connection unstable: retrying live updates';
+      case TrackingConnectionHealth.offline:
+        return 'Offline: waiting for network to resume tracking';
+    }
   }
 
   /// Get dynamic status description based on order status

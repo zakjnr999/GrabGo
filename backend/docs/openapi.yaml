@@ -37,9 +37,13 @@ tags:
   - name: Categories
     description: Food categories
   - name: Orders
-    description: Order management
+    description: Order lifecycle, COD, gift verification, pickup, and scheduling
   - name: Payments
-    description: Payment processing (MTN MOMO)
+    description: Payment records and cancellation
+  - name: Tracking
+    description: Real-time delivery tracking (initialize, location, status, snapshot)
+  - name: Credits
+    description: Wallet credit balance, transactions, and checkout calculation
   - name: Riders
     description: Rider operations and wallet
   - name: Chats
@@ -233,7 +237,7 @@ components:
           type: string
         paymentMethod:
           type: string
-          enum: [cash, card, mobile_money, mtn_momo, online]
+          enum: [cash, card]
         paymentStatus:
           type: string
           enum: [pending, paid, failed]
@@ -823,6 +827,27 @@ paths:
         '403':
           description: Account deactivated
 
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Get current authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+
   /users/{userId}:
     get:
       tags: [Users]
@@ -1359,11 +1384,20 @@ paths:
           application/json:
             schema:
               type: object
-              required: [restaurant, items, deliveryAddress, paymentMethod]
+              required: [items, paymentMethod]
               properties:
                 restaurant:
                   type: string
-                  description: Restaurant ID
+                  description: Vendor ID (restaurant/store/pharmacy/grabmart)
+                fulfillmentMode:
+                  type: string
+                  enum: [delivery, pickup]
+                deliveryTimeType:
+                  type: string
+                  enum: [asap, scheduled]
+                scheduledForAt:
+                  type: string
+                  format: date-time
                 items:
                   type: array
                   minItems: 1
@@ -1381,7 +1415,23 @@ paths:
                   type: string
                 paymentMethod:
                   type: string
-                  enum: [cash, card, mobile_money, mtn_momo, online]
+                  enum: [cash, card]
+                pickupContactName:
+                  type: string
+                pickupContactPhone:
+                  type: string
+                acceptNoShowPolicy:
+                  type: boolean
+                isGiftOrder:
+                  type: boolean
+                giftRecipientName:
+                  type: string
+                giftRecipientPhone:
+                  type: string
+                giftNote:
+                  type: string
+                useCredits:
+                  type: boolean
                 notes:
                   type: string
                 orderNumber:
@@ -1393,6 +1443,20 @@ paths:
           description: Validation error
         '404':
           description: Restaurant or food not found
+
+  /orders/cod/eligibility:
+    get:
+      tags: [Orders]
+      summary: Check COD eligibility for current customer
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: COD is available for this customer
+        '403':
+          description: COD unavailable or policy check failed
+        '500':
+          description: Server error
 
   /orders/{orderId}:
     get:
@@ -1439,11 +1503,256 @@ paths:
                   enum: [pending, confirmed, preparing, ready, picked_up, on_the_way, delivered, cancelled]
                 cancellationReason:
                   type: string
+                deliveryVerification:
+                  type: object
+                  properties:
+                    method:
+                      type: string
+                      enum: [code, authorized_photo]
+                    code:
+                      type: string
+                    photoUrl:
+                      type: string
+                      format: uri
+                    reason:
+                      type: string
+                    contactAttempted:
+                      type: boolean
       responses:
         '200':
           description: Status updated successfully
         '403':
           description: Customers can only cancel orders
+        '404':
+          description: Order not found
+
+  /orders/{orderId}/confirm-payment:
+    post:
+      tags: [Orders]
+      summary: Confirm order payment (Paystack verification and lifecycle updates)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reference:
+                  type: string
+                provider:
+                  type: string
+      responses:
+        '200':
+          description: Payment confirmed or already confirmed
+        '400':
+          description: Validation or payment verification failure
+        '403':
+          description: Not authorized
+        '404':
+          description: Order not found
+        '409':
+          description: Reference or amount mismatch
+
+  /orders/{orderId}/paystack/initialize:
+    post:
+      tags: [Orders]
+      summary: Initialize Paystack transaction for an order
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paystack transaction initialized
+        '400':
+          description: Invalid state or no external payment required
+        '403':
+          description: Not authorized
+        '404':
+          description: Order not found
+
+  /orders/{orderId}/release-credit-hold:
+    post:
+      tags: [Orders]
+      summary: Release held checkout credits for an order
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Credit hold released
+        '403':
+          description: Not authorized
+        '404':
+          description: Order not found
+
+  /orders/{orderId}/pickup/accept:
+    post:
+      tags: [Orders]
+      summary: Accept a pickup order (Vendor/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pickup order accepted
+        '400':
+          description: Invalid order state
+        '403':
+          description: Not authorized or feature disabled
+        '404':
+          description: Order not found
+
+  /orders/{orderId}/pickup/reject:
+    post:
+      tags: [Orders]
+      summary: Reject a pickup order and trigger refund path (Vendor/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Pickup order rejected
+        '400':
+          description: Validation or lifecycle error
+        '403':
+          description: Not authorized or feature disabled
+        '404':
+          description: Order not found
+
+  /orders/{orderId}/pickup/verify-code:
+    post:
+      tags: [Orders]
+      summary: Verify pickup OTP and mark pickup complete (Vendor/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+      responses:
+        '200':
+          description: Pickup code verified
+        '400':
+          description: Invalid code or lifecycle state
+        '403':
+          description: Not authorized or feature disabled
+        '404':
+          description: Order not found
+
+  /orders/{orderId}/delivery-code/resend:
+    post:
+      tags: [Orders]
+      summary: Resend gift delivery verification code
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [target]
+              properties:
+                target:
+                  type: string
+                  enum: [customer, recipient]
+      responses:
+        '200':
+          description: Delivery code resent
+        '400':
+          description: Validation, lifecycle, or feature restriction error
+        '403':
+          description: Not authorized
+        '404':
+          description: Order not found
+        '429':
+          description: Cooldown or resend limit reached
+
+  /orders/{orderId}/delivery-proof/photo:
+    post:
+      tags: [Orders]
+      summary: Upload authorized-photo fallback proof for gift delivery
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [photo]
+              properties:
+                photo:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Delivery proof uploaded
+        '400':
+          description: Validation or lifecycle error
+        '403':
+          description: Not authorized
         '404':
           description: Order not found
 
@@ -1478,73 +1787,6 @@ paths:
           description: Order not found
 
   # ============ PAYMENTS ============
-  /payments/mtn-momo/initiate:
-    post:
-      tags: [Payments]
-      summary: Initiate MTN MOMO payment
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [orderId, phoneNumber]
-              properties:
-                orderId:
-                  type: string
-                phoneNumber:
-                  type: string
-                  description: Ghana phone number
-      responses:
-        '200':
-          description: Payment initiated successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  data:
-                    type: object
-                    properties:
-                      paymentId:
-                        type: string
-                      referenceId:
-                        type: string
-                      status:
-                        type: string
-                      amount:
-                        type: number
-        '400':
-          description: Payment already in progress or validation error
-        '403':
-          description: Not authorized
-        '404':
-          description: Order not found
-
-  /payments/mtn-momo/status/{paymentId}:
-    get:
-      tags: [Payments]
-      summary: Check MTN MOMO payment status
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: paymentId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Payment status retrieved
-        '403':
-          description: Not authorized
-        '404':
-          description: Payment not found
-
   /payments/my-payments:
     get:
       tags: [Payments]
@@ -1588,28 +1830,135 @@ paths:
         '404':
           description: Payment not found
 
-  /payments/mtn-momo/webhook:
+  # ============ TRACKING ============
+  /tracking/initialize:
     post:
-      tags: [Payments]
-      summary: MTN MOMO webhook for payment notifications
+      tags: [Tracking]
+      summary: Initialize tracking for assigned rider/order
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required: [orderId]
               properties:
-                referenceId:
+                orderId:
+                  type: string
+                pickupLocation:
+                  type: object
+                  properties:
+                    latitude:
+                      type: number
+                    longitude:
+                      type: number
+                destination:
+                  type: object
+                  properties:
+                    latitude:
+                      type: number
+                    longitude:
+                      type: number
+      responses:
+        '201':
+          description: Tracking initialized
+        '400':
+          description: Invalid payload
+        '403':
+          description: Not authorized
+        '404':
+          description: Order not found
+        '409':
+          description: Order not trackable in current lifecycle state
+
+  /tracking/location:
+    post:
+      tags: [Tracking]
+      summary: Submit rider location update
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orderId, latitude, longitude]
+              properties:
+                orderId:
+                  type: string
+                latitude:
+                  type: number
+                longitude:
+                  type: number
+                speed:
+                  type: number
+                accuracy:
+                  type: number
+      responses:
+        '200':
+          description: Location update accepted
+        '400':
+          description: Validation error
+        '403':
+          description: Not authorized
+        '404':
+          description: Order not found
+        '409':
+          description: Order no longer accepts tracking updates
+
+  /tracking/status:
+    patch:
+      tags: [Tracking]
+      summary: Update tracking status
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orderId, status]
+              properties:
+                orderId:
                   type: string
                 status:
                   type: string
-                financialTransactionId:
-                  type: string
-                reason:
-                  type: string
+                  enum: [preparing, picked_up, in_transit, nearby]
       responses:
         '200':
-          description: Webhook processed
+          description: Tracking status updated
+        '400':
+          description: Invalid status payload
+        '403':
+          description: Not authorized
+        '404':
+          description: Order not found
+        '409':
+          description: Tracking status not aligned with lifecycle status
+
+  /tracking/{orderId}:
+    get:
+      tags: [Tracking]
+      summary: Get tracking snapshot for an order
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tracking data retrieved
+        '403':
+          description: Not authorized
+        '404':
+          description: Order not found
 
   # ============ RIDERS ============
   /riders/available-orders:
@@ -2005,6 +2354,26 @@ paths:
           description: Can only delete own messages
         '404':
           description: Message not found
+
+  /calls/{callId}:
+    get:
+      tags: [Chats]
+      summary: Get WebRTC call details by call ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: callId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Call details retrieved
+        '403':
+          description: Not authorized
+        '404':
+          description: Call not found or expired
 
   # ============ STATUSES ============
   /statuses:
@@ -2904,6 +3273,70 @@ paths:
       responses:
         '200':
           description: All notifications cleared
+
+  # ============ CREDITS ============
+  /credits/balance:
+    get:
+      tags: [Credits]
+      summary: Get current wallet credit balance
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Credit balance retrieved
+        '500':
+          description: Server error
+
+  /credits/transactions:
+    get:
+      tags: [Credits]
+      summary: Get credit transaction history
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Credit transactions retrieved
+        '500':
+          description: Server error
+
+  /credits/calculate:
+    post:
+      tags: [Credits]
+      summary: Calculate credit application for checkout
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orderTotal]
+              properties:
+                orderTotal:
+                  type: number
+                  minimum: 0
+                useCredits:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: Credit calculation returned
+        '400':
+          description: Validation error
+        '500':
+          description: Server error
 
   # ============ REFERRALS ============
   /referral/my-code:

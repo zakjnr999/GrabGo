@@ -14,6 +14,9 @@ import 'package:grab_go_shared/shared/widgets/custom_map_markers.dart';
 /// State for the rider tracking provider
 enum RiderTrackingState { idle, initializing, active, paused, error }
 
+/// Health of live tracking transport from rider -> backend.
+enum RiderTrackingConnectionHealth { live, degraded, offline }
+
 /// Configuration for location updates
 class TrackingConfig {
   final int updateIntervalMs;
@@ -97,6 +100,12 @@ class RiderTrackingProvider with ChangeNotifier {
   StreamSubscription<Position>? _positionSubscription;
   Timer? _locationUpdateTimer;
   DateTime? _lastLocationUpdateTime;
+  bool _isSendingLocation = false;
+  RiderTrackingConnectionHealth _connectionHealth =
+      RiderTrackingConnectionHealth.degraded;
+  DateTime? _lastBackendSuccessAt;
+  DateTime? _lastBackendFailureAt;
+  int _consecutiveBackendFailures = 0;
 
   // ============================================
   // Getters
@@ -130,6 +139,12 @@ class RiderTrackingProvider with ChangeNotifier {
 
   /// Whether there's an active tracking session
   bool get hasActiveSession => _activeOrderId != null;
+  RiderTrackingConnectionHealth get connectionHealth => _connectionHealth;
+  int get pendingLocationUpdates => _trackingService.pendingLocationCount;
+  bool get hasPendingLocationUpdates =>
+      _trackingService.hasPendingLocationUpdates;
+  DateTime? get lastBackendSuccessAt => _lastBackendSuccessAt;
+  DateTime? get lastBackendFailureAt => _lastBackendFailureAt;
 
   String? get lastError => _lastError;
   DateTime? get lastErrorTime => _lastErrorTime;
@@ -187,6 +202,7 @@ class RiderTrackingProvider with ChangeNotifier {
     _accuracy = data['accuracy'] as double?;
     _distanceRemaining = data['distanceRemaining'] as double?;
     _etaMinutes = data['etaMinutes'] as double?;
+    _markBackendSendSuccess();
 
     notifyListeners();
   }
@@ -224,6 +240,7 @@ class RiderTrackingProvider with ChangeNotifier {
 
     try {
       debugPrint('🚀 Initializing tracking for order: $orderId');
+      await _trackingService.hydratePendingLocationQueue();
 
       final trackingInfo = await _trackingService.initializeTracking(
         TrackingInitDto(
@@ -312,6 +329,7 @@ class RiderTrackingProvider with ChangeNotifier {
     _setState(RiderTrackingState.initializing);
 
     try {
+      await _trackingService.hydratePendingLocationQueue();
       final trackingInfo = await _trackingService.getTrackingInfo(orderId);
 
       if (trackingInfo != null) {
@@ -528,6 +546,13 @@ class RiderTrackingProvider with ChangeNotifier {
 
       _currentStatus = newStatus;
 
+      if (newStatus == TrackingStatus.delivered ||
+          newStatus == TrackingStatus.cancelled) {
+        await _trackingService.clearPendingLocationUpdatesForOrder(
+          _activeOrderId!,
+        );
+      }
+
       // Update foreground service with new status
       await _foregroundService.updateStatus(newStatus.name);
 
@@ -707,14 +732,20 @@ class RiderTrackingProvider with ChangeNotifier {
   }
 
   Future<void> _sendLocationToBackend() async {
-    if (_activeOrderId == null || _latitude == null || _longitude == null)
+    if (_isSendingLocation) {
       return;
+    }
+    if (_activeOrderId == null || _latitude == null || _longitude == null) {
+      return;
+    }
 
     // Don't send if status is delivered or cancelled
     if (_currentStatus == TrackingStatus.delivered ||
-        _currentStatus == TrackingStatus.cancelled)
+        _currentStatus == TrackingStatus.cancelled) {
       return;
+    }
 
+    _isSendingLocation = true;
     try {
       final response = await _trackingService.updateLocation(
         orderId: _activeOrderId!,
@@ -728,6 +759,7 @@ class RiderTrackingProvider with ChangeNotifier {
         _distanceRemaining = response.distanceRemaining;
         _etaMinutes = response.etaMinutes;
         _lastLocationUpdateTime = DateTime.now();
+        _markBackendSendSuccess();
 
         // Update status if backend changed it (e.g., nearby detection)
         final newStatus = TrackingStatus.fromString(response.status);
@@ -737,10 +769,16 @@ class RiderTrackingProvider with ChangeNotifier {
         }
 
         notifyListeners();
+      } else {
+        _markBackendSendFailure();
+        _handleLocationError();
       }
     } catch (e) {
       debugPrint('❌ Error sending location to backend: $e');
+      _markBackendSendFailure();
       _handleLocationError();
+    } finally {
+      _isSendingLocation = false;
     }
   }
 
@@ -785,6 +823,40 @@ class RiderTrackingProvider with ChangeNotifier {
     }
   }
 
+  void _markBackendSendSuccess() {
+    _consecutiveBackendFailures = 0;
+    _lastBackendSuccessAt = DateTime.now();
+    _syncConnectionHealth();
+  }
+
+  void _markBackendSendFailure() {
+    _consecutiveBackendFailures += 1;
+    _lastBackendFailureAt = DateTime.now();
+    _syncConnectionHealth();
+  }
+
+  void _syncConnectionHealth() {
+    final previous = _connectionHealth;
+    final now = DateTime.now();
+    final recentSuccess =
+        _lastBackendSuccessAt != null &&
+        now.difference(_lastBackendSuccessAt!) <= const Duration(seconds: 35);
+
+    if (_consecutiveBackendFailures >= 4 && !recentSuccess) {
+      _connectionHealth = RiderTrackingConnectionHealth.offline;
+    } else if (_trackingService.hasPendingLocationUpdates ||
+        _consecutiveBackendFailures > 0 ||
+        !recentSuccess) {
+      _connectionHealth = RiderTrackingConnectionHealth.degraded;
+    } else {
+      _connectionHealth = RiderTrackingConnectionHealth.live;
+    }
+
+    if (previous != _connectionHealth) {
+      notifyListeners();
+    }
+  }
+
   // ============================================
   // State Management
   // ============================================
@@ -799,6 +871,7 @@ class RiderTrackingProvider with ChangeNotifier {
   void _setError(String message) {
     _lastError = message;
     _lastErrorTime = DateTime.now();
+    _connectionHealth = RiderTrackingConnectionHealth.offline;
     _setState(RiderTrackingState.error);
     debugPrint('❌ RiderTrackingProvider: $message');
     notifyListeners();
@@ -815,6 +888,11 @@ class RiderTrackingProvider with ChangeNotifier {
     _lastError = null;
     _consecutiveErrors = 0;
     _lastLocationUpdateTime = null;
+    _isSendingLocation = false;
+    _connectionHealth = RiderTrackingConnectionHealth.degraded;
+    _lastBackendSuccessAt = null;
+    _lastBackendFailureAt = null;
+    _consecutiveBackendFailures = 0;
     _config = TrackingConfig.waitingAtPickup;
     _pickupLatitude = null;
     _pickupLongitude = null;
@@ -832,6 +910,8 @@ class RiderTrackingProvider with ChangeNotifier {
     _lastError = null;
     _lastErrorTime = null;
     _consecutiveErrors = 0;
+    _consecutiveBackendFailures = 0;
+    _syncConnectionHealth();
     if (_activeOrderId != null) {
       _setState(RiderTrackingState.paused);
     } else {
@@ -1176,8 +1256,9 @@ class RiderTrackingProvider with ChangeNotifier {
 
   /// Center camera on rider's current location
   void centerOnRider() {
-    if (_mapController == null || _latitude == null || _longitude == null)
+    if (_mapController == null || _latitude == null || _longitude == null) {
       return;
+    }
     _mapController?.animateCamera(
       CameraUpdate.newLatLngZoom(LatLng(_latitude!, _longitude!), 16),
     );
